@@ -3,7 +3,7 @@
 Hệ sinh thái AI agent vận hành quán cà phê — ca làm việc là hạt nhân, cẩm nang tự viết là bộ nhớ.
 
 **Cuộc thi:** Xây dựng Hệ điều hành Doanh nghiệp số AI · Khoa CNTT HUTECH · 2026  
-**Repo:** https://github.com/KanTrun/CA-C-NG-B-NG  
+**Repo:** https://github.com/KanTrun/CA-CONG-BANG  
 **Hồ sơ:** [`NHIP-QUAN-HO-SO-TONG-THE .md`](./NHIP-QUAN-HO-SO-TONG-THE%20.md)  
 **Plan:** [`plans/260821-2221-nhip-quan-lot1-full-delivery/`](./plans/260821-2221-nhip-quan-lot1-full-delivery/)
 
