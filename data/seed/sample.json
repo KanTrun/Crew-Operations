@@ -1,6 +1,2938 @@
 {
-  "nhan_vien": [],
-  "ca": [],
-  "lich_su_tuan": [],
-  "ghi_chu": "chưa có dữ liệu quán — điền sau Tuần 0"
+  "synthetic": true,
+  "nhan_vien": [
+    {
+      "id": "nv_01",
+      "ten": "Nhan Vien 01",
+      "ky_nang": [
+        "pha_che",
+        "kho",
+        "thu_ngan"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_02",
+      "ten": "Nhan Vien 02",
+      "ky_nang": [
+        "thu_ngan"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_03",
+      "ten": "Nhan Vien 03",
+      "ky_nang": [
+        "pha_che"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_04",
+      "ten": "Nhan Vien 04",
+      "ky_nang": [
+        "pha_che",
+        "phuc_vu",
+        "thu_ngan"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_05",
+      "ten": "Nhan Vien 05",
+      "ky_nang": [
+        "pha_che"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_06",
+      "ten": "Nhan Vien 06",
+      "ky_nang": [
+        "thu_ngan"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_07",
+      "ten": "Nhan Vien 07",
+      "ky_nang": [
+        "pha_che"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_08",
+      "ten": "Nhan Vien 08",
+      "ky_nang": [
+        "thu_ngan",
+        "phuc_vu",
+        "kho"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_09",
+      "ten": "Nhan Vien 09",
+      "ky_nang": [
+        "kho"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_10",
+      "ten": "Nhan Vien 10",
+      "ky_nang": [
+        "phuc_vu",
+        "pha_che",
+        "kho"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_11",
+      "ten": "Nhan Vien 11",
+      "ky_nang": [
+        "kho",
+        "thu_ngan",
+        "phuc_vu"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_12",
+      "ten": "Nhan Vien 12",
+      "ky_nang": [
+        "thu_ngan"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_13",
+      "ten": "Nhan Vien 13",
+      "ky_nang": [
+        "pha_che",
+        "kho"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_14",
+      "ten": "Nhan Vien 14",
+      "ky_nang": [
+        "pha_che",
+        "thu_ngan"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_15",
+      "ten": "Nhan Vien 15",
+      "ky_nang": [
+        "phuc_vu",
+        "pha_che"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_16",
+      "ten": "Nhan Vien 16",
+      "ky_nang": [
+        "kho",
+        "phuc_vu",
+        "pha_che"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_17",
+      "ten": "Nhan Vien 17",
+      "ky_nang": [
+        "pha_che",
+        "phuc_vu"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_18",
+      "ten": "Nhan Vien 18",
+      "ky_nang": [
+        "phuc_vu",
+        "kho"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_19",
+      "ten": "Nhan Vien 19",
+      "ky_nang": [
+        "pha_che"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_20",
+      "ten": "Nhan Vien 20",
+      "ky_nang": [
+        "thu_ngan"
+      ],
+      "la_sinh_vien": true,
+      "synthetic": true
+    },
+    {
+      "id": "nv_21",
+      "ten": "Nhan Vien 21",
+      "ky_nang": [
+        "pha_che",
+        "kho"
+      ],
+      "la_sinh_vien": false,
+      "synthetic": true
+    },
+    {
+      "id": "nv_22",
+      "ten": "Nhan Vien 22",
+      "ky_nang": [
+        "kho"
+      ],
+      "la_sinh_vien": false,
+      "synthetic": true
+    },
+    {
+      "id": "nv_23",
+      "ten": "Nhan Vien 23",
+      "ky_nang": [
+        "kho",
+        "phuc_vu"
+      ],
+      "la_sinh_vien": false,
+      "synthetic": true
+    },
+    {
+      "id": "nv_24",
+      "ten": "Nhan Vien 24",
+      "ky_nang": [
+        "thu_ngan",
+        "kho"
+      ],
+      "la_sinh_vien": false,
+      "synthetic": true
+    },
+    {
+      "id": "nv_25",
+      "ten": "Nhan Vien 25",
+      "ky_nang": [
+        "thu_ngan",
+        "phuc_vu"
+      ],
+      "la_sinh_vien": false,
+      "synthetic": true
+    }
+  ],
+  "ca_mau_21": [
+    {
+      "id": "w1_c01",
+      "ngay_offset": 1,
+      "khung": "sang",
+      "bat_dau": "07:00",
+      "ket_thuc": "12:00",
+      "vi_tri": "thu_ngan",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c02",
+      "ngay_offset": 1,
+      "khung": "chieu",
+      "bat_dau": "12:00",
+      "ket_thuc": "17:00",
+      "vi_tri": "phuc_vu",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c03",
+      "ngay_offset": 1,
+      "khung": "toi",
+      "bat_dau": "17:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "kho",
+      "so_nguoi_toi_thieu": 3,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c04",
+      "ngay_offset": 2,
+      "khung": "sang",
+      "bat_dau": "07:00",
+      "ket_thuc": "12:00",
+      "vi_tri": "kho",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c05",
+      "ngay_offset": 2,
+      "khung": "chieu",
+      "bat_dau": "12:00",
+      "ket_thuc": "17:00",
+      "vi_tri": "pha_che",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c06",
+      "ngay_offset": 2,
+      "khung": "toi",
+      "bat_dau": "17:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "kho",
+      "so_nguoi_toi_thieu": 3,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c07",
+      "ngay_offset": 3,
+      "khung": "sang",
+      "bat_dau": "07:00",
+      "ket_thuc": "12:00",
+      "vi_tri": "phuc_vu",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c08",
+      "ngay_offset": 3,
+      "khung": "chieu",
+      "bat_dau": "12:00",
+      "ket_thuc": "17:00",
+      "vi_tri": "kho",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c09",
+      "ngay_offset": 3,
+      "khung": "toi",
+      "bat_dau": "17:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "thu_ngan",
+      "so_nguoi_toi_thieu": 3,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c10",
+      "ngay_offset": 4,
+      "khung": "sang",
+      "bat_dau": "07:00",
+      "ket_thuc": "12:00",
+      "vi_tri": "kho",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c11",
+      "ngay_offset": 4,
+      "khung": "chieu",
+      "bat_dau": "12:00",
+      "ket_thuc": "17:00",
+      "vi_tri": "thu_ngan",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c12",
+      "ngay_offset": 4,
+      "khung": "toi",
+      "bat_dau": "17:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "pha_che",
+      "so_nguoi_toi_thieu": 3,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c13",
+      "ngay_offset": 5,
+      "khung": "sang",
+      "bat_dau": "07:00",
+      "ket_thuc": "12:00",
+      "vi_tri": "kho",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c14",
+      "ngay_offset": 5,
+      "khung": "chieu",
+      "bat_dau": "12:00",
+      "ket_thuc": "17:00",
+      "vi_tri": "pha_che",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c15",
+      "ngay_offset": 5,
+      "khung": "toi",
+      "bat_dau": "17:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "pha_che",
+      "so_nguoi_toi_thieu": 3,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c16",
+      "ngay_offset": 6,
+      "khung": "sang",
+      "bat_dau": "07:00",
+      "ket_thuc": "12:00",
+      "vi_tri": "kho",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c17",
+      "ngay_offset": 6,
+      "khung": "chieu",
+      "bat_dau": "12:00",
+      "ket_thuc": "17:00",
+      "vi_tri": "thu_ngan",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c18",
+      "ngay_offset": 6,
+      "khung": "toi",
+      "bat_dau": "17:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "kho",
+      "so_nguoi_toi_thieu": 3,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c19",
+      "ngay_offset": 7,
+      "khung": "sang",
+      "bat_dau": "07:00",
+      "ket_thuc": "12:00",
+      "vi_tri": "thu_ngan",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c20",
+      "ngay_offset": 7,
+      "khung": "chieu",
+      "bat_dau": "12:00",
+      "ket_thuc": "17:00",
+      "vi_tri": "pha_che",
+      "so_nguoi_toi_thieu": 2,
+      "synthetic": true
+    },
+    {
+      "id": "w1_c21",
+      "ngay_offset": 7,
+      "khung": "toi",
+      "bat_dau": "17:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "phuc_vu",
+      "so_nguoi_toi_thieu": 3,
+      "synthetic": true
+    }
+  ],
+  "lich_su_8_tuan": [
+    {
+      "tuan": 1,
+      "tuan_iso": "2026-W01",
+      "ca": [
+        {
+          "id": "w1_c01",
+          "ngay_offset": 1,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c02",
+          "ngay_offset": 1,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c03",
+          "ngay_offset": 1,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c04",
+          "ngay_offset": 2,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c05",
+          "ngay_offset": 2,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c06",
+          "ngay_offset": 2,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c07",
+          "ngay_offset": 3,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c08",
+          "ngay_offset": 3,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c09",
+          "ngay_offset": 3,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c10",
+          "ngay_offset": 4,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c11",
+          "ngay_offset": 4,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c12",
+          "ngay_offset": 4,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c13",
+          "ngay_offset": 5,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c14",
+          "ngay_offset": 5,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c15",
+          "ngay_offset": 5,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c16",
+          "ngay_offset": 6,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c17",
+          "ngay_offset": 6,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c18",
+          "ngay_offset": 6,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c19",
+          "ngay_offset": 7,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c20",
+          "ngay_offset": 7,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w1_c21",
+          "ngay_offset": 7,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        }
+      ],
+      "phan_cong": {
+        "w1_c01": [
+          "nv_13",
+          "nv_21"
+        ],
+        "w1_c02": [
+          "nv_15",
+          "nv_05"
+        ],
+        "w1_c03": [
+          "nv_09",
+          "nv_05",
+          "nv_08"
+        ],
+        "w1_c04": [
+          "nv_24",
+          "nv_18"
+        ],
+        "w1_c05": [
+          "nv_18",
+          "nv_09"
+        ],
+        "w1_c06": [
+          "nv_24",
+          "nv_19",
+          "nv_14"
+        ],
+        "w1_c07": [
+          "nv_19",
+          "nv_13"
+        ],
+        "w1_c08": [
+          "nv_12",
+          "nv_08"
+        ],
+        "w1_c09": [
+          "nv_05",
+          "nv_17",
+          "nv_16"
+        ],
+        "w1_c10": [
+          "nv_03",
+          "nv_25"
+        ],
+        "w1_c11": [
+          "nv_02",
+          "nv_04"
+        ],
+        "w1_c12": [
+          "nv_05",
+          "nv_21",
+          "nv_06"
+        ],
+        "w1_c13": [
+          "nv_22",
+          "nv_14"
+        ],
+        "w1_c14": [
+          "nv_20",
+          "nv_03"
+        ],
+        "w1_c15": [
+          "nv_13",
+          "nv_20",
+          "nv_15"
+        ],
+        "w1_c16": [
+          "nv_17",
+          "nv_09"
+        ],
+        "w1_c17": [
+          "nv_18",
+          "nv_01"
+        ],
+        "w1_c18": [
+          "nv_22",
+          "nv_24",
+          "nv_04"
+        ],
+        "w1_c19": [
+          "nv_22",
+          "nv_18"
+        ],
+        "w1_c20": [
+          "nv_25",
+          "nv_09"
+        ],
+        "w1_c21": [
+          "nv_25",
+          "nv_21",
+          "nv_11"
+        ]
+      }
+    },
+    {
+      "tuan": 2,
+      "tuan_iso": "2026-W02",
+      "ca": [
+        {
+          "id": "w2_c01",
+          "ngay_offset": 1,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c02",
+          "ngay_offset": 1,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c03",
+          "ngay_offset": 1,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c04",
+          "ngay_offset": 2,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c05",
+          "ngay_offset": 2,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c06",
+          "ngay_offset": 2,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c07",
+          "ngay_offset": 3,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c08",
+          "ngay_offset": 3,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c09",
+          "ngay_offset": 3,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c10",
+          "ngay_offset": 4,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c11",
+          "ngay_offset": 4,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c12",
+          "ngay_offset": 4,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c13",
+          "ngay_offset": 5,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c14",
+          "ngay_offset": 5,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c15",
+          "ngay_offset": 5,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c16",
+          "ngay_offset": 6,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c17",
+          "ngay_offset": 6,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c18",
+          "ngay_offset": 6,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c19",
+          "ngay_offset": 7,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c20",
+          "ngay_offset": 7,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w2_c21",
+          "ngay_offset": 7,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        }
+      ],
+      "phan_cong": {
+        "w2_c01": [
+          "nv_08",
+          "nv_02"
+        ],
+        "w2_c02": [
+          "nv_08",
+          "nv_19"
+        ],
+        "w2_c03": [
+          "nv_03",
+          "nv_24",
+          "nv_16"
+        ],
+        "w2_c04": [
+          "nv_03",
+          "nv_25"
+        ],
+        "w2_c05": [
+          "nv_18",
+          "nv_25"
+        ],
+        "w2_c06": [
+          "nv_05",
+          "nv_22",
+          "nv_16"
+        ],
+        "w2_c07": [
+          "nv_18",
+          "nv_06"
+        ],
+        "w2_c08": [
+          "nv_09",
+          "nv_17"
+        ],
+        "w2_c09": [
+          "nv_20",
+          "nv_14",
+          "nv_07"
+        ],
+        "w2_c10": [
+          "nv_18",
+          "nv_25"
+        ],
+        "w2_c11": [
+          "nv_24",
+          "nv_23"
+        ],
+        "w2_c12": [
+          "nv_07",
+          "nv_23",
+          "nv_10"
+        ],
+        "w2_c13": [
+          "nv_13",
+          "nv_22"
+        ],
+        "w2_c14": [
+          "nv_21",
+          "nv_12"
+        ],
+        "w2_c15": [
+          "nv_15",
+          "nv_17",
+          "nv_04"
+        ],
+        "w2_c16": [
+          "nv_08",
+          "nv_03"
+        ],
+        "w2_c17": [
+          "nv_11",
+          "nv_01"
+        ],
+        "w2_c18": [
+          "nv_19",
+          "nv_18",
+          "nv_08"
+        ],
+        "w2_c19": [
+          "nv_19",
+          "nv_08"
+        ],
+        "w2_c20": [
+          "nv_01",
+          "nv_03"
+        ],
+        "w2_c21": [
+          "nv_23",
+          "nv_21",
+          "nv_02"
+        ]
+      }
+    },
+    {
+      "tuan": 3,
+      "tuan_iso": "2026-W03",
+      "ca": [
+        {
+          "id": "w3_c01",
+          "ngay_offset": 1,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c02",
+          "ngay_offset": 1,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c03",
+          "ngay_offset": 1,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c04",
+          "ngay_offset": 2,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c05",
+          "ngay_offset": 2,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c06",
+          "ngay_offset": 2,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c07",
+          "ngay_offset": 3,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c08",
+          "ngay_offset": 3,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c09",
+          "ngay_offset": 3,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c10",
+          "ngay_offset": 4,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c11",
+          "ngay_offset": 4,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c12",
+          "ngay_offset": 4,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c13",
+          "ngay_offset": 5,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c14",
+          "ngay_offset": 5,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c15",
+          "ngay_offset": 5,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c16",
+          "ngay_offset": 6,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c17",
+          "ngay_offset": 6,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c18",
+          "ngay_offset": 6,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c19",
+          "ngay_offset": 7,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c20",
+          "ngay_offset": 7,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w3_c21",
+          "ngay_offset": 7,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        }
+      ],
+      "phan_cong": {
+        "w3_c01": [
+          "nv_15",
+          "nv_24"
+        ],
+        "w3_c02": [
+          "nv_02",
+          "nv_22"
+        ],
+        "w3_c03": [
+          "nv_21",
+          "nv_04",
+          "nv_02"
+        ],
+        "w3_c04": [
+          "nv_13",
+          "nv_24"
+        ],
+        "w3_c05": [
+          "nv_11",
+          "nv_04"
+        ],
+        "w3_c06": [
+          "nv_08",
+          "nv_07",
+          "nv_18"
+        ],
+        "w3_c07": [
+          "nv_15",
+          "nv_05"
+        ],
+        "w3_c08": [
+          "nv_14",
+          "nv_06"
+        ],
+        "w3_c09": [
+          "nv_09",
+          "nv_15",
+          "nv_08"
+        ],
+        "w3_c10": [
+          "nv_03",
+          "nv_15"
+        ],
+        "w3_c11": [
+          "nv_18",
+          "nv_04"
+        ],
+        "w3_c12": [
+          "nv_02",
+          "nv_21",
+          "nv_18"
+        ],
+        "w3_c13": [
+          "nv_01",
+          "nv_03"
+        ],
+        "w3_c14": [
+          "nv_25",
+          "nv_08"
+        ],
+        "w3_c15": [
+          "nv_06",
+          "nv_14",
+          "nv_16"
+        ],
+        "w3_c16": [
+          "nv_16",
+          "nv_07"
+        ],
+        "w3_c17": [
+          "nv_13",
+          "nv_02"
+        ],
+        "w3_c18": [
+          "nv_06",
+          "nv_13",
+          "nv_01"
+        ],
+        "w3_c19": [
+          "nv_13",
+          "nv_09"
+        ],
+        "w3_c20": [
+          "nv_15",
+          "nv_10"
+        ],
+        "w3_c21": [
+          "nv_14",
+          "nv_23",
+          "nv_24"
+        ]
+      }
+    },
+    {
+      "tuan": 4,
+      "tuan_iso": "2026-W04",
+      "ca": [
+        {
+          "id": "w4_c01",
+          "ngay_offset": 1,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c02",
+          "ngay_offset": 1,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c03",
+          "ngay_offset": 1,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c04",
+          "ngay_offset": 2,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c05",
+          "ngay_offset": 2,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c06",
+          "ngay_offset": 2,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c07",
+          "ngay_offset": 3,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c08",
+          "ngay_offset": 3,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c09",
+          "ngay_offset": 3,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c10",
+          "ngay_offset": 4,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c11",
+          "ngay_offset": 4,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c12",
+          "ngay_offset": 4,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c13",
+          "ngay_offset": 5,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c14",
+          "ngay_offset": 5,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c15",
+          "ngay_offset": 5,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c16",
+          "ngay_offset": 6,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c17",
+          "ngay_offset": 6,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c18",
+          "ngay_offset": 6,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c19",
+          "ngay_offset": 7,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c20",
+          "ngay_offset": 7,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w4_c21",
+          "ngay_offset": 7,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        }
+      ],
+      "phan_cong": {
+        "w4_c01": [
+          "nv_19",
+          "nv_20"
+        ],
+        "w4_c02": [
+          "nv_02",
+          "nv_20"
+        ],
+        "w4_c03": [
+          "nv_03",
+          "nv_14",
+          "nv_22"
+        ],
+        "w4_c04": [
+          "nv_19",
+          "nv_17"
+        ],
+        "w4_c05": [
+          "nv_11",
+          "nv_09"
+        ],
+        "w4_c06": [
+          "nv_07",
+          "nv_22",
+          "nv_23"
+        ],
+        "w4_c07": [
+          "nv_11",
+          "nv_08"
+        ],
+        "w4_c08": [
+          "nv_09",
+          "nv_13"
+        ],
+        "w4_c09": [
+          "nv_05",
+          "nv_22",
+          "nv_21"
+        ],
+        "w4_c10": [
+          "nv_10",
+          "nv_15"
+        ],
+        "w4_c11": [
+          "nv_11",
+          "nv_25"
+        ],
+        "w4_c12": [
+          "nv_03",
+          "nv_01",
+          "nv_15"
+        ],
+        "w4_c13": [
+          "nv_20",
+          "nv_19"
+        ],
+        "w4_c14": [
+          "nv_04",
+          "nv_03"
+        ],
+        "w4_c15": [
+          "nv_18",
+          "nv_07",
+          "nv_17"
+        ],
+        "w4_c16": [
+          "nv_09",
+          "nv_05"
+        ],
+        "w4_c17": [
+          "nv_12",
+          "nv_03"
+        ],
+        "w4_c18": [
+          "nv_08",
+          "nv_12",
+          "nv_10"
+        ],
+        "w4_c19": [
+          "nv_06",
+          "nv_15"
+        ],
+        "w4_c20": [
+          "nv_18",
+          "nv_23"
+        ],
+        "w4_c21": [
+          "nv_10",
+          "nv_20",
+          "nv_21"
+        ]
+      }
+    },
+    {
+      "tuan": 5,
+      "tuan_iso": "2026-W05",
+      "ca": [
+        {
+          "id": "w5_c01",
+          "ngay_offset": 1,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c02",
+          "ngay_offset": 1,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c03",
+          "ngay_offset": 1,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c04",
+          "ngay_offset": 2,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c05",
+          "ngay_offset": 2,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c06",
+          "ngay_offset": 2,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c07",
+          "ngay_offset": 3,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c08",
+          "ngay_offset": 3,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c09",
+          "ngay_offset": 3,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c10",
+          "ngay_offset": 4,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c11",
+          "ngay_offset": 4,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c12",
+          "ngay_offset": 4,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c13",
+          "ngay_offset": 5,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c14",
+          "ngay_offset": 5,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c15",
+          "ngay_offset": 5,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c16",
+          "ngay_offset": 6,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c17",
+          "ngay_offset": 6,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c18",
+          "ngay_offset": 6,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c19",
+          "ngay_offset": 7,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c20",
+          "ngay_offset": 7,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w5_c21",
+          "ngay_offset": 7,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        }
+      ],
+      "phan_cong": {
+        "w5_c01": [
+          "nv_01",
+          "nv_11"
+        ],
+        "w5_c02": [
+          "nv_25",
+          "nv_05"
+        ],
+        "w5_c03": [
+          "nv_21",
+          "nv_09",
+          "nv_06"
+        ],
+        "w5_c04": [
+          "nv_24",
+          "nv_15"
+        ],
+        "w5_c05": [
+          "nv_18",
+          "nv_23"
+        ],
+        "w5_c06": [
+          "nv_14",
+          "nv_18",
+          "nv_01"
+        ],
+        "w5_c07": [
+          "nv_04",
+          "nv_03"
+        ],
+        "w5_c08": [
+          "nv_23",
+          "nv_05"
+        ],
+        "w5_c09": [
+          "nv_18",
+          "nv_02",
+          "nv_12"
+        ],
+        "w5_c10": [
+          "nv_19",
+          "nv_18"
+        ],
+        "w5_c11": [
+          "nv_05",
+          "nv_14"
+        ],
+        "w5_c12": [
+          "nv_05",
+          "nv_02",
+          "nv_10"
+        ],
+        "w5_c13": [
+          "nv_12",
+          "nv_02"
+        ],
+        "w5_c14": [
+          "nv_12",
+          "nv_07"
+        ],
+        "w5_c15": [
+          "nv_22",
+          "nv_08",
+          "nv_04"
+        ],
+        "w5_c16": [
+          "nv_12",
+          "nv_25"
+        ],
+        "w5_c17": [
+          "nv_18",
+          "nv_14"
+        ],
+        "w5_c18": [
+          "nv_20",
+          "nv_24",
+          "nv_05"
+        ],
+        "w5_c19": [
+          "nv_08",
+          "nv_06"
+        ],
+        "w5_c20": [
+          "nv_06",
+          "nv_14"
+        ],
+        "w5_c21": [
+          "nv_01",
+          "nv_06",
+          "nv_24"
+        ]
+      }
+    },
+    {
+      "tuan": 6,
+      "tuan_iso": "2026-W06",
+      "ca": [
+        {
+          "id": "w6_c01",
+          "ngay_offset": 1,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c02",
+          "ngay_offset": 1,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c03",
+          "ngay_offset": 1,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c04",
+          "ngay_offset": 2,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c05",
+          "ngay_offset": 2,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c06",
+          "ngay_offset": 2,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c07",
+          "ngay_offset": 3,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c08",
+          "ngay_offset": 3,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c09",
+          "ngay_offset": 3,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c10",
+          "ngay_offset": 4,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c11",
+          "ngay_offset": 4,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c12",
+          "ngay_offset": 4,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c13",
+          "ngay_offset": 5,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c14",
+          "ngay_offset": 5,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c15",
+          "ngay_offset": 5,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c16",
+          "ngay_offset": 6,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c17",
+          "ngay_offset": 6,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c18",
+          "ngay_offset": 6,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c19",
+          "ngay_offset": 7,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c20",
+          "ngay_offset": 7,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w6_c21",
+          "ngay_offset": 7,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        }
+      ],
+      "phan_cong": {
+        "w6_c01": [
+          "nv_03",
+          "nv_25"
+        ],
+        "w6_c02": [
+          "nv_09",
+          "nv_12"
+        ],
+        "w6_c03": [
+          "nv_21",
+          "nv_17",
+          "nv_13"
+        ],
+        "w6_c04": [
+          "nv_22",
+          "nv_18"
+        ],
+        "w6_c05": [
+          "nv_11",
+          "nv_01"
+        ],
+        "w6_c06": [
+          "nv_04",
+          "nv_09",
+          "nv_06"
+        ],
+        "w6_c07": [
+          "nv_19",
+          "nv_09"
+        ],
+        "w6_c08": [
+          "nv_02",
+          "nv_04"
+        ],
+        "w6_c09": [
+          "nv_20",
+          "nv_14",
+          "nv_12"
+        ],
+        "w6_c10": [
+          "nv_24",
+          "nv_11"
+        ],
+        "w6_c11": [
+          "nv_14",
+          "nv_20"
+        ],
+        "w6_c12": [
+          "nv_17",
+          "nv_04",
+          "nv_13"
+        ],
+        "w6_c13": [
+          "nv_19",
+          "nv_07"
+        ],
+        "w6_c14": [
+          "nv_09",
+          "nv_02"
+        ],
+        "w6_c15": [
+          "nv_23",
+          "nv_14",
+          "nv_01"
+        ],
+        "w6_c16": [
+          "nv_17",
+          "nv_18"
+        ],
+        "w6_c17": [
+          "nv_22",
+          "nv_24"
+        ],
+        "w6_c18": [
+          "nv_24",
+          "nv_22",
+          "nv_07"
+        ],
+        "w6_c19": [
+          "nv_12",
+          "nv_14"
+        ],
+        "w6_c20": [
+          "nv_03",
+          "nv_22"
+        ],
+        "w6_c21": [
+          "nv_11",
+          "nv_20",
+          "nv_22"
+        ]
+      }
+    },
+    {
+      "tuan": 7,
+      "tuan_iso": "2026-W07",
+      "ca": [
+        {
+          "id": "w7_c01",
+          "ngay_offset": 1,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c02",
+          "ngay_offset": 1,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c03",
+          "ngay_offset": 1,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c04",
+          "ngay_offset": 2,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c05",
+          "ngay_offset": 2,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c06",
+          "ngay_offset": 2,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c07",
+          "ngay_offset": 3,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c08",
+          "ngay_offset": 3,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c09",
+          "ngay_offset": 3,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c10",
+          "ngay_offset": 4,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c11",
+          "ngay_offset": 4,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c12",
+          "ngay_offset": 4,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c13",
+          "ngay_offset": 5,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c14",
+          "ngay_offset": 5,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c15",
+          "ngay_offset": 5,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c16",
+          "ngay_offset": 6,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c17",
+          "ngay_offset": 6,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c18",
+          "ngay_offset": 6,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c19",
+          "ngay_offset": 7,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c20",
+          "ngay_offset": 7,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w7_c21",
+          "ngay_offset": 7,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        }
+      ],
+      "phan_cong": {
+        "w7_c01": [
+          "nv_15",
+          "nv_22"
+        ],
+        "w7_c02": [
+          "nv_07",
+          "nv_17"
+        ],
+        "w7_c03": [
+          "nv_16",
+          "nv_24",
+          "nv_06"
+        ],
+        "w7_c04": [
+          "nv_22",
+          "nv_03"
+        ],
+        "w7_c05": [
+          "nv_10",
+          "nv_17"
+        ],
+        "w7_c06": [
+          "nv_22",
+          "nv_21",
+          "nv_20"
+        ],
+        "w7_c07": [
+          "nv_11",
+          "nv_03"
+        ],
+        "w7_c08": [
+          "nv_25",
+          "nv_08"
+        ],
+        "w7_c09": [
+          "nv_22",
+          "nv_10",
+          "nv_08"
+        ],
+        "w7_c10": [
+          "nv_07",
+          "nv_05"
+        ],
+        "w7_c11": [
+          "nv_01",
+          "nv_02"
+        ],
+        "w7_c12": [
+          "nv_08",
+          "nv_16",
+          "nv_20"
+        ],
+        "w7_c13": [
+          "nv_25",
+          "nv_03"
+        ],
+        "w7_c14": [
+          "nv_15",
+          "nv_14"
+        ],
+        "w7_c15": [
+          "nv_21",
+          "nv_19",
+          "nv_07"
+        ],
+        "w7_c16": [
+          "nv_23",
+          "nv_13"
+        ],
+        "w7_c17": [
+          "nv_16",
+          "nv_13"
+        ],
+        "w7_c18": [
+          "nv_08",
+          "nv_05",
+          "nv_21"
+        ],
+        "w7_c19": [
+          "nv_23",
+          "nv_01"
+        ],
+        "w7_c20": [
+          "nv_25",
+          "nv_04"
+        ],
+        "w7_c21": [
+          "nv_25",
+          "nv_14",
+          "nv_08"
+        ]
+      }
+    },
+    {
+      "tuan": 8,
+      "tuan_iso": "2026-W08",
+      "ca": [
+        {
+          "id": "w8_c01",
+          "ngay_offset": 1,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c02",
+          "ngay_offset": 1,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c03",
+          "ngay_offset": 1,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c04",
+          "ngay_offset": 2,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c05",
+          "ngay_offset": 2,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "pha_che",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c06",
+          "ngay_offset": 2,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c07",
+          "ngay_offset": 3,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c08",
+          "ngay_offset": 3,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c09",
+          "ngay_offset": 3,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c10",
+          "ngay_offset": 4,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c11",
+          "ngay_offset": 4,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c12",
+          "ngay_offset": 4,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c13",
+          "ngay_offset": 5,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c14",
+          "ngay_offset": 5,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c15",
+          "ngay_offset": 5,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c16",
+          "ngay_offset": 6,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c17",
+          "ngay_offset": 6,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c18",
+          "ngay_offset": 6,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c19",
+          "ngay_offset": 7,
+          "khung": "sang",
+          "bat_dau": "07:00",
+          "ket_thuc": "12:00",
+          "vi_tri": "kho",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c20",
+          "ngay_offset": 7,
+          "khung": "chieu",
+          "bat_dau": "12:00",
+          "ket_thuc": "17:00",
+          "vi_tri": "thu_ngan",
+          "so_nguoi_toi_thieu": 2,
+          "synthetic": true
+        },
+        {
+          "id": "w8_c21",
+          "ngay_offset": 7,
+          "khung": "toi",
+          "bat_dau": "17:00",
+          "ket_thuc": "22:00",
+          "vi_tri": "phuc_vu",
+          "so_nguoi_toi_thieu": 3,
+          "synthetic": true
+        }
+      ],
+      "phan_cong": {
+        "w8_c01": [
+          "nv_15",
+          "nv_03"
+        ],
+        "w8_c02": [
+          "nv_23",
+          "nv_10"
+        ],
+        "w8_c03": [
+          "nv_08",
+          "nv_09",
+          "nv_11"
+        ],
+        "w8_c04": [
+          "nv_11",
+          "nv_18"
+        ],
+        "w8_c05": [
+          "nv_03",
+          "nv_05"
+        ],
+        "w8_c06": [
+          "nv_05",
+          "nv_08",
+          "nv_13"
+        ],
+        "w8_c07": [
+          "nv_23",
+          "nv_05"
+        ],
+        "w8_c08": [
+          "nv_23",
+          "nv_07"
+        ],
+        "w8_c09": [
+          "nv_03",
+          "nv_14",
+          "nv_11"
+        ],
+        "w8_c10": [
+          "nv_18",
+          "nv_15"
+        ],
+        "w8_c11": [
+          "nv_14",
+          "nv_02"
+        ],
+        "w8_c12": [
+          "nv_07",
+          "nv_14",
+          "nv_13"
+        ],
+        "w8_c13": [
+          "nv_25",
+          "nv_19"
+        ],
+        "w8_c14": [
+          "nv_23",
+          "nv_01"
+        ],
+        "w8_c15": [
+          "nv_25",
+          "nv_19",
+          "nv_13"
+        ],
+        "w8_c16": [
+          "nv_16",
+          "nv_01"
+        ],
+        "w8_c17": [
+          "nv_12",
+          "nv_10"
+        ],
+        "w8_c18": [
+          "nv_25",
+          "nv_13",
+          "nv_14"
+        ],
+        "w8_c19": [
+          "nv_18",
+          "nv_24"
+        ],
+        "w8_c20": [
+          "nv_24",
+          "nv_18"
+        ],
+        "w8_c21": [
+          "nv_20",
+          "nv_08",
+          "nv_16"
+        ]
+      }
+    }
+  ],
+  "ghi_chu": "Fixture seed — Quán Fixture NHỊP QUÁN (ADR-012)"
 }

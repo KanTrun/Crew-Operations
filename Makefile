@@ -27,7 +27,7 @@ demo-reset:
 	docker compose -f infra/docker/compose.yml up --build -d
 
 seed:
-	python scripts/seed_stub.py
+	python scripts/generate_fixture_data.py
 
 bench:
 	@echo "solver bench stub"

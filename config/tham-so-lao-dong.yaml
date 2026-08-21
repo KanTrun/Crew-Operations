@@ -1,19 +1,46 @@
-# Tham số lao động — cấu hình (chưa kết luận pháp lý)
+phien_ban: "0.2.0"
+trang_thai: da_dien_co_nguon
+ngay_kiem: "2026-08-21"
 
-> Hồ sơ §18.3: **chưa tự kiểm chứng** thì không phát biểu trên sân khấu như sự thật.
-> Điền số sau khi A tra Bộ luật Lao động + văn bản hướng dẫn hiện hành; ghi số điều khoản.
+# Tham số solver/ops — KHÔNG hard-code trong mã nghiệp vụ.
+# Nguồn: Bộ luật Lao động 2019 (thuvienphapluat / văn bản gốc). Đội tự đối chiếu lại trước bảo vệ.
 
-```yaml
-phien_ban: 0.1.0-draft
-trang_thai: chua_kiem_chung
-nguon: []   # ví dụ: "BLLĐ 2019 Điều X", URL + ngày truy cập
+nguon:
+  - id: BLLD-2019-D105
+    mo_ta: Thời giờ làm việc bình thường
+    dieu: "Điều 105 BLLĐ 2019"
+    url: "https://thuvienphapluat.vn/van-ban/Lao-dong-Tien-luong/Bo-Luat-lao-dong-2019-333670.aspx"
+  - id: BLLD-2019-D107
+    mo_ta: Làm thêm giờ — trần ngày/tháng/năm
+    dieu: "Điều 107 BLLĐ 2019"
+  - id: BLLD-2019-D109
+    mo_ta: Nghỉ giữa giờ
+    dieu: "Điều 109 BLLĐ 2019"
+  - id: BLLD-2019-D110
+    mo_ta: Nghỉ chuyển ca
+    dieu: "Điều 110 BLLĐ 2019"
 
-khoang_nghi_toi_thieu_gio: null
-tran_gio_tuan: null
-tran_gio_ngay: null
-tran_ngay_lien_tiep: null
-gioi_han_nguoi_dang_hoc: null
+# Giờ làm việc bình thường (Điều 105): không quá 8 giờ/ngày và 48 giờ/tuần
+tran_gio_ngay: 8
+tran_gio_tuan: 48
+
+# Làm thêm (Điều 107): không quá 40 giờ/tháng; không quá 200 giờ/năm (mặc định cấu hình quán)
+tran_lam_them_thang: 40
+tran_lam_them_nam: 200
+
+# Nghỉ giữa giờ (Điều 109): ≥30 phút nếu làm ≥6 giờ/ngày; ban đêm ≥45 phút
+nghi_giua_gio_phut: 30
+nghi_giua_gio_ban_dem_phut: 45
+
+# Nghỉ chuyển ca (Điều 110): ít nhất 12 giờ giữa hai ca
+khoang_nghi_toi_thieu_gio: 12
+
+# Tham số quán (không phải điều luật cứng — cấu hình vận hành)
+tran_ngay_lien_tiep: 6
+gioi_han_nguoi_dang_hoc:
+  uu_tien_tranh_trung_tkb: true
+  ghi_chu: "Ràng buộc cứng TKB sinh viên là chính sách quán + hợp pháp; không suy diễn thêm giờ học ngoài dữ liệu TKB."
 
 ghi_chu: |
-  Tất cả null cho đến khi có nguồn. Solver/ops đọc file này — không hard-code trong mã.
-```
+  Số trên dùng cho solver. Đổi quy định pháp → sửa file này, không sửa mã.
+  Trước bảo vệ: mở lại văn bản gốc và cập nhật ngay_kiem.
