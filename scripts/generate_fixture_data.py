@@ -132,7 +132,11 @@ def build_tkb(n: int = 50) -> None:
 """
         y = 80
         for b in blocks:
-            svg += f"<text x='24' y='{y}' font-size='16' font-family='monospace'>{b['thu']} {b['start']}-{b['end']}</text>\n"
+            label = f"{b['thu']} {b['start']}-{b['end']}"
+            svg += (
+                f"<text x='24' y='{y}' font-size='16' "
+                f"font-family='monospace'>{label}</text>\n"
+            )
             y += 28
         svg += "</svg>\n"
         name = f"tkb_{i:02d}.svg"

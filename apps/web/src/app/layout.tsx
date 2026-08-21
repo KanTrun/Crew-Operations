@@ -1,25 +1,24 @@
 import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "NHỊP QUÁN",
-  description: "Hệ điều hành quán cà phê — ca làm việc · cẩm nang sống",
+  description: "Ca làm việc · cẩm nang sống",
+  manifest: "/manifest.webmanifest",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
-      <body
-        style={{
-          margin: 0,
-          minHeight: "100vh",
-          fontFamily: "Georgia, 'Times New Roman', serif",
-          background:
-            "radial-gradient(ellipse at 20% 0%, #2a2118 0%, #12100e 45%, #0a0908 100%)",
-          color: "#f3e6d4",
-        }}
-      >
-        {children}
-      </body>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body>{children}</body>
     </html>
   );
 }

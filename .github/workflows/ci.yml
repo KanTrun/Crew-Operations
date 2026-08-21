@@ -27,14 +27,14 @@ jobs:
       - name: Install Python tools
         run: pip install ruff mypy
       - name: Ruff
-        run: ruff check apps packages || true
+        run: ruff check apps/api/src packages scripts
       - name: Mypy (packages when present)
         run: |
           if [ -f pyproject.toml ]; then mypy packages apps/api/src --ignore-missing-imports || true; fi
       - name: ESLint / tsc (web)
         working-directory: apps/web
         run: |
-          if [ -f package.json ]; then npm ci && npm run lint && npm run typecheck; else echo "web stub"; fi
+          if [ -f package.json ]; then npm install && npm run lint && npm run typecheck; else echo "web stub"; fi
 
   unit:
     name: "02 unit"
@@ -44,8 +44,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pytest
-      - run: pytest -q apps packages || true
+      - name: Install workspace
+        run: |
+          pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./apps/api pytest httpx pyyaml
+      - run: CA_AGENT_MODE=replay pytest -q
+      - name: Export contracts
+        run: python scripts/export_contracts.py
 
   integration:
     name: "03 integration"
@@ -118,7 +122,7 @@ jobs:
           node-version: "22"
       - working-directory: apps/web
         run: |
-          if [ -f package.json ]; then npm ci && npm test; else echo "web stub"; fi
+          if [ -f package.json ]; then npm install && npm test; else echo "web stub"; fi
 
   e2e:
     name: "08 e2e"
