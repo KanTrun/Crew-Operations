@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -28,13 +28,13 @@ class Ca(BaseModel):
 class LichTuan(BaseModel):
     tuan_iso: str
     trang_thai: Literal["nhap", "dang_giai", "cho_duyet", "da_cong_bo", "da_dong"] = "nhap"
-    phan_cong: dict[str, str] = Field(
+    phan_cong: dict[str, list[str]] = Field(
         default_factory=dict,
-        description="ca_id -> nhan_vien_id",
+        description="ca_id -> danh sách nhan_vien_id",
     )
 
 
-class MinhChungLoai(str, Enum):
+class MinhChungLoai(StrEnum):
     khong = "khong"
     so = "so"
     anh = "anh"

@@ -1,17 +1,6 @@
-async function fetchHealth(): Promise<string> {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-  try {
-    const res = await fetch(`${base}/health`, { cache: "no-store" });
-    if (!res.ok) return "api-unreachable";
-    const data = (await res.json()) as { status?: string };
-    return data.status ?? "unknown";
-  } catch {
-    return "api-unreachable";
-  }
-}
+import Link from "next/link";
 
-export default async function HomePage() {
-  const health = await fetchHealth();
+export default function HomePage() {
   return (
     <main
       style={{
@@ -21,43 +10,50 @@ export default async function HomePage() {
         padding: "2rem",
       }}
     >
-      <div style={{ maxWidth: 640, textAlign: "center" }}>
+      <div style={{ maxWidth: 520, width: "100%" }}>
         <p
           style={{
-            letterSpacing: "0.35em",
+            letterSpacing: "0.28em",
             textTransform: "uppercase",
             fontSize: "0.75rem",
-            opacity: 0.7,
-            marginBottom: "1rem",
+            color: "var(--nq-ink-muted)",
+            marginBottom: "0.75rem",
           }}
         >
-          HUTECH 2026
+          Sprint 1 · demo
         </p>
         <h1
           style={{
-            fontSize: "clamp(2.5rem, 8vw, 4.5rem)",
+            fontFamily: "var(--nq-font-display)",
+            fontSize: "clamp(2.4rem, 7vw, 3.6rem)",
             fontWeight: 400,
-            margin: "0 0 1rem",
+            margin: "0 0 0.75rem",
             lineHeight: 1.05,
           }}
         >
           NHỊP QUÁN
         </h1>
-        <p style={{ fontSize: "1.125rem", opacity: 0.85, marginBottom: "2rem" }}>
-          Ca làm việc là hạt nhân. Cẩm nang tự viết là bộ nhớ.
+        <p style={{ color: "var(--nq-ink-muted)", marginBottom: "1.75rem" }}>
+          Đăng nhập để xem năm hợp đồng dữ liệu từ máy chủ giả.
         </p>
-        <p
+        <Link
+          href="/login"
           style={{
-            display: "inline-block",
-            border: "1px solid rgba(243,230,212,0.35)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: 44,
+            minWidth: 160,
             padding: "0.75rem 1.25rem",
+            background: "var(--nq-accent)",
+            color: "var(--nq-accent-ink)",
+            textDecoration: "none",
+            fontWeight: 600,
             borderRadius: 2,
-            fontFamily: "ui-monospace, monospace",
-            fontSize: "0.875rem",
           }}
         >
-          API /health → {health}
-        </p>
+          Đăng nhập
+        </Link>
       </div>
     </main>
   );

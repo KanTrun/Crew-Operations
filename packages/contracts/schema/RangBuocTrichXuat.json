@@ -1,0 +1,65 @@
+{
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "nguon": {
+      "enum": [
+        "tkb",
+        "tin_nhan",
+        "ban_giao",
+        "khac"
+      ],
+      "title": "Nguon",
+      "type": "string"
+    },
+    "nhan_vien_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Nhan Vien Id"
+    },
+    "noi_dung": {
+      "title": "Noi Dung",
+      "type": "string"
+    },
+    "do_tin_cay": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Do Tin Cay",
+      "type": "number"
+    },
+    "trang_thai": {
+      "default": "cho_duyet",
+      "enum": [
+        "cho_duyet",
+        "da_duyet",
+        "tu_choi"
+      ],
+      "title": "Trang Thai",
+      "type": "string"
+    },
+    "khung_gio": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Khung Gio",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "nguon",
+    "noi_dung",
+    "do_tin_cay"
+  ],
+  "title": "RangBuocTrichXuat",
+  "type": "object"
+}

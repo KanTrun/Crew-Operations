@@ -1,0 +1,42 @@
+{
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "ten": {
+      "title": "Ten",
+      "type": "string"
+    },
+    "ky_nang": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Ky Nang",
+      "type": "array"
+    },
+    "la_sinh_vien": {
+      "default": true,
+      "title": "La Sinh Vien",
+      "type": "boolean"
+    },
+    "so_dien_thoai_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "So Dien Thoai Hash"
+    }
+  },
+  "required": [
+    "id",
+    "ten"
+  ],
+  "title": "NhanVien",
+  "type": "object"
+}

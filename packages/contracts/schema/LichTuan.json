@@ -1,0 +1,36 @@
+{
+  "properties": {
+    "tuan_iso": {
+      "title": "Tuan Iso",
+      "type": "string"
+    },
+    "trang_thai": {
+      "default": "nhap",
+      "enum": [
+        "nhap",
+        "dang_giai",
+        "cho_duyet",
+        "da_cong_bo",
+        "da_dong"
+      ],
+      "title": "Trang Thai",
+      "type": "string"
+    },
+    "phan_cong": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "description": "ca_id -> danh sách nhan_vien_id",
+      "title": "Phan Cong",
+      "type": "object"
+    }
+  },
+  "required": [
+    "tuan_iso"
+  ],
+  "title": "LichTuan",
+  "type": "object"
+}

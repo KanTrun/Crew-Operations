@@ -1,0 +1,38 @@
+{
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "ngay": {
+      "title": "Ngay",
+      "type": "string"
+    },
+    "bat_dau": {
+      "title": "Bat Dau",
+      "type": "string"
+    },
+    "ket_thuc": {
+      "title": "Ket Thuc",
+      "type": "string"
+    },
+    "vi_tri": {
+      "title": "Vi Tri",
+      "type": "string"
+    },
+    "so_nguoi_toi_thieu": {
+      "default": 1,
+      "title": "So Nguoi Toi Thieu",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "ngay",
+    "bat_dau",
+    "ket_thuc",
+    "vi_tri"
+  ],
+  "title": "Ca",
+  "type": "object"
+}
