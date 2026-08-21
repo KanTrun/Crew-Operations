@@ -56,7 +56,7 @@ Bộ điều phối (deterministic) ── ghi DB duy nhất
 
 **Owners:** A solver/gates/ops/playbook · B api/orc/ci · C agents/router/eval · D web/tpl/docs
 
-**Repo:** https://github.com/KanTrun/CA-C-NG-B-NG  
+**Repo:** https://github.com/KanTrun/CA-CONG-BANG  
 **GitHub ops detail:** [`docs/github-operating-model.md`](../../docs/github-operating-model.md) · [`docs/team.md`](../../docs/team.md)  
 **Foundation brainstorm:** [reports/260821-2235-brainstorm-github-foundation.md](../reports/260821-2235-brainstorm-github-foundation.md)
 
