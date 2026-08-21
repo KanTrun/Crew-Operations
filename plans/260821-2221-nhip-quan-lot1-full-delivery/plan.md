@@ -206,7 +206,7 @@ Thứ 6  cổng ra sprint (mắt + lệnh) · /ak:journal · /ak:retro ngắn
 |---|-------|--------|--------|---------|
 | 1 | [Tuần 0 — Ngày 1–2 & chuẩn bị](./phase-01-start.md) | Completed | 2 ngày | — |
 | 2 | [Sprint 1 — Nền và hợp đồng](./phase-02-sprint-1-nen-va-hop-dong.md) | Completed | 17,25 md | 1 |
-| 3 | [Sprint 2 — Mốc sinh tử solver](./phase-03-sprint-2-moc-sinh-tu-solver.md) | Pending | 17,75 md | 2 |
+| 3 | [Sprint 2 — Mốc sinh tử solver](./phase-03-sprint-2-moc-sinh-tu-solver.md) | Completed | 17,75 md | 2 |
 | 4 | [Sprint 3 — Vận hành & ghi nhận sửa](./phase-04-sprint-3-van-hanh-va-ghi-nhan-sua.md) | Pending | 18,00 md | 3 |
 | 5 | [Sprint 4 — Quán dùng thật](./phase-05-sprint-4-qun-dung-that.md) | Pending | 18,00 md | 4 |
 | 6 | [Sprint 5 — Cẩm nang sống](./phase-06-sprint-5-cam-nang-song.md) | Pending | 17,25 md | 5 |
@@ -221,8 +221,8 @@ Thứ 6  cổng ra sprint (mắt + lệnh) · /ak:journal · /ak:retro ngắn
 
 ## Success Criteria (toàn plan)
 
-- [ ] 13 việc 18.1 xong trước khi mở Sprint 1 đầy đủ
-- [ ] Mốc sinh tử 1 (S2): lịch 25 người, 0 vi phạm cứng, kiểm bằng script độc lập
+- [x] 13 việc 18.1 xong trước khi mở Sprint 1 đầy đủ (đường fixture ADR-012; quán thật vẫn slot mở)
+- [x] Mốc sinh tử 1 (S2): lịch 25 người, 0 vi phạm cứng, kiểm bằng script độc lập
 - [ ] Mốc sinh tử 2 (S4): lịch tuần + ≥5 phiếu thật tại quán
 - [ ] S5: ≥1 luật đi hết 8 bước **hoặc** thuyết trình trung thực về số luật thật
 - [ ] S6: ≥165 tests, tag `v0.1.0-semifinal`, 10× `PHAM_VI.md`, 11 ADR
