@@ -1,0 +1,20 @@
+# NHỊP QUÁN CODEOWNERS
+# Handles: see docs/team.md — currently all paths map to @KanTrun until A/C/D accounts exist.
+
+/packages/solver/                    @KanTrun
+/packages/gates/                     @KanTrun
+/packages/opsengine/                 @KanTrun
+/packages/playbook/                  @KanTrun
+/packages/agents/                    @KanTrun
+/apps/api/                           @KanTrun
+/apps/web/                           @KanTrun
+/infra/templates/                    @KanTrun
+/infra/                              @KanTrun
+/.github/                            @KanTrun
+/docs/                               @KanTrun
+
+# Orchestration: B owns, A co-reviews (deterministic control plane)
+/apps/api/src/ca_api/orchestration/  @KanTrun
+
+# Data contracts: all four roles must approve
+/packages/contracts/                 @KanTrun

@@ -1,0 +1,3 @@
+# yaml-language-server: $schema=https://releases.agentkit.best/schemas/config/v1.json
+hooks:
+    simplify-gate: false

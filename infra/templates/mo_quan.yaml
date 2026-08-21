@@ -1,0 +1,28 @@
+ma: mo_quan
+ten: Mở quán
+gan_voi: ca_dau_ngay
+mo_khi: nhan_vien_da_diem_danh
+han_hoan_thanh_phut: 30
+buoc:
+  - ma: bat_may_pha
+    ten: Bật máy pha và chờ đủ nhiệt
+    minh_chung: khong
+  - ma: nhiet_do_tu_lanh
+    ten: Ghi nhiệt độ tủ lạnh
+    minh_chung: so
+    nguong: { min: 2, max: 8 }
+  - ma: ve_sinh_quay
+    ten: Vệ sinh quầy pha
+    minh_chung: anh
+  - ma: kiem_ke_dau_ca
+    ten: Kiểm kê 8 mặt hàng chính
+    minh_chung: kiem_ke
+    danh_muc: [sua_tuoi, ca_phe_hat, tra, duong, ly_nhua, ong_hut, banh, da]
+  - ma: doc_viec_treo
+    ten: Đọc việc treo từ ca trước
+    minh_chung: xac_nhan_doc
+escalate:
+  - dieu_kien: qua_han_phut > 30
+    hanh_dong: nhac_nhan_vien
+  - dieu_kien: qua_han_phut > 60
+    hanh_dong: bao_chu_quan

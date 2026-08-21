@@ -1,0 +1,22 @@
+ma: dong_quan
+ten: Đóng quán
+gan_voi: ca_cuoi_ngay
+mo_khi: nhan_vien_da_diem_danh
+han_hoan_thanh_phut: 40
+buoc:
+  - ma: kiem_ke_cuoi_ca
+    ten: Kiểm kê 8 mặt hàng chính
+    minh_chung: kiem_ke
+    danh_muc: [sua_tuoi, ca_phe_hat, tra, duong, ly_nhua, ong_hut, banh, da]
+  - ma: ghi_hao_hut
+    ten: Ghi hao hụt trong ca
+    minh_chung: van_ban
+  - ma: tat_gas_dien
+    ten: Tắt gas và thiết bị điện
+    minh_chung: khong
+  - ma: khoa_cua
+    ten: Khoá cửa và báo đã đóng
+    minh_chung: xac_nhan
+escalate:
+  - dieu_kien: qua_han_phut > 40
+    hanh_dong: bao_chu_quan

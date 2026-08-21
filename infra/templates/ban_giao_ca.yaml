@@ -1,0 +1,24 @@
+ma: ban_giao_ca
+ten: Bàn giao ca
+gan_voi: giao_ca
+mo_khi: ca_ket_thuc
+han_hoan_thanh_phut: 10
+buoc:
+  - ma: dang_the_nao
+    ten: Đang thế nào (Situation)
+    minh_chung: van_ban
+  - ma: chuyen_da_xay_ra
+    ten: Chuyện đã xảy ra (Background)
+    minh_chung: van_ban
+  - ma: can_de_y
+    ten: Cần để ý (Assessment)
+    minh_chung: van_ban
+  - ma: viec_treo_lai
+    ten: Việc treo lại (Recommendation)
+    minh_chung: danh_sach
+  - ma: nguoi_nhan_xac_nhan
+    ten: Người nhận ca xác nhận danh sách việc treo
+    minh_chung: xac_nhan
+escalate:
+  - dieu_kien: viec_treo_qua_3_ca
+    hanh_dong: bao_chu_quan

@@ -1,0 +1,36 @@
+.PHONY: setup contracts dev test test-unit lint demo demo-reset seed bench eval
+
+setup:
+	python -m pip install -e ./packages/contracts -e ./apps/api
+	cd apps/web && npm install
+
+contracts:
+	@echo "contracts: pydantic models in packages/contracts (OpenAPI export comes Sprint 1)"
+
+dev:
+	docker compose -f infra/docker/compose.yml up --build
+
+test:
+	CA_AGENT_MODE=replay python -m pytest -q
+
+test-unit:
+	CA_AGENT_MODE=replay python -m pytest -q -m "not integration"
+
+lint:
+	ruff check apps packages || true
+	cd apps/web && npm run lint
+
+demo: dev
+
+demo-reset:
+	docker compose -f infra/docker/compose.yml down -v
+	docker compose -f infra/docker/compose.yml up --build -d
+
+seed:
+	@echo "seed stub — 25 NV / 21 ca / 8 tuần (Sprint 1)"
+
+bench:
+	@echo "solver bench stub"
+
+eval:
+	@echo "agent eval stub — CA_AGENT_MODE=replay"
