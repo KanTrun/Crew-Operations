@@ -9,6 +9,8 @@ dependencies = [
   "psycopg[binary]>=3.2.0",
   "redis>=5.0.0",
   "pyyaml>=6.0",
+  "sqlalchemy>=2.0.0",
+  "alembic>=1.13.0",
   "ca-contracts",
 ]
 

@@ -1,5 +1,5 @@
 {
-  "n": 50,
+  "n": 51,
   "items": [
     {
       "id": "tkb_01",
@@ -1274,6 +1274,14 @@
           "end": "11:30"
         }
       ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_blur_01",
+      "file": "tkb_blur_01.svg",
+      "nhan_vien_id": "nv_99",
+      "blur": true,
+      "khoang_ban": [],
       "synthetic": true
     }
   ],

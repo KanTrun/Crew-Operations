@@ -31,6 +31,9 @@ Thumbs.db
 # Docker
 *.log
 
-# AgentKit / Claude local
+# Generated solver output (CI regenerates via make bench)
+data/out/lich_tuan.json
+!data/out/.gitkeep
+
 .claude/
-.agentkit/adapters/
+
