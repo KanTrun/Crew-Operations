@@ -1,0 +1,23 @@
+{
+  "id": "tkb_37",
+  "file": "tkb_37.svg",
+  "nhan_vien_id": "nv_13",
+  "khoang_ban": [
+    {
+      "thu": "T2",
+      "start": "07:30",
+      "end": "11:00"
+    },
+    {
+      "thu": "T4",
+      "start": "07:30",
+      "end": "11:00"
+    },
+    {
+      "thu": "T6",
+      "start": "13:00",
+      "end": "16:30"
+    }
+  ],
+  "synthetic": true
+}

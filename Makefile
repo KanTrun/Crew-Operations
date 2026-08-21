@@ -27,7 +27,7 @@ demo-reset:
 	docker compose -f infra/docker/compose.yml up --build -d
 
 seed:
-	@echo "seed stub — 25 NV / 21 ca / 8 tuần (Sprint 1)"
+	python scripts/generate_fixture_data.py
 
 bench:
 	@echo "solver bench stub"

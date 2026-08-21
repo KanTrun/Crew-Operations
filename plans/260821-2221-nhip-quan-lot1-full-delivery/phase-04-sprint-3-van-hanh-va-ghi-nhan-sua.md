@@ -50,8 +50,10 @@ ADR-006 (YAML templates), ADR-007 (gates deterministic). Orchestration = writer 
 /ak:cook
 /ak:frontend-development
 /ak:databases
+/ak:ui-ux-pro-max "one-hand run-form + staff mobile schedule"
+/ak:frontend-design   # dials 3/2/6 — design-guidelines.md
 /ak:test
-/ak:web-testing   # smoke mobile form
+/ak:web-testing
 ```
 
 ## Todo

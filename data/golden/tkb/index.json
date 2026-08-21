@@ -1,0 +1,1281 @@
+{
+  "n": 50,
+  "items": [
+    {
+      "id": "tkb_01",
+      "file": "tkb_01.svg",
+      "nhan_vien_id": "nv_02",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_02",
+      "file": "tkb_02.svg",
+      "nhan_vien_id": "nv_03",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_03",
+      "file": "tkb_03.svg",
+      "nhan_vien_id": "nv_04",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_04",
+      "file": "tkb_04.svg",
+      "nhan_vien_id": "nv_05",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_05",
+      "file": "tkb_05.svg",
+      "nhan_vien_id": "nv_06",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_06",
+      "file": "tkb_06.svg",
+      "nhan_vien_id": "nv_07",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_07",
+      "file": "tkb_07.svg",
+      "nhan_vien_id": "nv_08",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_08",
+      "file": "tkb_08.svg",
+      "nhan_vien_id": "nv_09",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_09",
+      "file": "tkb_09.svg",
+      "nhan_vien_id": "nv_10",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_10",
+      "file": "tkb_10.svg",
+      "nhan_vien_id": "nv_11",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_11",
+      "file": "tkb_11.svg",
+      "nhan_vien_id": "nv_12",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_12",
+      "file": "tkb_12.svg",
+      "nhan_vien_id": "nv_13",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_13",
+      "file": "tkb_13.svg",
+      "nhan_vien_id": "nv_14",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_14",
+      "file": "tkb_14.svg",
+      "nhan_vien_id": "nv_15",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_15",
+      "file": "tkb_15.svg",
+      "nhan_vien_id": "nv_16",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_16",
+      "file": "tkb_16.svg",
+      "nhan_vien_id": "nv_17",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_17",
+      "file": "tkb_17.svg",
+      "nhan_vien_id": "nv_18",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_18",
+      "file": "tkb_18.svg",
+      "nhan_vien_id": "nv_19",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_19",
+      "file": "tkb_19.svg",
+      "nhan_vien_id": "nv_20",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_20",
+      "file": "tkb_20.svg",
+      "nhan_vien_id": "nv_21",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_21",
+      "file": "tkb_21.svg",
+      "nhan_vien_id": "nv_22",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_22",
+      "file": "tkb_22.svg",
+      "nhan_vien_id": "nv_23",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_23",
+      "file": "tkb_23.svg",
+      "nhan_vien_id": "nv_24",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_24",
+      "file": "tkb_24.svg",
+      "nhan_vien_id": "nv_25",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_25",
+      "file": "tkb_25.svg",
+      "nhan_vien_id": "nv_01",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_26",
+      "file": "tkb_26.svg",
+      "nhan_vien_id": "nv_02",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_27",
+      "file": "tkb_27.svg",
+      "nhan_vien_id": "nv_03",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_28",
+      "file": "tkb_28.svg",
+      "nhan_vien_id": "nv_04",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_29",
+      "file": "tkb_29.svg",
+      "nhan_vien_id": "nv_05",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_30",
+      "file": "tkb_30.svg",
+      "nhan_vien_id": "nv_06",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_31",
+      "file": "tkb_31.svg",
+      "nhan_vien_id": "nv_07",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_32",
+      "file": "tkb_32.svg",
+      "nhan_vien_id": "nv_08",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_33",
+      "file": "tkb_33.svg",
+      "nhan_vien_id": "nv_09",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_34",
+      "file": "tkb_34.svg",
+      "nhan_vien_id": "nv_10",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_35",
+      "file": "tkb_35.svg",
+      "nhan_vien_id": "nv_11",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_36",
+      "file": "tkb_36.svg",
+      "nhan_vien_id": "nv_12",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_37",
+      "file": "tkb_37.svg",
+      "nhan_vien_id": "nv_13",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_38",
+      "file": "tkb_38.svg",
+      "nhan_vien_id": "nv_14",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_39",
+      "file": "tkb_39.svg",
+      "nhan_vien_id": "nv_15",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_40",
+      "file": "tkb_40.svg",
+      "nhan_vien_id": "nv_16",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_41",
+      "file": "tkb_41.svg",
+      "nhan_vien_id": "nv_17",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_42",
+      "file": "tkb_42.svg",
+      "nhan_vien_id": "nv_18",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_43",
+      "file": "tkb_43.svg",
+      "nhan_vien_id": "nv_19",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_44",
+      "file": "tkb_44.svg",
+      "nhan_vien_id": "nv_20",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_45",
+      "file": "tkb_45.svg",
+      "nhan_vien_id": "nv_21",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_46",
+      "file": "tkb_46.svg",
+      "nhan_vien_id": "nv_22",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_47",
+      "file": "tkb_47.svg",
+      "nhan_vien_id": "nv_23",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_48",
+      "file": "tkb_48.svg",
+      "nhan_vien_id": "nv_24",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_49",
+      "file": "tkb_49.svg",
+      "nhan_vien_id": "nv_25",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        }
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "tkb_50",
+      "file": "tkb_50.svg",
+      "nhan_vien_id": "nv_01",
+      "khoang_ban": [
+        {
+          "thu": "T2",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T4",
+          "start": "07:30",
+          "end": "11:00"
+        },
+        {
+          "thu": "T6",
+          "start": "13:00",
+          "end": "16:30"
+        },
+        {
+          "thu": "T7",
+          "start": "08:00",
+          "end": "11:30"
+        }
+      ],
+      "synthetic": true
+    }
+  ],
+  "synthetic": true
+}

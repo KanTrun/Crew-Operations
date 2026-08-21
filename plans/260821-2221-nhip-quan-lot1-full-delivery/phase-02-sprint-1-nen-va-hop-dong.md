@@ -51,7 +51,11 @@ Cây §11.1. Contracts là nguồn sự thật; OpenAPI → TS client cho D. ADR
 /ak:cook --parallel   # A/B/C/D theo CODEOWNERS
 /ak:devops            # hoàn thiện 11 CI gates
 /ak:databases         # nếu cần stub schema sớm
-/ak:frontend-design   # design tokens PWA
+# === UI/UX BẮT BUỘC (người D) ===
+/ak:ui-ux-pro-max "NHIP QUAN cafe ops PWA shell + design tokens"
+/ak:frontend-design   # dials 3/2/6 Product — follow docs/design-guidelines.md
+/ak:frontend-development
+/ak:web-testing
 /ak:test              # schema tests cho contracts
 ak plan status
 ```
