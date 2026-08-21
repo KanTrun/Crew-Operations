@@ -47,9 +47,12 @@ Chưa ship runtime đầy đủ. Output: thoả thuận quán, ADR-001..003, sch
 ak doctor
 ak plan use ./plans/260821-2221-nhip-quan-lot1-full-delivery
 /ak:research   # 18.3 items 1–4
-/ak:docs       # ADR + hien-trang + ket-qua-tong-hop
+/ak:docs       # ADR + hien-trang + ket-qua-tong-hop + design-guidelines seed
 /ak:devops     # CI stub + branch protection prep
 /ak:bootstrap  # monorepo skeleton
+# UI/UX: phase này CHỈ seed docs/design-guidelines.md — chưa build surface
+# Cook web bắt đầu phase-02 với:
+#   /ak:ui-ux-pro-max → /ak:frontend-design → /ak:frontend-development
 /ak:journal    # cuối ngày 2
 ```
 
@@ -57,17 +60,17 @@ ak plan use ./plans/260821-2221-nhip-quan-lot1-full-delivery
 
 - [ ] Hai quán đồng ý (chính + dự bị), có ảnh tin nhắn
 - [ ] Thoả thuận 1 trang 2 chữ ký
-- [ ] 5 schema + ADR-001/002/003 sẵn sàng hợp nhất
-- [ ] 3 mẫu phiếu YAML từ ca thật
-- [ ] 7 số hiện trạng có nguồn
-- [ ] THIRD_PARTY có ngày kiểm hạn mức
-- [ ] `make lint`/`make type` xanh trên 4 máy (sau bootstrap)
-- [ ] CI chặn đúng trên PR thử
-- [ ] CODEOWNERS kích hoạt
+- [x] ADR-001/002/003 trên repo (mở rộng 5 schema contracts tiếp S1)
+- [ ] 3 mẫu phiếu YAML **từ ca thật** (hiện có 3 YAML mẫu kỹ thuật — phải thay sau khi D ngồi ca)
+- [ ] 7 số hiện trạng có nguồn (template `docs/hien-trang.md` đã dựng)
+- [ ] THIRD_PARTY có ngày kiểm hạn mức LLM (bảng có — C phải xác nhận trang giá)
+- [x] Monorepo + CODEOWNERS + CI khung (bootstrap đã merge main)
+- [ ] CI chặn đúng trên PR thử (cần PR thật)
 - [ ] Bộ mẫu vàng + κ đồng thuận ghi nhận
-- [ ] `make seed` chạy được
-- [ ] Config giờ làm có số điều khoản
-- [ ] Bảng 12 số “chưa đo”
+- [ ] `make seed` chạy được với data thật
+- [ ] Config giờ làm có số điều khoản (file placeholder + “chưa kiểm chứng”)
+- [x] Bảng 12 số “chưa đo” (`docs/ket-qua-tong-hop.md`)
+- [x] `docs/design-guidelines.md` seed cho UI pipeline
 
 ## Success Criteria
 

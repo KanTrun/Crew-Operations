@@ -1,0 +1,19 @@
+# Tham số lao động — cấu hình (chưa kết luận pháp lý)
+
+> Hồ sơ §18.3: **chưa tự kiểm chứng** thì không phát biểu trên sân khấu như sự thật.
+> Điền số sau khi A tra Bộ luật Lao động + văn bản hướng dẫn hiện hành; ghi số điều khoản.
+
+```yaml
+phien_ban: 0.1.0-draft
+trang_thai: chua_kiem_chung
+nguon: []   # ví dụ: "BLLĐ 2019 Điều X", URL + ngày truy cập
+
+khoang_nghi_toi_thieu_gio: null
+tran_gio_tuan: null
+tran_gio_ngay: null
+tran_ngay_lien_tiep: null
+gioi_han_nguoi_dang_hoc: null
+
+ghi_chu: |
+  Tất cả null cho đến khi có nguồn. Solver/ops đọc file này — không hard-code trong mã.
+```
