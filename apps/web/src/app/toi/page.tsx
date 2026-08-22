@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { apiGet, apiSend } from "../../lib/api";
+import { getToken } from "../../lib/session";
+import { Alert, AuthGate, btnDanger, btnPrimary, Empty, Kicker, Loading } from "../../ui/kit";
 
 type Ca = {
   id: string;
@@ -12,206 +12,106 @@ type Ca = {
   ket_thuc: string;
   vi_tri: string;
   khung?: string;
-  trang_thai?: "chua_co_nguoi" | "co_nguoi" | "cua_toi" | string;
+  trang_thai?: string;
   co_the_nha?: boolean;
   co_the_nhan?: boolean;
 };
 
-type LichData = {
-  ca: Ca[];
-  tuan_iso?: string;
-};
-
-const btnBase: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: 44,
-  padding: "0.5rem 1rem",
-  border: "none",
-  borderRadius: 4,
-  fontWeight: 600,
-  fontSize: "0.875rem",
-  cursor: "pointer",
-};
-
 export default function ToiPage() {
   const [token, setToken] = useState("");
-  const [data, setData] = useState<LichData | null>(null);
+  const [ca, setCa] = useState<Ca[]>([]);
+  const [week, setWeek] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const t = sessionStorage.getItem("nq_token");
-    if (t) setToken(t);
+    setToken(getToken());
+    if (!getToken()) setLoading(false);
   }, []);
 
-  const authHeader = useCallback(
-    () => ({ Authorization: `Bearer ${token}` }),
-    [token],
-  );
-
-  const loadLich = useCallback(() => {
-    if (!token) return;
-    fetch(`${API}/api/v1/toi/lich`, { headers: authHeader() })
-      .then(async (r) => {
-        if (!r.ok) throw new Error("load_lich");
-        return r.json() as Promise<LichData | Ca[]>;
+  const load = useCallback(() => {
+    if (!getToken()) return;
+    apiGet<{ ca?: Ca[]; tuan_iso?: string } | Ca[]>("/api/v1/toi/lich")
+      .then((d) => {
+        const list = Array.isArray(d) ? d : d.ca ?? [];
+        setCa(list);
+        if (!Array.isArray(d)) setWeek(d.tuan_iso ?? "");
       })
-      .then((d) => setData(Array.isArray(d) ? { ca: d } : d))
-      .catch(() => setError("Không tải được lịch của bạn."));
-  }, [authHeader, token]);
+      .catch(() => setError("Không tải được lịch của bạn."))
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
-    loadLich();
-  }, [loadLich]);
+    if (token) load();
+  }, [token, load]);
 
-  async function handleNha(caId: string) {
-    setBusy(caId);
+  async function act(kind: "nha" | "nhan", id: string) {
+    setBusy(id);
     setError(null);
     setMsg(null);
     try {
-      const r = await fetch(`${API}/api/v1/ca/nha`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify({ ca_id: caId }),
-      });
-      if (!r.ok) throw new Error("nha_failed");
-      setMsg("Đã nhả ca thành công.");
-      loadLich();
+      await apiSend(`/api/v1/ca/${kind}`, { ca_id: id });
+      setMsg(kind === "nha" ? "Đã nhả ca." : "Đã nhận ca.");
+      load();
     } catch {
-      setError("Không nhả được ca.");
+      setError(kind === "nha" ? "Không nhả được ca." : "Không nhận được ca.");
     } finally {
       setBusy(null);
     }
   }
 
-  async function handleNhan(caId: string) {
-    setBusy(caId);
-    setError(null);
-    setMsg(null);
-    try {
-      const r = await fetch(`${API}/api/v1/ca/nhan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify({ ca_id: caId }),
-      });
-      if (!r.ok) throw new Error("nhan_failed");
-      setMsg("Đã nhận ca thành công.");
-      loadLich();
-    } catch {
-      setError("Không nhận được ca.");
-    } finally {
-      setBusy(null);
-    }
-  }
+  if (!token) return <AuthGate />;
 
-  const caList = data?.ca ?? [];
-
-  if (!token) {
-    return (
-      <main style={{ maxWidth: 480, margin: "0 auto", padding: "2rem 1rem" }}>
-        <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400 }}>Lịch của tôi</h1>
-        <p>Đăng nhập rồi mở lại trang này.</p>
-        <Link href="/">Về trang chủ</Link>
-      </main>
-    );
-  }
   const grouped: Record<string, Ca[]> = {};
-  for (const c of caList) {
-    (grouped[c.ngay] ??= []).push(c);
-  }
-  const days = Object.keys(grouped).sort();
+  for (const c of ca) (grouped[c.ngay] ??= []).push(c);
 
   return (
-    <main style={{ maxWidth: 480, margin: "0 auto", padding: "1rem", paddingBottom: "5rem" }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", borderBottom: "1px solid var(--nq-line)", paddingBottom: "0.75rem" }}>
-        <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400, margin: 0, fontSize: "1.5rem" }}>
-          Lịch của tôi
-        </h1>
-        <Link href="/" style={{ color: "var(--nq-ink-muted)", fontSize: "0.85rem" }}>← Về trang chủ</Link>
-      </header>
-
-      {data?.tuan_iso && (
-        <p style={{ color: "var(--nq-ink-muted)", fontSize: "0.8rem", marginBottom: "1rem" }}>
-          Tuần: <span style={{ fontFamily: "var(--nq-font-mono)" }}>{data.tuan_iso}</span>
-        </p>
-      )}
-
-      {error && (
-        <p role="alert" style={{ color: "var(--nq-danger)", padding: "0.5rem 0.75rem", border: "1px solid var(--nq-danger)", borderRadius: 4, marginBottom: "1rem", fontSize: "0.875rem" }}>
-          {error}
-        </p>
-      )}
-
-      {msg && (
-        <p style={{ color: "var(--nq-accent)", padding: "0.5rem 0.75rem", border: "1px solid var(--nq-accent)", borderRadius: 4, marginBottom: "1rem", fontSize: "0.875rem" }}>
-          {msg}
-        </p>
-      )}
-
-      {caList.length === 0 && !error && (
-        <p style={{ color: "var(--nq-ink-muted)" }}>Đang tải lịch…</p>
-      )}
-
-      {days.map((ngay) => (
-        <div key={ngay} style={{ marginBottom: "1.5rem" }}>
-          <p style={{ fontFamily: "var(--nq-font-mono)", fontSize: "0.8rem", color: "var(--nq-ink-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>
-            {ngay}
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {(grouped[ngay] ?? []).map((c) => {
-              const isMine = c.trang_thai === "cua_toi";
-              return (
-                <div
-                  key={c.id}
-                  style={{
-                    background: "var(--nq-bg-elevated)",
-                    border: `1px solid ${isMine ? "var(--nq-accent)" : "var(--nq-line)"}`,
-                    borderRadius: 8,
-                    padding: "0.875rem 1rem",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.75rem",
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: "0.95rem" }}>{c.vi_tri}</p>
-                    <p style={{ margin: "0.2rem 0 0", color: "var(--nq-ink-muted)", fontSize: "0.82rem", fontFamily: "var(--nq-font-mono)" }}>
+    <div className="nq-page">
+      <Kicker>Ca của tôi</Kicker>
+      <h1>Lịch của tôi</h1>
+      {week ? <p className="nq-muted">Tuần {week}</p> : null}
+      {error ? <Alert>{error}</Alert> : null}
+      {msg ? <Alert kind="ok">{msg}</Alert> : null}
+      {loading ? <Loading>Đang tải lịch của bạn…</Loading> : null}
+      {!loading && ca.length === 0 && !error ? (
+        <Empty>Chưa có ca trong tuần này, hoặc lịch chưa công bố.</Empty>
+      ) : null}
+      {Object.keys(grouped)
+        .sort()
+        .map((ngay) => (
+          <section key={ngay} style={{ marginTop: "1.25rem" }}>
+            <p className="nq-kicker">{ngay}</p>
+            <div className="nq-list">
+              {(grouped[ngay] ?? []).map((c) => {
+                const mine = c.trang_thai === "cua_toi";
+                return (
+                  <div key={c.id} className="nq-item">
+                    <p style={{ margin: 0, fontWeight: 600 }}>{c.vi_tri}</p>
+                    <p className="nq-muted" style={{ margin: "0.2rem 0 0.6rem", fontFamily: "var(--nq-font-mono)" }}>
                       {c.bat_dau} – {c.ket_thuc}
                       {c.khung ? ` · ${c.khung}` : ""}
+                      {mine ? " · ca của bạn" : ""}
                     </p>
-                    {isMine && (
-                      <p style={{ margin: "0.2rem 0 0", color: "var(--nq-accent)", fontSize: "0.75rem", fontWeight: 600 }}>Ca của bạn</p>
-                    )}
+                    <p style={{ display: "flex", gap: "0.5rem", margin: 0 }}>
+                      {(mine || c.co_the_nha) && (
+                        <button disabled={busy === c.id} onClick={() => act("nha", c.id)} style={btnDanger}>
+                          Nhả
+                        </button>
+                      )}
+                      {(!mine || c.co_the_nhan) && (
+                        <button disabled={busy === c.id} onClick={() => act("nhan", c.id)} style={btnPrimary}>
+                          Nhận
+                        </button>
+                      )}
+                    </p>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-                    {(isMine || c.co_the_nha) && (
-                      <button
-                        disabled={busy === c.id}
-                        onClick={() => handleNha(c.id)}
-                        style={{ ...btnBase, background: "var(--nq-danger, #c0392b)", color: "#fff", fontSize: "0.8rem", minWidth: 72 }}
-                      >
-                        Nhả
-                      </button>
-                    )}
-                    {(!isMine || c.co_the_nhan) && (
-                      <button
-                        disabled={busy === c.id}
-                        onClick={() => handleNhan(c.id)}
-                        style={{ ...btnBase, background: "var(--nq-accent)", color: "var(--nq-accent-ink)", fontSize: "0.8rem", minWidth: 72 }}
-                      >
-                        Nhận
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </main>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+    </div>
   );
 }

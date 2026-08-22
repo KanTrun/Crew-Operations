@@ -1,59 +1,125 @@
 "use client";
 
 import Link from "next/link";
-import { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { ReactNode, useEffect, useState } from "react";
+import { clearSession, getName, getRole, getToken, isManager, roleLabel } from "../lib/session";
 
-const links = [
-  ["/", "Trang chủ"],
-  ["/hom-nay", "Hôm nay"],
-  ["/roster", "Lịch tuần"],
-  ["/phieu", "Phiếu"],
-  ["/toi", "Ca của tôi"],
-  ["/treo", "Việc treo"],
-  ["/inbox", "Hộp thư"],
-  ["/cam-nang", "Cẩm nang"],
-  ["/sop", "SOP"],
-  ["/handover", "Bàn giao"],
-  ["/cong-bang", "Công bằng"],
+type LinkItem = { href: string; label: string };
+
+const STAFF_PRIMARY: LinkItem[] = [
+  { href: "/hom-nay", label: "Hôm nay" },
+  { href: "/phieu", label: "Phiếu" },
+  { href: "/toi", label: "Ca của tôi" },
+  { href: "/treo", label: "Việc treo" },
 ];
 
-export function AppShell({
-  children,
-  title,
-}: {
-  children: ReactNode;
-  title?: string;
-}) {
+const MANAGER_PRIMARY: LinkItem[] = [
+  { href: "/hom-nay", label: "Hôm nay" },
+  { href: "/roster", label: "Lịch tuần" },
+  { href: "/inbox", label: "Hộp thư" },
+  { href: "/cam-nang", label: "Cẩm nang" },
+];
+
+const MORE: LinkItem[] = [
+  { href: "/cong-bang", label: "Công bằng" },
+  { href: "/toi", label: "Ca của tôi" },
+  { href: "/phieu", label: "Phiếu" },
+  { href: "/treo", label: "Việc treo" },
+  { href: "/doi-ca", label: "Chợ đổi ca" },
+  { href: "/qr", label: "Điểm danh QR" },
+  { href: "/tieu-thu", label: "Sổ tiêu thụ" },
+  { href: "/hao-phi", label: "Hao phí" },
+  { href: "/sop", label: "Hỏi SOP" },
+  { href: "/handover", label: "Bàn giao" },
+  { href: "/vet", label: "Vết hệ thống" },
+];
+
+export function AppShell({ children }: { children: ReactNode }) {
+  const path = usePathname();
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
+  const [token, setToken] = useState("");
+
+  useEffect(() => {
+    setToken(getToken());
+    setRole(getRole());
+    setName(getName());
+    setReady(true);
+  }, [path]);
+
+  const manager = isManager(role);
+  const primary = manager ? MANAGER_PRIMARY : STAFF_PRIMARY;
+  const more = MORE.filter((x) => !primary.some((p) => p.href === x.href));
+  const wide = path === "/roster";
+
+  function logout() {
+    clearSession();
+    router.push("/login");
+  }
+
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <header
-        style={{
-          borderBottom: "1px solid var(--nq-line)",
-          padding: "0.75rem 1rem",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "0.75rem 1rem",
-          alignItems: "center",
-          background: "var(--nq-bg-elevated)",
-        }}
-      >
-        <Link href="/" style={{ fontFamily: "var(--nq-font-display)", color: "var(--nq-ink)", textDecoration: "none", fontSize: "1.15rem" }}>
+    <div className="nq-shell">
+      <header className="nq-top">
+        <Link href={token ? "/hom-nay" : "/"} className="nq-brand">
           NHỊP QUÁN
         </Link>
-        <nav style={{ display: "flex", flexWrap: "wrap", gap: "0.65rem", fontSize: "0.88rem" }}>
-          {links.map(([href, label]) => (
-            <Link key={href} href={href} style={{ color: "var(--nq-ink-muted)" }}>
-              {label}
-            </Link>
-          ))}
-        </nav>
-      </header>
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "1.25rem 1rem 3rem" }}>
-        {title ? (
-          <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400, marginTop: 0 }}>{title}</h1>
+        {token ? (
+          <nav className="nq-nav" aria-label="Chính">
+            {primary.map((l) => (
+              <Link key={l.href} href={l.href} data-on={path === l.href ? "1" : "0"}>
+                {l.label}
+              </Link>
+            ))}
+            <div className="nq-more">
+              <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+                Thêm
+              </button>
+              {open ? (
+                <div className="nq-more-panel">
+                  {more.map((l) => (
+                    <Link key={l.href} href={l.href} onClick={() => setOpen(false)}>
+                      {l.label}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </nav>
         ) : null}
+        <div className="nq-user">
+          {ready && token ? (
+            <>
+              <span>
+                {name} · {roleLabel(role)}
+              </span>
+              <button type="button" onClick={logout}>
+                Thoát
+              </button>
+            </>
+          ) : (
+            <Link href="/login">Đăng nhập</Link>
+          )}
+        </div>
+      </header>
+      <div className="nq-main" data-wide={wide ? "1" : "0"}>
         {children}
       </div>
+      {token ? (
+        <nav className="nq-bottom" aria-label="Lối tắt">
+          {primary.map((l) => (
+            <Link key={l.href} href={l.href} data-on={path === l.href ? "1" : "0"}>
+              {l.label}
+            </Link>
+          ))}
+          <Link href="/them" data-on={path === "/them" ? "1" : "0"}>
+            Thêm
+          </Link>
+        </nav>
+      ) : null}
     </div>
   );
 }

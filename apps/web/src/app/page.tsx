@@ -1,233 +1,34 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { getToken } from "../lib/session";
+import { btnGhost, btnPrimary, Kicker } from "../ui/kit";
 
 export default function HomePage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (getToken()) router.replace("/hom-nay");
+  }, [router]);
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        padding: "2rem",
-      }}
-    >
-      <div style={{ maxWidth: 520, width: "100%" }}>
-        <p
-          style={{
-            letterSpacing: "0.28em",
-            textTransform: "uppercase",
-            fontSize: "0.75rem",
-            color: "var(--nq-ink-muted)",
-            marginBottom: "0.75rem",
-          }}
-        >
-          OS vận hành ca · NHỊP QUÁN
-        </p>
-        <h1
-          style={{
-            fontFamily: "var(--nq-font-display)",
-            fontSize: "clamp(2.4rem, 7vw, 3.6rem)",
-            fontWeight: 400,
-            margin: "0 0 0.75rem",
-            lineHeight: 1.05,
-          }}
-        >
-          NHỊP QUÁN
-        </h1>
-        <p style={{ color: "var(--nq-ink-muted)", marginBottom: "1.75rem" }}>
-          Ca, phiếu, công bằng, cẩm nang — đăng nhập để làm việc.
-        </p>
-        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-          <Link
-            href="/login"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 44,
-              minWidth: 160,
-              padding: "0.75rem 1.25rem",
-              background: "var(--nq-accent)",
-              color: "var(--nq-accent-ink)",
-              textDecoration: "none",
-              fontWeight: 600,
-              borderRadius: 2,
-            }}
-          >
-            Đăng nhập
-          </Link>
-          <Link
-            href="/roster"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 44,
-              minWidth: 160,
-              padding: "0.75rem 1.25rem",
-              background: "var(--nq-surface)",
-              color: "var(--nq-ink)",
-              textDecoration: "none",
-              fontWeight: 600,
-              borderRadius: 2,
-              border: "1px solid var(--nq-line)",
-            }}
-          >
-            Lịch tuần →
-          </Link>
-          <Link
-            href="/phieu"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 44,
-              minWidth: 160,
-              padding: "0.75rem 1.25rem",
-              background: "var(--nq-surface)",
-              color: "var(--nq-ink)",
-              textDecoration: "none",
-              fontWeight: 600,
-              borderRadius: 2,
-              border: "1px solid var(--nq-line)",
-            }}
-          >
-            Phiếu →
-          </Link>
-          <Link
-            href="/toi"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 44,
-              minWidth: 160,
-              padding: "0.75rem 1.25rem",
-              background: "var(--nq-surface)",
-              color: "var(--nq-ink)",
-              textDecoration: "none",
-              fontWeight: 600,
-              borderRadius: 2,
-              border: "1px solid var(--nq-line)",
-            }}
-          >
-            Lịch của tôi →
-          </Link>
-          <Link
-            href="/treo"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 44,
-              minWidth: 160,
-              padding: "0.75rem 1.25rem",
-              background: "var(--nq-surface)",
-              color: "var(--nq-ink)",
-              textDecoration: "none",
-              fontWeight: 600,
-              borderRadius: 2,
-              border: "1px solid var(--nq-line)",
-            }}
-          >
-            Việc treo →
-          </Link>
-          <Link
-            href="/hom-nay"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 44,
-              minWidth: 160,
-              padding: "0.75rem 1.25rem",
-              background: "var(--nq-surface)",
-              color: "var(--nq-ink)",
-              textDecoration: "none",
-              fontWeight: 600,
-              borderRadius: 2,
-              border: "1px solid var(--nq-line)",
-            }}
-          >
-            Hôm nay →
-          </Link>
-          <Link
-            href="/cam-nang"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 44,
-              minWidth: 160,
-              padding: "0.75rem 1.25rem",
-              background: "var(--nq-surface)",
-              color: "var(--nq-ink)",
-              textDecoration: "none",
-              fontWeight: 600,
-              borderRadius: 2,
-              border: "1px solid var(--nq-line)",
-            }}
-          >
-            Cẩm nang →
-          </Link>
-          <Link
-            href="/inbox"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 44,
-              minWidth: 160,
-              padding: "0.75rem 1.25rem",
-              background: "var(--nq-surface)",
-              color: "var(--nq-ink)",
-              textDecoration: "none",
-              fontWeight: 600,
-              borderRadius: 2,
-              border: "1px solid var(--nq-line)",
-            }}
-          >
-            Hộp thư →
-          </Link>
-          <Link
-            href="/handover"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 44,
-              minWidth: 160,
-              padding: "0.75rem 1.25rem",
-              background: "var(--nq-surface)",
-              color: "var(--nq-ink)",
-              textDecoration: "none",
-              fontWeight: 600,
-              borderRadius: 2,
-              border: "1px solid var(--nq-line)",
-            }}
-          >
-            SBAR →
-          </Link>
-          <Link
-            href="/sop"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 44,
-              minWidth: 160,
-              padding: "0.75rem 1.25rem",
-              background: "var(--nq-surface)",
-              color: "var(--nq-ink)",
-              textDecoration: "none",
-              fontWeight: 600,
-              borderRadius: 2,
-              border: "1px solid var(--nq-line)",
-            }}
-          >
-            SOP →
-          </Link>
-        </div>
-      </div>
-    </main>
+    <div className="nq-page">
+      <Kicker>OS vận hành ca</Kicker>
+      <h1>NHỊP QUÁN</h1>
+      <p className="nq-muted" style={{ maxWidth: 440 }}>
+        Một việc tại một thời điểm: phiếu, ca, việc treo, công bằng, cẩm nang.
+        Đăng nhập để vào bảng hôm nay — không còn danh sách liên kết rời.
+      </p>
+      <p style={{ display: "flex", gap: "0.65rem", marginTop: "1.5rem", flexWrap: "wrap" }}>
+        <Link href="/login" style={btnPrimary}>
+          Đăng nhập
+        </Link>
+        <Link href="/login" style={btnGhost}>
+          Xem hướng dẫn vào ca
+        </Link>
+      </p>
+    </div>
   );
 }

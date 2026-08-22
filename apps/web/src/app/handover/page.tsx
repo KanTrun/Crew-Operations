@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { apiSend } from "../../lib/api";
+import { getToken } from "../../lib/session";
+import { Alert, AuthGate, btnPrimary, Field, inputStyle, Kicker } from "../../ui/kit";
 
 export default function HandoverPage() {
   const [token, setToken] = useState("");
@@ -11,41 +11,52 @@ export default function HandoverPage() {
     "Tình hình: hết đá\nBối cảnh: ca sáng đông\nĐánh giá: máy pha ổn\nĐề nghị: mua đá\nTreo: khăn ướt",
   );
   const [out, setOut] = useState<Record<string, unknown> | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = sessionStorage.getItem("nq_token");
-    if (t) setToken(t);
+    setToken(getToken());
   }, []);
 
   async function run() {
-    const r = await fetch(`${API}/api/v1/handover`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ text, alt_claim: "không hết đá" }),
-    });
-    setOut(await r.json());
+    setError(null);
+    try {
+      const d = await apiSend<Record<string, unknown>>("/api/v1/handover", { text });
+      setOut(d);
+    } catch {
+      setError("Không tách được bàn giao.");
+    }
   }
 
-  if (!token) {
-    return (
-      <main style={{ padding: "2rem" }}>
-        <Link href="/">Đăng nhập</Link>
-      </main>
-    );
-  }
+  if (!token) return <AuthGate />;
 
   return (
-    <main style={{ maxWidth: 560, margin: "0 auto", padding: "1rem" }}>
-      <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400 }}>Bàn giao SBAR</h1>
-      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} style={{ width: "100%" }} />
-      <p>
-        <button onClick={run} style={{ minHeight: 44, marginTop: 8 }}>
-          Tách SBAR
-        </button>
-      </p>
-      {out && (
-        <pre style={{ whiteSpace: "pre-wrap", fontSize: 13 }}>{JSON.stringify(out, null, 2)}</pre>
-      )}
-    </main>
+    <div className="nq-page">
+      <Kicker>SBAR</Kicker>
+      <h1>Bàn giao</h1>
+      <p className="nq-muted">Tình hình · Bối cảnh · Đánh giá · Đề nghị. Nếu có claim đối lập, hệ thống đưa người duyệt.</p>
+      <Field label="Nội dung ca">
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} style={inputStyle} />
+      </Field>
+      <button onClick={run} style={btnPrimary}>
+        Tách SBAR
+      </button>
+      {error ? <Alert>{error}</Alert> : null}
+      {out ? (
+        <article className="nq-item" style={{ marginTop: "1rem" }}>
+          <p>
+            <strong>Tình hình:</strong> {String(out.tinh_hinh ?? "—")}
+          </p>
+          <p>
+            <strong>Bối cảnh:</strong> {String(out.boi_canh ?? "—")}
+          </p>
+          <p>
+            <strong>Đánh giá:</strong> {String(out.danh_gia ?? "—")}
+          </p>
+          <p>
+            <strong>Đề nghị:</strong> {String(out.de_nghi ?? "—")}
+          </p>
+        </article>
+      ) : null}
+    </div>
   );
 }

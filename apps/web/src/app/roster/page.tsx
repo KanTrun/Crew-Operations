@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { API, apiSend } from "../../lib/api";
+import { lifeLabel, roleLabel } from "../../lib/session";
 
 type RosterData = {
   tuan_iso: string;
@@ -68,6 +67,8 @@ export default function RosterPage() {
   const [token, setToken] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [tuan, setTuan] = useState("2026-W34");
+  const [life, setLife] = useState("");
+  const [lifeBusy, setLifeBusy] = useState(false);
   const [pinBusy, setPinBusy] = useState(false);
 
   const load = useCallback(
@@ -90,6 +91,11 @@ export default function RosterPage() {
     const r = sessionStorage.getItem("nq_role");
     setToken(t);
     setRole(r);
+    if (t) {
+      fetch(`${API}/api/v1/lich/lifecycle`, { headers: { Authorization: `Bearer ${t}` } })
+        .then((x) => x.json())
+        .then((d) => setLife(d.trang_thai ?? ""));
+    }
   }, []);
 
   useEffect(() => {
@@ -97,6 +103,28 @@ export default function RosterPage() {
   }, [load, tuan]);
 
   const canWrite = role === "quan_ly" || role === "chu_quan";
+
+  const NEXT: Record<string, string> = {
+    nhap: "dang_giai",
+    dang_giai: "cho_duyet",
+    cho_duyet: "da_cong_bo",
+    da_cong_bo: "da_dong",
+  };
+
+  async function advanceLife() {
+    const to = NEXT[life];
+    if (!to || !token) return;
+    setLifeBusy(true);
+    try {
+      const d = await apiSend<{ trang_thai: string }>("/api/v1/lich/lifecycle", { to });
+      setLife(d.trang_thai);
+      load(tuan);
+    } catch {
+      setError("Không chuyển được trạng thái lịch. Cần quyền quản lý.");
+    } finally {
+      setLifeBusy(false);
+    }
+  }
 
   async function handlePin(ca_id: string, nv_id: string, pinned: boolean) {
     if (!token || !canWrite) return;
@@ -121,53 +149,40 @@ export default function RosterPage() {
   const nvMap = Object.fromEntries((data?.nhan_vien ?? []).map((nv) => [nv.id, nv.ten]));
 
   return (
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "1.5rem" }}>
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          gap: "1rem",
-          borderBottom: "1px solid var(--nq-line)",
-          paddingBottom: "1rem",
-          marginBottom: "1.25rem",
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400, margin: 0, fontSize: "1.8rem" }}>
-            Lịch tuần
-          </h1>
-          <p style={{ margin: "0.3rem 0 0", color: "var(--nq-ink-muted)", fontSize: "0.85rem" }}>
-            {data ? `${data.tuan_iso} · nguồn: ${data.nguon}` : "Đang tải…"}
-            {role ? ` · vai trò: ${role}` : " · ẩn danh (chỉ đọc)"}
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-          <label style={{ fontSize: "0.85rem", color: "var(--nq-ink-muted)" }}>
-            Tuần ISO:
-            <input
-              type="text"
-              value={tuan}
-              onChange={(e) => setTuan(e.target.value)}
-              style={{
-                marginLeft: "0.4rem",
-                background: "var(--nq-surface)",
-                border: "1px solid var(--nq-line)",
-                color: "var(--nq-ink)",
-                padding: "0.3rem 0.5rem",
-                fontFamily: "var(--nq-font-mono)",
-                fontSize: "0.85rem",
-                borderRadius: 2,
-                width: 100,
-              }}
-            />
-          </label>
-          <Link href="/" style={{ minHeight: 44, display: "inline-flex", alignItems: "center", fontSize: "0.9rem" }}>
-            Về trang chủ
-          </Link>
-        </div>
-      </header>
+    <div className="nq-page">
+      <p className="nq-kicker">Lưới ca · ghim ô</p>
+      <h1>Lịch tuần</h1>
+      <p className="nq-muted">
+        {data ? `${data.tuan_iso} · nguồn quán` : "Đang tải…"}
+        {role ? ` · ${roleLabel(role)}` : ""}
+        {life ? ` · ${lifeLabel(life)}` : ""}
+      </p>
+      <p style={{ display: "flex", gap: "0.65rem", alignItems: "center", flexWrap: "wrap", margin: "0.75rem 0 1rem" }}>
+        <label className="nq-muted">
+          Tuần ISO
+          <input
+            type="text"
+            value={tuan}
+            onChange={(e) => setTuan(e.target.value)}
+            style={{
+              marginLeft: "0.4rem",
+              background: "var(--nq-surface)",
+              border: "1px solid var(--nq-line)",
+              color: "var(--nq-ink)",
+              padding: "0.3rem 0.5rem",
+              fontFamily: "var(--nq-font-mono)",
+              fontSize: "0.85rem",
+              borderRadius: 2,
+              width: 100,
+            }}
+          />
+        </label>
+        {canWrite && NEXT[life] ? (
+          <button disabled={lifeBusy} onClick={advanceLife} type="button">
+            {lifeBusy ? "Đang xử lý…" : `Chuyển sang ${lifeLabel(NEXT[life])}`}
+          </button>
+        ) : null}
+      </p>
 
       {error && (
         <p role="alert" style={{ color: "var(--nq-danger)", marginBottom: "1rem" }}>
@@ -176,17 +191,8 @@ export default function RosterPage() {
       )}
 
       {!canWrite && (
-        <p
-          style={{
-            fontSize: "0.8rem",
-            color: "var(--nq-ink-muted)",
-            border: "1px solid var(--nq-line)",
-            padding: "0.5rem 0.75rem",
-            marginBottom: "1rem",
-            borderRadius: 2,
-          }}
-        >
-          Chỉ xem — đăng nhập với vai trò quản lý hoặc chủ quán để pin/unpin.
+        <p className="nq-muted" style={{ border: "1px solid var(--nq-line)", padding: "0.5rem 0.75rem" }}>
+          Chỉ xem. Quản lý hoặc chủ quán mới ghim được ô.
         </p>
       )}
 
@@ -308,7 +314,7 @@ export default function RosterPage() {
                                   }}
                                   aria-label="Thêm nhân viên"
                                 >
-                                  <option value="">+ pin NV…</option>
+                                  <option value="">Thêm nhân viên…</option>
                                   {data.nhan_vien
                                     .filter((nv) => !assigned.includes(nv.id))
                                     .map((nv) => (
@@ -335,6 +341,6 @@ export default function RosterPage() {
       ) : (
         !error && <p style={{ color: "var(--nq-ink-muted)" }}>Đang tải lịch…</p>
       )}
-    </main>
+    </div>
   );
 }

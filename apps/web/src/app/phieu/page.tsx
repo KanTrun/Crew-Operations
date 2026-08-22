@@ -210,41 +210,34 @@ export default function PhieuPage() {
 
   if (!token) {
     return (
-      <main style={{ maxWidth: 480, margin: "0 auto", padding: "2rem 1rem" }}>
-        <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400 }}>Phiếu mở quán</h1>
+      <div className="nq-page">
+        <h1>Phiếu mở quán</h1>
         <p>Cần đăng nhập rồi mở lại trang này.</p>
-        <Link href="/">Về trang chủ để đăng nhập</Link>
-      </main>
+        <Link href="/login">Đăng nhập</Link>
+      </div>
     );
   }
 
   // Success screen
   if (done || phieu?.trang_thai === "hoan_thanh") {
     return (
-      <main style={{ maxWidth: 480, margin: "0 auto", padding: "2rem 1rem", textAlign: "center" }}>
-        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>✓</div>
-        <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400, marginBottom: "0.5rem" }}>
-          Hoàn thành!
-        </h1>
+      <div className="nq-page" style={{ textAlign: "center" }}>
+        <p className="nq-kicker">Xong phiếu</p>
+        <h1>Hoàn thành</h1>
         <p style={{ color: "var(--nq-ink-muted)", marginBottom: "2rem" }}>
           Phiếu <code style={{ fontFamily: "var(--nq-font-mono)" }}>{phieu?.id}</code> đã xong.
         </p>
         <button onClick={() => { setPhieu(null); setDone(false); }} style={btnPrimary}>
           Tạo phiếu mới
         </button>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main style={{ maxWidth: 480, margin: "0 auto", padding: "1rem", paddingBottom: "6rem" }}>
-      {/* Header */}
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", borderBottom: "1px solid var(--nq-line)", paddingBottom: "0.75rem" }}>
-        <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400, margin: 0, fontSize: "1.5rem" }}>
-          Phiếu công việc
-        </h1>
-        <Link href="/" style={{ color: "var(--nq-ink-muted)", fontSize: "0.85rem" }}>← Về trang chủ</Link>
-      </header>
+    <div className="nq-page">
+      <p className="nq-kicker">Một tay · một bước</p>
+      <h1>Phiếu mở quán</h1>
 
       {error && (
         <p role="alert" style={{ color: "var(--nq-danger)", padding: "0.5rem 0.75rem", border: "1px solid var(--nq-danger)", borderRadius: 4, marginBottom: "1rem", fontSize: "0.875rem" }}>
@@ -255,7 +248,9 @@ export default function PhieuPage() {
       {/* No phieu: pick mau */}
       {!phieu && (
         <div>
-          <p style={{ color: "var(--nq-ink-muted)", marginBottom: "1rem" }}>Chọn mẫu phiếu để bắt đầu:</p>
+          <p className="nq-muted" style={{ marginBottom: "1rem" }}>
+            Chọn mẫu phiếu. Hệ thống điểm danh trước khi mở.
+          </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {mauList.map((m) => (
               <button
@@ -349,7 +344,7 @@ export default function PhieuPage() {
                     disabled={busy}
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    📷 Chụp ảnh / chọn file
+                    Chụp ảnh minh chứng
                   </button>
                 </div>
               )}
@@ -389,7 +384,7 @@ export default function PhieuPage() {
               onClick={() => completeBuoc(currentBuoc.ma, currentBuoc.loai === "text" || currentBuoc.loai === "nhap" ? inputVal || undefined : undefined)}
               style={{ ...btnPrimary, flex: 1 }}
             >
-              {busy ? "Đang xử lý…" : "Xong bước này ✓"}
+              {busy ? "Đang xử lý…" : "Xong bước này"}
             </button>
           )}
           <button
@@ -397,10 +392,10 @@ export default function PhieuPage() {
             style={{ ...btnSecondary, minWidth: 44, flex: currentBuoc.loai === "photo" ? 1 : "none", padding: "0.75rem" }}
             title="Để việc treo"
           >
-            ⏸
+            Treo
           </button>
         </div>
       )}
-    </main>
+    </div>
   );
 }
