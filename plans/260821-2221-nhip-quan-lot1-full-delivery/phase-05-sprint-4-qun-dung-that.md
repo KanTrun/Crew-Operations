@@ -1,10 +1,11 @@
 ---
 phase: 5
 title: "Sprint 4 — Quán dùng thật"
-status: in-progress
+status: completed
 priority: P1
 effort: "18 person-days"
 dependencies: [4]
+software_note: "Lifecycle → CP-SAT thật + persist lich_tuan; §14.5 ≥5 phiếu NV quán chờ đối tác"
 ---
 
 # Phase 5: Sprint 4 — Mốc sinh tử thứ hai (quán dùng thật)
@@ -55,8 +56,8 @@ make eval
 
 ## Todo
 
-- [x] Lịch tuần công bố + tin (ICS + lifecycle fixture; tin = console/Telegram stub)
-- [ ] ≥5 phiếu thật (NV quán — **chưa có đối tác**)
+- [x] Lịch tuần công bố + tin (ICS + lifecycle; `dang_giai` chạy solver + ghi `data/out/lich_tuan.json`)
+- [ ] ≥5 phiếu thật (NV quán — **chưa có đối tác**; xem `docs/gan-du-lieu-that.md`)
 - [x] Audit log đủ vết đổi lịch (append-only `data/out/audit.jsonl`)
 - [x] Inbox ≥10 approve/reject (fixture, dán nhãn)
 - [x] Case VF-CONFLICT (dựng: hai claim, không tự chọn)
@@ -64,7 +65,7 @@ make eval
 
 ## Success Criteria
 
-- [ ] Cổng ra sprint 4 — 6 điều kiện §14.5 (mốc sinh tử 2)
+- [ ] Cổng ra sprint 4 — 6 điều kiện §14.5 *(phần mềm xong; mốc quán thật chờ đối tác)*
 
 ## Risk Assessment
 
