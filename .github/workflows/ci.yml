@@ -104,7 +104,8 @@ jobs:
           python-version: "3.12"
       - name: Install solver + deps
         run: |
-          python -m pip install -e ./packages/contracts -e ./packages/solver pyyaml ortools
+          python -m pip install -e ./packages/contracts -e ./packages/solver \
+            -e ./packages/gates -e ./packages/playbook pyyaml ortools
       - name: Solve + independent verify
         run: |
           python scripts/solve_tuan.py
