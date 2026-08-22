@@ -202,6 +202,18 @@ def login(body: LoginBody) -> LoginOut:
     )
 
 
+@app.get("/api/v1/me")
+def me(authorization: Annotated[str | None, Header()] = None) -> dict[str, str]:
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    return {
+        "username": s["username"],
+        "role": s["role"],
+        "nv_id": s["nv_id"],
+    }
+
+
 @app.get("/api/v1/contracts")
 def five_contracts() -> dict[str, object]:
     seed = _seed()
