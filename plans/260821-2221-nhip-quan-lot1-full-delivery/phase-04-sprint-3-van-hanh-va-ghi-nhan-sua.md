@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Sprint 3 — Vận hành và ghi nhận sửa"
-status: pending
+status: in-progress
 priority: P1
 effort: "18 person-days"
 dependencies: [3]
@@ -58,11 +58,11 @@ ADR-006 (YAML templates), ADR-007 (gates deterministic). Orchestration = writer 
 
 ## Todo
 
-- [ ] Phiếu ~20 bước xong trên phone thật
-- [ ] Ảnh minh chứng + timing signals
-- [ ] Orc 8 tasks song song + idempotency test
-- [ ] AG-MSG confusion matrix ghi số
-- [ ] Bảng ghi nhận có dữ liệu sửa thật
+- [ ] Phiếu ~20 bước xong trên phone thật (UI/API sẵn; cần walkthrough tay máy thật)
+- [x] Ảnh minh chứng + timing signals (dict theo `ma` bước; empty photo → 400)
+- [x] Orc 8 tasks song song + idempotency test (lock + concurrent same key)
+- [x] AG-MSG confusion matrix ghi số (keyword, không LLM; 200/200 trên golden template)
+- [x] Bảng ghi nhận có dữ liệu sửa thật (`nha`/`nhan` đổi `_ASSIGN`; pin đọc `_PINS`)
 
 ## Success Criteria
 

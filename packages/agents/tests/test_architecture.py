@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 import pathlib
 
-CAM = ("sqlalchemy", "psycopg", "redis", "fastapi", "ca_api", "ca_gates")
+CAM = ("sqlalchemy", "psycopg", "redis", "fastapi", "ca_api", "ca_gates", "ca_playbook")
 ROOT = pathlib.Path(__file__).resolve().parents[1] / "src" / "ca_agents"
 
 

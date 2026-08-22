@@ -7,8 +7,8 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("quanly");
-  const [password, setPassword] = useState("demo");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -23,16 +23,22 @@ export default function LoginPage() {
         body: JSON.stringify({ username, password }),
       });
       if (!res.ok) {
-        setError("Sai thông tin đăng nhập (thử quanly / demo).");
+        setError("Sai tài khoản hoặc mật khẩu.");
         return;
       }
-      const data = (await res.json()) as { token: string; role: string; display_name: string };
+      const data = (await res.json()) as {
+        token: string;
+        role: string;
+        display_name: string;
+        nv_id: string;
+      };
       sessionStorage.setItem("nq_token", data.token);
       sessionStorage.setItem("nq_role", data.role);
       sessionStorage.setItem("nq_name", data.display_name);
-      router.push("/contracts");
+      sessionStorage.setItem("nq_nv", data.nv_id);
+      router.push("/hom-nay");
     } catch {
-      setError("Không kết nối được API. Chạy make demo / docker compose.");
+      setError("Không kết nối được máy chủ. Chạy API rồi thử lại.");
     } finally {
       setLoading(false);
     }
@@ -40,40 +46,18 @@ export default function LoginPage() {
 
   return (
     <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "1.5rem" }}>
-      <form
-        onSubmit={onSubmit}
-        style={{
-          width: "100%",
-          maxWidth: 400,
-          borderTop: "1px solid var(--nq-line)",
-          paddingTop: "1.5rem",
-        }}
-      >
-        <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400, marginTop: 0 }}>
-          Đăng nhập
-        </h1>
-        <p style={{ color: "var(--nq-ink-muted)", fontSize: "0.95rem" }}>
-          Fixture: <code style={{ fontFamily: "var(--nq-font-mono)" }}>quanly</code> /{" "}
-          <code style={{ fontFamily: "var(--nq-font-mono)" }}>demo</code>
+      <form onSubmit={onSubmit} style={{ width: "100%", maxWidth: 400, borderTop: "1px solid var(--nq-line)", paddingTop: "1.5rem" }}>
+        <p style={{ letterSpacing: "0.22em", textTransform: "uppercase", fontSize: 12, color: "var(--nq-ink-muted)" }}>
+          Vận hành ca
         </p>
+        <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400, marginTop: 0 }}>Đăng nhập</h1>
         <label style={{ display: "block", marginBottom: "0.75rem" }}>
           <span style={{ display: "block", marginBottom: 6 }}>Tài khoản</span>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-            style={inputStyle}
-          />
+          <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" style={inputStyle} />
         </label>
         <label style={{ display: "block", marginBottom: "1rem" }}>
           <span style={{ display: "block", marginBottom: 6 }}>Mật khẩu</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            style={inputStyle}
-          />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" style={inputStyle} />
         </label>
         {error ? (
           <p role="alert" style={{ color: "var(--nq-danger)" }}>

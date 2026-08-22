@@ -13,7 +13,7 @@
 | 7 | Tỉ lệ hoàn thành phiếu + thời gian TB | chưa đo | Chưa chạy phiếu thật | |
 | 8 | Việc treo được ca sau nhận / tổng | chưa đo | Chưa bàn giao thật | |
 | 9 | Sai số sổ tiêu thụ vs đếm tay | chưa đo | Cần ≥2 tuần kiểm kê | |
-| 10 | Luật: đề xuất / loại / tập sự / duyệt / tự tắt | chưa đo | Cẩm nang S5 | |
+| 10 | Luật: đề xuất / loại / tập sự / duyệt / tự tắt | dựng lại: 1 / 1 / 5 / 1 / 1 · quán thật: 0 | ADR-012; `POST /cam-nang/chay-8-buoc` | 2026-08-22 |
 | 11 | Lần cổng VF đẩy lên người (theo cổng) | chưa đo | Chưa có traffic | |
 | 12 | Gọi model/ngày · p50/p95 latency · token | chưa đo | Router chưa production | |
 

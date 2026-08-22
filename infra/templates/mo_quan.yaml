@@ -4,23 +4,68 @@ gan_voi: ca_dau_ngay
 mo_khi: nhan_vien_da_diem_danh
 han_hoan_thanh_phut: 30
 buoc:
+  - ma: diem_danh
+    ten: Điểm danh QR / xác nhận có mặt
+    minh_chung: xac_nhan
+  - ma: bat_den
+    ten: Bật đèn quán và biển mở cửa
+    minh_chung: khong
   - ma: bat_may_pha
     ten: Bật máy pha và chờ đủ nhiệt
+    minh_chung: khong
+  - ma: xa_nuoc
+    ten: Xả nước máy pha 3 giây
     minh_chung: khong
   - ma: nhiet_do_tu_lanh
     ten: Ghi nhiệt độ tủ lạnh
     minh_chung: so
     nguong: { min: 2, max: 8 }
+  - ma: nhiet_do_tu_dong
+    ten: Ghi nhiệt độ tủ đông
+    minh_chung: so
   - ma: ve_sinh_quay
     ten: Vệ sinh quầy pha
     minh_chung: anh
+  - ma: ve_sinh_ban
+    ten: Lau bàn khách khu A
+    minh_chung: khong
+  - ma: kiem_ly
+    ten: Kiểm ly/ống hút đủ ca
+    minh_chung: xac_nhan
   - ma: kiem_ke_dau_ca
     ten: Kiểm kê 8 mặt hàng chính
     minh_chung: kiem_ke
     danh_muc: [sua_tuoi, ca_phe_hat, tra, duong, ly_nhua, ong_hut, banh, da]
+  - ma: can_hat
+    ten: Cân cà phê hạt còn lại
+    minh_chung: so
+  - ma: da_du
+    ten: Kiểm thùng đá
+    minh_chung: xac_nhan
+  - ma: tien_quay
+    ten: Đếm tiền quỹ đầu ca
+    minh_chung: so
+  - ma: may_pos
+    ten: Mở máy POS / xác nhận mạng
+    minh_chung: xac_nhan
+  - ma: nhac_nhac
+    ten: Bật nhạc nền mức vừa
+    minh_chung: khong
   - ma: doc_viec_treo
     ten: Đọc việc treo từ ca trước
     minh_chung: xac_nhan_doc
+  - ma: ghi_viec_treo_moi
+    ten: Ghi việc treo mới nếu có
+    minh_chung: khong
+  - ma: chup_quay
+    ten: Chụp ảnh quầy sẵn sàng
+    minh_chung: anh
+  - ma: bao_quan_ly
+    ten: Báo quản lý quán đã mở
+    minh_chung: xac_nhan
+  - ma: dong_phieu
+    ten: Đóng phiếu mở quán
+    minh_chung: xac_nhan
 escalate:
   - dieu_kien: qua_han_phut > 30
     hanh_dong: nhac_nhan_vien
