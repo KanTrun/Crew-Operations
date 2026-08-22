@@ -143,10 +143,21 @@ jobs:
   e2e:
     name: "08 e2e"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
     steps:
       - uses: actions/checkout@v4
-      - run: echo "playwright stub — enable on main/release when flows exist"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install API + Playwright
+        run: |
+          pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api httpx pyyaml ortools uvicorn
+          cd apps/web && npm install && npx playwright install --with-deps chromium
+      - name: Playwright 8 flows
+        working-directory: apps/web
+        run: npm run test:e2e
 
   docker:
     name: "09 docker build"
@@ -154,6 +165,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose -f infra/docker/compose.yml build
+      - name: Stack lên và smoke toàn tuyến
+        run: |
+          docker compose -f infra/docker/compose.yml up -d
+          docker compose -f infra/docker/compose.yml exec -T api python /app/scripts/smoke_docker.py
+      - name: Log khi đỏ
+        if: failure()
+        run: docker compose -f infra/docker/compose.yml logs --tail=200
+      - name: Dọn
+        if: always()
+        run: docker compose -f infra/docker/compose.yml down -v
 
   no-live-llm:
     name: "10 no live LLM in tests"
