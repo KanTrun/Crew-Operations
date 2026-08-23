@@ -181,9 +181,7 @@ def audit_add(at: str, ai: str, hanh: str, payload: dict[str, Any]) -> None:
 def audit_list() -> list[dict[str, Any]]:
     init_db()
     with _conn() as cx:
-        rows = cx.execute(
-            "SELECT at, ai, hanh, payload FROM audit ORDER BY id"
-        ).fetchall()
+        rows = cx.execute("SELECT at, ai, hanh, payload FROM audit ORDER BY id").fetchall()
     out = []
     for at, ai, hanh, payload in rows:
         item = json.loads(payload)

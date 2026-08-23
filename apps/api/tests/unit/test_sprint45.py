@@ -14,9 +14,9 @@ def _seed_three_sua() -> None:
         record_sua(
             loai="nhan_ca",
             truoc={"ca_id": "w1_c10", "nv": []},
-            sau={"ca_id": "w1_c10", "nv": [f"nv_{i+10:02d}"]},
+            sau={"ca_id": "w1_c10", "nv": [f"nv_{i + 10:02d}"]},
             ai="lan",
-            now_iso=f"2026-01-0{i+1}T08:00:00Z",
+            now_iso=f"2026-01-0{i + 1}T08:00:00Z",
         )
 
 

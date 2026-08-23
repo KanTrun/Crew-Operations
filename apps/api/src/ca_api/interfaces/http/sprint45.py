@@ -6,7 +6,7 @@ import json
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from ca_agents.ag_handover import extract as extract_handover
 from ca_agents.ag_rule import propose as propose_rule
@@ -90,9 +90,12 @@ def _run_solver() -> dict[str, Any]:
 
 
 def _life() -> dict[str, Any]:
-    return kv_get(
-        "lifecycle",
-        {"tuan_iso": "2026-W01", "trang_thai": "nhap", "nguon": "quan"},
+    return cast(
+        dict[str, Any],
+        kv_get(
+            "lifecycle",
+            {"tuan_iso": "2026-W01", "trang_thai": "nhap", "nguon": "quan"},
+        ),
     )
 
 
@@ -103,12 +106,12 @@ def _save_life(doc: dict[str, Any]) -> None:
 def _seed_inbox() -> list[dict[str, Any]]:
     items = kv_get("inbox_rang_buoc", [])
     if items:
-        return items
+        return cast(list[dict[str, Any]], items)
     items = [
         {
-            "id": f"in_{i+1}",
+            "id": f"in_{i + 1}",
             "agent": "ag_msg" if i % 2 == 0 else "ag_handover",
-            "tom_tat": f"Ràng buộc #{i+1} — chờ duyệt",
+            "tom_tat": f"Ràng buộc #{i + 1} — chờ duyệt",
             "trang_thai": "cho_duyet",
             "nguon": "quan",
         }
@@ -121,9 +124,10 @@ def _seed_inbox() -> list[dict[str, Any]]:
 def _phan() -> dict[str, list[str]]:
     stored = kv_get("phan_cong", None)
     if stored:
-        return stored
+        return cast(dict[str, list[str]], stored)
     if LICH.exists():
-        return json.loads(LICH.read_text(encoding="utf-8")).get("phan_cong", {})
+        raw = json.loads(LICH.read_text(encoding="utf-8")).get("phan_cong", {})
+        return cast(dict[str, list[str]], raw)
     return {}
 
 
@@ -480,11 +484,7 @@ def sop_golden(authorization: Annotated[str | None, Header()] = None) -> dict[st
         raise HTTPException(status_code=409, detail="thieu_golden_sop")
     tpl = load_template("mo_quan")
     laws = list_luat()
-    rows = [
-        json.loads(x)
-        for x in path.read_text(encoding="utf-8").splitlines()
-        if x.strip()
-    ]
+    rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
     answers = []
     for row in rows:
         a = sop_answer(row["q"], buoc=tpl["buoc"], luat=laws)

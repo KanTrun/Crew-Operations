@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 from ca_contracts import Ca, LichTuan, NhanVien, PhieuMau, RangBuocTrichXuat
 from ca_playbook import record_sua
@@ -79,10 +79,10 @@ class PinBody(BaseModel):
     pinned: bool
 
 
-def _seed() -> dict:
+def _seed() -> dict[str, Any]:
     if not SEED.exists():
         return {"nhan_vien": [], "ca_mau_21": [], "lich_su_8_tuan": []}
-    return json.loads(SEED.read_text(encoding="utf-8"))
+    return cast(dict[str, Any], json.loads(SEED.read_text(encoding="utf-8")))
 
 
 def _resolve_role(authorization: str | None) -> str | None:
@@ -94,9 +94,7 @@ def _require_write_role(authorization: Annotated[str | None, Header()] = None) -
     """Dependency: require quan_ly or chu_quan for write endpoints."""
     role = _resolve_role(authorization)
     if role not in {"quan_ly", "chu_quan"}:
-        raise HTTPException(
-            status_code=403, detail="forbidden — requires quan_ly or chu_quan"
-        )
+        raise HTTPException(status_code=403, detail="forbidden — requires quan_ly or chu_quan")
     return role
 
 
@@ -107,7 +105,8 @@ def health() -> dict[str, str]:
 
 # ── Lich tuan ─────────────────────────────────────────────────────────────────
 
-def _build_lich_tuan_from_seed(seed: dict, tuan: str | None) -> dict:
+
+def _build_lich_tuan_from_seed(seed: dict[str, Any], tuan: str | None) -> dict[str, Any]:
     """Build a schedule response from seed data for the requested ISO week."""
     nhan_vien = seed.get("nhan_vien", [])
     ca_list = seed.get("ca_mau_21", [])
@@ -136,7 +135,7 @@ def _build_lich_tuan_from_seed(seed: dict, tuan: str | None) -> dict:
 def get_lich_tuan(
     tuan: Annotated[str | None, Query(description="ISO week e.g. 2026-W34")] = None,
     authorization: Annotated[str | None, Header()] = None,
-) -> dict:
+) -> dict[str, Any]:
     """Lịch tuần đang hiệu lực của quán."""
     # Try data/out/lich_tuan.json first (solver output)
     if LICH_TUAN_OUT.exists():
@@ -169,7 +168,7 @@ def get_lich_tuan(
 def pin_assignment(
     body: PinBody,
     _role: Annotated[str, Depends(_require_write_role)],
-) -> dict:
+) -> dict[str, Any]:
     """Pin or unpin a nhan_vien to a ca. Requires quan_ly or chu_quan token."""
     seed = _seed()
     ca_ids = {c["id"] for c in seed.get("ca_mau_21", [])}
@@ -188,6 +187,7 @@ def pin_assignment(
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
+
 
 @app.post("/api/v1/auth/login", response_model=LoginOut)
 def login(body: LoginBody) -> LoginOut:
