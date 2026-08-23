@@ -7,18 +7,18 @@
 
 | # | Con số | Giá trị | Lý do nếu chưa đo | Cập nhật |
 |---|--------|---------|-------------------|----------|
-| 1 | Tỉ lệ không cần sửa theo tuần (W1→W8) | chưa đo | Chưa có tuần dùng hệ thống tại quán | |
+| 1 | Tỉ lệ không cần sửa theo tuần (W1→W8) | **mô phỏng fixture:** 32,7 / 36,7 / 32,7 / 34,7 / 34,7 / 30,6 / 42,9 / 32,7 % · gộp 8 tuần **34,7% (136/392)** · quán thật: **chưa đo** | Nửa quán thật cần sổ sửa của quán — xem ghi chú 5 | 2026-08-24 |
 | 2 | Chi phí thực tế toàn dự án (0đ?) | chưa đo | Sổ 14 dòng + ảnh hạn mức. Đã loại 1 phụ thuộc CDN (font) — xem ghi chú 2 | 2026-08-23 |
-| 3 | Thời gian xếp ca trước / sau | chưa đo | Chưa đo hiện trạng tại quán | |
+| 3 | Thời gian xếp ca trước / sau | trước: **chưa đo** · sau — **mô phỏng fixture: 0,088 s** (`OPTIMAL`, 25 người · 21 ca, 0 vi phạm cứng) | Nửa "trước" phải bấm đồng hồ tại quán khi quản lý xếp lịch tay. Hồ sơ có nêu 2,5–4 giờ nhưng đó là số nghe kể, bộ đo không ghi | 2026-08-24 |
 | 4 | Vi phạm ràng buộc cứng trên lịch công bố | **fixture: 0/0/0/0/0/0 (c01→c06), TOTAL 0** · quán thật: chưa công bố lịch | Kiểm bằng `scripts/verify_hard.py` — script **độc lập với bộ giải** | 2026-08-23 |
 | 5 | AG-TKB accuracy + % đẩy lên người | **98,04% (50/51)** · đẩy lên người: **1/51 = 1,96%** | Replay trên golden 51 ảnh, không gọi LLM thật | 2026-08-23 |
 | 6 | AG-MSG confusion (6 ý định) | **200/200 = 100%** — ma trận trong `metrics-18-2.md` | Golden text lặp lại từ khoá nên **không phải bằng chứng NLU độc lập** | 2026-08-23 |
-| 7 | Tỉ lệ hoàn thành phiếu + thời gian TB | chưa đo | Chưa chạy phiếu thật tại quán | |
-| 8 | Việc treo được ca sau nhận / tổng | chưa đo | Chưa bàn giao ca thật | |
-| 9 | Sai số sổ tiêu thụ vs đếm tay | chưa đo | Cần ≥2 tuần kiểm kê thật | |
+| 7 | Tỉ lệ hoàn thành phiếu + thời gian TB | **mô phỏng fixture:** đủ minh chứng **1344/1344 bước = 100%** · thiếu ảnh **560/1344 = 41,7%** (112 phiếu: 56 `mo_quan` + 56 `dong_quan`) · thời gian TB: **chưa đo** | 100% là kết quả cấu trúc — xem ghi chú 5. Thời gian TB cần dấu thời gian từ điện thoại nhân viên thật, đồng hồ trong bộ đo là ảo (5 s/bước, cố định để tất định) | 2026-08-24 |
+| 8 | Việc treo được ca sau nhận / tổng | **mô phỏng fixture: 167/168 = 99,4%** (1 việc treo của ca cuối chuỗi không có ca sau) · quán thật: **chưa đo** | Máy quy trình không cho đóng phiếu bàn giao khi chưa qua bước người nhận xác nhận, nên tỉ lệ này là cấu trúc — xem ghi chú 5 | 2026-08-24 |
+| 9 | Sai số sổ tiêu thụ vs đếm tay | **chưa đo** | Fixture ADR-012 không có một số kiểm kê nào (không có đếm hai đầu ca, số nhập, hao hụt, và không có cột đếm tay độc lập). Tự sinh số kiểm kê synthetic thì sai số đo được chỉ là sai số bộ sinh vừa nhét vào — số vòng tròn. Cần ≥2 tuần kiểm kê thật | 2026-08-24 |
 | 10 | Luật: đề xuất / loại / tập sự / duyệt / tự tắt | dựng lại: 1 / 1 / 5 / 1 / 1 · quán thật: **0** | ADR-012; `POST /cam-nang/chay-8-buoc` | 2026-08-22 |
-| 11 | Lần cổng VF đẩy lên người (theo cổng) | chưa đo | Chưa có traffic thật | |
-| 12 | Gọi model/ngày · p50/p95 latency · token | chưa đo | Router chưa chạy production | |
+| 11 | Lần cổng VF đẩy lên người (theo cổng) | **mô phỏng fixture:** VF-SCHEMA **0/51** · VF-TRACE **1/51** · VF-CONF **1/51** · VF-NUM **0/49** · VF-RULE **0/21** · VF-CONFLICT **50/51** · quán thật: **chưa đo** | Con số VF-CONFLICT cao là tính chất của fixture — xem ghi chú 5 | 2026-08-24 |
+| 12 | Gọi model/ngày · p50/p95 latency · token | **mô phỏng fixture:** gọi mạng thật **0** · replay **51 lượt/ngày demo** (nạp trọn golden 51 ảnh) · p50/p95 và token: **chưa đo** | Đây là **replay, 0 lần gọi mạng thật** (router trả `provider='replay'`); mọi latency đo được là latency đọc tệp cục bộ, không phải latency LLM, và không có token nào sinh ra. Muốn số thật phải bật chế độ live và đọc hoá đơn provider | 2026-08-24 |
 
 **Ba dòng ưu tiên nếu thiếu thời gian:** #1 · #2 · #10.
 
@@ -97,3 +97,42 @@ ag_sop   · ag_tkb     · ag_voc      · ag_waste
 có phải để hồ sơ trông dày không"*. Nếu đội trả lời "ship 10 con" mà repo chỉ có 9 thư
 mục, đó là mất điểm tin cậy ở đúng câu hỏi mình đã chuẩn bị trước. Sửa §1.2 và §5.2
 thành 9/4 là xong.
+
+### 5. Bảy số vừa có giá trị đến từ đâu, và chỗ nào vẫn phải trống
+
+Bộ đo: `python scripts/do_metrics.py` (hoặc `make metrics`) → in bảng và ghi
+`data/out/metrics.json`. Bộ đo **tất định**: cùng fixture cho cùng kết quả, nên
+người khác phát lại và kiểm chứng được. `apps/api/tests/unit/test_do_metrics.py`
+chạy bộ đo hai lần và so kết quả, đồng thời chặn mọi bản ghi thiếu `nguon` hoặc
+`cach_do`. Trường duy nhất được phép lệch giữa hai lần chạy là thời gian bấm
+đồng hồ của bộ giải, và nó được **tự khai** trong `khong_tat_dinh`.
+
+Nguồn dữ liệu: `data/seed/sample.json` — Quán Fixture NHỊP QUÁN (ADR-012). Khi
+quán thật vào thì đổi hàm nạp dữ liệu; công thức, bảng và schema bản ghi không
+đổi.
+
+**Ba con số cần đọc kèm cảnh báo, vì cao không phải nhờ hệ thống:**
+
+| Số | Con số | Vì sao không được kể như thành tích |
+|---|---|---|
+| 7 | 1344/1344 bước = 100% | Kịch bản fixture cấp đủ minh chứng cho **mọi** bước, nên 100% chứng minh máy quy trình đi đúng thứ tự và đóng được phiếu, **không** chứng minh nhân viên làm đủ bước. Cột đối chứng `thiếu ảnh` 41,7% mới là chỗ cho thấy cổng minh chứng ảnh thật sự chặn |
+| 8 | 167/168 = 99,4% | Máy quy trình **không cho** đóng phiếu bàn giao nếu chưa qua bước người nhận xác nhận. Con số này chứng minh chuỗi bàn giao không rơi việc **trong mã**, không chứng minh nhân viên thật có đọc việc treo |
+| 11 | VF-CONFLICT 50/51 | Hai nguồn TKB trong fixture được sinh **độc lập** (seed khai 1 khối bận, ảnh golden vẽ 3–4 khối), nên đây là mức lệch của fixture, không phải mức lệch dữ liệu tại quán |
+
+**Số #1 đo cái gì, nói cho đúng.** Công thức là (tổng phân công − số phân công
+phải sửa)/tổng, theo từng tuần. Trên fixture, "phải sửa" = số cặp (ca, nhân
+viên) bị ràng buộc cứng c01–c06 chỉ tên khi chạy `solve_hard_only` trên đúng
+tuần đó. Lịch sử 8 tuần của fixture do bộ sinh **bốc ngẫu nhiên**
+(`scripts/generate_fixture_data.py`), không do bộ giải sinh — vì thế đường
+W1→W8 đi ngang (32,7 → 42,9%) chứ không dốc lên, và nó **đo mức hợp lệ của lịch
+sử fixture, không đo hiệu quả hệ thống**. Nó chỉ thành chỉ số §18.2 khi tử số
+lấy từ sổ sửa của quán thật (`ca_playbook.list_sua`).
+
+**Bốn chỗ vẫn trống, và vì sao thà trống:**
+
+| Chỗ trống | Lý do |
+|---|---|
+| #3 nửa "trước" | Phải bấm đồng hồ khi quản lý quán xếp lịch bằng Excel. Hồ sơ có nêu 2,5–4 giờ, đó là số nghe kể — bộ đo không ghi nó vào bảng |
+| #7 thời gian TB | Nhịp 5 giây/bước là **đồng hồ ảo** do bộ đo đặt để tất định. Số thật cần dấu thời gian từ điện thoại nhân viên |
+| #9 toàn bộ | Fixture không có một số kiểm kê nào. Nếu tự sinh số synthetic thì sai số đo được chỉ là sai số bộ sinh vừa nhét vào — **số vòng tròn**, không phải số đo |
+| #12 p50/p95 và token | Replay: **0 lần gọi mạng thật**. Latency đo được là latency đọc tệp cục bộ, không phải latency LLM; không lời gọi mô hình nào nên không có token |

@@ -1,4 +1,4 @@
-.PHONY: setup contracts dev test test-unit lint demo demo-local demo-reset seed bench eval ab replay budget \
+.PHONY: setup contracts dev test test-unit lint demo demo-local demo-reset seed bench eval ab replay budget metrics \
 	docker-up docker-down docker-logs docker-smoke docker-ps docker-reset
 
 setup:
@@ -45,6 +45,11 @@ eval:
 
 ab:
 	python scripts/ab_report.py
+
+# Bảy con số §18.2 cần quán thật, đo trên fixture ADR-012. Tất định: chạy lại
+# cho cùng kết quả. Mọi bản ghi mang nhãn nguồn `mo_phong_fixture`.
+metrics:
+	python scripts/do_metrics.py
 
 replay:
 	@test -n "$(PHIEN)" || (echo "usage: make replay PHIEN=<idempotency-key>" && exit 1)
