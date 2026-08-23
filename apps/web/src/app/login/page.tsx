@@ -2,8 +2,11 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { API } from "../../lib/api";
+import { ApiError, apiSend } from "../../lib/api";
+import { viError } from "../../lib/present";
 import { Alert, EditorialBanner, Field, inputStyle, Kicker } from "../../ui/kit";
+
+type LoginOut = { token: string; role: string; display_name: string; nv_id: string };
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,28 +20,19 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API}/api/v1/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-      if (!res.ok) {
-        setError("Sai tài khoản hoặc mật khẩu.");
-        return;
-      }
-      const data = (await res.json()) as {
-        token: string;
-        role: string;
-        display_name: string;
-        nv_id: string;
-      };
+      const data = await apiSend<LoginOut>("/api/v1/auth/login", { username, password });
       sessionStorage.setItem("nq_token", data.token);
       sessionStorage.setItem("nq_role", data.role);
       sessionStorage.setItem("nq_name", data.display_name);
       sessionStorage.setItem("nq_nv", data.nv_id);
       router.push("/hom-nay");
-    } catch {
-      setError("Không kết nối được máy chủ. Chạy API rồi thử lại.");
+    } catch (e) {
+      // 401 ở đây là sai tài khoản, không phải hết phiên — nói đúng việc.
+      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+        setError("Tài khoản hoặc mật khẩu chưa đúng. Nhập lại, hoặc nhờ quản lý cấp lại.");
+      } else {
+        setError(viError(e, { doing: "vào được hệ thống" }));
+      }
     } finally {
       setLoading(false);
     }
@@ -54,10 +48,12 @@ export default function LoginPage() {
         <div className="nq-login-body">
           <Kicker>Vận hành ca</Kicker>
           <h1>Đăng nhập</h1>
+          {/* Không in tài khoản/mật khẩu mẫu ở đây: docs/design-guidelines.md —
+              "Login: không in credential trên UI prod". Người triển khai tra
+              runbook demo trên máy chủ, không tra màn hình đăng nhập. */}
           <p className="nq-login-hint">
-            Dùng tài khoản quán được quản lý cấp. Hướng dẫn demo nằm trong{" "}
-            <code style={{ fontFamily: "var(--nq-font-mono)", fontSize: "0.78rem" }}>docs/runbook-demo.md</code>{" "}
-            trên máy chủ triển khai.
+            Dùng tài khoản quán do quản lý cấp. Quên mật khẩu thì nhờ quản lý đặt lại — hệ thống không
+            gửi lại mật khẩu qua màn hình này.
           </p>
           <Field label="Tài khoản">
             <input

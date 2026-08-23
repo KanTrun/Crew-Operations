@@ -26,11 +26,12 @@ export default function HomePage() {
           để vào bảng hôm nay.
         </p>
         <PageActions>
-          <BtnLink href="/login">Đăng nhập</BtnLink>
-          <BtnLink href="/login" variant="ghost">
-            Hướng dẫn vào ca
-          </BtnLink>
+          <BtnLink href="/login">Đăng nhập vào ca</BtnLink>
         </PageActions>
+        <p className="nq-muted" style={{ maxWidth: 520, fontSize: "0.85rem", marginTop: "1rem" }}>
+          Chưa có tài khoản quán? Nhờ quản lý cấp. Cách dựng quán và tài khoản nằm trong runbook
+          triển khai, không in trên màn hình này.
+        </p>
       </div>
     </>
   );

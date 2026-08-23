@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { API } from "../../lib/api";
+import { apiGet, apiSend } from "../../lib/api";
+import { loaiBuocLabel, safeText, viError } from "../../lib/present";
+import { getToken } from "../../lib/session";
 import {
   Alert,
   Btn,
@@ -12,10 +13,12 @@ import {
   FixedBottomBar,
   InlineActions,
   inputStyle,
+  Loading,
   OpsCard,
   PageHeader,
   ProgressBar,
   StepDone,
+  TechnicalDrawer,
   textareaStyle,
 } from "../../ui/kit";
 
@@ -39,10 +42,13 @@ type PhieuData = {
   signals?: { timing_ms?: Record<string, number> };
 };
 
+const MAU_MO_QUAN: MauPhieu = { ma: "mo_quan", ten: "Mở quán" };
+
 export default function PhieuPage() {
   const router = useRouter();
   const [token, setToken] = useState("");
   const [mauList, setMauList] = useState<MauPhieu[]>([]);
+  const [mauLoading, setMauLoading] = useState(true);
   const [phieu, setPhieu] = useState<PhieuData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,45 +59,55 @@ export default function PhieuPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const t = sessionStorage.getItem("nq_token");
-    if (t) setToken(t);
+    setToken(getToken());
   }, []);
 
-  const authHeader = useCallback(
-    () => ({ Authorization: `Bearer ${token}` }),
-    [token],
-  );
+  const loadMau = useCallback(() => {
+    if (!getToken()) return;
+    setMauLoading(true);
+    apiGet<MauPhieu[] | { items: MauPhieu[] }>("/api/v1/phieu/mau")
+      .then((d) => {
+        const list = Array.isArray(d) ? d : d.items ?? [];
+        setMauList(list.length > 0 ? list : [MAU_MO_QUAN]);
+      })
+      .catch(() => setMauList([MAU_MO_QUAN]))
+      .finally(() => setMauLoading(false));
+  }, []);
 
   useEffect(() => {
-    fetch(`${API}/api/v1/phieu/mau`, { headers: authHeader() })
-      .then(async (r) => {
-        if (!r.ok) throw new Error("load_mau");
-        return r.json() as Promise<MauPhieu[] | { items: MauPhieu[] }>;
-      })
-      .then((d) => setMauList(Array.isArray(d) ? d : d.items ?? []))
-      .catch(() => setMauList([{ ma: "mo_quan", ten: "Mở quán" }]));
-  }, [authHeader]);
+    if (token) loadMau();
+  }, [token, loadMau]);
+
+  const tenMau = useCallback(
+    (ma?: string) => {
+      const found = mauList.find((m) => m.ma === ma);
+      if (found) return safeText(found.ten, "Phiếu ca");
+      return ma === MAU_MO_QUAN.ma ? MAU_MO_QUAN.ten : "Phiếu ca";
+    },
+    [mauList],
+  );
 
   async function startPhieu(ma: string) {
     setBusy(true);
     setError(null);
     try {
-      const checkin = await fetch(`${API}/api/v1/diem-danh`, {
-        method: "POST",
-        headers: authHeader(),
-      });
-      if (!checkin.ok) throw new Error("chua_diem_danh");
-      const r = await fetch(`${API}/api/v1/phieu/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify({ mau: ma }),
-      });
-      if (!r.ok) throw new Error("start_failed");
-      const data = (await r.json()) as PhieuData;
+      await apiSend("/api/v1/diem-danh");
+    } catch (e) {
+      setError(
+        viError(e, {
+          doing: "điểm danh để mở phiếu",
+          forbidden: "Bạn chưa có ca hôm nay nên chưa điểm danh được. Nhờ quản lý gán ca rồi mở lại phiếu.",
+        }),
+      );
+      setBusy(false);
+      return;
+    }
+    try {
+      const data = await apiSend<PhieuData>("/api/v1/phieu/start", { mau: ma });
       setPhieu(data);
       setDone(false);
-    } catch {
-      setError("Không tạo được phiếu.");
+    } catch (e) {
+      setError(viError(e, { doing: "mở được phiếu mới" }));
     } finally {
       setBusy(false);
     }
@@ -104,18 +120,12 @@ export default function PhieuPage() {
     try {
       const body: Record<string, unknown> = { ma };
       if (gia_tri !== undefined) body.gia_tri = gia_tri;
-      const r = await fetch(`${API}/api/v1/phieu/${phieu.id}/buoc`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify(body),
-      });
-      if (!r.ok) throw new Error("buoc_failed");
-      const updated = (await r.json()) as PhieuData;
+      const updated = await apiSend<PhieuData>(`/api/v1/phieu/${phieu.id}/buoc`, body);
       setPhieu(updated);
       setInputVal("");
       if (updated.trang_thai === "hoan_thanh") setDone(true);
-    } catch {
-      setError("Không hoàn thành được bước.");
+    } catch (e) {
+      setError(viError(e, { doing: "đóng được bước này" }));
     } finally {
       setBusy(false);
     }
@@ -126,17 +136,14 @@ export default function PhieuPage() {
     setBusy(true);
     setError(null);
     try {
-      const r = await fetch(`${API}/api/v1/phieu/${phieu.id}/minh-chung`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify({ buoc_ma: buocMa, data_url: dataUrl }),
+      const updated = await apiSend<PhieuData>(`/api/v1/phieu/${phieu.id}/minh-chung`, {
+        buoc_ma: buocMa,
+        data_url: dataUrl,
       });
-      if (!r.ok) throw new Error("photo_failed");
-      const updated = (await r.json()) as PhieuData;
       setPhieu(updated);
       if (updated.trang_thai === "hoan_thanh") setDone(true);
-    } catch {
-      setError("Không gửi được ảnh.");
+    } catch (e) {
+      setError(viError(e, { doing: "gửi được ảnh minh chứng" }));
     } finally {
       setBusy(false);
     }
@@ -147,18 +154,14 @@ export default function PhieuPage() {
     setBusy(true);
     setError(null);
     try {
-      const r = await fetch(`${API}/api/v1/phieu/${phieu.id}/treo`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify({ noi_dung: treoText }),
+      const updated = await apiSend<PhieuData>(`/api/v1/phieu/${phieu.id}/treo`, {
+        noi_dung: treoText,
       });
-      if (!r.ok) throw new Error("treo_failed");
-      const updated = (await r.json()) as PhieuData;
       setPhieu(updated);
       setTreoText("");
       setShowTreo(false);
-    } catch {
-      setError("Không treo được phiếu.");
+    } catch (e) {
+      setError(viError(e, { doing: "treo được phiếu này" }));
     } finally {
       setBusy(false);
     }
@@ -168,26 +171,32 @@ export default function PhieuPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setError("Cần ảnh thật, không nhận file khác.");
+      setError("Cần một tấm ảnh. Chụp lại bằng camera hoặc chọn ảnh trong máy.");
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => sendPhoto(buocMa, reader.result as string);
+    reader.onerror = () => setError("Không đọc được ảnh vừa chọn. Chụp lại một tấm khác.");
+    reader.onload = () => sendPhoto(buocMa, String(reader.result ?? ""));
     reader.readAsDataURL(file);
   }
 
-  const currentBuocIndex = phieu ? phieu.buocs.findIndex((b) => !b.hoan_thanh) : -1;
-  const currentBuoc = currentBuocIndex >= 0 ? phieu!.buocs[currentBuocIndex] : null;
-  const completed = phieu ? phieu.buocs.filter((b) => b.hoan_thanh).length : 0;
-  const total = phieu ? phieu.buocs.length : 0;
+  const buocs = phieu?.buocs ?? [];
+  const currentBuocIndex = buocs.findIndex((b) => !b.hoan_thanh);
+  const currentBuoc = currentBuocIndex >= 0 ? buocs[currentBuocIndex] : null;
+  const completed = buocs.filter((b) => b.hoan_thanh).length;
+  const total = buocs.length;
   const activeRun = Boolean(phieu && !done && currentBuoc);
 
   if (!token) {
     return (
       <div className="nq-page nq-page--run">
-        <PageHeader kicker="Một tay · một bước" title="Phiếu mở quán" meta="Cần đăng nhập để mở phiếu." />
+        <PageHeader
+          kicker="Một tay · một bước"
+          title="Phiếu mở quán"
+          meta="Phiếu chạy theo phiên của bạn, nên cần đăng nhập trước."
+        />
         <Btn variant="primary" block onClick={() => router.push("/login")}>
-          Đăng nhập
+          Đăng nhập để mở phiếu
         </Btn>
       </div>
     );
@@ -196,7 +205,11 @@ export default function PhieuPage() {
   if (done || phieu?.trang_thai === "hoan_thanh") {
     return (
       <div className="nq-page nq-page--run nq-page--center">
-        <PageHeader kicker="Xong phiếu" title="Hoàn thành" meta={`Phiếu ${phieu?.id} đã xong.`} />
+        <PageHeader
+          kicker="Xong phiếu"
+          title="Hoàn thành"
+          meta={`Đã đóng đủ ${total} bước của ${tenMau(phieu?.mau)}. Việc treo (nếu có) đã sang trang Việc treo.`}
+        />
         <Btn
           variant="primary"
           block
@@ -205,7 +218,7 @@ export default function PhieuPage() {
             setDone(false);
           }}
         >
-          Tạo phiếu mới
+          Mở phiếu tiếp theo
         </Btn>
       </div>
     );
@@ -216,24 +229,31 @@ export default function PhieuPage() {
       <PageHeader
         kicker="Một tay · một bước"
         title="Phiếu mở quán"
-        meta={!phieu ? "Chọn mẫu phiếu. Hệ thống điểm danh trước khi mở." : undefined}
+        meta={
+          !phieu
+            ? "Chọn mẫu phiếu để bắt đầu. Hệ thống điểm danh giúp bạn trước khi mở bước đầu."
+            : "Làm từng bước một. Kẹt ở đâu thì treo lại, quản lý thấy ngay trên bảng hôm nay."
+        }
       />
 
       {error ? <Alert>{error}</Alert> : null}
 
       {!phieu && (
-        <div className="nq-list">
-          {mauList.map((m) => (
-            <Btn key={m.ma} variant="primary" block disabled={busy} onClick={() => startPhieu(m.ma)}>
-              {m.ten || m.ma}
-            </Btn>
-          ))}
-          {mauList.length === 0 ? (
-            <Btn variant="primary" block disabled={busy} onClick={() => startPhieu("mo_quan")}>
-              Mở quán
-            </Btn>
+        <>
+          {mauLoading ? <Loading skeleton="list">Đang lấy danh sách mẫu phiếu…</Loading> : null}
+          {!mauLoading && mauList.length === 0 ? (
+            <Empty>Quán chưa cài mẫu phiếu nào. Nhờ quản lý thêm mẫu trong cẩm nang.</Empty>
           ) : null}
-        </div>
+          {!mauLoading && mauList.length > 0 ? (
+            <div className="nq-stack">
+              {mauList.map((m) => (
+                <Btn key={m.ma} variant="primary" block disabled={busy} onClick={() => startPhieu(m.ma)}>
+                  Bắt đầu {safeText(m.ten, "phiếu ca").toLowerCase()}
+                </Btn>
+              ))}
+            </div>
+          ) : null}
+        </>
       )}
 
       {phieu && !done && (
@@ -241,28 +261,32 @@ export default function PhieuPage() {
           <div style={{ marginBottom: "1.25rem" }}>
             <div className="nq-run-meta">
               <span>
-                Bước {completed + 1} / {total}
+                Bước {Math.min(completed + 1, Math.max(total, 1))} / {total}
               </span>
-              <code>{phieu.mau}</code>
+              <span>{tenMau(phieu.mau)}</span>
             </div>
             <ProgressBar value={completed} max={total} />
           </div>
 
-          {phieu.buocs
+          {buocs
             .filter((b) => b.hoan_thanh)
             .map((b) => (
-              <StepDone key={b.ma} label={b.ten} timingMs={phieu.signals?.timing_ms?.[b.ma]} />
+              <StepDone
+                key={b.ma}
+                label={safeText(b.ten, "Bước đã xong")}
+                timingMs={phieu.signals?.timing_ms?.[b.ma]}
+              />
             ))}
 
           {currentBuoc ? (
-            <OpsCard eyebrow={currentBuoc.loai || "bước"} title={currentBuoc.ten}>
+            <OpsCard eyebrow={loaiBuocLabel(currentBuoc.loai)} title={safeText(currentBuoc.ten, "Bước tiếp theo")}>
               {(currentBuoc.loai === "text" || currentBuoc.loai === "nhap") && (
-                <Field label="Giá trị">
+                <Field label="Số liệu đọc được">
                   <input
                     type="text"
                     value={inputVal}
                     onChange={(e) => setInputVal(e.target.value)}
-                    placeholder="Nhập giá trị…"
+                    placeholder="Ví dụ: 4 độ C"
                     style={inputStyle}
                   />
                 </Field>
@@ -286,26 +310,30 @@ export default function PhieuPage() {
           ) : null}
 
           {showTreo ? (
-            <OpsCard title="Để việc treo">
-              <Field label="Mô tả">
+            <OpsCard title="Để lại việc treo">
+              <Field label="Kẹt ở đâu">
                 <textarea
                   value={treoText}
                   onChange={(e) => setTreoText(e.target.value)}
-                  placeholder="Mô tả vấn đề cần treo lại…"
+                  placeholder="Ví dụ: máy pha không lên áp, đã tắt nguồn chờ thợ"
                   rows={3}
                   style={textareaStyle}
                 />
               </Field>
               <InlineActions>
                 <Btn variant="danger" disabled={busy || !treoText.trim()} onClick={handleTreo}>
-                  Treo phiếu
+                  Gửi việc treo
                 </Btn>
                 <Btn variant="ghost" onClick={() => setShowTreo(false)}>
-                  Hủy
+                  Quay lại phiếu
                 </Btn>
               </InlineActions>
             </OpsCard>
           ) : null}
+
+          <TechnicalDrawer
+            lines={[`Mã lần chạy: ${safeText(phieu.id)}`, `Mã mẫu: ${safeText(phieu.mau)}`]}
+          />
         </>
       )}
 
@@ -325,8 +353,8 @@ export default function PhieuPage() {
               {busy ? "Đang xử lý…" : "Xong bước này"}
             </Btn>
           ) : null}
-          <Btn variant="ghost" title="Để việc treo" onClick={() => setShowTreo((s) => !s)}>
-            Treo
+          <Btn variant="ghost" title="Để lại việc treo" onClick={() => setShowTreo((s) => !s)}>
+            Treo lại
           </Btn>
         </FixedBottomBar>
       ) : null}

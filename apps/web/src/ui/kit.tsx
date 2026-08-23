@@ -12,7 +12,7 @@ export const btnPrimary: CSSProperties = {
   background: "var(--nq-accent)",
   color: "var(--nq-accent-ink)",
   border: "none",
-  borderRadius: 4,
+  borderRadius: "var(--nq-radius-pill)",
   fontWeight: 600,
   fontSize: "1rem",
   cursor: "pointer",
@@ -43,7 +43,8 @@ export const inputStyle: CSSProperties = {
   background: "color-mix(in srgb, var(--nq-bg-elevated) 90%, transparent)",
   border: "1px solid var(--nq-line)",
   color: "var(--nq-ink)",
-  borderRadius: 4,
+  // Ô nhập giữ bo góc 6px: bo bubble ở input làm con trỏ và text lệch tâm.
+  borderRadius: "var(--nq-radius)",
   fontFamily: "var(--nq-font-body)",
   fontSize: "1rem",
 };
@@ -132,30 +133,78 @@ export function BentoTile({
   return <div className={cls}>{inner}</div>;
 }
 
+/**
+ * Ngăn kỹ thuật — nơi duy nhất được phép chứa mã nội bộ, JSON hợp đồng,
+ * trạng thái solver. Mặc định đóng: hero và thân trang chỉ nói tiếng Việt.
+ */
 export function TechnicalDrawer({
   summary = "Chi tiết kỹ thuật",
-  lines,
+  lines = [],
+  children,
 }: {
   summary?: string;
-  lines: string[];
+  lines?: string[];
+  children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  if (lines.length === 0) return null;
+  if (lines.length === 0 && !children) return null;
   return (
     <div className="nq-drawer">
       <button type="button" className="nq-drawer-trigger" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
         {summary}
         <span aria-hidden="true">{open ? "▴" : "▾"}</span>
       </button>
-      {open ? (
+      {open && lines.length > 0 ? (
         <ul className="nq-drawer-panel">
-          {lines.map((line) => (
-            <li key={line}>{line}</li>
+          {lines.map((line, i) => (
+            <li key={`${i}-${line}`}>{line}</li>
           ))}
         </ul>
       ) : null}
+      {open && children ? <div className="nq-drawer-block">{children}</div> : null}
     </div>
   );
+}
+
+/**
+ * Mã dùng-một-lần hiển thị dạng che. Bấm để sao chép vào clipboard, không in
+ * nguyên mã lên màn hình — màn hình quán ai đi qua cũng đọc được.
+ */
+export function MaskedCode({
+  code,
+  masked,
+  label = "Mã một lần",
+}: {
+  code: string;
+  masked: string;
+  label?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div className="nq-masked">
+      <span className="nq-masked-code" aria-label={`${label} đã được che`}>
+        {masked}
+      </span>
+      <Btn variant="ghost" onClick={copy}>
+        {copied ? "Đã sao chép mã" : "Sao chép mã"}
+      </Btn>
+    </div>
+  );
+}
+
+/** Chú thích ngắn dưới ô nhập — nói rõ nhập gì, không nói tên field kỹ thuật. */
+export function Hint({ children }: { children: ReactNode }) {
+  return <p className="nq-hint">{children}</p>;
 }
 
 export function Alert({

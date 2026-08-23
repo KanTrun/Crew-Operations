@@ -6,20 +6,21 @@ import { ReactNode, useEffect, useState } from "react";
 import { clearSession, getName, getRole, getToken, isManager, roleLabel } from "../lib/session";
 import { Icon, iconForHref } from "../ui/icons";
 
-type LinkItem = { href: string; label: string };
+/** `short` là nhãn cho thanh dưới dạng pill — chỗ hẹp, chữ dài sẽ gãy dòng. */
+type LinkItem = { href: string; label: string; short?: string };
 
 const STAFF_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
   { href: "/phieu", label: "Phiếu" },
-  { href: "/toi", label: "Ca của tôi" },
-  { href: "/treo", label: "Việc treo" },
+  { href: "/toi", label: "Ca của tôi", short: "Ca tôi" },
+  { href: "/treo", label: "Việc treo", short: "Treo" },
 ];
 
 const MANAGER_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/roster", label: "Lịch tuần" },
-  { href: "/inbox", label: "Hộp thư" },
-  { href: "/cam-nang", label: "Cẩm nang" },
+  { href: "/roster", label: "Lịch tuần", short: "Lịch" },
+  { href: "/inbox", label: "Hộp thư", short: "Hộp thư" },
+  { href: "/cam-nang", label: "Cẩm nang", short: "Cẩm nang" },
 ];
 
 const MORE: LinkItem[] = [
@@ -124,9 +125,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               href={l.href}
               data-on={path === l.href ? "1" : "0"}
               aria-current={path === l.href ? "page" : undefined}
+              aria-label={l.label}
             >
               <Icon name={iconForHref(l.href)} />
-              {l.label}
+              {l.short ?? l.label}
             </Link>
           ))}
           <Link

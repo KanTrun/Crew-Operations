@@ -51,5 +51,10 @@ test.describe("8 luồng vận hành chính", () => {
   test("8 — công bằng", async ({ page }) => {
     await page.goto("/cong-bang");
     await expect(page.getByRole("heading", { name: "Công bằng" })).toBeVisible();
+    // Hồ sơ §13.4: chỉ số dư của chính mình so với trung bình nhóm, không xếp
+    // hạng tên. Tài khoản test là quản lý, máy chủ trả số dư cả nhóm — UI phải
+    // giữ đúng một dòng của người đang xem.
+    await expect(page.getByText("Bạn so với trung bình nhóm")).toBeVisible();
+    await expect(page.getByText(/không liệt kê số dư của từng người/)).toBeVisible();
   });
 });
