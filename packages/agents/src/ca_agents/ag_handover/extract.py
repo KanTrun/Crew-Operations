@@ -18,7 +18,13 @@ class Handover:
 
 def extract(text: str) -> Handover:
     lines = [ln.strip() for ln in text.replace("\r", "").split("\n") if ln.strip()]
-    buckets = {"tinh_hinh": [], "boi_canh": [], "danh_gia": [], "de_nghi": [], "treo": []}
+    buckets: dict[str, list[str]] = {
+        "tinh_hinh": [],
+        "boi_canh": [],
+        "danh_gia": [],
+        "de_nghi": [],
+        "treo": [],
+    }
     cur = "tinh_hinh"
     for ln in lines:
         low = ln.lower()
