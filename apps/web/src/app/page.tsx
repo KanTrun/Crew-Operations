@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { getToken } from "../lib/session";
-import { btnGhost, btnPrimary, Kicker } from "../ui/kit";
+import { BtnLink, EditorialBanner, Kicker, PageActions } from "../ui/kit";
 
 export default function HomePage() {
   const router = useRouter();
@@ -14,21 +13,25 @@ export default function HomePage() {
   }, [router]);
 
   return (
-    <div className="nq-page">
-      <Kicker>OS vận hành ca</Kicker>
-      <h1>NHỊP QUÁN</h1>
-      <p className="nq-muted" style={{ maxWidth: 440 }}>
-        Một việc tại một thời điểm: phiếu, ca, việc treo, công bằng, cẩm nang.
-        Đăng nhập để vào bảng hôm nay — không còn danh sách liên kết rời.
-      </p>
-      <p style={{ display: "flex", gap: "0.65rem", marginTop: "1.5rem", flexWrap: "wrap" }}>
-        <Link href="/login" style={btnPrimary}>
-          Đăng nhập
-        </Link>
-        <Link href="/login" style={btnGhost}>
-          Xem hướng dẫn vào ca
-        </Link>
-      </p>
-    </div>
+    <>
+      <EditorialBanner
+        status="OS vận hành ca · đêm quán sống"
+        meta="Một việc một lúc — phiếu, lịch, công bằng"
+      />
+      <div className="nq-page nq-page--home">
+        <Kicker>OS vận hành ca</Kicker>
+        <h1>NHỊP QUÁN</h1>
+        <p className="nq-muted" style={{ maxWidth: 520, fontSize: "1.05rem" }}>
+          Hệ điều hành ca cho quán cà phê — tinh gọn trên điện thoại, rộng rãi trên màn lớn. Đăng nhập
+          để vào bảng hôm nay.
+        </p>
+        <PageActions>
+          <BtnLink href="/login">Đăng nhập</BtnLink>
+          <BtnLink href="/login" variant="ghost">
+            Hướng dẫn vào ca
+          </BtnLink>
+        </PageActions>
+      </div>
+    </>
   );
 }
