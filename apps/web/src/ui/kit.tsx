@@ -68,12 +68,155 @@ export function Empty({ children }: { children: ReactNode }) {
   return <p className="nq-empty">{children}</p>;
 }
 
-/** Chỗ giữ trong lúc chờ API — tránh nháy "chưa có dữ liệu" khi thật ra đang tải. */
-export function Loading({ children = "Đang tải…" }: { children?: ReactNode }) {
+export const btnSecondary: CSSProperties = { ...btnGhost };
+
+type BtnVariant = "primary" | "ghost" | "danger";
+
+function btnClass(variant: BtnVariant, block?: boolean) {
+  const v =
+    variant === "primary" ? "nq-btn-primary" : variant === "danger" ? "nq-btn-danger" : "nq-btn-ghost";
+  return block ? `nq-btn ${v} nq-btn-block` : `nq-btn ${v}`;
+}
+
+export function BtnLink({
+  href,
+  variant = "primary",
+  children,
+  block,
+}: {
+  href: string;
+  variant?: BtnVariant;
+  children: ReactNode;
+  block?: boolean;
+}) {
   return (
-    <p className="nq-empty" aria-live="polite" aria-busy="true">
+    <Link href={href} className={btnClass(variant, block)}>
       {children}
-    </p>
+    </Link>
+  );
+}
+
+export function PageActions({ children }: { children: ReactNode }) {
+  return <div className="nq-page-actions">{children}</div>;
+}
+
+export function EditorialBanner({
+  wordmark = "NHỊP QUÁN",
+  status,
+  meta,
+}: {
+  wordmark?: string;
+  status: ReactNode;
+  meta?: ReactNode;
+}) {
+  return (
+    <section className="nq-banner" aria-label="Tình trạng quán">
+      <div className="nq-banner-inner">
+        <p className="nq-banner-wordmark">{wordmark}</p>
+        <p className="nq-banner-status">{status}</p>
+        {meta ? <p className="nq-banner-meta">{meta}</p> : null}
+      </div>
+    </section>
+  );
+}
+
+export function SkeletonLine({ className = "" }: { className?: string }) {
+  return <div className={`nq-skeleton nq-skeleton-line ${className}`.trim()} aria-hidden="true" />;
+}
+
+export function SkeletonTile() {
+  return (
+    <div className="nq-skeleton-tile" aria-hidden="true">
+      <div className="nq-skeleton nq-skeleton-line" style={{ width: "40%" }} />
+      <div className="nq-skeleton nq-skeleton-line nq-skeleton-line-sm" />
+    </div>
+  );
+}
+
+export function SkeletonRow() {
+  return (
+    <div className="nq-row">
+      <SkeletonTile />
+      <SkeletonTile />
+    </div>
+  );
+}
+
+export function SkeletonList({ count = 3 }: { count?: number }) {
+  return (
+    <div className="nq-skeleton-wrap" aria-hidden="true">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="nq-skeleton-item">
+          <div className="nq-skeleton nq-skeleton-line" style={{ width: "55%", marginBottom: "0.5rem" }} />
+          <div className="nq-skeleton nq-skeleton-line nq-skeleton-line-sm" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function SkeletonPage({ tiles = true }: { tiles?: boolean }) {
+  return (
+    <div className="nq-skeleton-wrap" aria-live="polite" aria-busy="true">
+      <SkeletonLine />
+      <SkeletonLine className="nq-skeleton-line-sm" />
+      {tiles ? <SkeletonRow /> : null}
+    </div>
+  );
+}
+
+/** Shimmer load — không dùng Empty cho trạng thái đang fetch */
+export function Loading({
+  children,
+  skeleton = "page",
+}: {
+  children?: ReactNode;
+  skeleton?: "page" | "list" | "tiles" | "text";
+}) {
+  const label = children ? (
+    <span className="nq-muted" style={{ display: "block", marginBottom: "0.65rem" }}>
+      {children}
+    </span>
+  ) : null;
+
+  if (skeleton === "list") {
+    return (
+      <div aria-live="polite" aria-busy="true">
+        {label}
+        <SkeletonList />
+      </div>
+    );
+  }
+  if (skeleton === "tiles") {
+    return (
+      <div aria-live="polite" aria-busy="true">
+        {label}
+        <SkeletonRow />
+      </div>
+    );
+  }
+  if (skeleton === "text") {
+    return (
+      <div className="nq-skeleton-wrap" aria-live="polite" aria-busy="true">
+        <SkeletonLine />
+        <SkeletonLine className="nq-skeleton-line-sm" />
+      </div>
+    );
+  }
+  return (
+    <div aria-live="polite" aria-busy="true">
+      {label}
+      <SkeletonPage />
+    </div>
+  );
+}
+
+export function ProgressBar({ value, max }: { value: number; max: number }) {
+  const pct = max > 0 ? (value / max) * 100 : 0;
+  return (
+    <div className="nq-progress" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
+      <div className="nq-progress-fill" style={{ width: `${pct}%` }} />
+    </div>
   );
 }
 
@@ -83,11 +226,9 @@ export function AuthGate() {
       <Kicker>Cần phiên làm việc</Kicker>
       <h1>Đăng nhập để tiếp tục</h1>
       <p className="nq-muted">Trang này đọc dữ liệu quán qua phiên của bạn.</p>
-      <p style={{ marginTop: "1.25rem" }}>
-        <Link href="/login" style={btnPrimary}>
-          Đăng nhập
-        </Link>
-      </p>
+      <PageActions>
+        <BtnLink href="/login">Đăng nhập</BtnLink>
+      </PageActions>
     </div>
   );
 }
