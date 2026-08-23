@@ -1,11 +1,42 @@
 FROM python:3.12-slim
 WORKDIR /app
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libpq-dev \
+    build-essential libpq-dev curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Toàn bộ package lõi — API import ca_solver / ca_gates / ca_ops / ca_playbook / ca_agents
 COPY packages/contracts ./packages/contracts
+COPY packages/solver ./packages/solver
+COPY packages/gates ./packages/gates
+COPY packages/opsengine ./packages/opsengine
+COPY packages/playbook ./packages/playbook
+COPY packages/agents ./packages/agents
 COPY apps/api ./apps/api
-RUN pip install --no-cache-dir -e ./packages/contracts -e ./apps/api
-ENV PYTHONPATH=/app/apps/api/src
+
+RUN pip install --no-cache-dir \
+    -e ./packages/contracts \
+    -e ./packages/solver \
+    -e ./packages/gates \
+    -e ./packages/opsengine \
+    -e ./packages/playbook \
+    -e ./packages/agents \
+    -e ./apps/api
+
+# Dữ liệu instance NHỊP QUÁN: seed, golden, template phiếu, tham số lao động
+COPY config ./config
+COPY data ./data
+COPY infra/templates ./infra/templates
+COPY scripts ./scripts
+
+# Trạng thái ghi được tách khỏi seed để mount volume không che dữ liệu gốc
+ENV PYTHONPATH=/app/apps/api/src \
+    PYTHONUNBUFFERED=1 \
+    CA_AGENT_MODE=replay \
+    NHIPQUAN_DB=/app/var/quan.db \
+    NHIPQUAN_SUA=/app/var/so_lan_sua.jsonl \
+    NHIPQUAN_CAMNANG=/app/var/cam_nang.json
+RUN mkdir -p /app/var /app/data/out
+
 EXPOSE 8000
 CMD ["uvicorn", "ca_api.interfaces.http.main:app", "--host", "0.0.0.0", "--port", "8000"]

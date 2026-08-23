@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { apiGet, apiSend } from "../../lib/api";
+import { getToken, isManager } from "../../lib/session";
+import { Alert, AuthGate, btnPrimary, Empty, Kicker, Loading } from "../../ui/kit";
 
 type Luat = {
   id: string;
-  cau: string;
+  cau?: string;
   trang_thai: string;
   tap_su_dung?: number;
   ap_dung?: number;
@@ -20,79 +20,80 @@ export default function CamNangPage() {
   const [token, setToken] = useState("");
   const [items, setItems] = useState<Luat[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [soThat, setSoThat] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const t = sessionStorage.getItem("nq_token");
-    if (t) setToken(t);
+    setToken(getToken());
+    if (!getToken()) setLoading(false);
   }, []);
 
   const load = useCallback(() => {
-    fetch(`${API}/api/v1/cam-nang`)
-      .then((r) => r.json())
-      .then((d) => setItems(d.items ?? []));
+    if (!getToken()) return;
+    apiGet<{ items: Luat[] }>("/api/v1/cam-nang")
+      .then((d) => setItems(d.items ?? []))
+      .catch(() => setError("Không tải được cẩm nang."))
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (token) load();
+  }, [token, load]);
 
   async function chay() {
-    const r = await fetch(`${API}/api/v1/cam-nang/chay-8-buoc`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const d = await r.json();
-    setMsg(
-      r.ok
-        ? `Luật đã hiệu lực. VF-RULE loại: ${d.bi_loai?.vf_rule}. Luật từ người quán ngoài: ${d.so_luat_that_quan}.`
-        : "Không chạy được (cần quyền quản lý).",
-    );
-    load();
+    setError(null);
+    try {
+      const d = await apiSend<{ bi_loai?: { vf_rule?: string }; so_luat_that_quan?: number }>(
+        "/api/v1/cam-nang/chay-8-buoc",
+      );
+      setSoThat(d.so_luat_that_quan ?? 0);
+      setMsg(
+        `Đã chạy 8 bước. VF-RULE loại: ${d.bi_loai?.vf_rule ?? "—"}. Luật từ người quán ngoài: ${d.so_luat_that_quan ?? 0}.`,
+      );
+      load();
+    } catch {
+      setError("Không chạy được. Cần quyền quản lý và đủ lần sửa.");
+    }
   }
 
-  if (!token) {
-    return (
-      <main style={{ maxWidth: 520, margin: "0 auto", padding: "2rem 1rem" }}>
-        <p>Đăng nhập quản lý/chủ.</p>
-        <Link href="/">Home</Link>
-      </main>
-    );
-  }
+  if (!token) return <AuthGate />;
 
   return (
-    <main style={{ maxWidth: 640, margin: "0 auto", padding: "1rem" }}>
-      <p style={{ fontSize: 12, color: "var(--nq-ink-muted)" }}>Cẩm nang sống</p>
-      <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400 }}>Cẩm nang quán</h1>
-      <button
-        onClick={chay}
-        style={{
-          minHeight: 44,
-          background: "var(--nq-accent)",
-          color: "var(--nq-accent-ink)",
-          border: 0,
-          padding: "0.5rem 1rem",
-          marginBottom: 16,
-        }}
-      >
-        Chạy 8 bước
-      </button>
-      {msg && <p>{msg}</p>}
-      {items.map((it) => (
-        <article
-          key={it.id}
-          style={{ border: "1px solid var(--nq-line)", borderRadius: 8, padding: "1rem", marginBottom: 12 }}
-        >
-          <p style={{ fontWeight: 600 }}>{it.cau}</p>
-          <p>
-            Trạng thái: {it.trang_thai} {it.vf_rule ? `· VF-RULE: ${it.vf_rule}` : ""}
-          </p>
-          <p>
-            Nguồn: {(it.bang_chung || []).length} lần sửa · Tập sự: {it.tap_su_dung ?? "—"} · Áp dụng {it.ap_dung ?? 0}{" "}
-            · Ghi đè {it.ghi_de ?? 0}
-          </p>
-        </article>
-      ))}
-      <Link href="/sop">Hỏi SOP →</Link>
-    </main>
+    <div className="nq-page">
+      <Kicker>Cẩm nang sống</Kicker>
+      <h1>Cẩm nang quán</h1>
+      <p className="nq-muted">
+        Luật chỉ hiệu lực khi đủ bằng chứng sửa. Số luật quán thật hiện là {soThat ?? "chưa chạy"}.
+      </p>
+      {isManager() ? (
+        <p>
+          <button onClick={chay} style={btnPrimary}>
+            Chạy 8 bước
+          </button>
+        </p>
+      ) : (
+        <p className="nq-muted">Nhân viên chỉ xem. Quản lý chạy 8 bước.</p>
+      )}
+      {msg ? <Alert kind="ok">{msg}</Alert> : null}
+      {error ? <Alert>{error}</Alert> : null}
+      {loading ? <Loading>Đang mở cẩm nang…</Loading> : null}
+      {!loading && items.length === 0 ? (
+        <Empty>Chưa có luật. Ghi nhận sửa trên ca rồi chạy 8 bước.</Empty>
+      ) : null}
+      <div className="nq-list">
+        {items.map((it) => (
+          <article key={it.id} className="nq-item">
+            <p style={{ margin: 0, fontWeight: 600 }}>{it.cau ?? it.id}</p>
+            <p className="nq-muted" style={{ margin: "0.35rem 0 0" }}>
+              {it.trang_thai}
+              {it.vf_rule ? ` · VF-RULE: ${it.vf_rule}` : ""}
+              {" · "}
+              {(it.bang_chung || []).length} lần sửa · tập sự {it.tap_su_dung ?? "—"} · áp dụng {it.ap_dung ?? 0}
+            </p>
+          </article>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -1,45 +1,56 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { apiSend } from "../../lib/api";
+import { getToken } from "../../lib/session";
+import { Alert, AuthGate, btnPrimary, Empty, Field, inputStyle, Kicker } from "../../ui/kit";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+type Ans = { cau_tra_loi: string; trich_dan: string[]; chua_co: boolean };
 
 export default function SopPage() {
-  const [q, setQ] = useState("nhiệt độ tủ lạnh bao nhiêu là được?");
-  const [a, setA] = useState<{ cau_tra_loi: string; trich_dan: string[]; chua_co: boolean } | null>(null);
+  const [token, setToken] = useState("");
+  const [q, setQ] = useState("Nhiệt độ tủ lạnh bao nhiêu là được?");
+  const [a, setA] = useState<Ans | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setToken(getToken());
+  }, []);
 
   async function ask() {
-    const r = await fetch(`${API}/api/v1/sop`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: q }),
-    });
-    setA(await r.json());
+    setError(null);
+    try {
+      const d = await apiSend<Ans>("/api/v1/sop", { question: q });
+      setA(d);
+    } catch {
+      setError("Không hỏi được SOP. Cần đăng nhập.");
+    }
   }
 
+  if (!token) return <AuthGate />;
+
   return (
-    <main style={{ maxWidth: 560, margin: "0 auto", padding: "1rem" }}>
-      <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400 }}>Hỏi SOP</h1>
-      <p style={{ color: "var(--nq-ink-muted)" }}>Chỉ trả lời từ phiếu YAML và luật đã duyệt.</p>
-      <textarea
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        rows={3}
-        style={{ width: "100%", marginBottom: 8 }}
-      />
-      <button onClick={ask} style={{ minHeight: 44, padding: "0.5rem 1rem" }}>
+    <div className="nq-page">
+      <Kicker>Chỉ trả lời từ phiếu và luật đã duyệt</Kicker>
+      <h1>Hỏi SOP</h1>
+      <Field label="Câu hỏi">
+        <textarea value={q} onChange={(e) => setQ(e.target.value)} rows={3} style={inputStyle} />
+      </Field>
+      <button onClick={ask} style={btnPrimary}>
         Hỏi
       </button>
-      {a && (
-        <div style={{ marginTop: 16 }}>
+      {error ? <Alert>{error}</Alert> : null}
+      {a ? (
+        <article className="nq-item" style={{ marginTop: "1rem" }}>
           <p>{a.cau_tra_loi}</p>
-          <p style={{ fontSize: 13 }}>Trích dẫn: {a.trich_dan.join(", ") || "(không)"}</p>
-        </div>
+          {a.chua_co ? <Alert kind="info">Chưa có trong cẩm nang.</Alert> : null}
+          <p className="nq-muted" style={{ fontSize: "0.85rem" }}>
+            Trích dẫn: {a.trich_dan.join(", ") || "không"}
+          </p>
+        </article>
+      ) : (
+        <Empty>Đặt câu bằng tiếng Việt thường ngày. Hệ thống không bịa SOP.</Empty>
       )}
-      <p style={{ marginTop: 24 }}>
-        <Link href="/cam-nang">Cẩm nang</Link>
-      </p>
-    </main>
+    </div>
   );
 }

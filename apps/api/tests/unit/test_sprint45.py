@@ -24,7 +24,9 @@ def test_lifecycle_and_audit() -> None:
     ql = headers(client, "lan")
     r = client.post("/api/v1/lich/lifecycle", json={"to": "dang_giai"}, headers=ql)
     assert r.status_code == 200, r.text
-    assert r.json()["trang_thai"] == "dang_giai"
+    body = r.json()
+    assert body["trang_thai"] == "dang_giai"
+    assert body.get("solver", {}).get("status")
     client.post("/api/v1/lich/lifecycle", json={"to": "cho_duyet"}, headers=ql)
     client.post("/api/v1/lich/lifecycle", json={"to": "da_cong_bo"}, headers=ql)
     ics = client.get("/api/v1/lich/ics", headers=ql).json()

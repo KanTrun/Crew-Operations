@@ -58,6 +58,8 @@ Bộ điều phối (deterministic) ── ghi DB duy nhất
 
 **Repo:** https://github.com/KanTrun/CA-CONG-BANG  
 **GitHub ops detail:** [`docs/github-operating-model.md`](../../docs/github-operating-model.md) · [`docs/team.md`](../../docs/team.md)  
+**Chia việc theo nhánh (bản thi hành):** [`docs/phan-cong-nhanh.md`](../../docs/phan-cong-nhanh.md)  
+**Chạy toàn tuyến Docker:** [`docs/runbook-demo.md`](../../docs/runbook-demo.md) — `make docker-up && make docker-smoke`  
 **Foundation brainstorm:** [reports/260821-2235-brainstorm-github-foundation.md](../reports/260821-2235-brainstorm-github-foundation.md)
 
 ---
@@ -207,12 +209,12 @@ Thứ 6  cổng ra sprint (mắt + lệnh) · /ak:journal · /ak:retro ngắn
 | 1 | [Tuần 0 — Ngày 1–2 & chuẩn bị](./phase-01-start.md) | Completed | 2 ngày | — |
 | 2 | [Sprint 1 — Nền và hợp đồng](./phase-02-sprint-1-nen-va-hop-dong.md) | Completed | 17,25 md | 1 |
 | 3 | [Sprint 2 — Mốc sinh tử solver](./phase-03-sprint-2-moc-sinh-tu-solver.md) | Completed | 17,75 md | 2 |
-| 4 | [Sprint 3 — Vận hành & ghi nhận sửa](./phase-04-sprint-3-van-hanh-va-ghi-nhan-sua.md) | In progress | 18,00 md | 3 |
-| 5 | [Sprint 4 — Quán dùng thật](./phase-05-sprint-4-qun-dung-that.md) | In progress (fixture OS; quán ký chưa có) | 18,00 md | 4 |
-| 6 | [Sprint 5 — Cẩm nang sống](./phase-06-sprint-5-cam-nang-song.md) | In progress (8 bước dựng lại; 0 luật quán thật) | 17,25 md | 5 |
-| 7 | [Sprint 6 — Nộp bán kết](./phase-07-sprint-6-nop-ban-ket.md) | Pending | 14,75 md | 6 |
-| 8 | [Sprint 7 — Làm cứng và đo](./phase-08-sprint-7-lam-cung-va-do.md) | Pending | 18 md | 7 |
-| 9 | [Sprint 8 — Đóng băng và bảo vệ](./phase-09-sprint-8-dong-bang-va-bao-ve.md) | Pending | 18 md | 8 |
+| 4 | [Sprint 3 — Vận hành & ghi nhận sửa](./phase-04-sprint-3-van-hanh-va-ghi-nhan-sua.md) | Completed (software; §14.4 phone TBD) | 18,00 md | 3 |
+| 5 | [Sprint 4 — Quán dùng thật](./phase-05-sprint-4-qun-dung-that.md) | Completed (software; §14.5 quán TBD) | 18,00 md | 4 |
+| 6 | [Sprint 5 — Cẩm nang sống](./phase-06-sprint-5-cam-nang-song.md) | Completed (software; 0 luật quán thật) | 17,25 md | 5 |
+| 7 | [Sprint 6 — Nộp bán kết](./phase-07-sprint-6-nop-ban-ket.md) | Completed (software UI + runbook; §14.7 nộp TBD) | 14,75 md | 6 |
+| 8 | [Sprint 7 — Làm cứng và đo](./phase-08-sprint-7-lam-cung-va-do.md) | Pending (cấm feature; đo + 215 tests) | 18 md | 7 |
+| 9 | [Sprint 8 — Đóng băng và bảo vệ](./phase-09-sprint-8-dong-bang-va-bao-ve.md) | Pending (freeze + demo ×5) | 18 md | 8 |
 
 ## Backlog sau bảo vệ (không cook trong plan này)
 

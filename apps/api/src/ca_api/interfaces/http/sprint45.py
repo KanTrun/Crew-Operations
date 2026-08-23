@@ -58,6 +58,37 @@ def _audit(hanh: str, ai: str, payload: dict[str, Any]) -> None:
     audit_add(_clock.now_iso(), ai, hanh, payload)
 
 
+def _run_solver() -> dict[str, Any]:
+    from ca_solver import apply_luat, build_lich_input, solve_cpsat
+
+    inp = build_lich_input()
+    inp, applied = apply_luat(inp, list_luat())
+    result = solve_cpsat(inp, time_limit_s=60.0)
+    payload = {
+        "nguon": "quan",
+        "adr": "ADR-012",
+        "tuan_iso": "2026-W01",
+        "status": result.status,
+        "ok": result.ok,
+        "elapsed_s": round(result.elapsed_s, 3),
+        "objective": result.objective,
+        "violations": result.violations,
+        "phan_cong": result.phan_cong,
+        "debt_after": result.debt_after,
+        "luat_ap_dung": applied,
+    }
+    LICH.parent.mkdir(parents=True, exist_ok=True)
+    LICH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    kv_set("phan_cong", result.phan_cong)
+    return {
+        "status": result.status,
+        "ok": result.ok,
+        "best_effort": result.ok,
+        "luat_ap_dung": applied,
+        "violations": len(result.violations),
+    }
+
+
 def _life() -> dict[str, Any]:
     return kv_get(
         "lifecycle",
@@ -148,7 +179,7 @@ def lich_transition(
         raise HTTPException(status_code=409, detail=f"illegal:{cur}->{body.to}")
     doc["trang_thai"] = body.to
     if body.to == "dang_giai":
-        doc["solver"] = {"status": "OPTIMAL", "best_effort": True}
+        doc["solver"] = _run_solver()
     _save_life(doc)
     _audit("lifecycle", role, {"from": cur, "to": body.to})
     return doc
@@ -266,17 +297,83 @@ def cong_bang_bao_cao(authorization: Annotated[str | None, Header()] = None) -> 
     return {"text": "\n".join(lines), "dinh_dang": "text/plain"}
 
 
+class TieuThuBody(BaseModel):
+    hang: str
+    so_luong: float
+    don_vi: str = "khay"
+
+
+class WasteNoteBody(BaseModel):
+    thu: str
+    ghi_chu: str
+
+
 @router.get("/api/v1/hom-nay")
 def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_role(authorization)
     life = _life()
+    treo = kv_get("treo", [])
+    inbox = kv_get("inbox_rang_buoc", [])
+    cho = sum(1 for x in inbox if x.get("trang_thai") == "cho_duyet")
+    luat = list_luat()
+    ton = kv_get("tieu_thu", [])
+    canh_bao = [x["hang"] for x in ton if x.get("duoi_nguong")]
     return {
         "ngay": datetime.now(UTC).date().isoformat(),
         "lich": life,
-        "treo": "xem /api/v1/viec-treo",
-        "canh_bao_ton": ["sua_tuoi"],
+        "so_treo": len(treo),
+        "so_inbox_cho": cho,
+        "so_luat": len(luat),
+        "canh_bao_ton": canh_bao,
         "nguon": "quan",
     }
+
+
+@router.get("/api/v1/tieu-thu")
+def tieu_thu_list(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    _require_role(authorization)
+    return {"items": kv_get("tieu_thu", []), "nguon": "quan", "ghi": "số lượng, không kế toán"}
+
+
+@router.post("/api/v1/tieu-thu")
+def tieu_thu_ghi(
+    body: TieuThuBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    role = _require_manager(authorization)
+    item = {
+        "id": f"tt_{uuid.uuid4().hex[:8]}",
+        "hang": body.hang.strip(),
+        "so_luong": body.so_luong,
+        "don_vi": body.don_vi,
+        "duoi_nguong": body.so_luong < 2,
+        "ai": role,
+        "luc": datetime.now(UTC).isoformat(),
+    }
+
+    def mut(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        rows.append(item)
+        return rows
+
+    kv_mutate("tieu_thu", mut, [])
+    _audit("tieu_thu", role, item)
+    return item
+
+
+@router.post("/api/v1/waste")
+def waste_ghi(
+    body: WasteNoteBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    _require_role(authorization)
+    note = {"thu": body.thu.strip(), "ghi_chu": body.ghi_chu.strip()}
+
+    def mut(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        rows.append(note)
+        return rows
+
+    kv_mutate("waste_notes", mut, [])
+    return {"ok": True, **note}
 
 
 @router.post("/api/v1/handover")
@@ -403,9 +500,15 @@ def sop_golden(authorization: Annotated[str | None, Header()] = None) -> dict[st
 
 
 @router.get("/api/v1/waste")
-def waste() -> dict[str, Any]:
-    notes = [("T3", "bánh hết ngày dư"), ("T3", "hao bánh"), ("T6", "ổn")]
-    return {"items": [x.__dict__ for x in cluster_waste(notes)], "nguon": "quan"}
+def waste(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    _require_role(authorization)
+    stored = kv_get("waste_notes", [])
+    pairs = [(str(x.get("thu", "")), str(x.get("ghi_chu", ""))) for x in stored if x.get("ghi_chu")]
+    return {
+        "items": [x.__dict__ for x in cluster_waste(pairs)] if pairs else [],
+        "ghi_chu": stored,
+        "nguon": "quan",
+    }
 
 
 @router.post("/api/v1/qr")

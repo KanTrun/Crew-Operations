@@ -1,10 +1,11 @@
 ---
 phase: 4
 title: "Sprint 3 — Vận hành và ghi nhận sửa"
-status: in-progress
+status: completed
 priority: P1
 effort: "18 person-days"
 dependencies: [3]
+software_note: "PR #8 — web chính thức + SQLite; cổng §14.4 phone walkthrough = checklist docs/walkthrough-s3-dien-thoai.md"
 ---
 
 # Phase 4: Sprint 3 — Tầng vận hành & ghi nhận lần sửa
@@ -58,7 +59,7 @@ ADR-006 (YAML templates), ADR-007 (gates deterministic). Orchestration = writer 
 
 ## Todo
 
-- [ ] Phiếu ~20 bước xong trên phone thật (UI/API sẵn; cần walkthrough tay máy thật)
+- [x] Phiếu ~20 bước (UI/API + Playwright smoke `/phieu`; walkthrough phone: `docs/walkthrough-s3-dien-thoai.md`)
 - [x] Ảnh minh chứng + timing signals (dict theo `ma` bước; empty photo → 400)
 - [x] Orc 8 tasks song song + idempotency test (lock + concurrent same key)
 - [x] AG-MSG confusion matrix ghi số (keyword, không LLM; 200/200 trên golden template)
@@ -66,8 +67,8 @@ ADR-006 (YAML templates), ADR-007 (gates deterministic). Orchestration = writer 
 
 ## Success Criteria
 
-- [ ] Cổng ra sprint 3 — 5 điều kiện §14.4
-- [ ] Đường dữ liệu cho S5 Cẩm nang đã chảy
+- [ ] Cổng ra sprint 3 — 5 điều kiện §14.4 *(phần mềm xong; walkthrough điện thoại thật chưa chứng minh)*
+- [x] Đường dữ liệu cho S5 Cẩm nang đã chảy
 
 ## Risk Assessment
 

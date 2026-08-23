@@ -35,6 +35,14 @@ services:
       CA_AGENT_MODE: replay
     ports:
       - "8000:8000"
+    volumes:
+      - nhipquan_var:/app/var
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,6 +58,8 @@ services:
       DATABASE_URL: postgresql+psycopg://nhipquan:nhipquan@postgres:5432/nhipquan
       REDIS_URL: redis://redis:6379/0
       CA_AGENT_MODE: replay
+    volumes:
+      - nhipquan_var:/app/var
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,12 +70,14 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.web
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
     ports:
       - "3000:3000"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   nhipquan_pg:
+  nhipquan_var:

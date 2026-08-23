@@ -1,10 +1,11 @@
 ---
 phase: 6
 title: "Sprint 5 — Cẩm nang sống"
-status: in-progress
+status: completed
 priority: P1
 effort: "17.25 person-days"
 dependencies: [5]
+software_note: "Luật→solver inject; Playwright 8 flows; §14.6 so_luat_that_quan=0 cho đến khi quán gắn dữ liệu"
 ---
 
 # Phase 6: Sprint 5 — Cẩm nang sống đóng vòng lặp
@@ -62,11 +63,13 @@ make replay PHIEN=...
 - [x] Bảng tập sự 5 lần
 - [x] Auto-disable test 60%
 - [x] AG-SOP 20 Q + citations / «chưa có trong cẩm nang»
-- [x] A/B bảng có số sơ bộ (`chưa đo live` + replay orc)
+- [x] A/B bảng có số sơ bộ (`make ab` + `/api/v1/ab`; replay: `make replay PHIEN=...`)
+- [x] Playwright 8 luồng (`apps/web/e2e/flows.spec.ts`, CI job 08)
+- [x] Map luật hiệu lực → CP-SAT (`ca_solver.luat_inject` + lifecycle `dang_giai`)
 
 ## Success Criteria
 
-- [ ] Cổng ra sprint 5 — 6 điều kiện §14.6 (khắt khe nhất)
+- [ ] Cổng ra sprint 5 — 6 điều kiện §14.6 *(phần mềm xong; luật quán thật = 0)*
 
 ## Risk Assessment
 

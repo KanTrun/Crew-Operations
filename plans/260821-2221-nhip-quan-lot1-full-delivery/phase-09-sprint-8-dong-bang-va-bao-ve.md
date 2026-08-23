@@ -2,6 +2,7 @@
 phase: 9
 title: "Sprint 8 — Đóng băng và bảo vệ"
 status: pending
+blocked_reason: "Cổng §14.9 cần tag v1.0.0-final, demo ×5, 3 máy, hồ sơ nộp. Không đánh dấu xong."
 priority: P1
 effort: "18 person-days (blocker fixes only)"
 dependencies: [8]

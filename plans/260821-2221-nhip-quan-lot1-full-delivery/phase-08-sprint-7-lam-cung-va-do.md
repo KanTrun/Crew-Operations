@@ -2,6 +2,7 @@
 phase: 8
 title: "Sprint 7 — Làm cứng và đo"
 status: pending
+blocked_reason: "Cổng §14.8 cần đo tại quán + 215 tests + 0 bug mở. Cấm feature mới. Không đánh dấu xong."
 priority: P1
 effort: "18 person-days (no new features)"
 dependencies: [7]
