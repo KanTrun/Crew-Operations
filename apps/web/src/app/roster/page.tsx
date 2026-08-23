@@ -186,7 +186,7 @@ export default function RosterPage() {
             borderRadius: 2,
           }}
         >
-          Chỉ xem — đăng nhập với vai trò <strong>quanly</strong> hoặc <strong>chu</strong> để pin/unpin.
+          Chỉ xem — đăng nhập với vai trò quản lý hoặc chủ quán để pin/unpin.
         </p>
       )}
 

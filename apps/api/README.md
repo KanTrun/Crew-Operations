@@ -11,24 +11,23 @@ uv run uvicorn ca_api.interfaces.http.main:app --reload --port 8000
 
 ## Auth
 
-Fixture tokens (Sprint 2 demo):
+Session tokens come from `POST /api/v1/auth/login` (stored in `data/quan.db`).
 
-| User      | Token              | Role       | Permissions     |
-|-----------|--------------------|------------|-----------------|
-| quanly    | `fixture-quanly`   | quan_ly    | read + write    |
-| chu       | `fixture-chu`      | chu_quan   | read + write    |
-| nhanvien  | `fixture-nhanvien` | nhan_vien  | read-only       |
-| anonymous | —                  | —          | read-only demo  |
+| User | Password | Role | nv_id |
+|------|----------|------|-------|
+| lan | `nhipquan` | quan_ly | nv_01 |
+| minh | `nhipquan` | nhan_vien | nv_03 |
+| hung | `nhipquan` | chu_quan | nv_02 |
 
-Pass token as `Authorization: Bearer <token>`.
+Pass the returned token as `Authorization: Bearer <token>`.
 
-## Endpoints (Sprint 2)
+## Endpoints
 
 - `GET /health`
 - `POST /api/v1/auth/login`
 - `GET /api/v1/contracts`
-- `GET /api/v1/lich-tuan?tuan=2026-W34` — weekly roster (read-only, no auth required for demo)
-- `POST /api/v1/lich-tuan/pin` — pin/unpin assignment (requires quan_ly or chu_quan)
+- `GET /api/v1/lich-tuan?tuan=2026-W34` — weekly roster
+- `POST /api/v1/lich-tuan/pin` — pin/unpin (quan_ly or chu_quan)
 
 ## Database migrations (Alembic)
 

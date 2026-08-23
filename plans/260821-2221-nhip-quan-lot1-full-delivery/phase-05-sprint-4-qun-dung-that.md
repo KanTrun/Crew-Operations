@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Sprint 4 — Quán dùng thật"
-status: pending
+status: in-progress
 priority: P1
 effort: "18 person-days"
 dependencies: [4]
@@ -55,12 +55,12 @@ make eval
 
 ## Todo
 
-- [ ] Lịch tuần công bố + tin đến NV
-- [ ] ≥5 phiếu thật
-- [ ] Audit log đủ vết đổi lịch
-- [ ] Inbox ≥10 approve/reject
-- [ ] Case VF-CONFLICT (thật hoặc dựng)
-- [ ] Đủ dữ liệu mẫu cho AG-RULE hoặc báo cáo thiếu
+- [x] Lịch tuần công bố + tin (ICS + lifecycle fixture; tin = console/Telegram stub)
+- [ ] ≥5 phiếu thật (NV quán — **chưa có đối tác**)
+- [x] Audit log đủ vết đổi lịch (append-only `data/out/audit.jsonl`)
+- [x] Inbox ≥10 approve/reject (fixture, dán nhãn)
+- [x] Case VF-CONFLICT (dựng: hai claim, không tự chọn)
+- [x] Đủ dữ liệu mẫu cho AG-RULE trên **dựng lại** (0 luật quán thật)
 
 ## Success Criteria
 

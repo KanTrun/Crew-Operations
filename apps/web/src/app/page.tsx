@@ -20,7 +20,7 @@ export default function HomePage() {
             marginBottom: "0.75rem",
           }}
         >
-          Sprint 1 · demo
+          OS vận hành ca · NHỊP QUÁN
         </p>
         <h1
           style={{
@@ -34,7 +34,7 @@ export default function HomePage() {
           NHỊP QUÁN
         </h1>
         <p style={{ color: "var(--nq-ink-muted)", marginBottom: "1.75rem" }}>
-          Đăng nhập để xem năm hợp đồng dữ liệu từ máy chủ giả.
+          Ca, phiếu, công bằng, cẩm nang — đăng nhập để làm việc.
         </p>
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           <Link
@@ -73,6 +73,158 @@ export default function HomePage() {
             }}
           >
             Lịch tuần →
+          </Link>
+          <Link
+            href="/phieu"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 44,
+              minWidth: 160,
+              padding: "0.75rem 1.25rem",
+              background: "var(--nq-surface)",
+              color: "var(--nq-ink)",
+              textDecoration: "none",
+              fontWeight: 600,
+              borderRadius: 2,
+              border: "1px solid var(--nq-line)",
+            }}
+          >
+            Phiếu →
+          </Link>
+          <Link
+            href="/toi"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 44,
+              minWidth: 160,
+              padding: "0.75rem 1.25rem",
+              background: "var(--nq-surface)",
+              color: "var(--nq-ink)",
+              textDecoration: "none",
+              fontWeight: 600,
+              borderRadius: 2,
+              border: "1px solid var(--nq-line)",
+            }}
+          >
+            Lịch của tôi →
+          </Link>
+          <Link
+            href="/treo"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 44,
+              minWidth: 160,
+              padding: "0.75rem 1.25rem",
+              background: "var(--nq-surface)",
+              color: "var(--nq-ink)",
+              textDecoration: "none",
+              fontWeight: 600,
+              borderRadius: 2,
+              border: "1px solid var(--nq-line)",
+            }}
+          >
+            Việc treo →
+          </Link>
+          <Link
+            href="/hom-nay"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 44,
+              minWidth: 160,
+              padding: "0.75rem 1.25rem",
+              background: "var(--nq-surface)",
+              color: "var(--nq-ink)",
+              textDecoration: "none",
+              fontWeight: 600,
+              borderRadius: 2,
+              border: "1px solid var(--nq-line)",
+            }}
+          >
+            Hôm nay →
+          </Link>
+          <Link
+            href="/cam-nang"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 44,
+              minWidth: 160,
+              padding: "0.75rem 1.25rem",
+              background: "var(--nq-surface)",
+              color: "var(--nq-ink)",
+              textDecoration: "none",
+              fontWeight: 600,
+              borderRadius: 2,
+              border: "1px solid var(--nq-line)",
+            }}
+          >
+            Cẩm nang →
+          </Link>
+          <Link
+            href="/inbox"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 44,
+              minWidth: 160,
+              padding: "0.75rem 1.25rem",
+              background: "var(--nq-surface)",
+              color: "var(--nq-ink)",
+              textDecoration: "none",
+              fontWeight: 600,
+              borderRadius: 2,
+              border: "1px solid var(--nq-line)",
+            }}
+          >
+            Hộp thư →
+          </Link>
+          <Link
+            href="/handover"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 44,
+              minWidth: 160,
+              padding: "0.75rem 1.25rem",
+              background: "var(--nq-surface)",
+              color: "var(--nq-ink)",
+              textDecoration: "none",
+              fontWeight: 600,
+              borderRadius: 2,
+              border: "1px solid var(--nq-line)",
+            }}
+          >
+            SBAR →
+          </Link>
+          <Link
+            href="/sop"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 44,
+              minWidth: 160,
+              padding: "0.75rem 1.25rem",
+              background: "var(--nq-surface)",
+              color: "var(--nq-ink)",
+              textDecoration: "none",
+              fontWeight: 600,
+              borderRadius: 2,
+              border: "1px solid var(--nq-line)",
+            }}
+          >
+            SOP →
           </Link>
         </div>
       </div>

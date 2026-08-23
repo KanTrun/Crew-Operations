@@ -1,7 +1,7 @@
 .PHONY: setup contracts dev test test-unit lint demo demo-local demo-reset seed bench eval
 
 setup:
-	python -m pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./apps/api pytest httpx ruff pyyaml
+	python -m pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api pytest httpx ruff pyyaml
 	cd apps/web && npm install
 
 contracts:
@@ -39,4 +39,5 @@ bench:
 
 eval:
 	CA_AGENT_MODE=replay python scripts/eval_ag_tkb.py
-	CA_AGENT_MODE=replay python -c "from ca_agents import AgentRuntime; print(AgentRuntime().run_replay('ag_tkb','0.1.0',{'x':1})['mode'])"
+	CA_AGENT_MODE=replay python scripts/eval_ag_msg.py
+	CA_AGENT_MODE=replay python -c "from fastapi.testclient import TestClient; from ca_api.interfaces.http.main import app; c=TestClient(app); r=c.get('/api/v1/sop/golden').json(); print('SOP', r['n'], r['moi_cau_co_nguon_hoac_chua_co'], r['co_cau_chua_co']); assert r['n']==20 and r['moi_cau_co_nguon_hoac_chua_co'] and r['co_cau_chua_co']"

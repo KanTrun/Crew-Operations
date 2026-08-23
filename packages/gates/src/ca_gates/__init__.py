@@ -6,6 +6,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ca_gates.vf_conf import ConfResult, validate_conf
+from ca_gates.vf_conflict import ConflictResult, present_conflict
+from ca_gates.vf_num import NumResult, validate_num
+from ca_gates.vf_rule import RuleResult, validate_rule
 from ca_gates.vf_schema import SchemaResult, validate_schema
 from ca_gates.vf_trace import TraceResult, validate_trace
 
@@ -15,9 +18,15 @@ __all__ = [
     "validate_schema",
     "validate_trace",
     "validate_conf",
+    "validate_num",
+    "validate_rule",
+    "present_conflict",
     "SchemaResult",
     "TraceResult",
     "ConfResult",
+    "NumResult",
+    "RuleResult",
+    "ConflictResult",
 ]
 
 

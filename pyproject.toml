@@ -22,4 +22,4 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["apps", "packages"]
-pythonpath = ["apps/api/src", "packages/contracts/src", "packages/agents/src", "packages/gates/src", "packages/solver/src", "packages/opsengine/src", "packages/playbook/src"]
+pythonpath = ["apps/api/src", "apps/api/tests", "packages/contracts/src", "packages/agents/src", "packages/gates/src", "packages/solver/src", "packages/opsengine/src", "packages/playbook/src"]

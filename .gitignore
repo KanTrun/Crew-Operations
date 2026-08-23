@@ -33,6 +33,12 @@ Thumbs.db
 
 # Generated solver output (CI regenerates via make bench)
 data/out/lich_tuan.json
+data/out/so_lan_sua.jsonl
+data/out/cam_nang.json
+data/out/audit.jsonl
+data/quan.db
+data/quan.db-wal
+data/quan.db-shm
 !data/out/.gitkeep
 
 .claude/

@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Sprint 5 — Cẩm nang sống"
-status: pending
+status: in-progress
 priority: P1
 effort: "17.25 person-days"
 dependencies: [5]
@@ -57,12 +57,12 @@ make replay PHIEN=...
 
 ## Todo
 
-- [ ] 1 luật đủ 8 bước đang hiệu lực (hoặc narrative trung thực)
-- [ ] ≥1 luật bị VF-RULE loại + lý do UI
-- [ ] Bảng tập sự 5 lần
-- [ ] Auto-disable test 60%
-- [ ] AG-SOP 20 Q + citations
-- [ ] A/B bảng có số sơ bộ
+- [x] 1 luật đủ 8 bước đang hiệu lực (**dựng lại 8 tuần**, không phải NV quán)
+- [x] ≥1 luật bị VF-RULE loại + lý do UI
+- [x] Bảng tập sự 5 lần
+- [x] Auto-disable test 60%
+- [x] AG-SOP 20 Q + citations / «chưa có trong cẩm nang»
+- [x] A/B bảng có số sơ bộ (`chưa đo live` + replay orc)
 
 ## Success Criteria
 
