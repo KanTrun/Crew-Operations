@@ -15,8 +15,9 @@ from pydantic import BaseModel
 
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
-from ca_api.persist import kv_get, kv_mutate
+from ca_api.persist import DangKyLoi, kv_get, kv_mutate
 from ca_api.persist import login as persist_login
+from ca_api.persist import register as persist_register
 from ca_api.persist import session as auth_session
 
 app = FastAPI(title="NHIP QUAN API", version="0.2.0")
@@ -64,6 +65,12 @@ def _set_pin(ca_id: str, nv_id: str, pinned: bool) -> bool:
 class LoginBody(BaseModel):
     username: str
     password: str
+
+
+class RegisterBody(BaseModel):
+    username: str
+    password: str
+    display_name: str
 
 
 class LoginOut(BaseModel):
@@ -187,6 +194,21 @@ def pin_assignment(
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
+
+
+@app.post("/api/v1/auth/register", response_model=LoginOut, status_code=201)
+def register(body: RegisterBody) -> LoginOut:
+    """Tạo tài khoản nhân viên mới rồi mở phiên luôn.
+
+    Vai trò luôn là `nhan_vien` (xem `persist.VAI_TU_DANG_KY`): tự đăng ký mà
+    lấy được vai quản lý thì ai cũng duyệt được ràng buộc và phát được mã điểm
+    danh. Nâng vai là việc của chủ quán, làm ngoài luồng này.
+    """
+    try:
+        row = persist_register(body.username, body.password, body.display_name)
+    except DangKyLoi as exc:
+        raise HTTPException(status_code=409, detail=exc.ma) from exc
+    return LoginOut(**row)
 
 
 @app.post("/api/v1/auth/login", response_model=LoginOut)

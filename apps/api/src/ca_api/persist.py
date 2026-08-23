@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
+import re
 import sqlite3
 import uuid
 from collections.abc import Callable
@@ -20,6 +22,45 @@ USERS = (
     ("minh", "nhipquan", "nhan_vien", "nv_03", "Minh — ca sáng"),
     ("hung", "nhipquan", "chu_quan", "nv_02", "Hùng — chủ quán"),
 )
+
+# ── Mật khẩu ──────────────────────────────────────────────────────────────
+# Bản đầu hash SHA256 trần, không salt. Khi chỉ có 3 tài khoản fixture thì đó
+# là nợ chấp nhận được; từ lúc mở màn hình đăng ký thì nó thành lỗ hổng thật
+# (cùng mật khẩu → cùng digest, tra bảng rainbow ra ngay). Nên chuyển sang
+# PBKDF2-HMAC-SHA256 có salt riêng từng tài khoản — vẫn thuần stdlib.
+#
+# Cột `password_sha` giữ nguyên tên để không phải migrate; nó lưu:
+#   - "pbkdf2_sha256$<vòng>$<salt hex>$<hash hex>"  (bản mới)
+#   - "<sha256 hex>"                                 (bản cũ, vẫn đăng nhập được)
+PBKDF2_VONG = 240_000
+_PREFIX = "pbkdf2_sha256"
+
+# Vai trò người tự đăng ký. KHÔNG bao giờ là quan_ly/chu_quan: nếu tự đăng ký
+# mà lấy được vai quản lý thì bất kỳ ai cũng duyệt được ràng buộc và phát được
+# mã điểm danh. Nâng vai là việc của chủ quán, làm ngoài luồng đăng ký.
+VAI_TU_DANG_KY = "nhan_vien"
+
+
+def hash_password(password: str, *, salt: bytes | None = None) -> str:
+    """Băm mật khẩu bằng PBKDF2-HMAC-SHA256 kèm salt riêng."""
+    s = salt if salt is not None else os.urandom(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), s, PBKDF2_VONG)
+    return f"{_PREFIX}${PBKDF2_VONG}${s.hex()}${dk.hex()}"
+
+
+def verify_password(password: str, stored: str) -> bool:
+    """So mật khẩu với giá trị đã lưu. Chấp nhận cả bản cũ SHA256 trần."""
+    if stored.startswith(f"{_PREFIX}$"):
+        try:
+            _, vong_raw, salt_hex, hash_hex = stored.split("$", 3)
+            dk = hashlib.pbkdf2_hmac(
+                "sha256", password.encode(), bytes.fromhex(salt_hex), int(vong_raw)
+            )
+        except (ValueError, TypeError):
+            return False
+        return hmac.compare_digest(dk.hex(), hash_hex)
+    # Bản cũ: so bằng compare_digest để không lộ thông tin qua thời gian so sánh.
+    return hmac.compare_digest(hashlib.sha256(password.encode()).hexdigest(), stored)
 
 
 def db_path() -> Path:
@@ -69,13 +110,12 @@ def init_db() -> None:
             """
         )
         for u, pw, role, nv, name in USERS:
-            digest = hashlib.sha256(pw.encode()).hexdigest()
             cx.execute(
                 """
                 INSERT OR IGNORE INTO users(username, password_sha, role, nv_id, display_name)
                 VALUES (?,?,?,?,?)
                 """,
-                (u, digest, role, nv, name),
+                (u, hash_password(pw), role, nv, name),
             )
     _INITIALIZED = True
 
@@ -88,16 +128,17 @@ def reset_init_flag() -> None:
 
 def login(username: str, password: str) -> dict[str, str] | None:
     init_db()
-    digest = hashlib.sha256(password.encode()).hexdigest()
     with _conn() as cx:
         row = cx.execute(
             """
-            SELECT username, role, nv_id, display_name
-            FROM users WHERE username=? AND password_sha=?
+            SELECT username, role, nv_id, display_name, password_sha
+            FROM users WHERE username=?
             """,
-            (username.strip().lower(), digest),
+            (username.strip().lower(),),
         ).fetchone()
-        if not row:
+        # Không tách "không có tài khoản" khỏi "sai mật khẩu": tách ra là cho
+        # người ngoài dò được username nào tồn tại.
+        if not row or not verify_password(password, row[4]):
             return None
         token = uuid.uuid4().hex
         cx.execute(
@@ -110,6 +151,76 @@ def login(username: str, password: str) -> dict[str, str] | None:
             "nv_id": row[2],
             "display_name": row[3],
         }
+
+
+# ── Đăng ký ───────────────────────────────────────────────────────────────
+_USERNAME_RE = re.compile(r"^[a-z0-9_]{3,24}$")
+MK_TOI_THIEU = 8
+
+
+class DangKyLoi(ValueError):
+    """Lỗi đăng ký có mã máy đọc được; tầng HTTP dịch thành câu tiếng Việt."""
+
+    def __init__(self, ma: str) -> None:
+        super().__init__(ma)
+        self.ma = ma
+
+
+def _nv_id_ke_tiep(cx: sqlite3.Connection) -> str:
+    """Cấp mã nhân viên chưa dùng, dạng nv_XX."""
+    dung = {
+        r[0] for r in cx.execute("SELECT nv_id FROM users").fetchall() if isinstance(r[0], str)
+    }
+    i = 1
+    while f"nv_{i:02d}" in dung:
+        i += 1
+    return f"nv_{i:02d}"
+
+
+def register(username: str, password: str, display_name: str) -> dict[str, str]:
+    """Tạo tài khoản nhân viên mới.
+
+    Luôn cấp vai `nhan_vien` — xem `VAI_TU_DANG_KY`. Trả về đúng payload như
+    `login()` để màn hình đăng ký vào được ngay, không phải đăng nhập lại.
+
+    Raises:
+        DangKyLoi: `ten_khong_hop_le` · `mat_khau_qua_ngan` · `thieu_ten_hien_thi`
+            · `ten_da_ton_tai`
+    """
+    init_db()
+    u = (username or "").strip().lower()
+    ten = (display_name or "").strip()
+    if not _USERNAME_RE.match(u):
+        raise DangKyLoi("ten_khong_hop_le")
+    if len(password or "") < MK_TOI_THIEU:
+        raise DangKyLoi("mat_khau_qua_ngan")
+    if not (2 <= len(ten) <= 60):
+        raise DangKyLoi("thieu_ten_hien_thi")
+
+    with _conn() as cx:
+        cx.isolation_level = None
+        cx.execute("BEGIN IMMEDIATE")
+        try:
+            if cx.execute("SELECT 1 FROM users WHERE username=?", (u,)).fetchone():
+                raise DangKyLoi("ten_da_ton_tai")
+            nv = _nv_id_ke_tiep(cx)
+            cx.execute(
+                """
+                INSERT INTO users(username, password_sha, role, nv_id, display_name)
+                VALUES (?,?,?,?,?)
+                """,
+                (u, hash_password(password), VAI_TU_DANG_KY, nv, ten),
+            )
+            token = uuid.uuid4().hex
+            cx.execute(
+                "INSERT INTO sessions(token, username, role, nv_id) VALUES (?,?,?,?)",
+                (token, u, VAI_TU_DANG_KY, nv),
+            )
+            cx.execute("COMMIT")
+        except Exception:
+            cx.execute("ROLLBACK")
+            raise
+    return {"token": token, "role": VAI_TU_DANG_KY, "nv_id": nv, "display_name": ten}
 
 
 def session(authorization: str | None) -> dict[str, str] | None:

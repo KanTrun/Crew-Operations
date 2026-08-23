@@ -180,11 +180,38 @@ def diem_danh(
     return {"ok": "true", "nv_id": nv}
 
 
+MAU_PHIEU = ("mo_quan", "dong_quan", "ban_giao_ca")
+
+
 @router.get("/api/v1/phieu/mau")
 def phieu_mau() -> dict[str, Any]:
-    tpl = load_template("mo_quan")
-    item = {"ma": "mo_quan", "ten": tpl["ten"], "so_buoc": len(tpl["buoc"])}
-    return {"items": [item], **item, "buoc": tpl["buoc"]}
+    """Liệt kê MỌI mẫu phiếu trong `infra/templates/`.
+
+    Trước đây hàm này hardcode `mo_quan`, nên `/phieu` chỉ thấy 1 trong 3 mẫu
+    và hai quy trình đóng quán + bàn giao ca không có đường vào từ giao diện.
+    """
+    items: list[dict[str, Any]] = []
+    for ma in MAU_PHIEU:
+        try:
+            tpl = load_template(ma)
+        except FileNotFoundError:
+            continue
+        items.append(
+            {
+                "ma": ma,
+                "ten": tpl["ten"],
+                "so_buoc": len(tpl["buoc"]),
+                "gan_voi": tpl.get("gan_voi", ""),
+                "mo_khi": tpl.get("mo_khi", ""),
+                "han_hoan_thanh_phut": tpl.get("han_hoan_thanh_phut"),
+                "buoc": tpl["buoc"],
+            }
+        )
+    if not items:
+        raise HTTPException(status_code=404, detail="khong_co_mau_phieu")
+    # Giữ các khoá phẳng của mẫu đầu để không phá client cũ đang đọc `buoc`.
+    dau = items[0]
+    return {"items": items, "ma": dau["ma"], "ten": dau["ten"], "buoc": dau["buoc"]}
 
 
 @router.post("/api/v1/phieu/start")
@@ -503,9 +530,19 @@ def ca_nhan(
 
 @router.get("/api/v1/ghi-nhan-sua")
 def ghi_nhan(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    """Sổ lần sửa lịch — kể cả dòng dựng lại, nhưng nói rõ dòng nào là dựng lại.
+
+    Trước đây hàm này lọc `include_synthetic=False`, nên khi quán chưa nhả/nhận
+    ca lần nào thì bảng rỗng trắng — người dùng không thấy sổ này để làm gì. Giờ
+    trả cả dòng fixture, mỗi dòng kèm `nguon` để không ai nhầm dựng lại là ghi
+    thật. Cổng chặn luật (`/cam-nang/chay-8-buoc`) VẪN chỉ đếm dòng ghi trực
+    tiếp, nên số #10 "0 luật quán thật" không bị fixture làm sai.
+    """
     _require_role(authorization)
     items = []
-    for i, row in enumerate(list_sua(include_synthetic=False)):
+    for i, row in enumerate(list_sua()):
+        la_dung_lai = bool(row.get("synthetic"))
+        mac_dinh = "mo_phong_fixture" if la_dung_lai else "ghi_truc_tiep"
         items.append(
             {
                 "id": f"sua_{i}",
@@ -513,10 +550,14 @@ def ghi_nhan(authorization: Annotated[str | None, Header()] = None) -> dict[str,
                 "truoc": json.dumps(row.get("truoc"), ensure_ascii=False),
                 "sau": json.dumps(row.get("sau"), ensure_ascii=False),
                 "created_at": row.get("at"),
+                "luc": row.get("at"),
                 "ai": row.get("ai"),
+                "nguon": row.get("nguon") or mac_dinh,
+                "dung_lai": la_dung_lai,
             }
         )
-    return {"items": items}
+    so_that = sum(1 for x in items if not x["dung_lai"])
+    return {"items": items, "so_ghi_truc_tiep": so_that, "so_dung_lai": len(items) - so_that}
 
 
 @router.post("/api/v1/import/nhan-vien")
