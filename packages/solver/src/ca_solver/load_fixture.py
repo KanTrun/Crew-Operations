@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, cast
 
 from ca_solver.model import LichInput
 
@@ -11,20 +12,20 @@ _THU = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN"}
 ROOT = Path(__file__).resolve().parents[4]
 
 
-def load_labor_params(path: Path | None = None) -> dict:
+def load_labor_params(path: Path | None = None) -> dict[str, Any]:
     import yaml
 
     p = path or ROOT / "config" / "tham-so-lao-dong.yaml"
-    return yaml.safe_load(p.read_text(encoding="utf-8"))
+    return cast(dict[str, Any], yaml.safe_load(p.read_text(encoding="utf-8")))
 
 
-def load_seed(path: Path | None = None) -> dict:
+def load_seed(path: Path | None = None) -> dict[str, Any]:
     p = path or ROOT / "data" / "seed" / "sample.json"
-    return json.loads(p.read_text(encoding="utf-8"))
+    return cast(dict[str, Any], json.loads(p.read_text(encoding="utf-8")))
 
 
 def build_lich_input(
-    seed: dict | None = None,
+    seed: dict[str, Any] | None = None,
     *,
     tuan_index: int = 0,
     debt: dict[str, dict[str, float]] | None = None,

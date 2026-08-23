@@ -27,6 +27,37 @@ def _duration_h(meta: dict[str, str]) -> float:
     return (_to_min(meta["ket_thuc"]) - _to_min(meta["bat_dau"])) / 60.0
 
 
+def _abs_min(meta: dict[str, str], moc: str) -> int | None:
+    """Phút tuyệt đối trong tuần. None nếu `thu` không nằm trong lịch tuần."""
+    thu = meta["thu"]
+    if thu not in _THU_ORD:
+        return None
+    return _THU_ORD[thu] * 24 * 60 + _to_min(meta[moc])
+
+
+def _vi_pham_khoang_nghi(
+    ma: dict[str, str], mb: dict[str, str], khoang_nghi_gio: float
+) -> bool:
+    """c04 — hai ca có khoảng nghỉ ngắn hơn mức cấu hình.
+
+    Tách thành hàm riêng để mốc thời gian không dùng chung tên biến với
+    vòng lặp miền giá trị ở `solve_cpsat`.
+    """
+    moc = (
+        _abs_min(ma, "bat_dau"),
+        _abs_min(ma, "ket_thuc"),
+        _abs_min(mb, "bat_dau"),
+        _abs_min(mb, "ket_thuc"),
+    )
+    if any(m is None for m in moc):
+        return False
+    a_dau, a_cuoi, b_dau, b_cuoi = (int(m) for m in moc if m is not None)
+    if a_dau > b_dau:
+        a_dau, a_cuoi, b_dau, b_cuoi = b_dau, b_cuoi, a_dau, a_cuoi
+    gap = b_dau - a_cuoi
+    return 0 <= gap < khoang_nghi_gio * 60
+
+
 def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
     if data.tran_gio_tuan <= 0 or data.khoang_nghi_gio <= 0:
         return SolveResult(ok=False, violations=["config:thieu_tham_so_lao_dong"])
@@ -39,10 +70,10 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
     # Domain: skill + TKB + leave → only create feasible vars
     for ca in cas:
         meta = data.ca_meta[ca]
-        need = data.vi_tri_can.get(ca)
+        can_ky_nang = data.vi_tri_can.get(ca)
         thu = meta["thu"]
         for nv in nvs:
-            if need and need not in data.ky_nang.get(nv, set()):
+            if can_ky_nang and can_ky_nang not in data.ky_nang.get(nv, set()):
                 continue
             if (nv, thu) in data.nghi_phep:
                 continue
@@ -54,7 +85,7 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
                     break
             if conflict:
                 continue
-            x[nv, ca] = model.NewBoolVar(f"x_{nv}_{ca}")
+            x[nv, ca] = model.new_bool_var(f"x_{nv}_{ca}")
 
     # c02 staffing count (exact minimum for tightness)
     for ca in cas:
@@ -66,7 +97,7 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
                 violations=[f"c02:{ca}:khong_du_ung_vien:{len(vars_ca)}<{need_n}"],
                 status="INFEASIBLE_DOMAIN",
             )
-        model.Add(sum(vars_ca) == need_n)
+        model.add(sum(vars_ca) == need_n)
 
     # c03 no overlap same day; c04 rest gap
     for nv in nvs:
@@ -75,23 +106,14 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
             ma = data.ca_meta[a]
             for b in nv_cas[i + 1 :]:
                 mb = data.ca_meta[b]
+                # c03 — cùng ngày, giờ chồng nhau
                 if ma["thu"] == mb["thu"] and _overlap(
                     ma["bat_dau"], ma["ket_thuc"], mb["bat_dau"], mb["ket_thuc"]
                 ):
-                    model.AddBoolOr([x[nv, a].Not(), x[nv, b].Not()])
-                # rest gap across adjacent timed shifts
-                if ma["thu"] not in _THU_ORD or mb["thu"] not in _THU_ORD:
-                    continue
-                a0 = _THU_ORD[ma["thu"]] * 24 * 60 + _to_min(ma["bat_dau"])
-                a1 = _THU_ORD[ma["thu"]] * 24 * 60 + _to_min(ma["ket_thuc"])
-                b0 = _THU_ORD[mb["thu"]] * 24 * 60 + _to_min(mb["bat_dau"])
-                b1 = _THU_ORD[mb["thu"]] * 24 * 60 + _to_min(mb["ket_thuc"])
-                if a0 > b0:
-                    a0, a1, b0, b1 = b0, b1, a0, a1
-                gap = b0 - a1
-                need = data.khoang_nghi_gio * 60
-                if 0 <= gap < need:
-                    model.AddBoolOr([x[nv, a].Not(), x[nv, b].Not()])
+                    model.add_bool_or([x[nv, a].Not(), x[nv, b].Not()])
+                # c04 — khoảng nghỉ giữa hai ca liền nhau
+                if _vi_pham_khoang_nghi(ma, mb, data.khoang_nghi_gio):
+                    model.add_bool_or([x[nv, a].Not(), x[nv, b].Not()])
 
     # c05 weekly hours
     for nv in nvs:
@@ -103,10 +125,10 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
             terms.append(x[nv, ca] * dur_tenths)
         if terms:
             base = int(round(data.gio_da_lam.get(nv, 0) * 10))
-            model.Add(sum(terms) + base <= int(data.tran_gio_tuan * 10))
+            model.add(sum(terms) + base <= int(data.tran_gio_tuan * 10))
 
     # Objective: soft penalties + fairness max-debt
-    obj_terms: list = []
+    obj_terms: list[cp_model.LinearExpr] = []
     soft_ids = soft_mod.soft_ids(data.soft_count if data.soft_enabled else 0)
 
     # s02: penalize weekend/night stacking for high-debt people (proxy)
@@ -136,7 +158,7 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
             odds = [x[nv, ca] for nv in nvs if (nv, ca) in x and nv[-1] in "13579"]
             evens = [x[nv, ca] for nv in nvs if (nv, ca) in x and nv[-1] in "02468"]
             if odds and evens:
-                both = model.NewBoolVar(f"pair_{ca}")
+                both = model.new_bool_var(f"pair_{ca}")
                 # both => at least one odd and one even (approx via sum)
                 # Maximize both: add negative cost when both active — use hint via sums
                 # Simplified: penalize all-odd or all-even via linear proxy skipped for KISS
@@ -144,7 +166,7 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
 
     # Fairness: minimize max over axes of (prior + new load) — scaled integers
     scale = 10
-    max_d = model.NewIntVar(0, 10_000, "max_debt")
+    max_d = model.new_int_var(0, 10_000, "max_debt")
     for nv in nvs:
         for axis in AXES:
             prior = int(round(data.debt.get(nv, {}).get(axis, 0) * scale))
@@ -168,13 +190,13 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
                 if add:
                     add_terms.append(x[nv, ca] * add)
             if add_terms:
-                model.Add(prior + sum(add_terms) <= max_d)
+                model.add(prior + sum(add_terms) <= max_d)
             else:
-                model.Add(prior <= max_d)
+                model.add(prior <= max_d)
 
     # Primary: max_d; secondary: soft
     # CP-SAT single objective: weight max_d heavily
-    model.Minimize(max_d * 1000 + sum(obj_terms) if obj_terms else max_d * 1000)
+    model.minimize(max_d * 1000 + sum(obj_terms) if obj_terms else max_d * 1000)
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = time_limit_s

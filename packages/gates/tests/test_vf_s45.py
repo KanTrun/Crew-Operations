@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from ca_gates import present_conflict, validate_num, validate_rule
 from ca_playbook.vong_doi import kiem_chung, tap_su, theo_doi
 
@@ -32,7 +34,7 @@ def test_vf_rule_rejects_person() -> None:
 
 
 def test_probation_and_autodisable() -> None:
-    luat = {
+    luat: dict[str, Any] = {
         "cau": "x",
         "loai": "nhu_cau_ca",
         "bang_chung": ["1", "2", "3"],
