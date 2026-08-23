@@ -23,16 +23,16 @@ const MANAGER_PRIMARY: LinkItem[] = [
 
 const MORE: LinkItem[] = [
   { href: "/cong-bang", label: "Công bằng" },
-  { href: "/toi", label: "Ca của tôi" },
-  { href: "/phieu", label: "Phiếu" },
-  { href: "/treo", label: "Việc treo" },
   { href: "/doi-ca", label: "Chợ đổi ca" },
-  { href: "/qr", label: "Điểm danh QR" },
-  { href: "/tieu-thu", label: "Sổ tiêu thụ" },
+  { href: "/qr", label: "QR" },
+  { href: "/tieu-thu", label: "Tiêu thụ" },
   { href: "/hao-phi", label: "Hao phí" },
-  { href: "/sop", label: "Hỏi SOP" },
+  { href: "/sop", label: "SOP" },
   { href: "/handover", label: "Bàn giao" },
-  { href: "/vet", label: "Vết hệ thống" },
+  { href: "/vet", label: "Vết" },
+  { href: "/phieu", label: "Phiếu" },
+  { href: "/toi", label: "Ca của tôi" },
+  { href: "/treo", label: "Việc treo" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

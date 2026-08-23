@@ -1,42 +1,69 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getToken, isManager } from "../../lib/session";
-import { AuthGate, Kicker } from "../../ui/kit";
+import { Kicker } from "../../ui/kit";
 
-const LINKS = [
+const STAFF_MORE = [
   ["/cong-bang", "Công bằng"],
   ["/doi-ca", "Chợ đổi ca"],
-  ["/qr", "Điểm danh QR"],
-  ["/tieu-thu", "Sổ tiêu thụ"],
+  ["/qr", "QR"],
+  ["/tieu-thu", "Tiêu thụ"],
   ["/hao-phi", "Hao phí"],
-  ["/sop", "Hỏi SOP"],
+  ["/sop", "SOP"],
   ["/handover", "Bàn giao"],
-  ["/vet", "Vết hệ thống"],
+  ["/vet", "Vết"],
+] as const;
+
+const MANAGER_MORE = [
+  ["/cong-bang", "Công bằng"],
+  ["/doi-ca", "Chợ đổi ca"],
   ["/phieu", "Phiếu"],
   ["/toi", "Ca của tôi"],
   ["/treo", "Việc treo"],
-  ["/roster", "Lịch tuần"],
-  ["/inbox", "Hộp thư"],
-  ["/cam-nang", "Cẩm nang"],
-];
+  ["/qr", "QR"],
+  ["/tieu-thu", "Tiêu thụ"],
+  ["/hao-phi", "Hao phí"],
+  ["/sop", "SOP"],
+  ["/handover", "Bàn giao"],
+  ["/vet", "Vết"],
+] as const;
 
 export default function ThemPage() {
+  const path = usePathname();
   const [token, setToken] = useState("");
-  useEffect(() => {
-    setToken(getToken());
-  }, []);
-  if (!token) return <AuthGate />;
+  useEffect(() => setToken(getToken()), []);
   const manager = isManager();
+  const links = manager ? MANAGER_MORE : STAFF_MORE;
+
+  if (!token) {
+    return (
+      <div className="nq-page">
+        <Kicker>Menu</Kicker>
+        <h1>Thêm</h1>
+        <p className="nq-muted">Đăng nhập để xem lối tắt.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="nq-page">
-      <Kicker>Tất cả mặt</Kicker>
+      <Kicker>Menu</Kicker>
       <h1>Thêm</h1>
-      <p className="nq-muted">{manager ? "Quản lý / chủ quán" : "Nhân viên"} — chọn một việc.</p>
       <div className="nq-list" style={{ marginTop: "1rem" }}>
-        {LINKS.map(([href, label]) => (
-          <Link key={href} href={href} className="nq-item" style={{ textDecoration: "none", color: "var(--nq-ink)" }}>
+        {links.map(([href, label]) => (
+          <Link
+            key={href}
+            href={href}
+            className="nq-item"
+            style={{
+              textDecoration: "none",
+              color: "var(--nq-ink)",
+              borderColor: path === href ? "var(--nq-accent-soft)" : undefined,
+            }}
+          >
             {label}
           </Link>
         ))}

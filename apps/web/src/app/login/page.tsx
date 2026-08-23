@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { API } from "../../lib/api";
-import { btnPrimary, Field, inputStyle, Alert, Kicker } from "../../ui/kit";
+import { Alert, EditorialBanner, Field, inputStyle, Kicker } from "../../ui/kit";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,34 +45,37 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: "1.5rem" }}>
-      <form onSubmit={onSubmit} style={{ width: "100%", maxWidth: 400 }}>
-        <Kicker>Vận hành ca</Kicker>
-        <h1>Đăng nhập</h1>
-        <p className="nq-muted" style={{ marginBottom: "1.25rem" }}>
-          Tài khoản quán: lan, minh, hung — mật khẩu nhipquan.
-        </p>
-        <Field label="Tài khoản">
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-            style={inputStyle}
-          />
-        </Field>
-        <Field label="Mật khẩu">
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            style={inputStyle}
-          />
-        </Field>
-        {error ? <Alert>{error}</Alert> : null}
-        <button type="submit" disabled={loading} style={{ ...btnPrimary, width: "100%" }}>
-          {loading ? "Đang vào…" : "Vào hệ thống"}
-        </button>
+    <main className="nq-login-wrap">
+      <form onSubmit={onSubmit} className="nq-login-card">
+        <EditorialBanner status="Vào ca · một việc một lúc" meta="Phiếu · lịch · công bằng · cẩm nang" />
+        <div style={{ padding: "0 0.25rem" }}>
+          <Kicker>Vận hành ca</Kicker>
+          <h1>Đăng nhập</h1>
+          <p className="nq-muted" style={{ marginBottom: "1.25rem" }}>
+            Tài khoản quán: lan, minh, hung — mật khẩu nhipquan.
+          </p>
+          <Field label="Tài khoản">
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+              style={inputStyle}
+            />
+          </Field>
+          <Field label="Mật khẩu">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              style={inputStyle}
+            />
+          </Field>
+          {error ? <Alert>{error}</Alert> : null}
+          <button type="submit" disabled={loading} className="nq-btn nq-btn-primary nq-btn-block">
+            {loading ? "Đang vào…" : "Vào hệ thống"}
+          </button>
+        </div>
       </form>
     </main>
   );
