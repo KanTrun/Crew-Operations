@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { getToken } from "../../lib/session";
-import { Alert, AuthGate, btnPrimary, Empty, Field, inputStyle, Kicker, Loading } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Empty, Field, inputStyle, Loading, PageHeader } from "../../ui/kit";
 
 type Cluster = { cau?: string; thu?: string; n?: number };
 
@@ -47,8 +47,7 @@ export default function HaoPhiPage() {
 
   return (
     <div className="nq-page">
-      <Kicker>Gom cụm từ ghi chú ca</Kicker>
-      <h1>Hao phí</h1>
+      <PageHeader kicker="Gom cụm từ ghi chú ca" title="Hao phí" />
       {error ? <Alert>{error}</Alert> : null}
       <form onSubmit={onSubmit}>
         <Field label="Thứ">
@@ -57,18 +56,18 @@ export default function HaoPhiPage() {
         <Field label="Ghi chú">
           <input value={ghi} onChange={(e) => setGhi(e.target.value)} style={inputStyle} />
         </Field>
-        <button type="submit" style={btnPrimary}>
+        <Btn type="submit" variant="primary">
           Ghi chú
-        </button>
+        </Btn>
       </form>
       <h2>Cụm</h2>
-      {loading ? <Loading /> : null}
+      {loading ? <Loading skeleton="list">Đang gom cụm…</Loading> : null}
       {!loading && items.length === 0 ? <Empty>Chưa có ghi chú để gom cụm.</Empty> : null}
       <div className="nq-list">
         {items.map((it, i) => (
           <article key={i} className="nq-item">
-            <p style={{ margin: 0, fontWeight: 600 }}>{it.cau ?? "Chưa đủ mẫu để gom cụm"}</p>
-            <p className="nq-muted">
+            <p className="nq-item-title">{it.cau ?? "Chưa đủ mẫu để gom cụm"}</p>
+            <p className="nq-item-sub">
               {it.thu} · {it.n ?? 0} lần
             </p>
           </article>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiSend } from "../../lib/api";
 import { getToken } from "../../lib/session";
-import { Alert, AuthGate, btnPrimary, Empty, Field, inputStyle, Kicker } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Empty, Field, inputStyle, PageHeader, textareaStyle } from "../../ui/kit";
 
 type Ans = { cau_tra_loi: string; trich_dan: string[]; chua_co: boolean };
 
@@ -30,26 +30,27 @@ export default function SopPage() {
   if (!token) return <AuthGate />;
 
   return (
-    <div className="nq-page">
-      <Kicker>Chỉ trả lời từ phiếu và luật đã duyệt</Kicker>
-      <h1>Hỏi SOP</h1>
+    <div className="nq-page nq-page--run">
+      <PageHeader
+        kicker="Chỉ trả lời từ phiếu và luật đã duyệt"
+        title="Hỏi SOP"
+        meta="Đặt câu bằng tiếng Việt thường ngày. Hệ thống không bịa SOP."
+      />
       <Field label="Câu hỏi">
-        <textarea value={q} onChange={(e) => setQ(e.target.value)} rows={3} style={inputStyle} />
+        <textarea value={q} onChange={(e) => setQ(e.target.value)} rows={3} style={textareaStyle} />
       </Field>
-      <button onClick={ask} style={btnPrimary}>
+      <Btn variant="primary" onClick={ask}>
         Hỏi
-      </button>
+      </Btn>
       {error ? <Alert>{error}</Alert> : null}
       {a ? (
-        <article className="nq-item" style={{ marginTop: "1rem" }}>
+        <article className="nq-item nq-sop-answer">
           <p>{a.cau_tra_loi}</p>
           {a.chua_co ? <Alert kind="info">Chưa có trong cẩm nang.</Alert> : null}
-          <p className="nq-muted" style={{ fontSize: "0.85rem" }}>
-            Trích dẫn: {a.trich_dan.join(", ") || "không"}
-          </p>
+          <p className="nq-item-sub">Trích dẫn: {a.trich_dan.join(", ") || "không"}</p>
         </article>
       ) : (
-        <Empty>Đặt câu bằng tiếng Việt thường ngày. Hệ thống không bịa SOP.</Empty>
+        <Empty>Chưa có câu trả lời — hãy đặt câu hỏi.</Empty>
       )}
     </div>
   );

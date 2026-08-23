@@ -3,6 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { API, apiSend } from "../../lib/api";
 import { lifeLabel, roleLabel } from "../../lib/session";
+import {
+  Alert,
+  Btn,
+  Loading,
+  Notice,
+  PageHeader,
+  StatusChip,
+  Toolbar,
+} from "../../ui/kit";
 
 type RosterData = {
   tuan_iso: string;
@@ -44,23 +53,6 @@ function groupByDay(ca: RosterData["ca"]) {
   return map;
 }
 
-const cellStyle: React.CSSProperties = {
-  border: "1px solid var(--nq-line)",
-  padding: "0.5rem 0.6rem",
-  verticalAlign: "top",
-  minWidth: 120,
-};
-
-const headerCellStyle: React.CSSProperties = {
-  ...cellStyle,
-  background: "var(--nq-bg-elevated)",
-  fontFamily: "var(--nq-font-mono)",
-  fontSize: "0.78rem",
-  color: "var(--nq-ink-muted)",
-  fontWeight: 600,
-  textAlign: "left",
-};
-
 export default function RosterPage() {
   const [data, setData] = useState<RosterData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,9 +62,11 @@ export default function RosterPage() {
   const [life, setLife] = useState("");
   const [lifeBusy, setLifeBusy] = useState(false);
   const [pinBusy, setPinBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(
     (week: string) => {
+      setLoading(true);
       fetch(`${API}/api/v1/lich-tuan?tuan=${week}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
@@ -81,7 +75,8 @@ export default function RosterPage() {
           return r.json() as Promise<RosterData>;
         })
         .then(setData)
-        .catch(() => setError("Không tải được lịch từ API."));
+        .catch(() => setError("Không tải được lịch từ API."))
+        .finally(() => setLoading(false));
     },
     [token],
   );
@@ -99,8 +94,8 @@ export default function RosterPage() {
   }, []);
 
   useEffect(() => {
-    load(tuan);
-  }, [load, tuan]);
+    if (token) load(tuan);
+  }, [load, tuan, token]);
 
   const canWrite = role === "quan_ly" || role === "chu_quan";
 
@@ -150,196 +145,120 @@ export default function RosterPage() {
 
   return (
     <div className="nq-page">
-      <p className="nq-kicker">Lưới ca · ghim ô</p>
-      <h1>Lịch tuần</h1>
-      <p className="nq-muted">
-        {data ? `${data.tuan_iso} · nguồn quán` : "Đang tải…"}
-        {role ? ` · ${roleLabel(role)}` : ""}
-        {life ? ` · ${lifeLabel(life)}` : ""}
-      </p>
-      <p style={{ display: "flex", gap: "0.65rem", alignItems: "center", flexWrap: "wrap", margin: "0.75rem 0 1rem" }}>
+      <PageHeader
+        kicker="Lưới ca · ghim ô"
+        title="Lịch tuần"
+        meta={
+          <>
+            {data ? `${data.tuan_iso} · nguồn quán` : "Đang tải…"}
+            {role ? ` · ${roleLabel(role)}` : ""}
+            {life ? (
+              <>
+                {" · "}
+                <StatusChip tone={life === "da_cong_bo" ? "ok" : "default"}>{lifeLabel(life)}</StatusChip>
+              </>
+            ) : null}
+          </>
+        }
+      />
+
+      <Toolbar>
         <label className="nq-muted">
           Tuần ISO
-          <input
-            type="text"
-            value={tuan}
-            onChange={(e) => setTuan(e.target.value)}
-            style={{
-              marginLeft: "0.4rem",
-              background: "var(--nq-surface)",
-              border: "1px solid var(--nq-line)",
-              color: "var(--nq-ink)",
-              padding: "0.3rem 0.5rem",
-              fontFamily: "var(--nq-font-mono)",
-              fontSize: "0.85rem",
-              borderRadius: 2,
-              width: 100,
-            }}
-          />
+          <input type="text" value={tuan} onChange={(e) => setTuan(e.target.value)} style={{ width: 100 }} />
         </label>
         {canWrite && NEXT[life] ? (
-          <button disabled={lifeBusy} onClick={advanceLife} type="button">
+          <Btn variant="ghost" disabled={lifeBusy} onClick={advanceLife}>
             {lifeBusy ? "Đang xử lý…" : `Chuyển sang ${lifeLabel(NEXT[life])}`}
-          </button>
+          </Btn>
         ) : null}
-      </p>
+      </Toolbar>
 
-      {error && (
-        <p role="alert" style={{ color: "var(--nq-danger)", marginBottom: "1rem" }}>
-          {error}
-        </p>
-      )}
-
-      {!canWrite && (
-        <p className="nq-muted" style={{ border: "1px solid var(--nq-line)", padding: "0.5rem 0.75rem" }}>
-          Chỉ xem. Quản lý hoặc chủ quán mới ghim được ô.
-        </p>
-      )}
+      {error ? <Alert>{error}</Alert> : null}
+      {!canWrite ? <Notice>Chỉ xem. Quản lý hoặc chủ quán mới ghim được ô.</Notice> : null}
+      {loading ? <Loading skeleton="list">Đang tải lịch…</Loading> : null}
 
       {data && days.length > 0 ? (
-        <div style={{ overflowX: "auto" }}>
-          <table
-            style={{
-              borderCollapse: "collapse",
-              width: "100%",
-              fontFamily: "var(--nq-font-body)",
-              fontSize: "0.875rem",
-            }}
-          >
+        <div className="nq-roster-wrap">
+          <table className="nq-roster-table">
             <thead>
               <tr>
-                <th style={headerCellStyle}>Ca / Vị trí</th>
+                <th>Ca / Vị trí</th>
                 {days.map((d) => (
-                  <th key={d} style={headerCellStyle}>
-                    {d}
-                  </th>
+                  <th key={d}>{d}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {(["sang", "chieu", "toi"] as const).map((khung) => {
                 const label =
-                  khung === "sang"
-                    ? "Sáng 07–12"
-                    : khung === "chieu"
-                      ? "Chiều 12–17"
-                      : "Tối 17–22";
+                  khung === "sang" ? "Sáng 07–12" : khung === "chieu" ? "Chiều 12–17" : "Tối 17–22";
                 return (
-                <tr key={khung}>
-                  <td
-                    style={{
-                      ...cellStyle,
-                      fontFamily: "var(--nq-font-mono)",
-                      fontSize: "0.78rem",
-                      color: "var(--nq-ink-muted)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {label}
-                  </td>
-                  {days.map((d) => {
-                    const shift = (byDay[d] ?? []).find(
-                      (c) => (c.khung ?? "") === khung,
-                    );
-                    const assigned: string[] = shift
-                      ? (data.phan_cong[shift.id] ?? [])
-                      : [];
-                    return (
-                      <td key={d} style={cellStyle}>
-                        {shift ? (
-                          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                            <li
-                              style={{
-                                fontSize: "0.7rem",
-                                color: "var(--nq-ink-muted)",
-                                marginBottom: "0.25rem",
-                              }}
-                            >
-                              {shift.vi_tri}
-                            </li>
-                            {assigned.map((nv_id) => (
-                              <li
-                                key={nv_id}
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  gap: "0.4rem",
-                                  padding: "0.2rem 0",
-                                  borderBottom: "1px solid var(--nq-line)",
-                                }}
-                              >
-                                <span style={{ fontSize: "0.82rem" }}>
-                                  {nvMap[nv_id] ?? nv_id}
-                                </span>
-                                {canWrite && (
-                                  <button
+                  <tr key={khung}>
+                    <td className="nq-roster-row-label">{label}</td>
+                    {days.map((d) => {
+                      const shift = (byDay[d] ?? []).find((c) => (c.khung ?? "") === khung);
+                      const assigned: string[] = shift ? (data.phan_cong[shift.id] ?? []) : [];
+                      return (
+                        <td key={d}>
+                          {shift ? (
+                            <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                              <li className="nq-roster-shift-meta">{shift.vi_tri}</li>
+                              {assigned.map((nv_id) => (
+                                <li key={nv_id} className="nq-roster-nv">
+                                  <span>{nvMap[nv_id] ?? nv_id}</span>
+                                  {canWrite ? (
+                                    <button
+                                      type="button"
+                                      className="nq-roster-unpin"
+                                      disabled={pinBusy}
+                                      onClick={() => handlePin(shift.id, nv_id, false)}
+                                      aria-label={`Unpin ${nvMap[nv_id] ?? nv_id}`}
+                                    >
+                                      ×
+                                    </button>
+                                  ) : null}
+                                </li>
+                              ))}
+                              {canWrite ? (
+                                <li className="nq-roster-add">
+                                  <select
+                                    defaultValue=""
                                     disabled={pinBusy}
-                                    onClick={() => handlePin(shift.id, nv_id, false)}
-                                    title="Unpin"
-                                    aria-label={`Unpin ${nvMap[nv_id] ?? nv_id}`}
-                                    style={{
-                                      background: "none",
-                                      border: "none",
-                                      cursor: "pointer",
-                                      color: "var(--nq-accent)",
-                                      fontSize: "0.75rem",
-                                      padding: "0 0.2rem",
+                                    aria-label="Thêm nhân viên"
+                                    onChange={(e) => {
+                                      if (e.target.value) {
+                                        handlePin(shift.id, e.target.value, true);
+                                        e.target.value = "";
+                                      }
                                     }}
                                   >
-                                    ×
-                                  </button>
-                                )}
-                              </li>
-                            ))}
-                            {canWrite && (
-                              <li style={{ paddingTop: "0.3rem" }}>
-                                <select
-                                  defaultValue=""
-                                  disabled={pinBusy}
-                                  onChange={(e) => {
-                                    if (e.target.value) {
-                                      handlePin(shift.id, e.target.value, true);
-                                      e.target.value = "";
-                                    }
-                                  }}
-                                  style={{
-                                    background: "var(--nq-surface)",
-                                    border: "1px solid var(--nq-line)",
-                                    color: "var(--nq-ink)",
-                                    fontSize: "0.75rem",
-                                    padding: "0.2rem 0.3rem",
-                                    borderRadius: 2,
-                                    width: "100%",
-                                  }}
-                                  aria-label="Thêm nhân viên"
-                                >
-                                  <option value="">Thêm nhân viên…</option>
-                                  {data.nhan_vien
-                                    .filter((nv) => !assigned.includes(nv.id))
-                                    .map((nv) => (
-                                      <option key={nv.id} value={nv.id}>
-                                        {nv.ten}
-                                      </option>
-                                    ))}
-                                </select>
-                              </li>
-                            )}
-                          </ul>
-                        ) : (
-                          <span style={{ color: "var(--nq-line)" }}>—</span>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
+                                    <option value="">Thêm nhân viên…</option>
+                                    {data.nhan_vien
+                                      .filter((nv) => !assigned.includes(nv.id))
+                                      .map((nv) => (
+                                        <option key={nv.id} value={nv.id}>
+                                          {nv.ten}
+                                        </option>
+                                      ))}
+                                  </select>
+                                </li>
+                              ) : null}
+                            </ul>
+                          ) : (
+                            <span className="nq-muted">—</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
       ) : (
-        !error && <p style={{ color: "var(--nq-ink-muted)" }}>Đang tải lịch…</p>
+        !loading && !error && <p className="nq-muted">Chưa có dữ liệu lịch.</p>
       )}
     </div>
   );

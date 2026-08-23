@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { getToken } from "../../lib/session";
-import { Alert, AuthGate, btnDanger, btnPrimary, Empty, Kicker, Loading } from "../../ui/kit";
+import {
+  Alert,
+  AuthGate,
+  Btn,
+  Empty,
+  InlineActions,
+  Kicker,
+  Loading,
+  PageHeader,
+} from "../../ui/kit";
 
 type Ca = {
   id: string;
@@ -69,43 +78,41 @@ export default function ToiPage() {
 
   return (
     <div className="nq-page">
-      <Kicker>Ca của tôi</Kicker>
-      <h1>Lịch của tôi</h1>
-      {week ? <p className="nq-muted">Tuần {week}</p> : null}
+      <PageHeader kicker="Ca của tôi" title="Lịch của tôi" meta={week ? `Tuần ${week}` : undefined} />
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
-      {loading ? <Loading>Đang tải lịch của bạn…</Loading> : null}
+      {loading ? <Loading skeleton="list">Đang tải lịch của bạn…</Loading> : null}
       {!loading && ca.length === 0 && !error ? (
         <Empty>Chưa có ca trong tuần này, hoặc lịch chưa công bố.</Empty>
       ) : null}
       {Object.keys(grouped)
         .sort()
         .map((ngay) => (
-          <section key={ngay} style={{ marginTop: "1.25rem" }}>
-            <p className="nq-kicker">{ngay}</p>
+          <section key={ngay} className="nq-section-day">
+            <Kicker>{ngay}</Kicker>
             <div className="nq-list">
               {(grouped[ngay] ?? []).map((c) => {
                 const mine = c.trang_thai === "cua_toi";
                 return (
                   <div key={c.id} className="nq-item">
-                    <p style={{ margin: 0, fontWeight: 600 }}>{c.vi_tri}</p>
-                    <p className="nq-muted" style={{ margin: "0.2rem 0 0.6rem", fontFamily: "var(--nq-font-mono)" }}>
+                    <p className="nq-item-title">{c.vi_tri}</p>
+                    <p className="nq-item-sub" style={{ fontFamily: "var(--nq-font-mono)" }}>
                       {c.bat_dau} – {c.ket_thuc}
                       {c.khung ? ` · ${c.khung}` : ""}
                       {mine ? " · ca của bạn" : ""}
                     </p>
-                    <p style={{ display: "flex", gap: "0.5rem", margin: 0 }}>
+                    <InlineActions>
                       {(mine || c.co_the_nha) && (
-                        <button disabled={busy === c.id} onClick={() => act("nha", c.id)} style={btnDanger}>
+                        <Btn variant="danger" disabled={busy === c.id} onClick={() => act("nha", c.id)}>
                           Nhả
-                        </button>
+                        </Btn>
                       )}
                       {(!mine || c.co_the_nhan) && (
-                        <button disabled={busy === c.id} onClick={() => act("nhan", c.id)} style={btnPrimary}>
+                        <Btn variant="primary" disabled={busy === c.id} onClick={() => act("nhan", c.id)}>
                           Nhận
-                        </button>
+                        </Btn>
                       )}
-                    </p>
+                    </InlineActions>
                   </div>
                 );
               })}

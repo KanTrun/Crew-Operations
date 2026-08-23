@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { apiSend } from "../../lib/api";
 import { getToken, isManager } from "../../lib/session";
-import { Alert, AuthGate, btnPrimary, Field, inputStyle, Kicker } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Field, inputStyle, Notice, PageHeader } from "../../ui/kit";
 
 export default function QrPage() {
   const [token, setToken] = useState("");
@@ -44,9 +44,8 @@ export default function QrPage() {
   if (!token) return <AuthGate />;
 
   return (
-    <div className="nq-page">
-      <Kicker>Một lần · hết hạn khi dùng</Kicker>
-      <h1>Điểm danh QR</h1>
+    <div className="nq-page nq-page--run">
+      <PageHeader kicker="Một lần · hết hạn khi dùng" title="Điểm danh QR" />
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
       {isManager() ? (
@@ -57,12 +56,12 @@ export default function QrPage() {
           <Field label="Mã ca">
             <input value={ca} onChange={(e) => setCa(e.target.value)} style={inputStyle} />
           </Field>
-          <button type="submit" style={btnPrimary}>
+          <Btn type="submit" variant="primary">
             Phát mã
-          </button>
+          </Btn>
         </form>
       ) : (
-        <p className="nq-muted">Nhân viên chỉ dùng mã. Quản lý phát mã.</p>
+        <Notice>Nhân viên chỉ dùng mã. Quản lý phát mã.</Notice>
       )}
       {issued ? (
         <p className="nq-item" style={{ marginTop: "1rem", fontFamily: "var(--nq-font-mono)", wordBreak: "break-all" }}>
@@ -74,9 +73,9 @@ export default function QrPage() {
         <Field label="Mã một lần">
           <input value={useTok} onChange={(e) => setUseTok(e.target.value)} style={inputStyle} />
         </Field>
-        <button type="submit" style={btnPrimary}>
+        <Btn type="submit" variant="primary">
           Điểm danh
-        </button>
+        </Btn>
       </form>
     </div>
   );

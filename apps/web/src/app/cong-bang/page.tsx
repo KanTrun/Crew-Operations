@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiGet } from "../../lib/api";
 import { getToken } from "../../lib/session";
-import { Alert, AuthGate, Empty, Kicker, Loading } from "../../ui/kit";
+import { Alert, AuthGate, Empty, Loading, PageHeader } from "../../ui/kit";
 
 const AXIS: Record<string, string> = {
   cuoi_tuan: "Cuối tuần",
@@ -44,18 +44,21 @@ export default function CongBangPage() {
 
   return (
     <div className="nq-page">
-      <Kicker>Sổ nợ bốn chiều · không xếp hạng tên</Kicker>
-      <h1>Công bằng</h1>
+      <PageHeader
+        kicker="Sổ nợ bốn chiều · không xếp hạng tên"
+        title="Công bằng"
+        meta="Chỉ số dư theo trục — không bảng xếp hạng tên."
+      />
       {error ? <Alert>{error}</Alert> : null}
-      {loading ? <Loading>Đang đọc sổ nợ…</Loading> : null}
+      {loading ? <Loading skeleton="list">Đang đọc sổ nợ…</Loading> : null}
       {!loading && ids.length === 0 ? <Empty>Chưa có phân công để tính nợ.</Empty> : null}
       <div className="nq-list">
         {ids.map((id) => (
           <article key={id} className="nq-item">
-            <p style={{ margin: 0, fontWeight: 600 }}>{id === me ? "Bạn" : "Nhân viên"}</p>
-            <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.1rem" }}>
+            <p className="nq-item-title">{id === me ? "Bạn" : "Nhân viên"}</p>
+            <ul className="nq-fairness-list">
               {Object.entries(soDu[id] || {}).map(([a, v]) => (
-                <li key={a} style={{ fontFamily: "var(--nq-font-mono)", fontSize: "0.9rem" }}>
+                <li key={a}>
                   {AXIS[a] ?? a}: {Number(v).toFixed(1)} · TB nhóm {(means[a] ?? 0).toFixed(1)}
                 </li>
               ))}

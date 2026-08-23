@@ -211,8 +211,17 @@ export function Loading({
   if (skeleton === "text") {
     return (
       <div className="nq-skeleton-wrap" aria-live="polite" aria-busy="true">
+        {label}
         <SkeletonLine />
         <SkeletonLine className="nq-skeleton-line-sm" />
+      </div>
+    );
+  }
+  if (skeleton === "list") {
+    return (
+      <div aria-live="polite" aria-busy="true">
+        {label}
+        <SkeletonList />
       </div>
     );
   }
@@ -251,6 +260,163 @@ export function ProgressBar({ value, max }: { value: number; max: number }) {
   return (
     <div className="nq-progress" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
       <div className="nq-progress-fill" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+export const textareaStyle: CSSProperties = {
+  ...inputStyle,
+  minHeight: 96,
+  resize: "vertical",
+  lineHeight: 1.45,
+};
+
+export function Btn({
+  variant = "primary",
+  block,
+  disabled,
+  type = "button",
+  onClick,
+  children,
+  title,
+  className = "",
+}: {
+  variant?: BtnVariant;
+  block?: boolean;
+  disabled?: boolean;
+  type?: "button" | "submit";
+  onClick?: () => void;
+  children: ReactNode;
+  title?: string;
+  className?: string;
+}) {
+  return (
+    <button
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      title={title}
+      className={`${btnClass(variant, block)} ${className}`.trim()}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function PageHeader({
+  kicker,
+  title,
+  meta,
+}: {
+  kicker: string;
+  title: string;
+  meta?: ReactNode;
+}) {
+  return (
+    <header className="nq-page-head">
+      <Kicker>{kicker}</Kicker>
+      <h1>{title}</h1>
+      {meta ? <p className="nq-muted nq-page-head-meta">{meta}</p> : null}
+    </header>
+  );
+}
+
+export function TabBar({ children }: { children: ReactNode }) {
+  return <div className="nq-tab-bar">{children}</div>;
+}
+
+export function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button type="button" className="nq-tab" data-on={active ? "1" : "0"} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+
+export function InlineActions({ children }: { children: ReactNode }) {
+  return <div className="nq-inline-actions">{children}</div>;
+}
+
+export function OpsCard({
+  eyebrow,
+  title,
+  children,
+}: {
+  eyebrow?: string;
+  title?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="nq-ops-card">
+      {eyebrow ? <p className="nq-ops-eyebrow">{eyebrow}</p> : null}
+      {title ? <h2 className="nq-ops-title">{title}</h2> : null}
+      {children}
+    </div>
+  );
+}
+
+export function StepDone({ label, timingMs }: { label: string; timingMs?: number }) {
+  return (
+    <div className="nq-step-done">
+      <span className="nq-step-check" aria-hidden="true">
+        ✓
+      </span>
+      <span className="nq-step-label">{label}</span>
+      {timingMs != null ? (
+        <span className="nq-step-time">{(timingMs / 1000).toFixed(1)}s</span>
+      ) : null}
+    </div>
+  );
+}
+
+export function FixedBottomBar({ children }: { children: ReactNode }) {
+  return <div className="nq-fixed-bottom">{children}</div>;
+}
+
+export function StatusChip({
+  tone = "default",
+  children,
+}: {
+  tone?: "default" | "warn" | "ok" | "danger";
+  children: ReactNode;
+}) {
+  return <span className={`nq-chip nq-chip--${tone}`}>{children}</span>;
+}
+
+export function Toolbar({ children }: { children: ReactNode }) {
+  return <div className="nq-toolbar">{children}</div>;
+}
+
+export function Notice({ children }: { children: ReactNode }) {
+  return <p className="nq-notice">{children}</p>;
+}
+
+export function LinkGrid({ children }: { children: ReactNode }) {
+  return <div className="nq-link-grid">{children}</div>;
+}
+
+export function LinkTile({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link href={href} className="nq-link-tile">
+      {children}
+    </Link>
+  );
+}
+
+function SkeletonList({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="nq-list nq-list--load" aria-hidden="true">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="nq-skeleton nq-item" style={{ minHeight: 72 }} />
+      ))}
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiSend } from "../../lib/api";
 import { getToken } from "../../lib/session";
-import { Alert, AuthGate, btnPrimary, Field, inputStyle, Kicker } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Field, PageHeader, textareaStyle } from "../../ui/kit";
 
 export default function HandoverPage() {
   const [token, setToken] = useState("");
@@ -30,19 +30,21 @@ export default function HandoverPage() {
   if (!token) return <AuthGate />;
 
   return (
-    <div className="nq-page">
-      <Kicker>SBAR</Kicker>
-      <h1>Bàn giao</h1>
-      <p className="nq-muted">Tình hình · Bối cảnh · Đánh giá · Đề nghị. Nếu có claim đối lập, hệ thống đưa người duyệt.</p>
+    <div className="nq-page nq-page--run">
+      <PageHeader
+        kicker="SBAR"
+        title="Bàn giao"
+        meta="Tình hình · Bối cảnh · Đánh giá · Đề nghị. Claim đối lập → người duyệt."
+      />
       <Field label="Nội dung ca">
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} style={inputStyle} />
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} style={textareaStyle} />
       </Field>
-      <button onClick={run} style={btnPrimary}>
+      <Btn variant="primary" onClick={run}>
         Tách SBAR
-      </button>
+      </Btn>
       {error ? <Alert>{error}</Alert> : null}
       {out ? (
-        <article className="nq-item" style={{ marginTop: "1rem" }}>
+        <article className="nq-item nq-sop-answer">
           <p>
             <strong>Tình hình:</strong> {String(out.tinh_hinh ?? "—")}
           </p>

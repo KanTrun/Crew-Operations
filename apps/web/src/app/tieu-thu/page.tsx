@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { getToken, isManager } from "../../lib/session";
-import { Alert, AuthGate, btnPrimary, Empty, Field, inputStyle, Kicker, Loading } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Empty, Field, inputStyle, Loading, PageHeader, StatusChip } from "../../ui/kit";
 
 type Row = { id: string; hang: string; so_luong: number; don_vi: string; duoi_nguong?: boolean };
 
@@ -46,9 +46,11 @@ export default function TieuThuPage() {
 
   return (
     <div className="nq-page">
-      <Kicker>Số lượng · không kế toán</Kicker>
-      <h1>Sổ tiêu thụ</h1>
-      <p className="nq-muted">Hệ thống ghi số, không tính tiền. Dưới 2 khay thì cảnh báo trên Hôm nay.</p>
+      <PageHeader
+        kicker="Số lượng · không kế toán"
+        title="Sổ tiêu thụ"
+        meta="Hệ thống ghi số, không tính tiền. Dưới 2 khay thì cảnh báo trên Hôm nay."
+      />
       {error ? <Alert>{error}</Alert> : null}
       {isManager() ? (
         <form onSubmit={onSubmit}>
@@ -58,21 +60,26 @@ export default function TieuThuPage() {
           <Field label="Số lượng">
             <input value={so} onChange={(e) => setSo(e.target.value)} inputMode="decimal" style={inputStyle} />
           </Field>
-          <button type="submit" style={btnPrimary}>
+          <Btn type="submit" variant="primary">
             Ghi kiểm kê
-          </button>
+          </Btn>
         </form>
       ) : null}
       <h2>Lần ghi</h2>
-      {loading ? <Loading /> : null}
+      {loading ? <Loading skeleton="list">Đang đọc sổ…</Loading> : null}
       {!loading && items.length === 0 ? <Empty>Chưa có lần kiểm kê.</Empty> : null}
       <div className="nq-list">
         {items.map((it) => (
           <article key={it.id} className="nq-item">
-            <p style={{ margin: 0, fontWeight: 600 }}>{it.hang}</p>
-            <p className="nq-muted" style={{ fontFamily: "var(--nq-font-mono)" }}>
+            <p className="nq-item-title">{it.hang}</p>
+            <p className="nq-item-sub" style={{ fontFamily: "var(--nq-font-mono)" }}>
               {it.so_luong} {it.don_vi}
-              {it.duoi_nguong ? " · dưới ngưỡng" : ""}
+              {it.duoi_nguong ? (
+                <>
+                  {" "}
+                  <StatusChip tone="warn">dưới ngưỡng</StatusChip>
+                </>
+              ) : null}
             </p>
           </article>
         ))}

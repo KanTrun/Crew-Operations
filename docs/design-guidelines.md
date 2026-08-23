@@ -35,8 +35,16 @@ T0 160ms · T1 220ms · T2 480ms · `prefers-reduced-motion` tắt animation
 
 ## Kit (`src/ui/kit.tsx`)
 
-`EditorialBanner`, `BentoTile`, `TechnicalDrawer`, `Loading`/skeleton, `BtnLink`, `PageActions`
+`EditorialBanner`, `BentoTile`, `TechnicalDrawer`, `PageHeader`, `Btn`, `TabBar`, `OpsCard`, `FixedBottomBar`, `StatusChip`, `Loading`/skeleton, `BtnLink`, `PageActions`
+
+## Two-register sweep (v3.1)
+
+| Register | Routes | Motion |
+|----------|--------|--------|
+| **Premium hub** | `/`, `/login`, `/hom-nay` | T1–T2 editorial |
+| **Ops utilitarian** | all other authenticated routes | T0 functional, shared kit |
 
 ## Changelog
 
+- 2026-08-23 — v3.1 full-site sweep: PageHeader/Btn/TabBar on all 19 routes; phieu run-form + roster table CSS
 - 2026-08-23 — v3 Premium Ops (international studio bar, bento, disclosure, motif)

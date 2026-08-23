@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { getToken } from "../../lib/session";
-import { Alert, AuthGate, btnPrimary, Empty, Field, inputStyle, Kicker, Loading } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Empty, Field, inputStyle, Loading, PageHeader } from "../../ui/kit";
 
 type Swap = { id: string; a: string; b: string; c: string; ca_id: string; trang_thai: string };
 
@@ -51,9 +51,8 @@ export default function DoiCaPage() {
   if (!token) return <AuthGate />;
 
   return (
-    <div className="nq-page">
-      <Kicker>Ba nhánh phải đồng ý</Kicker>
-      <h1>Chợ đổi ca</h1>
+    <div className="nq-page nq-page--run">
+      <PageHeader kicker="Ba nhánh phải đồng ý" title="Chợ đổi ca" />
       {error ? <Alert>{error}</Alert> : null}
       <form onSubmit={onSubmit}>
         <Field label="Người A">
@@ -68,20 +67,20 @@ export default function DoiCaPage() {
         <Field label="Mã ca">
           <input value={ca} onChange={(e) => setCa(e.target.value)} style={inputStyle} />
         </Field>
-        <button type="submit" style={btnPrimary}>
+        <Btn type="submit" variant="primary">
           Mở lệnh đổi
-        </button>
+        </Btn>
       </form>
       <h2>Lệnh đang mở</h2>
-      {loading ? <Loading /> : null}
+      {loading ? <Loading skeleton="list">Đang tải lệnh…</Loading> : null}
       {!loading && items.length === 0 ? <Empty>Chưa có lệnh đổi ca.</Empty> : null}
       <div className="nq-list">
         {items.map((it) => (
           <article key={it.id} className="nq-item">
-            <p style={{ margin: 0 }}>
+            <p className="nq-item-title">
               {it.a} · {it.b} · {it.c}
             </p>
-            <p className="nq-muted">
+            <p className="nq-item-sub">
               Ca {it.ca_id} · {it.trang_thai}
             </p>
           </article>
