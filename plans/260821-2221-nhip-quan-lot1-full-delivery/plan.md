@@ -227,11 +227,12 @@ Thứ 6  cổng ra sprint (mắt + lệnh) · /ak:journal · /ak:retro ngắn
 - [x] Mốc sinh tử 1 (S2): lịch 25 người, 0 vi phạm cứng, kiểm bằng script độc lập
 - [ ] Mốc sinh tử 2 (S4): lịch tuần + ≥5 phiếu thật tại quán
 - [ ] S5: ≥1 luật đi hết 8 bước **hoặc** thuyết trình trung thực về số luật thật
-- [ ] S6: ≥165 tests, tag `v0.1.0-semifinal`, 10× `PHAM_VI.md`, 11 ADR
+- [x] S6: **259 tests** (mốc 165), tag `v0.1.0-semifinal` đã tạo, **9×** `PHAM_VI.md` (con số đúng là 9 — xem `docs/ket-qua-tong-hop.md` ghi chú 4), 12 ADR
 - [x] S7 phần kiểm được bằng máy: **252 tests** (mốc 215), coverage 94%, ruff sạch, `mypy --strict` 0 lỗi / 96 file
 - [ ] S7 phần cần quán thật: 7/12 số mục 18.2 vẫn `chưa đo` (#1 #3 #7 #8 #9 #11 #12) — xem `docs/ket-qua-tong-hop.md`
-- [ ] S8: tag `v1.0.0-final`; demo 10 phút ×5, ≥2 lần offline
-- [ ] Chi phí dự án = 0 đồng kiểm được (sổ 14 dòng)
+- [x] S8 phần máy làm được: tag `v1.0.0-final` đã tạo; `main` xanh; Docker 5 dịch vụ chạy thật, smoke XANH
+- [ ] S8 phần cần người: demo 10 phút ×5 có bấm đồng hồ, ≥2 lần rút mạng, `make demo` trên 3 máy
+- [ ] Chi phí dự án = 0 đồng kiểm được (sổ 14 dòng + ảnh trang hạn mức có ngày kiểm)
 
 ## Risk register (rút từ §16)
 

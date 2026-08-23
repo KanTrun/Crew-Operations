@@ -136,3 +136,33 @@ lấy từ sổ sửa của quán thật (`ca_playbook.list_sua`).
 | #7 thời gian TB | Nhịp 5 giây/bước là **đồng hồ ảo** do bộ đo đặt để tất định. Số thật cần dấu thời gian từ điện thoại nhân viên |
 | #9 toàn bộ | Fixture không có một số kiểm kê nào. Nếu tự sinh số synthetic thì sai số đo được chỉ là sai số bộ sinh vừa nhét vào — **số vòng tròn**, không phải số đo |
 | #12 p50/p95 và token | Replay: **0 lần gọi mạng thật**. Latency đo được là latency đọc tệp cục bộ, không phải latency LLM; không lời gọi mô hình nào nên không có token |
+
+### 6. Vì sao KHÔNG nối API bên ngoài nào cho Lô 1
+
+Có yêu cầu "tự tìm và nối API bên ngoài nếu có". Đã xem xét và **quyết định không
+nối**, vì cả ba lý do dưới đây đều là ràng buộc của chính đề tài:
+
+**1. Luận điểm trung tâm của đề tài là không cần tích hợp.** §2.2 định vị NHỊP
+QUÁN khác các sản phẩm thương mại ở chỗ nó *"đọc đúng những gì quán vốn đã tạo
+ra"* thay vì cần tích hợp hệ thống bán hàng. §4.3 còn xây cả mạng cảm biến từ
+chênh lệch hai lần kiểm kê để **khỏi phải** tích hợp. Nối thêm API bên ngoài
+làm loãng đúng cái lập luận mạnh nhất của hồ sơ.
+
+**2. API duy nhất hồ sơ dự tính là thời tiết, và nó thuộc Lô 2.** §10.3 dòng 6
+xếp API thời tiết cho **AG-FORECAST**, mà AG-FORECAST nằm ở Lô 2 (§5.2). Plan
+ghi rõ Lô 2 *"không cook trong plan này"*. Xây một client API chưa có ai tiêu
+thụ là thêm mã chết, và nó rơi đúng vào lỗi mà §6.3 đã dùng để loại bốn đề
+xuất agent: *"một tính năng demo trên dữ liệu giả sẽ bị hội đồng phát hiện
+ngay"*.
+
+**3. Nó phá cổng ra Sprint 8.** §14.9 buộc demo chạy trọn 10 phút khi **đã rút
+mạng**. Mỗi lời gọi ra ngoài là một điểm chết khi hội trường mất mạng. Đây cũng
+chính là lý do đã bỏ font CDN ở ghi chú 2 — thêm API mới lại là đi ngược việc
+vừa sửa.
+
+**Điều kiện mở lại:** khi Lô 2 khởi động và có ≥3 tuần sổ tiêu thụ thật (§13.6),
+lúc đó AG-FORECAST mới có đầu vào và API thời tiết mới có người tiêu thụ. Khi
+đó phải kiểm điều khoản sử dụng trước (§18.3 việc 4) và đặt sau một cổng có
+đường lùi offline.
+
+**Không phải là không làm được** — mà là làm thì hỏng ba thứ đang đúng.
