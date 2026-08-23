@@ -458,11 +458,12 @@ def so_9() -> dict[str, Any]:
             "`kiem_ke_cuoi_ca`, `ghi_hao_hut`, cộng một cột đếm tay độc lập."
         ),
         ly_do=(
-            "Fixture ADR-012 (`data/seed/sample.json`) không có một số kiểm kê nào: "
-            "không có đếm hai đầu ca, không có số nhập, không có hao hụt, và không có "
-            "cột đếm tay độc lập để so. Nếu tự sinh số kiểm kê synthetic thì sai số "
-            "đo được chỉ là sai số mà bộ sinh vừa nhét vào — số vòng tròn, không phải "
-            "số đo. Cần ≥2 tuần kiểm kê thật tại quán."
+            "Fixture ADR-012 (`data/seed/sample.json`) giờ CÓ khoá `kiem_ke`: 112 ca "
+            "sáng/tối × 8 mặt hàng, đủ bốn cột §4.3 cộng cột đếm tay độc lập cho 5 mặt "
+            "hàng tuần 1 — nên công thức chạy được về mặt cấu trúc. Nhưng cả bốn cột "
+            "và cột đếm tay đều do bộ sinh viết ra, nên sai số tính được chỉ là độ "
+            "lệch mà bộ sinh vừa nhét vào: số vòng tròn, không phải số đo. Vẫn cần ≥2 "
+            "tuần kiểm kê thật tại quán mới điền được ô này."
         ),
     )
 

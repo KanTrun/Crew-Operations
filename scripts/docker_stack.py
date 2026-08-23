@@ -19,6 +19,7 @@ không phụ thuộc vào việc người chạy đặt tên thư mục thế n�
 
     python scripts/docker_stack.py up      # build + khởi động, chờ healthy
     python scripts/docker_stack.py smoke   # chạy smoke trong container api
+    python scripts/docker_stack.py seed-ops  # nạp 6 bề mặt vận hành vào container
     python scripts/docker_stack.py ps
     python scripts/docker_stack.py logs
     python scripts/docker_stack.py down
@@ -115,6 +116,11 @@ def main() -> int:
         return _compose("logs", "-f", "--tail=100")
     if lenh == "smoke":
         return _compose("exec", "-T", "api", "python", "/app/scripts/smoke_docker.py")
+    if lenh == "seed-ops":
+        # Store ghi được của container nằm trong volume `nhipquan_var`, không
+        # phải trên host — nên phải nạp TỪ TRONG container, `make seed-ops` ở
+        # host chỉ chạm `data/quan.db` của máy dev.
+        return _compose("exec", "-T", "api", "python", "/app/scripts/seed_operational.py")
     if lenh == "reset":
         _compose("down", "-v")
         return up()

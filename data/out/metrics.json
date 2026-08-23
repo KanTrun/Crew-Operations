@@ -84,7 +84,7 @@
       "gia_tri": {
         "truoc_gio": null,
         "truoc_trang_thai": "chua_do",
-        "sau_giay": 0.086,
+        "sau_giay": 0.085,
         "sau_status": "OPTIMAL",
         "sau_vi_pham_cung": 0,
         "quy_mo": "25 người · 21 ca"
@@ -146,7 +146,7 @@
       "trang_thai": "chua_do",
       "nguon": "mo_phong_fixture",
       "cach_do": "Công thức §4.3: tiêu thụ trong ca = đếm đầu ca + nhập trong ca − đếm cuối ca − hao hụt đã ghi. Sai số = |tiêu thụ suy ra − đếm tay| / đếm tay, tính theo từng mặt hàng trong `danh_muc` 8 mặt hàng của mẫu phiếu. Cần bốn cột dữ liệu: `kiem_ke_dau_ca`, `nhap_trong_ca`, `kiem_ke_cuoi_ca`, `ghi_hao_hut`, cộng một cột đếm tay độc lập.",
-      "ly_do": "Fixture ADR-012 (`data/seed/sample.json`) không có một số kiểm kê nào: không có đếm hai đầu ca, không có số nhập, không có hao hụt, và không có cột đếm tay độc lập để so. Nếu tự sinh số kiểm kê synthetic thì sai số đo được chỉ là sai số mà bộ sinh vừa nhét vào — số vòng tròn, không phải số đo. Cần ≥2 tuần kiểm kê thật tại quán."
+      "ly_do": "Fixture ADR-012 (`data/seed/sample.json`) giờ CÓ khoá `kiem_ke`: 112 ca sáng/tối × 8 mặt hàng, đủ bốn cột §4.3 cộng cột đếm tay độc lập cho 5 mặt hàng tuần 1 — nên công thức chạy được về mặt cấu trúc. Nhưng cả bốn cột và cột đếm tay đều do bộ sinh viết ra, nên sai số tính được chỉ là độ lệch mà bộ sinh vừa nhét vào: số vòng tròn, không phải số đo. Vẫn cần ≥2 tuần kiểm kê thật tại quán mới điền được ô này."
     },
     {
       "so": 11,

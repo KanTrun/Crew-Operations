@@ -1,5 +1,5 @@
-.PHONY: setup contracts dev test test-unit lint demo demo-local demo-reset seed bench eval ab replay budget metrics \
-	docker-up docker-down docker-logs docker-smoke docker-ps docker-reset
+.PHONY: setup contracts dev test test-unit lint demo demo-local demo-reset seed seed-ops bench eval ab replay budget metrics \
+	docker-up docker-down docker-logs docker-smoke docker-ps docker-reset docker-seed-ops
 
 setup:
 	python -m pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api pytest httpx ruff pyyaml
@@ -32,6 +32,11 @@ lint:
 
 seed:
 	python scripts/generate_fixture_data.py
+
+# Nạp 6 bề mặt vận hành (việc treo · hộp thư · cẩm nang · hao phí · kiểm kê ·
+# ghi nhận sửa) vào store. Idempotent; mọi bản ghi mang nhãn `mo_phong_fixture`.
+seed-ops:
+	python scripts/seed_operational.py
 
 bench:
 	python -m pip install -e ./packages/solver -e ./packages/playbook -q
@@ -81,6 +86,12 @@ docker-logs:
 
 docker-smoke:
 	python scripts/docker_stack.py smoke
+
+# Store ghi được của container nằm trong volume `nhipquan_var`; `make seed-ops`
+# ở host chỉ chạm data/quan.db của máy dev. Muốn 6 bề mặt trên web Docker có dữ
+# liệu thì nạp từ trong container bằng target này (sau `make docker-up`).
+docker-seed-ops:
+	python scripts/docker_stack.py seed-ops
 
 docker-reset:
 	python scripts/docker_stack.py reset
