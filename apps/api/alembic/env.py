@@ -1,4 +1,5 @@
 """Alembic environment configuration."""
+
 from __future__ import annotations
 
 import os
@@ -13,7 +14,9 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Override sqlalchemy.url from environment variable if set
-db_url = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/nhip_quan")
+db_url = os.getenv(
+    "DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/nhip_quan"
+)
 config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = None

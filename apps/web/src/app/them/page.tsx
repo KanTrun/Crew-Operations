@@ -1,46 +1,62 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getToken, isManager } from "../../lib/session";
-import { AuthGate, Kicker } from "../../ui/kit";
+import { AuthGate, Empty, LinkGrid, LinkTile, Loading, PageHeader } from "../../ui/kit";
 
-const LINKS = [
-  ["/cong-bang", "Công bằng"],
-  ["/doi-ca", "Chợ đổi ca"],
+const LINKS: Array<[string, string]> = [
+  ["/cong-bang", "Xem công bằng"],
+  ["/doi-ca", "Đổi ca"],
   ["/qr", "Điểm danh QR"],
-  ["/tieu-thu", "Sổ tiêu thụ"],
-  ["/hao-phi", "Hao phí"],
+  ["/tieu-thu", "Ghi sổ tiêu thụ"],
+  ["/hao-phi", "Ghi hao phí"],
   ["/sop", "Hỏi SOP"],
-  ["/handover", "Bàn giao"],
-  ["/vet", "Vết hệ thống"],
-  ["/phieu", "Phiếu"],
+  ["/handover", "Bàn giao ca"],
+  ["/vet", "Đọc vết hệ thống"],
+  ["/phieu", "Mở phiếu ca"],
   ["/toi", "Ca của tôi"],
   ["/treo", "Việc treo"],
-  ["/roster", "Lịch tuần"],
-  ["/inbox", "Hộp thư"],
-  ["/cam-nang", "Cẩm nang"],
+  ["/roster", "Xếp lịch tuần"],
+  ["/inbox", "Duyệt hộp thư"],
+  ["/cam-nang", "Đọc cẩm nang"],
 ];
 
 export default function ThemPage() {
   const [token, setToken] = useState("");
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     setToken(getToken());
+    setReady(true);
   }, []);
+  if (!ready) {
+    return (
+      <div className="nq-page">
+        <Loading skeleton="list">Đang mở danh sách việc…</Loading>
+      </div>
+    );
+  }
   if (!token) return <AuthGate />;
   const manager = isManager();
   return (
     <div className="nq-page">
-      <Kicker>Tất cả mặt</Kicker>
-      <h1>Thêm</h1>
-      <p className="nq-muted">{manager ? "Quản lý / chủ quán" : "Nhân viên"} — chọn một việc.</p>
-      <div className="nq-list" style={{ marginTop: "1rem" }}>
-        {LINKS.map(([href, label]) => (
-          <Link key={href} href={href} className="nq-item" style={{ textDecoration: "none", color: "var(--nq-ink)" }}>
-            {label}
-          </Link>
-        ))}
-      </div>
+      <PageHeader
+        kicker="Tất cả mặt"
+        title="Thêm"
+        meta={`Mọi việc còn lại của quán, gom một chỗ — bạn đang vào với vai ${
+          manager ? "quản lý hoặc chủ quán" : "nhân viên"
+        }.`}
+      />
+      {LINKS.length === 0 ? (
+        <Empty>Chưa có lối tắt nào.</Empty>
+      ) : (
+        <LinkGrid>
+          {LINKS.map(([href, label]) => (
+            <LinkTile key={href} href={href}>
+              {label}
+            </LinkTile>
+          ))}
+        </LinkGrid>
+      )}
     </div>
   );
 }

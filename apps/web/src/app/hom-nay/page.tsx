@@ -1,10 +1,22 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { apiGet } from "../../lib/api";
-import { getToken, isManager, lifeLabel } from "../../lib/session";
-import { Alert, AuthGate, btnGhost, btnPrimary, Empty, Kicker } from "../../ui/kit";
+import { safeText, viError } from "../../lib/present";
+import { getToken, isManager } from "../../lib/session";
+import { todayHeroLine, todayMetaLine, todayTechnicalDetail } from "../../lib/status";
+import {
+  Alert,
+  AuthGate,
+  BentoTile,
+  Btn,
+  BtnLink,
+  EditorialBanner,
+  Loading,
+  PageActions,
+  PageHeader,
+  TechnicalDrawer,
+} from "../../ui/kit";
 
 type Today = {
   ngay: string;
@@ -14,6 +26,12 @@ type Today = {
   so_luat?: number;
   canh_bao_ton?: string[];
 };
+
+/** Đếm an toàn: field thiếu hoặc rác thì coi như 0, không để "NaN" ra ô số. */
+function soAnToan(v: unknown): number {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
 
 export default function HomNayPage() {
   const [token, setToken] = useState("");
@@ -28,9 +46,10 @@ export default function HomNayPage() {
 
   const load = useCallback(() => {
     if (!getToken()) return;
+    setError(null);
     apiGet<Today>("/api/v1/hom-nay")
       .then(setData)
-      .catch(() => setError("Không đọc được bảng hôm nay. Kiểm tra API đang chạy."));
+      .catch((e) => setError(viError(e, { doing: "đọc được bảng hôm nay" })));
   }, []);
 
   useEffect(() => {
@@ -39,64 +58,89 @@ export default function HomNayPage() {
 
   if (!token) return <AuthGate />;
 
-  const life = data?.lich.trang_thai ?? "…";
+  const treo = soAnToan(data?.so_treo);
+  const ngay = safeText(data?.ngay, "");
+  const hero = data ? todayHeroLine(treo, data.lich?.trang_thai) : "Đang đọc nhịp quán…";
+  const meta = data && ngay ? todayMetaLine(ngay, data.lich?.nguon) : undefined;
+  const canhBao = (data?.canh_bao_ton ?? []).map((x) => safeText(x, "")).filter(Boolean);
 
   return (
-    <div className="nq-page">
-      <Kicker>Ca hôm nay</Kicker>
-      <h1>Quán hôm nay</h1>
-      {error ? <Alert>{error}</Alert> : null}
-      {!data && !error ? <Empty>Đang tải bảng hôm nay…</Empty> : null}
-      {data ? (
-        <>
-          <p className="nq-muted">
-            Ngày {data.ngay} · lịch {lifeLabel(life)} · nguồn quán
-            {data.lich.solver?.status ? ` · solver ${data.lich.solver.status}` : ""}
-          </p>
-          <div className="nq-row" style={{ margin: "1rem 0 1.25rem" }}>
-            <div className="nq-tile">
-              <strong>{data.so_treo ?? 0}</strong>
-              <span>Việc treo</span>
+    <>
+      <EditorialBanner status={hero} meta={meta} />
+      <div className="nq-page">
+        <PageHeader
+          kicker="Ca hôm nay"
+          title="Quán hôm nay"
+          meta="Bảng gộp một màn: việc treo, mục chờ duyệt, cảnh báo tồn của ca hiện tại."
+        />
+        {error ? (
+          <>
+            <Alert>{error}</Alert>
+            <PageActions>
+              <Btn variant="ghost" onClick={load}>
+                Tải lại bảng
+              </Btn>
+            </PageActions>
+          </>
+        ) : null}
+        {!data && !error ? <Loading skeleton="bento">Đang tải bảng hôm nay…</Loading> : null}
+        {data ? (
+          <>
+            <div className="nq-bento">
+              <BentoTile
+                large
+                value={treo}
+                label="Việc treo"
+                accent={treo > 0 ? "warn" : "default"}
+                href="/treo"
+              />
+              <BentoTile
+                value={manager ? soAnToan(data.so_inbox_cho) : soAnToan(data.so_luat)}
+                label={manager ? "Mục chờ duyệt" : "Luật cẩm nang"}
+                href={manager ? "/inbox" : "/cam-nang"}
+              />
+              <BentoTile
+                value={ngay ? ngay.slice(8, 10) : "—"}
+                label={ngay ? `Tháng ${ngay.slice(5, 7)}` : "Chưa rõ ngày"}
+              />
             </div>
-            <div className="nq-tile">
-              <strong>{manager ? (data.so_inbox_cho ?? 0) : (data.so_luat ?? 0)}</strong>
-              <span>{manager ? "Chờ duyệt" : "Luật cẩm nang"}</span>
-            </div>
-          </div>
-          {data.canh_bao_ton && data.canh_bao_ton.length > 0 ? (
-            <Alert kind="info">Tồn dưới ngưỡng: {data.canh_bao_ton.join(", ")}</Alert>
-          ) : (
-            <p className="nq-muted">Chưa có cảnh báo tồn từ sổ tiêu thụ.</p>
-          )}
-          <p style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap", marginTop: "1.25rem" }}>
-            {manager ? (
-              <>
-                <Link href="/roster" style={btnPrimary}>
-                  Lịch tuần
-                </Link>
-                <Link href="/inbox" style={btnGhost}>
-                  Hộp thư
-                </Link>
-                <Link href="/treo" style={btnGhost}>
-                  Việc treo
-                </Link>
-              </>
+
+            <TechnicalDrawer lines={todayTechnicalDetail(data.lich ?? {})} />
+
+            {canhBao.length > 0 ? (
+              <Alert kind="info">
+                Tồn dưới ngưỡng: {canhBao.join(", ")}. Mở Sổ tiêu thụ để ghi kiểm kê hoặc đặt thêm.
+              </Alert>
             ) : (
-              <>
-                <Link href="/phieu" style={btnPrimary}>
-                  Mở phiếu
-                </Link>
-                <Link href="/toi" style={btnGhost}>
-                  Ca của tôi
-                </Link>
-                <Link href="/treo" style={btnGhost}>
-                  Việc treo
-                </Link>
-              </>
+              <p className="nq-muted">Chưa có cảnh báo tồn từ sổ tiêu thụ.</p>
             )}
-          </p>
-        </>
-      ) : null}
-    </div>
+
+            <PageActions>
+              {manager ? (
+                <>
+                  <BtnLink href="/roster">Xếp lịch tuần</BtnLink>
+                  <BtnLink href="/inbox" variant="ghost">
+                    Duyệt hộp thư
+                  </BtnLink>
+                  <BtnLink href="/treo" variant="ghost">
+                    Xem việc treo
+                  </BtnLink>
+                </>
+              ) : (
+                <>
+                  <BtnLink href="/phieu">Mở phiếu ca</BtnLink>
+                  <BtnLink href="/toi" variant="ghost">
+                    Xem ca của tôi
+                  </BtnLink>
+                  <BtnLink href="/treo" variant="ghost">
+                    Xem việc treo
+                  </BtnLink>
+                </>
+              )}
+            </PageActions>
+          </>
+        ) : null}
+      </div>
+    </>
   );
 }

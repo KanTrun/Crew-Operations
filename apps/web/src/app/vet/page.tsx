@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { apiGet } from "../../lib/api";
+import { actorLabel, formatLuc, hanhViLabel, viError } from "../../lib/present";
 import { getToken } from "../../lib/session";
-import { Alert, AuthGate, Empty, Kicker, Loading } from "../../ui/kit";
+import { Alert, AuthGate, Empty, Loading, PageHeader } from "../../ui/kit";
 
 type Row = { at?: string; ai?: string; hanh?: string };
 
@@ -20,9 +21,20 @@ export default function VetPage() {
 
   const load = useCallback(() => {
     if (!getToken()) return;
+    setLoading(true);
     apiGet<{ items: Row[] }>("/api/v1/audit")
-      .then((d) => setItems(d.items ?? []))
-      .catch(() => setError("Không đọc được vết. Cần đăng nhập."))
+      .then((d) => {
+        setItems(d.items ?? []);
+        setError(null);
+      })
+      .catch((e) =>
+        setError(
+          viError(e, {
+            doing: "đọc được vết hệ thống",
+            forbidden: "Chỉ quản lý hoặc chủ quán đọc được vết hệ thống.",
+          }),
+        ),
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -34,20 +46,22 @@ export default function VetPage() {
 
   return (
     <div className="nq-page">
-      <Kicker>Append-only</Kicker>
-      <h1>Vết hệ thống</h1>
-      <p className="nq-muted">Mọi đổi lịch, duyệt, ghi sổ đều ghi lại. Không xóa.</p>
+      <PageHeader
+        kicker="Chỉ ghi thêm, không xóa"
+        title="Vết hệ thống"
+        meta="Mọi lần đổi lịch, duyệt ràng buộc, ghi sổ đều để lại vết ở đây — để tra lại khi cần đối chiếu."
+      />
       {error ? <Alert>{error}</Alert> : null}
-      {loading ? <Loading /> : null}
-      {!loading && items.length === 0 ? (
-        <Empty>Chưa có vết. Chuyển trạng thái lịch hoặc duyệt hộp thư sẽ xuất hiện ở đây.</Empty>
+      {loading ? <Loading skeleton="list">Đang đọc vết hệ thống…</Loading> : null}
+      {!loading && !error && items.length === 0 ? (
+        <Empty>Chưa có vết nào. Chuyển trạng thái lịch hoặc duyệt hộp thư sẽ sinh vết đầu tiên.</Empty>
       ) : null}
       <div className="nq-list">
         {items.map((it, i) => (
-          <article key={i} className="nq-item">
-            <p style={{ margin: 0, fontWeight: 600 }}>{it.hanh ?? "hành động"}</p>
-            <p className="nq-muted" style={{ fontFamily: "var(--nq-font-mono)", fontSize: "0.82rem" }}>
-              {it.ai} · {it.at}
+          <article key={`${i}-${it.at ?? ""}`} className="nq-item">
+            <p className="nq-item-title">{hanhViLabel(it.hanh)}</p>
+            <p className="nq-item-sub">
+              {actorLabel(it.ai)} · <span style={{ fontFamily: "var(--nq-font-mono)" }}>{formatLuc(it.at)}</span>
             </p>
           </article>
         ))}

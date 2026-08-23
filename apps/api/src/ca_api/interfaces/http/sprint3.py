@@ -6,12 +6,14 @@ import csv
 import io
 import json
 import uuid
+from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from ca_agents.ag_msg import classify
 from ca_agents.messaging import get_port
 from ca_ops import (
+    PhieuRun,
     add_treo,
     complete_buoc,
     dump_run,
@@ -91,7 +93,7 @@ def _known_ca(ca_id: str) -> bool:
 def _phan_cong() -> dict[str, list[str]]:
     stored = kv_get("phan_cong", None)
     if stored:
-        return stored
+        return cast(dict[str, list[str]], stored)
     phan: dict[str, list[str]] = {}
     if LICH.exists():
         phan = json.loads(LICH.read_text(encoding="utf-8")).get("phan_cong", {})
@@ -112,7 +114,7 @@ def _save_run(run: Any) -> None:
     kv_mutate("phieu", mut, {})
 
 
-def _get_run(phieu_id: str):
+def _get_run(phieu_id: str) -> PhieuRun:
     bag = kv_get("phieu", {})
     raw = bag.get(phieu_id)
     if not raw:
@@ -327,7 +329,12 @@ def orc_dispatch(
             _orc_writes[body.key] = _orc_writes.get(body.key, 0) + 1
             return {"i": i, "ok": True}
 
-        results = dispatch_parallel([lambda i=i: write(i) for i in range(body.n)])
+        # cast: lambda có tham số mặc định nên mypy không suy được kiểu từ ngữ cảnh
+        tasks = [
+            cast("Callable[[], dict[str, Any]]", lambda i=i: write(i))
+            for i in range(body.n)
+        ]
+        results = dispatch_parallel(tasks)
         return {"n": len(results), "results": results, "writes": _orc_writes[body.key]}
 
     val, replayed = _idem.once(body.key, job)
@@ -421,7 +428,9 @@ def toi_lich(
 
 
 @router.post("/api/v1/ca/nha")
-def ca_nha(body: CaBody, authorization: Annotated[str | None, Header()] = None) -> dict:
+def ca_nha(
+    body: CaBody, authorization: Annotated[str | None, Header()] = None
+) -> dict[str, Any]:
     nv = _nv_from_token(authorization)
     if not _known_ca(body.ca_id):
         raise HTTPException(status_code=404, detail="ca_khong_tim_thay")
@@ -456,7 +465,9 @@ def ca_nha(body: CaBody, authorization: Annotated[str | None, Header()] = None) 
 
 
 @router.post("/api/v1/ca/nhan")
-def ca_nhan(body: CaBody, authorization: Annotated[str | None, Header()] = None) -> dict:
+def ca_nhan(
+    body: CaBody, authorization: Annotated[str | None, Header()] = None
+) -> dict[str, Any]:
     nv = _nv_from_token(authorization)
     if not _known_ca(body.ca_id):
         raise HTTPException(status_code=404, detail="ca_khong_tim_thay")

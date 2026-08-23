@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from ca_api.interfaces.http.main import app
 from fastapi.testclient import TestClient
 
@@ -111,7 +113,7 @@ def test_phieu_seq_unique_under_parallel() -> None:
     def start() -> str:
         r = client.post("/api/v1/phieu/start", json={"mau": "mo_quan"}, headers=auth)
         assert r.status_code == 200, r.text
-        return r.json()["id"]
+        return cast(str, r.json()["id"])
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         ids = list(pool.map(lambda _: start(), range(8)))

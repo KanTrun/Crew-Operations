@@ -1,91 +1,87 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { apiGet } from "../../lib/api";
+import { viError } from "../../lib/present";
+import { getToken } from "../../lib/session";
+import {
+  Alert,
+  AuthGate,
+  Empty,
+  Loading,
+  OpsCard,
+  PageActions,
+  PageHeader,
+  BtnLink,
+  TechnicalDrawer,
+} from "../../ui/kit";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+/** Năm hợp đồng dữ liệu của quán, kèm câu tiếng Việt nói hợp đồng đó giữ gì. */
+const HOP_DONG: Array<[string, string, string]> = [
+  ["NhanVien", "Hồ sơ nhân viên", "Ai làm được vị trí nào, giới hạn giờ và ngày nghỉ."],
+  ["Ca", "Một ca làm việc", "Ngày, khung giờ, vị trí cần người."],
+  ["LichTuan", "Lịch tuần", "Ca nào ai đứng, và lịch đang ở bước nào trong vòng công bố."],
+  ["PhieuMau", "Mẫu phiếu", "Các bước phải làm trong ca và bằng chứng cần chụp."],
+  ["RangBuocTrichXuat", "Ràng buộc trích được", "Điều kiện lấy từ tin nhắn và bàn giao, chờ người duyệt."],
+];
 
 export default function ContractsPage() {
-  const router = useRouter();
-  const [name, setName] = useState("");
+  const [token, setToken] = useState("");
   const [payload, setPayload] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const token = sessionStorage.getItem("nq_token");
-    if (!token) {
-      router.replace("/login");
+  const load = useCallback(() => {
+    if (!getToken()) {
+      setLoading(false);
       return;
     }
-    setName(sessionStorage.getItem("nq_name") ?? "");
-    fetch(`${API}/api/v1/contracts`)
-      .then(async (r) => {
-        if (!r.ok) throw new Error("contracts_failed");
-        return r.json();
+    setLoading(true);
+    apiGet<Record<string, unknown>>("/api/v1/contracts")
+      .then((d) => {
+        setPayload(d);
+        setError(null);
       })
-      .then(setPayload)
-      .catch(() => setError("Không tải được contracts từ API."));
-  }, [router]);
+      .catch((e) => setError(viError(e, { doing: "đọc được năm hợp đồng dữ liệu" })))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const keys = payload
-    ? ["NhanVien", "Ca", "LichTuan", "PhieuMau", "RangBuocTrichXuat"].filter((k) => k in payload)
-    : [];
+  useEffect(() => {
+    setToken(getToken());
+    load();
+  }, [load]);
+
+  if (!token) return <AuthGate />;
+
+  const co = HOP_DONG.filter(([key]) => payload != null && key in payload);
 
   return (
-    <main style={{ maxWidth: 960, margin: "0 auto", padding: "1.5rem" }}>
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: "1rem",
-          alignItems: "baseline",
-          borderBottom: "1px solid var(--nq-line)",
-          paddingBottom: "1rem",
-          marginBottom: "1.25rem",
-        }}
-      >
-        <div>
-          <h1 style={{ fontFamily: "var(--nq-font-display)", fontWeight: 400, margin: 0 }}>
-            Năm hợp đồng
-          </h1>
-          <p style={{ margin: "0.35rem 0 0", color: "var(--nq-ink-muted)" }}>{name}</p>
-        </div>
-        <Link href="/" style={{ minHeight: 44, display: "inline-flex", alignItems: "center" }}>
-          Về trang chủ
-        </Link>
-      </header>
-      {error ? (
-        <p role="alert" style={{ color: "var(--nq-danger)" }}>
-          {error}
-        </p>
+    <div className="nq-page">
+      <PageHeader
+        kicker="Nền dữ liệu"
+        title="Năm hợp đồng"
+        meta="Năm khuôn dữ liệu mà cả quán dùng chung. Trang tra cứu — bản mô tả kỹ thuật nằm trong ngăn từng thẻ."
+      />
+      {error ? <Alert>{error}</Alert> : null}
+      {loading ? <Loading skeleton="list">Đang đọc hợp đồng dữ liệu…</Loading> : null}
+      {!loading && !error && co.length === 0 ? (
+        <Empty>Máy chủ chưa trả hợp đồng nào. Kiểm tra lại sau, hoặc báo quản lý.</Empty>
       ) : null}
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-        {keys.map((k) => (
-          <li
-            key={k}
-            style={{
-              borderBottom: "1px solid var(--nq-line)",
-              padding: "0.85rem 0",
-              fontFamily: "var(--nq-font-mono)",
-              fontSize: "0.9rem",
-            }}
-          >
-            <strong style={{ fontFamily: "var(--nq-font-body)" }}>{k}</strong>
-            <pre
-              style={{
-                margin: "0.5rem 0 0",
-                whiteSpace: "pre-wrap",
-                color: "var(--nq-ink-muted)",
-                maxHeight: 180,
-                overflow: "auto",
-              }}
-            >
-              {JSON.stringify(payload?.[k], null, 2)}
-            </pre>
-          </li>
-        ))}
-      </ul>
-    </main>
+      {co.map(([key, ten, mo_ta]) => (
+        <OpsCard key={key} eyebrow="Hợp đồng dữ liệu" title={ten}>
+          <p className="nq-muted">{mo_ta}</p>
+          {/* JSON là chi tiết kỹ thuật: nằm trong ngăn, không phơi mặc định
+              (docs/design-guidelines.md — Progressive disclosure). */}
+          <TechnicalDrawer summary="Xem khuôn dữ liệu">
+            <pre>{JSON.stringify(payload?.[key], null, 2)}</pre>
+          </TechnicalDrawer>
+        </OpsCard>
+      ))}
+      <PageActions>
+        <BtnLink href="/hom-nay" variant="ghost">
+          Về bảng hôm nay
+        </BtnLink>
+      </PageActions>
+    </div>
   );
 }

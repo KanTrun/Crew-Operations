@@ -213,7 +213,7 @@ Thứ 6  cổng ra sprint (mắt + lệnh) · /ak:journal · /ak:retro ngắn
 | 5 | [Sprint 4 — Quán dùng thật](./phase-05-sprint-4-qun-dung-that.md) | Completed (software; §14.5 quán TBD) | 18,00 md | 4 |
 | 6 | [Sprint 5 — Cẩm nang sống](./phase-06-sprint-5-cam-nang-song.md) | Completed (software; 0 luật quán thật) | 17,25 md | 5 |
 | 7 | [Sprint 6 — Nộp bán kết](./phase-07-sprint-6-nop-ban-ket.md) | Completed (software UI + runbook; §14.7 nộp TBD) | 14,75 md | 6 |
-| 8 | [Sprint 7 — Làm cứng và đo](./phase-08-sprint-7-lam-cung-va-do.md) | Pending (cấm feature; đo + 215 tests) | 18 md | 7 |
+| 8 | [Sprint 7 — Làm cứng và đo](./phase-08-sprint-7-lam-cung-va-do.md) | In progress (252 tests · mypy 0 · 5/12 số đo được; 7 số còn lại chặn bởi quán thật) | 18 md | 7 |
 | 9 | [Sprint 8 — Đóng băng và bảo vệ](./phase-09-sprint-8-dong-bang-va-bao-ve.md) | Pending (freeze + demo ×5) | 18 md | 8 |
 
 ## Backlog sau bảo vệ (không cook trong plan này)
@@ -228,7 +228,8 @@ Thứ 6  cổng ra sprint (mắt + lệnh) · /ak:journal · /ak:retro ngắn
 - [ ] Mốc sinh tử 2 (S4): lịch tuần + ≥5 phiếu thật tại quán
 - [ ] S5: ≥1 luật đi hết 8 bước **hoặc** thuyết trình trung thực về số luật thật
 - [ ] S6: ≥165 tests, tag `v0.1.0-semifinal`, 10× `PHAM_VI.md`, 11 ADR
-- [ ] S7: 215 tests; 12 số mục 18.2 hoàn tất
+- [x] S7 phần kiểm được bằng máy: **252 tests** (mốc 215), coverage 94%, ruff sạch, `mypy --strict` 0 lỗi / 96 file
+- [ ] S7 phần cần quán thật: 7/12 số mục 18.2 vẫn `chưa đo` (#1 #3 #7 #8 #9 #11 #12) — xem `docs/ket-qua-tong-hop.md`
 - [ ] S8: tag `v1.0.0-final`; demo 10 phút ×5, ≥2 lần offline
 - [ ] Chi phí dự án = 0 đồng kiểm được (sổ 14 dòng)
 

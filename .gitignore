@@ -30,6 +30,15 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+
+# AgentKit / Kiro — công cụ trợ lý cục bộ, không phải mã sản phẩm.
+# .kiro/agentkit chứa bản export portable (1491 tệp) nên tuyệt đối không commit.
+.kiro/
+
 # Docker
 *.log
 

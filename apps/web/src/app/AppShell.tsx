@@ -4,21 +4,23 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { clearSession, getName, getRole, getToken, isManager, roleLabel } from "../lib/session";
+import { Icon, iconForHref } from "../ui/icons";
 
-type LinkItem = { href: string; label: string };
+/** `short` là nhãn cho thanh dưới dạng pill — chỗ hẹp, chữ dài sẽ gãy dòng. */
+type LinkItem = { href: string; label: string; short?: string };
 
 const STAFF_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
   { href: "/phieu", label: "Phiếu" },
-  { href: "/toi", label: "Ca của tôi" },
-  { href: "/treo", label: "Việc treo" },
+  { href: "/toi", label: "Ca của tôi", short: "Ca tôi" },
+  { href: "/treo", label: "Việc treo", short: "Treo" },
 ];
 
 const MANAGER_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/roster", label: "Lịch tuần" },
-  { href: "/inbox", label: "Hộp thư" },
-  { href: "/cam-nang", label: "Cẩm nang" },
+  { href: "/roster", label: "Lịch tuần", short: "Lịch" },
+  { href: "/inbox", label: "Hộp thư", short: "Hộp thư" },
+  { href: "/cam-nang", label: "Cẩm nang", short: "Cẩm nang" },
 ];
 
 const MORE: LinkItem[] = [
@@ -70,12 +72,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         {token ? (
           <nav className="nq-nav" aria-label="Chính">
             {primary.map((l) => (
-              <Link key={l.href} href={l.href} data-on={path === l.href ? "1" : "0"}>
+              <Link
+                key={l.href}
+                href={l.href}
+                data-on={path === l.href ? "1" : "0"}
+                aria-current={path === l.href ? "page" : undefined}
+              >
+                <Icon name={iconForHref(l.href)} size={18} />
                 {l.label}
               </Link>
             ))}
             <div className="nq-more">
               <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+                <Icon name="them" size={18} />
                 Thêm
               </button>
               {open ? (
@@ -105,17 +114,29 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </div>
       </header>
-      <div className="nq-main" data-wide={wide ? "1" : "0"}>
+      <main className="nq-main" id="nq-content" data-wide={wide ? "1" : "0"}>
         {children}
-      </div>
+      </main>
       {token ? (
         <nav className="nq-bottom" aria-label="Lối tắt">
           {primary.map((l) => (
-            <Link key={l.href} href={l.href} data-on={path === l.href ? "1" : "0"}>
-              {l.label}
+            <Link
+              key={l.href}
+              href={l.href}
+              data-on={path === l.href ? "1" : "0"}
+              aria-current={path === l.href ? "page" : undefined}
+              aria-label={l.label}
+            >
+              <Icon name={iconForHref(l.href)} />
+              {l.short ?? l.label}
             </Link>
           ))}
-          <Link href="/them" data-on={path === "/them" ? "1" : "0"}>
+          <Link
+            href="/them"
+            data-on={path === "/them" ? "1" : "0"}
+            aria-current={path === "/them" ? "page" : undefined}
+          >
+            <Icon name="them" />
             Thêm
           </Link>
         </nav>

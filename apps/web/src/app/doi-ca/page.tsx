@@ -2,8 +2,21 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
+import { nvLabel, safeText, swapLabel, viError } from "../../lib/present";
 import { getToken } from "../../lib/session";
-import { Alert, AuthGate, btnPrimary, Empty, Field, inputStyle, Kicker, Loading } from "../../ui/kit";
+import {
+  Alert,
+  AuthGate,
+  Btn,
+  Empty,
+  Field,
+  Hint,
+  inputStyle,
+  Loading,
+  OpsCard,
+  PageHeader,
+  StatusChip,
+} from "../../ui/kit";
 
 type Swap = { id: string; a: string; b: string; c: string; ca_id: string; trang_thai: string };
 
@@ -11,10 +24,12 @@ export default function DoiCaPage() {
   const [token, setToken] = useState("");
   const [items, setItems] = useState<Swap[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
   const [a, setA] = useState("");
   const [b, setB] = useState("");
   const [c, setC] = useState("");
   const [ca, setCa] = useState("w1_c01");
+  const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,9 +39,13 @@ export default function DoiCaPage() {
 
   const load = useCallback(() => {
     if (!getToken()) return;
+    setLoading(true);
     apiGet<{ items: Swap[] }>("/api/v1/cho-doi-ca")
-      .then((d) => setItems(d.items ?? []))
-      .catch(() => setError("Không tải được chợ đổi ca."))
+      .then((d) => {
+        setItems((d.items ?? []).filter((x) => x && typeof x.id === "string"));
+        setError(null);
+      })
+      .catch((e) => setError(viError(e, { doing: "tải được chợ đổi ca" })))
       .finally(() => setLoading(false));
   }, []);
 
@@ -34,55 +53,83 @@ export default function DoiCaPage() {
     if (token) load();
   }, [token, load]);
 
+  const dayDu = a.trim() && b.trim() && c.trim() && ca.trim();
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setMsg(null);
+    if (!dayDu) {
+      setError("Điền cả ba người và mã ca rồi mới mở được lệnh đổi.");
+      return;
+    }
+    setBusy(true);
     try {
-      await apiSend("/api/v1/cho-doi-ca", { a, b, c, ca_id: ca });
+      await apiSend("/api/v1/cho-doi-ca", { a: a.trim(), b: b.trim(), c: c.trim(), ca_id: ca.trim() });
       setA("");
       setB("");
       setC("");
+      setMsg("Đã mở lệnh đổi. Lệnh chỉ chốt khi cả ba nhánh đồng ý.");
       load();
-    } catch {
-      setError("Không mở được lệnh đổi ca.");
+    } catch (e) {
+      setError(
+        viError(e, {
+          doing: "mở được lệnh đổi ca",
+          missing: "Mã ca hoặc mã người không có trong quán. Kiểm tra lại trên Lịch tuần rồi nhập lại.",
+        }),
+      );
+    } finally {
+      setBusy(false);
     }
   }
 
   if (!token) return <AuthGate />;
 
   return (
-    <div className="nq-page">
-      <Kicker>Ba nhánh phải đồng ý</Kicker>
-      <h1>Chợ đổi ca</h1>
+    <div className="nq-page nq-page--run">
+      <PageHeader
+        kicker="Ba nhánh phải đồng ý"
+        title="Chợ đổi ca"
+        meta="Đổi ca chỉ thành khi người nhả, người nhận và quản lý cùng đồng ý. Lệnh mở ở đây."
+      />
       {error ? <Alert>{error}</Alert> : null}
-      <form onSubmit={onSubmit}>
-        <Field label="Người A">
-          <input value={a} onChange={(e) => setA(e.target.value)} style={inputStyle} />
-        </Field>
-        <Field label="Người B">
-          <input value={b} onChange={(e) => setB(e.target.value)} style={inputStyle} />
-        </Field>
-        <Field label="Người C">
-          <input value={c} onChange={(e) => setC(e.target.value)} style={inputStyle} />
-        </Field>
-        <Field label="Mã ca">
-          <input value={ca} onChange={(e) => setCa(e.target.value)} style={inputStyle} />
-        </Field>
-        <button type="submit" style={btnPrimary}>
-          Mở lệnh đổi
-        </button>
-      </form>
+      {msg ? <Alert kind="ok">{msg}</Alert> : null}
+      <OpsCard eyebrow="Mở lệnh mới" title="Ba nhánh của lệnh đổi">
+        <form onSubmit={onSubmit}>
+          <Field label="Người nhả ca">
+            <input value={a} onChange={(e) => setA(e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="Người nhận ca">
+            <input value={b} onChange={(e) => setB(e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="Người xác nhận">
+            <input value={c} onChange={(e) => setC(e.target.value)} style={inputStyle} />
+          </Field>
+          <Hint>Nhập mã nhân viên như trên Lịch tuần, ví dụ nv_01.</Hint>
+          <Field label="Mã ca cần đổi">
+            <input value={ca} onChange={(e) => setCa(e.target.value)} style={inputStyle} />
+          </Field>
+          <Btn type="submit" variant="primary" disabled={busy}>
+            {busy ? "Đang mở lệnh…" : "Mở lệnh đổi ca"}
+          </Btn>
+        </form>
+      </OpsCard>
       <h2>Lệnh đang mở</h2>
-      {loading ? <Loading /> : null}
-      {!loading && items.length === 0 ? <Empty>Chưa có lệnh đổi ca.</Empty> : null}
+      {loading ? <Loading skeleton="list">Đang tải lệnh đổi ca…</Loading> : null}
+      {!loading && !error && items.length === 0 ? (
+        <Empty>Chưa có lệnh đổi ca nào đang mở.</Empty>
+      ) : null}
       <div className="nq-list">
         {items.map((it) => (
           <article key={it.id} className="nq-item">
-            <p style={{ margin: 0 }}>
-              {it.a} · {it.b} · {it.c}
+            <p className="nq-item-title">
+              {nvLabel(it.a)} nhả · {nvLabel(it.b)} nhận · {nvLabel(it.c)} xác nhận
             </p>
-            <p className="nq-muted">
-              Ca {it.ca_id} · {it.trang_thai}
+            <p className="nq-item-sub">
+              <StatusChip tone={it.trang_thai === "dong_y" ? "ok" : "warn"}>
+                {swapLabel(it.trang_thai)}
+              </StatusChip>
+              {it.ca_id ? ` · ca ${safeText(it.ca_id)}` : ""}
             </p>
           </article>
         ))}

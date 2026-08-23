@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -47,7 +47,7 @@ def load_template(ma: str) -> dict[str, Any]:
     path = TEMPLATES / f"{ma}.yaml"
     if not path.exists():
         raise FileNotFoundError(ma)
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
+    return cast(dict[str, Any], yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
 def start_phieu(

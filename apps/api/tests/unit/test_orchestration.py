@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from typing import cast
 
 from ca_api.orchestration import IdempotencyStore, StateMachine, dispatch_parallel
 
@@ -46,5 +48,8 @@ def test_idempotency_concurrent_same_key_one_write() -> None:
 
 
 def test_dispatch_eight_parallel() -> None:
-    out = dispatch_parallel([lambda i=i: i * i for i in range(8)])
+    # cast: lambda có tham số mặc định nên mypy không suy được kiểu từ ngữ cảnh
+    out = dispatch_parallel(
+        [cast("Callable[[], int]", lambda i=i: i * i) for i in range(8)]
+    )
     assert out == [i * i for i in range(8)]

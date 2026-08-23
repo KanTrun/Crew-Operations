@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+from typing import TypedDict
+
 from ca_solver.model import LichInput, solve_hard_only
 
-BASE = dict(
-    tran_gio_tuan=48.0,
-    khoang_nghi_gio=12.0,
-)
+
+class _BaseParams(TypedDict):
+    """Tham số lao động bắt buộc, dùng để unpack vào LichInput."""
+
+    tran_gio_tuan: float
+    khoang_nghi_gio: float
+
+
+BASE: _BaseParams = {
+    "tran_gio_tuan": 48.0,
+    "khoang_nghi_gio": 12.0,
+}
 
 
 def test_requires_legal_params() -> None:

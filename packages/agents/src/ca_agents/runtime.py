@@ -6,7 +6,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 
 @dataclass(frozen=True)
@@ -51,7 +51,7 @@ class AgentRuntime:
         digest = self.cache.key(blob)
         hit = self.cache.get(digest)
         if hit is not None:
-            return hit
+            return cast(dict[str, Any], hit)
         text = ref.path.read_text(encoding="utf-8")
         out = {
             "agent": agent,

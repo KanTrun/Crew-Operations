@@ -27,10 +27,7 @@ def _is_blur(name: str, meta: dict[str, Any]) -> bool:
 
 
 def _spans_from_khoang(khoang: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [
-        {"day": k["thu"], "start": k["start"], "end": k["end"]}
-        for k in khoang
-    ]
+    return [{"day": k["thu"], "start": k["start"], "end": k["end"]} for k in khoang]
 
 
 def extract_tkb(

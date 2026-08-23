@@ -1,5 +1,5 @@
-.PHONY: setup contracts dev test test-unit lint demo demo-local demo-reset seed bench eval ab replay budget \
-	docker-up docker-down docker-logs docker-smoke docker-ps
+.PHONY: setup contracts dev test test-unit lint demo demo-local demo-reset seed bench eval ab replay budget metrics \
+	docker-up docker-down docker-logs docker-smoke docker-ps docker-reset
 
 setup:
 	python -m pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api pytest httpx ruff pyyaml
@@ -46,6 +46,11 @@ eval:
 ab:
 	python scripts/ab_report.py
 
+# Bảy con số §18.2 cần quán thật, đo trên fixture ADR-012. Tất định: chạy lại
+# cho cùng kết quả. Mọi bản ghi mang nhãn nguồn `mo_phong_fixture`.
+metrics:
+	python scripts/do_metrics.py
+
 replay:
 	@test -n "$(PHIEN)" || (echo "usage: make replay PHIEN=<idempotency-key>" && exit 1)
 	CA_AGENT_MODE=replay python scripts/replay_orc.py "$(PHIEN)"
@@ -54,19 +59,28 @@ budget:
 	@echo "budget stub — xem THIRD_PARTY.md; dùng OpenRouter dashboard khi bật live LLM"
 
 # ── Docker toàn tuyến: postgres · redis · api · worker · web ──────────────────
+#
+# Gọi qua scripts/docker_stack.py, KHÔNG gọi `docker compose` trực tiếp.
+# Lý do: nếu repo nằm trong thư mục có dấu (ví dụ D:\CA-CÔNG-BẰNG) thì BuildKit
+# nhét đường dẫn vào header HTTP/2 và build vỡ ngay:
+#   header key "x-docker-expose-session-sharedkey" contains value with
+#   non-printable ASCII characters
+# Wrapper tắt BuildKit, ghim tên project về ASCII, và ép stdout UTF-8.
 
 docker-up:
-	docker compose -f infra/docker/compose.yml up -d --build
-	docker compose -f infra/docker/compose.yml ps
+	python scripts/docker_stack.py up
 
 docker-down:
-	docker compose -f infra/docker/compose.yml down
+	python scripts/docker_stack.py down
 
 docker-ps:
-	docker compose -f infra/docker/compose.yml ps
+	python scripts/docker_stack.py ps
 
 docker-logs:
-	docker compose -f infra/docker/compose.yml logs -f --tail=100
+	python scripts/docker_stack.py logs
 
 docker-smoke:
-	docker compose -f infra/docker/compose.yml exec -T api python /app/scripts/smoke_docker.py
+	python scripts/docker_stack.py smoke
+
+docker-reset:
+	python scripts/docker_stack.py reset
