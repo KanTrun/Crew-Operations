@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { fontClass } from "../ui/fonts";
 import { ConditionalShell } from "./ConditionalShell";
+import { SmoothScroll } from "../ui/SmoothScroll";
+import { CustomCursor } from "../ui/CustomCursor";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,18 +15,20 @@ export const viewport: Viewport = {
   themeColor: "#0e0c0a",
   width: "device-width",
   initialScale: 1,
-  // Cho phép người dùng zoom — chặn zoom là lỗi tiếp cận.
   maximumScale: 5,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi" className={fontClass}>
-      <body>
-        <a href="#nq-content" className="nq-skip">
-          Bỏ qua thanh điều hướng
-        </a>
-        <ConditionalShell>{children}</ConditionalShell>
+      <body className="cursor-none">
+        <CustomCursor />
+        <SmoothScroll>
+          <a href="#nq-content" className="nq-skip">
+            Bỏ qua thanh điều hướng
+          </a>
+          <ConditionalShell>{children}</ConditionalShell>
+        </SmoothScroll>
       </body>
     </html>
   );

@@ -1,31 +1,81 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+/**
+ * Hộp thư ràng buộc — 14 mục, sáu ý định, ba trạng thái.
+ *
+ * Ba thứ trước đây thiếu, và thiếu cái nào thì người duyệt cũng phải mở trang
+ * khác để bù:
+ *  1. **Nhóm theo trạng thái.** Mục chờ duyệt lẫn giữa mục đã quyết thì người
+ *     duyệt phải tự lọc bằng mắt. Chờ duyệt lên đầu vì đó là việc còn phải làm.
+ *  2. **Chip ý định.** `xin_nghi` khác `doi_ca` khác `bao_tre` về hệ quả; biết
+ *     loại trước khi đọc hết tóm tắt là tiết kiệm một nhịp.
+ *  3. **Độ tin cậy.** Máy chủ trả `do_tin_cay` cho mỗi bản tóm tắt. Duyệt một
+ *     bản tóm tắt 63% mà không biết nó 63% là duyệt mù.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
-import { agentLabel, inboxLabel, inboxTone, safeText, viError } from "../../lib/present";
+import {
+  agentLabel,
+  formatLuc,
+  inboxLabel,
+  inboxTone,
+  khungLabel,
+  rangBuocLabel,
+  safeText,
+  thuLabel,
+  viError,
+  yDinhLabel,
+} from "../../lib/present";
 import { getToken, isManager } from "../../lib/session";
 import {
   Alert,
   AuthGate,
   Btn,
+  BtnLink,
+  Confidence,
   Empty,
-  InlineActions,
+  Group,
   Loading,
+  NextSteps,
   Notice,
   PageHeader,
+  Row,
   StatusChip,
+  Summary,
+  Toasts,
+  useToasts,
 } from "../../ui/kit";
 
-type Item = { id: string; tom_tat: string; trang_thai: string; agent: string };
+type Item = {
+  id: string;
+  tom_tat: string;
+  trang_thai: string;
+  agent: string;
+  y_dinh?: string;
+  do_tin_cay?: number;
+  created_at?: string;
+  rang_buoc?: { loai?: string; thu?: string; khung?: string };
+};
+
+/** Chờ duyệt trước — đó là việc còn phải làm; đã quyết chỉ để tra lại. */
+const THU_TU = ["cho_duyet", "moi", "duyet", "tu_choi"];
+
+const TEN_NHOM: Record<string, string> = {
+  cho_duyet: "Chờ bạn quyết",
+  moi: "Mới vào hộp thư",
+  duyet: "Đã duyệt",
+  tu_choi: "Đã từ chối",
+};
 
 export default function InboxPage() {
   const [token, setToken] = useState("");
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
   const [manager, setManager] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const { toasts, push, dismiss } = useToasts();
 
   useEffect(() => {
     setToken(getToken());
@@ -52,10 +102,13 @@ export default function InboxPage() {
   async function decide(id: string, quyet_dinh: "duyet" | "tu_choi") {
     setBusy(id);
     setError(null);
-    setMsg(null);
     try {
       await apiSend(`/api/v1/inbox/rang-buoc/${id}`, { quyet_dinh });
-      setMsg(quyet_dinh === "duyet" ? "Đã duyệt mục này." : "Đã từ chối mục này.");
+      push(
+        quyet_dinh === "duyet"
+          ? "Đã duyệt. Ràng buộc này vào lượt xếp lịch tới."
+          : "Đã từ chối. Ràng buộc này không vào lượt xếp lịch.",
+      );
       load();
     } catch (e) {
       setError(
@@ -70,6 +123,27 @@ export default function InboxPage() {
     }
   }
 
+  const nhom = useMemo(() => {
+    const m = new Map<string, Item[]>();
+    for (const it of items) {
+      const k = safeText(it.trang_thai, "moi");
+      m.set(k, [...(m.get(k) ?? []), it]);
+    }
+    const keys = [...THU_TU, ...Array.from(m.keys()).filter((k) => !THU_TU.includes(k))];
+    return keys.filter((k) => (m.get(k) ?? []).length > 0).map((k) => [k, m.get(k) ?? []] as const);
+  }, [items]);
+
+  const dem = useCallback(
+    (tt: string) => items.filter((x) => safeText(x.trang_thai, "moi") === tt).length,
+    [items],
+  );
+
+  /** Số ý định khác nhau đang có trong hộp — cho thấy hộp thư đang gánh loại việc gì. */
+  const soYDinh = useMemo(
+    () => new Set(items.map((x) => safeText(x.y_dinh, "khac"))).size,
+    [items],
+  );
+
   if (!token) return <AuthGate />;
 
   return (
@@ -79,34 +153,92 @@ export default function InboxPage() {
         title="Hộp thư ràng buộc"
         meta="Nơi xử những ràng buộc mâu thuẫn nhau: người đọc rồi quyết, hệ thống không chọn hộ."
       />
+
+      {items.length > 0 ? (
+        <Summary
+          cells={[
+            { n: items.length, k: "mục trong hộp" },
+            { n: dem("cho_duyet"), k: "chờ quyết", tone: "warn" },
+            { n: dem("duyet"), k: "đã duyệt", tone: "ok" },
+            { n: dem("tu_choi"), k: "đã từ chối", tone: "danger" },
+            { n: soYDinh, k: "loại ý định" },
+          ]}
+        />
+      ) : null}
+
       {error ? <Alert>{error}</Alert> : null}
-      {msg ? <Alert kind="ok">{msg}</Alert> : null}
       {!manager ? <Notice>Bạn xem được nội dung. Quản lý hoặc chủ quán mới bấm duyệt.</Notice> : null}
-      {loading ? <Loading skeleton="list">Đang mở hộp thư…</Loading> : null}
+      {loading ? <Loading skeleton="rows" rows={4} groups={3}>Đang mở hộp thư…</Loading> : null}
       {!loading && !error && items.length === 0 ? (
         <Empty>Hộp thư sạch — không có ràng buộc nào chờ người quyết.</Empty>
       ) : null}
-      <div className="nq-list">
-        {items.map((it) => (
-          <article key={it.id} className="nq-item">
-            <p className="nq-item-title">{safeText(it.tom_tat, "Ràng buộc chưa có tóm tắt")}</p>
-            <p className="nq-item-sub">
-              Từ {agentLabel(it.agent)} ·{" "}
-              <StatusChip tone={inboxTone(it.trang_thai)}>{inboxLabel(it.trang_thai)}</StatusChip>
-            </p>
-            {it.trang_thai === "cho_duyet" && manager ? (
-              <InlineActions>
-                <Btn variant="primary" disabled={busy === it.id} onClick={() => decide(it.id, "duyet")}>
-                  Duyệt ràng buộc
-                </Btn>
-                <Btn variant="danger" disabled={busy === it.id} onClick={() => decide(it.id, "tu_choi")}>
-                  Từ chối
-                </Btn>
-              </InlineActions>
-            ) : null}
-          </article>
+
+      {!loading &&
+        nhom.map(([tt, list]) => (
+          <Group key={tt} title={TEN_NHOM[tt] ?? inboxLabel(tt)} count={list.length} countLabel="mục">
+            {list.map((it) => (
+              <Row
+                key={it.id}
+                title={safeText(it.tom_tat, "Ràng buộc chưa có tóm tắt")}
+                sub={
+                  <>
+                    {agentLabel(it.agent)} · ràng buộc {rangBuocLabel(it.rang_buoc?.loai).toLowerCase()}
+                    {it.rang_buoc?.thu ? ` · ${thuLabel(it.rang_buoc.thu)}` : ""}
+                    {it.rang_buoc?.khung ? ` ${khungLabel(it.rang_buoc.khung).toLowerCase()}` : ""}
+                    {it.created_at ? ` · ${formatLuc(it.created_at)}` : ""}
+                  </>
+                }
+                side={
+                  <>
+                    <StatusChip tone={inboxTone(it.trang_thai)}>{inboxLabel(it.trang_thai)}</StatusChip>
+                    <StatusChip>{yDinhLabel(it.y_dinh)}</StatusChip>
+                    <Confidence value={it.do_tin_cay} />
+                  </>
+                }
+                actions={
+                  it.trang_thai === "cho_duyet" && manager ? (
+                    <>
+                      <Btn
+                        variant="primary"
+                        busy={busy === it.id}
+                        busyLabel="Đang ghi quyết định…"
+                        onClick={() => decide(it.id, "duyet")}
+                      >
+                        Duyệt ràng buộc
+                      </Btn>
+                      <Btn
+                        variant="danger"
+                        disabled={busy === it.id}
+                        onClick={() => decide(it.id, "tu_choi")}
+                      >
+                        Từ chối
+                      </Btn>
+                    </>
+                  ) : undefined
+                }
+              />
+            ))}
+          </Group>
         ))}
-      </div>
+
+      {!loading && items.length > 0 ? (
+        <p className="nq-table-note">
+          Thanh bên phải là độ tin cậy của bản tóm tắt do agent đọc từ tin nhắn trong ca. Dưới 70% thì
+          mở tin gốc đọc lại trước khi quyết.
+        </p>
+      ) : null}
+
+      <NextSteps note="Ràng buộc đã duyệt chỉ có tác dụng ở lượt xếp lịch kế tiếp.">
+        <BtnLink href="/roster">Xếp lịch tuần</BtnLink>
+        <BtnLink href="/vet" variant="ghost">
+          Xem vết các quyết định
+        </BtnLink>
+        <Btn variant="ghost" onClick={load}>
+          Tải lại hộp thư
+        </Btn>
+      </NextSteps>
+
+      <Toasts toasts={toasts} onDismiss={dismiss} />
     </div>
   );
 }

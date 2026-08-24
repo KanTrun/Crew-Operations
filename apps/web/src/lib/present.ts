@@ -126,6 +126,7 @@ const AGENT: Record<string, string> = {
   ag_rule: "Đề xuất luật",
   ag_waste: "Ghi chú hao phí",
   ag_sop: "Câu hỏi SOP",
+  ag_tkb: "Thời khoá biểu nhân viên",
 };
 
 export function agentLabel(code: unknown): string {
@@ -152,6 +153,248 @@ export function luatTone(code: unknown): "warn" | "ok" | "danger" | "default" {
   if (code === "loai" || code === "tu_choi") return "danger";
   if (code === "de_xuat" || code === "truot_tap_su") return "warn";
   return "default";
+}
+
+/* ── Việc treo ──
+   Ba trạng thái từ máy chủ (`xong` · `dang_cho` · `qua_han`) là mã nội bộ, phải
+   đi qua bảng nhãn như mọi mã khác. Việc treo quá hạn tô đỏ vì đó là việc quán
+   đang nợ chính mình. */
+
+const TREO: Record<string, string> = {
+  xong: "Đã xong",
+  dang_cho: "Đang chờ làm",
+  qua_han: "Quá hạn",
+  moi: "Mới ghi",
+};
+
+export function treoLabel(code: unknown): string {
+  return pick(TREO, code, "Chưa rõ trạng thái");
+}
+
+export function treoTone(code: unknown): "warn" | "ok" | "danger" | "default" {
+  if (code === "xong") return "ok";
+  if (code === "qua_han") return "danger";
+  if (code === "dang_cho") return "warn";
+  return "default";
+}
+
+/** Thứ tự đọc: việc quá hạn trước, việc đang chờ, việc đã xong sau cùng. */
+export const TREO_THU_TU: readonly string[] = ["qua_han", "dang_cho", "xong"];
+
+/* ── Loại luật trong cẩm nang ── */
+
+const LOAI_LUAT: Record<string, string> = {
+  nhu_cau_ca: "Nhu cầu người cho một ca",
+  nguong_ton: "Ngưỡng tồn kho",
+  buoc_phieu: "Bước bắt buộc trong phiếu",
+  ghep_ky_nang: "Ghép kỹ năng vào ca",
+  hao_hut: "Nguyên nhân hao hụt",
+  nguyen_nhan_hao_hut: "Nguyên nhân hao hụt",
+};
+
+export function loaiLuatLabel(code: unknown): string {
+  return pick(LOAI_LUAT, code, "Loại luật khác");
+}
+
+/**
+ * Lý do vòng kiểm loại một luật, nói bằng tiếng Việt.
+ *
+ * Máy chủ trả mã như `luat_ve_nguoi` hoặc `truong_khong_ton_tai:['ten_nhan_vien']`.
+ * In mã thô lên UI là vi phạm mục Disclosure rules, nên ở đây chỉ đọc phần
+ * trước dấu hai chấm rồi trả về câu giải thích; phần trong ngoặc (tên trường
+ * kỹ thuật) bị bỏ hẳn.
+ */
+export function vfRuleLyDo(code: unknown): string {
+  const raw = safeText(code, "");
+  if (!raw) return "Vòng kiểm không ghi lý do.";
+  const head = raw.split(":")[0];
+  if (head === "dat") return "Luật này qua được vòng kiểm.";
+  if (head === "luat_ve_nguoi") {
+    return "Vòng kiểm loại vì luật nói về một người cụ thể. Cẩm nang chỉ nhận luật về việc, không nhận luật về người.";
+  }
+  if (head === "truong_khong_ton_tai") {
+    return "Vòng kiểm loại vì luật dựa vào một thông tin quán không có trong hồ sơ ca. Viết lại điều kiện theo thứ, khung giờ hoặc ngưỡng tồn.";
+  }
+  if (head === "thieu_bang_chung") {
+    return "Vòng kiểm loại vì chưa đủ lần sửa thật làm bằng chứng. Ghi thêm vài lần sửa rồi đề xuất lại.";
+  }
+  if (head === "trung_luat") {
+    return "Vòng kiểm loại vì quán đã có một luật nói cùng một việc.";
+  }
+  return "Vòng kiểm loại luật này. Nhờ quản lý xem lại cách diễn đạt điều kiện.";
+}
+
+/* ── Hao phí ── */
+
+const NGUYEN_NHAN: Record<string, string> = {
+  dem_sai_dau_ca: "Đếm sai đầu ca",
+  roi_do: "Rơi đổ khi làm",
+  quen_tat_may: "Quên tắt máy",
+  khach_doi_mon: "Khách đổi món",
+  het_han: "Hết hạn dùng",
+  "pha sai": "Pha sai phải bỏ",
+  pha_sai: "Pha sai phải bỏ",
+};
+
+export function nguyenNhanLabel(code: unknown): string {
+  return pick(NGUYEN_NHAN, code, "Nguyên nhân khác");
+}
+
+const MAT_HANG: Record<string, string> = {
+  sua_tuoi: "sữa tươi",
+  ca_phe_hat: "cà phê hạt",
+  tra: "trà",
+  duong: "đường",
+  ly_nhua: "ly nhựa",
+  ong_hut: "ống hút",
+  banh: "bánh",
+  da: "đá",
+};
+
+/** `sua_tuoi` → "sữa tươi". Tên đã là tiếng Việt thì giữ nguyên. */
+export function matHangLabel(code: unknown): string {
+  const raw = safeText(code, "");
+  if (!raw) return "Mặt hàng chưa ghi tên";
+  return MAT_HANG[raw] ?? raw;
+}
+
+const THU: Record<string, string> = {
+  T2: "Thứ Hai",
+  T3: "Thứ Ba",
+  T4: "Thứ Tư",
+  T5: "Thứ Năm",
+  T6: "Thứ Sáu",
+  T7: "Thứ Bảy",
+  CN: "Chủ nhật",
+};
+
+export function thuLabel(code: unknown): string {
+  return pick(THU, code, "Chưa rõ thứ");
+}
+
+/** Thứ tự tuần để nhóm hiển thị không nhảy theo thứ tự máy chủ trả về. */
+export const THU_THU_TU: readonly string[] = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+
+/* ── Mẫu phiếu ── */
+
+const MAU_PHIEU: Record<string, string> = {
+  mo_quan: "Mở quán",
+  dong_quan: "Đóng quán",
+  ban_giao_ca: "Bàn giao ca",
+};
+
+export function mauPhieuLabel(code: unknown): string {
+  return pick(MAU_PHIEU, code, "Phiếu ca");
+}
+
+/** Phiếu gắn vào lúc nào trong ngày — nói bằng lời, không dùng mã `ca_dau_ngay`. */
+const GAN_VOI: Record<string, string> = {
+  ca_dau_ngay: "Chạy ở ca đầu ngày, trước khi mở cửa cho khách",
+  ca_cuoi_ngay: "Chạy ở ca cuối ngày, trước khi khoá cửa",
+  giao_ca: "Chạy lúc giao ca, khi người ca trước rời quầy",
+};
+
+export function ganVoiLabel(code: unknown): string {
+  return pick(GAN_VOI, code, "Chạy trong ca khi cần");
+}
+
+/** Điều kiện mở phiếu. Mã `nhan_vien_da_diem_danh` không được ra UI. */
+const MO_KHI: Record<string, string> = {
+  nhan_vien_da_diem_danh: "mở được sau khi bạn điểm danh",
+  ca_ket_thuc: "mở được khi ca sắp kết thúc",
+};
+
+export function moKhiLabel(code: unknown): string {
+  return pick(MO_KHI, code, "mở được trong ca");
+}
+
+/* ── Đăng ký tài khoản ──
+   Máy chủ trả 409 với `detail` là một trong bốn mã. Mã thô không được ra UI:
+   mỗi mã đổi thành một câu chỉ đúng ô cần sửa. */
+
+export type ODangKy = "username" | "password" | "display_name" | "chung";
+
+const DANG_KY: Record<string, { o: ODangKy; cau: string }> = {
+  ten_khong_hop_le: {
+    o: "username",
+    cau: "Tên đăng nhập chỉ nhận chữ thường không dấu, số và dấu gạch dưới, dài 3–24 ký tự. Sửa lại ô tên đăng nhập.",
+  },
+  mat_khau_qua_ngan: {
+    o: "password",
+    cau: "Mật khẩu ngắn quá. Đặt từ 8 ký tự trở lên rồi gửi lại.",
+  },
+  ten_da_ton_tai: {
+    o: "username",
+    cau: "Tên đăng nhập này quán đã có người dùng. Chọn một tên khác, ví dụ thêm số ở cuối.",
+  },
+  thieu_ten_hien_thi: {
+    o: "display_name",
+    cau: "Tên hiển thị cần 2–60 ký tự để đồng nghiệp nhận ra bạn trên lịch ca.",
+  },
+};
+
+/**
+ * Đổi `detail` của lỗi 409 thành ô cần sửa + câu tiếng Việt.
+ * Mã lạ cũng không lọt ra ngoài: rơi vào nhánh "chung" với câu chung.
+ */
+export function dangKyLoi(detail: unknown): { o: ODangKy; cau: string } {
+  const raw = safeText(detail, "");
+  return (
+    DANG_KY[raw] ?? {
+      o: "chung",
+      cau: "Thông tin đăng ký chưa hợp lệ. Kiểm tra lại ba ô rồi gửi lại.",
+    }
+  );
+}
+
+/* ── Trích dẫn nguồn của câu trả lời SOP ──
+   Máy chủ trả `phieu:<mã bước>` hoặc `luat:<mã luật>`. Mã là khoá để tra tên
+   thật, KHÔNG phải thứ để in: trang /sop tra bảng mẫu phiếu và cẩm nang rồi in
+   tên bước / câu luật. Không tra được thì in loại nguồn, vẫn không in mã. */
+
+export type TrichDan = { loai: "phieu" | "luat" | "khac"; ma: string; nguon: string };
+
+export function trichDanTach(raw: unknown): TrichDan {
+  const s = safeText(raw, "");
+  const i = s.indexOf(":");
+  const dau = i >= 0 ? s.slice(0, i) : "";
+  const ma = i >= 0 ? s.slice(i + 1) : "";
+  if (dau === "phieu") return { loai: "phieu", ma, nguon: "Mẫu phiếu" };
+  if (dau === "luat") return { loai: "luat", ma, nguon: "Cẩm nang" };
+  return { loai: "khac", ma: "", nguon: "Nguồn quán" };
+}
+
+/* ── Ý định tin nhắn trong ca (AG-MSG) ──
+   Sáu ý định máy chủ nhận ra từ câu người nhắn. Chip ý định cho người duyệt
+   biết đây là loại việc gì trước khi đọc hết tóm tắt. */
+
+const Y_DINH: Record<string, string> = {
+  xin_nghi: "Xin nghỉ ca",
+  nhan_ca: "Nhận ca",
+  doi_ca: "Đổi ca",
+  bao_tre: "Báo đến trễ",
+  cap_nhat_tkb: "Cập nhật thời khoá biểu",
+  khac: "Việc khác trong ca",
+};
+
+export function yDinhLabel(code: unknown): string {
+  return pick(Y_DINH, code, "Chưa rõ ý định");
+}
+
+/* ── Loại ràng buộc kèm theo một mục hộp thư ── */
+
+const RANG_BUOC: Record<string, string> = {
+  khong_xep: "Không xếp vào ca này",
+  co_the_xep: "Có thể xếp thêm",
+  buoc_them: "Thêm bước vào phiếu",
+  nguong_ton: "Ngưỡng tồn kho",
+  nhu_cau_ca: "Nhu cầu người cho ca",
+  doi_ca: "Đổi ca giữa hai người",
+  bao_tre: "Đến trễ, cần bù người",
+};
+
+export function rangBuocLabel(code: unknown): string {
+  return pick(RANG_BUOC, code, "Ràng buộc khác");
 }
 
 const GHI_NHAN: Record<string, string> = {

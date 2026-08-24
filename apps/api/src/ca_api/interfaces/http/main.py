@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, cast
 
+from ca_agents.llm import agent_mode, load_dotenv, provider_status
 from ca_contracts import Ca, LichTuan, NhanVien, PhieuMau, RangBuocTrichXuat
 from ca_playbook import record_sua
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
@@ -34,6 +35,7 @@ app.include_router(sprint3_router)
 app.include_router(sprint45_router)
 
 ROOT = Path(__file__).resolve().parents[6]
+load_dotenv(ROOT / ".env")
 SEED = ROOT / "data" / "seed" / "sample.json"
 LICH_TUAN_OUT = ROOT / "data" / "out" / "lich_tuan.json"
 
@@ -107,7 +109,18 @@ def _require_write_role(authorization: Annotated[str | None, Header()] = None) -
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "ca-api"}
+    return {"status": "ok", "service": "ca-api", "agent_mode": agent_mode()}
+
+
+@app.get("/api/v1/llm/status")
+def llm_status(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    if _resolve_role(authorization) is None:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    return {
+        "mode": agent_mode(),
+        "providers": provider_status(),
+        "sop_explain_brief": "deterministic",
+    }
 
 
 # ── Lich tuan ─────────────────────────────────────────────────────────────────

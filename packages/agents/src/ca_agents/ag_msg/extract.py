@@ -1,8 +1,11 @@
-"""AG-MSG — 6 intents, two-tier (keyword then replay/overlap)."""
+"""AG-MSG — 6 intents, two-tier (keyword then live LLM or replay fallback)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
+
+from ca_agents.llm import complete, parse_json_object
 
 INTENTS = (
     "doi_ca",
@@ -20,6 +23,7 @@ _TIER1: list[tuple[str, tuple[str, ...]]] = [
     ("cap_nhat_tkb", ("tkb", "thời khoá", "thoi khoa", "học t", "hoc t", "cập nhật học")),
     ("xin_nghi", ("xin nghỉ", "xin nghi", "nghỉ ca", "nghi ca", "không đi làm", "khong di lam")),
 ]
+_PROMPT = Path(__file__).resolve().parents[1] / "prompts" / "ag_msg" / "0.1.0.md"
 
 
 @dataclass(frozen=True)
@@ -34,6 +38,15 @@ def _norm(text: str) -> str:
     return text.lower().strip()
 
 
+def _fallback(reason: str) -> MsgResult:
+    return MsgResult(
+        intent="khac",
+        tier=2,
+        do_tin_cay=0.55,
+        rang_buoc={"nguon": reason},
+    )
+
+
 def classify(text: str, *, mode: str = "replay") -> MsgResult:
     t = _norm(text)
     for intent, keys in _TIER1:
@@ -44,11 +57,22 @@ def classify(text: str, *, mode: str = "replay") -> MsgResult:
                 do_tin_cay=0.86,
                 rang_buoc={"nguon": "keyword"},
             )
-    # Tier 2: replay overlap — still no live LLM
-    _ = mode
+    if mode != "live":
+        return _fallback("tier2_fallback")
+
+    system = _PROMPT.read_text(encoding="utf-8") if _PROMPT.exists() else (
+        'Trả JSON {"intent": một trong doi_ca|nhan_ca|bao_tre|cap_nhat_tkb|xin_nghi|khac}.'
+    )
+    result = complete(system=system, user=text, task="text:ag_msg", json_mode=True)
+    if not result.ok:
+        return _fallback(f"llm_fail:{result.reason}")
+    parsed = parse_json_object(result.text)
+    intent = str((parsed or {}).get("intent") or "").strip()
+    if intent not in INTENTS:
+        return _fallback("llm_parse_or_label")
     return MsgResult(
-        intent="khac",
+        intent=intent,
         tier=2,
-        do_tin_cay=0.55,
-        rang_buoc={"nguon": "tier2_fallback"},
+        do_tin_cay=0.72,
+        rang_buoc={"nguon": f"llm:{result.provider}"},
     )

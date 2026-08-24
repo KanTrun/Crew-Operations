@@ -14,7 +14,7 @@ blocks: []
 
 ## Overview
 
-Chuyển `NHIP-QUAN-HO-SO-TONG-THE .md` (v3.0) thành kế hoạch AgentKit có thể chạy: **tuần 0 + sprint 1–8**, 10 agent Lô 1, lõi tất định, Cẩm nang sống, nộp bán kết rồi bảo vệ. Nguồn sự thật nghiệp vụ vẫn là hồ sơ; plan này là **lịch giao hàng + lệnh vận hành**.
+Chuyển `NHIP-QUAN-HO-SO-TONG-THE .md` (v3.0) thành kế hoạch AgentKit có thể chạy: **tuần 0 + sprint 1–8**, 9 agent Lô 1, lõi tất định, Cẩm nang sống, nộp bán kết rồi bảo vệ. Nguồn sự thật nghiệp vụ vẫn là hồ sơ; plan này là **lịch giao hàng + lệnh vận hành**.
 
 **Brainstorm:** [reports/260821-2221-brainstorm-nhip-quan-lot1.md](../reports/260821-2221-brainstorm-nhip-quan-lot1.md)
 
@@ -23,7 +23,7 @@ Chuyển `NHIP-QUAN-HO-SO-TONG-THE .md` (v3.0) thành kế hoạch AgentKit có 
 | # | Goal | Priority |
 |---|------|----------|
 | 1 | `main` luôn xanh; `make demo` chạy được mọi lúc | P1 |
-| 2 | Ship 10 agent Lô 1 + 6 cổng VF + CP-SAT + opsengine + playbook | P1 |
+| 2 | Ship 9 agent Lô 1 + 6 cổng VF + CP-SAT + opsengine + playbook | P1 |
 | 3 | Một luật Cẩm nang sống đi hết 8 bước trên dữ liệu thật (hoặc nói thật nếu chưa đủ bằng chứng) | P1 |
 | 4 | Nộp `v0.1.0-semifinal` (S6) và `v1.0.0-final` (S8) | P1 |
 | 5 | 12 con số mục 18.2 = đo thật hoặc "chưa đo" + lý do; ngân sách 0 đồng kiểm được | P1 |
@@ -46,7 +46,7 @@ Bộ điều phối (deterministic) ── ghi DB duy nhất
       │
  ┌────┴────┬──────────┬──────────┐
  Làn đọc   Làn diễn   Làn học    Lõi (no agents)
- 10 agents EXPLAIN/   AG-RULE    CP-SAT · rules ·
+ 9 agents  EXPLAIN/   AG-RULE    CP-SAT · rules ·
  Lô 1      BRIEF/SOP             opsengine · playbook
       │
  6 cổng VF (fail-closed) → người hoặc lõi

@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import gsap from "gsap";
 import { apiGet, apiSend } from "../../lib/api";
-import { loaiBuocLabel, safeText, viError } from "../../lib/present";
+import { ganVoiLabel, loaiBuocLabel, moKhiLabel, safeText, viError } from "../../lib/present";
 import { getToken } from "../../lib/session";
 import {
   Alert,
   Btn,
+  BtnLink,
   Empty,
   Field,
   FixedBottomBar,
@@ -15,14 +18,23 @@ import {
   inputStyle,
   Loading,
   OpsCard,
-  PageHeader,
+  PickCard,
   ProgressBar,
   StepDone,
+  Summary,
   TechnicalDrawer,
   textareaStyle,
 } from "../../ui/kit";
 
-type MauPhieu = { ma: string; ten: string };
+type MauPhieu = {
+  ma: string;
+  ten: string;
+  so_buoc?: number;
+  gan_voi?: string;
+  mo_khi?: string;
+  han_hoan_thanh_phut?: number;
+  buoc?: Array<{ ma?: string; ten?: string; minh_chung?: string }>;
+};
 
 type BuocState = {
   ma: string;
@@ -42,7 +54,32 @@ type PhieuData = {
   signals?: { timing_ms?: Record<string, number> };
 };
 
-const MAU_MO_QUAN: MauPhieu = { ma: "mo_quan", ten: "Mở quán" };
+const MAU_MO_QUAN: MauPhieu = { ma: "mo_quan", ten: "Mở quán", so_buoc: 20 };
+
+/** Số bước: lấy `so_buoc` máy chủ trả, không có thì đếm mảng bước. */
+function soBuoc(m: MauPhieu): number {
+  if (typeof m.so_buoc === "number" && m.so_buoc > 0) return m.so_buoc;
+  return (m.buoc ?? []).length;
+}
+
+/**
+ * Một câu về loại minh chứng mẫu này đòi.
+ *
+ * Đếm từ mảng bước thật, không viết sẵn: mẫu đổi thì câu này đổi theo. Người
+ * chuẩn bị mở quán cần biết trước "có bước cần ảnh" để không phải quay lại lấy
+ * điện thoại giữa lúc đang dở tay.
+ */
+function moTaMinhChung(m: MauPhieu): string {
+  const buoc = m.buoc ?? [];
+  const anh = buoc.filter((b) => b.minh_chung === "anh").length;
+  const so = buoc.filter((b) => b.minh_chung === "so").length;
+  const kiemKe = buoc.filter((b) => b.minh_chung === "kiem_ke").length;
+  const phan: string[] = [];
+  if (anh > 0) phan.push(`${anh} bước cần ảnh`);
+  if (so > 0) phan.push(`${so} bước cần nhập số`);
+  if (kiemKe > 0) phan.push(`${kiemKe} bước kiểm kê mặt hàng`);
+  return phan.length > 0 ? ` Trong đó ${phan.join(", ")}.` : "";
+}
 
 export default function PhieuPage() {
   const router = useRouter();
@@ -57,10 +94,21 @@ export default function PhieuPage() {
   const [inputVal, setInputVal] = useState("");
   const [done, setDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setToken(getToken());
   }, []);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      gsap.fromTo(
+        ".ops-animate-in",
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, stagger: 0.1, duration: 0.5, ease: "power2.out" }
+      );
+    }
+  }, [mauList, phieu]);
 
   const loadMau = useCallback(() => {
     if (!getToken()) return;
@@ -180,6 +228,7 @@ export default function PhieuPage() {
     reader.readAsDataURL(file);
   }
 
+  const tongBuoc = mauList.reduce((s, m) => s + soBuoc(m), 0);
   const buocs = phieu?.buocs ?? [];
   const currentBuocIndex = buocs.findIndex((b) => !b.hoan_thanh);
   const currentBuoc = currentBuocIndex >= 0 ? buocs[currentBuocIndex] : null;
@@ -189,97 +238,127 @@ export default function PhieuPage() {
 
   if (!token) {
     return (
-      <div className="nq-page nq-page--run">
-        <PageHeader
-          kicker="Một tay · một bước"
-          title="Phiếu mở quán"
-          meta="Phiếu chạy theo phiên của bạn, nên cần đăng nhập trước."
-        />
-        <Btn variant="primary" block onClick={() => router.push("/login")}>
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-[var(--nq-bg)]">
+        <h1 className="text-4xl font-black uppercase tracking-tighter text-[var(--nq-fg)] mb-4">Phiếu Ca</h1>
+        <p className="text-xl text-[var(--nq-dim)] mb-8">Phiếu chạy theo phiên của bạn, nên cần đăng nhập trước.</p>
+        <button 
+          type="button"
+          onClick={() => router.push("/login")}
+          className="bg-[var(--nq-copper)] text-[#0e0c0a] font-black uppercase tracking-widest py-4 px-8 border-2 border-[var(--nq-copper)] hover:bg-transparent hover:text-[var(--nq-copper)] transition-all shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-copper-dim)]"
+        >
           Đăng nhập để mở phiếu
-        </Btn>
+        </button>
       </div>
     );
   }
 
   if (done || phieu?.trang_thai === "hoan_thanh") {
     return (
-      <div className="nq-page nq-page--run nq-page--center">
-        <PageHeader
-          kicker="Xong phiếu"
-          title="Hoàn thành"
-          meta={`Đã đóng đủ ${total} bước của ${tenMau(phieu?.mau)}. Việc treo (nếu có) đã sang trang Việc treo.`}
-        />
-        <Btn
-          variant="primary"
-          block
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-[var(--nq-bg)] ops-animate-in">
+        <h2 className="text-6xl font-black uppercase tracking-tighter text-[var(--nq-green)] mb-6">Hoàn Thành</h2>
+        <p className="text-xl text-[var(--nq-dim)] mb-12 max-w-md">
+          Đã đóng đủ {total} bước của {tenMau(phieu?.mau)}. Việc treo (nếu có) đã sang trang Việc treo.
+        </p>
+        <button
+          type="button"
           onClick={() => {
             setPhieu(null);
             setDone(false);
           }}
+          className="bg-transparent text-[var(--nq-fg)] font-black uppercase tracking-widest py-5 px-12 border-2 border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] transition-all"
         >
           Mở phiếu tiếp theo
-        </Btn>
+        </button>
       </div>
     );
   }
 
   return (
-    <div className={`nq-page nq-page--run${activeRun ? " nq-page--run-has-bar" : ""}`}>
-      <PageHeader
-        kicker="Một tay · một bước"
-        title="Phiếu mở quán"
-        meta={
-          !phieu
-            ? "Chọn mẫu phiếu để bắt đầu. Hệ thống điểm danh giúp bạn trước khi mở bước đầu."
-            : "Làm từng bước một. Kẹt ở đâu thì treo lại, quản lý thấy ngay trên bảng hôm nay."
-        }
-      />
+    <main className="min-h-screen p-4 md:p-8 relative" ref={containerRef}>
+      <header className="mb-8 ops-animate-in">
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[var(--nq-copper)] mb-2">
+          {phieu ? tenMau(phieu.mau) : "Mở Phiếu"}
+        </h1>
+        <p className="text-[var(--nq-dim)] font-mono text-sm">
+          {phieu ? "Đang chạy phiếu ca" : "Chọn mẫu phiếu cần chạy"}
+        </p>
+      </header>
 
-      {error ? <Alert>{error}</Alert> : null}
+      {error ? <Alert className="ops-animate-in mb-8">{error}</Alert> : null}
 
       {!phieu && (
-        <>
-          {mauLoading ? <Loading skeleton="list">Đang lấy danh sách mẫu phiếu…</Loading> : null}
+        <div className="ops-animate-in">
+          {mauLoading ? (
+            <Loading skeleton="card" rows={3}>
+              Đang lấy danh sách mẫu phiếu…
+            </Loading>
+          ) : null}
           {!mauLoading && mauList.length === 0 ? (
             <Empty>Quán chưa cài mẫu phiếu nào. Nhờ quản lý thêm mẫu trong cẩm nang.</Empty>
           ) : null}
           {!mauLoading && mauList.length > 0 ? (
-            <div className="nq-stack">
-              {mauList.map((m) => (
-                <Btn key={m.ma} variant="primary" block disabled={busy} onClick={() => startPhieu(m.ma)}>
-                  Bắt đầu {safeText(m.ten, "phiếu ca").toLowerCase()}
-                </Btn>
-              ))}
-            </div>
+            <>
+              <Summary
+                cells={[
+                  { n: mauList.length, k: "mẫu phiếu quán đang dùng" },
+                  { n: tongBuoc, k: "bước tất cả" },
+                ]}
+                className="mb-8"
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {mauList.map((m) => (
+                  <div 
+                    key={m.ma} 
+                    className="bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] p-6 shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] transition-all cursor-pointer flex flex-col justify-between"
+                    onClick={() => startPhieu(m.ma)}
+                  >
+                    <div>
+                      <h3 className="text-2xl font-black uppercase mb-4 text-[var(--nq-fg)]">{safeText(m.ten, "Phiếu ca")}</h3>
+                      <div className="text-sm text-[var(--nq-dim)] font-mono space-y-2 mb-6">
+                        <p className="text-[var(--nq-copper)] font-bold">{soBuoc(m)} bước</p>
+                        <p>{ganVoiLabel(m.gan_voi)}</p>
+                        <p>{moKhiLabel(m.mo_khi)}</p>
+                        {m.han_hoan_thanh_phut && <p>Hạn: {m.han_hoan_thanh_phut} phút</p>}
+                      </div>
+                    </div>
+                    <button className="w-full bg-transparent border-2 border-[var(--nq-copper)] text-[var(--nq-copper)] font-bold uppercase tracking-widest py-3 hover:bg-[var(--nq-copper)] hover:text-[#0e0c0a] transition-colors">
+                      {busy ? "Đang mở…" : "Bắt đầu"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : null}
-        </>
+        </div>
       )}
 
       {phieu && !done && (
-        <>
-          <div style={{ marginBottom: "1.25rem" }}>
-            <div className="nq-run-meta">
-              <span>
-                Bước {Math.min(completed + 1, Math.max(total, 1))} / {total}
-              </span>
-              <span>{tenMau(phieu.mau)}</span>
+        <div className="ops-animate-in max-w-2xl mx-auto pb-32">
+          <div className="mb-8">
+            <div className="flex justify-between font-mono text-sm mb-2 text-[var(--nq-dim)] uppercase tracking-widest">
+              <span>Bước {Math.min(completed + 1, Math.max(total, 1))} / {total}</span>
+              <span className="text-[var(--nq-copper)]">{tenMau(phieu.mau)}</span>
             </div>
             <ProgressBar value={completed} max={total} />
           </div>
 
-          {buocs
-            .filter((b) => b.hoan_thanh)
-            .map((b) => (
-              <StepDone
-                key={b.ma}
-                label={safeText(b.ten, "Bước đã xong")}
-                timingMs={phieu.signals?.timing_ms?.[b.ma]}
-              />
-            ))}
+          <div className="space-y-4 mb-8">
+            {buocs
+              .filter((b) => b.hoan_thanh)
+              .map((b) => (
+                <StepDone
+                  key={b.ma}
+                  label={safeText(b.ten, "Bước đã xong")}
+                  timingMs={phieu.signals?.timing_ms?.[b.ma]}
+                />
+              ))}
+          </div>
 
           {currentBuoc ? (
-            <OpsCard eyebrow={loaiBuocLabel(currentBuoc.loai)} title={safeText(currentBuoc.ten, "Bước tiếp theo")}>
+            <div className="bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-copper)] p-6 md:p-8 shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] mb-8">
+              <h2 className="text-2xl font-black uppercase mb-2 text-[var(--nq-fg)]">{safeText(currentBuoc.ten, "Bước tiếp theo")}</h2>
+              <p className="text-[var(--nq-dim)] font-mono text-sm mb-6 uppercase tracking-widest">{loaiBuocLabel(currentBuoc.loai)}</p>
+
               {(currentBuoc.loai === "text" || currentBuoc.loai === "nhap") && (
                 <Field label="Số liệu đọc được">
                   <input
@@ -287,12 +366,12 @@ export default function PhieuPage() {
                     value={inputVal}
                     onChange={(e) => setInputVal(e.target.value)}
                     placeholder="Ví dụ: 4 độ C"
-                    style={inputStyle}
+                    className="w-full bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-4 text-[var(--nq-fg)] font-mono focus:border-[var(--nq-copper)] focus:outline-none text-xl"
                   />
                 </Field>
               )}
               {currentBuoc.loai === "photo" && (
-                <>
+                <div className="mb-6">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -301,63 +380,86 @@ export default function PhieuPage() {
                     style={{ display: "none" }}
                     onChange={(e) => handleFileChange(e, currentBuoc.ma)}
                   />
-                  <Btn variant="ghost" block disabled={busy} onClick={() => fileInputRef.current?.click()}>
+                  <button 
+                    type="button"
+                    disabled={busy} 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full bg-[var(--nq-surface)] border-2 border-dashed border-[var(--nq-copper)] text-[var(--nq-copper)] font-bold uppercase tracking-widest py-8 hover:bg-[var(--nq-copper-glow)] transition-colors disabled:opacity-50"
+                  >
                     Chụp ảnh minh chứng
-                  </Btn>
-                </>
+                  </button>
+                </div>
               )}
-            </OpsCard>
+            </div>
           ) : null}
 
           {showTreo ? (
-            <OpsCard title="Để lại việc treo">
+            <div className="bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-red)] p-6 md:p-8 shadow-[8px_8px_0px_0px_var(--nq-red-dim)] mb-8">
+              <h2 className="text-2xl font-black uppercase mb-6 text-[var(--nq-red)]">Để lại việc treo</h2>
               <Field label="Kẹt ở đâu">
                 <textarea
                   value={treoText}
                   onChange={(e) => setTreoText(e.target.value)}
                   placeholder="Ví dụ: máy pha không lên áp, đã tắt nguồn chờ thợ"
                   rows={3}
-                  style={textareaStyle}
+                  className="w-full bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-4 text-[var(--nq-fg)] font-mono focus:border-[var(--nq-red)] focus:outline-none min-h-[100px]"
                 />
               </Field>
-              <InlineActions>
-                <Btn variant="danger" disabled={busy || !treoText.trim()} onClick={handleTreo}>
+              <div className="flex flex-col sm:flex-row gap-4 mt-8">
+                <button 
+                  type="button"
+                  disabled={busy || !treoText.trim()} 
+                  onClick={handleTreo}
+                  className="flex-1 bg-[var(--nq-red)] text-[#0e0c0a] font-black uppercase tracking-widest py-4 border-2 border-[var(--nq-red)] hover:bg-transparent hover:text-[var(--nq-red)] transition-all disabled:opacity-50"
+                >
                   Gửi việc treo
-                </Btn>
-                <Btn variant="ghost" onClick={() => setShowTreo(false)}>
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setShowTreo(false)}
+                  className="sm:w-auto bg-transparent text-[var(--nq-dim)] font-bold uppercase tracking-widest py-4 px-6 border-2 border-[var(--nq-dim)] hover:border-[var(--nq-fg)] hover:text-[var(--nq-fg)] transition-all"
+                >
                   Quay lại phiếu
-                </Btn>
-              </InlineActions>
-            </OpsCard>
+                </button>
+              </div>
+            </div>
           ) : null}
 
           <TechnicalDrawer
             lines={[`Mã lần chạy: ${safeText(phieu.id)}`, `Mã mẫu: ${safeText(phieu.mau)}`]}
           />
-        </>
+        </div>
       )}
 
       {activeRun && currentBuoc ? (
-        <FixedBottomBar>
-          {currentBuoc.loai !== "photo" ? (
-            <Btn
-              variant="primary"
-              disabled={busy}
-              onClick={() =>
-                completeBuoc(
-                  currentBuoc.ma,
-                  currentBuoc.loai === "text" || currentBuoc.loai === "nhap" ? inputVal || undefined : undefined,
-                )
-              }
+        <div className="fixed bottom-0 left-0 w-full p-4 bg-[var(--nq-bg)]/80 backdrop-blur-md border-t-2 border-[var(--nq-dim)] z-50">
+          <div className="max-w-2xl mx-auto flex gap-4">
+            {currentBuoc.loai !== "photo" ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  completeBuoc(
+                    currentBuoc.ma,
+                    currentBuoc.loai === "text" || currentBuoc.loai === "nhap" ? inputVal || undefined : undefined,
+                  )
+                }
+                className="flex-1 bg-[var(--nq-copper)] text-[#0e0c0a] font-black uppercase tracking-widest py-5 border-2 border-[var(--nq-copper)] hover:bg-transparent hover:text-[var(--nq-copper)] transition-all shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-copper-dim)] disabled:opacity-50"
+              >
+                {busy ? "Đang xử lý…" : "Xong bước này"}
+              </button>
+            ) : null}
+            <button 
+              type="button"
+              title="Để lại việc treo" 
+              onClick={() => setShowTreo((s) => !s)}
+              className="bg-transparent text-[var(--nq-dim)] font-bold uppercase tracking-widest py-5 px-6 border-2 border-[var(--nq-dim)] hover:border-[var(--nq-red)] hover:text-[var(--nq-red)] transition-all bg-[var(--nq-surface)]"
             >
-              {busy ? "Đang xử lý…" : "Xong bước này"}
-            </Btn>
-          ) : null}
-          <Btn variant="ghost" title="Để lại việc treo" onClick={() => setShowTreo((s) => !s)}>
-            Treo lại
-          </Btn>
-        </FixedBottomBar>
+              Treo lại
+            </button>
+          </div>
+        </div>
       ) : null}
-    </div>
+    </main>
   );
 }

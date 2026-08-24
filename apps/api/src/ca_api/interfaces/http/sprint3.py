@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Annotated, Any, cast
 
 from ca_agents.ag_msg import classify
+from ca_agents.ag_tkb import extract_tkb
+from ca_agents.llm import agent_mode
 from ca_agents.messaging import get_port
 from ca_ops import (
     PhieuRun,
@@ -158,6 +160,10 @@ class CaBody(BaseModel):
 class MsgBody(BaseModel):
     text: str
     backend: str = "console"
+
+
+class TkbExtractBody(BaseModel):
+    image_path_or_id: str
 
 
 class DispatchBody(BaseModel):
@@ -407,7 +413,7 @@ def msg_classify(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     _require_role(authorization)
-    r = classify(body.text)
+    r = classify(body.text, mode=agent_mode())
     port = get_port(body.backend)
     sent = port.send("lan", f"intent={r.intent}")
     return {
@@ -416,7 +422,17 @@ def msg_classify(
         "do_tin_cay": r.do_tin_cay,
         "rang_buoc": r.rang_buoc,
         "message": sent.__dict__,
+        "mode": agent_mode(),
     }
+
+
+@router.post("/api/v1/tkb/extract")
+def tkb_extract(
+    body: TkbExtractBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    _require_role(authorization)
+    return extract_tkb(body.image_path_or_id, mode=agent_mode())
 
 
 @router.get("/api/v1/toi/lich")

@@ -1,4 +1,4 @@
-.PHONY: setup contracts dev test test-unit lint demo demo-local demo-reset seed seed-ops bench eval ab replay budget metrics \
+.PHONY: setup contracts dev test test-unit lint demo demo-local demo-reset seed seed-ops bench eval ab replay budget metrics llm-probe \
 	docker-up docker-down docker-logs docker-smoke docker-ps docker-reset docker-seed-ops
 
 setup:
@@ -47,6 +47,9 @@ eval:
 	CA_AGENT_MODE=replay python scripts/eval_ag_tkb.py
 	CA_AGENT_MODE=replay python scripts/eval_ag_msg.py
 	CA_AGENT_MODE=replay python -c "from fastapi.testclient import TestClient; from ca_api.interfaces.http.main import app; c=TestClient(app); t=c.post('/api/v1/auth/login', json={'username':'lan','password':'nhipquan'}).json()['token']; r=c.get('/api/v1/sop/golden', headers={'Authorization': f'Bearer {t}'}).json(); print('SOP', r['n'], r['moi_cau_co_nguon_hoac_chua_co'], r['co_cau_chua_co']); assert r['n']==20 and r['moi_cau_co_nguon_hoac_chua_co'] and r['co_cau_chua_co']"
+
+llm-probe:
+	python scripts/probe_llm.py
 
 ab:
 	python scripts/ab_report.py

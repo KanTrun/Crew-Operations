@@ -20,15 +20,41 @@ export function authHeaders(extra?: HeadersInit): HeadersInit {
 export class ApiError extends Error {
   readonly status: number;
 
-  constructor(status: number) {
+  /**
+   * Mã lỗi nghiệp vụ máy chủ trả kèm (trường `detail`), ví dụ `ten_da_ton_tai`.
+   *
+   * Đây là mã máy đọc, KHÔNG phải câu để in. Chỉ dùng làm khoá tra bảng trong
+   * `src/lib/present.ts` (xem `dangKyLoi`) để chọn câu tiếng Việt cho đúng ô.
+   * Không trang nào được render trực tiếp giá trị này.
+   */
+  readonly detail: string;
+
+  constructor(status: number, detail = "") {
     super(`api_${status}`);
     this.name = "ApiError";
     this.status = status;
+    this.detail = detail;
   }
 
   get offline(): boolean {
     return this.status === 0;
   }
+}
+
+/**
+ * Lấy `detail` từ thân lỗi. Chỉ nhận chuỗi ngắn dạng mã (chữ, số, gạch dưới) —
+ * câu tiếng Anh dài hay JSON lồng nhau bị bỏ, nên không có đường nào để chuỗi
+ * kỹ thuật của máy chủ đi tiếp vào lớp trình bày.
+ */
+async function docDetail(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { detail?: unknown };
+    const d = body?.detail;
+    if (typeof d === "string" && /^[a-z0-9_]{1,48}$/.test(d)) return d;
+  } catch {
+    /* thân lỗi không phải JSON — bỏ qua, mã HTTP đã đủ để chọn câu */
+  }
+  return "";
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -38,7 +64,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new ApiError(0);
   }
-  if (!res.ok) throw new ApiError(res.status);
+  if (!res.ok) throw new ApiError(res.status, await docDetail(res));
   try {
     return (await res.json()) as T;
   } catch {

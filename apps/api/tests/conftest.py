@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
 from ca_api.persist import reset_init_flag
+
+# Developer `.env` may set CA_AGENT_MODE=live; tests stay replay (Gate 10).
+os.environ["CA_AGENT_MODE"] = "replay"
 
 
 @pytest.fixture(autouse=True)

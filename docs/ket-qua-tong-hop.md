@@ -67,10 +67,10 @@ Không phải chỉ số §18.2, nêu ở đây vì đây là bằng chứng má
 | Thời gian giải lịch fixture (25 người · 21 ca) | **0,07 s**, status `OPTIMAL` (cổng S2: <60 s) | `python scripts\solve_tuan.py` |
 | Agent Lô 1 có `PHAM_VI.md` đủ 9 thuộc tính | **9/9 thư mục `ag_*`** | `python -m pytest packages/agents/tests/test_architecture.py` |
 
-### 4. ⚠️ Hồ sơ tự mâu thuẫn về số agent Lô 1 — phải sửa trước khi nộp
+### 4. Hồ sơ đã được chỉnh về đúng số agent Lô 1
 
-Hồ sơ v3.0 nói **"Lô 1: 10 agent · Lô 2: 3 agent"** (§1.2 và §5.2). Đếm lại từ chính
-bảng §5.2 thì không khớp:
+Hồ sơ từng ghi **"Lô 1: 10 agent · Lô 2: 3 agent"** ở §1.2 và §5.2. Đếm lại từ
+chính bảng §5.2 thì không khớp:
 
 | Nhóm | Agent Lô 1 | Agent Lô 2 |
 |---|---|---|
@@ -95,8 +95,8 @@ ag_sop   · ag_tkb     · ag_voc      · ag_waste
 
 **Vì sao phải sửa hồ sơ, không sửa mã:** câu phản biện §17.2 hỏi thẳng *"mười ba agent,
 có phải để hồ sơ trông dày không"*. Nếu đội trả lời "ship 10 con" mà repo chỉ có 9 thư
-mục, đó là mất điểm tin cậy ở đúng câu hỏi mình đã chuẩn bị trước. Sửa §1.2 và §5.2
-thành 9/4 là xong.
+mục, đó là mất điểm tin cậy ở đúng câu hỏi mình đã chuẩn bị trước. Bản trong repo nay đã
+chỉnh về 9/4; phần này giữ lại để giải thích vì sao phải đọc theo số mới.
 
 ### 5. Bảy số vừa có giá trị đến từ đâu, và chỗ nào vẫn phải trống
 

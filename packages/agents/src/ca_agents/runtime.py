@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
+from ca_agents.llm import agent_mode, complete, parse_json_object
+
 
 @dataclass(frozen=True)
 class PromptRef:
@@ -60,6 +62,49 @@ class AgentRuntime:
             "prompt_chars": len(text),
             "result": None,
             "note": "Sprint 1 runtime frame — no live LLM",
+        }
+        self.cache.put(digest, out)
+        return out
+
+    def run(
+        self,
+        agent: str,
+        version: str,
+        inp: dict[str, Any],
+        *,
+        mode: str | None = None,
+    ) -> dict[str, Any]:
+        resolved = (mode or agent_mode() or "replay").strip().lower()
+        if resolved != "live":
+            return self.run_replay(agent, version, inp)
+
+        ref = self.load_prompt(agent, version)
+        blob = json.dumps(
+            {"agent": agent, "v": version, "in": inp, "mode": "live"},
+            sort_keys=True,
+        ).encode()
+        digest = self.cache.key(blob)
+        hit = self.cache.get(digest)
+        if hit is not None:
+            return cast(dict[str, Any], hit)
+
+        prompt = ref.path.read_text(encoding="utf-8")
+        result = complete(
+            system=prompt,
+            user=json.dumps(inp, ensure_ascii=False, sort_keys=True),
+            task=f"text:{agent}",
+            json_mode=True,
+        )
+        parsed = parse_json_object(result.text) if result.ok else None
+        out = {
+            "agent": agent,
+            "prompt_version": version,
+            "mode": "live",
+            "prompt_chars": len(prompt),
+            "result": parsed,
+            "provider": result.provider,
+            "ok": result.ok and parsed is not None,
+            "note": result.reason if not result.ok else "live",
         }
         self.cache.put(digest, out)
         return out

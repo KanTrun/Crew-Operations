@@ -96,3 +96,43 @@ def test_pin_reflected_in_lich_tuan() -> None:
     body = r.json()
     phan_cong = body["phan_cong"]
     assert "nv_05" in phan_cong.get("w1_c02", [])
+
+
+def test_register_creates_staff_session() -> None:
+    r = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "minh_pha_che",
+            "password": "caphe12345",
+            "display_name": "Minh pha chế",
+        },
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["role"] == "nhan_vien"
+    assert body["token"]
+    me = client.get("/api/v1/me", headers={"Authorization": f"Bearer {body['token']}"})
+    assert me.status_code == 200
+    assert me.json()["username"] == "minh_pha_che"
+
+
+def test_register_rejects_duplicate_and_invalid() -> None:
+    payload = {
+        "username": "lan",
+        "password": "caphe12345",
+        "display_name": "Ai đó",
+    }
+    dup = client.post("/api/v1/auth/register", json=payload)
+    assert dup.status_code == 409
+    assert dup.json()["detail"] == "ten_da_ton_tai"
+
+    bad = client.post(
+        "/api/v1/auth/register",
+        json={"username": "A B", "password": "123", "display_name": "x"},
+    )
+    assert bad.status_code == 409
+    assert bad.json()["detail"] in {
+        "ten_khong_hop_le",
+        "mat_khau_qua_ngan",
+        "thieu_ten_hien_thi",
+    }

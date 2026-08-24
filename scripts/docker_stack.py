@@ -53,6 +53,17 @@ WEB_URL = "http://localhost:3000"
 
 def _env() -> dict[str, str]:
     env = dict(os.environ)
+    dotenv = ROOT / ".env"
+    if dotenv.is_file():
+        for line in dotenv.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in stripped:
+                continue
+            key, _, value = stripped.partition("=")
+            key = key.strip()
+            value = value.strip().strip("'").strip('"')
+            if key and key not in env:
+                env[key] = value
     # Builder classic: không mở gRPC session nên không có header non-ASCII.
     env["DOCKER_BUILDKIT"] = "0"
     env["COMPOSE_DOCKER_CLI_BUILD"] = "0"

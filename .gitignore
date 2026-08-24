@@ -54,3 +54,7 @@ data/quan.db-shm
 
 .claude/
 
+# Scratch files from local probes — not product
+.tmp-*/
+.tmp-*.ps1
+

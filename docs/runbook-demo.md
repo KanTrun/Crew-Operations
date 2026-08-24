@@ -47,4 +47,4 @@ Không có tài khoản “demo”. Dữ liệu nằm trong `data/quan.db` sau k
 - §14.4 walkthrough điện thoại thật: `docs/walkthrough-s3-dien-thoai.md`
 - §14.5 ≥5 phiếu NV quán: `docs/gan-du-lieu-that.md`
 - §14.6 luật quán thật
-- §14.7 tag + video + 165 tests — chưa nộp bán kết
+- §14.7 tag + video + bản nộp bán kết chính thức — chưa đóng

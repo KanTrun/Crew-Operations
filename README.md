@@ -31,7 +31,7 @@ Xem [`docs/team.md`](./docs/team.md) và [`docs/github-operating-model.md`](./do
 |---------|------------|--------------|
 | A | `feat/solver-*` `feat/gates-*` `feat/ops-*` `feat/playbook-*` | solver, gates, opsengine, playbook |
 | B | `feat/api-*` `feat/orc-*` `ci/*` `chore/infra-*` | api, orchestration, CI, infra |
-| C | `feat/agents-*` `feat/router-*` `feat/eval-*` | 10 agents Lô 1, router, eval |
+| C | `feat/agents-*` `feat/router-*` `feat/eval-*` | 9 agents Lô 1, router, eval |
 | D | `feat/web-*` `feat/tpl-*` `docs/*` | Next.js PWA, YAML templates, docs |
 
 ## Quy tắc bất biến

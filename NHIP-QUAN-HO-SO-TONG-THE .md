@@ -44,8 +44,8 @@ Một quán cà phê có 15 đến 40 nhân viên bán thời gian đang đượ
 | Tầng vận hành | Máy quy trình với **mẫu phiếu là dữ liệu**: mở quán, đóng quán, bàn giao ca, kiểm kê, hao hụt |
 | Bộ nhớ | **Cẩm nang sống**: luật vận hành tự viết ra từ các lần con người sửa hệ thống |
 | Kiến trúc mục tiêu | **13 agent, 5 nhóm nghiệp vụ** |
-| **Lô 1, ship trong 6 tuần** | **10 agent** |
-| Lô 2, đã thiết kế và tính chi phí, chưa xây | 3 agent |
+| **Lô 1, ship trong 6 tuần** | **9 agent** |
+| Lô 2, đã thiết kế và tính chi phí, chưa xây | 4 agent |
 | Đã loại kèm lý do kỹ thuật | 4 đề xuất, mục 6.3 |
 | Điều phối | **Máy trạng thái tất định, không phải mô hình ngôn ngữ** |
 | Kiểm chứng | **6 cổng tất định**, thất bại đóng, mọi bất định đẩy lên người |
@@ -237,7 +237,7 @@ Cột **Lô** cho biết cái nào ship trong 6 tuần.
 | **AG-VOC** | Đọc phản hồi khách **do quán tự cung cấp**, phân loại thành sự cố vận hành và **nối vào việc treo**, không nối vào marketing | **1** |
 | **AG-MENUOPS** | Từ tiêu thụ và hao hụt, chỉ ra món **gây hao hụt cao và tốn thời gian pha chế cao**. Không tính lợi nhuận | 2 |
 
-**Lô 1: 10 agent.** Lô 2: 3 agent, đã thiết kế và tính chi phí, xem mục 13.6.
+**Lô 1: 9 agent.** Lô 2: 4 agent, đã thiết kế và tính chi phí, xem mục 13.6.
 
 ## 5.3. Sơ đồ toàn hệ
 
@@ -724,7 +724,7 @@ nhip-quan/
 │   │   └── src/ca_playbook/{so_lan_sua,tim_mau,tap_su,theo_doi}
 │   ├── gates/                          # [A] 6 cổng kiểm chứng, thư viện THUẦN
 │   │   └── src/ca_gates/{vf_schema,vf_trace,vf_conf,vf_conflict,vf_num,vf_rule}
-│   └── agents/                         # [C] 10 agent lô 1, thư viện THUẦN
+│   └── agents/                         # [C] 9 agent lô 1, thư viện THUẦN
 │       └── src/ca_agents/
 │           ├── runtime.py  router.py   #   khung chạy + định tuyến nhà cung cấp miễn phí
 │           ├── ag_tkb/  ag_msg/  ag_handover/  ag_waste/  ag_voc/
@@ -829,7 +829,7 @@ test:       ## toàn bộ kiểm thử
 test-unit:  ## chỉ đơn vị, chạy dưới 30 giây
 lint:       ## kiểm lỗi và định dạng
 bench:      ## bộ kiểm chuẩn solver, in bảng
-eval:       ## đánh giá 10 agent trên bộ mẫu vàng, in bảng
+eval:       ## đánh giá 9 agent lô 1 trên bộ mẫu vàng, in bảng
 ab:         ## thí nghiệm một agent xử lô so với N agent song song
 replay:     ## make replay PHIEN=<id> — phát lại một phiên từ vết
 budget:     ## in số lần gọi mô hình và token của N phiên gần nhất
@@ -1311,7 +1311,7 @@ Trước sprint 1 có **tuần 0**, và tuần 0 không tiêu ngày người xâ
 1. **165 bài kiểm thử tự động xanh**, 11 cổng CI xanh
 2. `make demo` chạy từ trạng thái trắng ra dữ liệu đầy đủ trong dưới 5 phút
 3. Thẻ `v0.1.0-semifinal` đã đẩy lên GitHub, có ghi chú phát hành liệt kê đúng những gì chạy được và những gì chưa
-4. 10 agent của lô 1 đều có tệp `PHAM_VI.md` đủ 9 thuộc tính, và có kiểm thử làm đỏ nếu thiếu tệp
+4. 9 agent của lô 1 đều có tệp `PHAM_VI.md` đủ 9 thuộc tính, và có kiểm thử làm đỏ nếu thiếu tệp
 5. 11 ADR đã hợp nhất, gồm **ADR-011 ghi lại bốn thứ đã cắt để nhét Cẩm nang sống vào**
 6. `THIRD_PARTY.md` liệt kê đủ giấy phép của mọi thư viện và mô hình
 7. **Bảng kết quả tổng hợp có con số thật ở mọi dòng, hoặc chữ "chưa đo" ở dòng chưa đo.** Không dòng nào được để số phỏng đoán
@@ -1619,7 +1619,7 @@ Mục 10.3 là **sổ chi phí 14 dòng**, mỗi dòng là một hạng mục c�
 
 **17. Bốn người, 6 tuần, 13 agent — con số này có thật không?**
 
-Kế hoạch là **104,0 ngày người trên sức chứa 108**, chia đúng **25,5 ngày mỗi người**, và có bảng khối lượng theo từng sprint ở mục 14.10 với **không ô nào vượt 4,5 ngày**. Ba điều làm con số này đứng được. Một, chỉ ship **10 agent**, không phải 13; 3 con còn lại đã tính chi phí và cố ý dừng. Hai, **9 trong 10 agent đứng trên cùng một khung chạy agent**, nên con thứ hai trở đi rẻ hơn con thứ nhất rất nhiều — AG-BRIEF chỉ 0,75 ngày. Ba, **hai tuần hoàn thiện, tức 36 ngày người, không lập kế hoạch tính năng nào**; đó là vùng đệm thật, không phải 4,0 ngày.
+Kế hoạch là **104,0 ngày người trên sức chứa 108**, chia đúng **25,5 ngày mỗi người**, và có bảng khối lượng theo từng sprint ở mục 14.10 với **không ô nào vượt 4,5 ngày**. Ba điều làm con số này đứng được. Một, chỉ ship **9 agent**, không phải 13; 4 con còn lại đã tính chi phí và cố ý dừng. Hai, **9 trong 9 agent lô 1 đứng trên cùng một khung chạy agent**, nên con thứ hai trở đi rẻ hơn con thứ nhất rất nhiều — AG-BRIEF chỉ 0,75 ngày. Ba, **hai tuần hoàn thiện, tức 36 ngày người, không lập kế hoạch tính năng nào**; đó là vùng đệm thật, không phải 4,0 ngày.
 
 **18. Nếu nhân viên không dùng phiếu thì cả tầng vận hành thành vô nghĩa?**
 
@@ -1631,7 +1631,7 @@ Vì chúng em phải lấy chỗ cho **Cẩm nang sống**, và **ADR-011 ghi l�
 
 **20. Sau cuộc thi thì sao? Hay đây là một sản phẩm chỉ sống được mười phút?**
 
-Ba lớp trả lời. **Kỹ thuật**: lô 2 gồm 3 agent và 4 việc đã thiết kế xong và tính chi phí 7,0 ngày, vì tất cả đều là **cấu hình hoặc agent trên hạ tầng đã có**. **Quy trình**: mẫu phiếu là YAML nên **quán tự thêm quy trình mới trong 60 giây, không cần đội** — chúng em chiếu điều đó ở phút 8:40. **Chi phí sở hữu**: hệ thống chạy được ở mức 0 đồng, nên quán không có lý do tài chính nào để dừng. Còn thứ khiến nó đáng sống lâu là **Cẩm nang sống**: càng chạy lâu thì tài sản của quán càng dày, và tài sản đó **không nằm trong đầu một người sắp nghỉ việc**.
+Ba lớp trả lời. **Kỹ thuật**: lô 2 gồm 4 agent đã thiết kế xong và tính chi phí 7,0 ngày, vì tất cả đều là **cấu hình hoặc agent trên hạ tầng đã có**. **Quy trình**: mẫu phiếu là YAML nên **quán tự thêm quy trình mới trong 60 giây, không cần đội** — chúng em chiếu điều đó ở phút 8:40. **Chi phí sở hữu**: hệ thống chạy được ở mức 0 đồng, nên quán không có lý do tài chính nào để dừng. Còn thứ khiến nó đáng sống lâu là **Cẩm nang sống**: càng chạy lâu thì tài sản của quán càng dày, và tài sản đó **không nằm trong đầu một người sắp nghỉ việc**.
 
 ---
 
