@@ -33,6 +33,75 @@ def test_extract_unknown_id_returns_empty_spans() -> None:
     assert result["confidence"] < 0.7
 
 
+<<<<<<< Updated upstream
 def test_extract_live_mode_raises() -> None:
     with pytest.raises(NotImplementedError):
         extract_tkb("tkb_01", mode="live")
+=======
+def test_extract_live_parses_llm_json(monkeypatch: object) -> None:
+    def fake_complete(**_k: object) -> LlmResult:
+        return LlmResult(
+            ok=True,
+            text='{"khoang_ban":[{"thu":"T2","start":"07:30","end":"11:00"}],"doc_duoc":true}',
+            provider="groq",
+            reason="ok",
+        )
+
+    monkeypatch.setattr("ca_agents.ag_tkb.extract.complete", fake_complete)  # type: ignore[attr-defined]
+    result = extract_tkb("tkb_01", mode="live")
+    assert result["mode"] == "live"
+    assert result["provider"] == "groq"
+    assert result["spans"] == [{"day": "T2", "start": "07:30", "end": "11:00"}]
+    assert result["escalate"] is False
+
+
+def test_extract_live_fail_closed(monkeypatch: object) -> None:
+    def fake_complete(**_k: object) -> LlmResult:
+        return LlmResult(ok=False, text="", provider="tu_choi", reason="all_down")
+
+    monkeypatch.setattr("ca_agents.ag_tkb.extract.complete", fake_complete)  # type: ignore[attr-defined]
+    result = extract_tkb("tkb_01", mode="live")
+    assert result["rows"] == []
+    assert result["escalate"] is True
+    assert result["provider"] == "tu_choi"
+
+
+def test_extract_live_drops_invalid_hours(monkeypatch: object) -> None:
+    def fake_complete(**_k: object) -> LlmResult:
+        return LlmResult(
+            ok=True,
+            text='{"khoang_ban":[{"thu":"T2","start":"99:99","end":"xx"}],"doc_duoc":true}',
+            provider="groq",
+            reason="ok",
+        )
+
+    monkeypatch.setattr("ca_agents.ag_tkb.extract.complete", fake_complete)  # type: ignore[attr-defined]
+    result = extract_tkb("tkb_01", mode="live")
+    assert result["rows"] == []
+    assert result["escalate"] is True
+
+
+def test_extract_live_binary_calls_vision(monkeypatch: object, tmp_path: object) -> None:
+    from pathlib import Path
+
+    img = Path(str(tmp_path)) / "photo.png"
+    img.write_bytes(b"\x89PNG\r\n\x1a\nfake")
+
+    seen: dict[str, object] = {}
+
+    def fake_complete(**kwargs: object) -> LlmResult:
+        seen.update(kwargs)
+        return LlmResult(
+            ok=True,
+            text='{"khoang_ban":[{"thu":"T4","start":"09:00","end":"11:00"}],"doc_duoc":true}',
+            provider="gemini",
+            reason="ok",
+        )
+
+    monkeypatch.setattr("ca_agents.ag_tkb.extract.complete", fake_complete)  # type: ignore[attr-defined]
+    result = extract_tkb(str(img), mode="live")
+    assert result["mode"] == "live"
+    assert result["spans"] == [{"day": "T4", "start": "09:00", "end": "11:00"}]
+    assert seen.get("image_bytes") is not None
+    assert seen.get("task") == "vision:ag_tkb"
+>>>>>>> Stashed changes

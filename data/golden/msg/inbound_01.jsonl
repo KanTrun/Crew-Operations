@@ -1,0 +1,5 @@
+{"channel": "telegram", "external_user_id": "10001", "text": "em xin nghỉ ca sáng mai", "ts": "2026-08-27T08:00:00Z", "raw_id": "m1"}
+{"channel": "telegram", "external_user_id": "10003", "text": "anh cho em đổi ca chiều", "ts": "2026-08-27T08:05:00Z", "raw_id": "m2"}
+{"channel": "telegram", "external_user_id": "10003", "text": "xem lịch của tôi tuần này", "ts": "2026-08-27T08:10:00Z", "raw_id": "m3"}
+{"channel": "telegram", "external_user_id": "10001", "text": "em tới muộn 15 phút", "ts": "2026-08-27T08:15:00Z", "raw_id": "m4"}
+{"channel": "console", "external_user_id": "demo", "text": "máy pha kêu lạ", "ts": "2026-08-27T08:20:00Z", "raw_id": "m5"}
