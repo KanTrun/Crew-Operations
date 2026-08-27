@@ -16,6 +16,34 @@ GOLDEN_TKB = ROOT / "data" / "golden" / "tkb"
 RNG = random.Random(42)
 
 SKILLS = ["pha_che", "thu_ngan", "phuc_vu", "kho"]
+# Tên hiển thị demo — không phải PII thật; đủ để UI lịch/ca đọc được.
+TEN_NHAN_VIEN = (
+    "Lan Nguyễn",
+    "Hùng Trần",
+    "Minh Phạm",
+    "An Lê",
+    "Bảo Hoàng",
+    "Chi Vũ",
+    "Dũng Đặng",
+    "Em Bùi",
+    "Giang Hồ",
+    "Hạnh Mai",
+    "Khoa Đỗ",
+    "Linh Ngô",
+    "My Tạ",
+    "Nam Lý",
+    "Oanh Phan",
+    "Phúc Trịnh",
+    "Quân Lương",
+    "Rosa Võ",
+    "Sơn Hà",
+    "Thảo Dương",
+    "Uyên Cao",
+    "Vy Đinh",
+    "Xuân Lâm",
+    "Yến Kiều",
+    "Khôi Nhật",
+)
 INTENTS = [
     "xin_nghi",
     "doi_ca",
@@ -29,10 +57,11 @@ INTENTS = [
 def build_staff(n: int = 25) -> list[dict]:
     out = []
     for i in range(1, n + 1):
+        ten = TEN_NHAN_VIEN[i - 1] if i <= len(TEN_NHAN_VIEN) else f"Nhân viên {i:02d}"
         out.append(
             {
                 "id": f"nv_{i:02d}",
-                "ten": f"Nhan Vien {i:02d}",
+                "ten": ten,
                 "ky_nang": RNG.sample(SKILLS, k=RNG.randint(1, 3)),
                 "la_sinh_vien": i <= 20,
                 "synthetic": True,

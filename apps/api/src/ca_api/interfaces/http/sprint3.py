@@ -5,7 +5,13 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
 import uuid
+<<<<<<< Updated upstream
+=======
+from collections.abc import Callable
+from datetime import UTC, datetime
+>>>>>>> Stashed changes
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -22,11 +28,11 @@ from ca_ops import (
     start_phieu,
 )
 from ca_playbook import list_sua, record_sua
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from ca_api.orchestration import Clock, IdempotencyStore, StateMachine, dispatch_parallel
-from ca_api.persist import kv_get, kv_mutate, kv_set
+from ca_api.persist import db_path, kv_get, kv_mutate, kv_set
 from ca_api.persist import session as auth_session
 
 router = APIRouter()
@@ -158,6 +164,43 @@ class MsgBody(BaseModel):
     backend: str = "console"
 
 
+<<<<<<< Updated upstream
+=======
+class TkbExtractBody(BaseModel):
+    image_path_or_id: str
+
+
+class TkbConfirmBody(BaseModel):
+    nv_id: str | None = None
+    khoang_ban: list[dict[str, str]]
+    source_id: str = ""
+    upload_id: str = ""
+
+
+def _tkb_upload_dir() -> Path:
+    base = Path(os.environ.get("NHIPQUAN_TKB_UPLOAD", "")).expanduser()
+    if not str(base):
+        base = db_path().parent / "tkb_uploads"
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def _clean_khoang_api(raw: list[dict[str, str]]) -> list[dict[str, str]]:
+    thu_ok = {"T2", "T3", "T4", "T5", "T6", "T7", "CN"}
+    out: list[dict[str, str]] = []
+    for item in raw:
+        thu = str(item.get("thu") or "").strip().upper()
+        if thu in {"CN", "T8"}:
+            thu = "CN"
+        start = str(item.get("start") or "").strip()
+        end = str(item.get("end") or "").strip()
+        if thu not in thu_ok or len(start) != 5 or len(end) != 5:
+            continue
+        out.append({"thu": thu, "start": start, "end": end})
+    return out
+
+
+>>>>>>> Stashed changes
 class DispatchBody(BaseModel):
     n: int = Field(default=8, ge=1, le=32)
     key: str = "orc-8"
@@ -385,6 +428,125 @@ def msg_classify(
     }
 
 
+<<<<<<< Updated upstream
+=======
+@router.post("/api/v1/tkb/extract")
+def tkb_extract(
+    body: TkbExtractBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    _require_role(authorization)
+    return extract_tkb(body.image_path_or_id, mode=agent_mode())
+
+
+@router.post("/api/v1/tkb/upload")
+async def tkb_upload(
+    authorization: Annotated[str | None, Header()] = None,
+    file: UploadFile | None = File(None),
+    fixture_id: Annotated[str | None, Form()] = None,
+) -> dict[str, Any]:
+    """Upload ảnh TKB (hoặc dùng fixture_id để thử) → AG-TKB extract."""
+    _require_role(authorization)
+    upload_id = ""
+    source = ""
+
+    if fixture_id and fixture_id.strip():
+        source = fixture_id.strip()
+        upload_id = f"fixture:{source}"
+    elif file is not None and file.filename:
+        raw = await file.read()
+        if not raw:
+            raise HTTPException(status_code=400, detail="file_trong")
+        if len(raw) > 8_000_000:
+            raise HTTPException(status_code=400, detail="file_qua_lon")
+        suffix = Path(file.filename).suffix.lower() or ".jpg"
+        if suffix not in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}:
+            raise HTTPException(status_code=400, detail="dinh_dang")
+        upload_id = f"up_{uuid.uuid4().hex[:12]}"
+        dest = _tkb_upload_dir() / f"{upload_id}{suffix}"
+        dest.write_bytes(raw)
+        source = str(dest)
+    else:
+        raise HTTPException(status_code=400, detail="thieu_file")
+
+    # Replay khi fixture; live khi file thật (theo CA_AGENT_MODE).
+    mode = "replay" if upload_id.startswith("fixture:") else agent_mode()
+    result = extract_tkb(source, mode=mode)
+    result["upload_id"] = upload_id
+    result["agent_mode"] = mode
+    return result
+
+
+@router.post("/api/v1/tkb/confirm")
+def tkb_confirm(
+    body: TkbConfirmBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Xác nhận khoảng bận và gắn vào nhân viên — dùng khi xếp lịch."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    role = s["role"]
+    nv = (body.nv_id or "").strip() or s["nv_id"]
+    if role not in {"quan_ly", "chu_quan"} and nv != s["nv_id"]:
+        raise HTTPException(status_code=403, detail="chi_gan_tkb_cua_minh")
+
+    seed = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
+    nv_ids = {n["id"] for n in seed.get("nhan_vien", [])}
+    if nv not in nv_ids and not nv.startswith("nv_"):
+        # Tài khoản đăng ký mới vẫn được lưu theo nv_id phiên.
+        pass
+    khoang = _clean_khoang_api(body.khoang_ban)
+    if not khoang:
+        raise HTTPException(status_code=400, detail="khoang_rong")
+
+    entry = {
+        "khoang_ban": khoang,
+        "source_id": body.source_id,
+        "upload_id": body.upload_id,
+        "xac_nhan_boi": s["nv_id"],
+        "vai": role,
+    }
+
+    def mut(doc: dict[str, Any]) -> dict[str, Any]:
+        doc[nv] = entry
+        return doc
+
+    kv_mutate("tkb_nv", mut, {})
+    record_sua(
+        loai="tkb_xac_nhan",
+        truoc={},
+        sau={"nv_id": nv, "n": len(khoang)},
+        ai=s["nv_id"],
+        now_iso=datetime.now(UTC).isoformat(),
+    )
+    return {"ok": True, "nv_id": nv, "khoang_ban": khoang, "n": len(khoang)}
+
+
+@router.get("/api/v1/tkb/mine")
+def tkb_mine(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    nv = _nv_from_token(authorization)
+    doc = kv_get("tkb_nv", {})
+    item = doc.get(nv) if isinstance(doc, dict) else None
+    return {"nv_id": nv, "item": item, "nguon": "quan"}
+
+
+@router.get("/api/v1/tkb/{nv_id}")
+def tkb_get(
+    nv_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    if s["role"] not in {"quan_ly", "chu_quan"} and s["nv_id"] != nv_id:
+        raise HTTPException(status_code=403, detail="cam")
+    doc = kv_get("tkb_nv", {})
+    item = doc.get(nv_id) if isinstance(doc, dict) else None
+    return {"nv_id": nv_id, "item": item, "nguon": "quan"}
+
+
+>>>>>>> Stashed changes
 @router.get("/api/v1/toi/lich")
 def toi_lich(
     authorization: Annotated[str | None, Header()] = None,

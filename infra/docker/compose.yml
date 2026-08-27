@@ -32,7 +32,24 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://nhipquan:nhipquan@postgres:5432/nhipquan
       REDIS_URL: redis://redis:6379/0
+<<<<<<< Updated upstream
       CA_AGENT_MODE: replay
+=======
+      CA_AGENT_MODE: ${CA_AGENT_MODE:-replay}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-8b-instant}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.6-flash}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-oss-20b:free}
+      NHIPQUAN_MSG_BACKEND: ${NHIPQUAN_MSG_BACKEND:-console}
+      NHIPQUAN_TELEGRAM_BOT_TOKEN: ${NHIPQUAN_TELEGRAM_BOT_TOKEN:-}
+      NHIPQUAN_TELEGRAM_WEBHOOK_SECRET: ${NHIPQUAN_TELEGRAM_WEBHOOK_SECRET:-}
+      NHIPQUAN_ZALO_ENABLED: ${NHIPQUAN_ZALO_ENABLED:-}
+      NHIPQUAN_ZALO_OA_ACCESS_TOKEN: ${NHIPQUAN_ZALO_OA_ACCESS_TOKEN:-}
+      NHIPQUAN_FB_PAGE_TOKEN: ${NHIPQUAN_FB_PAGE_TOKEN:-}
+      NHIPQUAN_FB_PAGE_ID: ${NHIPQUAN_FB_PAGE_ID:-}
+>>>>>>> Stashed changes
     ports:
       - "8000:8000"
     volumes:
@@ -57,7 +74,24 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://nhipquan:nhipquan@postgres:5432/nhipquan
       REDIS_URL: redis://redis:6379/0
+<<<<<<< Updated upstream
       CA_AGENT_MODE: replay
+=======
+      CA_AGENT_MODE: ${CA_AGENT_MODE:-replay}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-8b-instant}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.6-flash}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-oss-20b:free}
+      NHIPQUAN_MSG_BACKEND: ${NHIPQUAN_MSG_BACKEND:-console}
+      NHIPQUAN_TELEGRAM_BOT_TOKEN: ${NHIPQUAN_TELEGRAM_BOT_TOKEN:-}
+      NHIPQUAN_TELEGRAM_WEBHOOK_SECRET: ${NHIPQUAN_TELEGRAM_WEBHOOK_SECRET:-}
+      NHIPQUAN_ZALO_ENABLED: ${NHIPQUAN_ZALO_ENABLED:-}
+      NHIPQUAN_ZALO_OA_ACCESS_TOKEN: ${NHIPQUAN_ZALO_OA_ACCESS_TOKEN:-}
+      NHIPQUAN_FB_PAGE_TOKEN: ${NHIPQUAN_FB_PAGE_TOKEN:-}
+      NHIPQUAN_FB_PAGE_ID: ${NHIPQUAN_FB_PAGE_ID:-}
+>>>>>>> Stashed changes
     volumes:
       - nhipquan_var:/app/var
     depends_on:
