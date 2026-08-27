@@ -4,10 +4,11 @@ import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
 import { AppShell } from "./AppShell";
 
+/** Trang marketing / cửa auth: full-bleed, không thanh điều hướng ops. */
+const BARE = new Set(["/", "/login", "/dang-ky"]);
+
 export function ConditionalShell({ children }: { children: ReactNode }) {
   const path = usePathname();
-  // Hai cửa vào (đăng nhập, đăng ký) không có thanh điều hướng: lúc đó chưa có
-  // phiên, nên mọi lối tắt đều dẫn tới màn cần đăng nhập.
-  if (path === "/login" || path === "/dang-ky") return <>{children}</>;
+  if (BARE.has(path)) return <>{children}</>;
   return <AppShell>{children}</AppShell>;
 }

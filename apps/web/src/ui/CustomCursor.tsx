@@ -4,36 +4,43 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
 export function CustomCursor() {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [mousePosition, setMousePosition] = useState({ x: -100, y: -100 });
+  const [visible, setVisible] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
 
   useEffect(() => {
+    const fine = window.matchMedia("(pointer: fine)").matches;
+    if (!fine) return;
+
     const updateMousePosition = (e: MouseEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
+      if (!visible) setVisible(true);
     };
 
     const handleMouseOver = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName.toLowerCase() === "A" ||
-        target.tagName.toLowerCase() === "BUTTON" ||
-        target.closest("a") ||
-        target.closest("button")
-      ) {
-        setIsHovering(true);
-      } else {
-        setIsHovering(false);
-      }
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const interactive =
+        target.closest("a, button, input, select, textarea, [role='button']") != null;
+      setIsHovering(interactive);
     };
+
+    const hide = () => setVisible(false);
 
     window.addEventListener("mousemove", updateMousePosition);
     window.addEventListener("mouseover", handleMouseOver);
+    window.addEventListener("mouseleave", hide);
+    document.documentElement.addEventListener("mouseleave", hide);
 
     return () => {
       window.removeEventListener("mousemove", updateMousePosition);
       window.removeEventListener("mouseover", handleMouseOver);
+      window.removeEventListener("mouseleave", hide);
+      document.documentElement.removeEventListener("mouseleave", hide);
     };
-  }, []);
+  }, [visible]);
+
+  if (!visible) return null;
 
   return (
     <motion.div

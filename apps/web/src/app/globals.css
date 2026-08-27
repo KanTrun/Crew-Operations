@@ -1,4 +1,6 @@
 /* NHỊP QUÁN v3 Premium Ops — docs/design-guidelines.md */
+@import "tailwindcss";
+
 :root {
   --nq-bg: #0e0c0a;
   --nq-bg-elevated: #1a1612;
@@ -17,6 +19,15 @@
   --nq-ok: #6f9b7a;
   --nq-warn: #d4a017;
   --nq-focus: #e8d5b5;
+  /* Alias dùng bởi redesign Awwwards (class Tailwind arbitrary values) */
+  --nq-fg: var(--nq-ink);
+  --nq-dim: var(--nq-ink-muted);
+  --nq-copper: var(--nq-accent);
+  --nq-copper-dim: rgba(196, 165, 116, 0.45);
+  --nq-copper-glow: var(--nq-accent-glow);
+  --nq-surface-hi: var(--nq-bg-elevated);
+  --nq-red: var(--nq-danger);
+  --nq-red-dim: rgba(212, 93, 74, 0.35);
   --nq-banner-from: #2d2318;
   --nq-banner-mid: #1a1510;
   --nq-banner-to: #0e0c0a;
@@ -81,12 +92,23 @@ body {
   color: var(--nq-ink);
   font-family: var(--nq-font-body);
   line-height: 1.55;
-  cursor: none !important;
 }
 
-/* Đảm bảo các element tương tác cũng ẩn cursor mặc định */
-a, button, input, select, textarea, [role="button"] {
-  cursor: none !important;
+/* Chỉ ẩn cursor mặc định khi có chuột tinh (desktop); cảm ứng giữ cursor hệ thống. */
+@media (pointer: fine) {
+  html,
+  body {
+    cursor: none !important;
+  }
+
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    cursor: none !important;
+  }
 }
 
 body::before {

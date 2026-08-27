@@ -92,28 +92,12 @@ export function Logo({ className = "" }: { className?: string }) {
         />
       </motion.svg>
       <div className="ml-3 flex flex-col justify-center overflow-hidden">
-        <motion.span 
-          className="text-xl font-black uppercase tracking-tighter leading-none text-[var(--nq-fg)]"
-          variants={{
-            hidden: { y: 20, opacity: 0 },
-            visible: { y: 0, opacity: 1, transition: { duration: 0.5, delay: 0.8 } }
-          }}
-          initial="hidden"
-          animate="visible"
-        >
+        <span className="text-xl font-black uppercase tracking-tighter leading-none text-[var(--nq-fg)]">
           NHỊP QUÁN
-        </motion.span>
-        <motion.span 
-          className="text-[10px] font-mono uppercase tracking-[0.3em] text-[var(--nq-copper)] leading-none mt-1"
-          variants={{
-            hidden: { x: -20, opacity: 0 },
-            visible: { x: 0, opacity: 1, transition: { duration: 0.5, delay: 1 } }
-          }}
-          initial="hidden"
-          animate="visible"
-        >
+        </span>
+        <span className="text-[10px] font-mono uppercase tracking-[0.3em] text-[var(--nq-copper)] leading-none mt-1">
           Digital System
-        </motion.span>
+        </span>
       </div>
     </div>
   );

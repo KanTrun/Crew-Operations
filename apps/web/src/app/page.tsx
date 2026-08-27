@@ -10,10 +10,10 @@ import { Logo } from "../ui/Logo";
 
 export default function HomePage() {
   const router = useRouter();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
-    offset: ["start start", "end start"]
+    offset: ["start start", "end start"],
   });
 
   const y1 = useTransform(scrollYProgress, [0, 1], [0, 200]);
@@ -22,98 +22,128 @@ export default function HomePage() {
 
   useEffect(() => {
     if (getToken()) router.replace("/hom-nay");
-    
-    // Initial reveal animation
+
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     const ctx = gsap.context(() => {
+      if (reduce) {
+        gsap.set([".hero-text span", ".hero-desc", ".hero-actions", ".hero-scroll"], {
+          clearProps: "all",
+          opacity: 1,
+          y: 0,
+        });
+        return;
+      }
+
       gsap.fromTo(
         ".hero-text span",
-        { y: 100, opacity: 0 },
-        { y: 0, opacity: 1, stagger: 0.1, duration: 1, ease: "power4.out", delay: 0.2 }
+        { y: 48, opacity: 0 },
+        { y: 0, opacity: 1, stagger: 0.08, duration: 0.9, ease: "power4.out", delay: 0.15 },
       );
-      
       gsap.fromTo(
         ".hero-desc",
-        { y: 50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 1, ease: "power3.out", delay: 0.8 }
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, ease: "power3.out", delay: 0.45 },
       );
-      
       gsap.fromTo(
         ".hero-actions",
-        { y: 50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 1, ease: "power3.out", delay: 1 }
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, ease: "power3.out", delay: 0.6 },
+      );
+      gsap.fromTo(
+        ".hero-scroll",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.6, delay: 0.9 },
       );
     }, containerRef);
-    
+
     return () => ctx.revert();
   }, [router]);
 
   return (
-    <main ref={containerRef} className="min-h-[200vh] relative bg-[var(--nq-bg)] overflow-hidden">
-      {/* 3D/Abstract Background Elements */}
-      <motion.div 
+    <main ref={containerRef} className="relative min-h-[200vh] bg-[var(--nq-bg)]">
+      <motion.div
         style={{ y: y1 }}
-        className="fixed top-[10%] left-[5%] w-[40vw] h-[40vw] rounded-full bg-[var(--nq-copper-glow)] blur-[120px] opacity-40 mix-blend-screen pointer-events-none will-change-transform"
+        className="pointer-events-none fixed top-[10%] left-[5%] h-[40vw] w-[40vw] rounded-full bg-[var(--nq-copper-glow)] opacity-40 blur-[120px] mix-blend-screen will-change-transform"
       />
-      <motion.div 
+      <motion.div
         style={{ y: y2 }}
-        className="fixed bottom-[10%] right-[5%] w-[50vw] h-[50vw] rounded-full bg-[var(--nq-red-dim)] blur-[150px] opacity-20 mix-blend-screen pointer-events-none will-change-transform"
+        className="pointer-events-none fixed right-[5%] bottom-[10%] h-[50vw] w-[50vw] rounded-full bg-[var(--nq-red-dim)] opacity-20 blur-[150px] mix-blend-screen will-change-transform"
       />
 
-      {/* Hero Section */}
-      <section className="h-screen flex flex-col items-center justify-center p-4 relative z-10">
-        <motion.div style={{ opacity }} className="text-center flex flex-col items-center max-w-4xl mx-auto will-change-opacity">
-          <div className="mb-12">
-            <Logo className="scale-150 transform origin-center" />
+      <section className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-4 py-16">
+        <motion.div
+          style={{ opacity }}
+          className="mx-auto flex w-full max-w-4xl flex-col items-center text-center will-change-opacity"
+        >
+          <div className="mb-10">
+            <Logo />
           </div>
-          
-          <div className="hero-text flex flex-wrap justify-center gap-x-4 gap-y-2 text-6xl md:text-8xl lg:text-[10rem] font-black uppercase leading-[0.85] tracking-tighter text-[var(--nq-fg)] mix-blend-difference mb-8">
+
+          <div className="hero-text mb-8 flex flex-wrap justify-center gap-x-4 gap-y-2 text-5xl font-black leading-[0.9] tracking-tighter text-[var(--nq-fg)] uppercase sm:text-7xl md:text-8xl lg:text-[9rem]">
             <span className="block">NHỊP</span>
             <span className="block text-[var(--nq-copper)]">QUÁN</span>
           </div>
-          
-          <div className="hero-desc text-xl md:text-2xl text-[var(--nq-dim)] max-w-2xl text-center mb-12 font-medium">
-            Hệ điều hành ca cho quán cà phê — <span className="text-[var(--nq-fg)]">tinh gọn</span> trên điện thoại, <span className="text-[var(--nq-fg)]">mạnh mẽ</span> trên màn lớn.
-          </div>
-          
-          <div className="hero-actions flex flex-col sm:flex-row gap-6 w-full max-w-md">
-            <Link 
+
+          <p className="hero-desc mb-10 max-w-2xl text-lg font-medium text-[var(--nq-dim)] md:text-2xl">
+            Hệ điều hành ca cho quán cà phê —{" "}
+            <span className="text-[var(--nq-fg)]">tinh gọn</span> trên điện thoại,{" "}
+            <span className="text-[var(--nq-fg)]">mạnh mẽ</span> trên màn lớn.
+          </p>
+
+          <div className="hero-actions flex w-full max-w-md flex-col gap-4 sm:flex-row sm:gap-6">
+            <Link
               href="/login"
-              className="flex-1 bg-[var(--nq-copper)] text-[#0e0c0a] font-black uppercase tracking-widest py-5 px-8 border-2 border-[var(--nq-copper)] hover:bg-transparent hover:text-[var(--nq-copper)] transition-all duration-300 text-center"
+              className="flex-1 border-2 border-[var(--nq-copper)] bg-[var(--nq-copper)] px-8 py-5 text-center font-black tracking-widest text-[#0e0c0a] uppercase transition-all duration-300 hover:bg-transparent hover:text-[var(--nq-copper)]"
             >
               Vào Ca
             </Link>
-            <Link 
+            <Link
               href="/dang-ky"
-              className="flex-1 bg-transparent text-[var(--nq-fg)] font-bold uppercase tracking-widest py-5 px-8 border-2 border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] transition-all duration-300 text-center"
+              className="flex-1 border-2 border-[var(--nq-dim)] bg-transparent px-8 py-5 text-center font-bold tracking-widest text-[var(--nq-fg)] uppercase transition-all duration-300 hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
             >
               Gia Nhập
             </Link>
           </div>
-          
-          <div className="mt-12 text-sm text-[var(--nq-dim)] font-mono uppercase tracking-widest flex gap-4 items-center">
-            <span className="w-12 h-[2px] bg-[var(--nq-dim)]" />
+
+          <div className="hero-scroll mt-12 flex items-center gap-4 font-mono text-sm tracking-widest text-[var(--nq-dim)] uppercase">
+            <span className="h-[2px] w-12 bg-[var(--nq-dim)]" />
             Cuộn để khám phá
-            <span className="w-12 h-[2px] bg-[var(--nq-dim)]" />
+            <span className="h-[2px] w-12 bg-[var(--nq-dim)]" />
           </div>
         </motion.div>
       </section>
 
-      {/* Scrollytelling Section */}
-      <section className="min-h-screen relative z-10 py-24 px-4 md:px-12 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-24 items-center">
+      <section className="relative z-10 mx-auto max-w-7xl px-4 py-24 md:px-12">
+        <div className="grid grid-cols-1 items-center gap-16 md:grid-cols-2 md:gap-24">
           <div className="space-y-8">
-            <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter text-[var(--nq-copper)]">
-              Một Việc<br/>Một Lúc
+            <h2 className="text-4xl font-black tracking-tighter text-[var(--nq-copper)] uppercase md:text-6xl">
+              Một Việc
+              <br />
+              Một Lúc
             </h2>
-            <p className="text-xl text-[var(--nq-dim)] border-l-4 border-[var(--nq-copper)] pl-6">
-              Không còn bảng tính rối rắm hay nhóm chat lộn xộn. Mọi thứ từ xếp ca, điểm danh đến kiểm kê đều nằm gọn trong một luồng công việc duy nhất.
+            <p className="border-l-4 border-[var(--nq-copper)] pl-6 text-xl text-[var(--nq-dim)]">
+              Không còn bảng tính rối rắm hay nhóm chat lộn xộn. Mọi thứ từ xếp ca, điểm danh đến
+              kiểm kê đều nằm gọn trong một luồng công việc duy nhất.
             </p>
           </div>
-          
-          <div className="relative aspect-square bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] p-8 shadow-[16px_16px_0px_0px_var(--nq-copper-dim)] flex flex-col justify-between">
-            <div className="text-[var(--nq-copper)] font-mono uppercase tracking-widest text-sm">Hệ Sinh Thái AI</div>
-            <div className="text-4xl font-black uppercase">9 Agent<br/>Chuyên<br/>Trách</div>
-            <div className="text-[var(--nq-dim)]">Tự động hoá vận hành, đẩy ngoại lệ lên cho con người.</div>
+
+          <div className="relative flex aspect-square flex-col justify-between border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-8 shadow-[16px_16px_0px_0px_var(--nq-copper-dim)]">
+            <div className="font-mono text-sm tracking-widest text-[var(--nq-copper)] uppercase">
+              Hệ Sinh Thái AI
+            </div>
+            <div className="text-4xl font-black uppercase">
+              9 Agent
+              <br />
+              Chuyên
+              <br />
+              Trách
+            </div>
+            <div className="text-[var(--nq-dim)]">
+              Tự động hoá vận hành, đẩy ngoại lệ lên cho con người.
+            </div>
           </div>
         </div>
       </section>
