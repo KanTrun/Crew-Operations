@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { ConditionalShell } from "./ConditionalShell";
+<<<<<<< Updated upstream
+=======
+import { SmoothScroll } from "../ui/SmoothScroll";
+>>>>>>> Stashed changes
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -10,6 +14,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
+<<<<<<< Updated upstream
     <html lang="vi">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -21,6 +26,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ConditionalShell>{children}</ConditionalShell>
+=======
+    <html lang="vi" className={fontClass}>
+      <body>
+        <SmoothScroll>
+          <a href="#nq-content" className="nq-skip">
+            Bỏ qua thanh điều hướng
+          </a>
+          <ConditionalShell>{children}</ConditionalShell>
+        </SmoothScroll>
+>>>>>>> Stashed changes
       </body>
     </html>
   );
