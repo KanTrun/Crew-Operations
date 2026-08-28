@@ -210,12 +210,6 @@ export default function PhieuPage() {
 
   if (!token) {
     return (
-<<<<<<< Updated upstream
-      <div className="nq-page">
-        <h1>Phiếu mở quán</h1>
-        <p>Cần đăng nhập rồi mở lại trang này.</p>
-        <Link href="/login">Đăng nhập</Link>
-=======
       <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-[var(--nq-bg)]">
         <h1 className="text-4xl font-black uppercase tracking-tighter text-[var(--nq-fg)] mb-4">Phiếu Ca</h1>
         <p className="text-xl text-[var(--nq-dim)] mb-8">Phiếu chạy theo phiên của bạn, nên cần đăng nhập trước.</p>
@@ -226,7 +220,6 @@ export default function PhieuPage() {
         >
           Đăng nhập để mở phiếu
         </button>
->>>>>>> Stashed changes
       </div>
     );
   }
@@ -248,15 +241,6 @@ export default function PhieuPage() {
   }
 
   return (
-<<<<<<< Updated upstream
-    <div className="nq-page">
-      <p className="nq-kicker">Một tay · một bước</p>
-      <h1>Phiếu mở quán</h1>
-
-      {error && (
-        <p role="alert" style={{ color: "var(--nq-danger)", padding: "0.5rem 0.75rem", border: "1px solid var(--nq-danger)", borderRadius: 4, marginBottom: "1rem", fontSize: "0.875rem" }}>
-          {error}
-=======
     <div className="relative" ref={containerRef}>
       <header className="mb-8 ops-animate-in">
         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[var(--nq-copper)] mb-2">
@@ -264,7 +248,6 @@ export default function PhieuPage() {
         </h1>
         <p className="text-[var(--nq-dim)] font-mono text-sm">
           {phieu ? "Đang chạy phiếu ca" : "Chọn mẫu phiếu cần chạy"}
->>>>>>> Stashed changes
         </p>
       )}
 
@@ -374,22 +357,6 @@ export default function PhieuPage() {
             </div>
           )}
 
-<<<<<<< Updated upstream
-          {/* Treo panel */}
-          {showTreo && (
-            <div style={{ border: "1px solid var(--nq-line)", borderRadius: 8, padding: "1rem", marginBottom: "1rem" }}>
-              <p style={{ fontWeight: 600, marginBottom: "0.5rem" }}>Để việc treo</p>
-              <textarea
-                value={treoText}
-                onChange={(e) => setTreoText(e.target.value)}
-                placeholder="Mô tả vấn đề cần treo lại…"
-                rows={3}
-                style={{ width: "100%", boxSizing: "border-box", background: "var(--nq-surface)", border: "1px solid var(--nq-line)", color: "var(--nq-ink)", padding: "0.6rem 0.75rem", borderRadius: 4, fontSize: "0.9rem", resize: "vertical", marginBottom: "0.75rem" }}
-              />
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <button disabled={busy || !treoText.trim()} onClick={handleTreo} style={{ ...btnDanger, flex: 1 }}>
-                  Treo phiếu
-=======
           {showTreo ? (
             <div className="bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-red)] p-6 md:p-8 shadow-[8px_8px_0px_0px_var(--nq-red-dim)] mb-8">
               <h2 className="text-2xl font-black uppercase mb-6 text-[var(--nq-red)]">Để lại việc treo</h2>
@@ -410,7 +377,6 @@ export default function PhieuPage() {
                   className="flex-1 nq-ink-on-solid bg-[var(--nq-red)] font-black uppercase tracking-widest py-4 border-2 border-[var(--nq-red)] hover:bg-transparent hover:text-[var(--nq-red)] transition-all disabled:opacity-50"
                 >
                   Gửi việc treo
->>>>>>> Stashed changes
                 </button>
                 <button onClick={() => setShowTreo(false)} style={{ ...btnSecondary, flex: 1 }}>
                   Hủy
@@ -421,16 +387,6 @@ export default function PhieuPage() {
         </div>
       )}
 
-<<<<<<< Updated upstream
-      {/* Fixed bottom CTA */}
-      {phieu && !done && currentBuoc && (
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--nq-surface)", borderTop: "1px solid var(--nq-line)", padding: "0.75rem 1rem", display: "flex", gap: "0.5rem", zIndex: 100 }}>
-          {currentBuoc.loai !== "photo" && (
-            <button
-              disabled={busy}
-              onClick={() => completeBuoc(currentBuoc.ma, currentBuoc.loai === "text" || currentBuoc.loai === "nhap" ? inputVal || undefined : undefined)}
-              style={{ ...btnPrimary, flex: 1 }}
-=======
       {activeRun && currentBuoc ? (
         <div className="fixed bottom-0 left-0 w-full p-4 bg-[var(--nq-bg)]/80 backdrop-blur-md border-t-2 border-[var(--nq-dim)] z-50">
           <div className="max-w-2xl mx-auto flex gap-4">
@@ -454,7 +410,6 @@ export default function PhieuPage() {
               title="Để lại việc treo" 
               onClick={() => setShowTreo((s) => !s)}
               className="bg-transparent text-[var(--nq-dim)] font-bold uppercase tracking-widest py-5 px-6 border-2 border-[var(--nq-dim)] hover:border-[var(--nq-red)] hover:text-[var(--nq-red)] transition-all bg-[var(--nq-surface)]"
->>>>>>> Stashed changes
             >
               {busy ? "Đang xử lý…" : "Xong bước này"}
             </button>
@@ -467,11 +422,7 @@ export default function PhieuPage() {
             Treo
           </button>
         </div>
-<<<<<<< Updated upstream
-      )}
-=======
       ) : null}
->>>>>>> Stashed changes
     </div>
   );
 }

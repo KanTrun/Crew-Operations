@@ -2,10 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
-<<<<<<< Updated upstream
-import { getToken } from "../../lib/session";
-import { Alert, AuthGate, btnDanger, btnPrimary, Empty, Kicker, Loading } from "../../ui/kit";
-=======
 import { formatNgay, khungLabel, safeText, viError, viTriLabel } from "../../lib/present";
 import { getToken } from "../../lib/session";
 import {
@@ -19,7 +15,6 @@ import {
   Notice,
   PageHeader,
 } from "../../ui/kit";
->>>>>>> Stashed changes
 
 type Ca = {
   id: string;
@@ -58,13 +53,6 @@ export default function ToiPage() {
 
   const load = useCallback(() => {
     if (!getToken()) return;
-<<<<<<< Updated upstream
-    apiGet<{ ca?: Ca[]; tuan_iso?: string } | Ca[]>("/api/v1/toi/lich")
-      .then((d) => {
-        const list = Array.isArray(d) ? d : d.ca ?? [];
-        setCa(list);
-        if (!Array.isArray(d)) setWeek(d.tuan_iso ?? "");
-=======
     setLoading(true);
     Promise.all([
       apiGet<{ ca?: Ca[]; tuan_iso?: string } | Ca[]>("/api/v1/toi/lich"),
@@ -76,7 +64,6 @@ export default function ToiPage() {
         if (!Array.isArray(d)) setWeek(safeText(d.tuan_iso, ""));
         setChannels(st);
         setError(null);
->>>>>>> Stashed changes
       })
       .catch(() => setError("Không tải được lịch của bạn."))
       .finally(() => setLoading(false));
@@ -125,9 +112,6 @@ export default function ToiPage() {
       {week ? <p className="nq-muted">Tuần {week}</p> : null}
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
-<<<<<<< Updated upstream
-      {loading ? <Loading>Đang tải lịch của bạn…</Loading> : null}
-=======
 
       <section className="mb-10 border-2 border-[var(--nq-dim)] p-4 md:p-6">
         <h2 className="mb-2 text-lg font-black uppercase tracking-tighter text-[var(--nq-copper)]">
@@ -155,7 +139,6 @@ export default function ToiPage() {
       </section>
 
       {loading ? <Loading skeleton="list">Đang tải lịch của bạn…</Loading> : null}
->>>>>>> Stashed changes
       {!loading && ca.length === 0 && !error ? (
         <Empty>Chưa có ca trong tuần này, hoặc lịch chưa công bố.</Empty>
       ) : null}
@@ -169,17 +152,10 @@ export default function ToiPage() {
                 const mine = c.trang_thai === "cua_toi";
                 return (
                   <div key={c.id} className="nq-item">
-<<<<<<< Updated upstream
-                    <p style={{ margin: 0, fontWeight: 600 }}>{c.vi_tri}</p>
-                    <p className="nq-muted" style={{ margin: "0.2rem 0 0.6rem", fontFamily: "var(--nq-font-mono)" }}>
-                      {c.bat_dau} – {c.ket_thuc}
-                      {c.khung ? ` · ${c.khung}` : ""}
-=======
                     <p className="nq-item-title">{viTriLabel(c.vi_tri)}</p>
                     <p className="nq-item-sub" style={{ fontFamily: "var(--nq-font-mono)" }}>
                       {safeText(c.bat_dau, "--:--")} – {safeText(c.ket_thuc, "--:--")}
                       {khung ? ` · ${khung}` : ""}
->>>>>>> Stashed changes
                       {mine ? " · ca của bạn" : ""}
                     </p>
                     <p style={{ display: "flex", gap: "0.5rem", margin: 0 }}>

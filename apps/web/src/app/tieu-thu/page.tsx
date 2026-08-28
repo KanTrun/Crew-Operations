@@ -87,55 +87,6 @@ export default function TieuThuPage() {
   if (!token) return <AuthGate />;
 
   return (
-<<<<<<< Updated upstream
-    <div className="nq-page">
-      <PageHeader
-        kicker="Số lượng · không kế toán"
-        title="Sổ tiêu thụ"
-        meta="Ghi số khay dùng trong ca. Hệ thống chỉ đếm, không tính tiền; dưới ngưỡng thì cảnh báo trên bảng Hôm nay."
-      />
-      {error ? <Alert>{error}</Alert> : null}
-      {msg ? <Alert kind="ok">{msg}</Alert> : null}
-      {manager ? (
-        <OpsCard eyebrow="Ghi vào sổ" title="Lần kiểm kê mới">
-          <form onSubmit={onSubmit}>
-            <Field label="Tên hàng">
-              <input value={hang} onChange={(e) => setHang(e.target.value)} style={inputStyle} />
-            </Field>
-            <Field label="Số khay còn lại">
-              <input value={so} onChange={(e) => setSo(e.target.value)} inputMode="decimal" style={inputStyle} />
-            </Field>
-            <Hint>Đếm theo khay. Dưới 2 khay thì bảng Hôm nay hiện cảnh báo tồn.</Hint>
-            <Btn type="submit" variant="primary" disabled={busy}>
-              {busy ? "Đang ghi…" : "Ghi lần kiểm kê"}
-            </Btn>
-          </form>
-        </OpsCard>
-      ) : (
-        <Notice>Bạn xem được sổ. Quản lý hoặc chủ quán mới ghi số lượng.</Notice>
-      )}
-      <h2>Những lần đã ghi</h2>
-      {loading ? <Loading skeleton="list">Đang đọc sổ tiêu thụ…</Loading> : null}
-      {!loading && !error && items.length === 0 ? (
-        <Empty>Chưa có lần kiểm kê nào trong sổ.</Empty>
-      ) : null}
-      <div className="nq-list">
-        {items.map((it) => (
-          <article key={it.id} className="nq-item">
-            <p className="nq-item-title">{safeText(it.hang, "Hàng chưa ghi tên")}</p>
-            <p className="nq-item-sub" style={{ fontFamily: "var(--nq-font-mono)" }}>
-              {safeNumber(it.so_luong)} {safeText(it.don_vi, "khay")}
-              {it.duoi_nguong ? (
-                <>
-                  {" "}
-                  <StatusChip tone="warn">dưới ngưỡng</StatusChip>
-                </>
-              ) : null}
-            </p>
-          </article>
-        ))}
-      </div>
-=======
     <div className="relative" ref={containerRef}>
       <header className="mb-8 ops-animate-in">
         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[var(--nq-copper)] mb-2">
@@ -266,7 +217,6 @@ export default function TieuThuPage() {
       </div>
 
       <Toasts toasts={toasts} onDismiss={dismiss} />
->>>>>>> Stashed changes
     </div>
   );
 }

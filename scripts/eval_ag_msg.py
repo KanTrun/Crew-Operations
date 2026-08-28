@@ -28,11 +28,17 @@ def main() -> None:
     pred = [classify(r["text"]).intent for r in rows]
     n = len(rows)
     correct = sum(g == p for g, p in zip(gold, pred, strict=True))
+    hard_rows = [r for r in rows if r.get("difficulty") in {"hard", "medium"}]
+    hard_n = len(hard_rows)
+    hard_ok = sum(
+        classify(r["text"]).intent == r["intent"] for r in hard_rows
+    )
     matrix: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for g, p in zip(gold, pred, strict=True):
         matrix[g][p] += 1
     acc = correct / n if n else 0
-    print(f"AG-MSG: {correct}/{n} accuracy={acc:.2%}")
+    hard_acc = (hard_ok / hard_n) if hard_n else 0
+    print(f"AG-MSG: {correct}/{n} accuracy={acc:.2%} hard={hard_ok}/{hard_n} ({hard_acc:.2%})")
     lines = [
         "",
         "## AG-MSG confusion (Sprint 3)",
@@ -41,11 +47,10 @@ def main() -> None:
         "|------|---------|-------|----------|",
         f"| {date.today().isoformat()} | {correct} | {n} | {acc:.2%} |",
         "",
-        "Rows = gold, cols = predicted. Classifier is keyword tier-1; "
-        "unmatched → `khac` (tier 2 fallback). **Not an LLM.** "
-        "Golden texts in `data/golden/messages/` largely restates those keywords, "
-        "so high accuracy is expected and is not independent evidence of NLU. "
-        "Replay only, no live network.",
+        f"Hard/medium subset: {hard_ok}/{hard_n} = {hard_acc:.2%}",
+        "",
+        "Golden gồm ~40% hard/medium (`hard_cases.jsonl`). Classifier keyword tier-1; "
+        "unmatched → `khac`. Replay only, no live network.",
         "",
         "| gold \\ pred | " + " | ".join(INTENTS) + " |",
         "|---" * (len(INTENTS) + 1) + "|",

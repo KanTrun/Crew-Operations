@@ -1,0 +1,80 @@
+{"id": "hard_01", "text": "ok anh", "intent": "khac", "difficulty": "hard", "note": "không keyword"}
+{"id": "hard_02", "text": "👍", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_03", "text": "em đến trễ chút khoảng 10p", "intent": "bao_tre", "difficulty": "hard"}
+{"id": "hard_04", "text": "sáng mai em xin về sớm được không ạ", "intent": "khac", "difficulty": "hard", "note": "mơ hồ — không khớp xin nghỉ"}
+{"id": "hard_05", "text": "chiều nay thiếu người bar ai nhận hộ", "intent": "nhan_ca", "difficulty": "hard"}
+{"id": "hard_06", "text": "tuần sau em nghỉ thứ 4", "intent": "khac", "difficulty": "hard", "note": "thiếu cụm xin nghỉ"}
+{"id": "hard_07", "text": "schedule học mới T3 T5 tối", "intent": "cap_nhat_tkb", "difficulty": "hard"}
+{"id": "hard_08", "text": "máy pha kêu to quá", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_09", "text": "em swap ca sáng với Lan", "intent": "doi_ca", "difficulty": "hard"}
+{"id": "hard_10", "text": "đổi ca với bạn được không ạ", "intent": "doi_ca", "difficulty": "hard"}
+{"id": "hard_11", "text": "em không đi làm mai nhé", "intent": "xin_nghi", "difficulty": "hard"}
+{"id": "hard_12", "text": "học T2 sáng từ tuần sau", "intent": "cap_nhat_tkb", "difficulty": "hard"}
+{"id": "hard_13", "text": "tre ca sang 20p", "intent": "bao_tre", "difficulty": "hard"}
+{"id": "hard_14", "text": "em nhận giúp ca tối được không", "intent": "nhan_ca", "difficulty": "hard"}
+{"id": "hard_15", "text": "anh ơi em muốn đổi ca nhưng chưa biết với ai", "intent": "doi_ca", "difficulty": "hard"}
+{"id": "hard_16", "text": "em bận học chiều mai, chiều đó đổi với Huy được không", "intent": "doi_ca", "difficulty": "hard", "note": "đổi ca thắng học"}
+{"id": "hard_17", "text": "ca tối thiếu 1 người", "intent": "khac", "difficulty": "hard", "note": "thiếu nhận ca"}
+{"id": "hard_18", "text": "em xin phép đến muộn tí", "intent": "bao_tre", "difficulty": "hard"}
+{"id": "hard_19", "text": "cập nhật thời khoá biểu giúp em", "intent": "cap_nhat_tkb", "difficulty": "hard"}
+{"id": "hard_20", "text": "nghỉ ca tối nay được không", "intent": "xin_nghi", "difficulty": "hard"}
+{"id": "hard_21", "text": "help", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_22", "text": "em đổi với bạn Minh ca chieu nhé", "intent": "doi_ca", "difficulty": "hard"}
+{"id": "hard_23", "text": "sáng nay em trễ 5 phút", "intent": "bao_tre", "difficulty": "hard"}
+{"id": "hard_24", "text": "ai làm hộ ca sang giúp em", "intent": "nhan_ca", "difficulty": "hard"}
+{"id": "hard_25", "text": "TKB em đổi: thêm T6 tối", "intent": "cap_nhat_tkb", "difficulty": "hard"}
+{"id": "hard_26", "text": "em ốm không lên ca", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_27", "text": "đổi ca sang với bạn được k", "intent": "doi_ca", "difficulty": "hard"}
+{"id": "hard_28", "text": "đến chậm 15p ca chieu", "intent": "bao_tre", "difficulty": "hard"}
+{"id": "hard_29", "text": "nhận ca giúp em tối thứ 6", "intent": "nhan_ca", "difficulty": "hard"}
+{"id": "hard_30", "text": "em học thêm T4 chiều", "intent": "cap_nhat_tkb", "difficulty": "hard"}
+{"id": "hard_31", "text": "xin nghỉ vì việc gia đình", "intent": "xin_nghi", "difficulty": "hard"}
+{"id": "hard_32", "text": "quên chấm công", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_33", "text": "doi ca toi voi ban duoc k anh", "intent": "doi_ca", "difficulty": "hard"}
+{"id": "hard_34", "text": "em tre 30p", "intent": "bao_tre", "difficulty": "hard"}
+{"id": "hard_35", "text": "ca chieu thiếu barista", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_36", "text": "thoi khoa bieu moi gui anh", "intent": "cap_nhat_tkb", "difficulty": "hard"}
+{"id": "hard_37", "text": "em nghỉ ốm ca sáng", "intent": "xin_nghi", "difficulty": "hard"}
+{"id": "hard_38", "text": "ly vỡ ở quầy", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_39", "text": "swap shift tối với bạn", "intent": "doi_ca", "difficulty": "hard"}
+{"id": "hard_40", "text": "muon 10 phut ca sang", "intent": "bao_tre", "difficulty": "hard"}
+{"id": "hard_41", "text": "em lam ho ca toi", "intent": "nhan_ca", "difficulty": "hard"}
+{"id": "hard_42", "text": "hoc T5 sang cap nhat giup", "intent": "cap_nhat_tkb", "difficulty": "hard"}
+{"id": "hard_43", "text": "không đi làm thứ 3", "intent": "xin_nghi", "difficulty": "hard"}
+{"id": "hard_44", "text": "/help", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_45", "text": "anh cho em đổi ca chieu với bạn được không", "intent": "doi_ca", "difficulty": "easy", "annotator_a": "doi_ca", "annotator_b": "khac"}
+{"id": "hard_46", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "difficulty": "easy"}
+{"id": "hard_47", "text": "máy pha bên em hơi kêu lạ ca chieu", "intent": "khac", "difficulty": "hard", "note": "có chữ ca nhưng không phải đổi/nhận"}
+{"id": "hard_48", "text": "tuần này em học T4 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "difficulty": "medium"}
+{"id": "hard_49", "text": "em xin nghỉ ca toi ngày T2 ạ", "intent": "xin_nghi", "difficulty": "medium"}
+{"id": "hard_50", "text": "chiều nay em đến trễ vì kẹt xe", "intent": "bao_tre", "difficulty": "medium"}
+{"id": "hard_51", "text": "em muốn nhận thêm ca", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_52", "text": "đổi lịch học T3", "intent": "cap_nhat_tkb", "difficulty": "hard"}
+{"id": "hard_53", "text": "nghỉ phép ngày mai", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_54", "text": "anh ơi ca này em trễ nhé", "intent": "bao_tre", "difficulty": "medium"}
+{"id": "hard_55", "text": "đổi ca với bạn Lan chiều mai", "intent": "doi_ca", "difficulty": "medium"}
+{"id": "hard_56", "text": "nhận ca hộ em sáng mai", "intent": "nhan_ca", "difficulty": "medium"}
+{"id": "hard_57", "text": "cập nhật học T6 tối giúp em", "intent": "cap_nhat_tkb", "difficulty": "medium"}
+{"id": "hard_58", "text": "xin nghỉ ca chiều", "intent": "xin_nghi", "difficulty": "medium"}
+{"id": "hard_59", "text": "hi anh", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_60", "text": "em đổi ca với bạn được không", "intent": "doi_ca", "difficulty": "easy"}
+{"id": "hard_61", "text": "trễ 5p", "intent": "bao_tre", "difficulty": "hard"}
+{"id": "hard_62", "text": "thiếu người ca sang", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_63", "text": "TKB mới đính kèm", "intent": "cap_nhat_tkb", "difficulty": "medium"}
+{"id": "hard_64", "text": "nghỉ ốm", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_65", "text": "đổi với bạn ca tối", "intent": "doi_ca", "difficulty": "medium"}
+{"id": "hard_66", "text": "em den cham ca chieu", "intent": "bao_tre", "difficulty": "medium"}
+{"id": "hard_67", "text": "lam ho ca sang", "intent": "nhan_ca", "difficulty": "medium"}
+{"id": "hard_68", "text": "hoc them T7 sang", "intent": "cap_nhat_tkb", "difficulty": "medium"}
+{"id": "hard_69", "text": "xin nghi ca sang", "intent": "xin_nghi", "difficulty": "medium"}
+{"id": "hard_70", "text": "wifi quán lag", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_71", "text": "đổi ca", "intent": "doi_ca", "difficulty": "medium"}
+{"id": "hard_72", "text": "muộn ca toi", "intent": "bao_tre", "difficulty": "medium"}
+{"id": "hard_73", "text": "nhan ca ho em", "intent": "nhan_ca", "difficulty": "medium"}
+{"id": "hard_74", "text": "thoi khoa bieu T2 T4", "intent": "cap_nhat_tkb", "difficulty": "medium"}
+{"id": "hard_75", "text": "em khong di lam CN", "intent": "xin_nghi", "difficulty": "medium"}
+{"id": "hard_76", "text": "???", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_77", "text": "anh duyet giup em doi ca sang", "intent": "doi_ca", "difficulty": "medium"}
+{"id": "hard_78", "text": "15p nữa em tới", "intent": "khac", "difficulty": "hard"}
+{"id": "hard_79", "text": "ca sang thiếu người nhận giúp", "intent": "nhan_ca", "difficulty": "medium"}
+{"id": "hard_80", "text": "cap nhat tkb tuan nay", "intent": "cap_nhat_tkb", "difficulty": "medium"}

@@ -1,10 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-<<<<<<< Updated upstream
-import { API, apiSend } from "../../lib/api";
-import { lifeLabel, roleLabel } from "../../lib/session";
-=======
 import { apiGet, apiSend } from "../../lib/api";
 import { nvTenHienThi, safeText, viError, viTriLabel } from "../../lib/present";
 import { getToken, lifeLabel, roleLabel } from "../../lib/session";
@@ -19,7 +15,6 @@ import {
   TechnicalDrawer,
   Toolbar,
 } from "../../ui/kit";
->>>>>>> Stashed changes
 
 type RosterData = {
   tuan_iso: string;
@@ -77,26 +72,7 @@ function groupByDay(ca: RosterData["ca"]) {
   return map;
 }
 
-<<<<<<< Updated upstream
-const cellStyle: React.CSSProperties = {
-  border: "1px solid var(--nq-line)",
-  padding: "0.5rem 0.6rem",
-  verticalAlign: "top",
-  minWidth: 120,
-};
-
-const headerCellStyle: React.CSSProperties = {
-  ...cellStyle,
-  background: "var(--nq-bg-elevated)",
-  fontFamily: "var(--nq-font-mono)",
-  fontSize: "0.78rem",
-  color: "var(--nq-ink-muted)",
-  fontWeight: 600,
-  textAlign: "left",
-};
-=======
 const DAY_ORDER = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
->>>>>>> Stashed changes
 
 export default function RosterPage() {
   const [data, setData] = useState<RosterData | null>(null);
@@ -129,15 +105,9 @@ export default function RosterPage() {
     setToken(t);
     setRole(r);
     if (t) {
-<<<<<<< Updated upstream
-      fetch(`${API}/api/v1/lich/lifecycle`, { headers: { Authorization: `Bearer ${t}` } })
-        .then((x) => x.json())
-        .then((d) => setLife(d.trang_thai ?? ""));
-=======
       apiGet<{ trang_thai?: string }>("/api/v1/lich/lifecycle")
         .then((d) => setLife(safeText(d.trang_thai, "")))
         .catch(() => setLife(""));
->>>>>>> Stashed changes
     }
   }, []);
 
@@ -187,11 +157,6 @@ export default function RosterPage() {
     }
   }
 
-<<<<<<< Updated upstream
-  const byDay = data ? groupByDay(data.ca) : {};
-  const days = Object.keys(byDay).sort();
-  const nvMap = Object.fromEntries((data?.nhan_vien ?? []).map((nv) => [nv.id, nv.ten]));
-=======
   const byDay = data ? groupByDay(data.ca ?? []) : {};
   const days = [
     ...DAY_ORDER.filter((d) => d in byDay),
@@ -201,7 +166,6 @@ export default function RosterPage() {
   ];
   const nvMap = Object.fromEntries((data?.nhan_vien ?? []).map((nv) => [nv.id, nv.ten]));
   const nvName = (id: string) => nvTenHienThi(nvMap[id], id);
->>>>>>> Stashed changes
 
   return (
     <div className="nq-page">
@@ -252,135 +216,6 @@ export default function RosterPage() {
       )}
 
       {data && days.length > 0 ? (
-<<<<<<< Updated upstream
-        <div style={{ overflowX: "auto" }}>
-          <table
-            style={{
-              borderCollapse: "collapse",
-              width: "100%",
-              fontFamily: "var(--nq-font-body)",
-              fontSize: "0.875rem",
-            }}
-          >
-            <thead>
-              <tr>
-                <th style={headerCellStyle}>Ca / Vị trí</th>
-                {days.map((d) => (
-                  <th key={d} style={headerCellStyle}>
-                    {d}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {(["sang", "chieu", "toi"] as const).map((khung) => {
-                const label =
-                  khung === "sang"
-                    ? "Sáng 07–12"
-                    : khung === "chieu"
-                      ? "Chiều 12–17"
-                      : "Tối 17–22";
-                return (
-                <tr key={khung}>
-                  <td
-                    style={{
-                      ...cellStyle,
-                      fontFamily: "var(--nq-font-mono)",
-                      fontSize: "0.78rem",
-                      color: "var(--nq-ink-muted)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {label}
-                  </td>
-                  {days.map((d) => {
-                    const shift = (byDay[d] ?? []).find(
-                      (c) => (c.khung ?? "") === khung,
-                    );
-                    const assigned: string[] = shift
-                      ? (data.phan_cong[shift.id] ?? [])
-                      : [];
-                    return (
-                      <td key={d} style={cellStyle}>
-                        {shift ? (
-                          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                            <li
-                              style={{
-                                fontSize: "0.7rem",
-                                color: "var(--nq-ink-muted)",
-                                marginBottom: "0.25rem",
-                              }}
-                            >
-                              {shift.vi_tri}
-                            </li>
-                            {assigned.map((nv_id) => (
-                              <li
-                                key={nv_id}
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  gap: "0.4rem",
-                                  padding: "0.2rem 0",
-                                  borderBottom: "1px solid var(--nq-line)",
-                                }}
-                              >
-                                <span style={{ fontSize: "0.82rem" }}>
-                                  {nvMap[nv_id] ?? nv_id}
-                                </span>
-                                {canWrite && (
-                                  <button
-                                    disabled={pinBusy}
-                                    onClick={() => handlePin(shift.id, nv_id, false)}
-                                    title="Unpin"
-                                    aria-label={`Unpin ${nvMap[nv_id] ?? nv_id}`}
-                                    style={{
-                                      background: "none",
-                                      border: "none",
-                                      cursor: "pointer",
-                                      color: "var(--nq-accent)",
-                                      fontSize: "0.75rem",
-                                      padding: "0 0.2rem",
-                                    }}
-                                  >
-                                    ×
-                                  </button>
-                                )}
-                              </li>
-                            ))}
-                            {canWrite && (
-                              <li style={{ paddingTop: "0.3rem" }}>
-                                <select
-                                  defaultValue=""
-                                  disabled={pinBusy}
-                                  onChange={(e) => {
-                                    if (e.target.value) {
-                                      handlePin(shift.id, e.target.value, true);
-                                      e.target.value = "";
-                                    }
-                                  }}
-                                  style={{
-                                    background: "var(--nq-surface)",
-                                    border: "1px solid var(--nq-line)",
-                                    color: "var(--nq-ink)",
-                                    fontSize: "0.75rem",
-                                    padding: "0.2rem 0.3rem",
-                                    borderRadius: 2,
-                                    width: "100%",
-                                  }}
-                                  aria-label="Thêm nhân viên"
-                                >
-                                  <option value="">Thêm nhân viên…</option>
-                                  {data.nhan_vien
-                                    .filter((nv) => !assigned.includes(nv.id))
-                                    .map((nv) => (
-                                      <option key={nv.id} value={nv.id}>
-                                        {nv.ten}
-                                      </option>
-                                    ))}
-                                </select>
-                              </li>
-=======
         <>
           <div className="nq-roster-wrap">
             <table className="nq-roster-table">
@@ -463,7 +298,6 @@ export default function RosterPage() {
                               </div>
                             ) : (
                               <span className="nq-muted">—</span>
->>>>>>> Stashed changes
                             )}
                           </ul>
                         ) : (
@@ -479,16 +313,12 @@ export default function RosterPage() {
           </table>
         </div>
       ) : (
-<<<<<<< Updated upstream
-        !error && <p style={{ color: "var(--nq-ink-muted)" }}>Đang tải lịch…</p>
-=======
         !loading &&
         !error && (
           <p className="nq-muted">
             Tuần này chưa có ca nào. Chuyển lịch sang trạng thái xếp ca để hệ thống sinh lưới.
           </p>
         )
->>>>>>> Stashed changes
       )}
     </div>
   );

@@ -2,10 +2,6 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-<<<<<<< Updated upstream
-import { API } from "../../lib/api";
-import { btnPrimary, Field, inputStyle, Alert, Kicker } from "../../ui/kit";
-=======
 import gsap from "gsap";
 import { ApiError, apiSend } from "../../lib/api";
 import { viError } from "../../lib/present";
@@ -13,7 +9,6 @@ import { Alert, Field } from "../../ui/kit";
 import { Logo } from "../../ui/Logo";
 
 type LoginOut = { token: string; role: string; display_name: string; nv_id: string };
->>>>>>> Stashed changes
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,53 +43,17 @@ export default function LoginPage() {
       sessionStorage.setItem("nq_name", data.display_name);
       sessionStorage.setItem("nq_nv", data.nv_id);
       router.push("/hom-nay");
-<<<<<<< Updated upstream
-    } catch {
-      setError("Không kết nối được máy chủ. Chạy API rồi thử lại.");
-=======
     } catch (e) {
       if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
         setError("Tài khoản hoặc mật khẩu chưa đúng. Nhập lại, hoặc nhờ quản lý cấp lại.");
       } else {
         setError(viError(e, { doing: "vào được hệ thống" }));
       }
->>>>>>> Stashed changes
     } finally {
       setLoading(false);
     }
   }
 
-<<<<<<< Updated upstream
-  return (
-    <main style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: "1.5rem" }}>
-      <form onSubmit={onSubmit} style={{ width: "100%", maxWidth: 400 }}>
-        <Kicker>Vận hành ca</Kicker>
-        <h1>Đăng nhập</h1>
-        <p className="nq-muted" style={{ marginBottom: "1.25rem" }}>
-          Tài khoản quán: lan, minh, hung — mật khẩu nhipquan.
-        </p>
-        <Field label="Tài khoản">
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-            style={inputStyle}
-          />
-        </Field>
-        <Field label="Mật khẩu">
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            style={inputStyle}
-          />
-        </Field>
-        {error ? <Alert>{error}</Alert> : null}
-        <button type="submit" disabled={loading} style={{ ...btnPrimary, width: "100%" }}>
-          {loading ? "Đang vào…" : "Vào hệ thống"}
-        </button>
-=======
   useEffect(() => {
     if (!containerRef.current) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -180,7 +139,6 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
->>>>>>> Stashed changes
       </form>
     </main>
   );

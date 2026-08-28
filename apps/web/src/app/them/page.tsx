@@ -5,17 +5,11 @@ import { useEffect, useState } from "react";
 import { getToken, isManager } from "../../lib/session";
 import { AuthGate, Kicker } from "../../ui/kit";
 
-<<<<<<< Updated upstream
-const LINKS = [
-  ["/cong-bang", "Công bằng"],
-  ["/doi-ca", "Chợ đổi ca"],
-=======
 const LINKS: Array<[string, string]> = [
   ["/tkb", "Thời khoá biểu từ ảnh"],
   ["/cong-bang", "Xem công bằng"],
   ["/page-quan", "Page quán"],
   ["/doi-ca", "Đổi ca"],
->>>>>>> Stashed changes
   ["/qr", "Điểm danh QR"],
   ["/tieu-thu", "Sổ tiêu thụ"],
   ["/hao-phi", "Hao phí"],
@@ -35,8 +29,6 @@ export default function ThemPage() {
   useEffect(() => {
     setToken(getToken());
   }, []);
-<<<<<<< Updated upstream
-=======
 
   useEffect(() => {
     if (containerRef.current && ready) {
@@ -68,23 +60,9 @@ export default function ThemPage() {
       </div>
     );
   }
->>>>>>> Stashed changes
   if (!token) return <AuthGate />;
   const manager = isManager();
   return (
-<<<<<<< Updated upstream
-    <div className="nq-page">
-      <Kicker>Tất cả mặt</Kicker>
-      <h1>Thêm</h1>
-      <p className="nq-muted">{manager ? "Quản lý / chủ quán" : "Nhân viên"} — chọn một việc.</p>
-      <div className="nq-list" style={{ marginTop: "1rem" }}>
-        {LINKS.map(([href, label]) => (
-          <Link key={href} href={href} className="nq-item" style={{ textDecoration: "none", color: "var(--nq-ink)" }}>
-            {label}
-          </Link>
-        ))}
-      </div>
-=======
     <div className="relative" ref={containerRef}>
       <header className="mb-12 ops-animate-in">
         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[var(--nq-copper)] mb-2">
@@ -143,7 +121,6 @@ export default function ThemPage() {
           ))}
         </div>
       </div>
->>>>>>> Stashed changes
     </div>
   );
 }

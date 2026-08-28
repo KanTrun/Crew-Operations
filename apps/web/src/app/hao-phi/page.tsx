@@ -76,56 +76,6 @@ export default function HaoPhiPage() {
   if (!token) return <AuthGate />;
 
   return (
-<<<<<<< Updated upstream
-    <div className="nq-page">
-      <PageHeader
-        kicker="Gom cụm từ ghi chú ca"
-        title="Hao phí"
-        meta="Ghi chỗ hao trong ca bằng một câu. Ghi chú lặp lại sẽ gom thành cụm để quán thấy chỗ chảy máu."
-      />
-      {error ? <Alert>{error}</Alert> : null}
-      {msg ? <Alert kind="ok">{msg}</Alert> : null}
-      <OpsCard eyebrow="Ghi trong ca" title="Ghi chú hao phí">
-        <form onSubmit={onSubmit}>
-          <Field label="Thứ trong tuần">
-            <select value={thu} onChange={(e) => setThu(e.target.value)} style={inputStyle}>
-              {THU_HOP_LE.map((t) => (
-                <option key={t} value={t}>
-                  {t === "CN" ? "Chủ nhật" : `Thứ ${t.slice(1)}`}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Hao ở đâu">
-            <input
-              value={ghi}
-              onChange={(e) => setGhi(e.target.value)}
-              placeholder="Ví dụ: đổ bỏ 2 ly sữa vì pha sai"
-              style={inputStyle}
-            />
-          </Field>
-          <Hint>Viết như nói với đồng nghiệp. Không cần số tiền.</Hint>
-          <Btn type="submit" variant="primary" disabled={busy}>
-            {busy ? "Đang ghi…" : "Ghi hao phí"}
-          </Btn>
-        </form>
-      </OpsCard>
-      <h2>Cụm đã gom</h2>
-      {loading ? <Loading skeleton="list">Đang gom cụm hao phí…</Loading> : null}
-      {!loading && !error && items.length === 0 ? (
-        <Empty>Chưa đủ ghi chú để gom cụm. Ghi thêm vài lần trong ca.</Empty>
-      ) : null}
-      <div className="nq-list">
-        {items.map((it, i) => (
-          <article key={`${safeText(it.thu, "?")}-${i}`} className="nq-item">
-            <p className="nq-item-title">{safeText(it.cau, "Chưa đủ mẫu để gom thành cụm")}</p>
-            <p className="nq-item-sub">
-              {safeText(it.thu, "chưa rõ thứ")} · {typeof it.n === "number" ? it.n : 0} lần
-            </p>
-          </article>
-        ))}
-      </div>
-=======
     <div className="relative" ref={containerRef}>
       <header className="mb-8 ops-animate-in">
         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[var(--nq-copper)] mb-2">
@@ -318,7 +268,6 @@ export default function HaoPhiPage() {
       </div>
 
       <Toasts toasts={toasts} onDismiss={dismiss} />
->>>>>>> Stashed changes
     </div>
   );
 }

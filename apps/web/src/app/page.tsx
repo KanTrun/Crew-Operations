@@ -14,24 +14,6 @@ export default function HomePage() {
   }, [router]);
 
   return (
-<<<<<<< Updated upstream
-    <div className="nq-page">
-      <Kicker>OS vận hành ca</Kicker>
-      <h1>NHỊP QUÁN</h1>
-      <p className="nq-muted" style={{ maxWidth: 440 }}>
-        Một việc tại một thời điểm: phiếu, ca, việc treo, công bằng, cẩm nang.
-        Đăng nhập để vào bảng hôm nay — không còn danh sách liên kết rời.
-      </p>
-      <p style={{ display: "flex", gap: "0.65rem", marginTop: "1.5rem", flexWrap: "wrap" }}>
-        <Link href="/login" style={btnPrimary}>
-          Đăng nhập
-        </Link>
-        <Link href="/login" style={btnGhost}>
-          Xem hướng dẫn vào ca
-        </Link>
-      </p>
-    </div>
-=======
     <main ref={containerRef} className="relative min-h-[200vh] bg-[var(--nq-bg)]">
       <motion.div
         style={{ y: y1 }}
@@ -117,6 +99,5 @@ export default function HomePage() {
         </div>
       </section>
     </main>
->>>>>>> Stashed changes
   );
 }

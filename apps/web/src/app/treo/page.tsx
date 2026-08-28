@@ -55,14 +55,6 @@ export default function TreoPage() {
   if (!token) return <AuthGate />;
 
   return (
-<<<<<<< Updated upstream
-    <div className="nq-page">
-      <Kicker>Quản lý ca</Kicker>
-      <h1>Việc treo</h1>
-      {error ? <Alert>{error}</Alert> : null}
-      <p style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-        <button onClick={() => setTab("treo")} style={tab === "treo" ? btnPrimary : btnGhost}>
-=======
     <div className="relative" ref={containerRef}>
       <header className="mb-8 ops-animate-in">
         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[var(--nq-copper)] mb-2">
@@ -100,7 +92,6 @@ export default function TreoPage() {
           className={`flex-1 py-4 font-black uppercase tracking-widest transition-colors ${tab === "treo" ? "text-[var(--nq-copper)] border-b-4 border-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
           onClick={() => setTab("treo")}
         >
->>>>>>> Stashed changes
           Việc treo ({treo.length})
         </button>
         <button onClick={() => setTab("sua")} style={tab === "sua" ? btnPrimary : btnGhost}>
@@ -108,20 +99,6 @@ export default function TreoPage() {
         </button>
       </p>
       {tab === "treo" && (
-<<<<<<< Updated upstream
-        <div className="nq-list">
-          {loading ? <Loading /> : null}
-          {!loading && treo.length === 0 ? <Empty>Không có việc treo.</Empty> : null}
-          {treo.map((v) => (
-            <article key={v.id} className="nq-item" style={{ borderLeft: "3px solid var(--nq-danger)" }}>
-              <p style={{ margin: 0, fontWeight: 600 }}>{v.noi_dung}</p>
-              <p className="nq-muted" style={{ margin: "0.35rem 0 0", fontSize: "0.82rem" }}>
-                {v.nhan_vien ? `NV ${v.nhan_vien}` : ""}
-                {v.phieu_id ? ` · phiếu ${v.phieu_id}` : ""}
-              </p>
-            </article>
-          ))}
-=======
         <div className="ops-animate-in space-y-8">
           {error ? <Alert>{error}</Alert> : null}
           {loading ? <Loading skeleton="rows" rows={4} groups={3}>Đang tải việc treo…</Loading> : null}
@@ -169,7 +146,6 @@ export default function TreoPage() {
               {NHOM.qua_han.giai_thich} {NHOM.dang_cho.giai_thich}
             </p>
           ) : null}
->>>>>>> Stashed changes
         </div>
       )}
       {tab === "sua" && (
@@ -178,18 +154,6 @@ export default function TreoPage() {
           {!loading && sua.length === 0 ? (
             <Empty>Chưa có lần sửa. Nhả/nhận ca hoặc ghim ô sẽ ghi vào đây.</Empty>
           ) : null}
-<<<<<<< Updated upstream
-          {sua.map((g, i) => (
-            <article key={g.id ?? String(i)} className="nq-item">
-              <p style={{ margin: 0, fontWeight: 600 }}>{g.loai ?? "sửa"}</p>
-              <p className="nq-muted" style={{ fontFamily: "var(--nq-font-mono)", fontSize: "0.8rem" }}>
-                {JSON.stringify(g.truoc)} → {JSON.stringify(g.sau)}
-              </p>
-            </article>
-          ))}
-        </div>
-      )}
-=======
           {!loading &&
             nhomSua.map(([loai, list]) => (
               <div key={loai} className="mb-12">
@@ -247,7 +211,6 @@ export default function TreoPage() {
           </div>
         </div>
       </div>
->>>>>>> Stashed changes
     </div>
   );
 }

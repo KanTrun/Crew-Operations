@@ -1,38 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { CSSProperties, ReactNode } from "react";
+import { CSSProperties, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
-export const btnPrimary: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: 44,
-  padding: "0.7rem 1.15rem",
-  background: "var(--nq-accent)",
-  color: "var(--nq-accent-ink)",
-  border: "none",
-  borderRadius: 2,
-  fontWeight: 600,
-  fontSize: "1rem",
-  cursor: "pointer",
-  fontFamily: "var(--nq-font-body)",
-};
+export const btnPrimary: CSSProperties = {};
+export const btnGhost: CSSProperties = {};
+export const btnSecondary: CSSProperties = {};
+export const btnDanger: CSSProperties = {};
+export const inputStyle: CSSProperties = {};
 
-export const btnGhost: CSSProperties = {
-  ...btnPrimary,
-  background: "var(--nq-surface)",
-  color: "var(--nq-ink)",
-  border: "1px solid var(--nq-line)",
-};
+type BtnVariant = "primary" | "ghost" | "danger";
 
-<<<<<<< Updated upstream
-export const btnDanger: CSSProperties = {
-  ...btnPrimary,
-  background: "var(--nq-danger)",
-  color: "#fff8f4",
-};
-=======
 function btnClass(variant: BtnVariant, block?: boolean) {
   const base =
     "font-black uppercase tracking-widest py-3 px-6 md:py-4 md:px-8 border-2 transition-all text-center inline-flex items-center justify-center gap-2";
@@ -46,24 +24,32 @@ function btnClass(variant: BtnVariant, block?: boolean) {
   }
   return `${base} ${w} bg-transparent text-[var(--nq-fg)] border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] disabled:opacity-50`;
 }
->>>>>>> Stashed changes
 
-export const inputStyle: CSSProperties = {
-  width: "100%",
-  minHeight: 44,
-  padding: "0.6rem 0.75rem",
-  background: "var(--nq-bg-elevated)",
-  border: "1px solid var(--nq-line)",
-  color: "var(--nq-ink)",
-  borderRadius: 2,
-  fontFamily: "var(--nq-font-body)",
-  fontSize: "1rem",
-};
+export function BtnLink({
+  href,
+  variant = "primary",
+  children,
+  block,
+  className = "",
+}: {
+  href: string;
+  variant?: BtnVariant;
+  children: ReactNode;
+  block?: boolean;
+  className?: string;
+}) {
+  return (
+    <Link href={href} className={className || btnClass(variant, block)}>
+      {children}
+    </Link>
+  );
+}
+
+export function PageActions({ children }: { children: ReactNode }) {
+  return <div className="flex flex-col sm:flex-row gap-4 mt-8">{children}</div>;
+}
 
 export function Kicker({ children }: { children: ReactNode }) {
-<<<<<<< Updated upstream
-  return <p className="nq-kicker">{children}</p>;
-=======
   return <p className="text-sm font-mono text-[var(--nq-copper)] uppercase tracking-widest mb-2">{children}</p>;
 }
 
@@ -212,86 +198,189 @@ export function MaskedCode({
 /** Chú thích ngắn dưới ô nhập — nói rõ nhập gì, không nói tên field kỹ thuật. */
 export function Hint({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <p className={`text-xs font-mono text-[var(--nq-dim)] mt-2 ${className}`.trim()}>{children}</p>;
->>>>>>> Stashed changes
 }
 
 export function Alert({
   kind = "err",
   children,
+  className = "",
 }: {
   kind?: "err" | "ok" | "info";
   children: ReactNode;
+  className?: string;
 }) {
-<<<<<<< Updated upstream
-  const color =
-    kind === "ok" ? "var(--nq-ok)" : kind === "info" ? "var(--nq-accent)" : "var(--nq-danger)";
-  return (
-    <p role={kind === "err" ? "alert" : undefined} className="nq-alert" style={{ borderColor: color, color }}>
-=======
   const tone = kind === "ok" ? "nq-alert--ok" : kind === "info" ? "nq-alert--info" : "nq-alert--err";
   return (
     <div
       role={kind === "err" ? "alert" : undefined}
       className={`nq-alert ${tone} ${className}`.trim()}
     >
->>>>>>> Stashed changes
       {children}
-    </p>
+    </div>
   );
 }
 
-export function Empty({ children }: { children: ReactNode }) {
-  return <p className="nq-empty">{children}</p>;
+export function Empty({ children, title = "Không có dữ liệu" }: { children: ReactNode; title?: string }) {
+  return (
+    <div className="bg-[var(--nq-surface)] border-2 border-dashed border-[var(--nq-dim)] p-8 flex flex-col items-center justify-center text-center">
+      <h3 className="text-xl font-bold mb-2 text-[var(--nq-fg)]">{title}</h3>
+      <p className="text-[var(--nq-dim)] font-mono text-sm max-w-md">{children}</p>
+    </div>
+  );
 }
 
-/** Chỗ giữ trong lúc chờ API — tránh nháy "chưa có dữ liệu" khi thật ra đang tải. */
-export function Loading({ children = "Đang tải…" }: { children?: ReactNode }) {
+function SkeletonLine({ className = "" }: { className?: string }) {
+  return <div className={`h-4 bg-[var(--nq-dim)]/20 rounded ${className}`.trim()} aria-hidden="true" />;
+}
+
+function SkeletonBento() {
   return (
-    <p className="nq-empty" aria-live="polite" aria-busy="true">
-      {children}
-    </p>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-hidden="true">
+      <div className="h-48 bg-[var(--nq-dim)]/20 rounded lg:col-span-2" />
+      <div className="h-48 bg-[var(--nq-dim)]/20 rounded" />
+      <div className="h-48 bg-[var(--nq-dim)]/20 rounded" />
+    </div>
+  );
+}
+
+function SkeletonStats({ cells = 4 }: { cells?: number }) {
+  return (
+    <div className="flex flex-wrap gap-4" aria-hidden="true">
+      {Array.from({ length: cells }, (_, i) => (
+        <div key={i} className="w-32 h-24 bg-[var(--nq-dim)]/20 rounded" />
+      ))}
+    </div>
+  );
+}
+
+function SkeletonRows({ rows = 4, groups = 1 }: { rows?: number; groups?: number }) {
+  return (
+    <div aria-hidden="true" className="space-y-8">
+      {Array.from({ length: groups }, (_, g) => (
+        <div key={g} className="space-y-4">
+          <div className="h-6 w-1/3 bg-[var(--nq-dim)]/20 rounded mb-4" />
+          {Array.from({ length: rows }, (_, i) => (
+            <div key={i} className="flex justify-between items-center p-4 bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)]">
+              <div className="space-y-2 w-1/2">
+                <div className="h-5 bg-[var(--nq-dim)]/20 rounded w-full" />
+                <div className="h-4 bg-[var(--nq-dim)]/20 rounded w-2/3" />
+              </div>
+              <div className="h-8 w-16 bg-[var(--nq-dim)]/20 rounded" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SkeletonCard({ cards = 1, form }: { cards?: number; form?: boolean }) {
+  return (
+    <div aria-hidden="true" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {Array.from({ length: cards }, (_, i) => (
+        <div key={i} className="bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] p-6">
+          <div className="h-4 w-1/4 bg-[var(--nq-dim)]/20 rounded mb-4" />
+          <div className="h-8 w-2/3 bg-[var(--nq-dim)]/20 rounded mb-6" />
+          {form ? (
+            <div className="space-y-4">
+              <div className="h-12 bg-[var(--nq-dim)]/20 rounded w-full" />
+              <div className="h-12 bg-[var(--nq-dim)]/20 rounded w-full" />
+              <div className="h-12 bg-[var(--nq-dim)]/20 rounded w-1/3 mt-6" />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="h-4 bg-[var(--nq-dim)]/20 rounded w-full" />
+              <div className="h-4 bg-[var(--nq-dim)]/20 rounded w-3/4" />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SkeletonTable({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="w-full bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)]" aria-hidden="true">
+      <div className="flex border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 gap-4">
+        {Array.from({ length: 5 }, (_, i) => (
+          <div key={i} className="h-4 bg-[var(--nq-dim)]/20 rounded flex-1" />
+        ))}
+      </div>
+      {Array.from({ length: rows }, (_, r) => (
+        <div key={r} className="flex border-b border-[var(--nq-dim)]/30 p-4 gap-4">
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="h-4 bg-[var(--nq-dim)]/20 rounded flex-1" />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export type SkeletonShape = "page" | "bento" | "list" | "text" | "stats" | "rows" | "card" | "form" | "table";
+
+export function Loading({
+  children,
+  skeleton = "page",
+  rows,
+  groups,
+}: {
+  children?: ReactNode;
+  skeleton?: SkeletonShape;
+  rows?: number;
+  groups?: number;
+}) {
+  const label = children ? <span className="block text-sm font-mono text-[var(--nq-copper)] uppercase tracking-widest mb-4">{children}</span> : null;
+  let shape: ReactNode;
+  if (skeleton === "bento" || skeleton === "page") shape = <SkeletonBento />;
+  else if (skeleton === "text")
+    shape = (
+      <div className="space-y-2">
+        <SkeletonLine />
+        <SkeletonLine className="w-1/2" />
+      </div>
+    );
+  else if (skeleton === "list") shape = <SkeletonList rows={rows ?? 3} />;
+  else if (skeleton === "stats") shape = <SkeletonStats cells={rows ?? 4} />;
+  else if (skeleton === "rows") shape = <SkeletonRows rows={rows ?? 4} groups={groups ?? 1} />;
+  else if (skeleton === "card") shape = <SkeletonCard cards={rows ?? 1} />;
+  else if (skeleton === "form") shape = <SkeletonCard cards={1} form />;
+  else shape = <SkeletonTable rows={rows ?? 3} />;
+
+  return (
+    <div aria-live="polite" aria-busy="true" className="animate-pulse">
+      {label}
+      {shape}
+    </div>
   );
 }
 
 export function AuthGate() {
   return (
-<<<<<<< Updated upstream
-    <div className="nq-page">
-      <Kicker>Cần phiên làm việc</Kicker>
-      <h1>Đăng nhập để tiếp tục</h1>
-      <p className="nq-muted">Trang này đọc dữ liệu quán qua phiên của bạn.</p>
-      <p style={{ marginTop: "1.25rem" }}>
-        <Link href="/login" style={btnPrimary}>
-=======
     <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-[var(--nq-bg)]">
       <h1 className="text-4xl font-black uppercase tracking-tighter text-[var(--nq-fg)] mb-4">Cần phiên làm việc</h1>
       <p className="text-xl text-[var(--nq-dim)] mb-8 max-w-md">Trang này đọc dữ liệu quán qua phiên của bạn. Đăng nhập để tiếp tục.</p>
       <div className="flex flex-col sm:flex-row gap-4">
         <BtnLink href="/login" className="nq-ink-on-solid bg-[var(--nq-copper)] font-black uppercase tracking-widest py-4 px-8 border-2 border-[var(--nq-copper)] hover:bg-transparent hover:text-[var(--nq-copper)] transition-all shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-copper-dim)]">
->>>>>>> Stashed changes
           Đăng nhập
-        </Link>
-      </p>
+        </BtnLink>
+        <BtnLink href="/dang-ky" className="bg-transparent text-[var(--nq-fg)] font-black uppercase tracking-widest py-4 px-8 border-2 border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] transition-all">
+          Tạo tài khoản
+        </BtnLink>
+      </div>
     </div>
   );
 }
 
-export function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="nq-field">
-      <span>{label}</span>
+    <label className="block mb-4">
+      <span className="block text-sm font-bold uppercase tracking-widest text-[var(--nq-dim)] mb-2">{label}</span>
       {children}
     </label>
   );
 }
-<<<<<<< Updated upstream
-=======
 
 export function ProgressBar({ value, max, className = "" }: { value: number; max: number; className?: string }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
@@ -868,4 +957,3 @@ export function Toasts({
     </div>
   );
 }
->>>>>>> Stashed changes

@@ -1,6 +1,6 @@
 {
   "n": 200,
-  "simple_agreement": 0.955,
-  "note": "synthetic dual labels — not real Cohen kappa from humans",
+  "n_hard_or_medium": 77,
+  "note": "120 easy + 80 hard/medium từ hard_cases.jsonl — không chỉ keyword dễ",
   "synthetic": true
 }

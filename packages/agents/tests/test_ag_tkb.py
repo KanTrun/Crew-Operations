@@ -1,9 +1,9 @@
-"""Tests for AG-TKB extract in replay mode."""
+"""Tests for AG-TKB extract in replay mode and fail-closed live."""
 
 from __future__ import annotations
 
-import pytest
 from ca_agents.ag_tkb import extract_tkb
+from ca_agents.llm import LlmResult
 
 
 def test_extract_known_fixture_has_spans() -> None:
@@ -11,10 +11,10 @@ def test_extract_known_fixture_has_spans() -> None:
     assert result["spans"], "tkb_01 should have spans"
     assert result["confidence"] >= 0.7
     assert result["blur"] is False
+    assert result["mode"] == "replay"
 
 
 def test_extract_blur_fixture_low_confidence() -> None:
-    # Blur detection via filename
     result = extract_tkb("tkb_01_blur")
     assert result["blur"] is True
     assert result["confidence"] < 0.7
@@ -33,11 +33,6 @@ def test_extract_unknown_id_returns_empty_spans() -> None:
     assert result["confidence"] < 0.7
 
 
-<<<<<<< Updated upstream
-def test_extract_live_mode_raises() -> None:
-    with pytest.raises(NotImplementedError):
-        extract_tkb("tkb_01", mode="live")
-=======
 def test_extract_live_parses_llm_json(monkeypatch: object) -> None:
     def fake_complete(**_k: object) -> LlmResult:
         return LlmResult(
@@ -79,29 +74,3 @@ def test_extract_live_drops_invalid_hours(monkeypatch: object) -> None:
     result = extract_tkb("tkb_01", mode="live")
     assert result["rows"] == []
     assert result["escalate"] is True
-
-
-def test_extract_live_binary_calls_vision(monkeypatch: object, tmp_path: object) -> None:
-    from pathlib import Path
-
-    img = Path(str(tmp_path)) / "photo.png"
-    img.write_bytes(b"\x89PNG\r\n\x1a\nfake")
-
-    seen: dict[str, object] = {}
-
-    def fake_complete(**kwargs: object) -> LlmResult:
-        seen.update(kwargs)
-        return LlmResult(
-            ok=True,
-            text='{"khoang_ban":[{"thu":"T4","start":"09:00","end":"11:00"}],"doc_duoc":true}',
-            provider="gemini",
-            reason="ok",
-        )
-
-    monkeypatch.setattr("ca_agents.ag_tkb.extract.complete", fake_complete)  # type: ignore[attr-defined]
-    result = extract_tkb(str(img), mode="live")
-    assert result["mode"] == "live"
-    assert result["spans"] == [{"day": "T4", "start": "09:00", "end": "11:00"}]
-    assert seen.get("image_bytes") is not None
-    assert seen.get("task") == "vision:ag_tkb"
->>>>>>> Stashed changes

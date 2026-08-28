@@ -10,25 +10,12 @@ type LinkItem = { href: string; label: string };
 const STAFF_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
   { href: "/phieu", label: "Phiếu" },
-<<<<<<< Updated upstream
-  { href: "/toi", label: "Ca của tôi" },
-  { href: "/treo", label: "Việc treo" },
-=======
   { href: "/toi", label: "Ca của tôi", short: "Ca tôi" },
   { href: "/tkb", label: "TKB ảnh", short: "TKB" },
->>>>>>> Stashed changes
 ];
 
 const MANAGER_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
-<<<<<<< Updated upstream
-  { href: "/roster", label: "Lịch tuần" },
-  { href: "/inbox", label: "Hộp thư" },
-  { href: "/cam-nang", label: "Cẩm nang" },
-];
-
-const MORE: LinkItem[] = [
-=======
   { href: "/roster", label: "Lịch tuần", short: "Lịch" },
   { href: "/inbox", label: "Hộp thư", short: "Hộp thư" },
   { href: "/tkb", label: "TKB ảnh", short: "TKB" },
@@ -39,7 +26,6 @@ const MORE: LinkItem[] = [
   { href: "/huong-dan", label: "Hướng dẫn cho người mới" },
   { href: "/page-quan", label: "Page quán (Facebook)" },
   { href: "/tkb", label: "Thời khoá biểu từ ảnh" },
->>>>>>> Stashed changes
   { href: "/cong-bang", label: "Công bằng" },
   { href: "/toi", label: "Ca của tôi" },
   { href: "/phieu", label: "Phiếu" },
@@ -80,18 +66,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-<<<<<<< Updated upstream
-    <div className="nq-shell">
-      <header className="nq-top">
-        <Link href={token ? "/hom-nay" : "/"} className="nq-brand">
-          NHỊP QUÁN
-        </Link>
-        {token ? (
-          <nav className="nq-nav" aria-label="Chính">
-            {primary.map((l) => (
-              <Link key={l.href} href={l.href} data-on={path === l.href ? "1" : "0"}>
-                {l.label}
-=======
     <div className="min-h-screen bg-[var(--nq-bg)] text-[var(--nq-fg)] font-sans selection:bg-[var(--nq-copper)] selection:text-[#0e0c0a] flex flex-col relative z-10">
       <header className="fixed top-0 left-0 w-full z-40 bg-[var(--nq-bg)]/80 backdrop-blur-md border-b-2 border-[var(--nq-dim)]">
         <div className="max-w-[1600px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
@@ -167,7 +141,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 className="border-2 border-[var(--nq-copper)] text-[var(--nq-copper)] px-4 py-1 hover:bg-[var(--nq-copper)] hover:text-[#0e0c0a] transition-colors"
               >
                 Đăng nhập
->>>>>>> Stashed changes
               </Link>
             ))}
             <div className="nq-more">
@@ -201,11 +174,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </div>
       </header>
-<<<<<<< Updated upstream
-      <div className="nq-main" data-wide={wide ? "1" : "0"}>
-=======
       <main className={`flex-1 pt-16 w-full ${wide ? "" : "max-w-[1600px] mx-auto"} px-4 md:px-8 pb-24 md:pb-10`} id="nq-content">
->>>>>>> Stashed changes
         {children}
       </div>
       {token ? (

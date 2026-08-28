@@ -20,7 +20,7 @@ test.describe("8 luồng vận hành chính", () => {
 
   test("2 — phiếu mở quán", async ({ page }) => {
     await page.goto("/phieu");
-    await expect(page.getByRole("heading", { name: "Phiếu mở quán" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Phiếu Ca" })).toBeVisible();
   });
 
   test("3 — lịch của tôi", async ({ page }) => {

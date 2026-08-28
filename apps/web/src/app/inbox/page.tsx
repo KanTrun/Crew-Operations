@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
-<<<<<<< Updated upstream
-=======
 import {
   agentLabel,
   formatLuc,
@@ -17,13 +15,9 @@ import {
   viError,
   yDinhLabel,
 } from "../../lib/present";
->>>>>>> Stashed changes
 import { getToken, isManager } from "../../lib/session";
 import { Alert, AuthGate, btnDanger, btnPrimary, Empty, Kicker, Loading } from "../../ui/kit";
 
-<<<<<<< Updated upstream
-type Item = { id: string; tom_tat: string; trang_thai: string; agent: string };
-=======
 type Item = {
   id: string;
   tom_tat: string;
@@ -48,7 +42,6 @@ const TEN_NHOM: Record<string, string> = {
   duyet: "Đã duyệt",
   tu_choi: "Đã từ chối",
 };
->>>>>>> Stashed changes
 
 export default function InboxPage() {
   const [token, setToken] = useState("");
@@ -78,14 +71,11 @@ export default function InboxPage() {
   async function decide(id: string, quyet_dinh: string) {
     try {
       await apiSend(`/api/v1/inbox/rang-buoc/${id}`, { quyet_dinh });
-<<<<<<< Updated upstream
-=======
       push(
         quyet_dinh === "duyet"
           ? "Đã duyệt. Hệ thống ghi hiệu lực (chợ đổi ca / chờ xếp lịch) — không sửa lịch âm thầm."
           : "Đã từ chối. Ràng buộc này không vào lượt xếp lịch.",
       );
->>>>>>> Stashed changes
       load();
     } catch {
       setError("Cần quyền quản lý để duyệt.");
@@ -100,30 +90,6 @@ export default function InboxPage() {
       <h1>Hộp thư ràng buộc</h1>
       <p className="nq-muted">Khi hai claim mâu thuẫn, người quyết. Không tự chọn hộ.</p>
       {error ? <Alert>{error}</Alert> : null}
-<<<<<<< Updated upstream
-      {loading ? <Loading>Đang mở hộp thư…</Loading> : null}
-      {!loading && items.length === 0 ? <Empty>Không có mục chờ.</Empty> : null}
-      <div className="nq-list">
-        {items.map((it) => (
-          <article key={it.id} className="nq-item">
-            <p style={{ margin: 0 }}>
-              <strong>{it.agent}</strong> — {it.tom_tat}
-            </p>
-            <p className="nq-muted" style={{ margin: "0.25rem 0 0.6rem" }}>
-              {it.trang_thai === "cho_duyet" ? "Chờ duyệt" : it.trang_thai}
-            </p>
-            {it.trang_thai === "cho_duyet" && manager ? (
-              <p style={{ display: "flex", gap: "0.5rem", margin: 0 }}>
-                <button onClick={() => decide(it.id, "duyet")} style={btnPrimary}>
-                  Duyệt
-                </button>
-                <button onClick={() => decide(it.id, "tu_choi")} style={btnDanger}>
-                  Từ chối
-                </button>
-              </p>
-            ) : null}
-          </article>
-=======
       {!manager ? <Notice>Bạn xem được nội dung. Quản lý hoặc chủ quán mới bấm duyệt.</Notice> : null}
       {loading ? <Loading skeleton="rows" rows={4} groups={3}>Đang mở hộp thư…</Loading> : null}
       {!loading && !error && items.length === 0 ? (
@@ -181,7 +147,6 @@ export default function InboxPage() {
               />
             ))}
           </Group>
->>>>>>> Stashed changes
         ))}
       </div>
     </div>

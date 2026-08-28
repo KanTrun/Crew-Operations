@@ -1,30 +1,19 @@
-<<<<<<< Updated upstream
-"""AG-TKB extraction logic — replay-first, no live LLM."""
-=======
-"""AG-TKB extraction — replay reads golden JSON; live calls LLM (text SVG or vision image)."""
->>>>>>> Stashed changes
+"""AG-TKB extraction — replay reads golden JSON; live calls LLM and fail-closes."""
 
 from __future__ import annotations
 
 import json
 import pathlib
+import re
 from typing import Any
 
+from ca_agents.llm import LlmResult, agent_mode, complete, parse_json_object
+
 _GOLDEN_DIR = pathlib.Path(__file__).resolve().parents[5] / "data" / "golden" / "tkb"
+_PROMPT = pathlib.Path(__file__).resolve().parents[1] / "prompts" / "ag_tkb" / "0.1.0.md"
 _INDEX: dict[str, Any] | None = None
-<<<<<<< Updated upstream
-=======
 _THU = {"T2", "T3", "T4", "T5", "T6", "T7", "CN"}
 _HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
-_IMAGE_EXT = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
-_MIME = {
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".webp": "image/webp",
-    ".gif": "image/gif",
-}
->>>>>>> Stashed changes
 
 
 def _load_index() -> dict[str, Any]:
@@ -47,9 +36,61 @@ def _spans_from_khoang(khoang: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [{"day": k["thu"], "start": k["start"], "end": k["end"]} for k in khoang]
 
 
+def _clean_khoang(raw: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        thu = str(item.get("thu") or "").strip().upper()
+        if thu in {"CN", "T8", "CHỦ NHẬT", "CHU NHAT"}:
+            thu = "CN"
+        start = str(item.get("start") or "").strip()
+        end = str(item.get("end") or "").strip()
+        if thu not in _THU or not _HHMM.match(start) or not _HHMM.match(end):
+            continue
+        out.append({"thu": thu, "start": start, "end": end})
+    return out
+
+
+def _resolve_source(image_path_or_id: str) -> pathlib.Path | None:
+    p = pathlib.Path(image_path_or_id)
+    if p.is_file():
+        return p
+    name = p.stem
+    for ext in (".svg", ".png", ".jpg", ".jpeg", ".webp", ".txt"):
+        cand = _GOLDEN_DIR / f"{name}{ext}"
+        if cand.exists():
+            return cand
+    return None
+
+
+def _empty(
+    *,
+    name: str,
+    blur: bool,
+    confidence: float,
+    reason: str,
+    provider: str,
+) -> dict[str, Any]:
+    return {
+        "rows": [],
+        "confidence": confidence,
+        "spans": [],
+        "blur": blur,
+        "source_id": name,
+        "nhan_vien_id": None,
+        "mode": "live",
+        "provider": provider,
+        "escalate": True,
+        "reason": reason,
+    }
+
+
 def extract_tkb(
     image_path_or_id: str,
-    mode: str = "replay",
+    mode: str | None = None,
 ) -> dict[str, Any]:
     """Return structured TKB extraction result.
 
@@ -58,35 +99,27 @@ def extract_tkb(
     image_path_or_id:
         Filesystem path to image OR a golden fixture ID (e.g. ``tkb_01``).
     mode:
-<<<<<<< Updated upstream
-        ``"replay"`` reads from ``data/golden/tkb/``; other values reserved
-        for live LLM (not implemented).
-
-    Returns
-    -------
-    dict with keys: rows, confidence, spans, blur
-=======
         ``replay`` reads ``data/golden/tkb/``. ``live`` calls the free-tier LLM
-        (text for SVG, vision for PNG/JPEG/WebP) and fail-closes when invalid.
-        Defaults to ``CA_AGENT_MODE``.
->>>>>>> Stashed changes
+        router and fail-closes (empty rows, escalate) when the model cannot
+        return valid JSON. Defaults to ``CA_AGENT_MODE``.
     """
-    if mode != "replay":
-        raise NotImplementedError(f"mode={mode!r} not implemented; use replay")
+    resolved = (mode or agent_mode() or "replay").strip().lower()
+    if resolved != "live":
+        return _extract_replay(image_path_or_id)
+    return _extract_live(image_path_or_id)
 
-    name = pathlib.Path(image_path_or_id).stem  # e.g. "tkb_01" or "tkb_01_blur"
+
+def _extract_replay(image_path_or_id: str) -> dict[str, Any]:
+    name = pathlib.Path(image_path_or_id).stem
     index = _load_index()
 
-    # Try exact ID match first, then stem of path
     meta: dict[str, Any] = index.get(name, {})
     if not meta:
-        # Try prefix match (e.g. "tkb_01_blur" -> "tkb_01")
         for key in index:
             if name.startswith(key):
                 meta = index[key]
                 break
 
-    # Try loading dedicated JSON file alongside images
     json_candidate = _GOLDEN_DIR / f"{name}.json"
     if json_candidate.exists():
         file_meta = json.loads(json_candidate.read_text(encoding="utf-8"))
@@ -104,46 +137,10 @@ def extract_tkb(
         "blur": blur,
         "source_id": meta.get("id", name),
         "nhan_vien_id": meta.get("nhan_vien_id"),
-<<<<<<< Updated upstream
-    }
-=======
         "mode": "replay",
         "provider": "replay",
-        "escalate": False,
+        "escalate": blur or not spans,
         "reason": "golden",
-    }
-
-
-def _system_prompt() -> str:
-    if _PROMPT.exists():
-        return _PROMPT.read_text(encoding="utf-8")
-    return "Trả JSON {khoang_ban:[{thu,start,end}], doc_duoc:bool}. Không bịa giờ."
-
-
-def _pack_result(
-    *,
-    name: str,
-    blur: bool,
-    result: LlmResult,
-    parsed: dict[str, Any],
-) -> dict[str, Any]:
-    khoang = _clean_khoang(parsed.get("khoang_ban"))
-    doc_duoc = bool(parsed.get("doc_duoc", bool(khoang)))
-    if not doc_duoc:
-        khoang = []
-    spans = _spans_from_khoang(khoang)
-    confidence = 0.45 if blur or not khoang else 0.82
-    return {
-        "rows": khoang,
-        "confidence": confidence,
-        "spans": spans,
-        "blur": blur or not doc_duoc,
-        "source_id": name,
-        "nhan_vien_id": None,
-        "mode": "live",
-        "provider": result.provider,
-        "escalate": not khoang,
-        "reason": result.reason,
     }
 
 
@@ -160,49 +157,26 @@ def _extract_live(image_path_or_id: str) -> dict[str, Any]:
             provider="tu_choi",
         )
 
-    system = _system_prompt()
-    suffix = source.suffix.lower()
-
-    if suffix in _IMAGE_EXT:
-        raw = source.read_bytes()
-        if len(raw) > 8_000_000:
-            return _empty(
-                name=name,
-                blur=True,
-                confidence=0.2,
-                reason="file_too_large",
-                provider="tu_choi",
-            )
-        result = complete(
-            system=system,
-            user=(
-                "Đây là ảnh thời khoá biểu. Đọc các khung giờ học / bận trong tuần. "
-                "Trả đúng JSON khoang_ban + doc_duoc. Không bịa."
-            ),
-            task="vision:ag_tkb",
-            json_mode=True,
-            image_bytes=raw,
-            image_mime=_MIME.get(suffix, "image/jpeg"),
-            timeout_s=90.0,
-        )
-    else:
-        try:
-            payload = source.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            return _empty(
-                name=name,
-                blur=blur,
-                confidence=0.2,
-                reason="binary_unsupported",
-                provider="tu_choi",
-            )
-        result = complete(
-            system=system,
-            user=payload,
-            task="text:ag_tkb",
-            json_mode=True,
+    try:
+        payload = source.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return _empty(
+            name=name,
+            blur=blur,
+            confidence=0.2,
+            reason="binary_unsupported",
+            provider="tu_choi",
         )
 
+    system = _PROMPT.read_text(encoding="utf-8") if _PROMPT.exists() else (
+        "Trả JSON {khoang_ban:[{thu,start,end}], doc_duoc:bool}. Không bịa giờ."
+    )
+    result: LlmResult = complete(
+        system=system,
+        user=payload,
+        task="text:ag_tkb",
+        json_mode=True,
+    )
     if not result.ok:
         return _empty(
             name=name,
@@ -222,5 +196,21 @@ def _extract_live(image_path_or_id: str) -> dict[str, Any]:
             provider=result.provider,
         )
 
-    return _pack_result(name=name, blur=blur, result=result, parsed=parsed)
->>>>>>> Stashed changes
+    khoang = _clean_khoang(parsed.get("khoang_ban"))
+    doc_duoc = bool(parsed.get("doc_duoc", bool(khoang)))
+    if not doc_duoc:
+        khoang = []
+    spans = _spans_from_khoang(khoang)
+    confidence = 0.45 if blur or not khoang else 0.82
+    return {
+        "rows": khoang,
+        "confidence": confidence,
+        "spans": spans,
+        "blur": blur or not doc_duoc,
+        "source_id": name,
+        "nhan_vien_id": None,
+        "mode": "live",
+        "provider": result.provider,
+        "escalate": not khoang,
+        "reason": result.reason,
+    }

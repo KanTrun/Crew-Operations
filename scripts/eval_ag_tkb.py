@@ -45,11 +45,15 @@ def run_eval() -> None:
     total = len(items)
     correct = 0
     blur_count = 0
+    escalate_count = 0
+    hard_total = 0
+    hard_correct = 0
     results = []
 
     for item in items:
         fid = item["id"]
         golden_khoang = item.get("khoang_ban", [])
+        is_hard = item.get("difficulty") == "hard" or item.get("blur")
         try:
             out = extract_tkb(fid, mode="replay")
         except Exception as exc:
@@ -63,14 +67,24 @@ def run_eval() -> None:
         else:
             ok = _spans_match(out["spans"], golden_khoang)
 
+        if out.get("escalate"):
+            escalate_count += 1
+        if is_hard:
+            hard_total += 1
+            if ok:
+                hard_correct += 1
+
         if ok:
             correct += 1
         results.append({"id": fid, "ok": ok, "blur": out["blur"], "confidence": out["confidence"]})
 
     accuracy = correct / total if total else 0.0
+    escalate_pct = escalate_count / total if total else 0.0
+    hard_acc = (hard_correct / hard_total) if hard_total else 0.0
     print(
         f"AG-TKB eval: {correct}/{total} correct  "
-        f"accuracy={accuracy:.2%}  blur_items={blur_count}"
+        f"accuracy={accuracy:.2%}  blur_items={blur_count}  "
+        f"escalate={escalate_pct:.1%}  hard_acc={hard_acc:.1%} ({hard_correct}/{hard_total})"
     )
 
     # Write metrics doc
@@ -85,6 +99,9 @@ def run_eval() -> None:
 | Date | Correct | Total | Accuracy | Blur items |
 |------|---------|-------|----------|------------|
 | {today} | {correct} | {total} | {accuracy:.2%} | {blur_count} |
+
+- % đẩy lên người (escalate): {escalate_pct:.1%} ({escalate_count}/{total})
+- Hard/blur subset accuracy: {hard_acc:.2%} ({hard_correct}/{hard_total})
 
 ## Notes
 
