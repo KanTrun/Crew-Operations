@@ -8,7 +8,7 @@ status: accepted
 
 ## Outcome
 
-Repo `KanTrun/CA-CONG-BANG` có: (1) mô hình GitHub 4 vùng nhánh + CODEOWNERS + bảo vệ main + 11 cổng CI khung + conventional commits; (2) monorepo `nhip-quan` skeleton chạy `docker compose` / `make demo`; (3) plan Lot1 đã gắn GitHub ops; (4) pipeline cook tiếp từng phase trên `plans/`.
+Repo `KanTrun/Crew-Operations` có: (1) mô hình GitHub 4 vùng nhánh + CODEOWNERS + bảo vệ main + 11 cổng CI khung + conventional commits; (2) monorepo `nhip-quan` skeleton chạy `docker compose` / `make demo`; (3) plan Lot1 đã gắn GitHub ops; (4) pipeline cook tiếp từng phase trên `plans/`.
 
 ## Constraints
 

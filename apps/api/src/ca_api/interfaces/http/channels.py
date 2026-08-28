@@ -11,6 +11,13 @@ from pathlib import Path
 from typing import Annotated, Any, cast
 
 from ca_agents.ag_msg import classify
+from ca_agents.facebook_page import (
+    fetch_conversations,
+    page_health,
+    publish_page_post,
+    send_messenger_text,
+    upsert_thread_from_messaging,
+)
 from ca_agents.llm import agent_mode
 from ca_agents.messaging import (
     InboundMessage,
@@ -18,8 +25,9 @@ from ca_agents.messaging import (
     is_xem_lich,
     parse_telegram_update,
     parse_zalo_webhook,
+    should_enqueue_constraint,
 )
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from ca_api.interfaces.http.sprint3 import _nv_from_token, _phan_cong, _require_manager, _require_role
@@ -187,6 +195,19 @@ def process_inbound(msg: InboundMessage, *, reply_backend: str | None = None) ->
         return {"ok": True, "hanh": "xem_lich", "nv_id": nv_id, "message": sent.__dict__}
 
     r = classify(text, mode=agent_mode())
+    if not should_enqueue_constraint(text, r.intent, r.do_tin_cay):
+        sent = port.send(
+            msg.external_user_id,
+            "Đã nhận tin. Đây không phải ràng buộc ca — nhắn xin nghỉ / đổi ca / cập nhật TKB "
+            "hoặc «xem lịch» nếu cần.",
+        )
+        return {
+            "ok": True,
+            "hanh": "bo_qua",
+            "intent": r.intent,
+            "nv_id": nv_id,
+            "message": sent.__dict__,
+        }
     item = _enqueue_inbox(
         text=text,
         intent=r.intent,
@@ -326,12 +347,90 @@ def page_status(authorization: Annotated[str | None, Header()] = None) -> dict[s
     _require_role(authorization)
     mode = _page_mode()
     token = bool(os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip())
+    page_id = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    health: dict[str, Any] = {"ok": False, "detail": "chua_goi"}
+    if mode == "live" and token and page_id:
+        health = page_health()
+    connected = mode == "live" and token and bool(health.get("ok"))
     return {
         "mode": mode,
-        "connected": mode == "live" and token,
+        "connected": connected,
         "has_token": token,
+        "page_id": page_id or None,
+        "page_name": health.get("page_name") if health.get("ok") else None,
+        "graph_ok": bool(health.get("ok")),
+        "graph_detail": None if health.get("ok") else health.get("detail"),
         "huong_dan": "Tạo Page Facebook rồi làm theo docs/runbooks/facebook-page-connect.md — không dùng dữ liệu giả.",
     }
+
+
+@router.post("/api/v1/page/sync")
+def page_sync(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    """Kéo hội thoại Messenger thật từ Graph vào store Page quán."""
+    _require_manager(authorization)
+    if _page_mode() != "live" or not os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip():
+        raise HTTPException(status_code=400, detail="page_chua_live")
+    try:
+        threads = fetch_conversations(limit=20)
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e)[:180]) from e
+
+    def mut(doc: dict[str, Any]) -> dict[str, Any]:
+        by_id = {t.get("id"): t for t in doc.get("threads", []) if t.get("id")}
+        for th in threads:
+            by_id[th["id"]] = th
+        doc["threads"] = list(by_id.values())
+        doc["mode"] = "live"
+        return doc
+
+    kv_mutate("page_quan", mut, _page_store())
+    return {"ok": True, "n": len(threads), "mode": "live"}
+
+
+@router.api_route("/api/v1/channels/facebook/webhook", methods=["GET", "POST"])
+async def facebook_webhook(request: Request) -> Any:
+    """Meta webhook: GET verify challenge; POST Messenger events → page store."""
+    if request.method == "GET":
+        mode = request.query_params.get("hub.mode", "")
+        token = request.query_params.get("hub.verify_token", "")
+        challenge = request.query_params.get("hub.challenge", "")
+        expected = os.environ.get("NHIPQUAN_FB_WEBHOOK_VERIFY", "").strip()
+        if mode == "subscribe" and expected and token == expected and challenge:
+            return Response(content=challenge, media_type="text/plain")
+        raise HTTPException(status_code=403, detail="verify_fail")
+
+    if _page_mode() != "live" or not os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip():
+        return {"ok": False, "detail": "page_chua_live"}
+
+    payload = await request.json()
+    if not isinstance(payload, dict):
+        return {"ok": True, "ignored": True}
+
+    n = 0
+    for entry in payload.get("entry") or []:
+        for ev in entry.get("messaging") or []:
+            sender = ((ev.get("sender") or {}).get("id")) or ""
+            msg = ev.get("message") or {}
+            text = (msg.get("text") or "").strip()
+            if not sender or not text:
+                continue
+            th = upsert_thread_from_messaging(sender, text, str(msg.get("mid") or ""))
+
+            def mut(doc: dict[str, Any], thread: dict[str, Any] = th) -> dict[str, Any]:
+                threads = doc.setdefault("threads", [])
+                existing = next((t for t in threads if t.get("id") == thread["id"]), None)
+                if existing:
+                    existing["tom_tat"] = thread["tom_tat"]
+                    existing.setdefault("replies", []).extend(thread.get("replies") or [])
+                    existing["psid"] = thread.get("psid")
+                else:
+                    threads.insert(0, thread)
+                doc["mode"] = "live"
+                return doc
+
+            kv_mutate("page_quan", mut, _page_store())
+            n += 1
+    return {"ok": True, "n": n}
 
 
 @router.get("/api/v1/page/threads")
@@ -378,7 +477,16 @@ def page_reply(
     kv_mutate("page_quan", mut, _page_store())
     if not found:
         raise HTTPException(status_code=404, detail="thread")
-    return {"ok": True, "thread": found, "mode": _page_mode()}
+    graph_sent = False
+    if _page_mode() == "live":
+        psid = str(found.get("psid") or "")
+        if psid:
+            try:
+                send_messenger_text(psid, body.text.strip())
+                graph_sent = True
+            except RuntimeError as e:
+                raise HTTPException(status_code=502, detail=str(e)[:180]) from e
+    return {"ok": True, "thread": found, "mode": _page_mode(), "graph_sent": graph_sent}
 
 
 class PageDraftBody(BaseModel):
@@ -433,7 +541,9 @@ def page_draft_decide(
         for d in doc.get("drafts", []):
             if d.get("id") == draft_id:
                 d["trang_thai"] = (
-                    "da_dang_mock" if body.quyet_dinh == "duyet" else body.quyet_dinh
+                    ("da_dang" if _page_mode() == "live" else "da_dang_mock")
+                    if body.quyet_dinh == "duyet"
+                    else body.quyet_dinh
                 )
                 d["quyet_boi"] = role
                 d["quyet_luc"] = _now()
@@ -444,7 +554,25 @@ def page_draft_decide(
     kv_mutate("page_quan", mut, _page_store())
     if not found:
         raise HTTPException(status_code=404, detail="draft")
-    _audit(role, "page_draft", {"id": draft_id, "q": body.quyet_dinh})
+    graph_post_id = None
+    if body.quyet_dinh == "duyet" and _page_mode() == "live":
+        try:
+            pub = publish_page_post(str(found.get("noi_dung") or ""))
+            graph_post_id = pub.get("id")
+
+            def mark(doc: dict[str, Any]) -> dict[str, Any]:
+                for d in doc.get("drafts", []):
+                    if d.get("id") == draft_id:
+                        d["trang_thai"] = "da_dang"
+                        d["graph_post_id"] = graph_post_id
+                        break
+                return doc
+
+            kv_mutate("page_quan", mark, _page_store())
+            found = {**found, "trang_thai": "da_dang", "graph_post_id": graph_post_id}
+        except RuntimeError as e:
+            raise HTTPException(status_code=502, detail=str(e)[:180]) from e
+    _audit(role, "page_draft", {"id": draft_id, "q": body.quyet_dinh, "graph_post_id": graph_post_id})
     return found
 
 

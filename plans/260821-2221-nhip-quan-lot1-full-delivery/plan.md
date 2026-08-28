@@ -56,7 +56,7 @@ Bộ điều phối (deterministic) ── ghi DB duy nhất
 
 **Owners:** A solver/gates/ops/playbook · B api/orc/ci · C agents/router/eval · D web/tpl/docs
 
-**Repo:** https://github.com/KanTrun/CA-CONG-BANG  
+**Repo:** https://github.com/KanTrun/Crew-Operations
 **GitHub ops detail:** [`docs/github-operating-model.md`](../../docs/github-operating-model.md) · [`docs/team.md`](../../docs/team.md)  
 **Chia việc theo nhánh (bản thi hành):** [`docs/phan-cong-nhanh.md`](../../docs/phan-cong-nhanh.md)  
 **Chạy toàn tuyến Docker:** [`docs/runbook-demo.md`](../../docs/runbook-demo.md) — `make docker-up && make docker-smoke`  

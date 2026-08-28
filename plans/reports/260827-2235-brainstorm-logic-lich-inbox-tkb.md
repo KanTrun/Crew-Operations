@@ -9,7 +9,7 @@ evidence: live localhost:3000 + :8000
 
 ## Summary
 
-Trên instance đang chạy, **Duyệt / Từ chối không đổi lịch** không phải ảo giác: đó là hành vi code + UI viết đúng, nhưng **đường ống “áp vào lượt xếp lịch tới” bị đứt**. Lịch hiển thị là **synthetic + tuần đóng**; hộp thư **trộn Telegram thật với fixture**; TKB đang **`CA_AGENT_MODE=replay`**. Docker compose không có container up (API/web chạy ngoài compose); GitHub remote `KanTrun/CA-CONG-BANG`.
+Trên instance đang chạy, **Duyệt / Từ chối không đổi lịch** không phải ảo giác: đó là hành vi code + UI viết đúng, nhưng **đường ống “áp vào lượt xếp lịch tới” bị đứt**. Lịch hiển thị là **synthetic + tuần đóng**; hộp thư **trộn Telegram thật với fixture**; TKB đang **`CA_AGENT_MODE=replay`**. Docker compose không có container up (API/web chạy ngoài compose); GitHub remote `KanTrun/Crew-Operations`.
 
 ## Contract
 
@@ -43,7 +43,7 @@ Trên instance đang chạy, **Duyệt / Từ chối không đổi lịch** khô
 
 ### Docker / GitHub
 - `docker compose ps` trống; API `:8000` + web `:3000` chạy local ngoài stack
-- `origin` = `https://github.com/KanTrun/CA-CONG-BANG.git`
+- `origin` = `https://github.com/KanTrun/Crew-Operations.git`
 
 ## Mâu thuẫn logic (đã chứng minh)
 

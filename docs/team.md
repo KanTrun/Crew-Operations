@@ -18,5 +18,5 @@
 
 ## Liên hệ vận hành
 
-- Repo: https://github.com/KanTrun/CA-CONG-BANG  
+- Repo: https://github.com/KanTrun/Crew-Operations
 - Plan active: `plans/260821-2221-nhip-quan-lot1-full-delivery/`

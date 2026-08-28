@@ -18,8 +18,8 @@ Phase-02 **đã cook xong trên nhánh**; thiếu bước đóng cổng governan
 - `phase-02-…md`: `status: completed`, todo/success đã `[x]`
 - `phase-01-…md`: `status: completed`
 - `plan.md` bảng phase: **vẫn Pending** cho 1 và 2 (lệch)
-- PR [#3](https://github.com/KanTrun/CA-CONG-BANG/pull/3): OPEN, MERGEABLE, CI required xanh (05/08 skip đúng policy); đã gồm rename docs
-- PR [#4](https://github.com/KanTrun/CA-CONG-BANG/pull/4): docs rename only; CI fail vì `main` chưa có `package-lock.json` (đã có trên #3)
+- PR [#3](https://github.com/KanTrun/Crew-Operations/pull/3): OPEN, MERGEABLE, CI required xanh (05/08 skip đúng policy); đã gồm rename docs
+- PR [#4](https://github.com/KanTrun/Crew-Operations/pull/4): docs rename only; CI fail vì `main` chưa có `package-lock.json` (đã có trên #3)
 - GitHub repo đã rename `CA-CONG-BANG` (không phụ thuộc merge #4)
 
 ## Options
@@ -34,7 +34,7 @@ Phase-02 **đã cook xong trên nhánh**; thiếu bước đóng cổng governan
 
 ## Handoff sequence (cook / ops)
 
-1. `gh pr merge 3 --repo KanTrun/CA-CONG-BANG` (squash hoặc merge theo convention repo)
+1. `gh pr merge 3 --repo KanTrun/Crew-Operations` (squash hoặc merge theo convention repo)
 2. `gh pr close 4` (redundant; rename GitHub đã xong; docs trong #3)
 3. Trên tip `main`: cập nhật `plan.md` phase 1–2 → Completed (+ tick checklist 18.1 nếu còn)
 4. Smoke acceptance trên `main`

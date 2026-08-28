@@ -114,7 +114,7 @@ def test_inbox_duyet_doi_ca_opens_swap(monkeypatch) -> None:
     ql = headers(client, "lan")
     decided = client.post(
         f"/api/v1/inbox/rang-buoc/{item_id}",
-        json={"quyet_dinh": "duyet"},
+        json={"quyet_dinh": "duyet", "ca_id": "w1_c03", "doi_tac_nv_id": "nv_01"},
         headers=ql,
     )
     assert decided.status_code == 200, decided.text
@@ -123,7 +123,9 @@ def test_inbox_duyet_doi_ca_opens_swap(monkeypatch) -> None:
     assert body.get("hieu_luc", {}).get("loai") == "cho_doi_ca"
     assert body["hieu_luc"].get("swap_id")
     swaps = kv_get("swap", [])
-    assert any(s.get("id") == body["hieu_luc"]["swap_id"] for s in swaps)
+    hit = next(s for s in swaps if s.get("id") == body["hieu_luc"]["swap_id"])
+    assert hit.get("ca_id") == "w1_c03"
+    assert hit.get("b") == "nv_01"
 
 
 def test_page_empty_without_fixture_seed() -> None:
@@ -134,6 +136,57 @@ def test_page_empty_without_fixture_seed() -> None:
     th = client.get("/api/v1/page/threads", headers=ql)
     assert th.status_code == 200
     assert th.json()["items"] == []
+
+
+def test_facebook_webhook_verify(monkeypatch) -> None:
+    monkeypatch.setenv("NHIPQUAN_FB_WEBHOOK_VERIFY", "verify_test_token")
+    r = client.get(
+        "/api/v1/channels/facebook/webhook",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "verify_test_token",
+            "hub.challenge": "12345",
+        },
+    )
+    assert r.status_code == 200
+    assert r.text == "12345"
+    bad = client.get(
+        "/api/v1/channels/facebook/webhook",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "sai",
+            "hub.challenge": "12345",
+        },
+    )
+    assert bad.status_code == 403
+
+
+def test_facebook_webhook_inbound_live(monkeypatch) -> None:
+    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "live")
+    monkeypatch.setenv("NHIPQUAN_FB_PAGE_TOKEN", "tok_test")
+    monkeypatch.setenv("NHIPQUAN_FB_PAGE_ID", "page_1")
+    from ca_api.persist import kv_set
+
+    kv_set("page_quan", {"threads": [], "drafts": [], "mode": "live"})
+    r = client.post(
+        "/api/v1/channels/facebook/webhook",
+        json={
+            "entry": [
+                {
+                    "messaging": [
+                        {
+                            "sender": {"id": "psid_9"},
+                            "message": {"mid": "m1", "text": "xin chào quán"},
+                        }
+                    ]
+                }
+            ]
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert r.json().get("n") == 1
+    doc = kv_get("page_quan", {})
+    assert any(t.get("psid") == "psid_9" for t in doc.get("threads", []))
 
 
 def test_zalo_webhook_off_without_enabled() -> None:

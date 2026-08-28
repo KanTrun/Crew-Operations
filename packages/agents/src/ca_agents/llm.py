@@ -41,7 +41,7 @@ _OPENROUTER_MODELS = (
     "meta-llama/llama-3.3-70b-instruct:free",
     "meta-llama/llama-3.1-8b-instruct",
 )
-_UA = "nhip-quan/0.1 (https://github.com/KanTrun/CA-CONG-BANG)"
+_UA = "nhip-quan/0.1 (https://github.com/KanTrun/Crew-Operations)"
 _DOTENV_LOADED = False
 
 
@@ -271,7 +271,7 @@ def _call_provider(
                     image_bytes=image_bytes,
                     image_mime=image_mime,
                     extra_headers={
-                        "HTTP-Referer": "https://github.com/KanTrun/CA-CONG-BANG",
+                        "HTTP-Referer": "https://github.com/KanTrun/Crew-Operations",
                         "X-Title": "NHIP QUAN",
                     },
                 )
