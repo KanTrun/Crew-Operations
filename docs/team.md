@@ -1,5 +1,7 @@
 # Đội NHỊP QUÁN — map GitHub
 
+**Repository:** [KanTrun/Crew-Operations](https://github.com/KanTrun/Crew-Operations)
+
 > Cập nhật handle thật rồi sửa `.github/CODEOWNERS`. Hiện chỉ có `@KanTrun` trên remote nên mọi vùng tạm trỏ về account này.
 
 | Vai trò hồ sơ | Trách nhiệm | GitHub | Trạng thái |
@@ -18,5 +20,5 @@
 
 ## Liên hệ vận hành
 
-- Repo: https://github.com/KanTrun/CA-C-NG-B-NG  
+- Repo: https://github.com/KanTrun/Crew-Operations
 - Plan active: `plans/260821-2221-nhip-quan-lot1-full-delivery/`
