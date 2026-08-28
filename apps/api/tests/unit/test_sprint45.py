@@ -22,6 +22,7 @@ def _seed_three_sua() -> None:
 
 def test_lifecycle_and_audit() -> None:
     ql = headers(client, "lan")
+    chu = headers(client, "hung")
     r = client.post("/api/v1/lich/lifecycle", json={"to": "dang_giai"}, headers=ql)
     assert r.status_code == 200, r.text
     body = r.json()
@@ -31,7 +32,8 @@ def test_lifecycle_and_audit() -> None:
     client.post("/api/v1/lich/lifecycle", json={"to": "da_cong_bo"}, headers=ql)
     ics = client.get("/api/v1/lich/ics", headers=ql).json()
     assert "BEGIN:VCALENDAR" in ics["ics"]
-    log = client.get("/api/v1/audit", headers=ql).json()["items"]
+    assert client.get("/api/v1/audit", headers=ql).status_code == 403
+    log = client.get("/api/v1/audit", headers=chu).json()["items"]
     assert log
 
 
@@ -77,14 +79,22 @@ def test_handover_sbar() -> None:
 def test_cam_nang_eight_steps_and_vf_rule_reject() -> None:
     _seed_three_sua()
     ql = headers(client, "lan")
+    chu = headers(client, "hung")
     r = client.post("/api/v1/cam-nang/chay-8-buoc", headers=ql)
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["hieu_luc"]["trang_thai"] == "hieu_luc"
-    assert body["hieu_luc"]["buoc"] == 8
+    assert body["cho_chot"]["trang_thai"] == "cho_chu_quan"
+    assert body["cho_chot"]["buoc"] == 6
     assert body["bi_loai"]["trang_thai"] == "loai"
-    assert body["tu_tat_60pct"]["trang_thai"] == "tu_tat"
     assert body["so_luat_that_quan"] == 0
+    assert client.post(
+        "/api/v1/cam-nang/duyet", json={"id": body["cho_chot"]["id"], "ok": True}, headers=ql
+    ).status_code == 403
+    final = client.post(
+        "/api/v1/cam-nang/duyet", json={"id": body["cho_chot"]["id"], "ok": True}, headers=chu
+    )
+    assert final.status_code == 200, final.text
+    assert final.json()["trang_thai"] == "hieu_luc"
     cards = client.get("/api/v1/cam-nang", headers=ql).json()["items"]
     assert any(x.get("trang_thai") == "hieu_luc" for x in cards)
 

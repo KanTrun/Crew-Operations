@@ -10,8 +10,6 @@ import { useRouter } from "next/navigation";
 import { ApiError, apiSend } from "../../lib/api";
 import { dangKyLoi, viError } from "../../lib/present";
 import { Alert, Btn, Field } from "../../ui/kit";
-import { Logo } from "../../ui/Logo";
-import { datCoTourSauDangKy } from "../../ui/tour";
 
 type RegisterOut = { token: string; role: string; display_name: string; nv_id: string };
 
@@ -97,7 +95,6 @@ export default function DangKyPage() {
       sessionStorage.setItem("nq_role", data.role);
       sessionStorage.setItem("nq_name", data.display_name);
       sessionStorage.setItem("nq_nv", data.nv_id);
-      datCoTourSauDangKy();
       router.push("/hom-nay");
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
@@ -123,7 +120,7 @@ export default function DangKyPage() {
         className="nq-login-card relative z-10 grid w-full max-w-5xl grid-cols-1 overflow-hidden border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] shadow-[-12px_12px_0px_0px_var(--nq-copper-dim)] md:grid-cols-2"
       >
         <aside className="flex flex-col justify-between border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
-          <Logo />
+          <p className="font-black tracking-tighter text-2xl text-[var(--nq-copper)]">NHỊP QUÁN</p>
           <div className="mt-8 md:mt-0">
             <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-copper)] uppercase">
               Gia nhập · đội ngũ

@@ -135,6 +135,15 @@ def theo_doi(luat: dict[str, Any], *, dung: int, ghi_de: int) -> dict[str, Any]:
     return luat
 
 
+def go_luat(luat: dict[str, Any], *, ai: str) -> dict[str, Any]:
+    """Chủ quán gỡ luật đã hiệu lực — không xoá vết, chỉ đổi trạng thái."""
+    luat = dict(luat)
+    luat["trang_thai"] = "da_go"
+    luat["nguoi_go"] = ai
+    luat.pop("tham_so_loi", None)
+    return luat
+
+
 def list_luat(path: Path | None = None) -> list[dict[str, Any]]:
     return _load(path)
 

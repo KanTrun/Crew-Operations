@@ -1,312 +1,238 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { apiGet, apiSend } from "../../lib/api";
-import { nvTenHienThi, safeText, viError, viTriLabel } from "../../lib/present";
-import { getToken, lifeLabel, roleLabel } from "../../lib/session";
-import {
-  Alert,
-  Btn,
-  Hint,
-  Loading,
-  Notice,
-  PageHeader,
-  StatusChip,
-  TechnicalDrawer,
-  Toolbar,
-} from "../../ui/kit";
+import { Alert, AuthGate, Loading } from "../../ui/kit";
+import { canEdit } from "../../lib/session";
 
-type RosterData = {
-  tuan_iso: string;
-  nguon: string;
-  nhan_vien: Array<{ id: string; ten: string }>;
-  ca: Array<{
-    id: string;
-    ngay?: string;
-    ngay_offset?: number;
-    bat_dau: string;
-    ket_thuc: string;
-    vi_tri: string;
-    khung?: string;
-  }>;
-  phan_cong: Record<string, string[]>;
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+type Shift = {
+  id: string;
+  thu: string;
+  khung: "sang" | "chieu" | "toi" | string;
+  bat_dau?: string;
+  ket_thuc?: string;
+  vi_tri?: string;
 };
 
-const THU_LABEL: Record<number, string> = {
-  1: "Thứ Hai",
-  2: "Thứ Ba",
-  3: "Thứ Tư",
-  4: "Thứ Năm",
-  5: "Thứ Sáu",
-  6: "Thứ Bảy",
-  7: "Chủ Nhật",
+type NhanVien = {
+  id: string;
+  ten: string;
+  vai_tro?: string;
 };
 
-const THU_SHORT: Record<number, string> = {
-  1: "T2",
-  2: "T3",
-  3: "T4",
-  4: "T5",
-  5: "T6",
-  6: "T7",
-  7: "CN",
+type LichData = {
+  nguon?: string;
+  adr?: string;
+  tuan_iso?: string;
+  trang_thai?: string;
+  ca?: Shift[];
+  nhan_vien?: NhanVien[];
+  phan_cong?: Record<string, string[]>;
+  pin?: Record<string, string[]>;
 };
 
-function dayKey(c: RosterData["ca"][number]): string {
-  if (c.ngay_offset != null) return THU_SHORT[c.ngay_offset] ?? `N${c.ngay_offset}`;
-  if (c.ngay) return c.ngay;
-  return "?";
+const VI_TRI_LABEL: Record<string, string> = {
+  barista: "Pha chế",
+  thu_ngan: "Thu ngân",
+  phuc_vu: "Phục vụ",
+  chay_ban: "Chạy bàn",
+};
+
+function viTriLabel(vt?: string): string {
+  if (!vt) return "Chung";
+  return VI_TRI_LABEL[vt] ?? vt;
 }
 
-function dayTitle(key: string): string {
-  const entry = Object.entries(THU_SHORT).find(([, short]) => short === key);
-  if (entry) return THU_LABEL[Number(entry[0])] ?? key;
-  return key;
+function dayTitle(d: string): string {
+  const m: Record<string, string> = {
+    T2: "Thứ Hai",
+    T3: "Thứ Ba",
+    T4: "Thứ Tư",
+    T5: "Thứ Năm",
+    T6: "Thứ Sáu",
+    T7: "Thứ Bảy",
+    CN: "Chủ Nhật",
+  };
+  return m[d] ?? d;
 }
 
-function groupByDay(ca: RosterData["ca"]) {
-  const map: Record<string, RosterData["ca"]> = {};
-  for (const c of ca) {
-    (map[dayKey(c)] ??= []).push(c);
-  }
-  return map;
+function nvTenHienThi(ten?: string, id?: string): string {
+  return ten || id || "—";
 }
-
-const DAY_ORDER = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
 export default function RosterPage() {
-  const [data, setData] = useState<RosterData | null>(null);
+  const [token, setToken] = useState("");
+  const [role, setRole] = useState("nhan_vien");
+  const [data, setData] = useState<LichData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [tuan, setTuan] = useState("2026-W34");
-  const [life, setLife] = useState("");
-  const [lifeBusy, setLifeBusy] = useState(false);
   const [pinBusy, setPinBusy] = useState(false);
-
-  const load = useCallback(
-    (week: string) => {
-      fetch(`${API}/api/v1/lich-tuan?tuan=${week}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-        .then(async (r) => {
-          if (!r.ok) throw new Error("roster_failed");
-          return r.json() as Promise<RosterData>;
-        })
-        .then(setData)
-        .catch(() => setError("Không tải được lịch từ API."));
-    },
-    [token],
-  );
 
   useEffect(() => {
     const t = sessionStorage.getItem("nq_token");
     const r = sessionStorage.getItem("nq_role");
-    setToken(t);
-    setRole(r);
-    if (t) {
-      apiGet<{ trang_thai?: string }>("/api/v1/lich/lifecycle")
-        .then((d) => setLife(safeText(d.trang_thai, "")))
-        .catch(() => setLife(""));
-    }
+    if (t) setToken(t);
+    if (r) setRole(r);
   }, []);
 
-  useEffect(() => {
-    load(tuan);
-  }, [load, tuan]);
+  const authHeader = useCallback(
+    () => ({ Authorization: `Bearer ${token}` }),
+    [token],
+  );
 
-  const canWrite = role === "quan_ly" || role === "chu_quan";
-
-  const NEXT: Record<string, string> = {
-    nhap: "dang_giai",
-    dang_giai: "cho_duyet",
-    cho_duyet: "da_cong_bo",
-    da_cong_bo: "da_dong",
-  };
-
-  async function advanceLife() {
-    const to = NEXT[life];
-    if (!to || !token) return;
-    setLifeBusy(true);
+  const loadLich = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const d = await apiSend<{ trang_thai: string }>("/api/v1/lich/lifecycle", { to });
-      setLife(d.trang_thai);
-      load(tuan);
+      const res = await fetch(`${API}/api/v1/lich-tuan`, { headers: authHeader() });
+      if (!res.ok) throw new Error("fetch_failed");
+      const json = (await res.json()) as LichData;
+      setData(json);
     } catch {
-      setError("Không chuyển được trạng thái lịch. Cần quyền quản lý.");
+      setError("Không tải được lịch tuần.");
     } finally {
-      setLifeBusy(false);
+      setLoading(false);
     }
-  }
+  }, [authHeader]);
 
-  async function handlePin(ca_id: string, nv_id: string, pinned: boolean) {
-    if (!token || !canWrite) return;
+  useEffect(() => {
+    if (token) loadLich();
+  }, [token, loadLich]);
+
+  async function handlePin(caId: string, nvId: string, ghim: boolean) {
     setPinBusy(true);
     try {
-      const r = await fetch(`${API}/api/v1/lich-tuan/pin`, {
+      const res = await fetch(`${API}/api/v1/lich-tuan/pin`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ca_id, nv_id, pinned }),
+        headers: { "Content-Type": "application/json", ...authHeader() },
+        body: JSON.stringify({ ca_id: caId, nv_id: nvId, ghim }),
       });
-      if (!r.ok) throw new Error("pin_failed");
-      load(tuan);
+      if (!res.ok) throw new Error("pin_failed");
+      await loadLich();
     } catch {
-      setError("Không thể cập nhật pin.");
+      setError("Không cập nhật được ghim.");
     } finally {
       setPinBusy(false);
     }
   }
 
-  const byDay = data ? groupByDay(data.ca ?? []) : {};
-  const days = [
-    ...DAY_ORDER.filter((d) => d in byDay),
-    ...Object.keys(byDay)
-      .filter((d) => !DAY_ORDER.includes(d))
-      .sort(),
-  ];
-  const nvMap = Object.fromEntries((data?.nhan_vien ?? []).map((nv) => [nv.id, nv.ten]));
-  const nvName = (id: string) => nvTenHienThi(nvMap[id], id);
+  if (!token) return <AuthGate />;
+
+  const canWrite = canEdit(role);
+  const days = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+  const shifts = data?.ca ?? [];
+
+  const byDay: Record<string, Shift[]> = {};
+  for (const d of days) byDay[d] = [];
+  for (const s of shifts) {
+    if (byDay[s.thu]) byDay[s.thu].push(s);
+  }
+
+  function nvName(id: string): string {
+    const found = (data?.nhan_vien ?? []).find((x) => x.id === id);
+    return found ? found.ten : id;
+  }
 
   return (
     <div className="nq-page">
-      <p className="nq-kicker">Lưới ca · ghim ô</p>
-      <h1>Lịch tuần</h1>
-      <p className="nq-muted">
-        {data ? `${data.tuan_iso} · nguồn quán` : "Đang tải…"}
-        {role ? ` · ${roleLabel(role)}` : ""}
-        {life ? ` · ${lifeLabel(life)}` : ""}
-      </p>
-      <p style={{ display: "flex", gap: "0.65rem", alignItems: "center", flexWrap: "wrap", margin: "0.75rem 0 1rem" }}>
-        <label className="nq-muted">
-          Tuần ISO
-          <input
-            type="text"
-            value={tuan}
-            onChange={(e) => setTuan(e.target.value)}
-            style={{
-              marginLeft: "0.4rem",
-              background: "var(--nq-surface)",
-              border: "1px solid var(--nq-line)",
-              color: "var(--nq-ink)",
-              padding: "0.3rem 0.5rem",
-              fontFamily: "var(--nq-font-mono)",
-              fontSize: "0.85rem",
-              borderRadius: 2,
-              width: 100,
-            }}
-          />
-        </label>
-        {canWrite && NEXT[life] ? (
-          <button disabled={lifeBusy} onClick={advanceLife} type="button">
-            {lifeBusy ? "Đang xử lý…" : `Chuyển sang ${lifeLabel(NEXT[life])}`}
-          </button>
-        ) : null}
-      </p>
-
-      {error && (
-        <p role="alert" style={{ color: "var(--nq-danger)", marginBottom: "1rem" }}>
-          {error}
+      <header className="mb-8 ops-animate-in">
+        <p className="nq-kicker">Vận hành tuần</p>
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[var(--nq-copper)] mb-2">
+          Lịch tuần
+        </h1>
+        <p className="text-[var(--nq-dim)] font-mono text-sm">
+          Lịch phân công ca theo tuần · {data?.tuan_iso ?? "2026-W01"}
         </p>
-      )}
+      </header>
 
-      {!canWrite && (
-        <p className="nq-muted" style={{ border: "1px solid var(--nq-line)", padding: "0.5rem 0.75rem" }}>
-          Chỉ xem. Quản lý hoặc chủ quán mới ghim được ô.
-        </p>
-      )}
+      {error ? <Alert kind="err">{error}</Alert> : null}
+      {loading ? <Loading skeleton="table" rows={3}>Đang tải lịch tuần…</Loading> : null}
 
-      {data && days.length > 0 ? (
-        <>
-          <div className="nq-roster-wrap">
-            <table className="nq-roster-table">
-              <caption className="nq-roster-caption">
-                Lưới ca tuần {safeText(data.tuan_iso, tuan)}
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Khung giờ</th>
-                  {days.map((d) => (
-                    <th scope="col" key={d}>
-                      <span className="nq-roster-day-full">{dayTitle(d)}</span>
-                      <span className="nq-roster-day-short">{d}</span>
+      {!loading && shifts.length > 0 ? (
+        <div className="nq-table-wrap">
+          <table className="nq-table">
+            <thead>
+              <tr>
+                <th scope="col">Khung</th>
+                {days.map((d) => (
+                  <th key={d} scope="col">
+                    <span className="nq-roster-day-full">{dayTitle(d)}</span>
+                    <span className="nq-roster-day-short">{d}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(["sang", "chieu", "toi"] as const).map((khung) => {
+                const label =
+                  khung === "sang" ? "Sáng 07–12" : khung === "chieu" ? "Chiều 12–17" : "Tối 17–22";
+                return (
+                  <tr key={khung}>
+                    <th scope="row" className="nq-roster-row-label">
+                      {label}
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(["sang", "chieu", "toi"] as const).map((khung) => {
-                  const label =
-                    khung === "sang" ? "Sáng 07–12" : khung === "chieu" ? "Chiều 12–17" : "Tối 17–22";
-                  return (
-                    <tr key={khung}>
-                      <th scope="row" className="nq-roster-row-label">
-                        {label}
-                      </th>
-                      {days.map((d) => {
-                        const shift = (byDay[d] ?? []).find((c) => (c.khung ?? "") === khung);
-                        const assigned: string[] = shift ? (data.phan_cong?.[shift.id] ?? []) : [];
-                        return (
-                          <td key={d}>
-                            {shift ? (
-                              <div className="nq-roster-cell">
-                                <p className="nq-roster-role">{viTriLabel(shift.vi_tri)}</p>
-                                <ul className="nq-roster-people">
-                                  {assigned.map((nv_id) => (
-                                    <li key={nv_id} className="nq-roster-nv">
-                                      <span className="nq-roster-nv-name">{nvName(nv_id)}</span>
-                                      {canWrite ? (
-                                        <button
-                                          type="button"
-                                          className="nq-roster-unpin"
-                                          disabled={pinBusy}
-                                          onClick={() => handlePin(shift.id, nv_id, false)}
-                                          aria-label={`Bỏ ${nvName(nv_id)} khỏi ${label} ${dayTitle(d)}`}
-                                        >
-                                          ×
-                                        </button>
-                                      ) : null}
-                                    </li>
-                                  ))}
-                                  {assigned.length === 0 ? (
-                                    <li className="nq-roster-empty">Chưa xếp người</li>
-                                  ) : null}
-                                </ul>
-                                {canWrite ? (
-                                  <div className="nq-roster-add">
-                                    <select
-                                      defaultValue=""
-                                      disabled={pinBusy}
-                                      aria-label={`Thêm người vào ${label} ${dayTitle(d)}`}
-                                      onChange={(e) => {
-                                        if (e.target.value) {
-                                          handlePin(shift.id, e.target.value, true);
-                                          e.target.value = "";
-                                        }
-                                      }}
-                                    >
-                                      <option value="">Thêm người…</option>
-                                      {(data.nhan_vien ?? [])
-                                        .filter((nv) => !assigned.includes(nv.id))
-                                        .map((nv) => (
-                                          <option key={nv.id} value={nv.id}>
-                                            {nvTenHienThi(nv.ten, nv.id)}
-                                          </option>
-                                        ))}
-                                    </select>
-                                  </div>
+                    {days.map((d) => {
+                      const shift = (byDay[d] ?? []).find((c) => (c.khung ?? "") === khung);
+                      const assigned: string[] = shift ? (data?.phan_cong?.[shift.id] ?? []) : [];
+                      return (
+                        <td key={d}>
+                          {shift ? (
+                            <div className="nq-roster-cell">
+                              <p className="nq-roster-role">{viTriLabel(shift.vi_tri)}</p>
+                              <ul className="nq-roster-people">
+                                {assigned.map((nv_id) => (
+                                  <li key={nv_id} className="nq-roster-nv">
+                                    <span className="nq-roster-nv-name">{nvName(nv_id)}</span>
+                                    {canWrite ? (
+                                      <button
+                                        type="button"
+                                        className="nq-roster-unpin"
+                                        disabled={pinBusy}
+                                        onClick={() => handlePin(shift.id, nv_id, false)}
+                                        aria-label={`Bỏ ${nvName(nv_id)} khỏi ${label} ${dayTitle(d)}`}
+                                      >
+                                        ×
+                                      </button>
+                                    ) : null}
+                                  </li>
+                                ))}
+                                {assigned.length === 0 ? (
+                                  <li className="nq-roster-empty">Chưa xếp người</li>
                                 ) : null}
-                              </div>
-                            ) : (
-                              <span className="nq-muted">—</span>
-                            )}
-                          </ul>
-                        ) : (
-                          <span style={{ color: "var(--nq-line)" }}>—</span>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
+                              </ul>
+                              {canWrite ? (
+                                <div className="nq-roster-add">
+                                  <select
+                                    defaultValue=""
+                                    disabled={pinBusy}
+                                    aria-label={`Thêm người vào ${label} ${dayTitle(d)}`}
+                                    onChange={(e) => {
+                                      if (e.target.value) {
+                                        handlePin(shift.id, e.target.value, true);
+                                        e.target.value = "";
+                                      }
+                                    }}
+                                  >
+                                    <option value="">Thêm người…</option>
+                                    {(data?.nhan_vien ?? [])
+                                      .filter((nv) => !assigned.includes(nv.id))
+                                      .map((nv) => (
+                                        <option key={nv.id} value={nv.id}>
+                                          {nvTenHienThi(nv.ten, nv.id)}
+                                        </option>
+                                      ))}
+                                  </select>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="nq-muted">—</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
                 );
               })}
             </tbody>

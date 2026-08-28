@@ -19,6 +19,24 @@ export function isManager(role = getRole()): boolean {
   return role === "quan_ly" || role === "chu_quan";
 }
 
+export function isChuQuan(role = getRole()): boolean {
+  return role === "chu_quan";
+}
+
+export function canEdit(role = getRole()): boolean {
+  return isManager(role);
+}
+
+const MANAGER_ONLY = new Set(["/roster", "/inbox"]);
+const OWNER_ONLY = new Set(["/menu", "/nguoi", "/vet"]);
+
+/** Client-side gate for navigation and hand-typed URLs. API remains authoritative. */
+export function canAccess(role: Role, path: string): boolean {
+  if (OWNER_ONLY.has(path)) return role === "chu_quan";
+  if (MANAGER_ONLY.has(path)) return isManager(role);
+  return Boolean(role);
+}
+
 export function clearSession(): void {
   sessionStorage.removeItem("nq_token");
   sessionStorage.removeItem("nq_role");

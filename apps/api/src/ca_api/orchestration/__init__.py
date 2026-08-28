@@ -5,9 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from threading import Lock
 from typing import Any
+
+UTC = timezone.utc
 
 
 class Clock:

@@ -1,8 +1,14 @@
-"""Shared data contracts — five Sprint-1 schemas (Pydantic v2)."""
+"""Shared data contracts — Sprint-1 schemas plus quầy nội bộ (ADR-013)."""
 
 from __future__ import annotations
 
-from enum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:
+    from enum import Enum
+
+    class StrEnum(str, Enum):
+        pass
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -68,10 +74,42 @@ class RangBuocTrichXuat(BaseModel):
     khung_gio: list[str] = Field(default_factory=list)
 
 
+class DongDon(BaseModel):
+    mon_id: str
+    ten: str
+    so_luong: int = Field(ge=1)
+    gia: int = Field(ge=0)
+
+
+class MonNuoc(BaseModel):
+    id: str
+    ten: str
+    gia: int = Field(ge=0, description="Đồng, số nguyên")
+    an: bool = False
+    bom: dict[str, float] = Field(
+        default_factory=dict,
+        description="Nguyên liệu ước lượng khi hoàn thành đơn, vd cafe_g, sua_ml, ly",
+    )
+
+
+class DonQuay(BaseModel):
+    id: str
+    nv_id: str
+    trang_thai: Literal["cho_pha", "dang_pha", "xong", "huy"] = "cho_pha"
+    thanh_toan: Literal["tien_mat", "da_ck", "chua_thu"] = "chua_thu"
+    dong: list[DongDon]
+    ly_do_huy: str | None = None
+    nguon: Literal["quay_noi_bo"] = "quay_noi_bo"
+    luc: str = ""
+
+
 CONTRACTS = {
     "NhanVien": NhanVien,
     "Ca": Ca,
     "LichTuan": LichTuan,
     "PhieuMau": PhieuMau,
     "RangBuocTrichXuat": RangBuocTrichXuat,
+    "MonNuoc": MonNuoc,
+    "DonQuay": DonQuay,
+    "DongDon": DongDon,
 }

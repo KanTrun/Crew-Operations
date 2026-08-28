@@ -165,6 +165,7 @@ const LUAT: Record<string, string> = {
   qua_vf_rule: "Qua vòng kiểm",
   loai: "Bị loại ở vòng kiểm",
   du_tap_su: "Đủ lượt tập sự",
+  cho_chu_quan: "Chờ chủ quán chốt",
   truot_tap_su: "Chưa đủ lượt tập sự",
   tu_choi: "Quản lý từ chối",
   hieu_luc: "Đang hiệu lực",
@@ -178,7 +179,7 @@ export function luatLabel(code: unknown): string {
 export function luatTone(code: unknown): "warn" | "ok" | "danger" | "default" {
   if (code === "hieu_luc") return "ok";
   if (code === "loai" || code === "tu_choi") return "danger";
-  if (code === "de_xuat" || code === "truot_tap_su") return "warn";
+  if (code === "de_xuat" || code === "truot_tap_su" || code === "cho_chu_quan") return "warn";
   return "default";
 }
 

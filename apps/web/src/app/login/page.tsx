@@ -2,13 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import gsap from "gsap";
-import { ApiError, apiSend } from "../../lib/api";
-import { viError } from "../../lib/present";
-import { Alert, Field } from "../../ui/kit";
-import { Logo } from "../../ui/Logo";
-
-type LoginOut = { token: string; role: string; display_name: string; nv_id: string };
+import { API } from "../../lib/api";
+import { Alert, Btn, Field, Kicker } from "../../ui/kit";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,17 +11,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function handleLogin(user: string, pass: string) {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`${API}/api/v1/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: user, password: pass }),
       });
       if (!res.ok) {
         setError("Sai tài khoản hoặc mật khẩu.");
@@ -43,103 +36,103 @@ export default function LoginPage() {
       sessionStorage.setItem("nq_name", data.display_name);
       sessionStorage.setItem("nq_nv", data.nv_id);
       router.push("/hom-nay");
-    } catch (e) {
-      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
-        setError("Tài khoản hoặc mật khẩu chưa đúng. Nhập lại, hoặc nhờ quản lý cấp lại.");
-      } else {
-        setError(viError(e, { doing: "vào được hệ thống" }));
-      }
+    } catch {
+      setError("Không kết nối được máy chủ (API http://localhost:8000). Kiểm tra server rồi thử lại.");
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
-    gsap.fromTo(
-      ".nq-login-card",
-      { y: 24, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" },
-    );
-  }, []);
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!username.trim() || !password.trim()) {
+      setError("Vui lòng nhập tài khoản và mật khẩu.");
+      return;
+    }
+    void handleLogin(username.trim(), password.trim());
+  }
+
+  function quickLogin(user: string) {
+    setUsername(user);
+    setPassword("nhipquan");
+    void handleLogin(user, "nhipquan");
+  }
 
   return (
-    <main
-      ref={containerRef}
-      className="relative flex min-h-dvh items-center justify-center overflow-hidden p-4 md:p-8"
-    >
-      <div className="pointer-events-none absolute top-[-10%] left-[-10%] h-[40vw] w-[40vw] rounded-full bg-[var(--nq-copper-glow)] opacity-40 blur-[100px] mix-blend-screen" />
-      <div className="pointer-events-none absolute right-[-10%] bottom-[-10%] h-[35vw] w-[35vw] rounded-full bg-[var(--nq-red-dim)] opacity-25 blur-[120px] mix-blend-screen" />
+    <main className="relative z-10 min-h-screen flex items-center justify-center p-4 sm:p-8">
+      <div className="w-full max-w-lg bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] p-6 sm:p-10">
+        <Kicker>OS Vận hành ca · NHỊP QUÁN</Kicker>
+        <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-[var(--nq-fg)] mb-2">
+          Đăng nhập
+        </h1>
+        <p className="text-[var(--nq-dim)] font-mono text-sm mb-6">
+          Hệ thống phân chia 3 vỏ theo vai: Nhân viên, Quản lý, Chủ quán.
+        </p>
 
-      <form
-        onSubmit={onSubmit}
-        className="nq-login-card relative z-10 grid w-full max-w-4xl grid-cols-1 overflow-hidden border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] md:grid-cols-2"
-      >
-        <aside className="flex flex-col justify-between border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
-          <Logo />
-          <div className="mt-8 md:mt-0">
-            <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-copper)] uppercase">
-              Vào ca · một việc một lúc
-            </p>
-            <h1 className="text-4xl font-black tracking-tighter text-[var(--nq-fg)] uppercase md:text-5xl">
-              Đăng nhập
-            </h1>
-            <p className="mt-4 max-w-sm text-sm text-[var(--nq-dim)]">
-              Dùng tài khoản quán do quản lý cấp. Quên mật khẩu thì nhờ quản lý đặt lại.
-            </p>
-          </div>
-          <p className="mt-8 hidden text-xs font-mono text-[var(--nq-dim)] md:block">
-            NHỊP QUÁN · Digital System
+        {/* Quick login buttons for immediate testing */}
+        <div className="mb-8 p-4 bg-[var(--nq-surface)] border border-[var(--nq-dim)]">
+          <p className="text-xs font-mono uppercase tracking-widest text-[var(--nq-copper)] mb-3 font-bold">
+            ⚡ Đăng nhập nhanh 1 chạm:
           </p>
-        </aside>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => quickLogin("minh")}
+              className="p-2 text-xs font-bold font-mono uppercase border border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] bg-[var(--nq-surface-hi)] transition-colors text-left"
+            >
+              👤 Minh<br /><span className="text-[var(--nq-dim)] font-normal">Nhân viên</span>
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => quickLogin("lan")}
+              className="p-2 text-xs font-bold font-mono uppercase border border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] bg-[var(--nq-surface-hi)] transition-colors text-left"
+            >
+              👔 Lan<br /><span className="text-[var(--nq-dim)] font-normal">Quản lý</span>
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => quickLogin("hung")}
+              className="p-2 text-xs font-bold font-mono uppercase border border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] bg-[var(--nq-surface-hi)] transition-colors text-left"
+            >
+              👑 Hùng<br /><span className="text-[var(--nq-dim)] font-normal">Chủ quán</span>
+            </button>
+          </div>
+        </div>
 
-        <div className="flex flex-col gap-4 p-6 md:gap-5 md:p-8">
+        {error ? <Alert kind="err">{error}</Alert> : null}
+
+        <form onSubmit={onSubmit} className="space-y-4">
           <Field label="Tài khoản">
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
-              className="w-full border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-3 font-mono text-[var(--nq-fg)] transition-colors focus:border-[var(--nq-copper)] focus:outline-none"
+              placeholder="lan / minh / hung"
+              className="w-full bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-3 text-[var(--nq-fg)] font-mono text-base focus:border-[var(--nq-copper)] focus:outline-none transition-colors"
             />
           </Field>
+
           <Field label="Mật khẩu">
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
-              className="w-full border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-3 font-mono text-[var(--nq-fg)] transition-colors focus:border-[var(--nq-copper)] focus:outline-none"
+              placeholder="nhipquan"
+              className="w-full bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-3 text-[var(--nq-fg)] font-mono text-base focus:border-[var(--nq-copper)] focus:outline-none transition-colors"
             />
           </Field>
 
-          {error ? <Alert>{error}</Alert> : null}
-
-          <button
-            type="submit"
-            disabled={loading}
-            aria-busy={loading ? true : undefined}
-            className="nq-ink-on-solid mt-2 w-full border-2 border-[var(--nq-copper)] bg-[var(--nq-copper)] py-3.5 font-black tracking-widest uppercase transition-all hover:bg-transparent hover:text-[var(--nq-copper)] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? "Đang vào…" : "Vào hệ thống"}
-          </button>
-
-          <div className="mt-2 space-y-1 border-t-2 border-dashed border-[var(--nq-dim)] pt-4 text-sm text-[var(--nq-dim)]">
-            <p>
-              Chưa có tài khoản?{" "}
-              <Link href="/dang-ky" className="text-[var(--nq-copper)] underline-offset-4 hover:underline">
-                Tạo tài khoản nhân viên
-              </Link>
-            </p>
-            <p>
-              <Link href="/huong-dan" className="text-[var(--nq-copper)] underline-offset-4 hover:underline">
-                Đọc hướng dẫn một ngày của quán
-              </Link>
-            </p>
+          <div className="pt-4">
+            <Btn type="submit" variant="primary" block busy={loading} busyLabel="Đang đăng nhập…">
+              Vào hệ thống
+            </Btn>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </main>
   );
 }

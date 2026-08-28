@@ -16,7 +16,19 @@ import {
   yDinhLabel,
 } from "../../lib/present";
 import { getToken, isManager } from "../../lib/session";
-import { Alert, AuthGate, btnDanger, btnPrimary, Empty, Kicker, Loading } from "../../ui/kit";
+import {
+  Alert,
+  AuthGate,
+  Btn,
+  Confidence,
+  Empty,
+  Group,
+  Kicker,
+  Loading,
+  Notice,
+  Row,
+  StatusChip,
+} from "../../ui/kit";
 
 type Item = {
   id: string;
@@ -47,6 +59,8 @@ export default function InboxPage() {
   const [token, setToken] = useState("");
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const [manager, setManager] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -69,9 +83,12 @@ export default function InboxPage() {
   }, [token, load]);
 
   async function decide(id: string, quyet_dinh: string) {
+    setBusy(id);
+    setError(null);
+    setMsg(null);
     try {
       await apiSend(`/api/v1/inbox/rang-buoc/${id}`, { quyet_dinh });
-      push(
+      setMsg(
         quyet_dinh === "duyet"
           ? "Đã duyệt. Hệ thống ghi hiệu lực (chợ đổi ca / chờ xếp lịch) — không sửa lịch âm thầm."
           : "Đã từ chối. Ràng buộc này không vào lượt xếp lịch.",
@@ -79,17 +96,25 @@ export default function InboxPage() {
       load();
     } catch {
       setError("Cần quyền quản lý để duyệt.");
+    } finally {
+      setBusy(null);
     }
   }
 
   if (!token) return <AuthGate />;
+
+  const nhom: [string, Item[]][] = THU_TU.map((tt): [string, Item[]] => [
+    tt,
+    items.filter((it) => it.trang_thai === tt),
+  ]).filter((entry): entry is [string, Item[]] => entry[1].length > 0);
 
   return (
     <div className="nq-page">
       <Kicker>Người duyệt · hệ thống không tự chọn</Kicker>
       <h1>Hộp thư ràng buộc</h1>
       <p className="nq-muted">Khi hai claim mâu thuẫn, người quyết. Không tự chọn hộ.</p>
-      {error ? <Alert>{error}</Alert> : null}
+      {error ? <Alert kind="err">{error}</Alert> : null}
+      {msg ? <Alert kind="ok">{msg}</Alert> : null}
       {!manager ? <Notice>Bạn xem được nội dung. Quản lý hoặc chủ quán mới bấm duyệt.</Notice> : null}
       {loading ? <Loading skeleton="rows" rows={4} groups={3}>Đang mở hộp thư…</Loading> : null}
       {!loading && !error && items.length === 0 ? (
@@ -148,7 +173,6 @@ export default function InboxPage() {
             ))}
           </Group>
         ))}
-      </div>
     </div>
   );
 }

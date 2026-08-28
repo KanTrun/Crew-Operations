@@ -8,9 +8,11 @@ import json
 import os
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any, cast
+
+UTC = timezone.utc
 
 from ca_agents.ag_msg import classify
 from ca_agents.ag_tkb.extract import extract_tkb
@@ -78,6 +80,13 @@ def _can_touch(run: Any, authorization: str | None) -> str:
     if run.nv_id != nv:
         raise HTTPException(status_code=403, detail="khong_phai_chu_phieu")
     return nv
+
+
+def _require_chu_quan(authorization: str | None) -> str:
+    role = _require_role(authorization)
+    if role != "chu_quan":
+        raise HTTPException(status_code=403, detail="forbidden — requires chu_quan")
+    return role
 
 
 def _require_manager(authorization: str | None) -> str:

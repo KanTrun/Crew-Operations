@@ -9,7 +9,8 @@ from pathlib import Path
 import uvicorn
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "apps" / "api" / "src"))
+for p in ["apps/api", "packages/contracts", "packages/agents", "packages/solver", "packages/playbook", "packages/gates", "packages/opsengine"]:
+    sys.path.insert(0, str(ROOT / p / "src"))
 
 if __name__ == "__main__":
     print("API http://localhost:8000/health")

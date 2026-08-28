@@ -19,11 +19,13 @@ export function authHeaders(extra?: HeadersInit): HeadersInit {
  */
 export class ApiError extends Error {
   readonly status: number;
+  readonly detail: unknown;
 
-  constructor(status: number) {
+  constructor(status: number, detail: unknown = undefined) {
     super(`api_${status}`);
     this.name = "ApiError";
     this.status = status;
+    this.detail = detail;
   }
 
   get offline(): boolean {
@@ -38,7 +40,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new ApiError(0);
   }
-  if (!res.ok) throw new ApiError(res.status);
+  if (!res.ok) {
+    let detail: unknown;
+    try {
+      const payload = (await res.json()) as { detail?: unknown };
+      detail = payload.detail;
+    } catch {
+      detail = undefined;
+    }
+    throw new ApiError(res.status, detail);
+  }
   try {
     return (await res.json()) as T;
   } catch {

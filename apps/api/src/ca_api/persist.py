@@ -32,7 +32,9 @@ USERS = (
 # Cột `password_sha` giữ nguyên tên để không phải migrate; nó lưu:
 #   - "pbkdf2_sha256$<vòng>$<salt hex>$<hash hex>"  (bản mới)
 #   - "<sha256 hex>"                                 (bản cũ, vẫn đăng nhập được)
-PBKDF2_VONG = 240_000
+PBKDF2_VONG = int(
+    os.environ.get("NHIPQUAN_PBKDF2_VONG", "1000" if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("PYTEST_VERSION") else "240000")
+)
 _PREFIX = "pbkdf2_sha256"
 
 # Vai trò người tự đăng ký. KHÔNG bao giờ là quan_ly/chu_quan: nếu tự đăng ký
@@ -119,6 +121,22 @@ def init_db() -> None:
                 nv_id TEXT NOT NULL,
                 created_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS menu_mon (
+                id TEXT PRIMARY KEY,
+                ten TEXT NOT NULL,
+                gia INTEGER NOT NULL,
+                an INTEGER NOT NULL DEFAULT 0,
+                bom TEXT NOT NULL DEFAULT '{}'
+            );
+            CREATE TABLE IF NOT EXISTS don_quay (
+                id TEXT PRIMARY KEY,
+                nv_id TEXT NOT NULL,
+                trang_thai TEXT NOT NULL,
+                thanh_toan TEXT NOT NULL,
+                dong TEXT NOT NULL,
+                ly_do_huy TEXT,
+                luc TEXT NOT NULL
+            );
             """
         )
         for u, pw, role, nv, name in USERS:
@@ -129,7 +147,27 @@ def init_db() -> None:
                 """,
                 (u, hash_password(pw), role, nv, name),
             )
+        _seed_menu_neu_trong(cx)
     _INITIALIZED = True
+
+
+_MENU_MAC_DINH = (
+    ("mon_den", "Cà phê đen", 25000, {"cafe_g": 18, "ly": 1}),
+    ("mon_sua", "Cà phê sữa", 30000, {"cafe_g": 16, "sua_ml": 40, "ly": 1}),
+    ("mon_tra", "Trà đào", 35000, {"dao_lat": 3, "ly": 1}),
+    ("mon_da", "Bạc xỉu", 32000, {"cafe_g": 12, "sua_ml": 80, "ly": 1}),
+)
+
+
+def _seed_menu_neu_trong(cx: sqlite3.Connection) -> None:
+    n = cx.execute("SELECT COUNT(*) FROM menu_mon").fetchone()[0]
+    if int(n) > 0:
+        return
+    for mid, ten, gia, bom in _MENU_MAC_DINH:
+        cx.execute(
+            "INSERT INTO menu_mon(id, ten, gia, an, bom) VALUES (?,?,?,?,?)",
+            (mid, ten, gia, 0, json.dumps(bom, ensure_ascii=False)),
+        )
 
 
 def kenh_bind_get(channel: str, external_user_id: str) -> str | None:
@@ -143,10 +181,10 @@ def kenh_bind_get(channel: str, external_user_id: str) -> str | None:
 
 
 def kenh_bind_set(channel: str, external_user_id: str, nv_id: str) -> None:
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
     init_db()
-    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     with _conn() as cx:
         cx.execute(
             """
@@ -182,11 +220,11 @@ def kenh_bind_list(nv_id: str | None = None) -> list[dict[str, str]]:
 
 
 def kenh_bind_code_issue(nv_id: str) -> str:
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
     init_db()
     code = uuid.uuid4().hex[:8]
-    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     with _conn() as cx:
         cx.execute(
             "INSERT INTO kenh_bind_code(code, nv_id, created_at) VALUES (?,?,?)",
@@ -376,6 +414,212 @@ def audit_add(at: str, ai: str, hanh: str, payload: dict[str, Any]) -> None:
             "INSERT INTO audit(at, ai, hanh, payload) VALUES (?,?,?,?)",
             (at, ai, hanh, json.dumps(payload, ensure_ascii=False)),
         )
+
+
+def list_users() -> list[dict[str, str]]:
+    init_db()
+    with _conn() as cx:
+        rows = cx.execute(
+            "SELECT username, role, nv_id, display_name FROM users ORDER BY username"
+        ).fetchall()
+    return [
+        {"username": str(r[0]), "role": str(r[1]), "nv_id": str(r[2]), "display_name": str(r[3])}
+        for r in rows
+    ]
+
+
+class NangVaiLoi(ValueError):
+    def __init__(self, ma: str) -> None:
+        super().__init__(ma)
+        self.ma = ma
+
+
+def set_role(username: str, role: str) -> dict[str, str]:
+    """Chủ quán nâng nhân viên lên quản lý. Không tự phong chủ quán."""
+    if role != "quan_ly":
+        raise NangVaiLoi("vai_khong_hop_le")
+    u = (username or "").strip().lower()
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT username, role, nv_id, display_name FROM users WHERE username=?", (u,)
+        ).fetchone()
+        if not row:
+            raise NangVaiLoi("khong_co_tai_khoan")
+        if row[1] == "chu_quan":
+            raise NangVaiLoi("khong_doi_chu_quan")
+        if row[1] == "quan_ly":
+            return {
+                "username": str(row[0]),
+                "role": str(row[1]),
+                "nv_id": str(row[2]),
+                "display_name": str(row[3]),
+            }
+        if row[1] != "nhan_vien":
+            raise NangVaiLoi("vai_khong_hop_le")
+        cx.execute("UPDATE users SET role=? WHERE username=?", (role, u))
+        cx.execute("UPDATE sessions SET role=? WHERE username=?", (role, u))
+        return {
+            "username": str(row[0]),
+            "role": role,
+            "nv_id": str(row[2]),
+            "display_name": str(row[3]),
+        }
+
+
+def menu_list(*, gom_an: bool = False) -> list[dict[str, Any]]:
+    init_db()
+    with _conn() as cx:
+        rows = cx.execute("SELECT id, ten, gia, an, bom FROM menu_mon ORDER BY ten").fetchall()
+    out = []
+    for mid, ten, gia, an, bom in rows:
+        if not gom_an and int(an):
+            continue
+        out.append(
+            {
+                "id": str(mid),
+                "ten": str(ten),
+                "gia": int(gia),
+                "an": bool(an),
+                "bom": json.loads(bom) if bom else {},
+            }
+        )
+    return out
+
+
+def menu_upsert(mon: dict[str, Any]) -> dict[str, Any]:
+    init_db()
+    mid = str(mon["id"]).strip()
+    ten = str(mon["ten"]).strip()
+    gia = int(mon["gia"])
+    an = 1 if mon.get("an") else 0
+    bom = json.dumps(mon.get("bom") or {}, ensure_ascii=False)
+    with _conn() as cx:
+        cx.execute(
+            """
+            INSERT INTO menu_mon(id, ten, gia, an, bom) VALUES (?,?,?,?,?)
+            ON CONFLICT(id) DO UPDATE SET ten=excluded.ten, gia=excluded.gia,
+                an=excluded.an, bom=excluded.bom
+            """,
+            (mid, ten, gia, an, bom),
+        )
+    return {"id": mid, "ten": ten, "gia": gia, "an": bool(an), "bom": json.loads(bom)}
+
+
+def menu_get(mon_id: str) -> dict[str, Any] | None:
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT id, ten, gia, an, bom FROM menu_mon WHERE id=?", (mon_id,)
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "id": str(row[0]),
+        "ten": str(row[1]),
+        "gia": int(row[2]),
+        "an": bool(row[3]),
+        "bom": json.loads(row[4]) if row[4] else {},
+    }
+
+
+def don_insert(don: dict[str, Any]) -> dict[str, Any]:
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            """
+            INSERT INTO don_quay(id, nv_id, trang_thai, thanh_toan, dong, ly_do_huy, luc)
+            VALUES (?,?,?,?,?,?,?)
+            """,
+            (
+                don["id"],
+                don["nv_id"],
+                don["trang_thai"],
+                don["thanh_toan"],
+                json.dumps(don["dong"], ensure_ascii=False),
+                don.get("ly_do_huy"),
+                don["luc"],
+            ),
+        )
+    return don
+
+
+def don_list(*, trang_thai: str | None = None) -> list[dict[str, Any]]:
+    init_db()
+    with _conn() as cx:
+        if trang_thai:
+            rows = cx.execute(
+                """
+                SELECT id, nv_id, trang_thai, thanh_toan, dong, ly_do_huy, luc
+                FROM don_quay WHERE trang_thai=? ORDER BY luc
+                """,
+                (trang_thai,),
+            ).fetchall()
+        else:
+            rows = cx.execute(
+                """
+                SELECT id, nv_id, trang_thai, thanh_toan, dong, ly_do_huy, luc
+                FROM don_quay ORDER BY luc DESC
+                """
+            ).fetchall()
+    return [_don_row(r) for r in rows]
+
+
+def don_get(don_id: str) -> dict[str, Any] | None:
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            """
+            SELECT id, nv_id, trang_thai, thanh_toan, dong, ly_do_huy, luc
+            FROM don_quay WHERE id=?
+            """,
+            (don_id,),
+        ).fetchone()
+    return _don_row(row) if row else None
+
+
+def don_update(don: dict[str, Any]) -> dict[str, Any]:
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            """
+            UPDATE don_quay SET trang_thai=?, thanh_toan=?, dong=?, ly_do_huy=?
+            WHERE id=?
+            """,
+            (
+                don["trang_thai"],
+                don["thanh_toan"],
+                json.dumps(don["dong"], ensure_ascii=False),
+                don.get("ly_do_huy"),
+                don["id"],
+            ),
+        )
+    return don
+
+
+def _don_row(r: tuple[Any, ...]) -> dict[str, Any]:
+    return {
+        "id": str(r[0]),
+        "nv_id": str(r[1]),
+        "trang_thai": str(r[2]),
+        "thanh_toan": str(r[3]),
+        "dong": json.loads(r[4]),
+        "ly_do_huy": r[5],
+        "luc": str(r[6]),
+        "nguon": "quay_noi_bo",
+    }
+
+
+def tieu_thu_append(item: dict[str, Any]) -> None:
+    def mut(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        rows.append(item)
+        return rows
+
+    kv_mutate("tieu_thu", mut, [])
+
+
+def da_diem_danh(nv_id: str) -> bool:
+    return nv_id in set(kv_get("diem_danh", []))
 
 
 def audit_list() -> list[dict[str, Any]]:

@@ -477,7 +477,7 @@ def _golden_items() -> list[dict[str, Any]]:
 def _chung_cu(item: dict[str, Any]) -> str:
     """Chứng cứ thô của một ảnh TKB = nội dung tệp SVG golden (nếu có)."""
     svg = GOLDEN_TKB / str(item.get("file") or "")
-    return svg.read_text(encoding="utf-8") if svg.exists() else ""
+    return svg.read_text(encoding="utf-8", errors="replace") if svg.exists() else ""
 
 
 def _cong_vf_anh() -> dict[str, dict[str, int]]:

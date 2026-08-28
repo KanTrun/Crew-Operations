@@ -2,6 +2,7 @@ from ca_playbook.sua import list_sua, record_sua
 from ca_playbook.vong_doi import (
     de_xuat,
     duyet,
+    go_luat,
     kiem_chung,
     list_luat,
     save_luat,
@@ -18,6 +19,7 @@ __all__ = [
     "kiem_chung",
     "tap_su",
     "duyet",
+    "go_luat",
     "theo_doi",
     "list_luat",
     "save_luat",

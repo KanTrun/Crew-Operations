@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { luatLabel, luatTone, safeText, viError } from "../../lib/present";
-import { getToken, isManager } from "../../lib/session";
+import { getRole, getToken, isChuQuan, isManager } from "../../lib/session";
 import {
   Alert,
   AuthGate,
@@ -30,6 +30,7 @@ type Luat = {
 export default function CamNangPage() {
   const [token, setToken] = useState("");
   const [manager, setManager] = useState(false);
+  const [chuQuan, setChuQuan] = useState(false);
   const [items, setItems] = useState<Luat[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +42,7 @@ export default function CamNangPage() {
   useEffect(() => {
     setToken(getToken());
     setManager(isManager());
+    setChuQuan(isChuQuan(getRole()));
     if (!getToken()) setLoading(false);
   }, []);
 
@@ -72,8 +74,8 @@ export default function CamNangPage() {
       setSoThat(that);
       setMsg(
         that > 0
-          ? `Đã chạy đủ 8 bước. Quán đang có ${that} luật sinh từ người thật.`
-          : "Đã chạy đủ 8 bước. Chưa có luật nào sinh từ người quán thật — cần thêm lần sửa có bằng chứng.",
+          ? `Đã hoàn tất phần đề xuất và tập sự. Quán đang có ${that} luật sinh từ người thật.`
+          : "Đã hoàn tất phần đề xuất và tập sự. Chủ quán cần chốt riêng trước khi luật có hiệu lực.",
       );
       // Mã cổng VF là chi tiết kỹ thuật: để trong ngăn, không phơi lên thân trang.
       setChiTiet([`Cổng loại luật: ${safeText(d.bi_loai?.vf_rule, "không có luật nào bị loại")}`]);
@@ -86,6 +88,20 @@ export default function CamNangPage() {
           conflict: "Chưa đủ lần sửa có bằng chứng để chạy 8 bước. Ghi thêm lần sửa rồi chạy lại.",
         }),
       );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function chot(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiSend("/api/v1/cam-nang/duyet", { id, ok: true });
+      setMsg("Chủ quán đã chốt luật có hiệu lực.");
+      load();
+    } catch (e) {
+      setError(viError(e, { doing: "chốt luật có hiệu lực" }));
     } finally {
       setBusy(false);
     }
@@ -125,6 +141,9 @@ export default function CamNangPage() {
               {typeof luat.tap_su_dung === "number" ? ` · tập sự ${luat.tap_su_dung} lượt` : ""}
               {typeof luat.ap_dung === "number" ? ` · đã áp dụng ${luat.ap_dung} lần` : ""}
             </p>
+            {chuQuan && luat.trang_thai === "cho_chu_quan" ? (
+              <Btn busy={busy} onClick={() => void chot(luat.id)}>Chốt hiệu lực</Btn>
+            ) : null}
           </article>
         ))}
       </div>

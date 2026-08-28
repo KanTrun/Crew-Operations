@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any, cast
+
+UTC = timezone.utc
 
 from ca_agents.ag_handover import extract as extract_handover
 from ca_agents.ag_rule import propose as propose_rule
@@ -17,21 +19,21 @@ from ca_ops import load_template
 from ca_playbook import (
     de_xuat,
     duyet,
+    go_luat,
     kiem_chung,
     list_luat,
     list_sua,
     save_luat,
     tap_su,
-    theo_doi,
     tim_mau,
 )
 from ca_solver.fairness import AXES, update_debt_from_assignment, zero_debt
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
-from ca_api.interfaces.http.sprint3 import _require_manager, _require_role
+from ca_api.interfaces.http.sprint3 import _require_chu_quan, _require_manager, _require_role
 from ca_api.orchestration import Clock
-from ca_api.persist import audit_add, audit_list, kv_get, kv_mutate, kv_set
+from ca_api.persist import audit_add, audit_list, kv_get, kv_mutate, kv_set, list_users
 from ca_api.persist import session as auth_session
 
 router = APIRouter()
@@ -155,6 +157,8 @@ class LifeBody(BaseModel):
 
 class InboxBody(BaseModel):
     quyet_dinh: str
+    ca_id: str | None = None
+    doi_tac_nv_id: str | None = None
 
 
 class HandoverBody(BaseModel):
@@ -199,6 +203,8 @@ def lich_transition(
     cur = doc.get("trang_thai", "nhap")
     if body.to not in _ALLOWED.get(cur, set()):
         raise HTTPException(status_code=409, detail=f"illegal:{cur}->{body.to}")
+    if body.to == "da_dong":
+        _require_chu_quan(authorization)
     doc["trang_thai"] = body.to
     if body.to == "dang_giai":
         doc["solver"] = _run_solver()
@@ -226,7 +232,7 @@ def lich_ics(authorization: Annotated[str | None, Header()] = None) -> dict[str,
 
 @router.get("/api/v1/audit")
 def audit_get(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
-    _require_manager(authorization)
+    _require_chu_quan(authorization)
     return {"items": audit_list(), "nguon": "quan"}
 
 
@@ -261,9 +267,9 @@ def inbox_decide(
                         pending_swap = {
                             "id": f"sw_inbox_{uuid.uuid4().hex[:6]}",
                             "a": it.get("nv_id") or "unknown",
-                            "b": "",
+                            "b": body.doi_tac_nv_id or "",
                             "c": "",
-                            "ca_id": "",
+                            "ca_id": body.ca_id or "",
                             "trang_thai": "cho_3_nhanh",
                             "nguon": it.get("nguon") or "inbox",
                             "tu_inbox": item_id,
@@ -370,14 +376,17 @@ class WasteNoteBody(BaseModel):
 
 @router.get("/api/v1/hom-nay")
 def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
-    _require_role(authorization)
+    role = _require_role(authorization)
     life = _life()
     treo = kv_get("treo", [])
     inbox = kv_get("inbox_rang_buoc", [])
     cho = sum(1 for x in inbox if x.get("trang_thai") == "cho_duyet")
+    if role == "nhan_vien":
+        cho = 0
     luat = list_luat()
     ton = kv_get("tieu_thu", [])
     canh_bao = [x["hang"] for x in ton if x.get("duoi_nguong")]
+    so_nv = sum(1 for u in list_users() if u.get("role") == "nhan_vien")
     return {
         "ngay": datetime.now(UTC).date().isoformat(),
         "lich": life,
@@ -385,6 +394,7 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
         "so_inbox_cho": cho,
         "so_luat": len(luat),
         "canh_bao_ton": canh_bao,
+        "so_nhan_vien": so_nv if role == "chu_quan" else 0,
         "nguon": "quan",
     }
 
@@ -466,7 +476,7 @@ def cam_nang_get(authorization: Annotated[str | None, Header()] = None) -> dict[
 
 @router.post("/api/v1/cam-nang/chay-8-buoc")
 def cam_nang_run(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
-    _require_manager(authorization)
+    role = _require_manager(authorization)
     if len(list_sua(include_synthetic=False)) < 3:
         raise HTTPException(status_code=409, detail="chua_du_mau")
     mau = tim_mau(list_sua(include_synthetic=False))
@@ -479,8 +489,13 @@ def cam_nang_run(authorization: Annotated[str | None, Header()] = None) -> dict[
         luat["dieu_kien"] = draft.dieu_kien
     luat = kiem_chung(luat)
     luat = tap_su(luat, [("them_1_pha_che", "them_1_pha_che")] * 5)
-    luat = duyet(luat, ok=True, ai="chu_quan")
-    luat = theo_doi(luat, dung=7, ghi_de=0)
+    # Quản lý chỉ chốt phần tập sự (bước 6). Hiệu lực và tham số lõi ở bước 7
+    # luôn cần chủ quán gọi endpoint duyệt riêng.
+    if luat.get("trang_thai") == "du_tap_su":
+        luat["buoc"] = 6
+        luat["trang_thai"] = "cho_chu_quan"
+        luat["nguoi_de_xuat"] = role
+        luat["nguoi_duyet_tap_su"] = role
     bad = {
         "id": "luat_thai_do",
         "loai": "ghep_ky_nang",
@@ -489,18 +504,14 @@ def cam_nang_run(authorization: Annotated[str | None, Header()] = None) -> dict[
         "bang_chung": ["1", "2", "3"],
     }
     loai = kiem_chung(bad)
-    weak = dict(luat)
-    weak["id"] = "luat_60pct"
-    weak = theo_doi(weak, dung=3, ghi_de=2)
     existing = {x.get("id"): x for x in list_luat()}
-    for item in (luat, loai, weak):
+    for item in (luat, loai):
         existing[item["id"]] = item
     save_luat(list(existing.values()))
-    _audit("cam_nang_8_buoc", "chu_quan", {"hieu_luc": luat["id"], "loai": loai["vf_rule"]})
+    _audit("cam_nang_6_buoc", role, {"cho_chu_quan": luat["id"], "loai": loai["vf_rule"]})
     return {
-        "hieu_luc": luat,
+        "cho_chot": luat,
         "bi_loai": loai,
-        "tu_tat_60pct": weak,
         "nguon": "dung_lai_8_tuan",
         "so_luat_that_quan": 0,
     }
@@ -512,11 +523,39 @@ def cam_nang_duyet(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     role = _require_manager(authorization)
+    if body.ok:
+        _require_chu_quan(authorization)
+        role = "chu_quan"
     items = list_luat()
     for i, it in enumerate(items):
         if it.get("id") == body.id:
+            if body.ok and it.get("trang_thai") != "cho_chu_quan":
+                raise HTTPException(status_code=409, detail="luat_chua_cho_chu_quan")
             items[i] = duyet(it, ok=body.ok, ai=role)
             save_luat(items)
+            _audit("cam_nang_chot", role, {"id": body.id, "ok": body.ok})
+            return items[i]
+    raise HTTPException(status_code=404, detail="luat")
+
+
+class GoLuatBody(BaseModel):
+    id: str
+
+
+@router.post("/api/v1/cam-nang/go")
+def cam_nang_go(
+    body: GoLuatBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    role = _require_chu_quan(authorization)
+    items = list_luat()
+    for i, it in enumerate(items):
+        if it.get("id") == body.id:
+            if it.get("trang_thai") != "hieu_luc":
+                raise HTTPException(status_code=409, detail="luat_chua_hieu_luc")
+            items[i] = go_luat(it, ai=role)
+            save_luat(items)
+            _audit("cam_nang_go", role, {"id": body.id})
             return items[i]
     raise HTTPException(status_code=404, detail="luat")
 

@@ -6,9 +6,11 @@ import json
 import os
 import re
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any, cast
+
+UTC = timezone.utc
 
 from ca_agents.ag_msg import classify
 from ca_agents.facebook_page import (

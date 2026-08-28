@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any, cast
 
-from ca_contracts import Ca, LichTuan, NhanVien, PhieuMau, RangBuocTrichXuat
+UTC = timezone.utc
+
+from ca_contracts import Ca, DonQuay, DongDon, LichTuan, MonNuoc, NhanVien, PhieuMau, RangBuocTrichXuat
 from ca_playbook import record_sua
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ca_api.interfaces.http.channels import router as channels_router
+from ca_api.interfaces.http.pos import router as pos_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
 from ca_api.persist import DangKyLoi, kv_get, kv_mutate
@@ -34,6 +37,7 @@ app.add_middleware(
 app.include_router(sprint3_router)
 app.include_router(sprint45_router)
 app.include_router(channels_router)
+app.include_router(pos_router)
 
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
@@ -265,6 +269,13 @@ def five_contracts() -> dict[str, object]:
         noi_dung="T2 ca sáng — ràng buộc từ TKB",
         do_tin_cay=0.9,
     )
+    mon = MonNuoc(id="mon_den", ten="Cà phê đen", gia=25000, bom={"cafe_g": 18, "ly": 1})
+    don = DonQuay(
+        id="dq_demo",
+        nv_id="nv_03",
+        dong=[DongDon(mon_id=mon.id, ten=mon.ten, so_luong=1, gia=mon.gia)],
+        luc="2026-01-01T07:00:00Z",
+    )
     return {
         "nguon": "quan",
         "adr": "ADR-012",
@@ -273,7 +284,18 @@ def five_contracts() -> dict[str, object]:
         "LichTuan": lich.model_dump(),
         "PhieuMau": phieu.model_dump(),
         "RangBuocTrichXuat": rb.model_dump(),
-        "schemas": ["NhanVien", "Ca", "LichTuan", "PhieuMau", "RangBuocTrichXuat"],
+        "MonNuoc": mon.model_dump(),
+        "DonQuay": don.model_dump(),
+        "schemas": [
+            "NhanVien",
+            "Ca",
+            "LichTuan",
+            "PhieuMau",
+            "RangBuocTrichXuat",
+            "MonNuoc",
+            "DongDon",
+            "DonQuay",
+        ],
     }
 
 

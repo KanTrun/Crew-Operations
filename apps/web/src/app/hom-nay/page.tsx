@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiGet } from "../../lib/api";
 import { safeText, viError } from "../../lib/present";
-import { getToken, isManager } from "../../lib/session";
+import { getRole, getToken, isChuQuan, isManager } from "../../lib/session";
 import { todayHeroLine, todayMetaLine, todayTechnicalDetail } from "../../lib/status";
 import {
   Alert,
@@ -25,6 +25,7 @@ type Today = {
   so_inbox_cho?: number;
   so_luat?: number;
   canh_bao_ton?: string[];
+  so_nhan_vien?: number;
 };
 
 /** Đếm an toàn: field thiếu hoặc rác thì coi như 0, không để "NaN" ra ô số. */
@@ -38,10 +39,12 @@ export default function HomNayPage() {
   const [data, setData] = useState<Today | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manager, setManager] = useState(false);
+  const [chuQuan, setChuQuan] = useState(false);
 
   useEffect(() => {
     setToken(getToken());
     setManager(isManager());
+    setChuQuan(isChuQuan(getRole()));
   }, []);
 
   const load = useCallback(() => {
@@ -95,9 +98,9 @@ export default function HomNayPage() {
                 href="/treo"
               />
               <BentoTile
-                value={manager ? soAnToan(data.so_inbox_cho) : soAnToan(data.so_luat)}
-                label={manager ? "Mục chờ duyệt" : "Luật cẩm nang"}
-                href={manager ? "/inbox" : "/cam-nang"}
+                value={chuQuan ? soAnToan(data.so_nhan_vien) : manager ? soAnToan(data.so_inbox_cho) : soAnToan(data.so_luat)}
+                label={chuQuan ? "Nhân viên chờ xem xét" : manager ? "Mục chờ duyệt" : "Luật cẩm nang"}
+                href={chuQuan ? "/nguoi" : manager ? "/inbox" : "/cam-nang"}
               />
               <BentoTile
                 value={ngay ? ngay.slice(8, 10) : "—"}
@@ -116,7 +119,13 @@ export default function HomNayPage() {
             )}
 
             <PageActions>
-              {manager ? (
+              {chuQuan ? (
+                <>
+                  <BtnLink href="/nguoi">Quản lý người dùng</BtnLink>
+                  <BtnLink href="/menu" variant="ghost">Menu & giá</BtnLink>
+                  <BtnLink href="/vet" variant="ghost">Xem vết hệ thống</BtnLink>
+                </>
+              ) : manager ? (
                 <>
                   <BtnLink href="/roster">Xếp lịch tuần</BtnLink>
                   <BtnLink href="/inbox" variant="ghost">
@@ -129,6 +138,7 @@ export default function HomNayPage() {
               ) : (
                 <>
                   <BtnLink href="/phieu">Mở phiếu ca</BtnLink>
+                  <BtnLink href="/quay" variant="ghost">Ghi đơn tại quầy</BtnLink>
                   <BtnLink href="/toi" variant="ghost">
                     Xem ca của tôi
                   </BtnLink>

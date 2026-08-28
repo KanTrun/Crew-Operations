@@ -3,27 +3,34 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
-import { clearSession, getName, getRole, getToken, isManager, roleLabel } from "../lib/session";
+import { clearSession, getName, getRole, getToken, isChuQuan, isManager, roleLabel } from "../lib/session";
 
 type LinkItem = { href: string; label: string };
 
 const STAFF_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
+  { href: "/quay", label: "Quầy" },
+  { href: "/pha", label: "Pha chế" },
   { href: "/phieu", label: "Phiếu" },
-  { href: "/toi", label: "Ca của tôi", short: "Ca tôi" },
-  { href: "/tkb", label: "TKB ảnh", short: "TKB" },
 ];
 
 const MANAGER_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/roster", label: "Lịch tuần", short: "Lịch" },
-  { href: "/inbox", label: "Hộp thư", short: "Hộp thư" },
-  { href: "/tkb", label: "TKB ảnh", short: "TKB" },
-  { href: "/cam-nang", label: "Cẩm nang", short: "Cẩm nang" },
+  { href: "/roster", label: "Lịch tuần" },
+  { href: "/inbox", label: "Hộp thư" },
+  { href: "/quay", label: "Quầy" },
+  { href: "/pha", label: "Pha chế" },
+];
+
+const ADMIN_PRIMARY: LinkItem[] = [
+  { href: "/hom-nay", label: "Hôm nay" },
+  { href: "/nguoi", label: "Người dùng" },
+  { href: "/menu", label: "Menu & giá" },
+  { href: "/roster", label: "Lịch tuần" },
+  { href: "/cam-nang", label: "Cẩm nang" },
 ];
 
 const MORE: LinkItem[] = [
-  { href: "/huong-dan", label: "Hướng dẫn cho người mới" },
   { href: "/page-quan", label: "Page quán (Facebook)" },
   { href: "/tkb", label: "Thời khoá biểu từ ảnh" },
   { href: "/cong-bang", label: "Công bằng" },
@@ -37,6 +44,9 @@ const MORE: LinkItem[] = [
   { href: "/sop", label: "Hỏi SOP" },
   { href: "/handover", label: "Bàn giao" },
   { href: "/vet", label: "Vết hệ thống" },
+  { href: "/cam-nang", label: "Cẩm nang" },
+  { href: "/menu", label: "Menu & giá" },
+  { href: "/nguoi", label: "Người dùng" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -55,9 +65,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     setReady(true);
   }, [path]);
 
-  const manager = isManager(role);
-  const primary = manager ? MANAGER_PRIMARY : STAFF_PRIMARY;
-  const more = MORE.filter((x) => !primary.some((p) => p.href === x.href));
+  const primary = isChuQuan(role) ? ADMIN_PRIMARY : isManager(role) ? MANAGER_PRIMARY : STAFF_PRIMARY;
+  const more = MORE.filter((x) => !primary.some((p) => p.href === x.href) && allowedInMore(x.href, role));
   const wide = path === "/roster";
 
   function logout() {
@@ -66,81 +75,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--nq-bg)] text-[var(--nq-fg)] font-sans selection:bg-[var(--nq-copper)] selection:text-[#0e0c0a] flex flex-col relative z-10">
-      <header className="fixed top-0 left-0 w-full z-40 bg-[var(--nq-bg)]/80 backdrop-blur-md border-b-2 border-[var(--nq-dim)]">
-        <div className="max-w-[1600px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
-          <Link href={token ? "/hom-nay" : "/"} className="group transition-colors">
-            <Logo />
-          </Link>
-          {token ? (
-            <nav className="hidden md:flex items-center gap-8" aria-label="Chính">
-              {primary.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className={`flex items-center gap-2 font-bold uppercase tracking-widest text-sm transition-colors ${path === l.href ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
-                  data-tour={tourId(l.href)}
-                  aria-current={path === l.href ? "page" : undefined}
-                >
-                  <Icon name={iconForHref(l.href)} size={18} />
-                  {l.label}
-                </Link>
-              ))}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setOpen((v) => !v)}
-                  className={`flex items-center gap-2 font-bold uppercase tracking-widest text-sm transition-colors ${open ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
-                  aria-expanded={open}
-                  data-tour="nav-them"
-                >
-                  <Icon name="them" size={18} />
-                  Thêm
-                </button>
-                <AnimatePresence>
-                  {open && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute top-full right-0 mt-4 w-64 bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] py-2 z-50"
-                    >
-                      {more.map((l) => (
-                        <Link 
-                          key={l.href} 
-                          href={l.href} 
-                          onClick={() => setOpen(false)}
-                          className="block px-6 py-3 font-bold uppercase tracking-widest text-sm text-[var(--nq-dim)] hover:text-[var(--nq-copper)] hover:bg-[var(--nq-surface)] transition-colors"
-                        >
-                          {l.label}
-                        </Link>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </nav>
-          ) : null}
-          <div className="flex items-center gap-4 text-sm font-mono uppercase tracking-widest">
-            {ready && token ? (
-              <>
-                <span className="hidden md:inline-block text-[var(--nq-dim)]">
-                  {name} <span className="text-[var(--nq-copper)]">[{roleLabel(role)}]</span>
-                </span>
-                <button 
-                  type="button" 
-                  onClick={logout}
-                  className="border-2 border-[var(--nq-dim)] px-4 py-1 hover:border-[var(--nq-red)] hover:text-[var(--nq-red)] transition-colors"
-                >
-                  Thoát
-                </button>
-              </>
-            ) : (
-              <Link 
-                href="/login"
-                className="border-2 border-[var(--nq-copper)] text-[var(--nq-copper)] px-4 py-1 hover:bg-[var(--nq-copper)] hover:text-[#0e0c0a] transition-colors"
-              >
-                Đăng nhập
+    <div className="nq-shell">
+      <header className="nq-top">
+        <Link href={token ? "/hom-nay" : "/"} className="nq-brand">
+          NHỊP QUÁN
+        </Link>
+        {token ? (
+          <nav className="nq-nav" aria-label="Chính">
+            {primary.map((l) => (
+              <Link key={l.href} href={l.href} data-on={path === l.href ? "1" : "0"}>
+                {l.label}
               </Link>
             ))}
             <div className="nq-more">
@@ -174,9 +118,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </div>
       </header>
-      <main className={`flex-1 pt-16 w-full ${wide ? "" : "max-w-[1600px] mx-auto"} px-4 md:px-8 pb-24 md:pb-10`} id="nq-content">
+      <main className="nq-main" data-wide={wide ? "1" : "0"} id="nq-content">
         {children}
-      </div>
+      </main>
       {token ? (
         <nav className="nq-bottom" aria-label="Lối tắt">
           {primary.map((l) => (
@@ -191,4 +135,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       ) : null}
     </div>
   );
+}
+
+function allowedInMore(href: string, role: string): boolean {
+  if (["/menu", "/nguoi", "/vet"].includes(href)) return role === "chu_quan";
+  if (["/roster", "/inbox"].includes(href)) return isManager(role);
+  return true;
 }

@@ -252,3 +252,10 @@ _XEM_LICH_KEYS = (
 def is_xem_lich(text: str) -> bool:
     t = text.lower().strip()
     return any(k in t for k in _XEM_LICH_KEYS)
+
+
+def should_enqueue_constraint(text: str, intent: str, do_tin_cay: float) -> bool:
+    """Xác định tin nhắn có phải ràng buộc cần đưa vào inbox duyệt hay không."""
+    if intent in {"doi_ca", "nhan_ca", "bao_tre", "cap_nhat_tkb", "xin_nghi"}:
+        return do_tin_cay >= 0.5
+    return False

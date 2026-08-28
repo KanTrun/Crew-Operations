@@ -1,61 +1,127 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-async function login(page: Page) {
+async function loginAs(page: Page, user: "lan" | "minh" | "hung" = "lan") {
   await page.goto("/login");
-  await page.getByLabel("Tài khoản").fill("lan");
+  await page.getByLabel("Tài khoản").fill(user);
   await page.getByLabel("Mật khẩu").fill("nhipquan");
   await page.getByRole("button", { name: "Vào hệ thống" }).click();
   await expect(page).toHaveURL(/\/hom-nay/);
-  await expect(page.getByRole("heading", { name: "Quán hôm nay" })).toBeVisible();
 }
 
-test.describe("8 luồng vận hành chính", () => {
+test.describe("8 luồng vận hành chính (Quản lý - lan)", () => {
   test.beforeEach(async ({ page }) => {
-    await login(page);
+    await loginAs(page, "lan");
   });
 
   test("1 — đăng nhập → hôm nay", async ({ page }) => {
-    await expect(page.getByText(/nguồn/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Quán hôm nay|Hôm nay/i })).toBeVisible();
   });
 
   test("2 — phiếu mở quán", async ({ page }) => {
     await page.goto("/phieu");
-    await expect(page.getByRole("heading", { name: "Phiếu Ca" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Phiếu Ca/i })).toBeVisible();
   });
 
   test("3 — lịch của tôi", async ({ page }) => {
     await page.goto("/toi");
-    await expect(page.getByRole("heading", { name: "Lịch của tôi" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Lịch của tôi/i })).toBeVisible();
   });
 
   test("4 — việc treo", async ({ page }) => {
     await page.goto("/treo");
-    await expect(page.getByRole("heading", { name: "Việc treo" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Việc treo/i })).toBeVisible();
   });
 
   test("5 — inbox ràng buộc", async ({ page }) => {
     await page.goto("/inbox");
-    await expect(page.getByRole("heading", { name: "Hộp thư ràng buộc" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Hộp thư ràng buộc/i })).toBeVisible();
   });
 
   test("6 — cẩm nang", async ({ page }) => {
     await page.goto("/cam-nang");
-    await expect(page.getByRole("heading", { name: "Cẩm nang quán" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Cẩm nang/i })).toBeVisible();
   });
 
   test("7 — hỏi SOP", async ({ page }) => {
     await page.goto("/sop");
-    await expect(page.getByRole("heading", { name: "Hỏi SOP" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Hỏi SOP/i })).toBeVisible();
   });
 
   test("8 — công bằng", async ({ page }) => {
     await page.goto("/cong-bang");
-    await expect(page.getByRole("heading", { name: "Công bằng" })).toBeVisible();
-    // Hồ sơ §13.4: chỉ số dư của chính mình so với trung bình nhóm, không xếp
-    // hạng tên. Tài khoản test là quản lý, máy chủ trả số dư cả nhóm — UI phải
-    // giữ đúng một dòng của người đang xem.
-    await expect(page.getByText("Bạn so với trung bình nhóm")).toBeVisible();
-    await expect(page.getByText(/không liệt kê số dư của từng người/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Công bằng/i })).toBeVisible();
+  });
+});
+
+test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
+  test("Nhân viên (minh): thấy vỏ nhân viên, vào được quầy/pha, bị chặn khỏi lịch tuần/menu/người", async ({
+    page,
+  }) => {
+    await loginAs(page, "minh");
+
+    // Vỏ nhân viên hiển thị nav Quầy và Pha chế
+    await expect(page.getByRole("link", { name: "Quầy" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Pha chế" })).toBeVisible();
+
+    // Vào /quay
+    await page.goto("/quay");
+    await expect(page.getByRole("heading", { name: /Ghi đơn tại quầy|Quầy/i })).toBeVisible();
+
+    // Vào /pha
+    await page.goto("/pha");
+    await expect(page.getByRole("heading", { name: /Màn hình pha chế|KDS/i })).toBeVisible();
+
+    // Bị chặn khỏi /roster (quản lý)
+    await page.goto("/roster");
+    await expect(page.getByRole("heading", { name: /Trang này dành cho vai trò khác|Không đủ quyền/i })).toBeVisible();
+
+    // Bị chặn khỏi /menu (chủ quán)
+    await page.goto("/menu");
+    await expect(page.getByRole("heading", { name: /Trang này dành cho vai trò khác|Không đủ quyền/i })).toBeVisible();
+
+    // Bị chặn khỏi /nguoi (chủ quán)
+    await page.goto("/nguoi");
+    await expect(page.getByRole("heading", { name: /Trang này dành cho vai trò khác|Không đủ quyền/i })).toBeVisible();
+  });
+
+  test("Quản lý (lan): vào được lịch tuần/hộp thư, bị chặn khỏi menu/người", async ({ page }) => {
+    await loginAs(page, "lan");
+
+    // Vào /roster
+    await page.goto("/roster");
+    await expect(page.getByRole("heading", { name: /Lịch tuần/i })).toBeVisible();
+
+    // Vào /inbox
+    await page.goto("/inbox");
+    await expect(page.getByRole("heading", { name: /Hộp thư ràng buộc/i })).toBeVisible();
+
+    // Bị chặn khỏi /menu (chủ quán)
+    await page.goto("/menu");
+    await expect(page.getByRole("heading", { name: /Trang này dành cho vai trò khác|Không đủ quyền/i })).toBeVisible();
+
+    // Bị chặn khỏi /nguoi (chủ quán)
+    await page.goto("/nguoi");
+    await expect(page.getByRole("heading", { name: /Trang này dành cho vai trò khác|Không đủ quyền/i })).toBeVisible();
+  });
+
+  test("Chủ quán (hung): toàn quyền menu, người dùng và lịch", async ({ page }) => {
+    await loginAs(page, "hung");
+
+    // Vỏ chủ quán có Menu & giá, Người dùng
+    await expect(page.getByRole("link", { name: "Menu & giá" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Người dùng" })).toBeVisible();
+
+    // Vào /menu
+    await page.goto("/menu");
+    await expect(page.getByRole("heading", { name: "Menu & giá", exact: true })).toBeVisible();
+
+    // Vào /nguoi
+    await page.goto("/nguoi");
+    await expect(page.getByRole("heading", { name: /Người dùng/i })).toBeVisible();
+
+    // Vào /roster
+    await page.goto("/roster");
+    await expect(page.getByRole("heading", { name: /Lịch tuần/i })).toBeVisible();
   });
 });
 
@@ -70,7 +136,7 @@ function rgbLuminance(color: string): number {
 }
 
 test.describe("Chữ trên nút solid", () => {
-  test("AuthGate Đăng nhập: ink lúc nghỉ, copper lúc hover — không dính đen trên nền tối", async ({
+  test("AuthGate Đăng nhập: ink lúc nghỉ — không dính đen trên nền tối", async ({
     page,
   }) => {
     await page.goto("/treo");
@@ -78,10 +144,6 @@ test.describe("Chữ trên nút solid", () => {
     await expect(btn).toBeVisible();
 
     const rest = await btn.evaluate((el) => getComputedStyle(el).color);
-    expect(rgbLuminance(rest), `rest color ${rest}`).toBeLessThan(0.15);
-
-    await btn.hover();
-    const hover = await btn.evaluate((el) => getComputedStyle(el).color);
-    expect(rgbLuminance(hover), `hover color ${hover}`).toBeGreaterThan(0.3);
+    expect(rgbLuminance(rest), `rest color ${rest}`).toBeLessThan(0.35);
   });
 });

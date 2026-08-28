@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { ConditionalShell } from "./ConditionalShell";
-import { SmoothScroll } from "../ui/SmoothScroll";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,14 +10,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" className={fontClass}>
+    <html lang="vi">
       <body>
-        <SmoothScroll>
-          <a href="#nq-content" className="nq-skip">
-            Bỏ qua thanh điều hướng
-          </a>
-          <ConditionalShell>{children}</ConditionalShell>
-        </SmoothScroll>
+        <a href="#nq-content" className="nq-skip">
+          Bỏ qua thanh điều hướng
+        </a>
+        <ConditionalShell>{children}</ConditionalShell>
       </body>
     </html>
   );

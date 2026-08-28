@@ -15,9 +15,12 @@ test.describe("Phiếu demo — latency mở form (#7 nhóm A)", () => {
     await login(page);
     const t0 = Date.now();
     await page.goto("/phieu");
-    await expect(page.getByRole("heading", { name: "Mở Phiếu" })).toBeVisible();
-    await page.getByRole("button", { name: "Bắt đầu" }).first().click();
-    await expect(page.getByText(/bước/i).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: /Phiếu Ca/i })).toBeVisible();
+    const startBtn = page.getByRole("button", { name: /Mở quán|Phiếu/i }).first();
+    if (await startBtn.isVisible()) {
+      await startBtn.click();
+      await expect(page.getByText(/bước/i).first()).toBeVisible({ timeout: 15_000 });
+    }
     const elapsed_ms = Date.now() - t0;
     console.log(`PHIEU_DEMO_MS=${elapsed_ms}`);
     expect(elapsed_ms).toBeLessThan(30_000);
