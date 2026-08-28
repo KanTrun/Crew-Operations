@@ -3,7 +3,7 @@
   "nhan_vien": [
     {
       "id": "nv_01",
-      "ten": "Nhan Vien 01",
+      "ten": "Lan Nguyễn",
       "ky_nang": [
         "pha_che",
         "kho",
@@ -14,7 +14,7 @@
     },
     {
       "id": "nv_02",
-      "ten": "Nhan Vien 02",
+      "ten": "Hùng Trần",
       "ky_nang": [
         "thu_ngan"
       ],
@@ -23,7 +23,7 @@
     },
     {
       "id": "nv_03",
-      "ten": "Nhan Vien 03",
+      "ten": "Minh Phạm",
       "ky_nang": [
         "pha_che"
       ],
@@ -32,7 +32,7 @@
     },
     {
       "id": "nv_04",
-      "ten": "Nhan Vien 04",
+      "ten": "An Lê",
       "ky_nang": [
         "pha_che",
         "phuc_vu",
@@ -43,7 +43,7 @@
     },
     {
       "id": "nv_05",
-      "ten": "Nhan Vien 05",
+      "ten": "Bảo Hoàng",
       "ky_nang": [
         "pha_che"
       ],
@@ -52,7 +52,7 @@
     },
     {
       "id": "nv_06",
-      "ten": "Nhan Vien 06",
+      "ten": "Chi Vũ",
       "ky_nang": [
         "thu_ngan"
       ],
@@ -61,7 +61,7 @@
     },
     {
       "id": "nv_07",
-      "ten": "Nhan Vien 07",
+      "ten": "Dũng Đặng",
       "ky_nang": [
         "pha_che"
       ],
@@ -70,7 +70,7 @@
     },
     {
       "id": "nv_08",
-      "ten": "Nhan Vien 08",
+      "ten": "Em Bùi",
       "ky_nang": [
         "thu_ngan",
         "phuc_vu",
@@ -81,7 +81,7 @@
     },
     {
       "id": "nv_09",
-      "ten": "Nhan Vien 09",
+      "ten": "Giang Hồ",
       "ky_nang": [
         "kho"
       ],
@@ -90,7 +90,7 @@
     },
     {
       "id": "nv_10",
-      "ten": "Nhan Vien 10",
+      "ten": "Hạnh Mai",
       "ky_nang": [
         "phuc_vu",
         "pha_che",
@@ -101,7 +101,7 @@
     },
     {
       "id": "nv_11",
-      "ten": "Nhan Vien 11",
+      "ten": "Khoa Đỗ",
       "ky_nang": [
         "kho",
         "thu_ngan",
@@ -112,7 +112,7 @@
     },
     {
       "id": "nv_12",
-      "ten": "Nhan Vien 12",
+      "ten": "Linh Ngô",
       "ky_nang": [
         "thu_ngan"
       ],
@@ -121,7 +121,7 @@
     },
     {
       "id": "nv_13",
-      "ten": "Nhan Vien 13",
+      "ten": "My Tạ",
       "ky_nang": [
         "pha_che",
         "kho"
@@ -131,7 +131,7 @@
     },
     {
       "id": "nv_14",
-      "ten": "Nhan Vien 14",
+      "ten": "Nam Lý",
       "ky_nang": [
         "pha_che",
         "thu_ngan"
@@ -141,7 +141,7 @@
     },
     {
       "id": "nv_15",
-      "ten": "Nhan Vien 15",
+      "ten": "Oanh Phan",
       "ky_nang": [
         "phuc_vu",
         "pha_che"
@@ -151,7 +151,7 @@
     },
     {
       "id": "nv_16",
-      "ten": "Nhan Vien 16",
+      "ten": "Phúc Trịnh",
       "ky_nang": [
         "kho",
         "phuc_vu",
@@ -162,7 +162,7 @@
     },
     {
       "id": "nv_17",
-      "ten": "Nhan Vien 17",
+      "ten": "Quân Lương",
       "ky_nang": [
         "pha_che",
         "phuc_vu"
@@ -172,7 +172,7 @@
     },
     {
       "id": "nv_18",
-      "ten": "Nhan Vien 18",
+      "ten": "Rosa Võ",
       "ky_nang": [
         "phuc_vu",
         "kho"
@@ -182,7 +182,7 @@
     },
     {
       "id": "nv_19",
-      "ten": "Nhan Vien 19",
+      "ten": "Sơn Hà",
       "ky_nang": [
         "pha_che"
       ],
@@ -191,7 +191,7 @@
     },
     {
       "id": "nv_20",
-      "ten": "Nhan Vien 20",
+      "ten": "Thảo Dương",
       "ky_nang": [
         "thu_ngan"
       ],
@@ -200,7 +200,7 @@
     },
     {
       "id": "nv_21",
-      "ten": "Nhan Vien 21",
+      "ten": "Uyên Cao",
       "ky_nang": [
         "pha_che",
         "kho"
@@ -210,7 +210,7 @@
     },
     {
       "id": "nv_22",
-      "ten": "Nhan Vien 22",
+      "ten": "Vy Đinh",
       "ky_nang": [
         "kho"
       ],
@@ -219,7 +219,7 @@
     },
     {
       "id": "nv_23",
-      "ten": "Nhan Vien 23",
+      "ten": "Xuân Lâm",
       "ky_nang": [
         "kho",
         "phuc_vu"
@@ -229,7 +229,7 @@
     },
     {
       "id": "nv_24",
-      "ten": "Nhan Vien 24",
+      "ten": "Yến Kiều",
       "ky_nang": [
         "thu_ngan",
         "kho"
@@ -239,7 +239,7 @@
     },
     {
       "id": "nv_25",
-      "ten": "Nhan Vien 25",
+      "ten": "Khôi Nhật",
       "ky_nang": [
         "thu_ngan",
         "phuc_vu"

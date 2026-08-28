@@ -62,6 +62,24 @@ def _run_solver() -> dict[str, Any]:
     from ca_solver import apply_luat, build_lich_input, solve_cpsat
 
     inp = build_lich_input()
+    # TKB đã xác nhận từ ảnh đè lên (hoặc bổ sung) TKB synthetic của fixture.
+    stored = kv_get("tkb_nv", {})
+    if isinstance(stored, dict):
+        for nv_id, entry in stored.items():
+            if not isinstance(entry, dict):
+                continue
+            blocks = entry.get("khoang_ban") or []
+            tuples: list[tuple[str, str, str]] = []
+            for b in blocks:
+                if not isinstance(b, dict):
+                    continue
+                thu = str(b.get("thu") or "")
+                start = str(b.get("start") or "")
+                end = str(b.get("end") or "")
+                if thu and start and end:
+                    tuples.append((thu, start, end))
+            if tuples:
+                inp.tkb[str(nv_id)] = tuples
     inp, applied = apply_luat(inp, list_luat())
     result = solve_cpsat(inp, time_limit_s=60.0)
     payload = {
@@ -227,23 +245,61 @@ def inbox_decide(
 ) -> dict[str, Any]:
     role = _require_manager(authorization)
     found: dict[str, Any] | None = None
+    pending_swap: dict[str, Any] | None = None
 
     def mut(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        nonlocal found
+        nonlocal found, pending_swap
         for it in items:
             if it.get("id") == item_id:
                 if body.quyet_dinh not in {"duyet", "tu_choi"}:
                     raise HTTPException(status_code=400, detail="quyet_dinh")
                 it["trang_thai"] = body.quyet_dinh
+                if body.quyet_dinh == "duyet":
+                    # Không silent ghi phan_cong — chỉ ghi hiệu lực nghiệp vụ.
+                    y = str(it.get("y_dinh") or "")
+                    if y in {"doi_ca", "nhan_ca"}:
+                        pending_swap = {
+                            "id": f"sw_inbox_{uuid.uuid4().hex[:6]}",
+                            "a": it.get("nv_id") or "unknown",
+                            "b": "",
+                            "c": "",
+                            "ca_id": "",
+                            "trang_thai": "cho_3_nhanh",
+                            "nguon": it.get("nguon") or "inbox",
+                            "tu_inbox": item_id,
+                            "tom_tat": it.get("tom_tat"),
+                        }
+                        it["hieu_luc"] = {
+                            "loai": "cho_doi_ca",
+                            "swap_id": pending_swap["id"],
+                            "ghi": "Đã mở phiếu chợ đổi ca — chưa đổi lịch tự động",
+                        }
+                    elif y in {"xin_nghi", "bao_tre", "cap_nhat_tkb"}:
+                        it["hieu_luc"] = {
+                            "loai": "rang_buoc_cho_solver",
+                            "ghi": "Đã duyệt — áp vào lượt xếp lịch tới (không sửa phan_cong tại chỗ)",
+                        }
+                    else:
+                        it["hieu_luc"] = {
+                            "loai": "ghi_nhan",
+                            "ghi": "Đã ghi nhận — không đổi lịch",
+                        }
                 found = it
                 break
         return items
 
     _seed_inbox()
     kv_mutate("inbox_rang_buoc", mut, [])
+    if pending_swap is not None:
+
+        def add_swap(items_sw: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            items_sw.append(pending_swap)
+            return items_sw
+
+        kv_mutate("swap", add_swap, [])
     if not found:
         raise HTTPException(status_code=404, detail="inbox_item")
-    _audit("inbox", role, {"id": item_id, "q": body.quyet_dinh})
+    _audit("inbox", role, {"id": item_id, "q": body.quyet_dinh, "y": found.get("y_dinh")})
     return found
 
 

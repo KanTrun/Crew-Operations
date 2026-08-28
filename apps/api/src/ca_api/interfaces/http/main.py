@@ -13,6 +13,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from ca_api.interfaces.http.channels import router as channels_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
 from ca_api.persist import DangKyLoi, kv_get, kv_mutate
@@ -32,6 +33,7 @@ app.add_middleware(
 )
 app.include_router(sprint3_router)
 app.include_router(sprint45_router)
+app.include_router(channels_router)
 
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"

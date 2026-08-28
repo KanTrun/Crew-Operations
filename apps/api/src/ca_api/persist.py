@@ -78,9 +78,9 @@ def _conn() -> sqlite3.Connection:
 
 def init_db() -> None:
     global _INITIALIZED
-    if _INITIALIZED and db_path().exists():
-        return
     with _conn() as cx:
+        # Luôn chạy DDL IF NOT EXISTS — thêm bảng mới (kenh_bind) không bị kẹt
+        # vì cờ _INITIALIZED sớm trên DB cũ.
         cx.executescript(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -107,6 +107,18 @@ def init_db() -> None:
                 hanh TEXT NOT NULL,
                 payload TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS kenh_bind (
+                channel TEXT NOT NULL,
+                external_user_id TEXT NOT NULL,
+                nv_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (channel, external_user_id)
+            );
+            CREATE TABLE IF NOT EXISTS kenh_bind_code (
+                code TEXT PRIMARY KEY,
+                nv_id TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
             """
         )
         for u, pw, role, nv, name in USERS:
@@ -118,6 +130,83 @@ def init_db() -> None:
                 (u, hash_password(pw), role, nv, name),
             )
     _INITIALIZED = True
+
+
+def kenh_bind_get(channel: str, external_user_id: str) -> str | None:
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT nv_id FROM kenh_bind WHERE channel=? AND external_user_id=?",
+            (channel, external_user_id),
+        ).fetchone()
+    return str(row[0]) if row else None
+
+
+def kenh_bind_set(channel: str, external_user_id: str, nv_id: str) -> None:
+    from datetime import UTC, datetime
+
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        cx.execute(
+            """
+            INSERT INTO kenh_bind(channel, external_user_id, nv_id, created_at)
+            VALUES (?,?,?,?)
+            ON CONFLICT(channel, external_user_id) DO UPDATE SET nv_id=excluded.nv_id
+            """,
+            (channel, external_user_id, nv_id, now),
+        )
+
+
+def kenh_bind_list(nv_id: str | None = None) -> list[dict[str, str]]:
+    init_db()
+    with _conn() as cx:
+        if nv_id:
+            rows = cx.execute(
+                "SELECT channel, external_user_id, nv_id, created_at FROM kenh_bind WHERE nv_id=?",
+                (nv_id,),
+            ).fetchall()
+        else:
+            rows = cx.execute(
+                "SELECT channel, external_user_id, nv_id, created_at FROM kenh_bind"
+            ).fetchall()
+    return [
+        {
+            "channel": str(r[0]),
+            "external_user_id": str(r[1]),
+            "nv_id": str(r[2]),
+            "created_at": str(r[3]),
+        }
+        for r in rows
+    ]
+
+
+def kenh_bind_code_issue(nv_id: str) -> str:
+    from datetime import UTC, datetime
+
+    init_db()
+    code = uuid.uuid4().hex[:8]
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        cx.execute(
+            "INSERT INTO kenh_bind_code(code, nv_id, created_at) VALUES (?,?,?)",
+            (code, nv_id, now),
+        )
+    return code
+
+
+def kenh_bind_code_consume(code: str, channel: str, external_user_id: str) -> str | None:
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT nv_id FROM kenh_bind_code WHERE code=?", (code.strip().lower(),)
+        ).fetchone()
+        if not row:
+            return None
+        nv_id = str(row[0])
+        cx.execute("DELETE FROM kenh_bind_code WHERE code=?", (code.strip().lower(),))
+    kenh_bind_set(channel, external_user_id, nv_id)
+    return nv_id
 
 
 def reset_init_flag() -> None:
