@@ -1,5 +1,8 @@
 # GitHub operating model — NHỊP QUÁN
 
+**Repository:** https://github.com/KanTrun/Crew-Operations  
+**Sản phẩm:** NHỊP QUÁN (tên repo ≠ tên sản phẩm)
+
 Nguồn: hồ sơ v3.0 §12. Tài liệu này là bản vận hành trong repo.
 
 ## 1. Bốn vùng nhánh
