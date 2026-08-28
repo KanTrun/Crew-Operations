@@ -1,0 +1,32 @@
+{
+  "metadata": {"synthetic": true, "nguon": "mo_phong_fixture"},
+  "channel_bindings": [
+    {"id":"fx_bind_telegram_01","staff_id":"fx_nv_minh","channel":"telegram","channel_user_id":"tg_10001","display_name":"Minh fixture","status":"active","bound_at":"2026-08-20T08:00:00Z"},
+    {"id":"fx_bind_zalo_01","staff_id":"fx_nv_an","channel":"zalo","channel_user_id":"zalo_20001","display_name":"An fixture","status":"active","bound_at":"2026-08-20T08:05:00Z"},
+    {"id":"fx_bind_telegram_02","staff_id":"fx_nv_quan","channel":"telegram","channel_user_id":"tg_10004","display_name":"Quan fixture","status":"active","bound_at":"2026-08-20T08:10:00Z"},
+    {"id":"fx_bind_zalo_02","staff_id":"fx_nv_yen","channel":"zalo","channel_user_id":"zalo_20002","display_name":"Yen fixture","status":"active","bound_at":"2026-08-20T08:15:00Z"}
+  ],
+  "replay_messages": [
+    {"id":"fx_msg_001","channel":"telegram","channel_user_id":"tg_10001","text":"Em se tre 15 phut ca chieu vi ket xe","intent":"bao_tre","expected":"inbox_pending"},
+    {"id":"fx_msg_002","channel":"zalo","channel_user_id":"zalo_20001","text":"Cho em xin nghi ca sang thu 4","intent":"xin_nghi","expected":"inbox_pending"},
+    {"id":"fx_msg_003","channel":"telegram","channel_user_id":"tg_10004","text":"Em muon doi ca toi thu 7 voi Chi","intent":"doi_ca","expected":"inbox_pending"},
+    {"id":"fx_msg_004","channel":"telegram","channel_user_id":"tg_10001","text":"Hom nay em lam ca nao?","intent":"hoi_lich","expected":"schedule_reply"},
+    {"id":"fx_msg_005","channel":"telegram","channel_user_id":"tg_10004","text":"Da mo cua xong, moi nguoi vao ca nhe","intent":"ban_giao","expected":"handover_record"},
+    {"id":"fx_msg_006","channel":"zalo","channel_user_id":"zalo_20001","text":"May xay co tieng on bat thuong","intent":"bao_su_co","expected":"pending_work"}
+  ],
+  "page_threads": [
+    {"id":"fx_thread_001","page_id":"fx_page_01","customer_name":"Khach fixture 01","status":"open","last_message":"Quan con ban cold brew khong?","unread":true,"created_at":"2026-08-29T07:20:00Z"},
+    {"id":"fx_thread_002","page_id":"fx_page_01","customer_name":"Khach fixture 02","status":"waiting","last_message":"Cho minh hoi gio dong cua hom nay","unread":false,"created_at":"2026-08-29T07:25:00Z"},
+    {"id":"fx_thread_003","page_id":"fx_page_01","customer_name":"Khach fixture 03","status":"resolved","last_message":"Cam on quan","unread":false,"created_at":"2026-08-29T06:45:00Z"}
+  ],
+  "page_drafts": [
+    {"id":"fx_draft_001","thread_id":"fx_thread_001","status":"cho_duyet","text":"Quan con cold brew, anh chi co the dat tai quay nhe.","created_by":"fx_nv_lan"},
+    {"id":"fx_draft_002","thread_id":"fx_thread_002","status":"nhap","text":"Quan mo cua tu 07:00 den 22:00 hom nay.","created_by":"fx_nv_lan"},
+    {"id":"fx_draft_003","thread_id":"fx_thread_003","status":"da_dang_mock","text":"Cam on anh chi da ung ho NHIP QUAN.","created_by":"fx_nv_lan"}
+  ],
+  "webhook_payloads": [
+    {"id":"fx_webhook_tg_01","channel":"telegram","event":"message","channel_user_id":"tg_10001","text":"Em se tre 15 phut ca chieu vi ket xe","valid_signature":true},
+    {"id":"fx_webhook_zalo_01","channel":"zalo","event":"user_send_text","channel_user_id":"zalo_20001","text":"Cho em xin nghi ca sang thu 4","valid_signature":true},
+    {"id":"fx_webhook_fb_01","channel":"facebook","event":"messages","channel_user_id":"fb_30001","text":"Quan con ban banh khong?","valid_signature":true}
+  ]
+}

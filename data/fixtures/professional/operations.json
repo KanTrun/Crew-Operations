@@ -1,0 +1,41 @@
+{
+  "metadata": {"synthetic": true, "nguon": "mo_phong_fixture"},
+  "checklist_runs": [
+    {"id":"fx_run_open_001","template":"mo_quan","shift_id":"fx_ca_01","staff_id":"fx_nv_lan","status":"in_progress","started_at":"2026-08-29T06:55:00Z","completed_steps":["diem_danh","bat_den","bat_may_pha","xa_nuoc"],"evidence":{"nhiet_do_tu_lanh":5.2,"chup_quay":"fixture://evidence/open-counter.jpg"}},
+    {"id":"fx_run_close_001","template":"dong_quan","shift_id":"fx_ca_03","staff_id":"fx_nv_dung","status":"completed","started_at":"2026-08-28T21:30:00Z","completed_at":"2026-08-28T21:56:00Z","timing_ms":1560000,"anti_fake":true,"evidence":{"tien_quay":1850000,"chup_quay":"fixture://evidence/close-counter.jpg"}},
+    {"id":"fx_run_handover_001","template":"ban_giao_ca","shift_id":"fx_ca_02","staff_id":"fx_nv_minh","status":"blocked","started_at":"2026-08-29T11:55:00Z","completed_steps":["diem_danh"],"blocked_reason":"thieu nguoi nhan ban giao","pending_work_ids":["fx_treo_002","fx_treo_003"]}
+  ],
+  "pending_work": [
+    {"id":"fx_treo_001","shift_id":"fx_ca_01","nguoi_nhan":"fx_nv_lan","noi_dung":"Bo sung sua tuoi truoc ca chieu","trang_thai":"dang_cho","han":"2026-08-29T11:30:00Z","moc_tinh_han":"2026-08-29T11:30:00Z","ca_sau_da_nhan":false,"priority":"high"},
+    {"id":"fx_treo_002","shift_id":"fx_ca_02","nguoi_nhan":"fx_nv_minh","noi_dung":"Kiem lai nhiet do tu lanh sau khi nhan hang","trang_thai":"qua_han","han":"2026-08-29T12:20:00Z","moc_tinh_han":"2026-08-29T12:20:00Z","ca_sau_da_nhan":false,"priority":"high"},
+    {"id":"fx_treo_003","shift_id":"fx_ca_02","nguoi_nhan":"fx_nv_an","noi_dung":"Ban giao don QR dang cho pha","trang_thai":"dang_cho","han":"2026-08-29T17:00:00Z","moc_tinh_han":"2026-08-29T17:00:00Z","ca_sau_da_nhan":true,"ca_sau_nhan_luc":"2026-08-29T17:04:00Z","priority":"normal"},
+    {"id":"fx_treo_004","shift_id":"fx_ca_03","nguoi_nhan":"fx_nv_dung","noi_dung":"Doi nha cung cap da vien xac nhan giao","trang_thai":"xong","han":"2026-08-28T20:30:00Z","moc_tinh_han":"2026-08-28T20:30:00Z","ca_sau_da_nhan":true,"ca_sau_nhan_luc":"2026-08-28T20:10:00Z","xong_luc":"2026-08-28T20:25:00Z","priority":"normal"},
+    {"id":"fx_treo_005","shift_id":"fx_ca_04","nguoi_nhan":"fx_nv_an","noi_dung":"Kiem tra may xay co tieng on","trang_thai":"dang_cho","han":"2026-09-01T11:00:00Z","moc_tinh_han":"2026-09-01T11:00:00Z","ca_sau_da_nhan":false,"priority":"low"},
+    {"id":"fx_treo_006","shift_id":"fx_ca_05","nguoi_nhan":"fx_nv_chi","noi_dung":"Xac nhan ton ly nhua voi kho","trang_thai":"xong","han":"2026-09-01T16:00:00Z","moc_tinh_han":"2026-09-01T16:00:00Z","ca_sau_da_nhan":true,"ca_sau_nhan_luc":"2026-09-01T15:30:00Z","xong_luc":"2026-09-01T15:50:00Z","priority":"normal"}
+  ],
+  "inbox_constraints": [
+    {"id":"fx_inbox_001","agent":"ag_msg","staff_id":"fx_nv_minh","channel_user_id":"tg_10001","y_dinh":"bao_tre","noi_dung_goc":"Em se tre 15 phut ca chieu vi ket xe","tom_tat":"Minh bao se tre 15 phut ca chieu","do_tin_cay":0.98,"trang_thai":"cho_duyet","khung_gio":"chieu"},
+    {"id":"fx_inbox_002","agent":"ag_msg","staff_id":"fx_nv_an","channel_user_id":"zalo_20001","y_dinh":"xin_nghi","noi_dung_goc":"Cho em xin nghi ca sang thu 4","tom_tat":"An xin nghi ca sang thu 4","do_tin_cay":0.96,"trang_thai":"duyet","khung_gio":"sang","hieu_luc":"2026-09-02"},
+    {"id":"fx_inbox_003","agent":"ag_tkb","staff_id":"fx_nv_bao","channel_user_id":"tg_10002","y_dinh":"rang_buoc_lich","noi_dung_goc":"Em co tiet hoc vao thu 5 buoi chieu","tom_tat":"Bao co rang buoc hoc thu 5 buoi chieu","do_tin_cay":0.91,"trang_thai":"cho_duyet","khung_gio":"chieu"},
+    {"id":"fx_inbox_004","agent":"ag_handover","staff_id":"fx_nv_dung","channel_user_id":"tg_10003","y_dinh":"ban_giao","noi_dung_goc":"Da ban giao viec doi da cho ca sau","tom_tat":"Dung ban giao viec doi da cho ca sau","do_tin_cay":0.94,"trang_thai":"duyet","khung_gio":"toi"},
+    {"id":"fx_inbox_005","agent":"ag_waste","staff_id":"fx_nv_lan","channel_user_id":"zalo_20002","y_dinh":"bao_hao_phi","noi_dung_goc":"Hom nay sua bi chua 450ml do mo hop qua lau","tom_tat":"Hao phi 450ml sua do mo hop qua lau","do_tin_cay":0.97,"trang_thai":"tu_choi","khung_gio":"sang"},
+    {"id":"fx_inbox_006","agent":"ag_msg","staff_id":"fx_nv_quan","channel_user_id":"tg_10004","y_dinh":"doi_ca","noi_dung_goc":"Quan co the doi ca toi thu 7 voi Chi khong","tom_tat":"Quan de nghi doi ca toi thu 7 voi Chi","do_tin_cay":0.93,"trang_thai":"cho_duyet","khung_gio":"toi","doi_tac_nv_id":"fx_nv_chi"}
+  ],
+  "swaps": [
+    {"id":"fx_swap_001","requester_id":"fx_nv_thao","partner_id":"fx_nv_chi","shift_id":"fx_ca_21","status":"pending_approval","reason":"trung lich hoc"},
+    {"id":"fx_swap_002","requester_id":"fx_nv_an","partner_id":"fx_nv_minh","shift_id":"fx_ca_08","status":"approved","reason":"doi ngay nghi"}
+  ],
+  "playbook_rules": [
+    {"id":"fx_rule_001","loai":"nguyen_nhan_hao_hut","loai_ho_so":"nguyen_nhan_hao_hut","cau":"Mo hop sua theo dung luong ca, dan nhan gio mo.","trang_thai":"hieu_luc","vf_rule":"dat","dieu_kien":{"mat_hang":"sua_tuoi","hao_hut_max":300},"bang_chung":["fx_waste_001","fx_waste_002","fx_waste_003"],"tap_su_dung":12,"tap_su_tong":14},
+    {"id":"fx_rule_002","loai":"nguong_ton","loai_ho_so":"nguyen_nhan_hao_hut","cau":"Dat them sua khi ton duoi 3000ml.","trang_thai":"cho_chu_quan","vf_rule":"dat","dieu_kien":{"ma":"sua_tuoi","min":3000},"bang_chung":["fx_ton_01","fx_ton_02","fx_ton_03"],"tap_su_dung":2,"tap_su_tong":3},
+    {"id":"fx_rule_003","loai":"lich_lam","loai_ho_so":"nguyen_nhan_hao_hut","cau":"Khong xep qua hai ca lien tuc cho sinh vien.","trang_thai":"de_xuat","vf_rule":"dat","dieu_kien":{"max_ca_lien_tuc":2},"bang_chung":["fx_edit_001","fx_edit_002","fx_edit_003"],"tap_su_dung":1,"tap_su_tong":4}
+  ],
+  "schedule_edits": [
+    {"id":"fx_edit_001","staff_id":"fx_nv_minh","action":"remove","shift_id":"fx_ca_12","reason":"trung lich hoc","source":"inbox","at":"2026-08-28T09:10:00Z"},
+    {"id":"fx_edit_002","staff_id":"fx_nv_an","action":"add","shift_id":"fx_ca_14","reason":"bu ca trong","source":"manager","at":"2026-08-28T09:30:00Z"},
+    {"id":"fx_edit_003","staff_id":"fx_nv_thao","action":"swap","shift_id":"fx_ca_21","reason":"doi ca","source":"inbox","at":"2026-08-28T10:00:00Z"}
+  ],
+  "handovers": [
+    {"id":"fx_handover_001","from_shift_id":"fx_ca_01","to_shift_id":"fx_ca_02","from_staff_id":"fx_nv_lan","to_staff_id":"fx_nv_minh","status":"completed","pending_work_ids":["fx_treo_001"],"note":"Da ban giao viec bo sung sua."}
+  ]
+}

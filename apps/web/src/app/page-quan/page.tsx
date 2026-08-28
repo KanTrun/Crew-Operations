@@ -10,16 +10,16 @@ import { apiGet, apiSend } from "../../lib/api";
 import { safeText, viError } from "../../lib/present";
 import { getToken, isManager } from "../../lib/session";
 import {
-  Alert,
-  AuthGate,
-  Btn,
-  Empty,
-  Field,
-  Loading,
-  Notice,
-  PageHeader,
-  Toasts,
-  useToasts,
+    Alert,
+    AuthGate,
+    Btn,
+    Empty,
+    Field,
+    Loading,
+    Notice,
+    PageHeader,
+    Toasts,
+    useToasts,
 } from "../../ui/kit";
 
 type Status = {
@@ -179,12 +179,16 @@ export default function PageQuanPage() {
               />
             </Field>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Btn variant="primary" onClick={() => reply(th.id)}>
-                Gửi trả lời
-              </Btn>
-              <Btn variant="ghost" onClick={() => treo(th.id)}>
-                Tạo việc treo
-              </Btn>
+              {manager ? (
+                <>
+                  <Btn variant="primary" onClick={() => reply(th.id)}>
+                    Gửi trả lời
+                  </Btn>
+                  <Btn variant="ghost" onClick={() => treo(th.id)}>
+                    Tạo việc treo
+                  </Btn>
+                </>
+              ) : null}
             </div>
           </section>
         ))}

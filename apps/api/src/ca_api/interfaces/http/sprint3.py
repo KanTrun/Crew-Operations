@@ -422,7 +422,7 @@ class InboxMsgBody(BaseModel):
 
 @router.get("/api/v1/inbox")
 def inbox(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
-    _require_role(authorization)
+    _require_manager(authorization)
     return {"items": kv_get("inbox_msg", [])}
 
 
@@ -431,7 +431,7 @@ def inbox_add(
     body: InboxMsgBody,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    _require_role(authorization)
+    _require_manager(authorization)
 
     def mut(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         items.append(

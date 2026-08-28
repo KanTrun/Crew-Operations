@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
-import { clearSession, getName, getRole, getToken, isChuQuan, isManager, roleLabel } from "../lib/session";
+import { canAccess, clearSession, getName, getRole, getToken, isChuQuan, isManager, roleLabel } from "../lib/session";
 
 type LinkItem = { href: string; label: string };
 
@@ -31,6 +31,10 @@ const ADMIN_PRIMARY: LinkItem[] = [
 ];
 
 const MORE: LinkItem[] = [
+  { href: "/quay", label: "Quầy" },
+  { href: "/pha", label: "Pha chế" },
+  { href: "/inbox", label: "Hộp thư" },
+  { href: "/roster", label: "Lịch tuần" },
   { href: "/page-quan", label: "Page quán (Facebook)" },
   { href: "/tkb", label: "Thời khoá biểu từ ảnh" },
   { href: "/cong-bang", label: "Công bằng" },
@@ -66,7 +70,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [path]);
 
   const primary = isChuQuan(role) ? ADMIN_PRIMARY : isManager(role) ? MANAGER_PRIMARY : STAFF_PRIMARY;
-  const more = MORE.filter((x) => !primary.some((p) => p.href === x.href) && allowedInMore(x.href, role));
+  const more = MORE.filter((x) => !primary.some((p) => p.href === x.href) && canAccess(role, x.href));
   const wide = path === "/roster";
 
   function logout() {
@@ -137,8 +141,3 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
-function allowedInMore(href: string, role: string): boolean {
-  if (["/menu", "/nguoi", "/vet"].includes(href)) return role === "chu_quan";
-  if (["/roster", "/inbox"].includes(href)) return isManager(role);
-  return true;
-}

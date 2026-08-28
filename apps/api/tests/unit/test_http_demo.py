@@ -28,8 +28,20 @@ def test_login_and_contracts() -> None:
         assert key in body
 
 
-def test_lich_tuan_anonymous_read() -> None:
+def test_lich_tuan_anonymous_forbidden() -> None:
+    """Lịch tuần không còn public — yêu cầu quan_ly trở lên."""
     r = client.get("/api/v1/lich-tuan")
+    assert r.status_code == 403
+
+
+def test_lich_tuan_nhanvien_forbidden() -> None:
+    """Nhân viên không được đọc lịch tuần qua API — chỉ xem qua UI hôm nay của mình."""
+    r = client.get("/api/v1/lich-tuan", headers=headers(client, "minh"))
+    assert r.status_code == 403
+
+
+def test_lich_tuan_quanly_ok() -> None:
+    r = client.get("/api/v1/lich-tuan", headers=headers(client, "lan"))
     assert r.status_code == 200
     body = r.json()
     assert body["nguon"] == "quan"
@@ -39,15 +51,10 @@ def test_lich_tuan_anonymous_read() -> None:
 
 
 def test_lich_tuan_with_tuan_param() -> None:
-    r = client.get("/api/v1/lich-tuan?tuan=2026-W34")
+    r = client.get("/api/v1/lich-tuan?tuan=2026-W36", headers=headers(client, "lan"))
     assert r.status_code == 200
     body = r.json()
-    assert body.get("tuan_iso") == "2026-W34"
-
-
-def test_lich_tuan_nhanvien_read_only() -> None:
-    r = client.get("/api/v1/lich-tuan", headers=headers(client, "minh"))
-    assert r.status_code == 200
+    assert body.get("tuan_iso") == "2026-W36"
 
 
 def test_pin_requires_auth() -> None:
@@ -92,7 +99,38 @@ def test_pin_reflected_in_lich_tuan() -> None:
         json={"ca_id": "w1_c02", "nv_id": "nv_05", "pinned": True},
         headers=headers(client, "lan"),
     )
-    r = client.get("/api/v1/lich-tuan")
+    r = client.get("/api/v1/lich-tuan", headers=headers(client, "lan"))
     body = r.json()
     phan_cong = body["phan_cong"]
     assert "nv_05" in phan_cong.get("w1_c02", [])
+
+
+def test_lifecycle_quanly_can_set() -> None:
+    r = client.patch(
+        "/api/v1/lich-tuan/lifecycle",
+        json={"trang_thai": "cho_duyet", "tuan_iso": "2026-W36"},
+        headers=headers(client, "lan"),
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert body["trang_thai"] == "cho_duyet"
+
+
+def test_lifecycle_invalid_state() -> None:
+    r = client.patch(
+        "/api/v1/lich-tuan/lifecycle",
+        json={"trang_thai": "khong_ton_tai"},
+        headers=headers(client, "lan"),
+    )
+    assert r.status_code == 422
+
+
+def test_lifecycle_nhanvien_forbidden() -> None:
+    r = client.patch(
+        "/api/v1/lich-tuan/lifecycle",
+        json={"trang_thai": "cho_duyet"},
+        headers=headers(client, "minh"),
+    )
+    assert r.status_code == 403
+

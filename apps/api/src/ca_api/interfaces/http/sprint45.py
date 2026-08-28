@@ -31,7 +31,7 @@ from ca_solver.fairness import AXES, update_debt_from_assignment, zero_debt
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
-from ca_api.interfaces.http.sprint3 import _require_chu_quan, _require_manager, _require_role
+from ca_api.interfaces.http.sprint3 import _known_ca, _require_chu_quan, _require_manager, _require_role
 from ca_api.orchestration import Clock
 from ca_api.persist import audit_add, audit_list, kv_get, kv_mutate, kv_set, list_users
 from ca_api.persist import session as auth_session
@@ -238,7 +238,7 @@ def audit_get(authorization: Annotated[str | None, Header()] = None) -> dict[str
 
 @router.get("/api/v1/inbox/rang-buoc")
 def inbox_list(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
-    _require_role(authorization)
+    _require_manager(authorization)
     _seed_inbox()
     return {"items": kv_get("inbox_rang_buoc", []), "nguon": "quan"}
 
@@ -627,7 +627,9 @@ def qr_use(
     token: str,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    _require_role(authorization)
+    caller = auth_session(authorization)
+    if not caller:
+        raise HTTPException(status_code=401, detail="thieu_token")
     used: dict[str, Any] | None = None
 
     def mut(bag: dict[str, Any]) -> dict[str, Any]:
@@ -637,6 +639,8 @@ def qr_use(
             raise HTTPException(status_code=404, detail="qr")
         if row["used"]:
             raise HTTPException(status_code=409, detail="qr_da_dung")
+        if row.get("nv_id") != caller["nv_id"]:
+            raise HTTPException(status_code=403, detail="qr_khong_phai_cua_ban")
         row = dict(row)
         row["used"] = True
         bag[token] = row
@@ -653,7 +657,13 @@ def swap_open(
     body: SwapBody,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    _require_role(authorization)
+    caller = auth_session(authorization)
+    if not caller:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    if len({body.a, body.b, body.c}) != 3 or not _known_ca(body.ca_id):
+        raise HTTPException(status_code=422, detail="doi_ca_khong_hop_le")
+    if caller["role"] == "nhan_vien" and caller["nv_id"] not in {body.a, body.b, body.c}:
+        raise HTTPException(status_code=403, detail="khong_phai_nguoi_tham_gia")
     item = {
         "id": f"sw_{uuid.uuid4().hex[:8]}",
         "a": body.a,

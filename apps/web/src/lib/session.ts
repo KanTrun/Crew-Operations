@@ -27,14 +27,33 @@ export function canEdit(role = getRole()): boolean {
   return isManager(role);
 }
 
-const MANAGER_ONLY = new Set(["/roster", "/inbox"]);
+const STAFF_ACCESS = new Set([
+  "/hom-nay",
+  "/quay",
+  "/pha",
+  "/phieu",
+  "/toi",
+  "/treo",
+  "/doi-ca",
+  "/handover",
+  "/hao-phi",
+  "/tieu-thu",
+  "/cong-bang",
+  "/sop",
+  "/tkb",
+  "/qr",
+  "/cam-nang",
+  "/them",
+  "/contracts",
+]);
+const MANAGER_ONLY = new Set(["/roster", "/inbox", "/page-quan"]);
 const OWNER_ONLY = new Set(["/menu", "/nguoi", "/vet"]);
 
 /** Client-side gate for navigation and hand-typed URLs. API remains authoritative. */
 export function canAccess(role: Role, path: string): boolean {
   if (OWNER_ONLY.has(path)) return role === "chu_quan";
   if (MANAGER_ONLY.has(path)) return isManager(role);
-  return Boolean(role);
+  return STAFF_ACCESS.has(path) && Boolean(role);
 }
 
 export function clearSession(): void {

@@ -32,9 +32,6 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://nhipquan:nhipquan@postgres:5432/nhipquan
       REDIS_URL: redis://redis:6379/0
-<<<<<<< Updated upstream
-      CA_AGENT_MODE: replay
-=======
       CA_AGENT_MODE: ${CA_AGENT_MODE:-replay}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -49,7 +46,6 @@ services:
       NHIPQUAN_ZALO_OA_ACCESS_TOKEN: ${NHIPQUAN_ZALO_OA_ACCESS_TOKEN:-}
       NHIPQUAN_FB_PAGE_TOKEN: ${NHIPQUAN_FB_PAGE_TOKEN:-}
       NHIPQUAN_FB_PAGE_ID: ${NHIPQUAN_FB_PAGE_ID:-}
->>>>>>> Stashed changes
     ports:
       - "8000:8000"
     volumes:
@@ -74,9 +70,6 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://nhipquan:nhipquan@postgres:5432/nhipquan
       REDIS_URL: redis://redis:6379/0
-<<<<<<< Updated upstream
-      CA_AGENT_MODE: replay
-=======
       CA_AGENT_MODE: ${CA_AGENT_MODE:-replay}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -91,7 +84,6 @@ services:
       NHIPQUAN_ZALO_OA_ACCESS_TOKEN: ${NHIPQUAN_ZALO_OA_ACCESS_TOKEN:-}
       NHIPQUAN_FB_PAGE_TOKEN: ${NHIPQUAN_FB_PAGE_TOKEN:-}
       NHIPQUAN_FB_PAGE_ID: ${NHIPQUAN_FB_PAGE_ID:-}
->>>>>>> Stashed changes
     volumes:
       - nhipquan_var:/app/var
     depends_on:

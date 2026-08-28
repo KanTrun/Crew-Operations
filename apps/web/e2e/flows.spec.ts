@@ -82,6 +82,18 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
     // Bị chặn khỏi /nguoi (chủ quán)
     await page.goto("/nguoi");
     await expect(page.getByRole("heading", { name: /Trang này dành cho vai trò khác|Không đủ quyền/i })).toBeVisible();
+
+    // Nhân viên không vào các bề mặt duyệt, quản trị hoặc kênh khách.
+    for (const route of ["/inbox", "/page-quan", "/vet", "/menu"]) {
+      await page.goto(route);
+      await expect(
+        page.getByRole("heading", { name: /Trang này dành cho vai trò khác|Không đủ quyền/i }),
+      ).toBeVisible();
+    }
+
+    // Nhân viên được đọc luật, nhưng API vẫn chặn thao tác xét/chốt ở role quản lý.
+    await page.goto("/cam-nang");
+    await expect(page.getByRole("heading", { name: /Cẩm nang/i })).toBeVisible();
   });
 
   test("Quản lý (lan): vào được lịch tuần/hộp thư, bị chặn khỏi menu/người", async ({ page }) => {
@@ -94,6 +106,20 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
     // Vào /inbox
     await page.goto("/inbox");
     await expect(page.getByRole("heading", { name: /Hộp thư ràng buộc/i })).toBeVisible();
+
+    // Quản lý cần thấy đủ các bề mặt vận hành, không chỉ lịch và hộp thư.
+    for (const [route, heading] of [
+      ["/page-quan", /Page quán/i],
+      ["/cam-nang", /Cẩm nang/i],
+      ["/tkb", /Thời khoá biểu/i],
+      ["/tieu-thu", /Tiêu thụ/i],
+      ["/hao-phi", /Hao phí/i],
+      ["/cong-bang", /Công bằng/i],
+      ["/sop", /Hỏi SOP/i],
+    ] as const) {
+      await page.goto(route);
+      await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+    }
 
     // Bị chặn khỏi /menu (chủ quán)
     await page.goto("/menu");
@@ -122,6 +148,14 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
     // Vào /roster
     await page.goto("/roster");
     await expect(page.getByRole("heading", { name: /Lịch tuần/i })).toBeVisible();
+
+    // Chủ quán cũng vào được /inbox, /quay, /pha
+    await page.goto("/inbox");
+    await expect(page.getByRole("heading", { name: /Hộp thư/i })).toBeVisible();
+    await page.goto("/quay");
+    await expect(page.getByRole("heading", { name: /Quầy/i })).toBeVisible();
+    await page.goto("/pha");
+    await expect(page.getByRole("heading", { name: /Pha chế|KDS/i })).toBeVisible();
   });
 });
 

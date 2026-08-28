@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "fixture_version": "2026.08.29-professional-01",
+  "as_of": "2026-08-29T08:00:00Z",
+  "synthetic": true,
+  "nguon": "mo_phong_fixture",
+  "description": "Professional deterministic fixture for local demo and integration tests.",
+  "seed_policy": "stable_ids_no_randomness",
+  "scenarios": {
+    "manager-dashboard": ["base", "operations"],
+    "pos-kds-active": ["base", "pos"],
+    "checklist-in-progress": ["base", "operations"],
+    "inbox-review": ["base", "operations", "channels"],
+    "channels-replay": ["base", "channels"]
+  },
+  "files": {
+    "base": "base.json",
+    "operations": "operations.json",
+    "pos": "pos.json",
+    "channels": "channels.json"
+  },
+  "expected_counts": {
+    "staff": 10,
+    "shifts": 21,
+    "assignments": 21,
+    "menu_items": 8,
+    "orders": 6,
+    "checklist_runs": 3,
+    "pending_work": 6,
+    "inbox_constraints": 6,
+    "inventory_items": 8,
+    "inventory_snapshots": 8,
+    "channel_bindings": 4,
+    "page_threads": 3,
+    "page_drafts": 3,
+    "replay_messages": 6
+  },
+  "reference_rules": [
+    "assignment.staff_id references base.staff.id",
+    "assignment.shift_id references base.shifts.id",
+    "order.staff_id references base.staff.id",
+    "order.lines.menu_id references pos.menu_items.id",
+    "checklist_run.shift_id references base.shifts.id",
+    "pending_work.shift_id references base.shifts.id",
+    "inbox_constraint.staff_id references base.staff.id",
+    "inventory_snapshot.item_id references pos.inventory_items.id",
+    "channel_binding.staff_id references base.staff.id",
+    "page_draft.thread_id references channels.page_threads.id"
+  ],
+  "load_order": ["base", "pos", "operations", "channels"],
+  "safety": {
+    "never_mark_as_real": true,
+    "never_overwrite_non_fixture_records": true,
+    "stable_fixture_id_prefix": "fx_"
+  }
+}

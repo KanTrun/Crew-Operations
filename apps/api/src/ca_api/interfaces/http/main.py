@@ -29,6 +29,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://localhost:3001",
         "http://127.0.0.1:3000",
     ],
     allow_methods=["*"],
@@ -119,11 +120,29 @@ def health() -> dict[str, str]:
 # ── Lich tuan ─────────────────────────────────────────────────────────────────
 
 
-def _build_lich_tuan_from_seed(seed: dict[str, Any], tuan: str | None) -> dict[str, Any]:
+def _tuan_list(base_tuan: str, so_tuan: int) -> list[str]:
+    """Sinh danh sách các tuần ISO liên tiếp từ tuần bắt đầu."""
+    import re
+    m = re.match(r"^(\d{4})-W(\d{2})$", base_tuan)
+    if not m:
+        return [base_tuan]
+    y, w = int(m.group(1)), int(m.group(2))
+    weeks = []
+    for offset in range(max(1, min(4, so_tuan))):
+        cur_w = w + offset
+        cur_y = y
+        if cur_w > 52:
+            cur_w -= 52
+            cur_y += 1
+        weeks.append(f"{cur_y}-W{cur_w:02d}")
+    return weeks
+
+
+def _build_lich_tuan_from_seed(seed: dict[str, Any], tuan: str | None, so_tuan: int = 1) -> dict[str, Any]:
     """Build a schedule response from seed data for the requested ISO week."""
     nhan_vien = seed.get("nhan_vien", [])
     ca_list = seed.get("ca_mau_21", [])
-    # Map ca_id → list of nv_ids (round-robin assignment)
+    tuan_iso = tuan or "2026-W36"
     phan_cong: dict[str, list[str]] = {}
     for i, ca in enumerate(ca_list):
         ca_id = ca["id"]
@@ -136,7 +155,9 @@ def _build_lich_tuan_from_seed(seed: dict[str, Any], tuan: str | None) -> dict[s
             phan_cong[ca_id].remove(nv_id)
     return {
         "nguon": "quan",
-        "tuan_iso": tuan or "2026-W34",
+        "tuan_iso": tuan_iso,
+        "so_tuan": so_tuan,
+        "danh_sach_tuan": _tuan_list(tuan_iso, so_tuan),
         "trang_thai": "nhap",
         "nhan_vien": nhan_vien,
         "ca": ca_list,
@@ -146,10 +167,13 @@ def _build_lich_tuan_from_seed(seed: dict[str, Any], tuan: str | None) -> dict[s
 
 @app.get("/api/v1/lich-tuan")
 def get_lich_tuan(
-    tuan: Annotated[str | None, Query(description="ISO week e.g. 2026-W34")] = None,
+    tuan: Annotated[str | None, Query(description="ISO week e.g. 2026-W36")] = None,
+    so_tuan: Annotated[int, Query(ge=1, le=4, description="Số tuần xếp lịch: 1, 2, 3 hoặc 4")] = 1,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    """Lịch tuần đang hiệu lực của quán."""
+    """Lịch tuần đang hiệu lực của quán. Yêu cầu đăng nhập (quan_ly trở lên)."""
+    _require_write_role(authorization)
+    tuan_iso = tuan or "2026-W36"
     # Try data/out/lich_tuan.json first (solver output)
     if LICH_TUAN_OUT.exists():
         data = json.loads(LICH_TUAN_OUT.read_text(encoding="utf-8"))
@@ -160,11 +184,14 @@ def get_lich_tuan(
                 phan_cong.setdefault(ca_id, []).append(nv_id)
             elif not pinned and nv_id in phan_cong.get(ca_id, []):
                 phan_cong[ca_id].remove(nv_id)
+        lifecycle = kv_get("lich_tuan_lifecycle", {})
         return {
             "nguon": "quan",
             "adr": data.get("adr", "ADR-012"),
-            "tuan_iso": tuan or data.get("tuan_iso") or "2026-W34",
-            "trang_thai": "may_sinh",
+            "tuan_iso": tuan_iso,
+            "so_tuan": so_tuan,
+            "danh_sach_tuan": _tuan_list(tuan_iso, so_tuan),
+            "trang_thai": lifecycle.get("trang_thai", "may_sinh"),
             "nhan_vien": seed.get("nhan_vien", []),
             "ca": seed.get("ca_mau_21", []),
             "phan_cong": phan_cong,
@@ -174,7 +201,12 @@ def get_lich_tuan(
                 "status": data.get("status"),
             },
         }
-    return _build_lich_tuan_from_seed(_seed(), tuan)
+    lifecycle = kv_get("lich_tuan_lifecycle", {})
+    result = _build_lich_tuan_from_seed(_seed(), tuan_iso, so_tuan)
+    result["trang_thai"] = lifecycle.get("trang_thai", result.get("trang_thai", "nhap"))
+    return result
+
+
 
 
 @app.post("/api/v1/lich-tuan/pin")
@@ -197,6 +229,48 @@ def pin_assignment(
         now_iso=datetime.now(UTC).isoformat(),
     )
     return {"ok": True, "ca_id": body.ca_id, "nv_id": body.nv_id, "pinned": body.pinned}
+
+
+_LIFECYCLE_STATES = ("nhap", "cho_duyet", "da_duyet", "da_cong_bo", "da_dong")
+
+
+class LifecycleBody(BaseModel):
+    trang_thai: str
+    tuan_iso: str | None = None
+
+
+@app.patch("/api/v1/lich-tuan/lifecycle")
+def patch_lifecycle(
+    body: LifecycleBody,
+    _role: Annotated[str, Depends(_require_write_role)],
+) -> dict[str, Any]:
+    """Quản lý/Chủ quán cập nhật trạng thái và mốc tuần lịch.
+
+    Chuyển trạng thái hợp lệ: nhap → cho_duyet → da_duyet → da_cong_bo → da_dong.
+    Chỉ chu_quan mới có thể cập nhật tuan_iso (chuyển sang tuần khác).
+    """
+    if body.trang_thai not in _LIFECYCLE_STATES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"trang_thai_khong_hop_le — cho phep: {', '.join(_LIFECYCLE_STATES)}",
+        )
+    def mut(cur: dict) -> dict:
+        cur["trang_thai"] = body.trang_thai
+        if body.tuan_iso:
+            cur["tuan_iso"] = body.tuan_iso
+        cur["cap_nhat_luc"] = datetime.now(UTC).isoformat()
+        cur["cap_nhat_boi"] = _role
+        return cur
+
+    new_state = kv_mutate("lich_tuan_lifecycle", mut, {})
+    record_sua(
+        loai="lifecycle",
+        truoc={},
+        sau={"trang_thai": body.trang_thai, "tuan_iso": body.tuan_iso},
+        ai=_role,
+        now_iso=datetime.now(UTC).isoformat(),
+    )
+    return {"ok": True, **new_state}
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

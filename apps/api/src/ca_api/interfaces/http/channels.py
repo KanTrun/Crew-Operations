@@ -234,11 +234,14 @@ class ReplayBody(BaseModel):
 @router.get("/api/v1/channels/status")
 def channels_status(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     """Trạng thái nối kênh thật — UI dùng để hiện 'Chưa nối', không giả lập."""
-    _require_role(authorization)
+    caller = auth_session(authorization)
+    if not caller:
+        raise HTTPException(status_code=401, detail="thieu_token")
     zalo_on = os.environ.get("NHIPQUAN_ZALO_ENABLED", "").strip() in {"1", "true", "yes"}
     zalo_token = bool(os.environ.get("NHIPQUAN_ZALO_OA_ACCESS_TOKEN", "").strip())
     tg_token = bool(os.environ.get("NHIPQUAN_TELEGRAM_BOT_TOKEN", "").strip())
     fb_token = bool(os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip())
+    binds = kenh_bind_list() if caller["role"] in {"quan_ly", "chu_quan"} else kenh_bind_list(caller["nv_id"])
     return {
         "uu_tien": ["zalo", "telegram", "facebook"],
         "agent_mode": agent_mode(),
@@ -255,7 +258,7 @@ def channels_status(authorization: Annotated[str | None, Header()] = None) -> di
             "connected": fb_token,
             "huong_dan": "docs/runbooks/facebook-page-connect.md",
         },
-        "binds": kenh_bind_list(),
+        "binds": binds,
     }
 
 
@@ -346,7 +349,7 @@ def _page_mode() -> str:
 
 @router.get("/api/v1/page/status")
 def page_status(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
-    _require_role(authorization)
+    _require_manager(authorization)
     mode = _page_mode()
     token = bool(os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip())
     page_id = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
@@ -437,7 +440,7 @@ async def facebook_webhook(request: Request) -> Any:
 
 @router.get("/api/v1/page/threads")
 def page_threads(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
-    _require_role(authorization)
+    _require_manager(authorization)
     doc = _page_store()
     return {"items": doc.get("threads", []), "mode": _page_mode(), "nguon": "quan"}
 
@@ -455,7 +458,7 @@ def page_reply(
     s = auth_session(authorization)
     if not s:
         raise HTTPException(status_code=401, detail="thieu_token")
-    _require_role(authorization)
+    _require_manager(authorization)
     found: dict[str, Any] | None = None
 
     def mut(doc: dict[str, Any]) -> dict[str, Any]:
@@ -497,7 +500,7 @@ class PageDraftBody(BaseModel):
 
 @router.get("/api/v1/page/drafts")
 def page_drafts(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
-    _require_role(authorization)
+    _require_manager(authorization)
     return {"items": _page_store().get("drafts", []), "mode": _page_mode()}
 
 
@@ -589,7 +592,7 @@ def page_treo(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Cầu nối ops: thread page → việc treo (không CRM)."""
-    _require_role(authorization)
+    _require_manager(authorization)
     doc = _page_store()
     th = next((t for t in doc.get("threads", []) if t.get("id") == body.thread_id), None)
     if not th:

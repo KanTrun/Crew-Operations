@@ -139,3 +139,20 @@ def test_fairness_scoped_to_self_for_nv() -> None:
     assert "cuoi_tuan" in r["axes"]
     assert set(r["so_du"].keys()) == {"nv_03"}
     assert r["nv_id"] == "nv_03"
+
+
+def test_qr_can_only_be_used_by_target_employee() -> None:
+    manager = headers(client, "lan")
+    other = headers(client, "hung")
+    target = headers(client, "minh")
+    token = client.post("/api/v1/qr", json={"nv_id": "nv_03", "ca_id": "w1_c01"}, headers=manager).json()["token"]
+    assert client.post(f"/api/v1/qr/{token}", headers=other).status_code == 403
+    assert client.post(f"/api/v1/qr/{token}", headers=target).status_code == 200
+
+
+def test_swap_requires_valid_shift_and_staff_participation() -> None:
+    staff = headers(client, "minh")
+    outsider = {"a": "nv_01", "b": "nv_02", "c": "nv_04", "ca_id": "w1_c01"}
+    assert client.post("/api/v1/cho-doi-ca", json=outsider, headers=staff).status_code == 403
+    invalid = {"a": "nv_03", "b": "nv_04", "c": "nv_05", "ca_id": "missing"}
+    assert client.post("/api/v1/cho-doi-ca", json=invalid, headers=staff).status_code == 422

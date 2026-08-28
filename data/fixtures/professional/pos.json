@@ -1,0 +1,50 @@
+{
+  "metadata": {"synthetic": true, "nguon": "mo_phong_fixture"},
+  "menu_items": [
+    {"id":"fx_mon_ca_phe_den","ten":"Ca phe den","gia":29000,"an":false,"bom":{"ca_phe_hat":18,"da":120}},
+    {"id":"fx_mon_bac_xiu","ten":"Bac xiu","gia":39000,"an":false,"bom":{"ca_phe_hat":14,"sua_tuoi":120,"da":80}},
+    {"id":"fx_mon_tra_dao","ten":"Tra dao cam sa","gia":45000,"an":false,"bom":{"tra":8,"dao":100,"da":150}},
+    {"id":"fx_mon_matcha","ten":"Matcha sua","gia":49000,"an":false,"bom":{"matcha":5,"sua_tuoi":150,"da":80}},
+    {"id":"fx_mon_croissant","ten":"Croissant bo","gia":35000,"an":false,"bom":{"banh":1}},
+    {"id":"fx_mon_nuoc_loc","ten":"Nuoc loc","gia":12000,"an":false,"bom":{"nuoc_dong_chai":1}},
+    {"id":"fx_mon_coldbrew","ten":"Cold brew","gia":49000,"an":true,"bom":{"ca_phe_hat":22,"da":130}},
+    {"id":"fx_mon_combo","ten":"Combo sang","gia":59000,"an":false,"bom":{"ca_phe_hat":14,"sua_tuoi":100,"banh":1}}
+  ],
+  "orders": [
+    {"id":"fx_don_001","staff_id":"fx_nv_lan","trang_thai":"cho_pha","thanh_toan":"da_ck","nguon":"pos","luc":"2026-08-29T07:41:00Z","dong":[{"mon_id":"fx_mon_bac_xiu","ten":"Bac xiu","so_luong":2,"gia":39000},{"mon_id":"fx_mon_croissant","ten":"Croissant bo","so_luong":1,"gia":35000}]},
+    {"id":"fx_don_002","staff_id":"fx_nv_minh","trang_thai":"dang_pha","thanh_toan":"tien_mat","nguon":"pos","luc":"2026-08-29T07:44:00Z","dong":[{"mon_id":"fx_mon_tra_dao","ten":"Tra dao cam sa","so_luong":1,"gia":45000}]},
+    {"id":"fx_don_003","staff_id":"fx_nv_an","trang_thai":"xong","thanh_toan":"da_ck","nguon":"pos","luc":"2026-08-29T07:12:00Z","dong":[{"mon_id":"fx_mon_ca_phe_den","ten":"Ca phe den","so_luong":1,"gia":29000}]},
+    {"id":"fx_don_004","staff_id":"fx_nv_chi","trang_thai":"xong","thanh_toan":"tien_mat","nguon":"pos","luc":"2026-08-29T07:18:00Z","dong":[{"mon_id":"fx_mon_matcha","ten":"Matcha sua","so_luong":1,"gia":49000},{"mon_id":"fx_mon_nuoc_loc","ten":"Nuoc loc","so_luong":1,"gia":12000}]},
+    {"id":"fx_don_005","staff_id":"fx_nv_lan","trang_thai":"huy","thanh_toan":"chua_thu","ly_do_huy":"khach doi mon sau khi dat","nguon":"pos","luc":"2026-08-29T07:25:00Z","dong":[{"mon_id":"fx_mon_coldbrew","ten":"Cold brew","so_luong":1,"gia":49000}]},
+    {"id":"fx_don_006","staff_id":"fx_nv_quan","trang_thai":"cho_pha","thanh_toan":"chua_thu","nguon":"qr","luc":"2026-08-29T07:49:00Z","dong":[{"mon_id":"fx_mon_combo","ten":"Combo sang","so_luong":2,"gia":59000}]}
+  ],
+  "attendance": [
+    {"id":"fx_dd_01","staff_id":"fx_nv_lan","shift_id":"fx_ca_01","status":"present","at":"2026-08-29T06:54:00Z"},
+    {"id":"fx_dd_02","staff_id":"fx_nv_minh","shift_id":"fx_ca_02","status":"present","at":"2026-08-29T11:56:00Z"},
+    {"id":"fx_dd_03","staff_id":"fx_nv_an","shift_id":"fx_ca_04","status":"late","at":"2026-09-01T07:18:00Z"}
+  ],
+  "consumption_links": [
+    {"order_id":"fx_don_003","status":"posted","items":{"ca_phe_hat":18}},
+    {"order_id":"fx_don_004","status":"posted","items":{"matcha":5,"sua_tuoi":150,"da":80}}
+  ],
+  "inventory_items": [
+    {"id":"fx_item_sua","ma":"sua_tuoi","ten":"Sua tuoi","unit":"ml","min_level":3000,"reorder_level":5000},
+    {"id":"fx_item_coffee","ma":"ca_phe_hat","ten":"Ca phe hat","unit":"g","min_level":800,"reorder_level":1500},
+    {"id":"fx_item_tea","ma":"tra","ten":"Tra den","unit":"g","min_level":300,"reorder_level":600},
+    {"id":"fx_item_sugar","ma":"duong","ten":"Duong","unit":"g","min_level":1000,"reorder_level":2500},
+    {"id":"fx_item_cup","ma":"ly_nhua","ten":"Ly nhua","unit":"cai","min_level":80,"reorder_level":200},
+    {"id":"fx_item_straw","ma":"ong_hut","ten":"Ong hut","unit":"cai","min_level":80,"reorder_level":200},
+    {"id":"fx_item_cake","ma":"banh","ten":"Banh","unit":"cai","min_level":10,"reorder_level":30},
+    {"id":"fx_item_ice","ma":"da","ten":"Da vien","unit":"kg","min_level":12,"reorder_level":25}
+  ],
+  "inventory_snapshots": [
+    {"id":"fx_ton_01","item_id":"fx_item_sua","date":"2026-08-29","opening":8000,"received":4000,"closing":2750,"waste":450,"status":"below_reorder"},
+    {"id":"fx_ton_02","item_id":"fx_item_coffee","date":"2026-08-29","opening":2200,"received":0,"closing":1380,"waste":40,"status":"ok"},
+    {"id":"fx_ton_03","item_id":"fx_item_tea","date":"2026-08-29","opening":800,"received":0,"closing":620,"waste":0,"status":"ok"},
+    {"id":"fx_ton_04","item_id":"fx_item_sugar","date":"2026-08-29","opening":3000,"received":0,"closing":2200,"waste":0,"status":"ok"},
+    {"id":"fx_ton_05","item_id":"fx_item_cup","date":"2026-08-29","opening":240,"received":200,"closing":126,"waste":4,"status":"ok"},
+    {"id":"fx_ton_06","item_id":"fx_item_straw","date":"2026-08-29","opening":240,"received":0,"closing":118,"waste":2,"status":"ok"},
+    {"id":"fx_ton_07","item_id":"fx_item_cake","date":"2026-08-29","opening":24,"received":12,"closing":8,"waste":3,"status":"below_reorder"},
+    {"id":"fx_ton_08","item_id":"fx_item_ice","date":"2026-08-29","opening":30,"received":20,"closing":14,"waste":1,"status":"ok"}
+  ]
+}

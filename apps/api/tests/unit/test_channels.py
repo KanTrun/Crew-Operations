@@ -213,3 +213,33 @@ def test_replay_with_flag(monkeypatch) -> None:
     r = client.post("/api/v1/channels/replay", json={"limit": 5}, headers=ql)
     assert r.status_code == 200, r.text
     assert r.json()["n"] >= 1
+
+
+def test_staff_cannot_read_or_write_manager_inbox() -> None:
+    staff = headers(client, "minh")
+    assert client.get("/api/v1/inbox", headers=staff).status_code == 403
+    assert client.get("/api/v1/inbox/rang-buoc", headers=staff).status_code == 403
+    assert client.post("/api/v1/inbox", json={"tom_tat": "ngoai le"}, headers=staff).status_code == 403
+
+
+def test_staff_channel_status_only_returns_own_bind(monkeypatch) -> None:
+    from ca_api.persist import kenh_bind_set
+
+    kenh_bind_set("telegram", "tg_minh", "nv_03")
+    kenh_bind_set("telegram", "tg_lan", "nv_01")
+    staff = headers(client, "minh")
+    result = client.get("/api/v1/channels/status", headers=staff)
+    assert result.status_code == 200
+    assert result.json()["binds"] == [
+        {"channel": "telegram", "external_user_id": "tg_minh", "nv_id": "nv_03", "created_at": result.json()["binds"][0]["created_at"]}
+    ]
+
+
+def test_staff_cannot_reply_or_create_treo_from_page() -> None:
+    from ca_api.persist import kv_set
+
+    kv_set("page_quan", {"threads": [{"id": "thread_1", "tom_tat": "Khach hoi mon"}], "drafts": []})
+    staff = headers(client, "minh")
+    assert client.get("/api/v1/page/threads", headers=staff).status_code == 403
+    assert client.post("/api/v1/page/threads/thread_1/reply", json={"text": "Tra loi"}, headers=staff).status_code == 403
+    assert client.post("/api/v1/page/treo", json={"thread_id": "thread_1"}, headers=staff).status_code == 403

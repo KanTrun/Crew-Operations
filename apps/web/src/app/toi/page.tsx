@@ -5,15 +5,13 @@ import { apiGet, apiSend } from "../../lib/api";
 import { formatNgay, khungLabel, safeText, viError, viTriLabel } from "../../lib/present";
 import { getToken } from "../../lib/session";
 import {
-  Alert,
-  AuthGate,
-  Btn,
-  Empty,
-  InlineActions,
-  Kicker,
-  Loading,
-  Notice,
-  PageHeader,
+    Alert,
+    AuthGate,
+    Btn,
+    Empty,
+    InlineActions,
+    Loading,
+    PageHeader
 } from "../../ui/kit";
 
 type Ca = {
@@ -53,7 +51,7 @@ export default function ToiPage() {
 
   const load = useCallback(() => {
     if (!getToken()) return;
-    apiGet<{ tuan_iso?: string; items?: Ca[] }>("/api/v1/lich/toi")
+    apiGet<{ tuan_iso?: string; items?: Ca[] }>("/api/v1/toi/lich")
       .then((d) => {
         setWeek(d.tuan_iso ?? "Tuần này");
         setCa(d.items ?? []);
@@ -89,7 +87,7 @@ export default function ToiPage() {
     setError(null);
     setMsg(null);
     try {
-      await apiSend(`/api/v1/lich/toi/${action}`, { ca_id });
+      await apiSend(`/api/v1/ca/${action}`, { ca_id });
       setMsg(action === "nha" ? "Đã gửi yêu cầu nhả ca vào chợ đổi ca." : "Đã nhận ca thành công.");
       load();
     } catch (e) {
