@@ -58,3 +58,12 @@ export function apiSend<T>(path: string, body?: unknown, method = "POST"): Promi
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
+
+/** Upload multipart (ảnh TKB). Không gắn Content-Type — browser tự set boundary. */
+export function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  return request<T>(path, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+}

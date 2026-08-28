@@ -1,6 +1,9 @@
-import type { Metadata, Viewport } from "next";
-import { fontClass } from "../ui/fonts";
+import type { Metadata } from "next";
 import { ConditionalShell } from "./ConditionalShell";
+<<<<<<< Updated upstream
+=======
+import { SmoothScroll } from "../ui/SmoothScroll";
+>>>>>>> Stashed changes
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,22 +12,30 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
 };
 
-export const viewport: Viewport = {
-  themeColor: "#0e0c0a",
-  width: "device-width",
-  initialScale: 1,
-  // Cho phép người dùng zoom — chặn zoom là lỗi tiếp cận.
-  maximumScale: 5,
-};
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
+<<<<<<< Updated upstream
+    <html lang="vi">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body>
+        <ConditionalShell>{children}</ConditionalShell>
+=======
     <html lang="vi" className={fontClass}>
       <body>
-        <a href="#nq-content" className="nq-skip">
-          Bỏ qua thanh điều hướng
-        </a>
-        <ConditionalShell>{children}</ConditionalShell>
+        <SmoothScroll>
+          <a href="#nq-content" className="nq-skip">
+            Bỏ qua thanh điều hướng
+          </a>
+          <ConditionalShell>{children}</ConditionalShell>
+        </SmoothScroll>
+>>>>>>> Stashed changes
       </body>
     </html>
   );

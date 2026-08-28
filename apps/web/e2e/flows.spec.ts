@@ -58,3 +58,30 @@ test.describe("8 luồng vận hành chính", () => {
     await expect(page.getByText(/không liệt kê số dư của từng người/)).toBeVisible();
   });
 });
+
+function rgbLuminance(color: string): number {
+  const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!m) return -1;
+  const chan = [Number(m[1]), Number(m[2]), Number(m[3])].map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * chan[0] + 0.7152 * chan[1] + 0.0722 * chan[2];
+}
+
+test.describe("Chữ trên nút solid", () => {
+  test("AuthGate Đăng nhập: ink lúc nghỉ, copper lúc hover — không dính đen trên nền tối", async ({
+    page,
+  }) => {
+    await page.goto("/treo");
+    const btn = page.locator("a.nq-ink-on-solid", { hasText: "Đăng nhập" });
+    await expect(btn).toBeVisible();
+
+    const rest = await btn.evaluate((el) => getComputedStyle(el).color);
+    expect(rgbLuminance(rest), `rest color ${rest}`).toBeLessThan(0.15);
+
+    await btn.hover();
+    const hover = await btn.evaluate((el) => getComputedStyle(el).color);
+    expect(rgbLuminance(hover), `hover color ${hover}`).toBeGreaterThan(0.3);
+  });
+});

@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
-import { formatNgay, khungLabel, safeText, viError } from "../../lib/present";
+<<<<<<< Updated upstream
+import { getToken } from "../../lib/session";
+import { Alert, AuthGate, btnDanger, btnPrimary, Empty, Kicker, Loading } from "../../ui/kit";
+=======
+import { formatNgay, khungLabel, safeText, viError, viTriLabel } from "../../lib/present";
 import { getToken } from "../../lib/session";
 import {
   Alert,
@@ -12,8 +16,10 @@ import {
   InlineActions,
   Kicker,
   Loading,
+  Notice,
   PageHeader,
 } from "../../ui/kit";
+>>>>>>> Stashed changes
 
 type Ca = {
   id: string;
@@ -27,6 +33,13 @@ type Ca = {
   co_the_nhan?: boolean;
 };
 
+type ChannelStatus = {
+  uu_tien?: string[];
+  agent_mode?: string;
+  zalo?: { connected?: boolean };
+  telegram?: { connected?: boolean };
+};
+
 export default function ToiPage() {
   const [token, setToken] = useState("");
   const [ca, setCa] = useState<Ca[]>([]);
@@ -35,6 +48,8 @@ export default function ToiPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bindCode, setBindCode] = useState<string | null>(null);
+  const [channels, setChannels] = useState<ChannelStatus | null>(null);
 
   useEffect(() => {
     setToken(getToken());
@@ -43,15 +58,27 @@ export default function ToiPage() {
 
   const load = useCallback(() => {
     if (!getToken()) return;
-    setLoading(true);
+<<<<<<< Updated upstream
     apiGet<{ ca?: Ca[]; tuan_iso?: string } | Ca[]>("/api/v1/toi/lich")
       .then((d) => {
         const list = Array.isArray(d) ? d : d.ca ?? [];
+        setCa(list);
+        if (!Array.isArray(d)) setWeek(d.tuan_iso ?? "");
+=======
+    setLoading(true);
+    Promise.all([
+      apiGet<{ ca?: Ca[]; tuan_iso?: string } | Ca[]>("/api/v1/toi/lich"),
+      apiGet<ChannelStatus>("/api/v1/channels/status").catch(() => null),
+    ])
+      .then(([d, st]) => {
+        const list = Array.isArray(d) ? d : d.ca ?? [];
         setCa(list.filter((c) => c && typeof c.id === "string"));
         if (!Array.isArray(d)) setWeek(safeText(d.tuan_iso, ""));
+        setChannels(st);
         setError(null);
+>>>>>>> Stashed changes
       })
-      .catch((e) => setError(viError(e, { doing: "tải được lịch của bạn" })))
+      .catch(() => setError("Không tải được lịch của bạn."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -59,28 +86,28 @@ export default function ToiPage() {
     if (token) load();
   }, [token, load]);
 
+  async function layMaBind() {
+    setError(null);
+    setMsg(null);
+    try {
+      const r = await apiSend<{ code: string; huong_dan: string }>("/api/v1/channels/bind/issue", {});
+      setBindCode(r.code);
+      setMsg(r.huong_dan);
+    } catch (e) {
+      setError(viError(e, { doing: "lấy được mã nối Zalo/Telegram" }));
+    }
+  }
+
   async function act(kind: "nha" | "nhan", id: string) {
     setBusy(id);
     setError(null);
     setMsg(null);
     try {
       await apiSend(`/api/v1/ca/${kind}`, { ca_id: id });
-      setMsg(
-        kind === "nha"
-          ? "Đã nhả ca. Ca này sang chợ đổi ca để người khác nhận."
-          : "Đã nhận ca. Ca này giờ nằm trong lịch của bạn.",
-      );
+      setMsg(kind === "nha" ? "Đã nhả ca." : "Đã nhận ca.");
       load();
-    } catch (e) {
-      setError(
-        viError(e, {
-          doing: kind === "nha" ? "nhả được ca này" : "nhận được ca này",
-          conflict:
-            kind === "nha"
-              ? "Ca này vừa được xếp lại nên không nhả được nữa. Tải lại lịch rồi xem lại."
-              : "Người khác vừa nhận ca này trước. Tải lại lịch để xem ca còn trống.",
-        }),
-      );
+    } catch {
+      setError(kind === "nha" ? "Không nhả được ca." : "Không nhận được ca.");
     } finally {
       setBusy(null);
     }
@@ -89,52 +116,84 @@ export default function ToiPage() {
   if (!token) return <AuthGate />;
 
   const grouped: Record<string, Ca[]> = {};
-  for (const c of ca) (grouped[safeText(c.ngay, "Chưa rõ ngày")] ??= []).push(c);
+  for (const c of ca) (grouped[c.ngay] ??= []).push(c);
 
   return (
     <div className="nq-page">
-      <PageHeader
-        kicker="Ca của tôi"
-        title="Lịch của tôi"
-        meta={`Ca bạn đang giữ trong tuần${week ? ` ${week}` : " này"} — nhả ca hoặc nhận thêm ngay tại đây.`}
-      />
+      <Kicker>Ca của tôi</Kicker>
+      <h1>Lịch của tôi</h1>
+      {week ? <p className="nq-muted">Tuần {week}</p> : null}
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
+<<<<<<< Updated upstream
+      {loading ? <Loading>Đang tải lịch của bạn…</Loading> : null}
+=======
+
+      <section className="mb-10 border-2 border-[var(--nq-dim)] p-4 md:p-6">
+        <h2 className="mb-2 text-lg font-black uppercase tracking-tighter text-[var(--nq-copper)]">
+          Nối Zalo / Telegram
+        </h2>
+        <p className="mb-3 text-sm text-[var(--nq-dim)]">
+          Ưu tiên Zalo OA (quán VN). Lấy mã → nhắn OA/bot:{" "}
+          <span className="font-mono text-[var(--nq-fg)]">/bind &lt;mã&gt;</span>. AI chỉ hiểu tin thật khi quán bật{" "}
+          <span className="font-mono">CA_AGENT_MODE=live</span>.
+        </p>
+        {channels ? (
+          <p className="mb-3 font-mono text-xs text-[var(--nq-dim)]">
+            Zalo: {channels.zalo?.connected ? "đã nối" : "chưa nối"} · Telegram:{" "}
+            {channels.telegram?.connected ? "đã nối" : "chưa nối"} · AI: {safeText(channels.agent_mode, "replay")}
+          </p>
+        ) : null}
+        {bindCode ? (
+          <Notice>
+            Mã của bạn: <strong className="font-mono text-[var(--nq-copper)]">{bindCode}</strong>
+          </Notice>
+        ) : null}
+        <Btn variant="primary" onClick={layMaBind}>
+          Lấy mã bind
+        </Btn>
+      </section>
+
       {loading ? <Loading skeleton="list">Đang tải lịch của bạn…</Loading> : null}
+>>>>>>> Stashed changes
       {!loading && ca.length === 0 && !error ? (
-        <Empty>
-          Chưa có ca nào trong tuần này. Lịch có thể chưa công bố — xem chợ đổi ca hoặc hỏi quản lý.
-        </Empty>
+        <Empty>Chưa có ca trong tuần này, hoặc lịch chưa công bố.</Empty>
       ) : null}
       {Object.keys(grouped)
         .sort()
         .map((ngay) => (
-          <section key={ngay} className="nq-section-day">
-            <Kicker>Ngày {formatNgay(ngay)}</Kicker>
+          <section key={ngay} style={{ marginTop: "1.25rem" }}>
+            <p className="nq-kicker">{ngay}</p>
             <div className="nq-list">
               {(grouped[ngay] ?? []).map((c) => {
                 const mine = c.trang_thai === "cua_toi";
-                const khung = khungLabel(c.khung);
                 return (
                   <div key={c.id} className="nq-item">
-                    <p className="nq-item-title">{safeText(c.vi_tri, "Vị trí chưa ghi")}</p>
+<<<<<<< Updated upstream
+                    <p style={{ margin: 0, fontWeight: 600 }}>{c.vi_tri}</p>
+                    <p className="nq-muted" style={{ margin: "0.2rem 0 0.6rem", fontFamily: "var(--nq-font-mono)" }}>
+                      {c.bat_dau} – {c.ket_thuc}
+                      {c.khung ? ` · ${c.khung}` : ""}
+=======
+                    <p className="nq-item-title">{viTriLabel(c.vi_tri)}</p>
                     <p className="nq-item-sub" style={{ fontFamily: "var(--nq-font-mono)" }}>
                       {safeText(c.bat_dau, "--:--")} – {safeText(c.ket_thuc, "--:--")}
                       {khung ? ` · ${khung}` : ""}
+>>>>>>> Stashed changes
                       {mine ? " · ca của bạn" : ""}
                     </p>
-                    <InlineActions>
+                    <p style={{ display: "flex", gap: "0.5rem", margin: 0 }}>
                       {(mine || c.co_the_nha) && (
-                        <Btn variant="danger" disabled={busy === c.id} onClick={() => act("nha", c.id)}>
-                          Nhả ca này
-                        </Btn>
+                        <button disabled={busy === c.id} onClick={() => act("nha", c.id)} style={btnDanger}>
+                          Nhả
+                        </button>
                       )}
                       {(!mine || c.co_the_nhan) && (
-                        <Btn variant="primary" disabled={busy === c.id} onClick={() => act("nhan", c.id)}>
-                          Nhận ca này
-                        </Btn>
+                        <button disabled={busy === c.id} onClick={() => act("nhan", c.id)} style={btnPrimary}>
+                          Nhận
+                        </button>
                       )}
-                    </InlineActions>
+                    </p>
                   </div>
                 );
               })}

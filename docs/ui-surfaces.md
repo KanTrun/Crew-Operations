@@ -7,6 +7,7 @@ Hồ sơ §11 (`apps/web` constraints-inbox / run-form / today / playbook / sop-
 | today | `/hom-nay` | Cả hai — hub sau đăng nhập |
 | run-form | `/phieu` | Nhân viên, một tay |
 | staff schedule | `/toi` | Nhân viên |
+| tkb-photo | `/tkb` | Upload ảnh TKB → AI đọc → xác nhận gắn NV |
 | treo | `/treo` | Cả hai |
 | roster-grid | `/roster` | Quản lý — ghim ô + vòng đời lịch |
 | constraints-inbox | `/inbox` | Quản lý duyệt |
@@ -20,5 +21,9 @@ Hồ sơ §11 (`apps/web` constraints-inbox / run-form / today / playbook / sop-
 | handover | `/handover` | SBAR |
 | agent-trace | `/vet` | Append-only audit |
 | overflow | `/them` | Nav ≤5 trên điện thoại |
+| channels bind | `/toi` (mục Nối Zalo/Telegram) | NV lấy mã bind; ưu tiên Zalo OA |
+| page-quan | `/page-quan` | Facebook Page quán — trống tới khi nối Meta |
 
 Trang `/` chỉ đưa vào đăng nhập hoặc chuyển `/hom-nay`. Không dump 10 liên kết.
+
+Kênh tin: Zalo trước, Telegram phụ; webhook + token trong `.env` — xem `docs/runbooks/zalo-oa-connect.md`. Replay fixture chỉ CI.

@@ -2,30 +2,60 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
-import { agentLabel, inboxLabel, inboxTone, safeText, viError } from "../../lib/present";
-import { getToken, isManager } from "../../lib/session";
+<<<<<<< Updated upstream
+=======
 import {
-  Alert,
-  AuthGate,
-  Btn,
-  Empty,
-  InlineActions,
-  Loading,
-  Notice,
-  PageHeader,
-  StatusChip,
-} from "../../ui/kit";
+  agentLabel,
+  formatLuc,
+  inboxLabel,
+  inboxTone,
+  kenhLabel,
+  khungLabel,
+  rangBuocLabel,
+  safeText,
+  thuLabel,
+  viError,
+  yDinhLabel,
+} from "../../lib/present";
+>>>>>>> Stashed changes
+import { getToken, isManager } from "../../lib/session";
+import { Alert, AuthGate, btnDanger, btnPrimary, Empty, Kicker, Loading } from "../../ui/kit";
 
+<<<<<<< Updated upstream
 type Item = { id: string; tom_tat: string; trang_thai: string; agent: string };
+=======
+type Item = {
+  id: string;
+  tom_tat: string;
+  trang_thai: string;
+  agent: string;
+  y_dinh?: string;
+  do_tin_cay?: number;
+  created_at?: string;
+  nguon?: string;
+  noi_dung_goc?: string;
+  nv_id?: string;
+  hieu_luc?: { loai?: string; ghi?: string; swap_id?: string };
+  rang_buoc?: { loai?: string; thu?: string; khung?: string };
+};
+
+/** Chờ duyệt trước — đó là việc còn phải làm; đã quyết chỉ để tra lại. */
+const THU_TU = ["cho_duyet", "moi", "duyet", "tu_choi"];
+
+const TEN_NHOM: Record<string, string> = {
+  cho_duyet: "Chờ bạn quyết",
+  moi: "Mới vào hộp thư",
+  duyet: "Đã duyệt",
+  tu_choi: "Đã từ chối",
+};
+>>>>>>> Stashed changes
 
 export default function InboxPage() {
   const [token, setToken] = useState("");
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
   const [manager, setManager] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
     setToken(getToken());
@@ -35,13 +65,9 @@ export default function InboxPage() {
 
   const load = useCallback(() => {
     if (!getToken()) return;
-    setLoading(true);
     apiGet<{ items: Item[] }>("/api/v1/inbox/rang-buoc")
-      .then((d) => {
-        setItems((d.items ?? []).filter((x) => x && typeof x.id === "string"));
-        setError(null);
-      })
-      .catch((e) => setError(viError(e, { doing: "mở được hộp thư ràng buộc" })))
+      .then((d) => setItems(d.items ?? []))
+      .catch(() => setError("Không tải được hộp thư."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -49,24 +75,20 @@ export default function InboxPage() {
     if (token) load();
   }, [token, load]);
 
-  async function decide(id: string, quyet_dinh: "duyet" | "tu_choi") {
-    setBusy(id);
-    setError(null);
-    setMsg(null);
+  async function decide(id: string, quyet_dinh: string) {
     try {
       await apiSend(`/api/v1/inbox/rang-buoc/${id}`, { quyet_dinh });
-      setMsg(quyet_dinh === "duyet" ? "Đã duyệt mục này." : "Đã từ chối mục này.");
-      load();
-    } catch (e) {
-      setError(
-        viError(e, {
-          doing: quyet_dinh === "duyet" ? "duyệt được mục này" : "từ chối được mục này",
-          forbidden: "Chỉ quản lý hoặc chủ quán mới quyết được mục trong hộp thư.",
-          missing: "Mục này không còn trong hộp thư — có thể người khác đã quyết. Tải lại hộp thư.",
-        }),
+<<<<<<< Updated upstream
+=======
+      push(
+        quyet_dinh === "duyet"
+          ? "Đã duyệt. Hệ thống ghi hiệu lực (chợ đổi ca / chờ xếp lịch) — không sửa lịch âm thầm."
+          : "Đã từ chối. Ràng buộc này không vào lượt xếp lịch.",
       );
-    } finally {
-      setBusy(null);
+>>>>>>> Stashed changes
+      load();
+    } catch {
+      setError("Cần quyền quản lý để duyệt.");
     }
   }
 
@@ -74,37 +96,92 @@ export default function InboxPage() {
 
   return (
     <div className="nq-page">
-      <PageHeader
-        kicker="Người duyệt · hệ thống không tự chọn"
-        title="Hộp thư ràng buộc"
-        meta="Nơi xử những ràng buộc mâu thuẫn nhau: người đọc rồi quyết, hệ thống không chọn hộ."
-      />
+      <Kicker>Người duyệt · hệ thống không tự chọn</Kicker>
+      <h1>Hộp thư ràng buộc</h1>
+      <p className="nq-muted">Khi hai claim mâu thuẫn, người quyết. Không tự chọn hộ.</p>
       {error ? <Alert>{error}</Alert> : null}
-      {msg ? <Alert kind="ok">{msg}</Alert> : null}
-      {!manager ? <Notice>Bạn xem được nội dung. Quản lý hoặc chủ quán mới bấm duyệt.</Notice> : null}
-      {loading ? <Loading skeleton="list">Đang mở hộp thư…</Loading> : null}
-      {!loading && !error && items.length === 0 ? (
-        <Empty>Hộp thư sạch — không có ràng buộc nào chờ người quyết.</Empty>
-      ) : null}
+<<<<<<< Updated upstream
+      {loading ? <Loading>Đang mở hộp thư…</Loading> : null}
+      {!loading && items.length === 0 ? <Empty>Không có mục chờ.</Empty> : null}
       <div className="nq-list">
         {items.map((it) => (
           <article key={it.id} className="nq-item">
-            <p className="nq-item-title">{safeText(it.tom_tat, "Ràng buộc chưa có tóm tắt")}</p>
-            <p className="nq-item-sub">
-              Từ {agentLabel(it.agent)} ·{" "}
-              <StatusChip tone={inboxTone(it.trang_thai)}>{inboxLabel(it.trang_thai)}</StatusChip>
+            <p style={{ margin: 0 }}>
+              <strong>{it.agent}</strong> — {it.tom_tat}
+            </p>
+            <p className="nq-muted" style={{ margin: "0.25rem 0 0.6rem" }}>
+              {it.trang_thai === "cho_duyet" ? "Chờ duyệt" : it.trang_thai}
             </p>
             {it.trang_thai === "cho_duyet" && manager ? (
-              <InlineActions>
-                <Btn variant="primary" disabled={busy === it.id} onClick={() => decide(it.id, "duyet")}>
-                  Duyệt ràng buộc
-                </Btn>
-                <Btn variant="danger" disabled={busy === it.id} onClick={() => decide(it.id, "tu_choi")}>
+              <p style={{ display: "flex", gap: "0.5rem", margin: 0 }}>
+                <button onClick={() => decide(it.id, "duyet")} style={btnPrimary}>
+                  Duyệt
+                </button>
+                <button onClick={() => decide(it.id, "tu_choi")} style={btnDanger}>
                   Từ chối
-                </Btn>
-              </InlineActions>
+                </button>
+              </p>
             ) : null}
           </article>
+=======
+      {!manager ? <Notice>Bạn xem được nội dung. Quản lý hoặc chủ quán mới bấm duyệt.</Notice> : null}
+      {loading ? <Loading skeleton="rows" rows={4} groups={3}>Đang mở hộp thư…</Loading> : null}
+      {!loading && !error && items.length === 0 ? (
+        <Empty>Hộp thư sạch — không có ràng buộc nào chờ người quyết.</Empty>
+      ) : null}
+
+      {!loading &&
+        nhom.map(([tt, list]) => (
+          <Group key={tt} title={TEN_NHOM[tt] ?? inboxLabel(tt)} count={list.length} countLabel="mục">
+            {list.map((it) => (
+              <Row
+                key={it.id}
+                title={safeText(it.tom_tat, "Ràng buộc chưa có tóm tắt")}
+                sub={
+                  <>
+                    {kenhLabel(it.nguon)} · {agentLabel(it.agent)}
+                    {it.nv_id ? ` · ${it.nv_id}` : ""}
+                    {it.rang_buoc?.loai ? ` · ràng buộc ${rangBuocLabel(it.rang_buoc.loai).toLowerCase()}` : ""}
+                    {it.rang_buoc?.thu ? ` · ${thuLabel(it.rang_buoc.thu)}` : ""}
+                    {it.rang_buoc?.khung ? ` ${khungLabel(it.rang_buoc.khung).toLowerCase()}` : ""}
+                    {it.created_at ? ` · ${formatLuc(it.created_at)}` : ""}
+                    {it.noi_dung_goc ? ` · gốc: ${safeText(it.noi_dung_goc).slice(0, 80)}` : ""}
+                    {it.hieu_luc?.ghi ? ` · ${it.hieu_luc.ghi}` : ""}
+                  </>
+                }
+                side={
+                  <>
+                    <StatusChip tone={inboxTone(it.trang_thai)}>{inboxLabel(it.trang_thai)}</StatusChip>
+                    <StatusChip>{kenhLabel(it.nguon)}</StatusChip>
+                    <StatusChip>{yDinhLabel(it.y_dinh)}</StatusChip>
+                    <Confidence value={it.do_tin_cay} />
+                  </>
+                }
+                actions={
+                  it.trang_thai === "cho_duyet" && manager ? (
+                    <>
+                      <Btn
+                        variant="primary"
+                        busy={busy === it.id}
+                        busyLabel="Đang ghi quyết định…"
+                        onClick={() => decide(it.id, "duyet")}
+                      >
+                        Duyệt ràng buộc
+                      </Btn>
+                      <Btn
+                        variant="danger"
+                        disabled={busy === it.id}
+                        onClick={() => decide(it.id, "tu_choi")}
+                      >
+                        Từ chối
+                      </Btn>
+                    </>
+                  ) : undefined
+                }
+              />
+            ))}
+          </Group>
+>>>>>>> Stashed changes
         ))}
       </div>
     </div>
