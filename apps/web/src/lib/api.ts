@@ -25,3 +25,12 @@ export async function apiSend<T>(path: string, body?: unknown, method = "POST"):
   if (!r.ok) throw new Error(String(r.status));
   return r.json() as Promise<T>;
 }
+
+/** Upload multipart (ảnh TKB). Không gắn Content-Type — browser tự set boundary. */
+export function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  return request<T>(path, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+}
