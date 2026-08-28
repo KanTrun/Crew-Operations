@@ -1,5 +1,7 @@
 # Chia việc theo nhánh — bốn vùng sở hữu
 
+**Repository:** https://github.com/KanTrun/Crew-Operations · **Sản phẩm:** NHỊP QUÁN
+
 Nguồn luật: hồ sơ §12 và `plans/260821-2221-nhip-quan-lot1-full-delivery/plan.md`.
 Tài liệu này chốt **ai sở hữu đường dẫn nào**, **nhánh nào chứa gì**, và **thứ tự merge**
 để bốn người làm song song mà không giẫm chân.
@@ -34,6 +36,20 @@ phần của mình và không nhánh nào đỏ vì thiếu phụ thuộc.
 `.github/workflows/ci.yml` đi trọn trong nhánh 6 dù có phần thuộc hạ tầng —
 cùng chủ B, tách đôi một file chỉ làm review khó hơn.
 
+## 2b. Nhánh bổ sung trên remote
+
+| Nhánh | Vùng | Ghi chú |
+|-------|------|---------|
+| `feat/api-channels-va-tkb-upload` | B | Kênh tin, upload TKB |
+| `feat/agents-messaging-va-tkb-anh` | C | Messaging ports, TKB ảnh |
+| `feat/web-tkb-kenh-va-ux` | D | UI TKB + kênh |
+| `feat/web-premium-ops-v3` | D | Ops UI v3 |
+| `feat/web-awwwards-redesign` | D | Redesign web |
+| `fix/web-trang-thai-tai` | D | Sửa trạng thái tải |
+| `docs/runbook-kenh-tin-va-tkb` | D | Runbook kênh + TKB |
+
+Đồng bộ README/docs từ `main` sang mọi nhánh: `python scripts/sync_docs_crew_operations.py`
+
 ## 3. Thứ tự merge
 
 Merge từ trên xuống. GitHub tự trỏ lại base khi nhánh cha merge xong.
@@ -49,11 +65,11 @@ PR #8  feat/ops-sprint3-van-hanh   nền S3–S5 (đã xanh 11 cổng)
                          └─ 7  docs/runbook-va-trang-thai    D — chốt trạng thái
 ```
 
-Mỗi PR: squash merge, tiêu đề Conventional Commits, một người duyệt theo CODEOWNERS.
-
 > **Cần sửa cấu hình repo:** nhánh mặc định trên GitHub đang là
 > `chore/infra-bootstrap`, không phải `main`. Hồ sơ §12 bảo vệ `main`, nên phải
 > đổi lại default branch trước khi bật branch protection.
+
+Mỗi PR: squash merge, tiêu đề Conventional Commits, một người duyệt theo CODEOWNERS.
 
 ## 4. Luật nhánh
 
