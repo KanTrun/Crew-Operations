@@ -12,8 +12,9 @@
 | Groq free tier | ToS Groq | Rate limit thay đổi theo thời điểm | 2026-08-21 | Không phụ thuộc một nhà cung cấp |
 | OpenRouter free models | ToS OpenRouter | Hạn mức credit free thay đổi | 2026-08-21 | Ghi `make budget` tuần |
 | Ollama local | MIT (phần mềm) | Phụ thuộc máy đội | 2026-08-21 | Phương án B khi hết hạn mức cloud |
-| Telegram Bot API | Telegram ToS | Free cho bot thông thường | 2026-08-21 | Backend tin nhắn chính |
-| Zalo OA | Zalo OA ToS / bảng giá | **Gói miễn phí có thể không đủ / đổi** | 2026-08-21 | Port messaging: console+Telegram bắt buộc; Zalo optional |
+| Zalo OA | Zalo OA ToS / bảng giá | **Gói miễn phí có thể không đủ / đổi** | 2026-08-27 | **Kênh tin ưu tiên (VN)** — runbook `docs/runbooks/zalo-oa-connect.md`; cần OA + token do quán tạo |
+| Telegram Bot API | Telegram ToS | Free cho bot thông thường | 2026-08-27 | Kênh phụ cùng MessagePort; runbook `telegram-bot-connect.md` |
+| Facebook Page / Graph | Meta Platform ToS | App Review + quyền Page | 2026-08-27 | Surface `/page-quan` riêng; trống tới khi có token — `facebook-page-connect.md` |
 | Thu thập Google Maps / ShopeeFood / Grab | ToS từng nền tảng | Thu thập tự động **không** giả định được phép | 2026-08-21 | AG-VOC chỉ nhận phản hồi quán tự chuyển |
 
 ## Kết luận vận hành (không phải lời hứa marketing)

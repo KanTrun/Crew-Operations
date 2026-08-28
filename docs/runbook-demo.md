@@ -15,9 +15,9 @@ Dữ liệu ghi được nằm trong volume `nhipquan_var` (`/app/var`): `quan.d
 sổ lần sửa, cẩm nang. Seed và template YAML nướng sẵn trong image ở `/app/data`
 và `/app/infra/templates`, nên xoá volume không mất dữ liệu gốc.
 
-> **Windows:** BuildKit không build được khi đường dẫn kho có dấu tiếng Việt
-> (`x-docker-expose-session-sharedkey` non-ASCII). Tạo lối tắt ASCII rồi build từ đó:
-> `mklink /J C:\nhipquan "D:\CA-CÔNG-BẰNG"`.
+> **Windows:** BuildKit không build được khi đường dẫn kho có ký tự non-ASCII
+> (`x-docker-expose-session-sharedkey`). Clone hoặc junction sang đường dẫn ASCII:
+> `mklink /J C:\nhipquan C:\path\to\Crew-Operations`
 
 ## Cách thủ công (không Docker)
 
