@@ -2,7 +2,7 @@ r"""Chạy Docker Compose toàn tuyến, chịu được đường dẫn có d�
 
 ## Vì sao cần script này thay vì gọi `docker compose` trực tiếp
 
-Repo có thể được clone vào thư mục có dấu, ví dụ `D:\CA-CÔNG-BẰNG`. Khi đó
+Repo có thể được clone vào thư mục có dấu tiếng Việt. Khi đó
 BuildKit của Docker Desktop trên Windows nhét đường dẫn vào HTTP/2 header
 `x-docker-expose-session-sharedkey`, và header HTTP chỉ nhận ASCII in được nên
 build vỡ ngay từ đầu:
@@ -53,17 +53,6 @@ WEB_URL = "http://localhost:3000"
 
 def _env() -> dict[str, str]:
     env = dict(os.environ)
-    dotenv = ROOT / ".env"
-    if dotenv.is_file():
-        for line in dotenv.read_text(encoding="utf-8").splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#") or "=" not in stripped:
-                continue
-            key, _, value = stripped.partition("=")
-            key = key.strip()
-            value = value.strip().strip("'").strip('"')
-            if key and key not in env:
-                env[key] = value
     # Builder classic: không mở gRPC session nên không có header non-ASCII.
     env["DOCKER_BUILDKIT"] = "0"
     env["COMPOSE_DOCKER_CLI_BUILD"] = "0"
@@ -72,7 +61,11 @@ def _env() -> dict[str, str]:
 
 
 def _compose(*args: str) -> int:
-    cmd = ["docker", "compose", "-p", PROJECT, "-f", str(COMPOSE), *args]
+    cmd = ["docker", "compose", "-p", PROJECT, "-f", str(COMPOSE)]
+    dotenv = ROOT / ".env"
+    if dotenv.is_file():
+        cmd.extend(["--env-file", str(dotenv)])
+    cmd.extend(args)
     print("$", " ".join(cmd), flush=True)
     return subprocess.call(cmd, env=_env())
 

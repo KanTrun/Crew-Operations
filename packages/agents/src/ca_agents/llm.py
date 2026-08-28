@@ -41,7 +41,7 @@ _OPENROUTER_MODELS = (
     "meta-llama/llama-3.3-70b-instruct:free",
     "meta-llama/llama-3.1-8b-instruct",
 )
-_UA = "nhip-quan/0.1 (https://github.com/KanTrun/CA-CONG-BANG)"
+_UA = "nhip-quan/0.1 (https://github.com/KanTrun/Crew-Operations)"
 _DOTENV_LOADED = False
 
 
@@ -140,15 +140,21 @@ def complete(
     task: str = "text",
     timeout_s: float = 45.0,
     json_mode: bool = True,
+    image_bytes: bytes | None = None,
+    image_mime: str | None = None,
 ) -> LlmResult:
-    """Call the first live provider that has credentials and answers."""
+    """Call the first live provider that has credentials and answers.
+
+    Pass ``image_bytes`` + ``image_mime`` for vision tasks (TKB photo).
+    """
     ensure_dotenv()
     router = FreeTierRouter(mode="live")
     exhausted: set[str] = set()
     last_reason = "no_provider"
+    route_task = "vision:ag_tkb" if image_bytes else task
 
     while True:
-        decision = router.choose(task, exhausted)
+        decision = router.choose(route_task, exhausted)
         if decision.provider == "tu_choi":
             return LlmResult(
                 ok=False,
@@ -176,6 +182,8 @@ def complete(
                 user=user,
                 timeout_s=timeout_s,
                 json_mode=json_mode,
+                image_bytes=image_bytes,
+                image_mime=image_mime,
             )
         except _ProviderError as exc:
             exhausted.add(decision.provider)
@@ -225,9 +233,13 @@ def _call_provider(
     user: str,
     timeout_s: float,
     json_mode: bool,
+    image_bytes: bytes | None = None,
+    image_mime: str | None = None,
 ) -> str:
     last: _ProviderError | None = None
     if provider == "groq":
+        if image_bytes:
+            raise _ProviderError("vision_unsupported:groq")
         for model in _model_list("GROQ_MODEL", _GROQ_MODELS):
             try:
                 return _openai_compat(
@@ -256,8 +268,10 @@ def _call_provider(
                     user=user,
                     timeout_s=timeout_s,
                     json_mode=json_mode,
+                    image_bytes=image_bytes,
+                    image_mime=image_mime,
                     extra_headers={
-                        "HTTP-Referer": "https://github.com/KanTrun/CA-CONG-BANG",
+                        "HTTP-Referer": "https://github.com/KanTrun/Crew-Operations",
                         "X-Title": "NHIP QUAN",
                     },
                 )
@@ -277,6 +291,8 @@ def _call_provider(
                     user=user,
                     timeout_s=timeout_s,
                     json_mode=json_mode,
+                    image_bytes=image_bytes,
+                    image_mime=image_mime,
                 )
             except _ProviderError as exc:
                 last = exc
@@ -285,6 +301,8 @@ def _call_provider(
                 raise
         raise last or _ProviderError("gemini_no_model")
     if provider == "ollama":
+        if image_bytes:
+            raise _ProviderError("vision_unsupported:ollama")
         return _ollama(
             base=os.environ["OLLAMA_BASE_URL"].rstrip("/"),
             model=_env_model("OLLAMA_MODEL", "llama3.2"),
@@ -337,13 +355,26 @@ def _openai_compat(
     timeout_s: float,
     json_mode: bool,
     extra_headers: dict[str, str] | None = None,
+    image_bytes: bytes | None = None,
+    image_mime: str | None = None,
 ) -> str:
+    if image_bytes:
+        import base64
+
+        mime = image_mime or "image/jpeg"
+        b64 = base64.b64encode(image_bytes).decode("ascii")
+        user_content: Any = [
+            {"type": "text", "text": user},
+            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+        ]
+    else:
+        user_content = user
     payload: dict[str, Any] = {
         "model": model,
         "temperature": 0,
         "messages": [
             {"role": "system", "content": system},
-            {"role": "user", "content": user},
+            {"role": "user", "content": user_content},
         ],
     }
     if json_mode:
@@ -373,22 +404,37 @@ def _gemini(
     user: str,
     timeout_s: float,
     json_mode: bool,
+    image_bytes: bytes | None = None,
+    image_mime: str | None = None,
 ) -> str:
+    import base64
+
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         f"?key={urllib.parse.quote(token, safe='')}"
     )
+    parts: list[dict[str, Any]] = []
+    if image_bytes:
+        parts.append(
+            {
+                "inline_data": {
+                    "mime_type": image_mime or "image/jpeg",
+                    "data": base64.b64encode(image_bytes).decode("ascii"),
+                }
+            }
+        )
+    parts.append({"text": user})
     payload: dict[str, Any] = {
         "systemInstruction": {"parts": [{"text": system}]},
-        "contents": [{"role": "user", "parts": [{"text": user}]}],
+        "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {"temperature": 0},
     }
     if json_mode:
         payload["generationConfig"]["responseMimeType"] = "application/json"
     data = _http_json(url, payload, headers={}, timeout_s=timeout_s)
     try:
-        parts = data["candidates"][0]["content"]["parts"]
-        text = "".join(str(p.get("text") or "") for p in parts)
+        parts_out = data["candidates"][0]["content"]["parts"]
+        text = "".join(str(p.get("text") or "") for p in parts_out)
     except (KeyError, IndexError, TypeError) as exc:
         raise _ProviderError("missing_candidates") from exc
     if not text.strip():
