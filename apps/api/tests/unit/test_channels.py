@@ -1,0 +1,162 @@
+"""Kênh tin + Page quán — CI dùng replay; không giả dữ liệu quán."""
+
+from __future__ import annotations
+
+from ca_agents.messaging import InboundMessage
+from ca_api.interfaces.http.channels import process_inbound
+from ca_api.interfaces.http.main import app
+from ca_api.persist import kv_get
+from fastapi.testclient import TestClient
+
+from unit.auth_util import headers
+
+client = TestClient(app)
+
+
+def test_channels_status_zalo_first_disconnected() -> None:
+    ql = headers(client, "lan")
+    r = client.get("/api/v1/channels/status", headers=ql)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["uu_tien"][0] == "zalo"
+    assert body["zalo"]["connected"] is False
+    assert body["telegram"]["connected"] is False
+    assert body["facebook"]["connected"] is False
+
+
+def test_replay_forbidden_without_flag() -> None:
+    ql = headers(client, "lan")
+    r = client.post("/api/v1/channels/replay", json={"limit": 2}, headers=ql)
+    assert r.status_code == 403
+
+
+def test_bind_issue_and_inbound_enqueue(monkeypatch) -> None:
+    monkeypatch.setenv("CA_AGENT_MODE", "replay")
+    nv = headers(client, "minh")
+    issued = client.post("/api/v1/channels/bind/issue", headers=nv)
+    assert issued.status_code == 200, issued.text
+    code = issued.json()["code"]
+    assert "Zalo" in issued.json()["huong_dan"] or "zalo" in issued.json()["huong_dan"].lower()
+
+    bind = process_inbound(
+        InboundMessage(text=f"/bind {code}", channel="zalo", external_user_id="z_user_1"),
+        reply_backend="replay",
+    )
+    assert bind["ok"] is True
+    assert bind["hanh"] == "bind"
+    assert bind["nv_id"]
+
+    enq = process_inbound(
+        InboundMessage(
+            text="em xin nghỉ ca sáng mai",
+            channel="zalo",
+            external_user_id="z_user_1",
+        ),
+        reply_backend="replay",
+    )
+    assert enq["ok"] is True
+    assert enq["hanh"] == "enqueue"
+    item = enq["item"]
+    assert item["nguon"] == "zalo"
+    assert item["nv_id"]
+    assert item["trang_thai"] == "cho_duyet"
+
+    ql = headers(client, "lan")
+    items = client.get("/api/v1/inbox/rang-buoc", headers=ql).json()["items"]
+    found = next(i for i in items if i["id"] == item["id"])
+    assert found["nguon"] == "zalo"
+    assert found.get("noi_dung_goc")
+
+
+def test_xem_lich_after_bind(monkeypatch) -> None:
+    monkeypatch.setenv("CA_AGENT_MODE", "replay")
+    nv = headers(client, "minh")
+    code = client.post("/api/v1/channels/bind/issue", headers=nv).json()["code"]
+    process_inbound(
+        InboundMessage(text=f"/bind {code}", channel="telegram", external_user_id="tg_99"),
+        reply_backend="replay",
+    )
+    r = process_inbound(
+        InboundMessage(text="xem lịch của tôi", channel="telegram", external_user_id="tg_99"),
+        reply_backend="replay",
+    )
+    assert r["ok"] is True
+    assert r["hanh"] == "xem_lich"
+    assert r["message"]["ok"] is True
+    assert r["message"]["backend"] == "replay"
+
+
+def test_inbox_duyet_doi_ca_opens_swap(monkeypatch) -> None:
+    monkeypatch.setenv("CA_AGENT_MODE", "replay")
+    nv = headers(client, "minh")
+    code = client.post("/api/v1/channels/bind/issue", headers=nv).json()["code"]
+    process_inbound(
+        InboundMessage(text=f"/bind {code}", channel="zalo", external_user_id="z_swap"),
+        reply_backend="replay",
+    )
+    enq = process_inbound(
+        InboundMessage(text="anh cho em đổi ca chiều", channel="zalo", external_user_id="z_swap"),
+        reply_backend="replay",
+    )
+    item_id = enq["item"]["id"]
+    # Force intent if classifier returns something else in replay
+    from ca_api.persist import kv_mutate
+
+    def force(items):
+        for it in items:
+            if it.get("id") == item_id:
+                it["y_dinh"] = "doi_ca"
+                it["nv_id"] = enq["item"]["nv_id"]
+        return items
+
+    kv_mutate("inbox_rang_buoc", force, [])
+
+    ql = headers(client, "lan")
+    decided = client.post(
+        f"/api/v1/inbox/rang-buoc/{item_id}",
+        json={"quyet_dinh": "duyet"},
+        headers=ql,
+    )
+    assert decided.status_code == 200, decided.text
+    body = decided.json()
+    assert body["trang_thai"] == "duyet"
+    assert body.get("hieu_luc", {}).get("loai") == "cho_doi_ca"
+    assert body["hieu_luc"].get("swap_id")
+    swaps = kv_get("swap", [])
+    assert any(s.get("id") == body["hieu_luc"]["swap_id"] for s in swaps)
+
+
+def test_page_empty_without_fixture_seed() -> None:
+    ql = headers(client, "lan")
+    st = client.get("/api/v1/page/status", headers=ql)
+    assert st.status_code == 200
+    assert st.json()["connected"] is False
+    th = client.get("/api/v1/page/threads", headers=ql)
+    assert th.status_code == 200
+    assert th.json()["items"] == []
+
+
+def test_zalo_webhook_off_without_enabled() -> None:
+    r = client.post(
+        "/api/v1/channels/zalo/webhook",
+        json={"message": {"text": "hi"}, "sender": {"id": "1"}},
+    )
+    assert r.status_code == 200
+    assert r.json().get("ok") is False
+
+
+def test_replay_with_flag(monkeypatch) -> None:
+    monkeypatch.setenv("NHIPQUAN_ALLOW_MSG_REPLAY", "1")
+    monkeypatch.setenv("CA_AGENT_MODE", "replay")
+    ql = headers(client, "lan")
+    # Bind fixture users so enqueue/xem_lich don't all fail chua_bind
+    for uid, user in (("10001", "minh"), ("10003", "lan")):
+        h = headers(client, user)
+        code = client.post("/api/v1/channels/bind/issue", headers=h).json()["code"]
+        process_inbound(
+            InboundMessage(text=f"/bind {code}", channel="telegram", external_user_id=uid),
+            reply_backend="replay",
+        )
+    r = client.post("/api/v1/channels/replay", json={"limit": 5}, headers=ql)
+    assert r.status_code == 200, r.text
+    assert r.json()["n"] >= 1
