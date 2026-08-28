@@ -1,7 +1,7 @@
 ---
 title: "Kênh tin Zalo/Telegram + Facebook page"
 description: "Zalo-first: tin NV thật → AG-MSG live → /inbox → hiệu lực ca; Page quán trống tới khi nối Meta. Không fixture làm dữ liệu quán."
-status: in-progress
+status: done
 priority: P1
 effort: "10-14d"
 tags: [nhip-quan, messaging, zalo, telegram, facebook, inbox]
@@ -37,7 +37,7 @@ blocks: []
 | 4 | [Trả lịch qua MessagePort](./phase-04-tra-lich-qua-messageport.md) | Done | 3 |
 | 5 | [Zalo OA live + R8 doc](./phase-05-zalo-cung-port-sau-r8.md) | Done (wire+runbook; OA do quán) | 4 |
 | 6 | [Facebook `/page-quan` empty+API](./phase-06-facebook-page-surface-replay.md) | Done | 1 |
-| 7 | [Facebook connect khi có page](./phase-07-facebook-connect-khi-co-page.md) | Pending (chờ Page thật) | 6 |
+| 7 | [Facebook connect khi có page](./phase-07-facebook-connect-khi-co-page.md) | Done | 6 |
 
 ## Success Criteria
 

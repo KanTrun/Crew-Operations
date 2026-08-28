@@ -1,5 +1,7 @@
 # Đội NHỊP QUÁN — map GitHub
 
+**Repository:** [KanTrun/Crew-Operations](https://github.com/KanTrun/Crew-Operations)
+
 > Cập nhật handle thật rồi sửa `.github/CODEOWNERS`. Hiện chỉ có `@KanTrun` trên remote nên mọi vùng tạm trỏ về account này.
 
 | Vai trò hồ sơ | Trách nhiệm | GitHub | Trạng thái |

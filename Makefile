@@ -66,7 +66,7 @@ budget:
 # ── Docker toàn tuyến: postgres · redis · api · worker · web ──────────────────
 #
 # Gọi qua scripts/docker_stack.py, KHÔNG gọi `docker compose` trực tiếp.
-# Lý do: nếu repo nằm trong thư mục có dấu (ví dụ D:\CA-CÔNG-BẰNG) thì BuildKit
+# Lý do: nếu repo nằm trong thư mục có ký tự non-ASCII thì BuildKit
 # nhét đường dẫn vào header HTTP/2 và build vỡ ngay:
 #   header key "x-docker-expose-session-sharedkey" contains value with
 #   non-printable ASCII characters

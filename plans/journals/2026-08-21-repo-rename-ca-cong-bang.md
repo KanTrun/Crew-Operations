@@ -1,4 +1,8 @@
-# Repo Rename: CA-C-NG-B-NG → CA-CONG-BANG
+# Repo rename: CA-C-NG-B-NG → CA-CONG-BANG → Crew-Operations
+
+> **Lịch sử.** Journal gốc ghi đổi tên 2026-08-21. Repo hiện tại:
+> https://github.com/KanTrun/Crew-Operations — xem
+> `plans/journals/2026-08-28-repo-rename-crew-operations.md`.
 
 **Date**: 2026-08-21 23:42  
 **Severity**: Low  
@@ -16,8 +20,8 @@ This should have been caught before the first push. The repo name is the first t
 ## Actions Taken
 
 - `gh repo rename CA-CONG-BANG` on `KanTrun/CA-C-NG-B-NG`
-- Updated `README.md`, `docs/team.md`, `plan.md`, brainstorm report (4 files) — PR [#4](https://github.com/KanTrun/CA-CONG-BANG/pull/4)
-- Cherry-picked rename commit onto `feat/api-sprint1` so PR [#3](https://github.com/KanTrun/CA-CONG-BANG/pull/3) won't reintroduce the old name
+- Updated `README.md`, `docs/team.md`, `plan.md`, brainstorm report (4 files) — PR [#4](https://github.com/KanTrun/Crew-Operations/pull/4)
+- Cherry-picked rename commit onto `feat/api-sprint1` so PR [#3](https://github.com/KanTrun/Crew-Operations/pull/3) won't reintroduce the old name
 - Updated local `origin` remote URL; old GitHub URL auto-redirects
 
 ## Lesson
