@@ -14,6 +14,9 @@ build/
 node_modules/
 apps/web/.next/
 apps/web/out/
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/tsconfig.tsbuildinfo
 npm-debug.log*
 
 # Env / secrets
@@ -27,9 +30,27 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+
+# AgentKit / Kiro — công cụ trợ lý cục bộ, không phải mã sản phẩm.
+# .kiro/agentkit chứa bản export portable (1491 tệp) nên tuyệt đối không commit.
+.kiro/
+
 # Docker
 *.log
 
-# AgentKit / Claude local
+# Generated solver output (CI regenerates via make bench)
+data/out/lich_tuan.json
+data/out/so_lan_sua.jsonl
+data/out/cam_nang.json
+data/out/audit.jsonl
+data/quan.db
+data/quan.db-wal
+data/quan.db-shm
+!data/out/.gitkeep
+
 .claude/
-.agentkit/adapters/
+

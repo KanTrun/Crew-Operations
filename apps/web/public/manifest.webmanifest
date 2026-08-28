@@ -1,0 +1,9 @@
+{
+  "name": "NHỊP QUÁN",
+  "short_name": "NhipQuan",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#12100e",
+  "theme_color": "#c4a574",
+  "lang": "vi"
+}

@@ -1,0 +1,200 @@
+{"id": "msg_001", "text": "anh cho em đổi ca chieu với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_002", "text": "em nhận ca sang bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_003", "text": "em xin phép đến trễ 15 phút ca chieu", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_004", "text": "tuần này em học T4 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_005", "text": "máy pha bên em hơi kêu lạ ca chieu", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_006", "text": "em xin nghỉ ca sang ngày T5 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_007", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_008", "text": "em nhận ca toi bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_009", "text": "em xin phép đến trễ 15 phút ca chieu", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_010", "text": "tuần này em học T2 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_011", "text": "máy pha bên em hơi kêu lạ ca toi", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_012", "text": "em xin nghỉ ca sang ngày T3 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_013", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_014", "text": "em nhận ca sang bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_015", "text": "em xin phép đến trễ 15 phút ca sang", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_016", "text": "tuần này em học T5 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_017", "text": "máy pha bên em hơi kêu lạ ca toi", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_018", "text": "em xin nghỉ ca toi ngày T3 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_019", "text": "anh cho em đổi ca chieu với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_020", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_021", "text": "em xin phép đến trễ 15 phút ca chieu", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_022", "text": "tuần này em học T6 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_023", "text": "máy pha bên em hơi kêu lạ ca toi", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_024", "text": "em xin nghỉ ca sang ngày CN ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_025", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_026", "text": "em nhận ca sang bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_027", "text": "em xin phép đến trễ 15 phút ca sang", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_028", "text": "tuần này em học T7 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_029", "text": "máy pha bên em hơi kêu lạ ca chieu", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_030", "text": "em xin nghỉ ca toi ngày T3 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_031", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_032", "text": "em nhận ca toi bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_033", "text": "em xin phép đến trễ 15 phút ca toi", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_034", "text": "tuần này em học T7 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_035", "text": "máy pha bên em hơi kêu lạ ca chieu", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_036", "text": "em xin nghỉ ca toi ngày T6 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_037", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_038", "text": "em nhận ca toi bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_039", "text": "em xin phép đến trễ 15 phút ca sang", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_040", "text": "tuần này em học T5 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_041", "text": "máy pha bên em hơi kêu lạ ca toi", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_042", "text": "em xin nghỉ ca sang ngày T6 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_043", "text": "anh cho em đổi ca toi với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_044", "text": "em nhận ca sang bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_045", "text": "em xin phép đến trễ 15 phút ca chieu", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_046", "text": "tuần này em học T2 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_047", "text": "máy pha bên em hơi kêu lạ ca chieu", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_048", "text": "em xin nghỉ ca toi ngày CN ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_049", "text": "anh cho em đổi ca chieu với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_050", "text": "em nhận ca sang bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_051", "text": "em xin phép đến trễ 15 phút ca sang", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_052", "text": "tuần này em học T7 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_053", "text": "máy pha bên em hơi kêu lạ ca chieu", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_054", "text": "em xin nghỉ ca toi ngày CN ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_055", "text": "anh cho em đổi ca chieu với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_056", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_057", "text": "em xin phép đến trễ 15 phút ca toi", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_058", "text": "tuần này em học T4 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_059", "text": "máy pha bên em hơi kêu lạ ca sang", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_060", "text": "em xin nghỉ ca sang ngày T4 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_061", "text": "anh cho em đổi ca chieu với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_062", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_063", "text": "em xin phép đến trễ 15 phút ca toi", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_064", "text": "tuần này em học T4 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_065", "text": "máy pha bên em hơi kêu lạ ca sang", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_066", "text": "em xin nghỉ ca chieu ngày T3 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_067", "text": "anh cho em đổi ca chieu với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_068", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_069", "text": "em xin phép đến trễ 15 phút ca chieu", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_070", "text": "tuần này em học T6 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_071", "text": "máy pha bên em hơi kêu lạ ca toi", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_072", "text": "em xin nghỉ ca toi ngày T2 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_073", "text": "anh cho em đổi ca toi với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_074", "text": "em nhận ca sang bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_075", "text": "em xin phép đến trễ 15 phút ca toi", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_076", "text": "tuần này em học T6 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_077", "text": "máy pha bên em hơi kêu lạ ca sang", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_078", "text": "em xin nghỉ ca chieu ngày T7 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_079", "text": "anh cho em đổi ca toi với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_080", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_081", "text": "em xin phép đến trễ 15 phút ca sang", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_082", "text": "tuần này em học T3 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_083", "text": "máy pha bên em hơi kêu lạ ca chieu", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_084", "text": "em xin nghỉ ca sang ngày T4 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_085", "text": "anh cho em đổi ca toi với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_086", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_087", "text": "em xin phép đến trễ 15 phút ca toi", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_088", "text": "tuần này em học T5 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_089", "text": "máy pha bên em hơi kêu lạ ca toi", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_090", "text": "em xin nghỉ ca chieu ngày T4 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_091", "text": "anh cho em đổi ca toi với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_092", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_093", "text": "em xin phép đến trễ 15 phút ca chieu", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_094", "text": "tuần này em học T7 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_095", "text": "máy pha bên em hơi kêu lạ ca sang", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_096", "text": "em xin nghỉ ca sang ngày T7 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_097", "text": "anh cho em đổi ca toi với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_098", "text": "em nhận ca toi bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_099", "text": "em xin phép đến trễ 15 phút ca sang", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_100", "text": "tuần này em học T5 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_101", "text": "máy pha bên em hơi kêu lạ ca chieu", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_102", "text": "em xin nghỉ ca toi ngày CN ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_103", "text": "anh cho em đổi ca toi với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_104", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_105", "text": "em xin phép đến trễ 15 phút ca sang", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_106", "text": "tuần này em học T4 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_107", "text": "máy pha bên em hơi kêu lạ ca sang", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_108", "text": "em xin nghỉ ca sang ngày T7 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_109", "text": "anh cho em đổi ca toi với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_110", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_111", "text": "em xin phép đến trễ 15 phút ca sang", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_112", "text": "tuần này em học T7 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_113", "text": "máy pha bên em hơi kêu lạ ca sang", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_114", "text": "em xin nghỉ ca chieu ngày T2 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_115", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_116", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_117", "text": "em xin phép đến trễ 15 phút ca chieu", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_118", "text": "tuần này em học T3 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_119", "text": "máy pha bên em hơi kêu lạ ca sang", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_120", "text": "em xin nghỉ ca chieu ngày T2 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_121", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_122", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_123", "text": "em xin phép đến trễ 15 phút ca toi", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_124", "text": "tuần này em học T2 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_125", "text": "máy pha bên em hơi kêu lạ ca sang", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_126", "text": "em xin nghỉ ca toi ngày T4 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_127", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_128", "text": "em nhận ca sang bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_129", "text": "em xin phép đến trễ 15 phút ca chieu", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_130", "text": "tuần này em học CN sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_131", "text": "máy pha bên em hơi kêu lạ ca toi", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_132", "text": "em xin nghỉ ca toi ngày T5 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_133", "text": "anh cho em đổi ca chieu với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_134", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_135", "text": "em xin phép đến trễ 15 phút ca toi", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_136", "text": "tuần này em học T6 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_137", "text": "máy pha bên em hơi kêu lạ ca toi", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_138", "text": "em xin nghỉ ca toi ngày T7 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_139", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_140", "text": "em nhận ca sang bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_141", "text": "em xin phép đến trễ 15 phút ca sang", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_142", "text": "tuần này em học T2 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_143", "text": "máy pha bên em hơi kêu lạ ca sang", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_144", "text": "em xin nghỉ ca sang ngày T6 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_145", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_146", "text": "em nhận ca sang bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_147", "text": "em xin phép đến trễ 15 phút ca chieu", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_148", "text": "tuần này em học T5 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_149", "text": "máy pha bên em hơi kêu lạ ca chieu", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_150", "text": "em xin nghỉ ca sang ngày T4 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_151", "text": "anh cho em đổi ca toi với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_152", "text": "em nhận ca toi bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_153", "text": "em xin phép đến trễ 15 phút ca chieu", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_154", "text": "tuần này em học T3 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_155", "text": "máy pha bên em hơi kêu lạ ca chieu", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_156", "text": "em xin nghỉ ca toi ngày T6 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_157", "text": "anh cho em đổi ca toi với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_158", "text": "em nhận ca sang bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_159", "text": "em xin phép đến trễ 15 phút ca sang", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_160", "text": "tuần này em học T7 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_161", "text": "máy pha bên em hơi kêu lạ ca sang", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_162", "text": "em xin nghỉ ca sang ngày T2 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_163", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_164", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_165", "text": "em xin phép đến trễ 15 phút ca toi", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_166", "text": "tuần này em học T4 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_167", "text": "máy pha bên em hơi kêu lạ ca chieu", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_168", "text": "em xin nghỉ ca chieu ngày T7 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_169", "text": "anh cho em đổi ca chieu với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_170", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_171", "text": "em xin phép đến trễ 15 phút ca toi", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_172", "text": "tuần này em học T5 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_173", "text": "máy pha bên em hơi kêu lạ ca sang", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_174", "text": "em xin nghỉ ca sang ngày T5 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_175", "text": "anh cho em đổi ca toi với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_176", "text": "em nhận ca toi bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_177", "text": "em xin phép đến trễ 15 phút ca sang", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_178", "text": "tuần này em học T7 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_179", "text": "máy pha bên em hơi kêu lạ ca toi", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_180", "text": "em xin nghỉ ca sang ngày CN ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_181", "text": "anh cho em đổi ca toi với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_182", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_183", "text": "em xin phép đến trễ 15 phút ca sang", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_184", "text": "tuần này em học T5 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_185", "text": "máy pha bên em hơi kêu lạ ca toi", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_186", "text": "em xin nghỉ ca chieu ngày T4 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_187", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_188", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_189", "text": "em xin phép đến trễ 15 phút ca chieu", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_190", "text": "tuần này em học T4 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_191", "text": "máy pha bên em hơi kêu lạ ca chieu", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_192", "text": "em xin nghỉ ca chieu ngày T7 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_193", "text": "anh cho em đổi ca sang với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_194", "text": "em nhận ca sang bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}
+{"id": "msg_195", "text": "em xin phép đến trễ 15 phút ca chieu", "intent": "bao_tre", "annotator_a": "bao_tre", "annotator_b": "bao_tre", "synthetic": true}
+{"id": "msg_196", "text": "tuần này em học T4 sáng, nhờ cập nhật TKB", "intent": "cap_nhat_tkb", "annotator_a": "cap_nhat_tkb", "annotator_b": "cap_nhat_tkb", "synthetic": true}
+{"id": "msg_197", "text": "máy pha bên em hơi kêu lạ ca toi", "intent": "khac", "annotator_a": "khac", "annotator_b": "khac", "synthetic": true}
+{"id": "msg_198", "text": "em xin nghỉ ca toi ngày T2 ạ", "intent": "xin_nghi", "annotator_a": "xin_nghi", "annotator_b": "xin_nghi", "synthetic": true}
+{"id": "msg_199", "text": "anh cho em đổi ca chieu với bạn được không", "intent": "doi_ca", "annotator_a": "doi_ca", "annotator_b": "doi_ca", "synthetic": true}
+{"id": "msg_200", "text": "em nhận ca chieu bị thiếu người nhé", "intent": "nhan_ca", "annotator_a": "nhan_ca", "annotator_b": "nhan_ca", "synthetic": true}

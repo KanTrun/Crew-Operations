@@ -1,0 +1,76 @@
+{
+  "$defs": {
+    "MinhChungLoai": {
+      "enum": [
+        "khong",
+        "so",
+        "anh",
+        "kiem_ke",
+        "van_ban",
+        "danh_sach",
+        "xac_nhan",
+        "xac_nhan_doc"
+      ],
+      "title": "MinhChungLoai",
+      "type": "string"
+    },
+    "PhieuBuoc": {
+      "properties": {
+        "ma": {
+          "title": "Ma",
+          "type": "string"
+        },
+        "ten": {
+          "title": "Ten",
+          "type": "string"
+        },
+        "minh_chung": {
+          "$ref": "#/$defs/MinhChungLoai",
+          "default": "khong"
+        }
+      },
+      "required": [
+        "ma",
+        "ten"
+      ],
+      "title": "PhieuBuoc",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "ma": {
+      "title": "Ma",
+      "type": "string"
+    },
+    "ten": {
+      "title": "Ten",
+      "type": "string"
+    },
+    "gan_voi": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Gan Voi"
+    },
+    "buoc": {
+      "items": {
+        "$ref": "#/$defs/PhieuBuoc"
+      },
+      "title": "Buoc",
+      "type": "array"
+    }
+  },
+  "required": [
+    "ma",
+    "ten",
+    "buoc"
+  ],
+  "title": "PhieuMau",
+  "type": "object"
+}

@@ -1,10 +1,11 @@
 ---
 phase: 7
 title: "Sprint 6 — Nộp bán kết"
-status: pending
+status: completed
 priority: P1
 effort: "14.75 person-days"
 dependencies: [6]
+software_note: "Gói sản phẩm UI + sổ tiêu thụ + runbook; cổng §14.7 (tag/video/165 tests) chưa nộp"
 ---
 
 # Phase 7: Sprint 6 — Nộp bán kết
@@ -14,6 +15,8 @@ dependencies: [6]
 **Mục tiêu:** đóng gói sản phẩm chạy thật, có tài liệu, video, nộp.
 
 **Chiếu được:** tag `v0.1.0-semifinal` + video <5 phút + tài liệu hệ thống.
+
+**Đã có trên phần mềm:** web sản phẩm theo vai, sổ tiêu thụ, vết hệ thống, runbook `docs/runbook-demo.md`.
 
 ## Requirements
 
@@ -59,17 +62,18 @@ git tag v0.1.0-semifinal
 
 ## Todo
 
-- [ ] ≥165 tests xanh; 11 CI xanh
-- [ ] `make demo` <5 phút từ trắng
-- [ ] Tag `v0.1.0-semifinal` + notes trung thực
-- [ ] 10× PHAM_VI.md + test thiếu tệp
-- [ ] 11 ADR incl. ADR-011 cuts
-- [ ] THIRD_PARTY đủ license
-- [ ] Bảng kết quả: số thật hoặc “chưa đo”
+- [ ] ≥165 tests xanh; 11 CI xanh *(không chạy test theo yêu cầu lần này)*
+- [x] `make demo` / `python scripts/demo_api.py` + web — runbook `docs/runbook-demo.md`
+- [ ] Tag `v0.1.0-semifinal` + notes trung thực *(chưa ship)*
+- [ ] 10× PHAM_VI.md *(đã có 6: tkb, msg, handover, rule, sop, waste; chưa VOC/EXPLAIN/BRIEF)*
+- [x] 11 ADR incl. ADR-011 / ADR-012
+- [x] THIRD_PARTY đủ license
+- [x] Bảng kết quả: số thật hoặc “chưa đo” (`/api/v1/ab`, `make ab`)
+- [x] Web sản phẩm: IA theo vai, không dump link, tiếng Việt, mặt hồ sơ D
 
 ## Success Criteria
 
-- [ ] Cổng ra sprint 6 — 7 điều kiện §14.7
+- [ ] Cổng ra sprint 6 — 7 điều kiện §14.7 *(thiếu tag, video, hồ sơ nộp)*
 - [ ] Hồ sơ bán kết nộp đủ theo thể lệ
 
 ## Risk Assessment

@@ -27,14 +27,14 @@ jobs:
       - name: Install Python tools
         run: pip install ruff mypy
       - name: Ruff
-        run: ruff check apps packages || true
+        run: ruff check apps/api/src packages scripts
       - name: Mypy (packages when present)
         run: |
           if [ -f pyproject.toml ]; then mypy packages apps/api/src --ignore-missing-imports || true; fi
       - name: ESLint / tsc (web)
         working-directory: apps/web
         run: |
-          if [ -f package.json ]; then npm ci && npm run lint && npm run typecheck; else echo "web stub"; fi
+          if [ -f package.json ]; then npm install && npm run lint && npm run typecheck; else echo "web stub"; fi
 
   unit:
     name: "02 unit"
@@ -44,8 +44,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pytest
-      - run: pytest -q apps packages || true
+      - name: Install workspace
+        run: |
+          pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api pytest httpx pyyaml ortools
+      - run: CA_AGENT_MODE=replay pytest -q
+      - name: Export contracts
+        run: python scripts/export_contracts.py
 
   integration:
     name: "03 integration"
@@ -93,20 +97,36 @@ jobs:
   solver-bench:
     name: "05 solver bench"
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'solver') || contains(github.event.head_commit.message, 'solver') || github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
-      - run: echo "bench stub — activate when packages/solver has benchmarks"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install solver + deps
+        run: |
+          python -m pip install -e ./packages/contracts -e ./packages/solver \
+            -e ./packages/gates -e ./packages/playbook pyyaml ortools
+      - name: Solve + independent verify
+        run: |
+          python scripts/solve_tuan.py
+          python scripts/verify_hard.py
 
   agent-eval:
     name: "06 agent eval"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Enforce replay mode (no live LLM)
         run: |
           test "$CA_AGENT_MODE" = "replay"
-          echo "eval stub — make eval when golden sets land"
+      - name: Install agents + eval
+        run: |
+          python -m pip install -e ./packages/agents -e ./packages/contracts
+          CA_AGENT_MODE=replay python scripts/eval_ag_tkb.py
+          CA_AGENT_MODE=replay python scripts/eval_ag_msg.py
 
   web:
     name: "07 web"
@@ -118,15 +138,26 @@ jobs:
           node-version: "22"
       - working-directory: apps/web
         run: |
-          if [ -f package.json ]; then npm ci && npm test; else echo "web stub"; fi
+          if [ -f package.json ]; then npm install && npm test; else echo "web stub"; fi
 
   e2e:
     name: "08 e2e"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
     steps:
       - uses: actions/checkout@v4
-      - run: echo "playwright stub — enable on main/release when flows exist"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install API + Playwright
+        run: |
+          pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api httpx pyyaml ortools uvicorn
+          cd apps/web && npm install && npx playwright install --with-deps chromium
+      - name: Playwright 8 flows
+        working-directory: apps/web
+        run: npm run test:e2e
 
   docker:
     name: "09 docker build"
@@ -134,6 +165,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose -f infra/docker/compose.yml build
+      - name: Stack lên và smoke toàn tuyến
+        run: |
+          docker compose -f infra/docker/compose.yml up -d
+          docker compose -f infra/docker/compose.yml exec -T api python /app/scripts/smoke_docker.py
+      - name: Log khi đỏ
+        if: failure()
+        run: docker compose -f infra/docker/compose.yml logs --tail=200
+      - name: Dọn
+        if: always()
+        run: docker compose -f infra/docker/compose.yml down -v
 
   no-live-llm:
     name: "10 no live LLM in tests"

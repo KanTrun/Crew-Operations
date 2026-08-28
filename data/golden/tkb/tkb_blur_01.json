@@ -1,0 +1,10 @@
+{
+  "id": "tkb_blur_01",
+  "file": "tkb_blur_01.svg",
+  "nhan_vien_id": "nv_99",
+  "blur": true,
+  "khoang_ban": [],
+  "spans": [],
+  "synthetic": true,
+  "note": "Intentional blur fixture for VF-CONF escalate demo"
+}

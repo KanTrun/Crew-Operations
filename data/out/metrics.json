@@ -1,0 +1,242 @@
+{
+  "phien_ban_bo_do": 1,
+  "nguon_du_lieu": "data/seed/sample.json — Quán Fixture NHỊP QUÁN (ADR-012)",
+  "che_do_agent": "replay",
+  "nhan_nguon_cho_phep": [
+    "mo_phong_fixture",
+    "quan_that"
+  ],
+  "ghi_chu": "Bộ đo này chỉ đo 7 số cần quán thật (#1 #3 #7 #8 #9 #11 #12). Năm số còn lại đã đo ở nơi khác và không bị tính lại ở đây.",
+  "so_do": [
+    {
+      "so": 1,
+      "ten": "Tỉ lệ không cần sửa theo tuần (W1→W8)",
+      "gia_tri": {
+        "theo_tuan": [
+          {
+            "tuan_iso": "2026-W01",
+            "tong_phan_cong": 49,
+            "phai_sua": 33,
+            "khong_can_sua": 16,
+            "ti_le": 0.3265
+          },
+          {
+            "tuan_iso": "2026-W02",
+            "tong_phan_cong": 49,
+            "phai_sua": 31,
+            "khong_can_sua": 18,
+            "ti_le": 0.3673
+          },
+          {
+            "tuan_iso": "2026-W03",
+            "tong_phan_cong": 49,
+            "phai_sua": 33,
+            "khong_can_sua": 16,
+            "ti_le": 0.3265
+          },
+          {
+            "tuan_iso": "2026-W04",
+            "tong_phan_cong": 49,
+            "phai_sua": 32,
+            "khong_can_sua": 17,
+            "ti_le": 0.3469
+          },
+          {
+            "tuan_iso": "2026-W05",
+            "tong_phan_cong": 49,
+            "phai_sua": 32,
+            "khong_can_sua": 17,
+            "ti_le": 0.3469
+          },
+          {
+            "tuan_iso": "2026-W06",
+            "tong_phan_cong": 49,
+            "phai_sua": 34,
+            "khong_can_sua": 15,
+            "ti_le": 0.3061
+          },
+          {
+            "tuan_iso": "2026-W07",
+            "tong_phan_cong": 49,
+            "phai_sua": 28,
+            "khong_can_sua": 21,
+            "ti_le": 0.4286
+          },
+          {
+            "tuan_iso": "2026-W08",
+            "tong_phan_cong": 49,
+            "phai_sua": 33,
+            "khong_can_sua": 16,
+            "ti_le": 0.3265
+          }
+        ],
+        "ti_le_8_tuan": 0.3469,
+        "tong_phan_cong_8_tuan": 392
+      },
+      "trang_thai": "do_duoc",
+      "nguon": "mo_phong_fixture",
+      "cach_do": "Với mỗi tuần W1→W8 của `lich_su_8_tuan`: tổng phân công = Σ|phan_cong[ca]|. 'Phải sửa' = số cặp (ca, nhân viên) bị ít nhất một ràng buộc cứng c01–c06 chỉ tên khi chạy `ca_solver.solve_hard_only` trên đúng tuần đó (quy vi phạm về cặp theo `cap_phai_sua`). Tỉ lệ = (tổng − phải sửa)/tổng. Ở quán thật, tử số đổi sang số cặp bị quản lý sửa sau công bố, lấy từ `ca_playbook.list_sua`; công thức và bảng không đổi, chỉ đổi nguồn.",
+      "canh_bao": "Lịch sử 8 tuần của fixture do bộ sinh dữ liệu bốc ngẫu nhiên tạo ra (`scripts/generate_fixture_data.py`), KHÔNG do bộ giải sinh. Vì thế con số này đo mức hợp lệ của lịch sử fixture, không đo hiệu quả hệ thống. Nó chỉ thành chỉ số §18.2 khi tử số lấy từ sổ sửa của quán thật."
+    },
+    {
+      "so": 3,
+      "ten": "Thời gian xếp ca trước / sau",
+      "gia_tri": {
+        "truoc_gio": null,
+        "truoc_trang_thai": "chua_do",
+        "sau_giay": 0.086,
+        "sau_status": "OPTIMAL",
+        "sau_vi_pham_cung": 0,
+        "quy_mo": "25 người · 21 ca"
+      },
+      "trang_thai": "mot_phan",
+      "nguon": "mo_phong_fixture",
+      "cach_do": "Nửa 'sau' = `ca_solver.solve_cpsat(build_lich_input(), time_limit_s=60)` trên fixture 25 người · 21 ca, lấy `elapsed_s` do chính bộ giải bấm. Nửa 'trước' phải bấm đồng hồ khi quản lý quán xếp lịch bằng Excel.",
+      "ly_do": "Nửa 'trước' chưa đo: cần bấm đồng hồ tại quán khi quản lý xếp lịch tay. Hồ sơ có nêu khoảng 2,5–4 giờ nhưng đó là con số nghe kể, chưa đo, nên bộ đo không ghi nó vào đây.",
+      "khong_tat_dinh": [
+        "sau_giay"
+      ]
+    },
+    {
+      "so": 7,
+      "ten": "Tỉ lệ hoàn thành phiếu + thời gian TB",
+      "gia_tri": {
+        "du_minh_chung": {
+          "so_phieu": 112,
+          "buoc_tong": 1344,
+          "buoc_xong": 1344,
+          "ti_le": 1.0,
+          "dau_hieu_chong_tich_khong": 0
+        },
+        "thieu_anh": {
+          "so_phieu": 112,
+          "buoc_tong": 1344,
+          "buoc_xong": 560,
+          "ti_le": 0.4167,
+          "dau_hieu_chong_tich_khong": 0
+        },
+        "thoi_gian_tb_phut": null,
+        "thoi_gian_trang_thai": "chua_do"
+      },
+      "trang_thai": "mot_phan",
+      "nguon": "mo_phong_fixture",
+      "cach_do": "Chạy `ca_ops` qua trọn mẫu `mo_quan` (ca khung 'sang') và `dong_quan` (ca khung 'toi') cho cả 8 tuần × 7 ngày của fixture, mỗi phiếu do người đầu tiên trong `phan_cong` giữ. Tỉ lệ = Σ`so_xong`/Σ`so_buoc` do chính `run_to_dict` đếm. Kịch bản `thieu_anh` không cung cấp ảnh minh chứng để xem máy dừng ở đâu. Đồng hồ là ảo, nhịp cố định 5 giây/bước.",
+      "ly_do": "Thời gian TB chưa đo: nhịp 5 giây/bước là đồng hồ ảo do bộ đo đặt để tất định, không phải thời gian thao tác của người. Muốn có số thật cần dấu thời gian từ điện thoại nhân viên tại quán.",
+      "canh_bao": "Tỉ lệ 100% ở kịch bản `du_minh_chung` là kết quả cấu trúc: kịch bản fixture cung cấp đủ minh chứng cho mọi bước. Nó chứng minh máy quy trình đi đúng thứ tự và đóng được phiếu, KHÔNG chứng minh nhân viên làm đủ bước."
+    },
+    {
+      "so": 8,
+      "ten": "Việc treo được ca sau nhận / tổng",
+      "gia_tri": {
+        "tong_treo": 168,
+        "duoc_ca_sau_nhan": 167,
+        "khong_co_ca_sau": 1,
+        "ca_sau_khong_xac_nhan": 0,
+        "ti_le": 0.994
+      },
+      "trang_thai": "do_duoc",
+      "nguon": "mo_phong_fixture",
+      "cach_do": "Xếp 8 tuần × 21 ca theo thứ tự thời gian, mỗi ca chạy một phiếu `ban_giao_ca` bằng `ca_ops` và treo lại một việc. Việc treo tính là 'được nhận' khi phiếu bàn giao của ca liền sau hoàn thành bước `nguoi_nhan_xac_nhan`. Ca cuối chuỗi không có ca sau nên đếm riêng.",
+      "canh_bao": "Tỉ lệ cao là kết quả cấu trúc: máy quy trình không cho đóng phiếu bàn giao nếu chưa qua bước người nhận xác nhận, và kịch bản fixture luôn chạy hết phiếu. Con số này chứng minh chuỗi bàn giao không rơi việc trong mã, KHÔNG chứng minh nhân viên thật có đọc việc treo."
+    },
+    {
+      "so": 9,
+      "ten": "Sai số sổ tiêu thụ vs đếm tay",
+      "gia_tri": null,
+      "trang_thai": "chua_do",
+      "nguon": "mo_phong_fixture",
+      "cach_do": "Công thức §4.3: tiêu thụ trong ca = đếm đầu ca + nhập trong ca − đếm cuối ca − hao hụt đã ghi. Sai số = |tiêu thụ suy ra − đếm tay| / đếm tay, tính theo từng mặt hàng trong `danh_muc` 8 mặt hàng của mẫu phiếu. Cần bốn cột dữ liệu: `kiem_ke_dau_ca`, `nhap_trong_ca`, `kiem_ke_cuoi_ca`, `ghi_hao_hut`, cộng một cột đếm tay độc lập.",
+      "ly_do": "Fixture ADR-012 (`data/seed/sample.json`) không có một số kiểm kê nào: không có đếm hai đầu ca, không có số nhập, không có hao hụt, và không có cột đếm tay độc lập để so. Nếu tự sinh số kiểm kê synthetic thì sai số đo được chỉ là sai số mà bộ sinh vừa nhét vào — số vòng tròn, không phải số đo. Cần ≥2 tuần kiểm kê thật tại quán."
+    },
+    {
+      "so": 11,
+      "ten": "Lần cổng VF đẩy lên người (theo cổng)",
+      "gia_tri": {
+        "theo_cong": {
+          "VF-SCHEMA": {
+            "chay": 51,
+            "day_len_nguoi": 0,
+            "yeu_cau_lam_lai": 0
+          },
+          "VF-TRACE": {
+            "chay": 51,
+            "day_len_nguoi": 1,
+            "yeu_cau_lam_lai": 0
+          },
+          "VF-CONF": {
+            "chay": 51,
+            "day_len_nguoi": 1,
+            "yeu_cau_lam_lai": 0
+          },
+          "VF-NUM": {
+            "chay": 49,
+            "day_len_nguoi": 0,
+            "yeu_cau_lam_lai": 0
+          },
+          "VF-RULE": {
+            "chay": 21,
+            "day_len_nguoi": 0,
+            "yeu_cau_lam_lai": 0
+          },
+          "VF-CONFLICT": {
+            "chay": 51,
+            "day_len_nguoi": 50,
+            "yeu_cau_lam_lai": 0
+          }
+        },
+        "tong_day_len_nguoi": 52,
+        "tong_lan_chay_cong": 274
+      },
+      "trang_thai": "do_duoc",
+      "nguon": "mo_phong_fixture",
+      "cach_do": "Sáu cổng, mỗi cổng một bộ golden dựng từ fixture: VF-SCHEMA/VF-TRACE/VF-CONF chạy `ca_gates.run_vf_pipeline` trên 51 ảnh `data/golden/tkb` (chứng cứ = nội dung tệp SVG, `source_span` là vị trí thật của nhãn khoảng bận trong tệp đó); VF-NUM chạy `validate_num` trên câu AG-EXPLAIN soạn cho từng phân công tuần W1, tập số cho phép lấy từ `sinh_ly_do(...).so_lieu_cho_phep()`; VF-RULE chạy `validate_rule` trên 21 luật ứng viên `nhu_cau_ca` dựng từ 8 tuần (nhóm theo thứ × khung, bằng chứng = các tuần quan sát); VF-CONFLICT so TKB do AG-TKB đọc từ ảnh với TKB khai trong seed cho cùng một người. 'Đẩy lên người' = `escalate` (hoặc `conflict` với VF-CONFLICT).",
+      "canh_bao": "Số của VF-CONFLICT cao vì hai nguồn TKB trong fixture được sinh độc lập (seed khai 1 khối bận, ảnh golden vẽ 3–4 khối), nên đây là tính chất của fixture chứ không phải mức lệch dữ liệu tại quán."
+    },
+    {
+      "so": 12,
+      "ten": "Gọi model/ngày · p50/p95 latency · token",
+      "gia_tri": {
+        "che_do": "replay",
+        "so_lan_goi_mang_that": 0,
+        "so_lan_goi_replay_mot_ngay": 51,
+        "provider_khac_replay": 0,
+        "tong_prompt_chars": 8058,
+        "p50_ms": null,
+        "p95_ms": null,
+        "token_ngay": null,
+        "latency_token_trang_thai": "chua_do"
+      },
+      "trang_thai": "mot_phan",
+      "nguon": "mo_phong_fixture",
+      "cach_do": "Một ngày demo = quản lý nạp trọn 51 ảnh golden. Với mỗi ảnh, `ca_agents.router.FreeTierRouter(mode='replay').choose()` chọn provider và `AgentRuntime.run_replay('ag_tkb','0.1.0', ...)` chạy một lần; bộ đo đếm số lần gọi và tổng `prompt_chars` do runtime trả về.",
+      "ly_do": "p50/p95 và token chưa đo: đây là REPLAY, 0 lần gọi mạng thật (router trả `provider='replay'`, xem `packages/agents/tests/test_no_network.py`). Mọi latency đo được ở đây là latency đọc tệp cục bộ, không phải latency LLM; token cũng không sinh ra vì không có lời gọi mô hình nào. Muốn có số thật phải bật chế độ live và đọc hoá đơn provider."
+    }
+  ],
+  "khong_do_o_day": [
+    {
+      "so": "2",
+      "ten": "Chi phí thực tế toàn dự án",
+      "do_boi": "sổ 14 dòng + ảnh hạn mức"
+    },
+    {
+      "so": "4",
+      "ten": "Vi phạm ràng buộc cứng",
+      "do_boi": "scripts/verify_hard.py"
+    },
+    {
+      "so": "5",
+      "ten": "AG-TKB accuracy + % đẩy người",
+      "do_boi": "scripts/eval_ag_tkb.py"
+    },
+    {
+      "so": "6",
+      "ten": "AG-MSG confusion 6 ý định",
+      "do_boi": "scripts/eval_ag_msg.py"
+    },
+    {
+      "so": "10",
+      "ten": "Vòng đời luật 8 bước",
+      "do_boi": "POST /cam-nang/chay-8-buoc"
+    }
+  ]
+}

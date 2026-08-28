@@ -56,8 +56,10 @@ Bộ điều phối (deterministic) ── ghi DB duy nhất
 
 **Owners:** A solver/gates/ops/playbook · B api/orc/ci · C agents/router/eval · D web/tpl/docs
 
-**Repo:** https://github.com/KanTrun/CA-C-NG-B-NG  
+**Repo:** https://github.com/KanTrun/CA-CONG-BANG  
 **GitHub ops detail:** [`docs/github-operating-model.md`](../../docs/github-operating-model.md) · [`docs/team.md`](../../docs/team.md)  
+**Chia việc theo nhánh (bản thi hành):** [`docs/phan-cong-nhanh.md`](../../docs/phan-cong-nhanh.md)  
+**Chạy toàn tuyến Docker:** [`docs/runbook-demo.md`](../../docs/runbook-demo.md) — `make docker-up && make docker-smoke`  
 **Foundation brainstorm:** [reports/260821-2235-brainstorm-github-foundation.md](../reports/260821-2235-brainstorm-github-foundation.md)
 
 ---
@@ -128,13 +130,47 @@ PR bắt buộc · 1 duyệt CODEOWNERS · dismiss stale reviews · CI xanh · b
 | Khởi tạo monorepo, Makefile, pre-commit | `/ak:bootstrap` hoặc cook phase T0/S1 |
 | Schema DB + Alembic | `/ak:databases` |
 | CI 11 cổng, Docker, bảo vệ `main` | `/ak:devops` |
-| UI PWA, lưới lịch, phiếu điện thoại | `/ak:frontend-design` → `/ak:frontend-development` |
+| **UI/UX xuất sắc (bắt buộc khi chạm web)** | xem **§ UI/UX AgentKit pipeline** bên dưới |
 | Viết ADR / runbook / hồ sơ nộp | `/ak:docs` |
 | Kim tự tháp 215 tests, Playwright | `/ak:test` · `/ak:web-testing` |
 | Quét secret / dependency | `/ak:security-scan` |
 | Review PR theo checklist §12.4 | `/ak:code-review` |
 | Dashboard plan | `ak gui` hoặc `ak config` → `http://localhost:3456/plans` |
 | Reindex nếu sửa tay lệch store | `ak plan reindex` |
+
+### UI/UX AgentKit pipeline (bắt buộc cho mọi `feat/web-*`)
+
+**Hợp đồng thẩm mỹ:** [`docs/design-guidelines.md`](../../docs/design-guidelines.md)  
+**Brainstorm:** [reports/260821-2249-brainstorm-uiux-pipeline.md](../reports/260821-2249-brainstorm-uiux-pipeline.md)
+
+| Bước | Lệnh | Việc |
+|------|------|------|
+| 0 | Đọc `docs/design-guidelines.md` | Không được bỏ qua tokens / register / dials |
+| 1 | `/ak:ui-ux-pro-max` | Style, palette, type, a11y, touch 44×44, UX rules theo product type *cafe ops PWA* |
+| 2 | `/ak:frontend-design` | Craft anti-slop: composition, motion, states; **Product register** |
+| 3 | (tuỳ chọn) `/ak:stitch` | Mockup annotated trước khi code nếu cần preview |
+| 4 | `/ak:frontend-development` | Implement Next.js/PWA đúng tokens |
+| 5 | `/ak:web-testing` | a11y + mobile + visual smoke |
+| 6 | Self-review gate Frontend Design | Contrast, reduced-motion, one-hand phiếu |
+
+**Dials (Product app — quản lý + nhân viên):**
+
+| Dial | Giá trị | Lý do |
+|------|---------|--------|
+| `DESIGN_VARIANCE` | **3** | Lưới lịch / phiếu cần quen thuộc, không art-direction loạn |
+| `MOTION_INTENSITY` | **2** | 150–250ms state only; không page-load choreography |
+| `VISUAL_DENSITY` | **6** | Nhiều thông tin ca/tuần; hairline + mono số; **không** card-slop |
+
+**Cấm khi cook web:** Inter/Roboto mặc định · purple-on-white · cream+terracotta cliché · emoji-as-icon · hero overlay badges · bỏ focus ring.
+
+**Lệnh copy-paste mỗi PR web:**
+
+```text
+/ak:ui-ux-pro-max "NHIP QUAN cafe shift PWA — roster grid, mobile run-form one-hand, playbook, fairness board"
+/ak:frontend-design  # dials 3/2/6, Product register, follow docs/design-guidelines.md
+/ak:frontend-development
+/ak:web-testing
+```
 
 ### C. Makefile (sản phẩm) — chạy mỗi ngày / mỗi PR
 
@@ -154,14 +190,14 @@ Thứ 6  cổng ra sprint (mắt + lệnh) · /ak:journal · /ak:retro ngắn
 
 | Phase | Cook focus | Skills phụ |
 |-------|------------|------------|
-| 01 T0 | Research + docs + bootstrap gates | research, docs, devops |
-| 02 S1 | Bootstrap monorepo + contracts | bootstrap, databases, devops, frontend-design |
-| 03 S2 | Solver + gates 1–3 + AG-TKB + lưới | cook A/C/D song song |
-| 04 S3 | Opsengine + orchestration + phiếu mobile | databases, frontend-development |
-| 05 S4 | Quán dùng thật + VF conflict/num | fix (nếu blocker người), ship |
-| 06 S5 | Playbook 8 bước + AG-RULE/SOP | test e2e |
-| 07 S6 | 10 agents đủ + semifinal package | docs, ship tag |
-| 08 S7 | Harden + đo 12 số — **no features** | test, security-scan, journal |
+| 01 T0 | Research + docs + **seed design-guidelines** | research, docs, devops |
+| 02 S1 | Contracts + **PWA shell qua UI pipeline** | ui-ux-pro-max → frontend-design → frontend-development |
+| 03 S2 | Solver + AG-TKB + **lưới lịch (UI pipeline)** | A/C cook + D: full UI pipeline |
+| 04 S3 | Ops + **phiếu mobile one-hand (UI pipeline)** | ui-ux-pro-max → frontend-design → web-testing |
+| 05 S4 | Quán thật + fairness/today boards | UI pipeline + ship |
+| 06 S5 | Playbook + SOP chat UI | UI pipeline + e2e |
+| 07 S6 | Semifinal package | docs, ship tag |
+| 08 S7 | Harden + đo — **no features** | test, security-scan, journal |
 | 09 S8 | Freeze + demo drill | ship final, retro |
 
 ---
@@ -170,15 +206,15 @@ Thứ 6  cổng ra sprint (mắt + lệnh) · /ak:journal · /ak:retro ngắn
 
 | # | Phase | Status | Effort | Depends |
 |---|-------|--------|--------|---------|
-| 1 | [Tuần 0 — Ngày 1–2 & chuẩn bị](./phase-01-start.md) | Pending | 2 ngày | — |
-| 2 | [Sprint 1 — Nền và hợp đồng](./phase-02-sprint-1-nen-va-hop-dong.md) | Pending | 17,25 md | 1 |
-| 3 | [Sprint 2 — Mốc sinh tử solver](./phase-03-sprint-2-moc-sinh-tu-solver.md) | Pending | 17,75 md | 2 |
-| 4 | [Sprint 3 — Vận hành & ghi nhận sửa](./phase-04-sprint-3-van-hanh-va-ghi-nhan-sua.md) | Pending | 18,00 md | 3 |
-| 5 | [Sprint 4 — Quán dùng thật](./phase-05-sprint-4-qun-dung-that.md) | Pending | 18,00 md | 4 |
-| 6 | [Sprint 5 — Cẩm nang sống](./phase-06-sprint-5-cam-nang-song.md) | Pending | 17,25 md | 5 |
-| 7 | [Sprint 6 — Nộp bán kết](./phase-07-sprint-6-nop-ban-ket.md) | Pending | 14,75 md | 6 |
-| 8 | [Sprint 7 — Làm cứng và đo](./phase-08-sprint-7-lam-cung-va-do.md) | Pending | 18 md | 7 |
-| 9 | [Sprint 8 — Đóng băng và bảo vệ](./phase-09-sprint-8-dong-bang-va-bao-ve.md) | Pending | 18 md | 8 |
+| 1 | [Tuần 0 — Ngày 1–2 & chuẩn bị](./phase-01-start.md) | Completed | 2 ngày | — |
+| 2 | [Sprint 1 — Nền và hợp đồng](./phase-02-sprint-1-nen-va-hop-dong.md) | Completed | 17,25 md | 1 |
+| 3 | [Sprint 2 — Mốc sinh tử solver](./phase-03-sprint-2-moc-sinh-tu-solver.md) | Completed | 17,75 md | 2 |
+| 4 | [Sprint 3 — Vận hành & ghi nhận sửa](./phase-04-sprint-3-van-hanh-va-ghi-nhan-sua.md) | Completed (software; §14.4 phone TBD) | 18,00 md | 3 |
+| 5 | [Sprint 4 — Quán dùng thật](./phase-05-sprint-4-qun-dung-that.md) | Completed (software; §14.5 quán TBD) | 18,00 md | 4 |
+| 6 | [Sprint 5 — Cẩm nang sống](./phase-06-sprint-5-cam-nang-song.md) | Completed (software; 0 luật quán thật) | 17,25 md | 5 |
+| 7 | [Sprint 6 — Nộp bán kết](./phase-07-sprint-6-nop-ban-ket.md) | Completed (software UI + runbook; §14.7 nộp TBD) | 14,75 md | 6 |
+| 8 | [Sprint 7 — Làm cứng và đo](./phase-08-sprint-7-lam-cung-va-do.md) | In progress (252 tests · mypy 0 · 5/12 số đo được; 7 số còn lại chặn bởi quán thật) | 18 md | 7 |
+| 9 | [Sprint 8 — Đóng băng và bảo vệ](./phase-09-sprint-8-dong-bang-va-bao-ve.md) | Pending (freeze + demo ×5) | 18 md | 8 |
 
 ## Backlog sau bảo vệ (không cook trong plan này)
 
@@ -187,12 +223,13 @@ Thứ 6  cổng ra sprint (mắt + lệnh) · /ak:journal · /ak:retro ngắn
 
 ## Success Criteria (toàn plan)
 
-- [ ] 13 việc 18.1 xong trước khi mở Sprint 1 đầy đủ
-- [ ] Mốc sinh tử 1 (S2): lịch 25 người, 0 vi phạm cứng, kiểm bằng script độc lập
+- [x] 13 việc 18.1 xong trước khi mở Sprint 1 đầy đủ (đường fixture ADR-012; quán thật vẫn slot mở)
+- [x] Mốc sinh tử 1 (S2): lịch 25 người, 0 vi phạm cứng, kiểm bằng script độc lập
 - [ ] Mốc sinh tử 2 (S4): lịch tuần + ≥5 phiếu thật tại quán
 - [ ] S5: ≥1 luật đi hết 8 bước **hoặc** thuyết trình trung thực về số luật thật
 - [ ] S6: ≥165 tests, tag `v0.1.0-semifinal`, 10× `PHAM_VI.md`, 11 ADR
-- [ ] S7: 215 tests; 12 số mục 18.2 hoàn tất
+- [x] S7 phần kiểm được bằng máy: **252 tests** (mốc 215), coverage 94%, ruff sạch, `mypy --strict` 0 lỗi / 96 file
+- [ ] S7 phần cần quán thật: 7/12 số mục 18.2 vẫn `chưa đo` (#1 #3 #7 #8 #9 #11 #12) — xem `docs/ket-qua-tong-hop.md`
 - [ ] S8: tag `v1.0.0-final`; demo 10 phút ×5, ≥2 lần offline
 - [ ] Chi phí dự án = 0 đồng kiểm được (sổ 14 dòng)
 
