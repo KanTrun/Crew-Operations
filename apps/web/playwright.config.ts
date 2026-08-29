@@ -9,7 +9,7 @@ export default defineConfig({
   reporter: "list",
   timeout: 60_000,
   use: {
-    baseURL: "http://localhost:3001",
+    baseURL: "http://localhost:3000",
     trace: "on-first-retry",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
@@ -22,10 +22,9 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: "npx next start -p 3001",
-      url: "http://localhost:3001",
-      cwd: __dirname,
-      reuseExistingServer: false,
+      command: "npm run dev",
+      url: "http://localhost:3000",
+      reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
   ],

@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
+import { matchExact, matchSearch, uniqueSorted } from "../../lib/list-filters";
 import { nvLabel, safeText, swapLabel, viError } from "../../lib/present";
 import { getToken } from "../../lib/session";
 import {
@@ -17,6 +18,7 @@ import {
   PageHeader,
   StatusChip,
 } from "../../ui/kit";
+import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 
 type Swap = { id: string; a: string; b: string; c: string; ca_id: string; trang_thai: string };
 
@@ -31,6 +33,9 @@ export default function DoiCaPage() {
   const [ca, setCa] = useState("w1_c01");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusF, setStatusF] = useState("all");
+  const [personF, setPersonF] = useState("all");
 
   useEffect(() => {
     setToken(getToken());
@@ -52,6 +57,46 @@ export default function DoiCaPage() {
   useEffect(() => {
     if (token) load();
   }, [token, load]);
+
+  const statusOptions = useMemo(
+    () => [
+      { value: "all", label: "Mọi trạng thái" },
+      { value: "cho", label: swapLabel("cho") },
+      { value: "dong_y", label: swapLabel("dong_y") },
+      { value: "tu_choi", label: swapLabel("tu_choi") },
+    ],
+    [],
+  );
+
+  const personOptions = useMemo(
+    () => [
+      { value: "all", label: "Mọi người" },
+      ...uniqueSorted([...items.map((i) => i.a), ...items.map((i) => i.b), ...items.map((i) => i.c)]).map((v) => ({
+        value: v,
+        label: nvLabel(v),
+      })),
+    ],
+    [items],
+  );
+
+  const filtered = useMemo(
+    () =>
+      items.filter((it) => {
+        if (!matchSearch([it.a, it.b, it.c, it.ca_id].join(" "), search)) return false;
+        if (!matchExact(it.trang_thai, statusF)) return false;
+        if (personF !== "all" && ![it.a, it.b, it.c].includes(personF)) return false;
+        return true;
+      }),
+    [items, search, statusF, personF],
+  );
+
+  const filterActive = search.length > 0 || statusF !== "all" || personF !== "all";
+
+  function clearFilters() {
+    setSearch("");
+    setStatusF("all");
+    setPersonF("all");
+  }
 
   const dayDu = a.trim() && b.trim() && c.trim() && ca.trim();
 
@@ -115,12 +160,29 @@ export default function DoiCaPage() {
         </form>
       </OpsCard>
       <h2>Lệnh đang mở</h2>
+      <ListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Tìm người, mã ca, trạng thái…"
+        status={statusF}
+        onStatusChange={setStatusF}
+        statusOptions={statusOptions}
+        person={personF}
+        onPersonChange={setPersonF}
+        personOptions={personOptions}
+        shown={filtered.length}
+        total={items.length}
+        filtered={filterActive}
+      />
       {loading ? <Loading skeleton="list">Đang tải lệnh đổi ca…</Loading> : null}
       {!loading && !error && items.length === 0 ? (
         <Empty>Chưa có lệnh đổi ca nào đang mở.</Empty>
       ) : null}
+      {!loading && items.length > 0 && filtered.length === 0 ? (
+        <FilteredEmpty onClear={clearFilters} />
+      ) : null}
       <div className="nq-list">
-        {items.map((it) => (
+        {filtered.map((it) => (
           <article key={it.id} className="nq-item">
             <p className="nq-item-title">
               {nvLabel(it.a)} nhả · {nvLabel(it.b)} nhận · {nvLabel(it.c)} xác nhận
