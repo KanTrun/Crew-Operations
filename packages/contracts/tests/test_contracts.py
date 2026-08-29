@@ -5,7 +5,11 @@ from pydantic import ValidationError
 
 from ca_contracts import (
     CONTRACTS,
+    ActionItem,
     Ca,
+    CuocHop,
+    DeXuatSop,
+    DoanThoaiTranscript,
     DonQuay,
     DongDon,
     LichTuan,
@@ -27,7 +31,19 @@ def test_contracts_registered() -> None:
         "MonNuoc",
         "DonQuay",
         "DongDon",
+        "CuocHop",
+        "ActionItem",
+        "DeXuatSop",
+        "DeXuatPheDuyet",
+        "GopYLuuY",
+        "AuditTuanThuSop",
+        "BanTinCaKhan",
+        "HuanLuyenQuanLy",
     }
+
+
+
+
 
 
 def test_round_trip_models() -> None:
@@ -79,4 +95,40 @@ def test_lich_tuan_rejects_invalid_trang_thai() -> None:
 def test_minh_chung_loai_has_eight_members() -> None:
     """MinhChungLoai phải có đúng 8 giá trị enum."""
     assert len(MinhChungLoai) == 8
+
+
+def test_cuoc_hop_model() -> None:
+    item = ActionItem(
+        id="act_01",
+        tieu_de="Lau máy pha cà phê",
+        ten_nguoi_nhan="Tuấn",
+        nhan_vien_id="nv_01",
+        han_chot="22:00",
+        muc_do_uu_tien="cao",
+        do_tin_cay=0.95,
+    )
+    meeting = CuocHop(
+        id="meet_01",
+        tieu_de="Giao ca chiều",
+        loai_hop="giao_ca",
+        thoi_gian="2026-08-29T20:00:00Z",
+        nguon_am_thanh="google_meet_tab",
+        transcript_thoai=[
+            DoanThoaiTranscript(nguoi_noi="Quản lý", noi_dung="Tuấn nhớ lau máy pha nhé")
+        ],
+        tom_tat="Nhắc nhở vệ sinh máy pha và chuẩn bị nguyên liệu",
+        quyet_dinh=["Vệ sinh máy pha trước 22h"],
+        action_items=[item],
+        de_xuat_sop=[
+            DeXuatSop(
+                quy_trinh_lien_quan="Vệ sinh máy",
+                noi_dung_thay_doi="Thêm bước xả bột tẩy cặn",
+            )
+        ],
+    )
+    assert meeting.id == "meet_01"
+    assert len(meeting.action_items) == 1
+    assert meeting.action_items[0].ten_nguoi_nhan == "Tuấn"
+    assert meeting.trang_thai == "cho_duyet"
+
 

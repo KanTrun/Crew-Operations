@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ca_api.interfaces.http.channels import router as channels_router
+from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.pos import router as pos_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
@@ -39,6 +40,8 @@ app.include_router(sprint3_router)
 app.include_router(sprint45_router)
 app.include_router(channels_router)
 app.include_router(pos_router)
+app.include_router(meeting_router)
+
 
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
@@ -112,12 +115,32 @@ def _require_write_role(authorization: Annotated[str | None, Header()] = None) -
     return role
 
 
+def _require_authenticated_role(authorization: Annotated[str | None, Header()] = None) -> str:
+    """Dependency: require login token for read endpoints."""
+    role = _resolve_role(authorization)
+    if not role:
+        raise HTTPException(status_code=401, detail="unauthorized — login required")
+    return role
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "ca-api"}
 
 
 # ── Lich tuan ─────────────────────────────────────────────────────────────────
+
+THU_MAP = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN"}
+
+
+def _format_ca_list(ca_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    out = []
+    for c in ca_list:
+        c_copy = dict(c)
+        if "thu" not in c_copy or not c_copy["thu"]:
+            c_copy["thu"] = THU_MAP.get(int(c_copy.get("ngay_offset", 1)), "T2")
+        out.append(c_copy)
+    return out
 
 
 def _tuan_list(base_tuan: str, so_tuan: int) -> list[str]:
@@ -141,7 +164,8 @@ def _tuan_list(base_tuan: str, so_tuan: int) -> list[str]:
 def _build_lich_tuan_from_seed(seed: dict[str, Any], tuan: str | None, so_tuan: int = 1) -> dict[str, Any]:
     """Build a schedule response from seed data for the requested ISO week."""
     nhan_vien = seed.get("nhan_vien", [])
-    ca_list = seed.get("ca_mau_21", [])
+    ca_raw = seed.get("ca_mau_21", [])
+    ca_list = _format_ca_list(ca_raw)
     tuan_iso = tuan or "2026-W36"
     phan_cong: dict[str, list[str]] = {}
     for i, ca in enumerate(ca_list):
@@ -171,13 +195,14 @@ def get_lich_tuan(
     so_tuan: Annotated[int, Query(ge=1, le=4, description="Số tuần xếp lịch: 1, 2, 3 hoặc 4")] = 1,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    """Lịch tuần đang hiệu lực của quán. Yêu cầu đăng nhập (quan_ly trở lên)."""
-    _require_write_role(authorization)
+    """Lịch tuần đang hiệu lực của quán. Yêu cầu đăng nhập."""
+    _require_authenticated_role(authorization)
     tuan_iso = tuan or "2026-W36"
     # Try data/out/lich_tuan.json first (solver output)
     if LICH_TUAN_OUT.exists():
         data = json.loads(LICH_TUAN_OUT.read_text(encoding="utf-8"))
         seed = _seed()
+        ca_list = _format_ca_list(seed.get("ca_mau_21", []))
         phan_cong = dict(data.get("phan_cong", {}))
         for (ca_id, nv_id), pinned in _pin_map().items():
             if pinned and nv_id not in phan_cong.get(ca_id, []):
@@ -193,7 +218,7 @@ def get_lich_tuan(
             "danh_sach_tuan": _tuan_list(tuan_iso, so_tuan),
             "trang_thai": lifecycle.get("trang_thai", "may_sinh"),
             "nhan_vien": seed.get("nhan_vien", []),
-            "ca": seed.get("ca_mau_21", []),
+            "ca": ca_list,
             "phan_cong": phan_cong,
             "solver": {
                 "ok": data.get("ok"),
@@ -205,6 +230,7 @@ def get_lich_tuan(
     result = _build_lich_tuan_from_seed(_seed(), tuan_iso, so_tuan)
     result["trang_thai"] = lifecycle.get("trang_thai", result.get("trang_thai", "nhap"))
     return result
+
 
 
 
