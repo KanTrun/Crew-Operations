@@ -3,71 +3,14 @@
 import Link from "next/link";
 import { CSSProperties, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
-export const inputStyle: CSSProperties = {
-  width: "100%",
-  padding: "0.75rem 1rem",
-  backgroundColor: "var(--nq-surface-hi)",
-  color: "var(--nq-fg)",
-  border: "2px solid var(--nq-dim)",
-  fontFamily: "var(--nq-font-mono)",
-  fontSize: "1rem",
-  boxSizing: "border-box",
-};
-
-export const textareaStyle: CSSProperties = {
-  ...inputStyle,
-  minHeight: "80px",
-  resize: "vertical",
-};
-
-export const btnPrimary: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "0.75rem 1.5rem",
-  backgroundColor: "var(--nq-copper)",
-  color: "var(--nq-accent-ink)",
-  border: "2px solid var(--nq-copper)",
-  fontWeight: "900",
-  textTransform: "uppercase",
-  letterSpacing: "0.1em",
-  boxShadow: "6px 6px 0px 0px var(--nq-copper-dim)",
-  cursor: "pointer",
-  textDecoration: "none",
-};
-
-export const btnGhost: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "0.75rem 1.5rem",
-  backgroundColor: "transparent",
-  color: "var(--nq-fg)",
-  border: "2px solid var(--nq-dim)",
-  fontWeight: "900",
-  textTransform: "uppercase",
-  letterSpacing: "0.1em",
-  cursor: "pointer",
-  textDecoration: "none",
-};
-
-export const btnSecondary: CSSProperties = btnGhost;
-
-export const btnDanger: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "0.75rem 1.5rem",
-  backgroundColor: "var(--nq-red)",
-  color: "#ffffff",
-  border: "2px solid var(--nq-red)",
-  fontWeight: "900",
-  textTransform: "uppercase",
-  letterSpacing: "0.1em",
-  boxShadow: "6px 6px 0px 0px var(--nq-red-dim)",
-  cursor: "pointer",
-  textDecoration: "none",
-};
+export const btnPrimary: CSSProperties = {};
+export const btnGhost: CSSProperties = {};
+export const btnSecondary: CSSProperties = {};
+export const btnDanger: CSSProperties = {};
+export const inputStyle: CSSProperties = {};
+export const inputClassName = "nq-input";
+export const selectClassName = "nq-select";
+export const textareaClassName = "nq-input nq-textarea";
 
 type BtnVariant = "primary" | "ghost" | "danger";
 
@@ -435,7 +378,7 @@ export function AuthGate() {
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="block mb-4">
+    <label className="nq-field block mb-4">
       <span className="block text-sm font-bold uppercase tracking-widest text-[var(--nq-dim)] mb-2">{label}</span>
       {children}
     </label>
@@ -451,6 +394,7 @@ export function ProgressBar({ value, max, className = "" }: { value: number; max
   );
 }
 
+export const textareaStyle: CSSProperties = {};
 
 /** Vòng xoay nhỏ trong nút đang gửi. `aria-hidden` vì chữ đã đổi thành "Đang…". */
 export function Spinner() {
