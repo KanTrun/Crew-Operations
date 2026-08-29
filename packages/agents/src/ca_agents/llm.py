@@ -29,11 +29,11 @@ _GROQ_MODELS = (
     "openai/gpt-oss-20b",
 )
 _GEMINI_MODELS = (
-    "gemini-3.6-flash",
     "gemini-2.5-flash",
     "gemini-flash-latest",
-    "gemini-2.0-flash",
 )
+
+
 _OPENROUTER_MODELS = (
     "openai/gpt-oss-20b:free",
     "qwen/qwen3-8b:free",

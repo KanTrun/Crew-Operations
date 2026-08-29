@@ -15,6 +15,12 @@ export function getName(): string {
   return sessionStorage.getItem("nq_name") ?? "";
 }
 
+export function getNvId(): string {
+  if (typeof window === "undefined") return "";
+  return sessionStorage.getItem("nq_nv") ?? "";
+}
+
+
 export function isManager(role = getRole()): boolean {
   return role === "quan_ly" || role === "chu_quan";
 }
@@ -29,6 +35,7 @@ export function canEdit(role = getRole()): boolean {
 
 const STAFF_ACCESS = new Set([
   "/hom-nay",
+  "/cuoc-hop",
   "/quay",
   "/pha",
   "/phieu",

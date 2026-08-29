@@ -3,5 +3,6 @@
   "Ca": "packages/contracts/schema/Ca.json",
   "LichTuan": "packages/contracts/schema/LichTuan.json",
   "PhieuMau": "packages/contracts/schema/PhieuMau.json",
-  "RangBuocTrichXuat": "packages/contracts/schema/RangBuocTrichXuat.json"
+  "RangBuocTrichXuat": "packages/contracts/schema/RangBuocTrichXuat.json",
+  "CuocHop": "packages/contracts/schema/CuocHop.json"
 }

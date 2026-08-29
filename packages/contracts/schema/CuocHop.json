@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CuocHop",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Mã định danh cuộc họp (meeting UUID)"
+    },
+    "tieu_de": {
+      "type": "string",
+      "description": "Tiêu đề hoặc chủ đề cuộc họp"
+    },
+    "loai_hop": {
+      "type": "string",
+      "enum": ["giao_ca", "hop_tuan", "dao_tao", "khac"],
+      "description": "Phân loại cuộc họp"
+    },
+    "thoi_gian": {
+      "type": "string",
+      "description": "Thời gian diễn ra cuộc họp (ISO 8601 string)"
+    },
+    "nguon_am_thanh": {
+      "type": "string",
+      "enum": ["google_meet_tab", "microphone", "file_upload", "ghi_chep_tay"],
+      "description": "Nguồn gốc của dữ liệu cuộc họp"
+    },
+    "transcript_thoai": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nguoi_noi": { "type": "string" },
+          "bat_dau_s": { "type": "number" },
+          "ket_thuc_s": { "type": "number" },
+          "noi_dung": { "type": "string" }
+        },
+        "required": ["nguoi_noi", "noi_dung"]
+      }
+    },
+    "tom_tat": {
+      "type": "string",
+      "description": "Tóm tắt ngắn gọn các điểm chính trong cuộc họp"
+    },
+    "quyet_dinh": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Danh sách các quyết định quan trọng đã thống nhất"
+    },
+    "action_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "tieu_de": { "type": "string" },
+          "noi_dung_chi_tiet": { "type": "string" },
+          "tinh_chat": {
+            "type": "string",
+            "enum": ["bat_buoc", "tuy_chon", "khuyen_khich"],
+            "default": "bat_buoc"
+          },
+          "ten_nguoi_giao": { "type": "string" },
+          "nhan_vien_id": {
+            "type": ["string", "null"],
+            "description": "Mã nhân viên khớp với hệ thống (Entity Resolution)"
+          },
+          "ten_nguoi_nhan": { "type": "string" },
+          "pham_vi": {
+            "type": "string",
+            "enum": ["ca_nhan", "nhom"],
+            "default": "ca_nhan"
+          },
+          "thoi_gian_bat_dau": { "type": "string" },
+          "han_chot": { "type": "string" },
+          "muc_do_uu_tien": {
+            "type": "string",
+            "enum": ["cao", "trung_binh", "thap"]
+          },
+          "do_tin_cay": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "da_chon": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": ["id", "tieu_de", "ten_nguoi_nhan", "do_tin_cay"]
+      }
+    },
+    "de_xuat_phe_duyet": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "loai_de_xuat": {
+            "type": "string",
+            "enum": ["quy_trinh_sop", "mua_sam_vat_tu", "chinh_sach_nhan_su", "khac"]
+          },
+          "tieu_de": { "type": "string" },
+          "nguoi_de_xuat": { "type": "string" },
+          "nguoi_phe_duyet": { "type": "string" },
+          "noi_dung": { "type": "string" },
+          "ly_do": { "type": "string" },
+          "trang_thai": {
+            "type": "string",
+            "enum": ["da_duyet", "cho_duyet", "tu_choi"]
+          },
+          "quy_trinh_lien_quan": { "type": ["string", "null"] },
+          "buoc_so": { "type": ["integer", "null"] }
+        },
+        "required": ["id", "tieu_de", "noi_dung", "trang_thai"]
+      }
+    },
+    "gop_y_luu_y": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "nguoi_gop_y": { "type": "string" },
+          "nguoi_nhan": { "type": "string" },
+          "chu_de": {
+            "type": "string",
+            "enum": ["thai_do_phuc_vu", "ky_nang_pha_che", "ve_sinh_an_toan", "dong_vien_khen_ngoi", "luu_y_chung"]
+          },
+          "tinh_chat": {
+            "type": "string",
+            "enum": ["nhac_nho", "khen_ngoi", "kinh_nghiem", "gop_y"]
+          },
+          "noi_dung": { "type": "string" },
+          "ghi_chu": { "type": "string" }
+        },
+        "required": ["id", "noi_dung"]
+      }
+    },
+    "de_xuat_sop": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "quy_trinh_lien_quan": { "type": "string" },
+          "buoc_so": { "type": ["integer", "null"] },
+          "noi_dung_thay_doi": { "type": "string" },
+          "ly_do": { "type": "string" }
+        },
+        "required": ["quy_trinh_lien_quan", "noi_dung_thay_doi"]
+      }
+    },
+
+
+    "do_tin_cay_tong_the": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "trang_thai": {
+      "type": "string",
+      "enum": ["cho_duyet", "da_duyet", "tu_choi"],
+      "default": "cho_duyet"
+    }
+  },
+  "required": ["id", "tieu_de", "loai_hop", "tom_tat", "action_items"]
+}

@@ -51,7 +51,11 @@ data/out/msg_sent.jsonl
 data/quan.db
 data/quan.db-wal
 data/quan.db-shm
+data/test_*.json
+data/full_benchmark_report.json
+*.mp3
 !data/out/.gitkeep
 
 .claude/
+
 

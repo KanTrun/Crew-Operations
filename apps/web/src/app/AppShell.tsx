@@ -9,6 +9,7 @@ type LinkItem = { href: string; label: string };
 
 const STAFF_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
+  { href: "/cuoc-hop", label: "Họp & Giao ca" },
   { href: "/quay", label: "Quầy" },
   { href: "/pha", label: "Pha chế" },
   { href: "/phieu", label: "Phiếu" },
@@ -16,6 +17,7 @@ const STAFF_PRIMARY: LinkItem[] = [
 
 const MANAGER_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
+  { href: "/cuoc-hop", label: "Họp & Giao ca" },
   { href: "/roster", label: "Lịch tuần" },
   { href: "/inbox", label: "Hộp thư" },
   { href: "/quay", label: "Quầy" },
@@ -24,6 +26,7 @@ const MANAGER_PRIMARY: LinkItem[] = [
 
 const ADMIN_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
+  { href: "/cuoc-hop", label: "Họp & Giao ca" },
   { href: "/nguoi", label: "Người dùng" },
   { href: "/menu", label: "Menu & giá" },
   { href: "/roster", label: "Lịch tuần" },
@@ -31,6 +34,7 @@ const ADMIN_PRIMARY: LinkItem[] = [
 ];
 
 const MORE: LinkItem[] = [
+  { href: "/cuoc-hop", label: "Họp & Giao ca" },
   { href: "/quay", label: "Quầy" },
   { href: "/pha", label: "Pha chế" },
   { href: "/inbox", label: "Hộp thư" },
@@ -52,6 +56,7 @@ const MORE: LinkItem[] = [
   { href: "/menu", label: "Menu & giá" },
   { href: "/nguoi", label: "Người dùng" },
 ];
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();

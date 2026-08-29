@@ -1,12 +1,10 @@
-﻿"use client";
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, AuthGate, Loading } from "../../ui/kit";
-import { canEdit, lifeLabel } from "../../lib/session";
+import { canEdit, getNvId, getRole, getToken, isManager, lifeLabel } from "../../lib/session";
 import { apiSend } from "../../lib/api";
 import { viError } from "../../lib/present";
-import { matchSearch } from "../../lib/list-filters";
-import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -119,6 +117,10 @@ function currentISOWeek(): string {
 export default function RosterPage() {
   const [token, setToken] = useState("");
   const [role, setRole] = useState("nhan_vien");
+  const [currentNvId, setCurrentNvId] = useState("");
+  const [viewMode, setViewMode] = useState<"my_shifts" | "all">("all");
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
   const [soTuan, setSoTuan] = useState<number>(1);
   const [baseWeek, setBaseWeek] = useState(currentISOWeek());
   const [activeWeekIndex, setActiveWeekIndex] = useState<number>(0);
@@ -128,14 +130,17 @@ export default function RosterPage() {
   const [pinBusy, setPinBusy] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleMsg, setLifecycleMsg] = useState<string | null>(null);
-  const [nvSearch, setNvSearch] = useState("");
-  const [khungF, setKhungF] = useState("all");
 
   useEffect(() => {
-    const t = sessionStorage.getItem("nq_token");
-    const r = sessionStorage.getItem("nq_role");
+    const t = getToken();
+    const r = getRole();
+    const nv = getNvId();
     if (t) setToken(t);
-    if (r) setRole(r);
+    if (r) {
+      setRole(r);
+      setViewMode(isManager(r) ? "all" : "my_shifts");
+    }
+    if (nv) setCurrentNvId(nv);
   }, []);
 
   const authHeader = useCallback(
@@ -209,25 +214,6 @@ export default function RosterPage() {
     setActiveWeekIndex(0);
   }
 
-  const allNv = data?.nhan_vien ?? [];
-  const filteredNv = useMemo(
-    () => allNv.filter((nv) => matchSearch(`${nv.id} ${nv.ten}`, nvSearch)),
-    [allNv, nvSearch],
-  );
-
-  const khungOptions = [
-    { value: "all", label: "Mọi ca" },
-    { value: "sang", label: "Sáng" },
-    { value: "chieu", label: "Chiều" },
-    { value: "toi", label: "Tối" },
-  ];
-
-  const activeKhungs = (["sang", "chieu", "toi"] as const).filter(
-    (k) => khungF === "all" || khungF === k,
-  );
-
-  const nvFilterActive = nvSearch.length > 0 || khungF !== "all";
-
   if (!token) return <AuthGate />;
 
   const canWrite = canEdit(role);
@@ -245,8 +231,12 @@ export default function RosterPage() {
 
   const byDay: Record<string, Shift[]> = {};
   for (const d of days) byDay[d] = [];
+  const offsetToDay: Record<number, string> = { 1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN" };
+
   for (const s of shifts) {
-    if (byDay[s.thu]) byDay[s.thu].push(s);
+    const rawOffset = (s as unknown as { ngay_offset?: number }).ngay_offset;
+    const dayKey = s.thu || (rawOffset ? offsetToDay[Number(rawOffset)] : "") || "T2";
+    if (byDay[dayKey]) byDay[dayKey].push({ ...s, thu: dayKey });
   }
 
   function nvName(id: string): string {
@@ -254,16 +244,81 @@ export default function RosterPage() {
     return found ? found.ten : id;
   }
 
+  // Resolve employee ID from session (e.g. nv_03 for Minh, nv_01 for Lan...)
+  const myEmployee = (data?.nhan_vien ?? []).find(
+    (nv) =>
+      nv.id === currentNvId ||
+      nv.id === `nv_${currentNvId}` ||
+      (currentNvId && nv.ten.toLowerCase().includes(currentNvId.toLowerCase()))
+  );
+  const targetNvId = myEmployee ? myEmployee.id : currentNvId || "nv_03";
+
+  // Calculate shifts assigned to current employee
+  const myAssignedDays: { day: string; offset: number; dateStr: string; shifts: Array<{ shift: Shift; coworkers: string[] }> }[] = [];
+  let totalMyShifts = 0;
+
+  days.forEach((d, i) => {
+    const dayShifts = byDay[d] ?? [];
+    const matched: Array<{ shift: Shift; coworkers: string[] }> = [];
+    dayShifts.forEach((s) => {
+      const assigned = data?.phan_cong?.[s.id] ?? [];
+      if (assigned.includes(targetNvId)) {
+        matched.push({ shift: s, coworkers: assigned.filter((id) => id !== targetNvId) });
+      }
+    });
+
+    if (matched.length > 0) {
+      totalMyShifts += matched.length;
+      myAssignedDays.push({
+        day: d,
+        offset: dayOffsets[i],
+        dateStr: dayDate(monday, dayOffsets[i]),
+        shifts: matched,
+      });
+    }
+  });
+
+
   return (
     <div className="nq-page">
       <header className="mb-6 ops-animate-in">
-        <p className="nq-kicker">Vận hành tuần</p>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[var(--nq-copper)] mb-3">
-          Lịch tuần
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+          <div>
+            <p className="nq-kicker">Vận hành tuần</p>
+            <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-[var(--nq-copper)]">
+              {viewMode === "my_shifts" ? "Lịch Đi Làm Của Tôi" : "Lịch Toàn Quán (Full Ca)"}
+            </h1>
+          </div>
 
-        {/* Chu kỳ xếp lịch (1, 2, 3, 4 tuần) */}
-        {canWrite && (
+          {/* Mode Switcher: My Shifts vs Full Roster */}
+          <div className="flex items-center gap-1.5 p-1 bg-neutral-900/80 border border-neutral-800 rounded-lg">
+            <button
+              type="button"
+              onClick={() => setViewMode("my_shifts")}
+              className={`px-3 py-1.5 text-xs font-bold rounded transition-all flex items-center gap-1.5 ${
+                viewMode === "my_shifts"
+                  ? "bg-amber-600 text-neutral-950 shadow"
+                  : "text-neutral-400 hover:text-neutral-200"
+              }`}
+            >
+              <span>👤</span> Lịch của tôi ({totalMyShifts} ca)
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("all")}
+              className={`px-3 py-1.5 text-xs font-bold rounded transition-all flex items-center gap-1.5 ${
+                viewMode === "all"
+                  ? "bg-amber-600 text-neutral-950 shadow"
+                  : "text-neutral-400 hover:text-neutral-200"
+              }`}
+            >
+              <span>🏢</span> Toàn quán (Full ngày)
+            </button>
+          </div>
+        </div>
+
+        {/* Chu kỳ xếp lịch (1, 2, 3, 4 tuần) - Chỉ hiển thị cho Quản lý */}
+        {canWrite && viewMode === "all" && (
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             <span className="text-xs uppercase tracking-wider text-[var(--nq-dim)] font-bold">
               Chu kỳ xếp ca:
@@ -379,140 +434,402 @@ export default function RosterPage() {
       )}
 
       {error ? <Alert kind="err">{error}</Alert> : null}
-      <ListToolbar
-        search={nvSearch}
-        onSearchChange={setNvSearch}
-        searchPlaceholder="Tìm tên hoặc mã nhân viên…"
-        status={khungF}
-        onStatusChange={setKhungF}
-        statusOptions={khungOptions}
-        statusLabel="Ca"
-        shown={filteredNv.length}
-        total={allNv.length}
-        filtered={nvFilterActive}
-      />
-      {!loading && allNv.length > 0 && filteredNv.length === 0 ? (
-        <FilteredEmpty onClear={() => { setNvSearch(""); setKhungF("all"); }} />
-      ) : null}
       {loading ? <Loading skeleton="table" rows={3}>Đang tải lịch tuần…</Loading> : null}
 
-      {!loading && shifts.length > 0 ? (
-        <div className="nq-table-wrap">
-          <table className="nq-table">
-            <thead>
-              <tr>
-                <th scope="col">Khung</th>
-                {days.map((d, i) => (
-                  <th key={d} scope="col">
-                    <span className="block font-bold">{dayTitle(d)}</span>
-                    <span className="block font-mono text-xs text-[var(--nq-dim)]">
-                      {dayDate(monday, dayOffsets[i])}
+      {/* ========================================================================= */}
+      {/* 1. CHẾ ĐỘ NHÂN VIÊN: CHỈ HIỆN NHỮNG NGÀY ĐI LÀM CỦA CÁ NHÂN             */}
+      {/* ========================================================================= */}
+      {!loading && viewMode === "my_shifts" && (
+        <div className="space-y-4">
+          {/* Summary Card */}
+          <div className="p-4 rounded-lg bg-emerald-950/20 border border-emerald-700/40 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-emerald-300 flex items-center gap-2">
+                <span>🗓️</span> Tuần {currentDisplayWeek} của bạn
+              </h3>
+              <p className="text-xs text-neutral-300 mt-0.5">
+                Bạn có <strong>{myAssignedDays.length} ngày đi làm</strong> với tổng cộng <strong>{totalMyShifts} ca làm việc</strong> (~{totalMyShifts * 5} giờ công).
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setViewMode("all")}
+              className="text-xs font-mono px-3 py-1.5 rounded bg-emerald-900/60 text-emerald-200 border border-emerald-600 hover:bg-emerald-800"
+            >
+              Xem lịch toàn quán →
+            </button>
+          </div>
+
+          {/* List of Working Days */}
+          {myAssignedDays.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {myAssignedDays.map((item) => (
+                <div
+                  key={item.day}
+                  className="p-4 rounded-lg bg-neutral-900/80 border border-emerald-800/40 shadow-sm hover:border-emerald-600 transition-all space-y-3"
+                >
+                  <div className="flex justify-between items-center pb-2 border-b border-neutral-800">
+                    <span className="font-bold text-base text-emerald-300">
+                      {dayTitle(item.day)}
                     </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {activeKhungs.map((khung) => {
-                const label =
-                  khung === "sang"
-                    ? "Sáng 07–12"
-                    : khung === "chieu"
-                    ? "Chiều 12–17"
-                    : "Tối 17–22";
-                return (
-                  <tr key={khung}>
-                    <th scope="row" className="nq-roster-row-label">
-                      {label}
-                    </th>
-                    {days.map((d) => {
-                      const shift = (byDay[d] ?? []).find(
-                        (c) => (c.khung ?? "") === khung,
-                      );
-                      const allAssigned: string[] = shift
-                        ? data?.phan_cong?.[shift.id] ?? []
-                        : [];
-                      const filteredNvIds = new Set(filteredNv.map((nv) => nv.id));
-                      const assigned = nvSearch
-                        ? allAssigned.filter((id) => filteredNvIds.has(id))
-                        : allAssigned;
+                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-neutral-800 text-neutral-300">
+                      {item.dateStr}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {item.shifts.map(({ shift, coworkers }, sIdx) => {
+                      const khungName =
+                        shift.khung === "sang"
+                          ? "Sáng (07:00 – 12:00)"
+                          : shift.khung === "chieu"
+                          ? "Chiều (12:00 – 17:00)"
+                          : "Tối (17:00 – 22:00)";
+                      const khungIcon = shift.khung === "sang" ? "☀️" : shift.khung === "chieu" ? "⛅" : "🌙";
+
                       return (
-                        <td key={d}>
-                          {shift ? (
-                            <div className="nq-roster-cell">
-                              <p className="nq-roster-role">
-                                {viTriLabel(shift.vi_tri)}
-                              </p>
-                              <ul className="nq-roster-people">
-                                {assigned.map((nv_id) => (
-                                  <li key={nv_id} className="nq-roster-nv">
-                                    <span className="nq-roster-nv-name">
-                                      {nvName(nv_id)}
-                                    </span>
-                                    {canWrite && trangThai !== "da_dong" ? (
-                                      <button
-                                        type="button"
-                                        className="nq-roster-unpin"
-                                        disabled={pinBusy}
-                                        onClick={() => handlePin(shift.id, nv_id, false)}
-                                        aria-label={`Bỏ ${nvName(nv_id)} khỏi ca`}
-                                      >
-                                        ×
-                                      </button>
-                                    ) : null}
-                                  </li>
-                                ))}
-                                {assigned.length === 0 ? (
-                                  <li className="nq-roster-empty">
-                                    Chưa xếp người
-                                  </li>
-                                ) : null}
-                              </ul>
-                              {canWrite && trangThai !== "da_dong" ? (
-                                <div className="nq-roster-add">
-                                  <select
-                                    defaultValue=""
-                                    disabled={pinBusy}
-                                    aria-label={`Thêm người vào ${label} ${dayTitle(d)}`}
-                                    onChange={(e) => {
-                                      if (e.target.value) {
-                                        handlePin(shift.id, e.target.value, true);
-                                        e.target.value = "";
-                                      }
-                                    }}
-                                  >
-                                    <option value="">Thêm người…</option>
-                                    {(nvSearch ? filteredNv : (data?.nhan_vien ?? []))
-                                      .filter((nv) => !allAssigned.includes(nv.id))
-                                      .map((nv) => (
-                                        <option key={nv.id} value={nv.id}>
-                                          {nv.ten || nv.id}
-                                        </option>
-                                      ))}
-                                  </select>
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <span className="nq-muted">—</span>
+                        <div key={sIdx} className="p-2.5 rounded bg-neutral-950/60 border border-neutral-800 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-neutral-200 flex items-center gap-1.5">
+                              <span>{khungIcon}</span> {khungName}
+                            </span>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-900/70 text-emerald-300 font-bold border border-emerald-700">
+                              {viTriLabel(shift.vi_tri)}
+                            </span>
+                          </div>
+
+                          {coworkers.length > 0 && (
+                            <p className="text-[11px] text-neutral-400">
+                              👥 Cùng ca: {coworkers.map((id) => nvName(id)).join(", ")}
+                            </p>
                           )}
-                        </td>
+                        </div>
                       );
                     })}
-                  </tr>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-8 text-center bg-neutral-900/40 rounded-lg border border-neutral-800 space-y-2">
+              <p className="text-neutral-400 text-sm">Tuần này bạn chưa có ca làm việc nào được phân công.</p>
+              <button
+                type="button"
+                onClick={() => setViewMode("all")}
+                className="text-xs font-bold text-amber-400 hover:underline"
+              >
+                Nhấn vào đây để xem toàn bộ lịch quán
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. CHẾ ĐỘ QUẢN LÝ: HIỆN FULL 7 NGÀY & CLICK VÀO NGÀY ĐỂ XEM CHI TIẾT TỪNG CA */}
+      {/* ========================================================================= */}
+      {!loading && viewMode === "all" && shifts.length > 0 && (
+        <div className="space-y-4">
+          <div className="p-3 bg-amber-950/20 border border-amber-800/40 rounded-lg text-xs text-amber-200 flex items-center justify-between flex-wrap gap-2">
+            <span>
+              💡 <strong>Gợi ý Quản lý:</strong> Nhấp vào <strong>tiêu đề bất kỳ ngày nào</strong> bên dưới để mở rộng bảng xem chi tiết và điều chỉnh nhân sự từng ca trong ngày!
+            </span>
+          </div>
+
+          <div className="nq-table-wrap">
+            <table className="nq-table">
+              <thead>
+                <tr>
+                  <th scope="col">Khung</th>
+                  {days.map((d, i) => {
+                    const dayShifts = byDay[d] ?? [];
+                    let totalDayStaff = 0;
+                    dayShifts.forEach((s) => {
+                      totalDayStaff += (data?.phan_cong?.[s.id] ?? []).length;
+                    });
+
+                    return (
+                      <th
+                        key={d}
+                        scope="col"
+                        onClick={() => setSelectedDay(d)}
+                        className="cursor-pointer hover:bg-neutral-800/70 transition-all group"
+                        title={`Bấm để xem chi tiết nhân sự ngày ${dayTitle(d)}`}
+                      >
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="font-bold text-sm text-neutral-100 group-hover:text-amber-400 flex items-center gap-1">
+                            {dayTitle(d)} 🔍
+                          </span>
+                          <span className="font-mono text-xs text-[var(--nq-dim)]">
+                            {dayDate(monday, dayOffsets[i])}
+                          </span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/50 mt-1">
+                            {totalDayStaff} NV / 3 ca
+                          </span>
+                        </div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {(["sang", "chieu", "toi"] as const).map((khung) => {
+                  const label =
+                    khung === "sang"
+                      ? "Sáng 07–12"
+                      : khung === "chieu"
+                      ? "Chiều 12–17"
+                      : "Tối 17–22";
+                  return (
+                    <tr key={khung}>
+                      <th scope="row" className="nq-roster-row-label">
+                        {label}
+                      </th>
+                      {days.map((d) => {
+                        const shift = (byDay[d] ?? []).find(
+                          (c) => (c.khung ?? "") === khung,
+                        );
+                        const assigned: string[] = shift
+                          ? data?.phan_cong?.[shift.id] ?? []
+                          : [];
+                        return (
+                          <td key={d}>
+                            {shift ? (
+                              <div className="nq-roster-cell">
+                                <p className="nq-roster-role">
+                                  {viTriLabel(shift.vi_tri)}
+                                </p>
+                                <ul className="nq-roster-people">
+                                  {assigned.map((nv_id) => (
+                                    <li key={nv_id} className="nq-roster-nv">
+                                      <span className="nq-roster-nv-name">
+                                        {nvName(nv_id)}
+                                      </span>
+                                      {canWrite && trangThai !== "da_dong" ? (
+                                        <button
+                                          type="button"
+                                          className="nq-roster-unpin"
+                                          disabled={pinBusy}
+                                          onClick={() => handlePin(shift.id, nv_id, false)}
+                                          aria-label={`Bỏ ${nvName(nv_id)} khỏi ca`}
+                                        >
+                                          ×
+                                        </button>
+                                      ) : null}
+                                    </li>
+                                  ))}
+                                  {assigned.length === 0 ? (
+                                    <li className="nq-roster-empty">
+                                      Chưa xếp người
+                                    </li>
+                                  ) : null}
+                                </ul>
+                                {canWrite && trangThai !== "da_dong" ? (
+                                  <div className="nq-roster-add">
+                                    <select
+                                      defaultValue=""
+                                      disabled={pinBusy}
+                                      aria-label={`Thêm người vào ${label} ${dayTitle(d)}`}
+                                      onChange={(e) => {
+                                        if (e.target.value) {
+                                          handlePin(shift.id, e.target.value, true);
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                    >
+                                      <option value="">Thêm người…</option>
+                                      {(data?.nhan_vien ?? [])
+                                        .filter((nv) => !assigned.includes(nv.id))
+                                        .map((nv) => (
+                                          <option key={nv.id} value={nv.id}>
+                                            {nv.ten || nv.id}
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <span className="nq-muted">—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. MODAL CHI TIẾT NGÀY: HIỂN THỊ ĐẦY ĐỦ NHÂN VIÊN TỪNG CA KHI QUẢN LÝ CLICK */}
+      {/* ========================================================================= */}
+      {selectedDay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="bg-neutral-900 border border-neutral-700 rounded-xl max-w-2xl w-full p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-amber-400 flex items-center gap-2">
+                  <span>📅</span> Chi Tiết Phân Ca: {dayTitle(selectedDay)} (
+                  {dayDate(monday, dayOffsets[days.indexOf(selectedDay)])})
+                </h3>
+                <p className="text-xs text-neutral-400">
+                  Tuần {currentDisplayWeek} • Quản lý nhân sự theo từng ca trong ngày
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedDay(null)}
+                className="w-8 h-8 rounded-full bg-neutral-800 text-neutral-300 hover:bg-neutral-700 flex items-center justify-center text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Shift Details (Sang, Chieu, Toi) */}
+            <div className="space-y-4">
+              {(["sang", "chieu", "toi"] as const).map((khung) => {
+                const shift = (byDay[selectedDay] ?? []).find((c) => c.khung === khung);
+                const assigned = shift ? data?.phan_cong?.[shift.id] ?? [] : [];
+                const khungLabelText =
+                  khung === "sang"
+                    ? "☀️ Ca Sáng (07:00 – 12:00)"
+                    : khung === "chieu"
+                    ? "⛅ Ca Chiều (12:00 – 17:00)"
+                    : "🌙 Ca Tối (17:00 – 22:00)";
+
+                return (
+                  <div
+                    key={khung}
+                    className="p-4 rounded-lg bg-neutral-950 border border-neutral-800 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-neutral-200">
+                          {khungLabelText}
+                        </span>
+                        {shift && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 uppercase">
+                            Vị trí: {viTriLabel(shift.vi_tri)}
+                          </span>
+                        )}
+                      </div>
+
+                      <span
+                        className={`text-xs font-mono px-2 py-0.5 rounded ${
+                          assigned.length >= 2
+                            ? "bg-emerald-900/60 text-emerald-300 border border-emerald-700"
+                            : assigned.length === 1
+                            ? "bg-amber-900/60 text-amber-300 border border-amber-700"
+                            : "bg-rose-900/60 text-rose-300 border border-rose-700"
+                        }`}
+                      >
+                        {assigned.length > 0 ? `${assigned.length} Nhân viên` : "Thiếu người"}
+                      </span>
+                    </div>
+
+                    {/* Assigned Staff Pills */}
+                    {assigned.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {assigned.map((nv_id) => (
+                          <span
+                            key={nv_id}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-900 border border-neutral-700 text-xs text-neutral-100 font-medium"
+                          >
+                            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            {nvName(nv_id)}
+                            {canWrite && trangThai !== "da_dong" && shift && (
+                              <button
+                                type="button"
+                                disabled={pinBusy}
+                                onClick={() => handlePin(shift.id, nv_id, false)}
+                                className="ml-1 text-neutral-400 hover:text-rose-400 text-sm font-bold"
+                                title={`Xóa ${nvName(nv_id)} khỏi ca`}
+                              >
+                                ×
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-500 italic">Chưa có nhân viên nào trong ca này.</p>
+                    )}
+
+                    {/* Quick Add Staff Dropdown */}
+                    {canWrite && trangThai !== "da_dong" && shift && (
+                      <div className="pt-2 border-t border-neutral-900 flex items-center gap-2">
+                        <span className="text-xs text-neutral-400">Thêm nhanh:</span>
+                        <select
+                          defaultValue=""
+                          disabled={pinBusy}
+                          className="text-xs bg-neutral-900 border border-neutral-700 text-neutral-200 rounded px-2 py-1"
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handlePin(shift.id, e.target.value, true);
+                              e.target.value = "";
+                            }
+                          }}
+                        >
+                          <option value="">Chọn nhân viên vào ca…</option>
+                          {(data?.nhan_vien ?? [])
+                            .filter((nv) => !assigned.includes(nv.id))
+                            .map((nv) => (
+                              <option key={nv.id} value={nv.id}>
+                                + {nv.ten || nv.id}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+
+            {/* Navigation Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-neutral-800">
+              <button
+                type="button"
+                onClick={() => {
+                  const currentIdx = days.indexOf(selectedDay);
+                  const prevIdx = (currentIdx - 1 + days.length) % days.length;
+                  setSelectedDay(days[prevIdx]);
+                }}
+                className="px-3 py-1.5 text-xs font-bold rounded bg-neutral-800 text-neutral-200 hover:bg-neutral-700"
+              >
+                ← {dayTitle(days[(days.indexOf(selectedDay) - 1 + days.length) % days.length])}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedDay(null)}
+                className="px-4 py-1.5 text-xs font-bold rounded bg-amber-600 hover:bg-amber-500 text-neutral-950"
+              >
+                Đóng
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const currentIdx = days.indexOf(selectedDay);
+                  const nextIdx = (currentIdx + 1) % days.length;
+                  setSelectedDay(days[nextIdx]);
+                }}
+                className="px-3 py-1.5 text-xs font-bold rounded bg-neutral-800 text-neutral-200 hover:bg-neutral-700"
+              >
+                {dayTitle(days[(days.indexOf(selectedDay) + 1) % days.length])} →
+              </button>
+            </div>
+          </div>
         </div>
-      ) : (
-        !loading &&
-        !error && (
-          <p className="nq-muted">
-            Tuần {currentDisplayWeek} chưa có ca nào.
-          </p>
-        )
       )}
     </div>
   );
 }
+
