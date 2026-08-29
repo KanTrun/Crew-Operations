@@ -1,76 +1,55 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getToken, isManager } from "../../lib/session";
-import { AuthGate, BtnLink, LinkGrid, LinkTile, OpsCard, PageHeader } from "../../ui/kit";
-import { chayLaiTour } from "../../ui/tour";
+import { getRole, type Role } from "../../lib/session";
+import { AuthGate, Kicker, LinkGrid, LinkTile, PageHeader } from "../../ui/kit";
 
-const LINKS: Array<[string, string]> = [
-  ["/huong-dan", "Bản đồ hướng dẫn"],
-  ["/tkb", "Thời khoá biểu từ ảnh"],
-  ["/cong-bang", "Xem công bằng"],
-  ["/page-quan", "Page quán"],
-  ["/doi-ca", "Đổi ca"],
-  ["/qr", "Điểm danh QR"],
-  ["/tieu-thu", "Sổ tiêu thụ"],
-  ["/hao-phi", "Hao phí"],
-  ["/sop", "Hỏi SOP"],
-  ["/handover", "Bàn giao"],
-  ["/vet", "Vết hệ thống"],
-  ["/phieu", "Phiếu"],
-  ["/toi", "Ca của tôi"],
-  ["/treo", "Việc treo"],
-  ["/roster", "Lịch tuần"],
-  ["/inbox", "Hộp thư"],
-  ["/cam-nang", "Cẩm nang"],
+type LinkItem = { href: string; label: string; roles?: Role[] };
+
+const LINKS: LinkItem[] = [
+  { href: "/quay", label: "Quầy nội bộ", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/pha", label: "Màn hình pha chế", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/phieu", label: "Phiếu ca", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/toi", label: "Ca của tôi", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/treo", label: "Việc treo", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/doi-ca", label: "Chợ đổi ca", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/handover", label: "Bàn giao", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/hao-phi", label: "Hao phí", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/tieu-thu", label: "Sổ tiêu thụ", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/cong-bang", label: "Công bằng", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/sop", label: "Hỏi SOP", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/tkb", label: "Thời khoá biểu từ ảnh", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/page-quan", label: "Page quán", roles: ["quan_ly", "chu_quan"] },
+  { href: "/roster", label: "Lịch tuần", roles: ["quan_ly", "chu_quan"] },
+  { href: "/inbox", label: "Hộp thư", roles: ["quan_ly", "chu_quan"] },
+  { href: "/cam-nang", label: "Cẩm nang", roles: ["nhan_vien", "quan_ly", "chu_quan"] },
+  { href: "/menu", label: "Menu & giá", roles: ["chu_quan"] },
+  { href: "/nguoi", label: "Người dùng", roles: ["chu_quan"] },
+  { href: "/vet", label: "Vết hệ thống", roles: ["chu_quan"] },
 ];
 
 export default function ThemPage() {
-  const [token, setToken] = useState("");
+  const [role, setRole] = useState<Role>("");
 
-  useEffect(() => {
-    setToken(getToken());
-  }, []);
-
-  if (!token) return <AuthGate />;
-  const manager = isManager();
+  useEffect(() => setRole(getRole()), []);
+  if (!role) return <AuthGate />;
+  const visible = LINKS.filter((item) => !item.roles || item.roles.includes(role));
 
   return (
-    <div className="nq-page">
+    <section className="nq-page">
+      <Kicker>Lối tắt theo vai trò</Kicker>
       <PageHeader
-        kicker="Menu phụ"
-        title="Thêm"
-        meta={
-          <>
-            Mọi việc còn lại của quán — vai{" "}
-            <strong>{manager ? "quản lý hoặc chủ quán" : "nhân viên"}</strong>.
-          </>
-        }
+        kicker="Thêm"
+        title="Việc của quán"
+        meta="Các mục không thuộc quyền của bạn được ẩn tại đây và chặn cả khi gõ trực tiếp đường dẫn."
       />
-
-      <OpsCard eyebrow="Hướng dẫn" title="Bản đồ & tour">
-        <p className="nq-muted mb-6">
-          Đọc bản đồ tương tác để hiểu liên kết giữa các trang từ đầu tới cuối.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <BtnLink href="/huong-dan" variant="primary">
-            Mở bản đồ NHỊP QUÁN
-          </BtnLink>
-          <button type="button" className="nq-filter-clear" onClick={() => chayLaiTour()}>
-            Xem lại tour (sắp có)
-          </button>
-        </div>
-      </OpsCard>
-
-      <OpsCard eyebrow="Danh mục" title="Việc còn lại" count={LINKS.length} countLabel="liên kết">
-        <LinkGrid>
-          {LINKS.map(([href, label]) => (
-            <LinkTile key={href} href={href}>
-              {label}
-            </LinkTile>
-          ))}
-        </LinkGrid>
-      </OpsCard>
-    </div>
+      <LinkGrid>
+        {visible.map((item) => (
+          <LinkTile key={item.href} href={item.href}>
+            {item.label}
+          </LinkTile>
+        ))}
+      </LinkGrid>
+    </section>
   );
 }

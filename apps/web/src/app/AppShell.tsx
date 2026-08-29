@@ -4,9 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { canAccess, clearSession, getName, getRole, getToken, isChuQuan, isManager, roleLabel } from "../lib/session";
-import { Logo } from "../ui/Logo";
 
-type LinkItem = { href: string; label: string; short?: string };
+type LinkItem = { href: string; label: string };
 
 const STAFF_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
@@ -32,12 +31,12 @@ const ADMIN_PRIMARY: LinkItem[] = [
 ];
 
 const MORE: LinkItem[] = [
-  { href: "/huong-dan", label: "Bản đồ hệ thống" },
   { href: "/quay", label: "Quầy" },
   { href: "/pha", label: "Pha chế" },
   { href: "/inbox", label: "Hộp thư" },
   { href: "/roster", label: "Lịch tuần" },
   { href: "/page-quan", label: "Page quán (Facebook)" },
+  { href: "/tkb", label: "Thời khoá biểu từ ảnh" },
   { href: "/cong-bang", label: "Công bằng" },
   { href: "/toi", label: "Ca của tôi" },
   { href: "/phieu", label: "Phiếu" },
@@ -82,9 +81,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="nq-shell">
       <header className="nq-top">
-        <div className="nq-brand">
-          <Logo href={token ? "/hom-nay" : "/"} />
-        </div>
+        <Link href={token ? "/hom-nay" : "/"} className="nq-brand">
+          NHỊP QUÁN
+        </Link>
         {token ? (
           <nav className="nq-nav" aria-label="Chính">
             {primary.map((l) => (
@@ -130,7 +129,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav className="nq-bottom" aria-label="Lối tắt">
           {primary.map((l) => (
             <Link key={l.href} href={l.href} data-on={path === l.href ? "1" : "0"}>
-              {l.short ?? l.label}
+              {l.label}
             </Link>
           ))}
           <Link href="/them" data-on={path === "/them" ? "1" : "0"}>
@@ -141,3 +140,4 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+

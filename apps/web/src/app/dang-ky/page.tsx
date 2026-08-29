@@ -98,7 +98,7 @@ export default function DangKyPage() {
       router.push("/hom-nay");
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        const { o, cau } = dangKyLoi(undefined);
+        const { o, cau } = dangKyLoi(err.detail);
         if (o === "chung") setLoiChung(cau);
         else setLoiO({ [o]: cau });
       } else {

@@ -14,10 +14,8 @@ import {
   Btn,
   Empty,
   Field,
-  inputClassName,
   Loading,
   Notice,
-  OpsCard,
   PageHeader,
   StatusChip,
   Toasts,
@@ -181,7 +179,10 @@ export default function TkbPage() {
       </Notice>
 
       {saved && saved.length > 0 ? (
-        <OpsCard eyebrow="Đã lưu" title="Khoảng bận của bạn" count={saved.length} countLabel="khung">
+        <section className="mb-8">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-[var(--nq-copper)]">
+            Đã gắn cho bạn
+          </h2>
           <ul className="nq-tkb-list">
             {saved.map((k, i) => (
               <li key={`${k.thu}-${k.start}-${i}`}>
@@ -189,10 +190,10 @@ export default function TkbPage() {
               </li>
             ))}
           </ul>
-        </OpsCard>
+        </section>
       ) : null}
 
-      <OpsCard eyebrow="Bước 1" title="Tải ảnh & đọc">
+      <section className="nq-tkb-upload mb-8">
         <div className="mb-4">
           <span className="mb-2 block text-sm font-bold uppercase tracking-widest text-[var(--nq-dim)]">
             Ảnh thời khoá biểu
@@ -216,7 +217,7 @@ export default function TkbPage() {
         ) : null}
         {manager ? (
           <Field label="Gắn cho nhân viên">
-            <select className={inputClassName} value={nvId} onChange={(e) => setNvId(e.target.value)}>
+            <select value={nvId} onChange={(e) => setNvId(e.target.value)}>
               <option value={myNv}>Tôi ({myNv || "—"})</option>
               {staff.map((nv) => (
                 <option key={nv.id} value={nv.id}>
@@ -238,10 +239,10 @@ export default function TkbPage() {
             Thử ảnh mẫu
           </Btn>
         </div>
-      </OpsCard>
+      </section>
 
       {result ? (
-        <OpsCard eyebrow="Bước 2" title="Sửa & xác nhận" count={rows.length} countLabel="khung">
+        <section className="mb-8">
           <div className="mb-3 flex flex-wrap gap-2">
             <StatusChip tone={result.escalate ? "warn" : "ok"}>
               {result.escalate ? "Cần sửa tay" : "Đọc được"}
@@ -252,10 +253,13 @@ export default function TkbPage() {
             </StatusChip>
           </div>
           {hint ? <Alert kind="info">{hint}</Alert> : null}
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-[var(--nq-copper)]">
+            Khoảng bận (sửa trước khi xác nhận)
+          </h2>
           <div className="nq-tkb-edit">
             {rows.map((r, i) => (
               <div key={i} className="nq-tkb-row">
-                <select className={inputClassName} value={r.thu} onChange={(e) => updateRow(i, { thu: e.target.value })}>
+                <select value={r.thu} onChange={(e) => updateRow(i, { thu: e.target.value })}>
                   {THU.map((t) => (
                     <option key={t} value={t}>
                       {t}
@@ -263,14 +267,12 @@ export default function TkbPage() {
                   ))}
                 </select>
                 <input
-                  className={inputClassName}
                   type="time"
                   value={r.start}
                   onChange={(e) => updateRow(i, { start: e.target.value })}
                 />
                 <span className="text-[var(--nq-fg)]">→</span>
                 <input
-                  className={inputClassName}
                   type="time"
                   value={r.end}
                   onChange={(e) => updateRow(i, { end: e.target.value })}
@@ -295,7 +297,7 @@ export default function TkbPage() {
               Xác nhận gắn TKB
             </Btn>
           </div>
-        </OpsCard>
+        </section>
       ) : (
         !loading && (
           <Empty>Chưa có kết quả đọc. Chọn ảnh rồi bấm Đọc ảnh, hoặc thử ảnh mẫu.</Empty>

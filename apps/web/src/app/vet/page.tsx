@@ -1,27 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiGet } from "../../lib/api";
 import { actorLabel, formatLuc, hanhViLabel, viError } from "../../lib/present";
-import { matchExact, matchSearch, matchTime, TIME_FILTER_OPTIONS, uniqueSorted, type TimeFilter } from "../../lib/list-filters";
 import { getToken } from "../../lib/session";
-import { Alert, AuthGate, Empty, Loading, OpsCard, PageHeader } from "../../ui/kit";
-import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
+import { Alert, AuthGate, Empty, Loading, PageHeader } from "../../ui/kit";
 
 type Row = { at?: string; ai?: string; hanh?: string };
-
-function rowHaystack(it: Row): string {
-  return [hanhViLabel(it.hanh), actorLabel(it.ai), it.at].filter(Boolean).join(" ");
-}
 
 export default function VetPage() {
   const [token, setToken] = useState("");
   const [items, setItems] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [personF, setPersonF] = useState("all");
-  const [timeF, setTimeF] = useState<TimeFilter>("all");
 
   useEffect(() => {
     setToken(getToken());
@@ -51,28 +42,6 @@ export default function VetPage() {
     if (token) load();
   }, [token, load]);
 
-  const personOptions = useMemo(
-    () => [{ value: "all", label: "Mọi người" }, ...uniqueSorted(items.map((i) => i.ai)).map((v) => ({ value: v, label: actorLabel(v) }))],
-    [items],
-  );
-
-  const filtered = useMemo(() => {
-    return items.filter((it) => {
-      if (!matchSearch(rowHaystack(it), search)) return false;
-      if (!matchExact(it.ai, personF)) return false;
-      if (!matchTime(it.at, timeF)) return false;
-      return true;
-    });
-  }, [items, search, personF, timeF]);
-
-  const filterActive = search.length > 0 || personF !== "all" || timeF !== "all";
-
-  function clearFilters() {
-    setSearch("");
-    setPersonF("all");
-    setTimeF("all");
-  }
-
   if (!token) return <AuthGate />;
 
   return (
@@ -83,41 +52,20 @@ export default function VetPage() {
         meta="Mọi lần đổi lịch, duyệt ràng buộc, ghi sổ đều để lại vết ở đây — để tra lại khi cần đối chiếu."
       />
       {error ? <Alert>{error}</Alert> : null}
-
-      <OpsCard eyebrow="Nhật ký" title="Các vết gần đây" count={filtered.length} countLabel="vết">
-        <ListToolbar
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Tìm hành vi, người thực hiện…"
-          person={personF}
-          onPersonChange={setPersonF}
-          personOptions={personOptions}
-          personLabel="Người thực hiện"
-          time={timeF}
-          onTimeChange={(v) => setTimeF(v as TimeFilter)}
-          timeOptions={TIME_FILTER_OPTIONS}
-          shown={filtered.length}
-          total={items.length}
-          filtered={filterActive}
-        />
-
-        {loading ? <Loading skeleton="list">Đang đọc vết hệ thống…</Loading> : null}
-        {!loading && !error && items.length === 0 ? (
-          <Empty title="Chưa có vết">Chuyển trạng thái lịch hoặc duyệt hộp thư sẽ sinh vết đầu tiên.</Empty>
-        ) : null}
-        {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
-
-        <div className="nq-list">
-          {filtered.map((it, i) => (
-            <article key={`${i}-${it.at ?? ""}`} className="nq-item">
-              <p className="nq-item-title">{hanhViLabel(it.hanh)}</p>
-              <p className="nq-item-sub">
-                {actorLabel(it.ai)} · <span className="font-mono">{formatLuc(it.at)}</span>
-              </p>
-            </article>
-          ))}
-        </div>
-      </OpsCard>
+      {loading ? <Loading skeleton="list">Đang đọc vết hệ thống…</Loading> : null}
+      {!loading && !error && items.length === 0 ? (
+        <Empty>Chưa có vết nào. Chuyển trạng thái lịch hoặc duyệt hộp thư sẽ sinh vết đầu tiên.</Empty>
+      ) : null}
+      <div className="nq-list">
+        {items.map((it, i) => (
+          <article key={`${i}-${it.at ?? ""}`} className="nq-item">
+            <p className="nq-item-title">{hanhViLabel(it.hanh)}</p>
+            <p className="nq-item-sub">
+              {actorLabel(it.ai)} · <span style={{ fontFamily: "var(--nq-font-mono)" }}>{formatLuc(it.at)}</span>
+            </p>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }

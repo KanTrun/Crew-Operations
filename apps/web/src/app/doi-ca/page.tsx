@@ -1,9 +1,8 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { nvLabel, safeText, swapLabel, viError } from "../../lib/present";
-import { matchExact, matchSearch, uniqueSorted } from "../../lib/list-filters";
 import { getToken } from "../../lib/session";
 import {
   Alert,
@@ -12,19 +11,14 @@ import {
   Empty,
   Field,
   Hint,
-  inputClassName,
+  inputStyle,
   Loading,
   OpsCard,
   PageHeader,
   StatusChip,
 } from "../../ui/kit";
-import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 
 type Swap = { id: string; a: string; b: string; c: string; ca_id: string; trang_thai: string };
-
-function swapHaystack(it: Swap): string {
-  return [it.id, it.a, it.b, it.c, it.ca_id, swapLabel(it.trang_thai), nvLabel(it.a), nvLabel(it.b), nvLabel(it.c)].join(" ");
-}
 
 export default function DoiCaPage() {
   const [token, setToken] = useState("");
@@ -37,9 +31,6 @@ export default function DoiCaPage() {
   const [ca, setCa] = useState("w1_c01");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusF, setStatusF] = useState("all");
-  const [personF, setPersonF] = useState("all");
 
   useEffect(() => {
     setToken(getToken());
@@ -61,33 +52,6 @@ export default function DoiCaPage() {
   useEffect(() => {
     if (token) load();
   }, [token, load]);
-
-  const statusOptions = useMemo(() => {
-    const statuses = uniqueSorted(items.map((i) => i.trang_thai));
-    return [{ value: "all", label: "Mọi trạng thái" }, ...statuses.map((s) => ({ value: s, label: swapLabel(s) }))];
-  }, [items]);
-
-  const personOptions = useMemo(() => {
-    const people = uniqueSorted(items.flatMap((i) => [i.a, i.b, i.c]));
-    return [{ value: "all", label: "Mọi người" }, ...people.map((p) => ({ value: p, label: nvLabel(p) }))];
-  }, [items]);
-
-  const filtered = useMemo(() => {
-    return items.filter((it) => {
-      if (!matchSearch(swapHaystack(it), search)) return false;
-      if (!matchExact(it.trang_thai, statusF)) return false;
-      if (personF !== "all" && ![it.a, it.b, it.c].includes(personF)) return false;
-      return true;
-    });
-  }, [items, search, statusF, personF]);
-
-  const filterActive = search.length > 0 || statusF !== "all" || personF !== "all";
-
-  function clearFilters() {
-    setSearch("");
-    setStatusF("all");
-    setPersonF("all");
-  }
 
   const dayDu = a.trim() && b.trim() && c.trim() && ca.trim();
 
@@ -126,68 +90,50 @@ export default function DoiCaPage() {
       <PageHeader
         kicker="Ba nhánh phải đồng ý"
         title="Chợ đổi ca"
-        meta="Đổi ca chỉ thành khi người nhả, người nhận và quản lý cùng đồng ý."
+        meta="Đổi ca chỉ thành khi người nhả, người nhận và quản lý cùng đồng ý. Lệnh mở ở đây."
       />
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
-
-      <OpsCard eyebrow="Khu vực 1" title="Mở lệnh mới">
+      <OpsCard eyebrow="Mở lệnh mới" title="Ba nhánh của lệnh đổi">
         <form onSubmit={onSubmit}>
           <Field label="Người nhả ca">
-            <input className={inputClassName} value={a} onChange={(e) => setA(e.target.value)} />
+            <input value={a} onChange={(e) => setA(e.target.value)} style={inputStyle} />
           </Field>
           <Field label="Người nhận ca">
-            <input className={inputClassName} value={b} onChange={(e) => setB(e.target.value)} />
+            <input value={b} onChange={(e) => setB(e.target.value)} style={inputStyle} />
           </Field>
           <Field label="Người xác nhận">
-            <input className={inputClassName} value={c} onChange={(e) => setC(e.target.value)} />
+            <input value={c} onChange={(e) => setC(e.target.value)} style={inputStyle} />
           </Field>
           <Hint>Nhập mã nhân viên như trên Lịch tuần, ví dụ nv_01.</Hint>
           <Field label="Mã ca cần đổi">
-            <input className={inputClassName} value={ca} onChange={(e) => setCa(e.target.value)} />
+            <input value={ca} onChange={(e) => setCa(e.target.value)} style={inputStyle} />
           </Field>
           <Btn type="submit" variant="primary" disabled={busy}>
             {busy ? "Đang mở lệnh…" : "Mở lệnh đổi ca"}
           </Btn>
         </form>
       </OpsCard>
-
-      <OpsCard eyebrow="Khu vực 2" title="Lệnh đang mở" count={filtered.length} countLabel="lệnh">
-        <ListToolbar
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Tìm người, mã ca, trạng thái…"
-          status={statusF}
-          onStatusChange={setStatusF}
-          statusOptions={statusOptions}
-          person={personF}
-          onPersonChange={setPersonF}
-          personOptions={personOptions}
-          shown={filtered.length}
-          total={items.length}
-          filtered={filterActive}
-        />
-        {loading ? <Loading skeleton="list">Đang tải lệnh đổi ca…</Loading> : null}
-        {!loading && !error && items.length === 0 ? (
-          <Empty title="Chưa có lệnh">Chưa có lệnh đổi ca nào đang mở.</Empty>
-        ) : null}
-        {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
-        <div className="nq-list">
-          {filtered.map((it) => (
-            <article key={it.id} className="nq-item">
-              <p className="nq-item-title">
-                {nvLabel(it.a)} nhả · {nvLabel(it.b)} nhận · {nvLabel(it.c)} xác nhận
-              </p>
-              <p className="nq-item-sub">
-                <StatusChip tone={it.trang_thai === "dong_y" ? "ok" : "warn"}>
-                  {swapLabel(it.trang_thai)}
-                </StatusChip>
-                {it.ca_id ? ` · ca ${safeText(it.ca_id)}` : ""}
-              </p>
-            </article>
-          ))}
-        </div>
-      </OpsCard>
+      <h2>Lệnh đang mở</h2>
+      {loading ? <Loading skeleton="list">Đang tải lệnh đổi ca…</Loading> : null}
+      {!loading && !error && items.length === 0 ? (
+        <Empty>Chưa có lệnh đổi ca nào đang mở.</Empty>
+      ) : null}
+      <div className="nq-list">
+        {items.map((it) => (
+          <article key={it.id} className="nq-item">
+            <p className="nq-item-title">
+              {nvLabel(it.a)} nhả · {nvLabel(it.b)} nhận · {nvLabel(it.c)} xác nhận
+            </p>
+            <p className="nq-item-sub">
+              <StatusChip tone={it.trang_thai === "dong_y" ? "ok" : "warn"}>
+                {swapLabel(it.trang_thai)}
+              </StatusChip>
+              {it.ca_id ? ` · ca ${safeText(it.ca_id)}` : ""}
+            </p>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }
