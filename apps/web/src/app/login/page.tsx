@@ -1,14 +1,31 @@
 "use client";
 
-import { FormEvent, useState, useEffect, useRef } from "react";
-import Link from "next/link";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import gsap from "gsap";
-import { ApiError, apiSend } from "../../lib/api";
-import { viError } from "../../lib/present";
-import { Alert, Field } from "../../ui/kit";
+import { API } from "../../lib/api";
+import { Alert, Btn, Field, Kicker } from "../../ui/kit";
 
-type LoginOut = { token: string; role: string; display_name: string; nv_id: string };
+type StaffProfile = {
+  username: string;
+  name: string;
+  role: "chu_quan" | "quan_ly" | "nhan_vien";
+  roleName: string;
+  icon: string;
+  skills: string;
+};
+
+const ACCOUNTS: StaffProfile[] = [
+  { username: "hung", name: "Hùng Trần", role: "chu_quan", roleName: "Chủ quán", icon: "👑", skills: "Toàn quyền · Menu · Phân quyền" },
+  { username: "lan", name: "Lan Nguyễn", role: "quan_ly", roleName: "Quản lý", icon: "👔", skills: "Xếp ca · Duyệt inbox · Phát QR" },
+  { username: "minh", name: "Minh Phạm", role: "nhan_vien", roleName: "Nhân viên", icon: "☕", skills: "Pha chế · Phục vụ · SV" },
+  { username: "an", name: "An Lê", role: "nhan_vien", roleName: "Nhân viên", icon: "☕", skills: "Pha chế · Thu ngân · SV" },
+  { username: "bao", name: "Bảo Hoàng", role: "nhan_vien", roleName: "Nhân viên", icon: "☕", skills: "Pha chế · Kho · Fulltime" },
+  { username: "chi", name: "Chi Vũ", role: "nhan_vien", roleName: "Nhân viên", icon: "☕", skills: "Thu ngân · Phục vụ · SV" },
+  { username: "dung", name: "Dũng Đặng", role: "nhan_vien", roleName: "Nhân viên", icon: "☕", skills: "Kho · Phục vụ · Fulltime" },
+  { username: "thao", name: "Thảo Dương", role: "nhan_vien", roleName: "Nhân viên", icon: "☕", skills: "Thu ngân · Pha chế · Fulltime" },
+  { username: "quan", name: "Quân Lương", role: "nhan_vien", roleName: "Nhân viên", icon: "☕", skills: "Pha chế · Đơn QR · SV" },
+  { username: "yen", name: "Yến Kiều", role: "nhan_vien", roleName: "Nhân viên", icon: "☕", skills: "Thu ngân · Kho · SV" },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,116 +33,175 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [filterRole, setFilterRole] = useState<string>("all");
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function handleLogin(user: string, pass: string) {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiSend<LoginOut>("/api/v1/auth/login", { username, password });
+      const res = await fetch(`${API}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: user, password: pass }),
+      });
+      if (!res.ok) {
+        setError("Sai tài khoản hoặc mật khẩu.");
+        return;
+      }
+      const data = (await res.json()) as {
+        token: string;
+        role: string;
+        display_name: string;
+        nv_id: string;
+      };
       sessionStorage.setItem("nq_token", data.token);
       sessionStorage.setItem("nq_role", data.role);
       sessionStorage.setItem("nq_name", data.display_name);
       sessionStorage.setItem("nq_nv", data.nv_id);
       router.push("/hom-nay");
-    } catch (e) {
-      // 401 ở đây là sai tài khoản, không phải hết phiên — nói đúng việc.
-      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
-        setError("Tài khoản hoặc mật khẩu chưa đúng. Nhập lại, hoặc nhờ quản lý cấp lại.");
-      } else {
-        setError(viError(e, { doing: "vào được hệ thống" }));
-      }
+    } catch {
+      setError("Không kết nối được máy chủ (API http://localhost:8000). Kiểm tra server rồi thử lại.");
     } finally {
       setLoading(false);
     }
   }
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  useEffect(() => {
-    if (!containerRef.current) return;
-    
-    // Neo-brutalism entrance animation
-    gsap.fromTo(
-      ".nq-login-card",
-      { y: 100, opacity: 0, rotate: -2 },
-      { y: 0, opacity: 1, rotate: 0, duration: 0.8, ease: "back.out(1.7)" }
-    );
-    
-    gsap.fromTo(
-      ".nq-kinetic-text span",
-      { y: 50, opacity: 0 },
-      { y: 0, opacity: 1, stagger: 0.1, duration: 0.6, ease: "power3.out", delay: 0.2 }
-    );
-  }, []);
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!username.trim() || !password.trim()) {
+      setError("Vui lòng nhập tài khoản và mật khẩu.");
+      return;
+    }
+    void handleLogin(username.trim(), password.trim());
+  }
+
+  function quickLogin(user: string) {
+    setUsername(user);
+    setPassword("nhipquan");
+    void handleLogin(user, "nhipquan");
+  }
+
+  const visibleAccounts = ACCOUNTS.filter((acc) => {
+    if (filterRole === "all") return true;
+    return acc.role === filterRole;
+  });
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" ref={containerRef}>
-      {/* Abstract background elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-[var(--nq-copper-glow)] blur-[100px] opacity-50 mix-blend-screen" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-[var(--nq-red-dim)] blur-[120px] opacity-30 mix-blend-screen" />
-      
-      <form onSubmit={onSubmit} className="nq-login-card relative z-10 w-full max-w-[440px] bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] p-8 md:p-12 shadow-[16px_16px_0px_0px_var(--nq-copper-dim)] transition-transform hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-[20px_20px_0px_0px_var(--nq-copper-dim)]">
-        <div className="nq-login-body flex flex-col gap-6">
-          <div className="nq-kinetic-text flex gap-2 overflow-hidden text-[var(--nq-copper)] font-bold uppercase tracking-widest text-sm mb-2">
-            <span>Vào</span>
-            <span>Ca</span>
-            <span>·</span>
-            <span>Một</span>
-            <span>Việc</span>
-            <span>Một</span>
-            <span>Lúc</span>
+    <main className="relative z-10 min-h-screen flex items-center justify-center p-4 sm:p-8">
+      <div className="w-full max-w-2xl bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] p-6 sm:p-10">
+        <Kicker>OS Vận hành ca · NHỊP QUÁN</Kicker>
+        <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-[var(--nq-fg)] mb-2">
+          Đăng nhập
+        </h1>
+        <p className="text-[var(--nq-dim)] font-mono text-sm mb-6">
+          Chọn ngay nhân viên bên dưới để đăng nhập 1 chạm, hoặc nhập tài khoản thủ công.
+        </p>
+
+        {/* Danh sách 10 nhân sự bấm đăng nhập nhanh */}
+        <div className="mb-8 p-4 bg-[var(--nq-surface)] border border-[var(--nq-dim)]">
+          <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+            <p className="text-xs font-mono uppercase tracking-widest text-[var(--nq-copper)] font-bold">
+              ⚡ Chọn nhân viên đăng nhập 1 chạm:
+            </p>
+            <div className="flex gap-1 text-xs">
+              <button
+                type="button"
+                className={`px-2 py-0.5 rounded font-mono ${filterRole === "all" ? "bg-[var(--nq-copper)] text-[var(--nq-bg)] font-bold" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
+                onClick={() => setFilterRole("all")}
+              >
+                Tất cả (10)
+              </button>
+              <button
+                type="button"
+                className={`px-2 py-0.5 rounded font-mono ${filterRole === "chu_quan" ? "bg-[var(--nq-copper)] text-[var(--nq-bg)] font-bold" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
+                onClick={() => setFilterRole("chu_quan")}
+              >
+                Chủ quán
+              </button>
+              <button
+                type="button"
+                className={`px-2 py-0.5 rounded font-mono ${filterRole === "quan_ly" ? "bg-[var(--nq-copper)] text-[var(--nq-bg)] font-bold" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
+                onClick={() => setFilterRole("quan_ly")}
+              >
+                Quản lý
+              </button>
+              <button
+                type="button"
+                className={`px-2 py-0.5 rounded font-mono ${filterRole === "nhan_vien" ? "bg-[var(--nq-copper)] text-[var(--nq-bg)] font-bold" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
+                onClick={() => setFilterRole("nhan_vien")}
+              >
+                Nhân viên
+              </button>
+            </div>
           </div>
-          
-          <h1 className="text-5xl md:text-6xl font-black uppercase leading-none tracking-tighter mb-4 text-[var(--nq-fg)] mix-blend-difference">
-            Đăng<br/>Nhập
-          </h1>
-          
-          <p className="text-[var(--nq-dim)] text-sm mb-4 border-l-4 border-[var(--nq-copper)] pl-4">
-            Dùng tài khoản quán do quản lý cấp. Quên mật khẩu thì nhờ quản lý đặt lại — hệ thống không
-            gửi lại mật khẩu qua màn hình này.
-          </p>
-          
-          <div className="flex flex-col gap-5">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+            {visibleAccounts.map((acc) => (
+              <button
+                key={acc.username}
+                type="button"
+                disabled={loading}
+                onClick={() => quickLogin(acc.username)}
+                className="p-2.5 text-xs font-mono border border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:bg-[var(--nq-surface-hi)] transition-all text-left flex items-start justify-between group"
+              >
+                <div>
+                  <div className="font-bold text-[var(--nq-fg)] group-hover:text-[var(--nq-copper)] flex items-center gap-1.5">
+                    <span>{acc.icon}</span>
+                    <span>{acc.name}</span>
+                    <span className="text-[var(--nq-dim)] text-[10px]">(@{acc.username})</span>
+                  </div>
+                  <div className="text-[11px] text-[var(--nq-dim)] mt-0.5">
+                    {acc.skills}
+                  </div>
+                </div>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                  acc.role === "chu_quan"
+                    ? "bg-amber-900/30 text-amber-400 border border-amber-800"
+                    : acc.role === "quan_ly"
+                    ? "bg-blue-900/30 text-blue-400 border border-blue-800"
+                    : "bg-emerald-900/30 text-emerald-400 border border-emerald-800"
+                }`}>
+                  {acc.roleName}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {error ? <Alert kind="err">{error}</Alert> : null}
+
+        {/* Form nhập tay */}
+        <form onSubmit={onSubmit} className="space-y-4 pt-2 border-t border-[var(--nq-border)]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Tài khoản">
               <input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
-                className="w-full bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-4 text-[var(--nq-fg)] font-mono focus:border-[var(--nq-copper)] focus:outline-none transition-colors"
+                placeholder="lan / minh / hung..."
+                className="w-full bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-2.5 text-[var(--nq-fg)] font-mono text-sm focus:border-[var(--nq-copper)] focus:outline-none transition-colors"
               />
             </Field>
+
             <Field label="Mật khẩu">
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
-                className="w-full bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-4 text-[var(--nq-fg)] font-mono focus:border-[var(--nq-copper)] focus:outline-none transition-colors"
+                placeholder="Mặc định: nhipquan"
+                className="w-full bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-2.5 text-[var(--nq-fg)] font-mono text-sm focus:border-[var(--nq-copper)] focus:outline-none transition-colors"
               />
             </Field>
           </div>
-          
-          {error ? (
-            <div className="animate-in fade-in slide-in-from-bottom-2">
-              <Alert>{error}</Alert>
-            </div>
-          ) : null}
-          
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full mt-4 bg-[var(--nq-copper)] text-[#0e0c0a] font-black uppercase tracking-widest py-5 px-6 border-2 border-[var(--nq-copper)] hover:bg-transparent hover:text-[var(--nq-copper)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? "Đang vào…" : "Vào hệ thống"}
-          </button>
-          
-          <div className="mt-8 pt-6 border-t-2 border-dashed border-[var(--nq-dim)] flex flex-col gap-2 text-sm text-[var(--nq-dim)]">
-            <p>Chưa có tài khoản quán? <Link href="/dang-ky" className="text-[var(--nq-copper)] hover:underline underline-offset-4 decoration-2">Tạo tài khoản nhân viên</Link></p>
-            <p>Muốn biết một ngày của quán chạy thế nào? <Link href="/huong-dan" className="text-[var(--nq-copper)] hover:underline underline-offset-4 decoration-2">Đọc hướng dẫn</Link></p>
+
+          <div className="pt-2">
+            <Btn type="submit" variant="primary" block busy={loading} busyLabel="Đang đăng nhập…">
+              Vào hệ thống
+            </Btn>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </main>
   );
 }

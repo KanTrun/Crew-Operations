@@ -3,23 +3,84 @@
 import Link from "next/link";
 import { CSSProperties, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
-export const btnPrimary: CSSProperties = {};
-export const btnGhost: CSSProperties = {};
-export const btnSecondary: CSSProperties = {};
-export const btnDanger: CSSProperties = {};
-export const inputStyle: CSSProperties = {};
+export const inputStyle: CSSProperties = {
+  width: "100%",
+  padding: "0.75rem 1rem",
+  backgroundColor: "var(--nq-surface-hi)",
+  color: "var(--nq-fg)",
+  border: "2px solid var(--nq-dim)",
+  fontFamily: "var(--nq-font-mono)",
+  fontSize: "1rem",
+  boxSizing: "border-box",
+};
+
+export const textareaStyle: CSSProperties = {
+  ...inputStyle,
+  minHeight: "80px",
+  resize: "vertical",
+};
+
+export const btnPrimary: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "0.75rem 1.5rem",
+  backgroundColor: "var(--nq-copper)",
+  color: "var(--nq-accent-ink)",
+  border: "2px solid var(--nq-copper)",
+  fontWeight: "900",
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
+  boxShadow: "6px 6px 0px 0px var(--nq-copper-dim)",
+  cursor: "pointer",
+  textDecoration: "none",
+};
+
+export const btnGhost: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "0.75rem 1.5rem",
+  backgroundColor: "transparent",
+  color: "var(--nq-fg)",
+  border: "2px solid var(--nq-dim)",
+  fontWeight: "900",
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
+  cursor: "pointer",
+  textDecoration: "none",
+};
+
+export const btnSecondary: CSSProperties = btnGhost;
+
+export const btnDanger: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "0.75rem 1.5rem",
+  backgroundColor: "var(--nq-red)",
+  color: "#ffffff",
+  border: "2px solid var(--nq-red)",
+  fontWeight: "900",
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
+  boxShadow: "6px 6px 0px 0px var(--nq-red-dim)",
+  cursor: "pointer",
+  textDecoration: "none",
+};
 
 type BtnVariant = "primary" | "ghost" | "danger";
 
 function btnClass(variant: BtnVariant, block?: boolean) {
-  const base = "font-black uppercase tracking-widest py-4 px-8 border-2 transition-all text-center inline-flex items-center justify-center gap-2";
+  const base =
+    "font-black uppercase tracking-widest py-3 px-6 md:py-4 md:px-8 border-2 transition-all text-center inline-flex items-center justify-center gap-2";
   const w = block ? "w-full" : "";
-  
+
   if (variant === "primary") {
-    return `${base} ${w} bg-[var(--nq-copper)] text-[#0e0c0a] border-[var(--nq-copper)] hover:bg-transparent hover:text-[var(--nq-copper)] shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-copper-dim)] disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[8px_8px_0px_0px_var(--nq-copper-dim)]`;
+    return `${base} ${w} nq-ink-on-solid bg-[var(--nq-copper)] border-[var(--nq-copper)] hover:bg-transparent hover:text-[var(--nq-copper)] shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-copper-dim)] disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0`;
   }
   if (variant === "danger") {
-    return `${base} ${w} bg-[var(--nq-red)] text-[#0e0c0a] border-[var(--nq-red)] hover:bg-transparent hover:text-[var(--nq-red)] shadow-[8px_8px_0px_0px_var(--nq-red-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-red-dim)] disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[8px_8px_0px_0px_var(--nq-red-dim)]`;
+    return `${base} ${w} nq-ink-on-solid bg-[var(--nq-red)] border-[var(--nq-red)] hover:bg-transparent hover:text-[var(--nq-red)] shadow-[8px_8px_0px_0px_var(--nq-red-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-red-dim)] disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0`;
   }
   return `${base} ${w} bg-transparent text-[var(--nq-fg)] border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] disabled:opacity-50`;
 }
@@ -62,11 +123,11 @@ export function EditorialBanner({
   meta?: ReactNode;
 }) {
   return (
-    <section className="bg-[var(--nq-copper)] text-[#0e0c0a] p-8 md:p-12 mb-12 shadow-[12px_12px_0px_0px_var(--nq-copper-dim)]" aria-label="Tình trạng">
-      <div className="max-w-4xl">
-        <p className="text-sm font-mono uppercase tracking-widest mb-4 opacity-80">{wordmark}</p>
-        <p className="text-4xl md:text-6xl font-black uppercase tracking-tighter mb-6 leading-none">{status}</p>
-        {meta ? <p className="text-lg font-mono opacity-90 max-w-2xl">{meta}</p> : null}
+    <section className="nq-ink-on-solid bg-[var(--nq-copper)] p-6 md:p-10 mb-10 md:mb-12 shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] w-full" aria-label="Tình trạng">
+      <div className="w-full max-w-none">
+        <p className="text-sm font-mono uppercase tracking-widest mb-3 opacity-80">{wordmark}</p>
+        <p className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4 leading-none">{status}</p>
+        {meta ? <p className="text-base md:text-lg font-mono opacity-90 max-w-3xl">{meta}</p> : null}
       </div>
     </section>
   );
@@ -85,16 +146,22 @@ export function BentoTile({
   large?: boolean;
   href?: string;
 }) {
-  const bg = accent === "warn" ? "bg-[var(--nq-warn)] text-[#0e0c0a]" 
-           : accent === "ok" ? "bg-[var(--nq-green)] text-[#0e0c0a]"
-           : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)] border-2 border-[var(--nq-dim)] hover:border-[var(--nq-copper)]";
-  
-  const cls = `flex flex-col justify-between p-6 shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] transition-all ${large ? "md:col-span-2 md:row-span-2" : ""} ${bg}`;
-  
+  const bg =
+    accent === "warn"
+      ? "nq-ink-on-solid bg-[var(--nq-warn)]"
+      : accent === "ok"
+        ? "nq-ink-on-solid bg-[var(--nq-green)]"
+        : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)] border-2 border-[var(--nq-dim)] hover:border-[var(--nq-copper)]";
+
+  const span = large
+    ? "nq-bento-tile nq-bento-tile--lg col-span-12 sm:col-span-6 lg:col-span-8 lg:row-span-2 min-h-[200px]"
+    : "nq-bento-tile col-span-12 sm:col-span-6 lg:col-span-4 min-h-[140px]";
+  const cls = `${span} flex flex-col justify-between p-6 shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] transition-all ${bg}`;
+
   const inner = (
     <>
-      <strong className={`font-black ${large ? "text-6xl md:text-8xl" : "text-4xl"} mb-4 block`}>{value}</strong>
-      <span className="text-sm font-mono uppercase tracking-widest opacity-80">{label}</span>
+      <strong className={`nq-bento-value font-black ${large ? "text-6xl md:text-8xl" : "text-4xl"} mb-4 block`}>{value}</strong>
+      <span className="nq-bento-label text-sm font-mono uppercase tracking-widest opacity-80">{label}</span>
     </>
   );
   if (href) {
@@ -202,13 +269,11 @@ export function Alert({
   children: ReactNode;
   className?: string;
 }) {
-  const color =
-    kind === "ok" ? "var(--nq-green)" : kind === "info" ? "var(--nq-copper)" : "var(--nq-red)";
+  const tone = kind === "ok" ? "nq-alert--ok" : kind === "info" ? "nq-alert--info" : "nq-alert--err";
   return (
-    <div 
-      role={kind === "err" ? "alert" : undefined} 
-      className={`p-4 border-l-4 bg-[var(--nq-surface)] font-mono text-sm ${className}`.trim()} 
-      style={{ borderColor: color, color }}
+    <div
+      role={kind === "err" ? "alert" : undefined}
+      className={`nq-alert ${tone} ${className}`.trim()}
     >
       {children}
     </div>
@@ -357,7 +422,7 @@ export function AuthGate() {
       <h1 className="text-4xl font-black uppercase tracking-tighter text-[var(--nq-fg)] mb-4">Cần phiên làm việc</h1>
       <p className="text-xl text-[var(--nq-dim)] mb-8 max-w-md">Trang này đọc dữ liệu quán qua phiên của bạn. Đăng nhập để tiếp tục.</p>
       <div className="flex flex-col sm:flex-row gap-4">
-        <BtnLink href="/login" className="bg-[var(--nq-copper)] text-[#0e0c0a] font-black uppercase tracking-widest py-4 px-8 border-2 border-[var(--nq-copper)] hover:bg-transparent hover:text-[var(--nq-copper)] transition-all shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-copper-dim)]">
+        <BtnLink href="/login" className="nq-ink-on-solid bg-[var(--nq-copper)] font-black uppercase tracking-widest py-4 px-8 border-2 border-[var(--nq-copper)] hover:bg-transparent hover:text-[var(--nq-copper)] transition-all shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-copper-dim)]">
           Đăng nhập
         </BtnLink>
         <BtnLink href="/dang-ky" className="bg-transparent text-[var(--nq-fg)] font-black uppercase tracking-widest py-4 px-8 border-2 border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] transition-all">
@@ -386,7 +451,6 @@ export function ProgressBar({ value, max, className = "" }: { value: number; max
   );
 }
 
-export const textareaStyle: CSSProperties = {};
 
 /** Vòng xoay nhỏ trong nút đang gửi. `aria-hidden` vì chữ đã đổi thành "Đang…". */
 export function Spinner() {
@@ -479,13 +543,17 @@ export function Stat({
   label: string;
   tone?: "default" | "warn" | "ok" | "danger";
 }) {
-  const bg = tone === "warn" ? "bg-[var(--nq-warn)] text-[#0e0c0a]" 
-           : tone === "ok" ? "bg-[var(--nq-green)] text-[#0e0c0a]"
-           : tone === "danger" ? "bg-[var(--nq-red)] text-[#0e0c0a]"
-           : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)] border-2 border-[var(--nq-dim)]";
+  const bg =
+    tone === "warn"
+      ? "nq-ink-on-solid bg-[var(--nq-warn)]"
+      : tone === "ok"
+        ? "nq-ink-on-solid bg-[var(--nq-green)]"
+        : tone === "danger"
+          ? "nq-ink-on-solid bg-[var(--nq-red)]"
+          : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)] border-2 border-[var(--nq-dim)]";
   return (
     <li className={`flex flex-col p-4 shadow-[4px_4px_0px_0px_var(--nq-copper-dim)] ${bg}`}>
-      <span className="text-3xl font-black mb-1">{value}</span>
+      <span className="text-3xl font-black mb-1 tabular-nums">{value}</span>
       <span className="text-xs font-mono uppercase tracking-widest opacity-80">{label}</span>
     </li>
   );
@@ -511,7 +579,7 @@ export function Group({
       <div className="flex items-center gap-4 mb-4">
         <h3 className="text-xl font-black uppercase text-[var(--nq-fg)]">{title}</h3>
         {typeof count === "number" ? (
-          <span className="text-sm bg-[var(--nq-copper)] text-[#0e0c0a] px-3 py-1 rounded-full">
+          <span className="nq-ink-on-solid text-sm bg-[var(--nq-copper)] px-3 py-1 rounded-full">
             {count} {countLabel}
           </span>
         ) : null}
@@ -639,14 +707,14 @@ export function OpsCard({
     <div className="flex items-center gap-4 mb-6">
       <h2 className="text-2xl font-black uppercase text-[var(--nq-fg)]">{title}</h2>
       {typeof count === "number" ? (
-        <span className="text-sm bg-[var(--nq-copper)] text-[#0e0c0a] px-3 py-1 rounded-full">
+        <span className="nq-ink-on-solid text-sm bg-[var(--nq-copper)] px-3 py-1 rounded-full">
           {count} {countLabel}
         </span>
       ) : null}
     </div>
   ) : null;
   return (
-    <section className="bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] p-6 md:p-8 shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] mb-12" data-tour={tourId}>
+    <section className="mb-10 w-full border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-6 shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] md:mb-12 md:p-8" data-tour={tourId}>
       {eyebrow ? <p className="text-[var(--nq-dim)] font-mono text-sm mb-2 uppercase tracking-widest">{eyebrow}</p> : null}
       {head}
       {children}
@@ -687,11 +755,19 @@ export function StatusChip({
   tone?: "default" | "warn" | "ok" | "danger";
   children: ReactNode;
 }) {
-  const bg = tone === "warn" ? "bg-[var(--nq-warn)] text-[#0e0c0a]" 
-           : tone === "ok" ? "bg-[var(--nq-green)] text-[#0e0c0a]"
-           : tone === "danger" ? "bg-[var(--nq-red)] text-[#0e0c0a]"
-           : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)] border border-[var(--nq-dim)]";
-  return <span className={`inline-block px-2 py-1 text-xs font-bold uppercase tracking-widest ${bg}`}>{children}</span>;
+  const bg =
+    tone === "warn"
+      ? "nq-ink-on-solid bg-[var(--nq-warn)]"
+      : tone === "ok"
+        ? "nq-ink-on-solid bg-[var(--nq-green)]"
+        : tone === "danger"
+          ? "nq-ink-on-solid bg-[var(--nq-red)]"
+          : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)] border border-[var(--nq-dim)]";
+  return (
+    <span className={`inline-block px-2 py-1 text-xs font-bold uppercase tracking-widest ${bg}`}>
+      {children}
+    </span>
+  );
 }
 
 export function Toolbar({ children }: { children: ReactNode }) {
@@ -743,16 +819,24 @@ export function Summary({
   className?: string;
 }) {
   return (
-    <div className={`flex flex-wrap gap-4 ${className}`.trim()}>
+    <div className={`flex flex-wrap gap-4 mb-8 w-full ${className}`.trim()}>
       {cells.map((c) => {
-        const bg = c.tone === "warn" ? "bg-[var(--nq-warn)] text-[#0e0c0a]" 
-                 : c.tone === "ok" ? "bg-[var(--nq-green)] text-[#0e0c0a]"
-                 : c.tone === "danger" ? "bg-[var(--nq-red)] text-[#0e0c0a]"
-                 : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)] border-2 border-[var(--nq-dim)]";
+        const bg =
+          c.tone === "warn"
+            ? "nq-ink-on-solid bg-[var(--nq-warn)]"
+            : c.tone === "ok"
+              ? "nq-ink-on-solid bg-[var(--nq-green)]"
+              : c.tone === "danger"
+                ? "nq-ink-on-solid bg-[var(--nq-red)]"
+                : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)] border-2 border-[var(--nq-dim)]";
         return (
-          <div key={c.k} className={`flex flex-col p-4 shadow-[4px_4px_0px_0px_var(--nq-copper-dim)] ${bg}`}>
-            <span className="text-3xl font-black mb-1">{c.n}</span>
-            <span className="text-xs font-mono uppercase tracking-widest opacity-80">{c.k}</span>
+          <div
+            key={c.k}
+            data-tone={c.tone ?? "default"}
+            className={`nq-summary-cell flex min-w-[140px] flex-1 flex-col p-4 shadow-[4px_4px_0px_0px_var(--nq-copper-dim)] ${bg}`}
+          >
+            <span className="nq-summary-n mb-1 text-3xl font-black tabular-nums">{c.n}</span>
+            <span className="nq-summary-k text-xs font-mono uppercase tracking-widest opacity-80">{c.k}</span>
           </div>
         );
       })}
@@ -904,16 +988,24 @@ export function Toasts({
 }) {
   if (toasts.length === 0) return null;
   return (
-    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none w-full max-w-sm px-4" role="status" aria-live="polite">
+    <div
+      className="fixed top-20 left-1/2 z-[100] flex w-full max-w-md -translate-x-1/2 flex-col gap-2 px-4 pointer-events-none md:top-24"
+      role="status"
+      aria-live="polite"
+    >
       {toasts.map((t) => (
-        <div 
-          key={t.id} 
-          className={`pointer-events-auto flex items-center justify-between p-4 shadow-lg border-2 ${t.kind === "ok" ? "bg-[var(--nq-green)] text-[#0e0c0a] border-[var(--nq-green)]" : "bg-[var(--nq-red)] text-[#0e0c0a] border-[var(--nq-red)]"}`}
+        <div
+          key={t.id}
+          className={`pointer-events-auto flex items-start justify-between gap-3 border-2 p-4 shadow-[6px_6px_0_0_rgba(0,0,0,0.35)] ${
+            t.kind === "ok"
+              ? "nq-ink-on-solid bg-[var(--nq-ok)] border-[var(--nq-ok)]"
+              : "nq-ink-on-solid bg-[var(--nq-danger)] border-[var(--nq-danger)]"
+          }`}
         >
-          <p className="font-bold uppercase tracking-widest text-sm">{t.text}</p>
+          <p className="text-sm font-semibold leading-snug tracking-normal normal-case">{t.text}</p>
           <button
             type="button"
-            className="ml-4 opacity-70 hover:opacity-100 transition-opacity"
+            className="shrink-0 opacity-80 hover:opacity-100 transition-opacity min-w-8 min-h-8"
             onClick={() => onDismiss(t.id)}
             aria-label="Tắt thông báo"
           >

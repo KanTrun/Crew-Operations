@@ -2,8 +2,8 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
-import { matchExact, matchSearch, uniqueSorted } from "../../lib/list-filters";
 import { nvLabel, safeText, swapLabel, viError } from "../../lib/present";
+import { matchExact, matchSearch, uniqueSorted } from "../../lib/list-filters";
 import { getToken } from "../../lib/session";
 import {
   Alert,
@@ -58,31 +58,21 @@ export default function DoiCaPage() {
     if (token) load();
   }, [token, load]);
 
-  const statusOptions = useMemo(
-    () => [
-      { value: "all", label: "Mọi trạng thái" },
-      { value: "cho", label: swapLabel("cho") },
-      { value: "dong_y", label: swapLabel("dong_y") },
-      { value: "tu_choi", label: swapLabel("tu_choi") },
-    ],
-    [],
-  );
+  const statusOptions = useMemo(() => {
+    const statuses = uniqueSorted(items.map((i) => i.trang_thai));
+    return [{ value: "all", label: "Mọi trạng thái" }, ...statuses.map((s) => ({ value: s, label: swapLabel(s) }))];
+  }, [items]);
 
-  const personOptions = useMemo(
-    () => [
-      { value: "all", label: "Mọi người" },
-      ...uniqueSorted([...items.map((i) => i.a), ...items.map((i) => i.b), ...items.map((i) => i.c)]).map((v) => ({
-        value: v,
-        label: nvLabel(v),
-      })),
-    ],
-    [items],
-  );
+  const personOptions = useMemo(() => {
+    const people = uniqueSorted(items.flatMap((i) => [i.a, i.b, i.c]));
+    return [{ value: "all", label: "Mọi người" }, ...people.map((p) => ({ value: p, label: nvLabel(p) }))];
+  }, [items]);
 
   const filtered = useMemo(
     () =>
       items.filter((it) => {
-        if (!matchSearch([it.a, it.b, it.c, it.ca_id].join(" "), search)) return false;
+        const haystack = [it.id, it.a, it.b, it.c, it.ca_id, swapLabel(it.trang_thai), nvLabel(it.a), nvLabel(it.b), nvLabel(it.c)].join(" ");
+        if (!matchSearch(haystack, search)) return false;
         if (!matchExact(it.trang_thai, statusF)) return false;
         if (personF !== "all" && ![it.a, it.b, it.c].includes(personF)) return false;
         return true;
@@ -178,9 +168,7 @@ export default function DoiCaPage() {
       {!loading && !error && items.length === 0 ? (
         <Empty>Chưa có lệnh đổi ca nào đang mở.</Empty>
       ) : null}
-      {!loading && items.length > 0 && filtered.length === 0 ? (
-        <FilteredEmpty onClear={clearFilters} />
-      ) : null}
+      {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
       <div className="nq-list">
         {filtered.map((it) => (
           <article key={it.id} className="nq-item">

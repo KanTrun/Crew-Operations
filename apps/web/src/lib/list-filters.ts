@@ -41,8 +41,7 @@ export function matchTime(iso: string | undefined, filter: TimeFilter): boolean 
   if (!iso) return false;
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return false;
-  const now = new Date();
-  const day = startOfDay(now).getTime();
+  const day = startOfDay(new Date()).getTime();
   if (filter === "today") return t >= day;
   if (filter === "week") return t >= day - 7 * 86400000;
   if (filter === "month") return t >= day - 30 * 86400000;
