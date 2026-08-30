@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { matchSearch, matchTime, TIME_FILTER_OPTIONS, uniqueSorted, type TimeFilter } from "../../lib/list-filters";
 import { getToken } from "../../lib/session";
-import { Alert, AuthGate, btnPrimary, Empty, Field, inputStyle, Kicker, Loading } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Empty, Field, inputClassName, Loading, OpsCard, PageHeader } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 
 type Cluster = { cau?: string; thu?: string; n?: number; created_at?: string };
@@ -46,16 +46,14 @@ export default function HaoPhiPage() {
     [items],
   );
 
-  const filtered = useMemo(
-    () =>
-      items.filter((it) => {
-        if (!matchSearch(clusterHaystack(it), search)) return false;
-        if (thuF !== "all" && (it.thu ?? "") !== thuF) return false;
-        if (!matchTime(it.created_at, timeF)) return false;
-        return true;
-      }),
-    [items, search, thuF, timeF],
-  );
+  const filtered = useMemo(() => {
+    return items.filter((it) => {
+      if (!matchSearch(clusterHaystack(it), search)) return false;
+      if (thuF !== "all" && (it.thu ?? "") !== thuF) return false;
+      if (!matchTime(it.created_at, timeF)) return false;
+      return true;
+    });
+  }, [items, search, thuF, timeF]);
 
   const filterActive = search.length > 0 || thuF !== "all" || timeF !== "all";
 
@@ -80,49 +78,57 @@ export default function HaoPhiPage() {
 
   return (
     <div className="nq-page">
-      <Kicker>Gom cụm từ ghi chú ca</Kicker>
-      <h1>Hao phí</h1>
-      {error ? <Alert>{error}</Alert> : null}
-      <form onSubmit={onSubmit}>
-        <Field label="Thứ">
-          <input value={thu} onChange={(e) => setThu(e.target.value)} style={inputStyle} />
-        </Field>
-        <Field label="Ghi chú">
-          <input value={ghi} onChange={(e) => setGhi(e.target.value)} style={inputStyle} />
-        </Field>
-        <button type="submit" style={btnPrimary}>
-          Ghi chú
-        </button>
-      </form>
-      <h2>Cụm</h2>
-      <ListToolbar
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Tìm nội dung cụm, thứ…"
-        status={thuF}
-        onStatusChange={setThuF}
-        statusOptions={thuOptions}
-        statusLabel="Thứ trong tuần"
-        time={timeF}
-        onTimeChange={(v) => setTimeF(v as TimeFilter)}
-        timeOptions={TIME_FILTER_OPTIONS}
-        shown={filtered.length}
-        total={items.length}
-        filtered={filterActive}
+      <PageHeader
+        kicker="Gom cụm từ ghi chú ca"
+        title="Hao phí"
+        meta="Ghi chú trong ca được gom cụm — form ghi và danh sách cụm tách riêng."
       />
-      {loading ? <Loading /> : null}
-      {!loading && items.length === 0 ? <Empty>Chưa có ghi chú để gom cụm.</Empty> : null}
-      {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
-      <div className="nq-list">
-        {filtered.map((it, i) => (
-          <article key={i} className="nq-item">
-            <p style={{ margin: 0, fontWeight: 600 }}>{it.cau ?? "Chưa đủ mẫu để gom cụm"}</p>
-            <p className="nq-muted">
-              {it.thu} · {it.n ?? 0} lần
-            </p>
-          </article>
-        ))}
-      </div>
+      {error ? <Alert>{error}</Alert> : null}
+
+      <OpsCard eyebrow="Khu vực 1" title="Ghi chú mới">
+        <form onSubmit={onSubmit}>
+          <Field label="Thứ">
+            <input className={inputClassName} value={thu} onChange={(e) => setThu(e.target.value)} />
+          </Field>
+          <Field label="Ghi chú">
+            <input className={inputClassName} value={ghi} onChange={(e) => setGhi(e.target.value)} />
+          </Field>
+          <Btn type="submit" variant="primary">
+            Ghi chú
+          </Btn>
+        </form>
+      </OpsCard>
+
+      <OpsCard eyebrow="Khu vực 2" title="Cụm đã gom" count={filtered.length} countLabel="cụm">
+        <ListToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Tìm nội dung cụm, thứ…"
+          status={thuF}
+          onStatusChange={setThuF}
+          statusOptions={thuOptions}
+          statusLabel="Thứ trong tuần"
+          time={timeF}
+          onTimeChange={(v) => setTimeF(v as TimeFilter)}
+          timeOptions={TIME_FILTER_OPTIONS}
+          shown={filtered.length}
+          total={items.length}
+          filtered={filterActive}
+        />
+        {loading ? <Loading skeleton="list">Đang tải cụm hao phí…</Loading> : null}
+        {!loading && items.length === 0 ? <Empty title="Chưa có cụm">Chưa có ghi chú để gom cụm.</Empty> : null}
+        {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
+        <div className="nq-list">
+          {filtered.map((it, i) => (
+            <article key={i} className="nq-item">
+              <p className="nq-item-title">{it.cau ?? "Chưa đủ mẫu để gom cụm"}</p>
+              <p className="nq-item-sub">
+                {it.thu} · {it.n ?? 0} lần
+              </p>
+            </article>
+          ))}
+        </div>
+      </OpsCard>
     </div>
   );
 }

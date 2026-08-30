@@ -10,7 +10,7 @@ import {
   Btn,
   Field,
   Hint,
-  inputStyle,
+  Input,
   MaskedCode,
   Notice,
   OpsCard,
@@ -97,10 +97,10 @@ export default function QrPage() {
         <OpsCard eyebrow="Việc của quản lý" title="Phát mã cho một ca">
           <form onSubmit={issue}>
             <Field label="Mã nhân viên">
-              <input value={nv} onChange={(e) => setNv(e.target.value)} style={inputStyle} />
+              <Input value={nv} onChange={(e) => setNv(e.target.value)} />
             </Field>
             <Field label="Mã ca">
-              <input value={ca} onChange={(e) => setCa(e.target.value)} style={inputStyle} />
+              <Input value={ca} onChange={(e) => setCa(e.target.value)} />
             </Field>
             <Hint>Lấy mã nhân viên và mã ca trên Lịch tuần.</Hint>
             <Btn type="submit" variant="primary" disabled={busy}>
@@ -119,12 +119,7 @@ export default function QrPage() {
       <OpsCard eyebrow="Việc của nhân viên" title="Dùng mã để điểm danh">
         <form onSubmit={useCode}>
           <Field label="Mã một lần">
-            <input
-              value={useTok}
-              onChange={(e) => setUseTok(e.target.value)}
-              style={inputStyle}
-              autoComplete="off"
-            />
+            <Input value={useTok} onChange={(e) => setUseTok(e.target.value)} autoComplete="off" />
           </Field>
           <Btn type="submit" variant="primary" disabled={busy}>
             {busy ? "Đang điểm danh…" : "Điểm danh vào ca"}

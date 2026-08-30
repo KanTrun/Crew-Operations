@@ -43,20 +43,28 @@ const VI_TRI_LABEL: Record<string, string> = {
 };
 
 const TRANG_THAI_NEXT: Record<string, { label: string; next: string }> = {
-  nhap: { label: "Gửi duyệt →", next: "cho_duyet" },
-  cho_duyet: { label: "Duyệt ✓", next: "da_duyet" },
-  da_duyet: { label: "Công bố 📢", next: "da_cong_bo" },
-  da_cong_bo: { label: "Đóng tuần ✗", next: "da_dong" },
+  may_sinh: { label: "Chuyển sang nháp", next: "nhap" },
+  nhap: { label: "Gửi duyệt", next: "cho_duyet" },
+  cho_duyet: { label: "Duyệt lịch", next: "da_duyet" },
+  da_duyet: { label: "Công bố cho nhân viên", next: "da_cong_bo" },
+  da_cong_bo: { label: "Đóng tuần", next: "da_dong" },
   da_dong: { label: "", next: "" },
 };
 
 const TRANG_THAI_COLOR: Record<string, string> = {
+  may_sinh: "warn",
   nhap: "default",
   cho_duyet: "warn",
   da_duyet: "ok",
   da_cong_bo: "ok",
   da_dong: "default",
 };
+
+function khungLabel(khung: string): string {
+  if (khung === "sang") return "Sáng · 07:00 – 12:00";
+  if (khung === "chieu") return "Chiều · 12:00 – 17:00";
+  return "Tối · 17:00 – 22:00";
+}
 
 function isoWeekToMonday(week: string): Date {
   const m = week.match(/^(\d{4})-W(\d{2})$/);
@@ -280,7 +288,7 @@ export default function RosterPage() {
 
 
   return (
-    <div className="nq-page">
+    <div className="nq-page nq-page--wide">
       <header className="mb-6 ops-animate-in">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
           <div>
@@ -295,24 +303,24 @@ export default function RosterPage() {
             <button
               type="button"
               onClick={() => setViewMode("my_shifts")}
-              className={`px-3 py-1.5 text-xs font-bold rounded transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 text-xs font-bold rounded transition-all ${
                 viewMode === "my_shifts"
                   ? "bg-amber-600 text-neutral-950 shadow"
                   : "text-neutral-400 hover:text-neutral-200"
               }`}
             >
-              <span>👤</span> Lịch của tôi ({totalMyShifts} ca)
+              Lịch của tôi ({totalMyShifts} ca)
             </button>
             <button
               type="button"
               onClick={() => setViewMode("all")}
-              className={`px-3 py-1.5 text-xs font-bold rounded transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 text-xs font-bold rounded transition-all ${
                 viewMode === "all"
                   ? "bg-amber-600 text-neutral-950 shadow"
                   : "text-neutral-400 hover:text-neutral-200"
               }`}
             >
-              <span>🏢</span> Toàn quán (Full ngày)
+              Toàn quán
             </button>
           </div>
         </div>
@@ -408,28 +416,35 @@ export default function RosterPage() {
 
       {/* Trạng thái & nút duyệt của quản lý */}
       {canWrite && (
-        <div className="nq-item mb-6 flex items-center gap-4 flex-wrap">
-          <span className="text-sm text-[var(--nq-dim)]">Trạng thái:</span>
-          <span
-            className={`nq-chip nq-chip--${
-              TRANG_THAI_COLOR[trangThai] ?? "default"
-            } font-mono text-xs`}
-          >
-            {lifeLabel(trangThai)}
-          </span>
-          {nextAction?.next && (
-            <button
-              type="button"
-              className="nq-btn px-3 py-1 text-sm"
-              disabled={lifecycleBusy}
-              onClick={() => void handleLifecycle(nextAction.next, currentDisplayWeek)}
+        <div className="nq-item mb-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm text-[var(--nq-dim)]">Trạng thái lịch:</span>
+            <span
+              className={`nq-chip nq-chip--${
+                TRANG_THAI_COLOR[trangThai] ?? "default"
+              } font-mono text-xs`}
             >
-              {lifecycleBusy ? "Đang lưu…" : nextAction.label}
-            </button>
-          )}
-          {lifecycleMsg && (
-            <span className="text-sm text-[var(--nq-ok)]">{lifecycleMsg}</span>
-          )}
+              {lifeLabel(trangThai)}
+            </span>
+            {nextAction?.next && (
+              <button
+                type="button"
+                className="nq-btn px-3 py-1 text-sm"
+                disabled={lifecycleBusy}
+                onClick={() => void handleLifecycle(nextAction.next, currentDisplayWeek)}
+              >
+                {lifecycleBusy ? "Đang lưu…" : nextAction.label}
+              </button>
+            )}
+            {lifecycleMsg && (
+              <span className="text-sm text-[var(--nq-ok)]">{lifecycleMsg}</span>
+            )}
+          </div>
+          {trangThai === "may_sinh" ? (
+            <p className="text-xs text-[var(--nq-ink-muted)] max-w-2xl">
+              Lịch do hệ thống tự xếp. Quản lý rà soát, chỉnh nhân sự nếu cần, rồi bấm <strong>Chuyển sang nháp</strong> để bắt đầu quy trình duyệt.
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -444,8 +459,8 @@ export default function RosterPage() {
           {/* Summary Card */}
           <div className="p-4 rounded-lg bg-emerald-950/20 border border-emerald-700/40 flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h3 className="text-sm font-bold text-emerald-300 flex items-center gap-2">
-                <span>🗓️</span> Tuần {currentDisplayWeek} của bạn
+              <h3 className="text-sm font-bold text-emerald-300">
+                Tuần {currentDisplayWeek} của bạn
               </h3>
               <p className="text-xs text-neutral-300 mt-0.5">
                 Bạn có <strong>{myAssignedDays.length} ngày đi làm</strong> với tổng cộng <strong>{totalMyShifts} ca làm việc</strong> (~{totalMyShifts * 5} giờ công).
@@ -478,20 +493,11 @@ export default function RosterPage() {
                   </div>
 
                   <div className="space-y-2.5">
-                    {item.shifts.map(({ shift, coworkers }, sIdx) => {
-                      const khungName =
-                        shift.khung === "sang"
-                          ? "Sáng (07:00 – 12:00)"
-                          : shift.khung === "chieu"
-                          ? "Chiều (12:00 – 17:00)"
-                          : "Tối (17:00 – 22:00)";
-                      const khungIcon = shift.khung === "sang" ? "☀️" : shift.khung === "chieu" ? "⛅" : "🌙";
-
-                      return (
+                    {item.shifts.map(({ shift, coworkers }, sIdx) => (
                         <div key={sIdx} className="p-2.5 rounded bg-neutral-950/60 border border-neutral-800 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-neutral-200 flex items-center gap-1.5">
-                              <span>{khungIcon}</span> {khungName}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-neutral-200">
+                              {khungLabel(shift.khung ?? "")}
                             </span>
                             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-900/70 text-emerald-300 font-bold border border-emerald-700">
                               {viTriLabel(shift.vi_tri)}
@@ -500,12 +506,11 @@ export default function RosterPage() {
 
                           {coworkers.length > 0 && (
                             <p className="text-[11px] text-neutral-400">
-                              👥 Cùng ca: {coworkers.map((id) => nvName(id)).join(", ")}
+                              Cùng ca: {coworkers.map((id) => nvName(id)).join(", ")}
                             </p>
                           )}
                         </div>
-                      );
-                    })}
+                      ))}
                   </div>
                 </div>
               ))}
@@ -532,7 +537,7 @@ export default function RosterPage() {
         <div className="space-y-4">
           <div className="p-3 bg-amber-950/20 border border-amber-800/40 rounded-lg text-xs text-amber-200 flex items-center justify-between flex-wrap gap-2">
             <span>
-              💡 <strong>Gợi ý Quản lý:</strong> Nhấp vào <strong>tiêu đề bất kỳ ngày nào</strong> bên dưới để mở rộng bảng xem chi tiết và điều chỉnh nhân sự từng ca trong ngày!
+              <strong>Gợi ý:</strong> Nhấp tiêu đề <strong>bất kỳ ngày nào</strong> trong bảng để mở chi tiết và điều chỉnh nhân sự từng ca.
             </span>
           </div>
 
@@ -558,7 +563,7 @@ export default function RosterPage() {
                       >
                         <div className="flex flex-col items-center gap-0.5">
                           <span className="font-bold text-sm text-neutral-100 group-hover:text-amber-400 flex items-center gap-1">
-                            {dayTitle(d)} 🔍
+                            {dayTitle(d)}
                           </span>
                           <span className="font-mono text-xs text-[var(--nq-dim)]">
                             {dayDate(monday, dayOffsets[i])}
@@ -605,17 +610,6 @@ export default function RosterPage() {
                                       <span className="nq-roster-nv-name">
                                         {nvName(nv_id)}
                                       </span>
-                                      {canWrite && trangThai !== "da_dong" ? (
-                                        <button
-                                          type="button"
-                                          className="nq-roster-unpin"
-                                          disabled={pinBusy}
-                                          onClick={() => handlePin(shift.id, nv_id, false)}
-                                          aria-label={`Bỏ ${nvName(nv_id)} khỏi ca`}
-                                        >
-                                          ×
-                                        </button>
-                                      ) : null}
                                     </li>
                                   ))}
                                   {assigned.length === 0 ? (
@@ -673,8 +667,8 @@ export default function RosterPage() {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
               <div>
-                <h3 className="text-lg font-bold text-amber-400 flex items-center gap-2">
-                  <span>📅</span> Chi Tiết Phân Ca: {dayTitle(selectedDay)} (
+                <h3 className="text-lg font-bold text-amber-400">
+                  Chi tiết phân ca · {dayTitle(selectedDay)} (
                   {dayDate(monday, dayOffsets[days.indexOf(selectedDay)])})
                 </h3>
                 <p className="text-xs text-neutral-400">
@@ -685,9 +679,9 @@ export default function RosterPage() {
               <button
                 type="button"
                 onClick={() => setSelectedDay(null)}
-                className="w-8 h-8 rounded-full bg-neutral-800 text-neutral-300 hover:bg-neutral-700 flex items-center justify-center text-sm font-bold"
+                className="px-3 py-1 text-xs font-bold uppercase tracking-widest text-neutral-400 hover:text-amber-400"
               >
-                ✕
+                Đóng
               </button>
             </div>
 
@@ -696,12 +690,7 @@ export default function RosterPage() {
               {(["sang", "chieu", "toi"] as const).map((khung) => {
                 const shift = (byDay[selectedDay] ?? []).find((c) => c.khung === khung);
                 const assigned = shift ? data?.phan_cong?.[shift.id] ?? [] : [];
-                const khungLabelText =
-                  khung === "sang"
-                    ? "☀️ Ca Sáng (07:00 – 12:00)"
-                    : khung === "chieu"
-                    ? "⛅ Ca Chiều (12:00 – 17:00)"
-                    : "🌙 Ca Tối (17:00 – 22:00)";
+                const khungLabelText = khungLabel(khung);
 
                 return (
                   <div
@@ -743,17 +732,6 @@ export default function RosterPage() {
                           >
                             <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                             {nvName(nv_id)}
-                            {canWrite && trangThai !== "da_dong" && shift && (
-                              <button
-                                type="button"
-                                disabled={pinBusy}
-                                onClick={() => handlePin(shift.id, nv_id, false)}
-                                className="ml-1 text-neutral-400 hover:text-rose-400 text-sm font-bold"
-                                title={`Xóa ${nvName(nv_id)} khỏi ca`}
-                              >
-                                ×
-                              </button>
-                            )}
                           </span>
                         ))}
                       </div>

@@ -32,6 +32,7 @@ export default function CamNangPage() {
   const [manager, setManager] = useState(false);
   const [chuQuan, setChuQuan] = useState(false);
   const [items, setItems] = useState<Luat[]>([]);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [soThat, setSoThat] = useState<number | null>(null);
@@ -77,7 +78,6 @@ export default function CamNangPage() {
           ? `Đã hoàn tất phần đề xuất và tập sự. Quán đang có ${that} luật sinh từ người thật.`
           : "Đã hoàn tất phần đề xuất và tập sự. Chủ quán cần chốt riêng trước khi luật có hiệu lực.",
       );
-      // Mã cổng VF là chi tiết kỹ thuật: để trong ngăn, không phơi lên thân trang.
       setChiTiet([`Cổng loại luật: ${safeText(d.bi_loai?.vf_rule, "không có luật nào bị loại")}`]);
       load();
     } catch (e) {
@@ -114,17 +114,17 @@ export default function CamNangPage() {
       <PageHeader
         kicker="Cẩm nang sống"
         title="Cẩm nang quán"
-        meta={`Luật của quán chỉ có hiệu lực khi đủ bằng chứng từ lần sửa thật. Luật sinh từ người quán: ${
-          soThat ?? "chưa chạy hôm nay"
-        }.`}
+        meta={`Luật chỉ có hiệu lực khi đủ bằng chứng từ lần sửa thật. Luật sinh từ người quán: ${soThat ?? "chưa chạy hôm nay"}.`}
       />
-      {manager ? (
-        <Btn variant="primary" disabled={busy} onClick={chay}>
-          {busy ? "Đang chạy…" : "Chạy 8 bước xét luật"}
-        </Btn>
-      ) : (
-        <Notice>Bạn xem được luật quán. Quản lý hoặc chủ quán mới chạy 8 bước xét luật.</Notice>
-      )}
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        {manager ? (
+          <Btn variant="primary" disabled={busy} onClick={chay}>
+            {busy ? "Đang chạy…" : "Chạy 8 bước xét luật"}
+          </Btn>
+        ) : (
+          <Notice>Bạn xem được luật quán. Quản lý hoặc chủ quán mới chạy 8 bước xét luật.</Notice>
+        )}
+      </div>
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
       {error ? <Alert>{error}</Alert> : null}
       {chiTiet.length > 0 ? <TechnicalDrawer lines={chiTiet} /> : null}
@@ -132,20 +132,39 @@ export default function CamNangPage() {
       {!loading && !error && items.length === 0 ? (
         <Empty>Chưa có luật nào. Luật sinh ra từ lần sửa có bằng chứng trong ca.</Empty>
       ) : null}
-      <div className="nq-list">
-        {items.map((luat) => (
-          <article key={luat.id} className="nq-item">
-            <p className="nq-item-title">{safeText(luat.cau, "Luật chưa có câu diễn giải")}</p>
-            <p className="nq-item-sub">
-              <StatusChip tone={luatTone(luat.trang_thai)}>{luatLabel(luat.trang_thai)}</StatusChip>
-              {typeof luat.tap_su_dung === "number" ? ` · tập sự ${luat.tap_su_dung} lượt` : ""}
-              {typeof luat.ap_dung === "number" ? ` · đã áp dụng ${luat.ap_dung} lần` : ""}
-            </p>
-            {chuQuan && luat.trang_thai === "cho_chu_quan" ? (
-              <Btn busy={busy} onClick={() => void chot(luat.id)}>Chốt hiệu lực</Btn>
-            ) : null}
-          </article>
-        ))}
+      <div className="nq-card-grid">
+        {items.map((luat) => {
+          const open = expanded === luat.id;
+          const text = safeText(luat.cau, "Luật chưa có câu diễn giải");
+          return (
+            <article key={luat.id} className="nq-item flex flex-col gap-3">
+              <p className={open ? "nq-item-title" : "nq-item-title nq-clamp-3"}>{text}</p>
+              {text.length > 120 ? (
+                <button
+                  type="button"
+                  className="self-start text-xs font-mono uppercase tracking-widest text-[var(--nq-copper)] underline"
+                  onClick={() => setExpanded(open ? null : luat.id)}
+                >
+                  {open ? "Thu gọn" : "Xem thêm"}
+                </button>
+              ) : null}
+              <p className="nq-item-sub flex flex-wrap items-center gap-2">
+                <StatusChip tone={luatTone(luat.trang_thai)}>{luatLabel(luat.trang_thai)}</StatusChip>
+                {typeof luat.tap_su_dung === "number" ? (
+                  <span className="text-xs text-[var(--nq-dim)]">Tập sự {luat.tap_su_dung}</span>
+                ) : null}
+                {typeof luat.ap_dung === "number" ? (
+                  <span className="text-xs text-[var(--nq-dim)]">Áp dụng {luat.ap_dung}</span>
+                ) : null}
+              </p>
+              {chuQuan && luat.trang_thai === "cho_chu_quan" ? (
+                <Btn busy={busy} onClick={() => void chot(luat.id)}>
+                  Chốt hiệu lực
+                </Btn>
+              ) : null}
+            </article>
+          );
+        })}
       </div>
     </div>
   );

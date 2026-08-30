@@ -14,7 +14,7 @@ import urllib.request
 from datetime import UTC
 from typing import Any
 
-GRAPH = "https://graph.facebook.com/v21.0"
+GRAPH = "https://graph.facebook.com/v26.0"
 
 _ENV_LOADED = False
 

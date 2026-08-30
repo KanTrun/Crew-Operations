@@ -39,6 +39,9 @@ def test_chu_quan_alone_can_manage_menu_and_people() -> None:
     promoted = client.post("/api/v1/nguoi/hoa/nang-vai", json={}, headers=chu)
     assert promoted.status_code == 200, promoted.text
     assert promoted.json()["role"] == "quan_ly"
+    demoted = client.post("/api/v1/nguoi/hoa/ha-vai", json={}, headers=chu)
+    assert demoted.status_code == 200, demoted.text
+    assert demoted.json()["role"] == "nhan_vien"
 
 
 def test_pos_requires_checkin_and_staff_only_sees_own_orders() -> None:

@@ -15,11 +15,17 @@ export function getName(): string {
   return sessionStorage.getItem("nq_name") ?? "";
 }
 
+export function setSession(token: string, role: string, name: string, nvId: string): void {
+  sessionStorage.setItem("nq_token", token);
+  sessionStorage.setItem("nq_role", role);
+  sessionStorage.setItem("nq_name", name);
+  sessionStorage.setItem("nq_nv", nvId);
+}
+
 export function getNvId(): string {
   if (typeof window === "undefined") return "";
   return sessionStorage.getItem("nq_nv") ?? "";
 }
-
 
 export function isManager(role = getRole()): boolean {
   return role === "quan_ly" || role === "chu_quan";
@@ -79,11 +85,13 @@ export function roleLabel(role: string): string {
 
 export function lifeLabel(state: string): string {
   const map: Record<string, string> = {
+    may_sinh: "Tự sinh — chờ rà soát",
     nhap: "Nháp",
     dang_giai: "Đang giải",
     cho_duyet: "Chờ duyệt",
+    da_duyet: "Đã duyệt",
     da_cong_bo: "Đã công bố",
     da_dong: "Đã đóng",
   };
-  return map[state] ?? state;
+  return map[state] ?? state.replace(/_/g, " ");
 }

@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { API } from "../lib/api";
-import { getToken, isManager } from "../lib/session";
+import { getToken } from "../lib/session";
+import { Logo } from "../ui/Logo";
 
 type StaffProfile = {
   username: string;
@@ -100,56 +102,82 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--nq-bg)] text-[var(--nq-fg)] selection:bg-[var(--nq-copper)] selection:text-black">
-      {/* Background Subtle Gradient Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[420px] bg-radial from-amber-900/15 via-transparent to-transparent pointer-events-none blur-3xl"></div>
+    <main className="relative min-h-screen bg-[var(--nq-bg)] text-[var(--nq-fg)] selection:bg-[var(--nq-copper)] selection:text-black">
+      <div className="pointer-events-none fixed top-[10%] left-[5%] h-[40vw] w-[40vw] rounded-full bg-[var(--nq-copper-glow)] opacity-40 blur-[120px] mix-blend-screen" />
+      <div className="pointer-events-none fixed right-[5%] bottom-[10%] h-[50vw] w-[50vw] rounded-full bg-[var(--nq-red-dim)] opacity-20 blur-[150px] mix-blend-screen" />
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-12">
-        {/* ========================================================================= */}
-        {/* HERO SECTION                                                             */}
-        {/* ========================================================================= */}
-        <header className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-neutral-900/90 border border-amber-700/40 shadow-inner">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-xs font-mono font-bold tracking-wider text-amber-300 uppercase">
-              NHỊP QUÁN • VẬN HÀNH CA CAO CẤP
-            </span>
+        {/* Hero MapGuide (UI local) */}
+        <section className="flex flex-col items-center text-center space-y-6 py-6">
+          <Logo />
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-4xl font-black leading-[0.9] tracking-tighter uppercase sm:text-6xl">
+            <span className="block">NHỊP</span>
+            <span className="block text-[var(--nq-copper)]">QUÁN</span>
           </div>
-
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-neutral-100 font-serif">
-            HỆ THỐNG VẬN HÀNH QUÁN{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500">
-              3 VAI
-            </span>
-          </h1>
-
-          <p className="text-sm sm:text-base text-neutral-300 font-sans leading-relaxed">
-            Nền tảng vận hành ca liền mạch: Tự động hóa họp giao ca bằng AI, Kiểm soát tuân thủ SOP,
-            Xếp lịch tuần phân quyền & Màn hình POS/KDS quầy bar thông minh.
+          <p className="max-w-2xl text-base sm:text-lg text-[var(--nq-dim)] leading-relaxed">
+            Hệ điều hành ca — MapGuide, AG-Meeting AI, lịch tuần & quầy bar trong một nền tảng.
           </p>
-
+          <div className="flex w-full max-w-md flex-col gap-3 sm:flex-row sm:gap-4">
+            <Link
+              href="/login"
+              className="nq-ink-on-solid flex-1 border-2 border-[var(--nq-copper)] bg-[var(--nq-copper)] px-6 py-4 text-center font-black tracking-widest uppercase transition-all duration-300 hover:bg-transparent hover:text-[var(--nq-copper)]"
+            >
+              Vào Ca
+            </Link>
+            <Link
+              href="/huong-dan"
+              className="flex-1 border-2 border-[var(--nq-dim)] bg-transparent px-6 py-4 text-center font-bold tracking-widest uppercase transition-all duration-300 hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
+            >
+              Bản đồ hướng dẫn
+            </Link>
+          </div>
           {hasSession && (
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => router.push("/hom-nay")}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-neutral-950 font-bold text-sm shadow-lg transition-all"
-              >
-                <span>⚡</span> Tiếp tục phiên làm việc ca hôm nay →
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/hom-nay")}
+              className="text-xs text-[var(--nq-copper)] underline"
+            >
+              Tiếp tục phiên làm việc →
+            </button>
           )}
-
           {error && (
-            <div className="p-3 bg-rose-950/60 border border-rose-700 text-rose-200 text-xs rounded-lg">
+            <div className="p-3 bg-rose-950/60 border border-rose-700 text-rose-200 text-xs rounded-lg max-w-md">
               {error}
             </div>
           )}
-        </header>
+        </section>
 
-        {/* ========================================================================= */}
-        {/* 3 ROLE HERO CARDS (1-CLICK QUICK ACCESS)                                 */}
-        {/* ========================================================================= */}
+        {/* Editorial block (UI local) */}
+        <section className="grid grid-cols-1 items-center gap-10 md:grid-cols-2 md:gap-16">
+          <div className="space-y-6">
+            <h2 className="text-3xl font-black tracking-tighter text-[var(--nq-copper)] uppercase md:text-5xl">
+              Một Việc
+              <br />
+              Một Lúc
+            </h2>
+            <p className="border-l-4 border-[var(--nq-copper)] pl-6 text-lg text-[var(--nq-dim)]">
+              Không còn bảng tính rối rắm hay nhóm chat lộn xộn. Mọi thứ từ xếp ca, điểm danh đến kiểm kê
+              đều nằm gọn trong một luồng công việc duy nhất.
+            </p>
+          </div>
+          <div className="relative flex aspect-square flex-col justify-between border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-8 shadow-[16px_16px_0px_0px_var(--nq-copper-dim)]">
+            <div className="font-mono text-sm tracking-widest text-[var(--nq-copper)] uppercase">
+              Hệ Sinh Thái AI
+            </div>
+            <div className="text-3xl font-black uppercase sm:text-4xl">
+              9 Agent
+              <br />
+              Chuyên
+              <br />
+              Trách
+            </div>
+            <div className="text-[var(--nq-dim)]">
+              Tự động hoá vận hành, đẩy ngoại lệ lên cho con người.
+            </div>
+          </div>
+        </section>
+
+        {/* 3 ROLE HERO CARDS — từ đồng đội */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-mono font-bold uppercase tracking-widest text-neutral-400">

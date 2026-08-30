@@ -12,7 +12,6 @@ import {
   rangBuocLabel,
   safeText,
   thuLabel,
-  viError,
   yDinhLabel,
 } from "../../lib/present";
 import { matchExact, matchSearch, matchTime, TIME_FILTER_OPTIONS, uniqueSorted, type TimeFilter } from "../../lib/list-filters";
@@ -24,11 +23,12 @@ import {
   Confidence,
   Empty,
   Group,
-  Kicker,
   Loading,
   Notice,
+  PageHeader,
   Row,
   StatusChip,
+  useToasts,
 } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 
@@ -47,14 +47,7 @@ type Item = {
   rang_buoc?: { loai?: string; thu?: string; khung?: string };
 };
 
-/** Chờ duyệt trước — đó là việc còn phải làm; đã quyết chỉ để tra lại. */
 const THU_TU = ["cho_duyet", "moi", "duyet", "tu_choi"];
-
-function itemHaystack(it: Item): string {
-  return [it.tom_tat, it.nguon, it.agent, it.nv_id, it.noi_dung_goc, it.hieu_luc?.ghi, inboxLabel(it.trang_thai), yDinhLabel(it.y_dinh)]
-    .filter(Boolean)
-    .join(" ");
-}
 
 const TEN_NHOM: Record<string, string> = {
   cho_duyet: "Chờ bạn quyết",
@@ -63,18 +56,33 @@ const TEN_NHOM: Record<string, string> = {
   tu_choi: "Đã từ chối",
 };
 
+function itemHaystack(it: Item): string {
+  return [
+    it.tom_tat,
+    it.nguon,
+    it.agent,
+    it.nv_id,
+    it.noi_dung_goc,
+    it.hieu_luc?.ghi,
+    inboxLabel(it.trang_thai),
+    yDinhLabel(it.y_dinh),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export default function InboxPage() {
   const [token, setToken] = useState("");
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
   const [manager, setManager] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("all");
   const [personF, setPersonF] = useState("all");
   const [timeF, setTimeF] = useState<TimeFilter>("all");
+  const { push } = useToasts();
 
   useEffect(() => {
     setToken(getToken());
@@ -104,17 +112,25 @@ export default function InboxPage() {
     [],
   );
 
-  const filtered = useMemo(
-    () =>
-      items.filter((it) => {
-        if (!matchSearch(itemHaystack(it), search)) return false;
-        if (!matchExact(it.trang_thai, statusF)) return false;
-        if (!matchExact(it.nv_id, personF)) return false;
-        if (!matchTime(it.created_at, timeF)) return false;
-        return true;
-      }),
-    [items, search, statusF, personF, timeF],
-  );
+  const filtered = useMemo(() => {
+    return items.filter((it) => {
+      if (!matchSearch(itemHaystack(it), search)) return false;
+      if (!matchExact(it.trang_thai, statusF)) return false;
+      if (!matchExact(it.nv_id, personF)) return false;
+      if (!matchTime(it.created_at, timeF)) return false;
+      return true;
+    });
+  }, [items, search, statusF, personF, timeF]);
+
+  const nhom = useMemo(() => {
+    const buckets = new Map<string, Item[]>();
+    for (const tt of THU_TU) buckets.set(tt, []);
+    for (const it of filtered) {
+      const key = buckets.has(it.trang_thai) ? it.trang_thai : "moi";
+      buckets.get(key)!.push(it);
+    }
+    return THU_TU.map((tt) => [tt, buckets.get(tt)!] as const).filter(([, list]) => list.length > 0);
+  }, [filtered]);
 
   const filterActive = search.length > 0 || statusF !== "all" || personF !== "all" || timeF !== "all";
 
@@ -127,13 +143,11 @@ export default function InboxPage() {
 
   async function decide(id: string, quyet_dinh: string) {
     setBusy(id);
-    setError(null);
-    setMsg(null);
     try {
       await apiSend(`/api/v1/inbox/rang-buoc/${id}`, { quyet_dinh });
-      setMsg(
+      push(
         quyet_dinh === "duyet"
-          ? "Đã duyệt. Hệ thống ghi hiệu lực (chợ đổi ca / chờ xếp lịch) — không sửa lịch âm thầm."
+          ? "Đã duyệt. Hệ thống ghi hiệu lực — không sửa lịch âm thầm."
           : "Đã từ chối. Ràng buộc này không vào lượt xếp lịch.",
       );
       load();
@@ -146,19 +160,16 @@ export default function InboxPage() {
 
   if (!token) return <AuthGate />;
 
-  const nhom: [string, Item[]][] = THU_TU.map((tt): [string, Item[]] => [
-    tt,
-    filtered.filter((it) => it.trang_thai === tt),
-  ]).filter((entry): entry is [string, Item[]] => entry[1].length > 0);
-
   return (
-    <div className="nq-page">
-      <Kicker>Người duyệt · hệ thống không tự chọn</Kicker>
-      <h1>Hộp thư ràng buộc</h1>
-      <p className="nq-muted">Khi hai claim mâu thuẫn, người quyết. Không tự chọn hộ.</p>
-      {error ? <Alert kind="err">{error}</Alert> : null}
-      {msg ? <Alert kind="ok">{msg}</Alert> : null}
+    <div className="nq-page nq-page--wide">
+      <PageHeader
+        kicker="Người duyệt · hệ thống không tự chọn"
+        title="Hộp thư ràng buộc"
+        meta="Khi hai claim mâu thuẫn, người quyết. Không tự chọn hộ."
+      />
+      {error ? <Alert>{error}</Alert> : null}
       {!manager ? <Notice>Bạn xem được nội dung. Quản lý hoặc chủ quán mới bấm duyệt.</Notice> : null}
+
       <ListToolbar
         search={search}
         onSearchChange={setSearch}
@@ -176,10 +187,17 @@ export default function InboxPage() {
         total={items.length}
         filtered={filterActive}
       />
-      {loading ? <Loading skeleton="rows" rows={4} groups={3}>Đang mở hộp thư…</Loading> : null}
-      {!loading && !error && items.length === 0 ? (
-        <Empty>Hộp thư sạch — không có ràng buộc nào chờ người quyết.</Empty>
+
+      {loading ? (
+        <Loading skeleton="rows" rows={4} groups={3}>
+          Đang mở hộp thư…
+        </Loading>
       ) : null}
+
+      {!loading && !error && items.length === 0 ? (
+        <Empty title="Hộp thư trống">Không có ràng buộc nào chờ người quyết.</Empty>
+      ) : null}
+
       {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
 
       {!loading &&
@@ -193,7 +211,9 @@ export default function InboxPage() {
                   <>
                     {kenhLabel(it.nguon)} · {agentLabel(it.agent)}
                     {it.nv_id ? ` · ${it.nv_id}` : ""}
-                    {it.rang_buoc?.loai ? ` · ràng buộc ${rangBuocLabel(it.rang_buoc.loai).toLowerCase()}` : ""}
+                    {it.rang_buoc?.loai
+                      ? ` · ràng buộc ${rangBuocLabel(it.rang_buoc.loai).toLowerCase()}`
+                      : ""}
                     {it.rang_buoc?.thu ? ` · ${thuLabel(it.rang_buoc.thu)}` : ""}
                     {it.rang_buoc?.khung ? ` ${khungLabel(it.rang_buoc.khung).toLowerCase()}` : ""}
                     {it.created_at ? ` · ${formatLuc(it.created_at)}` : ""}
@@ -220,11 +240,7 @@ export default function InboxPage() {
                       >
                         Duyệt ràng buộc
                       </Btn>
-                      <Btn
-                        variant="danger"
-                        disabled={busy === it.id}
-                        onClick={() => decide(it.id, "tu_choi")}
-                      >
+                      <Btn variant="danger" disabled={busy === it.id} onClick={() => decide(it.id, "tu_choi")}>
                         Từ chối
                       </Btn>
                     </>

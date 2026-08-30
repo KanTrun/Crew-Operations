@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiError, apiSend } from "../../lib/api";
 import { dangKyLoi, viError } from "../../lib/present";
-import { Alert, Btn, Field } from "../../ui/kit";
+import { Alert, Btn, Field, Input } from "../../ui/kit";
 
 type RegisterOut = { token: string; role: string; display_name: string; nv_id: string };
 
@@ -98,7 +98,7 @@ export default function DangKyPage() {
       router.push("/hom-nay");
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        const { o, cau } = dangKyLoi(err.detail);
+        const { o, cau } = dangKyLoi(undefined);
         if (o === "chung") setLoiChung(cau);
         else setLoiO({ [o]: cau });
       } else {
@@ -140,7 +140,7 @@ export default function DangKyPage() {
 
         <div className="flex flex-col gap-3 p-6 md:gap-4 md:p-8">
           <Field label="Tên đăng nhập">
-            <input
+            <Input
               value={username}
               onChange={(e) => {
                 setUsername(e.target.value.toLowerCase());
@@ -150,7 +150,7 @@ export default function DangKyPage() {
               autoComplete="username"
               aria-invalid={hienU ? true : undefined}
               aria-describedby="nq-goi-y-ten"
-              className="w-full border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-3 font-mono text-[var(--nq-fg)] transition-colors focus:border-[var(--nq-copper)] focus:outline-none"
+              className="font-mono"
             />
           </Field>
           {hienU ? (
@@ -166,7 +166,7 @@ export default function DangKyPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Field label="Mật khẩu">
-                <input
+                <Input
                   type="password"
                   value={password}
                   onChange={(e) => {
@@ -177,7 +177,7 @@ export default function DangKyPage() {
                   autoComplete="new-password"
                   aria-invalid={hienP ? true : undefined}
                   aria-describedby="nq-do-manh"
-                  className="w-full border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-3 font-mono text-[var(--nq-fg)] transition-colors focus:border-[var(--nq-copper)] focus:outline-none"
+                  className="font-mono"
                 />
               </Field>
               <div className="mt-2 flex h-1.5 gap-1" aria-hidden="true">
@@ -208,7 +208,7 @@ export default function DangKyPage() {
 
             <div>
               <Field label="Tên hiển thị">
-                <input
+                <Input
                   value={displayName}
                   onChange={(e) => {
                     setDisplayName(e.target.value);
@@ -218,7 +218,7 @@ export default function DangKyPage() {
                   autoComplete="name"
                   aria-invalid={hienD ? true : undefined}
                   aria-describedby="nq-goi-y-hien-thi"
-                  className="w-full border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-3 font-mono text-[var(--nq-fg)] transition-colors focus:border-[var(--nq-copper)] focus:outline-none"
+                  className="font-mono"
                 />
               </Field>
               {hienD ? (

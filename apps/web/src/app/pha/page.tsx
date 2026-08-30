@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { viError } from "../../lib/present";
 import { getToken } from "../../lib/session";
-import { Alert, Btn, Empty, Field, Loading, PageHeader, StatusChip } from "../../ui/kit";
+import { Alert, Btn, Empty, Field, Input, Loading, PageHeader, StatusChip } from "../../ui/kit";
 
 type Dong = { ten: string; so_luong: number };
 type Don = { id: string; trang_thai: "cho_pha" | "dang_pha" | "xong" | "huy"; dong: Dong[]; thanh_toan: string };
@@ -69,7 +69,7 @@ export default function PhaPage() {
               {item.trang_thai === "cho_pha" ? <Btn busy={busyId === item.id} onClick={() => void transition(item.id, "dang_pha")}>Nhận pha</Btn> : null}
               {item.trang_thai === "dang_pha" ? <Btn busy={busyId === item.id} onClick={() => void transition(item.id, "xong")}>Hoàn tất</Btn> : null}
               <Field label="Lý do hủy">
-                <input value={reasons[item.id] ?? ""} onChange={(e) => setReasons((old) => ({ ...old, [item.id]: e.target.value }))} />
+                <Input value={reasons[item.id] ?? ""} onChange={(e) => setReasons((old) => ({ ...old, [item.id]: e.target.value }))} />
               </Field>
               <Btn variant="danger" busy={busyId === item.id} onClick={() => void transition(item.id, "huy")}>Hủy đơn</Btn>
             </div>
