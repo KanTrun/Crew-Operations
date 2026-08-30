@@ -15,7 +15,7 @@ test.describe("Phiếu demo — latency mở form (#7 nhóm A)", () => {
     await login(page);
     const t0 = Date.now();
     await page.goto("/phieu");
-    await expect(page.getByRole("heading", { name: /Mở phiếu|Phiếu/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Mở phiếu", exact: true })).toBeVisible();
     const startBtn = page.getByRole("button", { name: /Mở quán|Phiếu/i }).first();
     if (await startBtn.isVisible()) {
       await startBtn.click();

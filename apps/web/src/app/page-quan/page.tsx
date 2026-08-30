@@ -396,7 +396,7 @@ export default function PageQuanPage() {
     <div className="nq-page">
       <PageHeader
         kicker="Trí Tuệ Thị Trường & Kênh Khách Hàng"
-        title="Radar Trí Tuệ Xu Hướng & Bắt Sóng Từ Khóa Viral"
+        title="Page Quán & Radar Trí Tuệ Xu Hướng Viral"
         meta="Cào độc quyền từng nền tảng, quét chủ đề ngách F&B, lưu trữ kịch bản marketing và bắt nhịp video/bình luận triệu view."
       />
 
