@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from ca_agents.ag_meeting import extract_meeting, resolve_staff_id, transcribe_audio
 from ca_contracts import CuocHop
 
@@ -28,7 +29,7 @@ def test_extract_golden_meeting_01(monkeypatch: pytest.MonkeyPatch) -> None:
     repo_root = Path(__file__).resolve().parents[4]
 
     golden_path = repo_root / "data" / "golden" / "meeting" / "meeting_01.json"
-    
+
     if golden_path.is_file():
         golden_data = json.loads(golden_path.read_text(encoding="utf-8"))
         raw_text = golden_data["raw_transcript"]
@@ -53,13 +54,13 @@ def test_extract_golden_meeting_01(monkeypatch: pytest.MonkeyPatch) -> None:
     validated = CuocHop(**res)
     assert validated.loai_hop == "giao_ca"
     assert len(validated.action_items) >= 2
-    
+
     # Check action items content
     tuan_items = [a for a in validated.action_items if a.ten_nguoi_nhan == "Tuấn"]
     assert len(tuan_items) >= 1
     assert tuan_items[0].nhan_vien_id == "nv_01"
     assert tuan_items[0].do_tin_cay >= 0.85
-    
+
     # Check SOP proposals
     assert len(validated.de_xuat_sop) >= 1
     assert "Trà Đào" in validated.de_xuat_sop[0].quy_trinh_lien_quan
@@ -73,11 +74,9 @@ def test_transcribe_audio_replay_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     assert res.provider == "replay_fixture"
 
 
-
 def test_extract_meeting_empty_text(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CA_AGENT_MODE", "replay")
     res = extract_meeting("")
     validated = CuocHop(**res)
     assert validated.trang_thai == "cho_duyet"
     assert len(validated.action_items) >= 1
-

@@ -6,11 +6,13 @@ import re
 from dataclasses import dataclass
 
 # Whitelist of tool functions callable by the customer chatbot
-ALLOWED_PUBLIC_TOOLS = frozenset({
-    "get_public_menu",
-    "get_store_profile",
-    "get_active_promotions",
-})
+ALLOWED_PUBLIC_TOOLS = frozenset(
+    {
+        "get_public_menu",
+        "get_store_profile",
+        "get_active_promotions",
+    }
+)
 
 # Known prompt injection patterns (Vietnamese & English)
 _INJECTION_PATTERNS = [
@@ -46,7 +48,9 @@ def sanitize_input(text: str, max_length: int = 1000) -> str:
     if not text:
         return ""
     # Strip null bytes and control characters except common whitespace
-    cleaned = "".join(ch for ch in text if ch == "\n" or ch == "\t" or (ord(ch) >= 32 and ord(ch) != 127))
+    cleaned = "".join(
+        ch for ch in text if ch == "\n" or ch == "\t" or (ord(ch) >= 32 and ord(ch) != 127)
+    )
     return cleaned.strip()[:max_length]
 
 

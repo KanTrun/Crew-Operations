@@ -15,17 +15,14 @@ from typing import Any
 
 @dataclass(frozen=True)
 class ConciergeTicket:
-    ticket_type: str             # "complaint" | "reservation" | "special_request"
-    customer_message: str        # Raw message from customer
+    ticket_type: str  # "complaint" | "reservation" | "special_request"
+    customer_message: str  # Raw message from customer
     extracted_data: dict[str, Any]  # Extracted metadata (party size, time, phone, issue)
-    suggested_reply: str         # Polite holding reply to customer
-    urgency: str                 # "high" | "medium" | "low"
+    suggested_reply: str  # Polite holding reply to customer
+    urgency: str  # "high" | "medium" | "low"
 
 
-def handle_complaint(
-    text: str,
-    customer_name: str | None = None
-) -> ConciergeTicket:
+def handle_complaint(text: str, customer_name: str | None = None) -> ConciergeTicket:
     """
     Handle customer dissatisfaction and complaints with sincere empathy.
     Applies HEAR framework to de-escalate and collect contact info for management.
@@ -45,10 +42,7 @@ def handle_complaint(
     )
 
 
-def handle_reservation(
-    text: str,
-    store_name: str = "Nhịp Quán"
-) -> ConciergeTicket:
+def handle_reservation(text: str, store_name: str = "Nhịp Quán") -> ConciergeTicket:
     """
     Handle table booking and reservation inquiries.
     """

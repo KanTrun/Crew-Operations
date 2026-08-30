@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
-import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -18,7 +17,7 @@ from pydantic import BaseModel, Field
 from ca_api.interfaces.http.sprint3 import _require_manager, _require_role
 from ca_api.persist import audit_add, kv_get, kv_mutate, list_users
 
-UTC = timezone.utc
+UTC = UTC
 router = APIRouter(tags=["meeting"])
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
@@ -32,7 +31,13 @@ def _get_staff_list() -> list[dict[str, Any]]:
     """Retrieve staff list from users table or sample seed."""
     users = list_users()
     if users:
-        return [{"id": u.get("nhan_vien_id") or u.get("username"), "ten": u.get("display_name") or u.get("username")} for u in users]
+        return [
+            {
+                "id": u.get("nhan_vien_id") or u.get("username"),
+                "ten": u.get("display_name") or u.get("username"),
+            }
+            for u in users
+        ]
     if SEED.is_file():
         try:
             data = json.loads(SEED.read_text(encoding="utf-8"))
@@ -120,10 +125,10 @@ async def process_audio_upload(
     _require_role(authorization)
     audio_bytes = await file.read()
     mime = file.content_type or "audio/webm"
-    
+
     trans_res = transcribe_audio(audio_bytes=audio_bytes, mime_type=mime)
     staff = _get_staff_list()
-    
+
     raw_text = trans_res.raw_text.strip()
     segments = [
         {
@@ -150,7 +155,6 @@ async def process_audio_upload(
     return meeting_data
 
 
-
 @router.post("/api/v1/meeting/apply")
 def apply_meeting_decisions(
     body: CuocHop,
@@ -164,6 +168,7 @@ def apply_meeting_decisions(
     selected_actions = [a for a in body.action_items if a.da_chon]
     created_tasks = 0
     if selected_actions:
+
         def mut_treo(cur: list[Any]) -> list[Any]:
             nonlocal created_tasks
             res = list(cur)
@@ -207,7 +212,6 @@ def apply_meeting_decisions(
             except Exception:  # noqa: BLE001
                 pass
 
-
     # 3. Persist meeting to store
     meeting_dict = body.model_dump()
     meeting_dict["trang_thai"] = "da_duyet"
@@ -233,7 +237,6 @@ def apply_meeting_decisions(
             "sop_proposals": sop_count,
         },
     )
-
 
     return {
         "ok": True,

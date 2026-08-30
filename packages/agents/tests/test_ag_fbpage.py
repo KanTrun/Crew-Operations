@@ -1,14 +1,13 @@
 """Unit tests for AG-FBPAGE and Guardrails."""
 
 import asyncio
-from ca_agents.guardrails import check_input_guardrail, is_tool_allowed, sanitize_input
+
 from ca_agents.ag_fbpage import (
     FBMessageInput,
-    FBMessageOutput,
     classify_customer_intent,
-    build_response_for_intent,
     process_fb_message,
 )
+from ca_agents.guardrails import check_input_guardrail, is_tool_allowed
 
 
 def test_guardrail_prompt_injection():
@@ -55,7 +54,9 @@ def test_classify_customer_intent():
     assert intent == "hoi_gio_dia_chi"
     assert conf >= 0.82
 
-    intent, conf = classify_customer_intent("Hôm nay có chương trình khuyến mãi hay giảm giá gì không?")
+    intent, conf = classify_customer_intent(
+        "Hôm nay có chương trình khuyến mãi hay giảm giá gì không?"
+    )
     assert intent == "hoi_khuyen_mai"
     assert conf >= 0.82
 
@@ -91,7 +92,10 @@ def test_process_fb_message_reservation_queues_for_approval():
     out = asyncio.run(process_fb_message(msg, auto_respond_enabled=True))
     assert out.action == "queue_to_inbox"
     assert out.intent == "dat_ban"
-    assert "chuẩn bị bàn" in (out.suggested_reply or "").lower() or "bàn" in (out.suggested_reply or "").lower()
+    assert (
+        "chuẩn bị bàn" in (out.suggested_reply or "").lower()
+        or "bàn" in (out.suggested_reply or "").lower()
+    )
 
 
 def test_process_fb_message_injection_blocked():

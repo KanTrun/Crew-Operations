@@ -25,9 +25,7 @@ def test_requires_legal_params() -> None:
 
 
 def test_empty_schedule_ok() -> None:
-    r = solve_hard_only(
-        LichInput(nhan_vien_ids=["nv_01"], ca_ids=[], phan_cong={}, **BASE)
-    )
+    r = solve_hard_only(LichInput(nhan_vien_ids=["nv_01"], ca_ids=[], phan_cong={}, **BASE))
     assert r.ok
 
 

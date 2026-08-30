@@ -58,9 +58,7 @@ def test_list_sua_loc_bo_dong_synthetic(tmp_path: Path) -> None:
         path=p,
         synthetic=True,
     )
-    record_sua(
-        loai="nhan_ca", truoc=2, sau=3, ai="nv_01", now_iso="2025-01-03T08:00:00", path=p
-    )
+    record_sua(loai="nhan_ca", truoc=2, sau=3, ai="nv_01", now_iso="2025-01-03T08:00:00", path=p)
     assert len(list_sua(p)) == 2
     thuc = list_sua(p, include_synthetic=False)
     assert len(thuc) == 1

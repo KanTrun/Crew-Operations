@@ -53,6 +53,7 @@ Public API:
     scrape_tiktok_apify(keyword, count, mode, nguon_goc) -> list[TrendItem]
     Raise ApifyError nếu fail → caller fallback TikWM.
 """
+
 from __future__ import annotations
 
 import logging
@@ -62,10 +63,10 @@ import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from ca_agents.clients.apify_client import ApifyError, run_actor_sync
+from ca_agents.clients.apify_client import run_actor_sync
 
 if TYPE_CHECKING:
-    from ca_agents.ag_trend import TrendItem, extract_core_tiktok_keyword
+    from ca_agents.ag_trend import TrendItem
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ def _build_input(keyword: str, count: int, mode: str) -> dict[str, Any]:
     """Build input payload theo schema Apify clockworks/tiktok-scraper."""
     base: dict[str, Any] = {
         "maxItems": count,
-        "downloadVideo": False,        # tiết kiệm CU
+        "downloadVideo": False,  # tiết kiệm CU
         "proxyCountryCode": "VN",
     }
     kw = keyword.strip() if keyword else ""
@@ -133,13 +134,12 @@ def _map_item(
     keyword: str,
     nguon_goc: str,
     now_str: str,
-) -> "TrendItem":
+) -> TrendItem:
     """Map 1 Apify item → TrendItem."""
     # Lazy import để tránh circular với ag_trend.py
     from ca_agents.ag_trend import TrendItem, extract_core_tiktok_keyword
 
     author_meta = item.get("authorMeta") or {}
-    video_meta = item.get("videoMeta") or {}
 
     author_id = author_meta.get("name", "user")
     nickname = author_meta.get("nickName") or author_id
@@ -154,17 +154,12 @@ def _map_item(
     collect_count = _safe_int(item.get("collectCount"))
 
     # URL
-    video_url = (
-        item.get("webVideoUrl")
-        or f"https://www.tiktok.com/@{author_id}/video/{video_id}"
-    )
+    video_url = item.get("webVideoUrl") or f"https://www.tiktok.com/@{author_id}/video/{video_id}"
 
     # Keyword cho hashtag
     short_kw = keyword.strip() or extract_core_tiktok_keyword(text) or author_id
     clean_tag = re.sub(r"[^a-zA-Z0-9]", "", short_kw.lower())
-    tag_url = (
-        f"https://www.tiktok.com/tag/{clean_tag}" if clean_tag else video_url
-    )
+    tag_url = f"https://www.tiktok.com/tag/{clean_tag}" if clean_tag else video_url
 
     # Title
     title_prefix = "🎵 [TIKTOK VIRAL]"
@@ -199,9 +194,8 @@ def _map_item(
         nguon_goc_chi_tiet=f"Cào qua Apify actor {ACTOR_ID} lúc {now_str}.",
         ngu_canh_su_dung=(
             "Video đang được đẩy trên For You / Hashtag TikTok "
-          
-        # Stats raw cho downstream UI xài
-        # (extra attribute, không nằm trong dataclass gốc)  f"với {_format_count(play_count)} lượt xem."
+            # Stats raw cho downstream UI xài
+            # (extra attribute, không nằm trong dataclass gốc)  f"với {_format_count(play_count)} lượt xem."
         ),
         tam_ly_gioi_tre="Tương tác trực tiếp trên video triệu view.",
         toc_do_tang_truong_24h=max(300.0, 990.0 - (idx * 40)),
@@ -211,10 +205,7 @@ def _map_item(
         tiktok_url=video_url,
         tiktok_tag_url=tag_url,
         thoi_gian_cao=now_str,
-        luot_tiep_can=(
-            f"{_format_count(play_count)} views | "
-            f"{_format_count(digg_count)} tim"
-        ),
+        luot_tiep_can=(f"{_format_count(play_count)} views | {_format_count(digg_count)} tim"),
         trich_doan_noi_dung_that=f"Caption: {text[:200]}",
         binh_luan_that_tiktok=_format_comments(item.get("comments") or []),
         nen_tang_lan_toa=["TikTok VN", "Facebook Reels", "YouTube Shorts"],
@@ -226,7 +217,7 @@ def _map_item(
 def scrape_tiktok_apify(
     keyword: str = "",
     count: int = 12,
-    mode: str = "search",          # "search" | "hashtag" | "profile"
+    mode: str = "search",  # "search" | "hashtag" | "profile"
     nguon_goc: str = "tiktok_vn",  # "tiktok_vn" | "tiktok_global"
 ) -> list[TrendItem]:
     """
@@ -246,7 +237,7 @@ def scrape_tiktok_apify(
     raw_items = run_actor_sync(ACTOR_ID, payload)
 
     now_str = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
-    items_out: list["TrendItem"] = []
+    items_out: list[TrendItem] = []
     for idx, v in enumerate(raw_items[:count]):
         try:
             mapped = _map_item(v, idx, keyword, nguon_goc, now_str)

@@ -28,7 +28,10 @@ def main() -> int:
         ("VF-SCHEMA", validate_schema({"intent": "doi_ca"}, ["intent"])),
         ("VF-SCHEMA", validate_schema({}, ["intent", "ca_id"])),
         ("VF-TRACE", validate_trace(GOOD, EVIDENCE)),
-        ("VF-TRACE", validate_trace({k: v for k, v in GOOD.items() if k != "source_span"}, EVIDENCE)),
+        (
+            "VF-TRACE",
+            validate_trace({k: v for k, v in GOOD.items() if k != "source_span"}, EVIDENCE),
+        ),
         ("VF-CONF", validate_conf({"confidence": 0.92})),
         ("VF-CONF", validate_conf({"confidence": 0.45})),
         ("VF-CONF", validate_conf({})),

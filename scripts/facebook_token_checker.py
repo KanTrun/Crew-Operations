@@ -5,10 +5,10 @@ Diagnose and fix token permission issues
 """
 
 import os
-import requests
-import json
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any
+
+import requests
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -18,135 +18,128 @@ load_dotenv(env_path)
 
 class FacebookTokenChecker:
     """Check and diagnose token permissions"""
-    
+
     BASE_URL = "https://graph.facebook.com/v26.0"
-    
+
     # Required permissions for posting
-    REQUIRED_PERMISSIONS = [
-        "pages_manage_posts",
-        "pages_read_engagement"
-    ]
-    
+    REQUIRED_PERMISSIONS = ["pages_manage_posts", "pages_read_engagement"]
+
     def __init__(self):
         """Initialize with token from environment"""
-        self.page_token = os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN") or os.getenv("NHIPQUAN_FB_PAGE_TOKEN")
+        self.page_token = os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN") or os.getenv(
+            "NHIPQUAN_FB_PAGE_TOKEN"
+        )
         self.page_id = os.getenv("FACEBOOK_PAGE_ID") or os.getenv("NHIPQUAN_FB_PAGE_ID")
-        
+
         if not self.page_token:
             raise ValueError("❌ FACEBOOK_PAGE_ACCESS_TOKEN not set in .env")
         if not self.page_id:
             raise ValueError("❌ FACEBOOK_PAGE_ID not set in .env")
-    
-    def check_token_permissions(self) -> Dict[str, Any]:
+
+    def check_token_permissions(self) -> dict[str, Any]:
         """Check what permissions the token has"""
         print("\n🔐 Checking token permissions...")
-        
+
         try:
             # Debug token to see permissions
             response = requests.get(
                 "https://graph.instagram.com/debug_token",
-                params={
-                    "input_token": self.page_token,
-                    "access_token": self.page_token
-                },
-                timeout=10
+                params={"input_token": self.page_token, "access_token": self.page_token},
+                timeout=10,
             )
-            
+
             if response.status_code == 200:
                 data = response.json().get("data", {})
-                
+
                 scopes = data.get("scopes", [])
                 is_valid = data.get("is_valid", False)
                 expires_at = data.get("expires_at", 0)
-                
-                print(f"\n📊 Token Status:")
+
+                print("\n📊 Token Status:")
                 print(f"  Valid: {'✅ Yes' if is_valid else '❌ No'}")
                 print(f"  Expires at: {expires_at}")
-                
+
                 print(f"\n📋 Current Permissions ({len(scopes)}):")
                 for scope in scopes:
                     print(f"  - {scope}")
-                
-                return {
-                    "valid": is_valid,
-                    "scopes": scopes,
-                    "expires_at": expires_at
-                }
+
+                return {"valid": is_valid, "scopes": scopes, "expires_at": expires_at}
             else:
                 print(f"❌ Failed to debug token: {response.text}")
                 return {"error": response.text}
-        
+
         except Exception as e:
             print(f"❌ Error: {str(e)}")
             return {"error": str(e)}
-    
+
     def check_page_admin_status(self) -> bool:
         """Check if token has admin access to page"""
         print("\n👤 Checking page admin status...")
-        
+
         try:
             # Try to get page info with the token
             response = requests.get(
                 f"{self.BASE_URL}/{self.page_id}",
-                params={
-                    "fields": "id,name,access_token",
-                    "access_token": self.page_token
-                },
-                timeout=10
+                params={"fields": "id,name,access_token", "access_token": self.page_token},
+                timeout=10,
             )
-            
+
             if response.status_code == 200:
                 data = response.json()
                 print(f"\n✅ You have access to page: {data.get('name', 'Unknown')}")
-                
+
                 # Check if we got page access token (means we're admin)
                 if "access_token" in data:
-                    print(f"✅ Page access token obtained (you're admin/editor)")
+                    print("✅ Page access token obtained (you're admin/editor)")
                     return True
                 else:
-                    print(f"❌ No page access token (insufficient permissions)")
+                    print("❌ No page access token (insufficient permissions)")
                     return False
             else:
-                error = response.json() if response.headers.get("content-type") == "application/json" else response.text
+                error = (
+                    response.json()
+                    if response.headers.get("content-type") == "application/json"
+                    else response.text
+                )
                 print(f"❌ Cannot access page: {error}")
                 return False
-        
+
         except Exception as e:
             print(f"❌ Error: {str(e)}")
             return False
-    
+
     def diagnose(self) -> bool:
         """Run full diagnostic"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("FACEBOOK TOKEN PERMISSION DIAGNOSTIC")
-        print("="*60)
-        
+        print("=" * 60)
+
         # Check token permissions
         token_info = self.check_token_permissions()
-        
+
         if "error" in token_info:
             print("\n❌ Could not retrieve token info")
             return False
-        
+
         # Check for required permissions
         scopes = token_info.get("scopes", [])
         missing_permissions = [p for p in self.REQUIRED_PERMISSIONS if p not in scopes]
-        
-        print(f"\n🔍 Required Permissions Check:")
+
+        print("\n🔍 Required Permissions Check:")
         for perm in self.REQUIRED_PERMISSIONS:
             status = "✅" if perm in scopes else "❌"
             print(f"  {status} {perm}")
-        
+
         if missing_permissions:
             print(f"\n⚠️  Missing permissions: {', '.join(missing_permissions)}")
-        
+
         # Check admin status
         is_admin = self.check_page_admin_status()
-        
-        print("\n" + "="*60)
+
+        print("\n" + "=" * 60)
         print("DIAGNOSIS SUMMARY")
-        print("="*60)
-        
+        print("=" * 60)
+
         if token_info.get("valid") and not missing_permissions and is_admin:
             print("\n✅ Token is properly configured!")
             print("\n💡 Possible reasons posting still fails:")
@@ -162,7 +155,7 @@ class FacebookTokenChecker:
                 print(f"  • Missing: {', '.join(missing_permissions)}")
             if not is_admin:
                 print("  • Not admin/editor of the page")
-            
+
             print("\n🔧 HOW TO FIX:")
             print("\n1. Go to Facebook App Dashboard:")
             print("   https://developers.facebook.com/apps/")
@@ -180,7 +173,7 @@ class FacebookTokenChecker:
             print("   FACEBOOK_PAGE_ACCESS_TOKEN=<new_token>")
             print("   FACEBOOK_PAGE_ID=1367177249801969")
             print("\n6. Run again: python scripts/facebook_token_checker.py")
-            
+
             return False
 
 
@@ -190,13 +183,14 @@ def main():
         checker = FacebookTokenChecker()
         success = checker.diagnose()
         exit(0 if success else 1)
-    
+
     except ValueError as e:
         print(f"\n❌ {str(e)}")
         exit(1)
     except Exception as e:
         print(f"\n❌ Unexpected error: {str(e)}")
         import traceback
+
         traceback.print_exc()
         exit(1)
 

@@ -5,6 +5,7 @@ Cách dùng:
     python scripts/smoke_tiktok_apify.py --keyword "xuhuong" --count 5
     python scripts/smoke_tiktok_apify.py --no-color
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,7 +31,7 @@ sys.path.insert(0, str(ROOT / "apps" / "api" / "src"))
 _ENV_PATH = ROOT / ".env"
 if _ENV_PATH.exists():
     try:
-        with open(_ENV_PATH, "r", encoding="utf-8") as _f:
+        with open(_ENV_PATH, encoding="utf-8") as _f:
             for _line in _f:
                 _line = _line.strip()
                 if not _line or _line.startswith("#") or "=" not in _line:
@@ -84,7 +85,10 @@ def main() -> int:
     print(f"  keyword  : {args.keyword}", flush=True)
     print(f"  count    : {args.count}", flush=True)
     print(f"  nguon_goc: {args.nguon_goc}", flush=True)
-    print(f"  token?   : {'YES' if os.getenv('APIFY_TOKEN') else 'NO  ← sẽ fallback TikWM'}", flush=True)
+    print(
+        f"  token?   : {'YES' if os.getenv('APIFY_TOKEN') else 'NO  ← sẽ fallback TikWM'}",
+        flush=True,
+    )
     print(_colored("─" * 60, _CYAN), flush=True)
     print("  → calling Apify...", flush=True)
 

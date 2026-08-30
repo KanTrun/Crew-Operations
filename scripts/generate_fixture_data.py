@@ -209,10 +209,7 @@ def build_tkb(n: int = 50) -> None:
         y = 80
         for b in blocks:
             label = f"{b['thu']} {b['start']}-{b['end']}"
-            svg += (
-                f"<text x='24' y='{y}' font-size='16' "
-                f"font-family='monospace'>{label}</text>\n"
-            )
+            svg += f"<text x='24' y='{y}' font-size='16' font-family='monospace'>{label}</text>\n"
             y += 28
         svg += "</svg>\n"
         name = f"tkb_{i:02d}.svg"
@@ -603,9 +600,7 @@ def build_luat(ghi_nhan: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "loai_ho_so": LOAI_HO_SO[str(mau["loai"])],
             "cau": mau["cau"],
             "dieu_kien": dict(mau["dieu_kien"]),
-            "bang_chung": [
-                str((i * 3 + k) % tong_bang_chung) for k in range(so_bang_chung)
-            ],
+            "bang_chung": [str((i * 3 + k) % tong_bang_chung) for k in range(so_bang_chung)],
             "buoc": BUOC_THEO_TRANG_THAI[str(mau["trang_thai"])],
             "trang_thai": mau["trang_thai"],
             "vf_rule": mau.get("vf_rule", "dat"),

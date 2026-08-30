@@ -29,24 +29,20 @@ def main() -> int:
     sua = [
         g
         for g in seed.get("ghi_nhan_sua", [])
-        if str(g.get("ca_id") or "").startswith("w1_")
-        and g.get("nguon") == "mo_phong_fixture"
+        if str(g.get("ca_id") or "").startswith("w1_") and g.get("nguon") == "mo_phong_fixture"
     ]
     n_sua = len(sua)
     if total == 0:
         print("total decisions = 0", file=sys.stderr)
         return 2
     khong_can_sua = (total - n_sua) / total
-    print(
-        f"Demo W01 fixture: quyet_dinh={total} sua={n_sua} "
-        f"khong_can_sua={khong_can_sua:.1%}"
-    )
+    print(f"Demo W01 fixture: quyet_dinh={total} sua={n_sua} khong_can_sua={khong_can_sua:.1%}")
     block = f"""
 ## Override demo tuần 1 (nhóm A)
 
 | Tuần | Quyết định | Bị sửa | Không cần sửa | Nguồn |
 |------|------------|--------|---------------|-------|
-| W01 fixture | {total} | {n_sua} | {khong_can_sua:.1%} | `data/seed/sample.json` `mo_phong_fixture` |
+| W01 | {total} | {n_sua} | {khong_can_sua:.1%} | `sample.json` `fixture` |
 
 Đường cong W1→W8: **ngoài phạm vi bài thi** (nhóm B).
 """

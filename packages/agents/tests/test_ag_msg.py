@@ -41,4 +41,3 @@ def test_tier2_fallback() -> None:
     assert res.intent == "khac"
     assert res.tier == 2
     assert res.do_tin_cay == 0.55
-

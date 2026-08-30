@@ -212,9 +212,7 @@ class TestRunVfPipeline:
 
     def test_schema_fail_second_attempt_escalate(self) -> None:
         extraction = {k: v for k, v in GOOD_EXTRACTION.items() if k != "label"}
-        result = run_vf_pipeline(
-            extraction, EVIDENCE_TEXT, SCHEMA_KEYS, already_retried=True
-        )
+        result = run_vf_pipeline(extraction, EVIDENCE_TEXT, SCHEMA_KEYS, already_retried=True)
         assert not result.passed
         assert result.escalate
         assert not result.retry_once
@@ -246,7 +244,5 @@ class TestRunVfPipeline:
     def test_custom_confidence_threshold(self) -> None:
         extraction = {**GOOD_EXTRACTION, "confidence": 0.6}
         # passes at 0.5 threshold
-        result = run_vf_pipeline(
-            extraction, EVIDENCE_TEXT, SCHEMA_KEYS, confidence_threshold=0.5
-        )
+        result = run_vf_pipeline(extraction, EVIDENCE_TEXT, SCHEMA_KEYS, confidence_threshold=0.5)
         assert result.passed

@@ -17,9 +17,7 @@ class ConflictResult:
 
 def present_conflict(a: dict[str, Any], b: dict[str, Any]) -> ConflictResult:
     """If claims differ on same (nguoi, khung), surface both. Never reconcile."""
-    same_slot = (
-        a.get("nguoi") == b.get("nguoi") and a.get("khung") == b.get("khung")
-    )
+    same_slot = a.get("nguoi") == b.get("nguoi") and a.get("khung") == b.get("khung")
     differ = a.get("claim") != b.get("claim")
     hit = bool(same_slot and differ)
     return ConflictResult(

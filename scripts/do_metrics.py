@@ -225,9 +225,7 @@ def chay_phieu(
     treo: str | None = None,
 ) -> PhieuRun:
     """Chạy phiếu tới khi hết bước hoặc tới bước không có minh chứng."""
-    run = start_phieu(
-        run_id=run_id, mau=mau, nv_id=nv_id, ca_id=ca_id, now_ms=0, diem_danh=True
-    )
+    run = start_phieu(run_id=run_id, mau=mau, nv_id=nv_id, ca_id=ca_id, now_ms=0, diem_danh=True)
     if treo:
         add_treo(run, treo)
     now = 0
@@ -502,9 +500,7 @@ def _cong_vf_anh() -> dict[str, dict[str, int]]:
             off = chung_cu.find(nhan)
             if off >= 0:
                 trich["source_span"] = {"text_offset": off}
-        kq = run_vf_pipeline(
-            trich, chung_cu, ["nhan_vien_id", "spans", "confidence"]
-        )
+        kq = run_vf_pipeline(trich, chung_cu, ["nhan_vien_id", "spans", "confidence"])
         for ten, r in (
             ("VF-SCHEMA", kq.schema),
             ("VF-TRACE", kq.trace),
@@ -751,9 +747,7 @@ def main() -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     payload = do_tat_ca()
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUT_PATH.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    OUT_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     in_bang(payload)
     print("")
     print(f"đã ghi {OUT_PATH.relative_to(ROOT)}")

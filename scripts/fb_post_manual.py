@@ -4,6 +4,7 @@ Usage:
     python scripts/fb_post_manual.py
     python scripts/fb_post_manual.py --text "Noi dung can dang"
 """
+
 import argparse
 import sys
 from pathlib import Path
@@ -33,7 +34,9 @@ def main() -> int:
         return 3
 
     print(f"\n=== POSTED ===\nID: {result.get('post_id')}")
-    print(f"Permalink: https://facebook.com/{poster.page_id}_{result.get('post_id').split('_')[-1]}")
+    print(
+        f"Permalink: https://facebook.com/{poster.page_id}_{result.get('post_id').split('_')[-1]}"
+    )
     return 0
 
 

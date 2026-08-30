@@ -20,9 +20,7 @@ DOCS = ROOT / "docs" / "metrics-18-2.md"
 
 def main() -> None:
     rows = [
-        json.loads(line)
-        for line in GOLDEN.read_text(encoding="utf-8").splitlines()
-        if line.strip()
+        json.loads(line) for line in GOLDEN.read_text(encoding="utf-8").splitlines() if line.strip()
     ]
     gold = [r["intent"] for r in rows]
     pred = [classify(r["text"]).intent for r in rows]
@@ -30,9 +28,7 @@ def main() -> None:
     correct = sum(g == p for g, p in zip(gold, pred, strict=True))
     hard_rows = [r for r in rows if r.get("difficulty") in {"hard", "medium"}]
     hard_n = len(hard_rows)
-    hard_ok = sum(
-        classify(r["text"]).intent == r["intent"] for r in hard_rows
-    )
+    hard_ok = sum(classify(r["text"]).intent == r["intent"] for r in hard_rows)
     matrix: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for g, p in zip(gold, pred, strict=True):
         matrix[g][p] += 1

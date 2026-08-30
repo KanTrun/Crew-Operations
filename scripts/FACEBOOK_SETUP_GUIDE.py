@@ -4,16 +4,12 @@ Facebook Setup Guide - Comprehensive Setup Instructions
 Step-by-step guide to properly configure Facebook Page Access Token
 """
 
-import os
-from pathlib import Path
-from dotenv import load_dotenv
-
 
 def print_header(title):
     """Print formatted header"""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print(f"  {title}")
-    print("="*70)
+    print("=" * 70)
 
 
 def print_step(step_num, title):
@@ -27,7 +23,7 @@ def main():
     print("\n" + "🚀 " * 25)
     print("FACEBOOK PAGE POST SETUP GUIDE")
     print("🚀 " * 25)
-    
+
     print_header("⚠️  CURRENT ERROR")
     print("""
 Token is INVALID: "Cannot parse access token"
@@ -37,9 +33,9 @@ This means:
   ❌ Token is truncated/incomplete
   ❌ Token contains spaces or extra characters
     """)
-    
+
     print_header("✅ SOLUTION: Generate Token Correctly")
-    
+
     print_step(1, "Open Facebook App Dashboard")
     print("""
 URL: https://developers.facebook.com/apps/
@@ -47,7 +43,7 @@ URL: https://developers.facebook.com/apps/
 OR direct link:
 https://developers.facebook.com/apps/YOUR_APP_ID/settings/basic/
     """)
-    
+
     print_step(2, "Navigate to Tools → Token Debugger")
     print("""
 Path:
@@ -59,7 +55,7 @@ Path:
 OR simpler:
 Go to: https://developers.facebook.com/tools/debug/token
     """)
-    
+
     print_step(3, "Generate New Token")
     print("""
 Option A - From Token Debugger:
@@ -77,7 +73,7 @@ Option B - From App Settings:
      ✓ pages_read_engagement
   6. Copy token
     """)
-    
+
     print_step(4, "Copy Token Correctly")
     print("""
 ⚠️  IMPORTANT - Avoid Common Mistakes:
@@ -95,7 +91,7 @@ How to verify token format:
   
 Example: EAAjJgqhGVncBSU...{150 chars total}...ZD
     """)
-    
+
     print_step(5, "Add to .env File")
     print("""
 Open .env file and set:
@@ -111,7 +107,7 @@ Open .env file and set:
 ✅ Correct:
   FACEBOOK_PAGE_ACCESS_TOKEN=EAAjJgqhGVncBSUuWqgd55rLZAgUEfZArdZCeWZApqz7V5SNXCkZA7UMQIJimF71zXlTwvDVGf3mzyR8PmK6zPWUZBThavVZC6xV7QQz6zfmzgXCd9gT9VZB0XoI17m8velZBZBBdgaVREhn6XvZAojmKzHhmIV4iZBTjt81pRIg1RLmXNZBzxfo4sel7RuAoSJzCd5NsOu0Ex7kRLWgiUUJ6LgLKgK7ewOeop9L5DwZAympL0ZD
     """)
-    
+
     print_step(6, "Verify Setup")
     print("""
 Run this to verify token is correct:
@@ -123,7 +119,7 @@ Expected output:
   ✅ Page access confirmed
   ✅ All permissions present
     """)
-    
+
     print_step(7, "Test Posting")
     print("""
 If token verification passes:
@@ -136,7 +132,7 @@ This will:
   3. Post test link
   4. Display post stats
     """)
-    
+
     print_header("🆘 STILL NOT WORKING?")
     print("""
 If token is valid but posting still fails:
@@ -169,7 +165,7 @@ If token is valid but posting still fails:
    • Select page
    • Confirm permissions
     """)
-    
+
     print_header("📚 USEFUL LINKS")
     print("""
 Token Debugger:
@@ -184,7 +180,7 @@ Publishing to Pages:
 Page Access Tokens:
   https://developers.facebook.com/docs/facebook-login/access-tokens/
     """)
-    
+
     print_header("✅ QUICK CHECKLIST")
     print("""
 Before running tests:
@@ -198,7 +194,7 @@ Before running tests:
   [ ] You have both pages_manage_posts and pages_read_engagement
   [ ] Token generated in last hour (tokens can expire)
     """)
-    
+
     print("\n" + "✅ " * 25)
     print("END OF SETUP GUIDE")
     print("✅ " * 25 + "\n")

@@ -6,7 +6,16 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ca_playbook.vong_doi import de_xuat, duyet, kiem_chung, list_luat, save_luat, tap_su, theo_doi, tim_mau
+from ca_playbook.vong_doi import (
+    de_xuat,
+    duyet,
+    kiem_chung,
+    list_luat,
+    save_luat,
+    tap_su,
+    theo_doi,
+    tim_mau,
+)
 
 
 def _luat_de_xuat() -> dict[str, Any]:
@@ -166,4 +175,3 @@ def test_theo_doi_khong_chia_khong() -> None:
     assert out["ghi_de"] == 0
     assert out["ti_le_dung"] == 1.0
     assert out["trang_thai"] == "hieu_luc"
-

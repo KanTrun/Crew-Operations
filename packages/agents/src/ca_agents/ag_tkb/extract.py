@@ -168,8 +168,10 @@ def _extract_live(image_path_or_id: str) -> dict[str, Any]:
             provider="tu_choi",
         )
 
-    system = _PROMPT.read_text(encoding="utf-8") if _PROMPT.exists() else (
-        "Trả JSON {khoang_ban:[{thu,start,end}], doc_duoc:bool}. Không bịa giờ."
+    system = (
+        _PROMPT.read_text(encoding="utf-8")
+        if _PROMPT.exists()
+        else ("Trả JSON {khoang_ban:[{thu,start,end}], doc_duoc:bool}. Không bịa giờ.")
     )
     result: LlmResult = complete(
         system=system,
