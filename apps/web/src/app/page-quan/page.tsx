@@ -9,8 +9,11 @@ import {
   AuthGate,
   Btn,
   Empty,
+  Field,
+  Input,
   Loading,
   PageHeader,
+  Textarea,
   useToasts,
 } from "../../ui/kit";
 
@@ -1032,13 +1035,14 @@ export default function PageQuanPage() {
         <div className="space-y-4">
           <div className="border-2 border-[var(--nq-dim)] p-4">
             <h3 className="mb-2 text-sm font-bold">Soạn nháp bài đăng mới</h3>
-            <textarea
-              className="nq-input mb-2 w-full text-xs"
-              rows={4}
-              placeholder="Nhập nội dung bài đăng..."
-              value={draftText}
-              onChange={(e) => setDraftText(e.target.value)}
-            />
+            <Field label="Nội dung bài đăng">
+              <Textarea
+                rows={6}
+                placeholder="Nhập nội dung bài đăng..."
+                value={draftText}
+                onChange={(e) => setDraftText(e.target.value)}
+              />
+            </Field>
             <Btn variant="primary" onClick={createDraft}>
               Lưu nháp
             </Btn>

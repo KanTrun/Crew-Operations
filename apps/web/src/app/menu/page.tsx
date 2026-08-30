@@ -5,7 +5,7 @@ import { apiGet, apiSend, apiUpload } from "../../lib/api";
 import { menuImageUrl } from "../../lib/menu-image";
 import { viError } from "../../lib/present";
 import { getToken } from "../../lib/session";
-import { Alert, Btn, Empty, Field, Loading, PageHeader, StatusChip } from "../../ui/kit";
+import { Alert, Btn, Empty, Field, Input, Loading, PageHeader, StatusChip, Textarea } from "../../ui/kit";
 
 type Mon = { id: string; ten: string; gia: number; an: boolean; bom: Record<string, number>; hinh_url?: string };
 
@@ -182,7 +182,7 @@ export default function MenuPage() {
           </div>
           <form className="space-y-4" onSubmit={(e) => void submit(e)}>
             <Field label="Mã món">
-              <input
+              <Input
                 value={form.id}
                 onChange={(e) => setForm({ ...form, id: e.target.value.toLowerCase() })}
                 placeholder="tra_chanh"
@@ -191,10 +191,10 @@ export default function MenuPage() {
               />
             </Field>
             <Field label="Tên món">
-              <input value={form.ten} onChange={(e) => setForm({ ...form, ten: e.target.value })} required />
+              <Input value={form.ten} onChange={(e) => setForm({ ...form, ten: e.target.value })} required />
             </Field>
             <Field label="Giá (đồng)">
-              <input value={form.gia} onChange={(e) => setForm({ ...form, gia: e.target.value })} inputMode="numeric" required />
+              <Input value={form.gia} onChange={(e) => setForm({ ...form, gia: e.target.value })} inputMode="numeric" required />
             </Field>
             <Field label="Ảnh món">
               <input
@@ -206,7 +206,7 @@ export default function MenuPage() {
               <p className="nq-muted mt-1 text-xs">JPG/PNG/WebP, tối đa 4MB. Lưu mã món trước khi tải.</p>
             </Field>
             <Field label="BOM ước lượng (JSON)">
-              <textarea value={form.bom} onChange={(e) => setForm({ ...form, bom: e.target.value })} rows={5} className="font-mono text-sm" />
+              <Textarea value={form.bom} onChange={(e) => setForm({ ...form, bom: e.target.value })} rows={6} className="font-mono text-sm" />
             </Field>
             {form.bom ? (
               <div>

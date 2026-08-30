@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CSSProperties, ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { CSSProperties, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes, useCallback, useEffect, useRef, useState } from "react";
 
 export const btnPrimary: CSSProperties = {};
 export const btnGhost: CSSProperties = {};
@@ -376,12 +376,44 @@ export function AuthGate() {
   );
 }
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="nq-field block mb-4">
       <span className="block text-sm font-bold uppercase tracking-widest text-[var(--nq-dim)] mb-2">{label}</span>
+      {hint ? <span className="mb-2 block text-xs leading-relaxed text-[var(--nq-ink-muted)]">{hint}</span> : null}
       {children}
     </label>
+  );
+}
+
+function joinClasses(...parts: Array<string | undefined | false>) {
+  return parts.filter(Boolean).join(" ");
+}
+
+export function Input({
+  className,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { className?: string }) {
+  return <input className={joinClasses(inputClassName, className)} {...props} />;
+}
+
+export function Textarea({
+  className,
+  rows = 5,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { className?: string }) {
+  return <textarea className={joinClasses(textareaClassName, className)} rows={rows} {...props} />;
+}
+
+export function Select({
+  className,
+  children,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & { className?: string; children: ReactNode }) {
+  return (
+    <select className={joinClasses(selectClassName, className)} {...props}>
+      {children}
+    </select>
   );
 }
 
@@ -545,13 +577,17 @@ export function Row({
   actions?: ReactNode;
 }) {
   return (
-    <li className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] gap-4 hover:border-[var(--nq-copper)] transition-colors">
-      <div className="flex-1">
-        <p className="font-bold text-[var(--nq-fg)] mb-1">{title}</p>
-        {sub ? <p className="text-sm font-mono text-[var(--nq-dim)]">{sub}</p> : null}
+    <li className="nq-record">
+      <div className="nq-record__head">
+        <p className="nq-record__title">{title}</p>
+        {sub ? <p className="nq-record__meta">{sub}</p> : null}
       </div>
-      {side ? <div className="flex items-center gap-4">{side}</div> : null}
-      {actions ? <div className="flex items-center gap-2 mt-4 sm:mt-0 w-full sm:w-auto">{actions}</div> : null}
+      {side || actions ? (
+        <div className="nq-record__foot">
+          {side ? <div className="nq-record__tags">{side}</div> : null}
+          {actions ? <div className="nq-record__actions">{actions}</div> : null}
+        </div>
+      ) : null}
     </li>
   );
 }

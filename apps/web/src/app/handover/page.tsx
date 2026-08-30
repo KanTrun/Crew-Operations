@@ -13,7 +13,7 @@ import {
   Loading,
   OpsCard,
   PageHeader,
-  textareaStyle,
+  Textarea,
 } from "../../ui/kit";
 
 type Sbar = { tinh_hinh?: unknown; boi_canh?: unknown; danh_gia?: unknown; de_nghi?: unknown };
@@ -58,7 +58,7 @@ export default function HandoverPage() {
         meta="Ghi lại ca vừa rồi, hệ thống tách thành Tình hình · Bối cảnh · Đánh giá · Đề nghị cho ca sau."
       />
       <Field label="Nội dung ca">
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} style={textareaStyle} />
+        <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} />
       </Field>
       <Btn variant="primary" disabled={busy} onClick={run}>
         {busy ? "Đang tách…" : "Tách thành bàn giao"}

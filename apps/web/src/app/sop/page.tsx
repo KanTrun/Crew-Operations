@@ -12,7 +12,7 @@ import {
   Field,
   Loading,
   PageHeader,
-  textareaStyle,
+  Textarea,
 } from "../../ui/kit";
 
 type Ans = { cau_tra_loi: string; trich_dan: string[]; chua_co: boolean };
@@ -57,7 +57,7 @@ export default function SopPage() {
         meta="Đặt câu bằng tiếng Việt thường ngày. Hệ thống chỉ dẫn lại phiếu và luật quán, không bịa."
       />
       <Field label="Câu hỏi">
-        <textarea value={q} onChange={(e) => setQ(e.target.value)} rows={3} style={textareaStyle} />
+        <Textarea value={q} onChange={(e) => setQ(e.target.value)} rows={4} />
       </Field>
       <Btn variant="primary" disabled={busy} onClick={ask}>
         {busy ? "Đang tra cẩm nang…" : "Hỏi cẩm nang"}

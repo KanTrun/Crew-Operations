@@ -95,7 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const primary = isChuQuan(role) ? ADMIN_PRIMARY : isManager(role) ? MANAGER_PRIMARY : STAFF_PRIMARY;
   const more = MORE.filter((x) => !primary.some((p) => p.href === x.href) && canAccess(role, x.href));
-  const wide = path === "/roster" || path === "/cuoc-hop";
+  const wide = path === "/roster" || path === "/cuoc-hop" || path === "/inbox" || path === "/quay";
 
   function logout() {
     clearSession();

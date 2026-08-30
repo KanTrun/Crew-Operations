@@ -25,7 +25,6 @@ import {
   Group,
   Loading,
   Notice,
-  OpsCard,
   PageHeader,
   Row,
   StatusChip,
@@ -162,7 +161,7 @@ export default function InboxPage() {
   if (!token) return <AuthGate />;
 
   return (
-    <div className="nq-page">
+    <div className="nq-page nq-page--wide">
       <PageHeader
         kicker="Người duyệt · hệ thống không tự chọn"
         title="Hộp thư ràng buộc"
@@ -171,90 +170,86 @@ export default function InboxPage() {
       {error ? <Alert>{error}</Alert> : null}
       {!manager ? <Notice>Bạn xem được nội dung. Quản lý hoặc chủ quán mới bấm duyệt.</Notice> : null}
 
-      <OpsCard eyebrow="Danh sách" title="Ràng buộc trong hộp thư" count={filtered.length} countLabel="mục">
-        <ListToolbar
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Tìm tóm tắt, kênh, agent, mã NV…"
-          status={statusF}
-          onStatusChange={setStatusF}
-          statusOptions={statusOptions}
-          person={personF}
-          onPersonChange={setPersonF}
-          personOptions={personOptions}
-          time={timeF}
-          onTimeChange={(v) => setTimeF(v as TimeFilter)}
-          timeOptions={TIME_FILTER_OPTIONS}
-          shown={filtered.length}
-          total={items.length}
-          filtered={filterActive}
-        />
+      <ListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Tìm tóm tắt, kênh, agent, mã NV…"
+        status={statusF}
+        onStatusChange={setStatusF}
+        statusOptions={statusOptions}
+        person={personF}
+        onPersonChange={setPersonF}
+        personOptions={personOptions}
+        time={timeF}
+        onTimeChange={(v) => setTimeF(v as TimeFilter)}
+        timeOptions={TIME_FILTER_OPTIONS}
+        shown={filtered.length}
+        total={items.length}
+        filtered={filterActive}
+      />
 
-        {loading ? (
-          <Loading skeleton="rows" rows={4} groups={3}>
-            Đang mở hộp thư…
-          </Loading>
-        ) : null}
+      {loading ? (
+        <Loading skeleton="rows" rows={4} groups={3}>
+          Đang mở hộp thư…
+        </Loading>
+      ) : null}
 
-        {!loading && !error && items.length === 0 ? (
-          <Empty title="Hộp thư trống">Không có ràng buộc nào chờ người quyết.</Empty>
-        ) : null}
+      {!loading && !error && items.length === 0 ? (
+        <Empty title="Hộp thư trống">Không có ràng buộc nào chờ người quyết.</Empty>
+      ) : null}
 
-        {!loading && items.length > 0 && filtered.length === 0 ? (
-          <FilteredEmpty onClear={clearFilters} />
-        ) : null}
+      {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
 
-        {!loading &&
-          nhom.map(([tt, list]) => (
-            <Group key={tt} title={TEN_NHOM[tt] ?? inboxLabel(tt)} count={list.length} countLabel="mục">
-              {list.map((it) => (
-                <Row
-                  key={it.id}
-                  title={safeText(it.tom_tat, "Ràng buộc chưa có tóm tắt")}
-                  sub={
+      {!loading &&
+        nhom.map(([tt, list]) => (
+          <Group key={tt} title={TEN_NHOM[tt] ?? inboxLabel(tt)} count={list.length} countLabel="mục">
+            {list.map((it) => (
+              <Row
+                key={it.id}
+                title={safeText(it.tom_tat, "Ràng buộc chưa có tóm tắt")}
+                sub={
+                  <>
+                    {kenhLabel(it.nguon)} · {agentLabel(it.agent)}
+                    {it.nv_id ? ` · ${it.nv_id}` : ""}
+                    {it.rang_buoc?.loai
+                      ? ` · ràng buộc ${rangBuocLabel(it.rang_buoc.loai).toLowerCase()}`
+                      : ""}
+                    {it.rang_buoc?.thu ? ` · ${thuLabel(it.rang_buoc.thu)}` : ""}
+                    {it.rang_buoc?.khung ? ` ${khungLabel(it.rang_buoc.khung).toLowerCase()}` : ""}
+                    {it.created_at ? ` · ${formatLuc(it.created_at)}` : ""}
+                    {it.noi_dung_goc ? ` · gốc: ${safeText(it.noi_dung_goc).slice(0, 80)}` : ""}
+                    {it.hieu_luc?.ghi ? ` · ${it.hieu_luc.ghi}` : ""}
+                  </>
+                }
+                side={
+                  <>
+                    <StatusChip tone={inboxTone(it.trang_thai)}>{inboxLabel(it.trang_thai)}</StatusChip>
+                    <StatusChip>{kenhLabel(it.nguon)}</StatusChip>
+                    <StatusChip>{yDinhLabel(it.y_dinh)}</StatusChip>
+                    <Confidence value={it.do_tin_cay} />
+                  </>
+                }
+                actions={
+                  it.trang_thai === "cho_duyet" && manager ? (
                     <>
-                      {kenhLabel(it.nguon)} · {agentLabel(it.agent)}
-                      {it.nv_id ? ` · ${it.nv_id}` : ""}
-                      {it.rang_buoc?.loai
-                        ? ` · ràng buộc ${rangBuocLabel(it.rang_buoc.loai).toLowerCase()}`
-                        : ""}
-                      {it.rang_buoc?.thu ? ` · ${thuLabel(it.rang_buoc.thu)}` : ""}
-                      {it.rang_buoc?.khung ? ` ${khungLabel(it.rang_buoc.khung).toLowerCase()}` : ""}
-                      {it.created_at ? ` · ${formatLuc(it.created_at)}` : ""}
-                      {it.noi_dung_goc ? ` · gốc: ${safeText(it.noi_dung_goc).slice(0, 80)}` : ""}
-                      {it.hieu_luc?.ghi ? ` · ${it.hieu_luc.ghi}` : ""}
+                      <Btn
+                        variant="primary"
+                        busy={busy === it.id}
+                        busyLabel="Đang ghi quyết định…"
+                        onClick={() => decide(it.id, "duyet")}
+                      >
+                        Duyệt ràng buộc
+                      </Btn>
+                      <Btn variant="danger" disabled={busy === it.id} onClick={() => decide(it.id, "tu_choi")}>
+                        Từ chối
+                      </Btn>
                     </>
-                  }
-                  side={
-                    <>
-                      <StatusChip tone={inboxTone(it.trang_thai)}>{inboxLabel(it.trang_thai)}</StatusChip>
-                      <StatusChip>{kenhLabel(it.nguon)}</StatusChip>
-                      <StatusChip>{yDinhLabel(it.y_dinh)}</StatusChip>
-                      <Confidence value={it.do_tin_cay} />
-                    </>
-                  }
-                  actions={
-                    it.trang_thai === "cho_duyet" && manager ? (
-                      <>
-                        <Btn
-                          variant="primary"
-                          busy={busy === it.id}
-                          busyLabel="Đang ghi quyết định…"
-                          onClick={() => decide(it.id, "duyet")}
-                        >
-                          Duyệt ràng buộc
-                        </Btn>
-                        <Btn variant="danger" disabled={busy === it.id} onClick={() => decide(it.id, "tu_choi")}>
-                          Từ chối
-                        </Btn>
-                      </>
-                    ) : undefined
-                  }
-                />
-              ))}
-            </Group>
-          ))}
-      </OpsCard>
+                  ) : undefined
+                }
+              />
+            ))}
+          </Group>
+        ))}
     </div>
   );
 }

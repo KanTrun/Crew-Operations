@@ -11,6 +11,7 @@ import {
   PageHeader,
   ProgressBar,
   StepDone,
+  Textarea,
 } from "../../ui/kit";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -269,12 +270,12 @@ export default function PhieuPage() {
 
           {showTreo ? (
             <OpsCard eyebrow="Ngoại lệ" title="Để việc treo">
-              <textarea
-                className={`${inputClassName} min-h-[6rem]`}
+              <Textarea
+                className="min-h-[6rem]"
                 value={treoText}
                 onChange={(e) => setTreoText(e.target.value)}
                 placeholder="Mô tả vấn đề cần treo lại…"
-                rows={3}
+                rows={4}
               />
               <div className="flex flex-wrap gap-2 mt-4">
                 <Btn variant="danger" disabled={busy || !treoText.trim()} onClick={handleTreo}>

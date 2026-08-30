@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, apiSend } from "../../lib/api";
 import { setSession } from "../../lib/session";
 import { viError } from "../../lib/present";
-import { Alert, Field } from "../../ui/kit";
+import { Alert, Field, Input } from "../../ui/kit";
 import { Logo } from "../../ui/Logo";
 
 type LoginOut = { token: string; role: string; display_name: string; nv_id: string };
@@ -66,20 +66,20 @@ export default function LoginPage() {
 
         <div className="flex flex-col gap-4 p-6 md:gap-5 md:p-8">
           <Field label="Tài khoản">
-            <input
+            <Input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
-              className="w-full border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-3 font-mono text-[var(--nq-fg)] transition-colors focus:border-[var(--nq-copper)] focus:outline-none"
+              className="font-mono"
             />
           </Field>
           <Field label="Mật khẩu">
-            <input
+            <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
-              className="w-full border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-3 font-mono text-[var(--nq-fg)] transition-colors focus:border-[var(--nq-copper)] focus:outline-none"
+              className="font-mono"
             />
           </Field>
 

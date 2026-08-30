@@ -23,7 +23,7 @@ const MONEY = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND
 function PosThumb({ mon }: { mon: Mon }) {
   const [err, setErr] = useState(false);
   return (
-    <div className="mb-2 aspect-square w-full overflow-hidden rounded-md border border-[var(--nq-line)] bg-[var(--nq-surface-hi)]">
+    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md border border-[var(--nq-line)] bg-[var(--nq-surface-hi)]">
       {!err ? (
         <img
           src={menuImageUrl(mon.id, mon.hinh_url)}
@@ -36,6 +36,32 @@ function PosThumb({ mon }: { mon: Mon }) {
           {mon.ten.slice(0, 1)}
         </div>
       )}
+    </div>
+  );
+}
+
+function QtyStepper({
+  qty,
+  onMinus,
+  onPlus,
+  label,
+}: {
+  qty: number;
+  onMinus: () => void;
+  onPlus: () => void;
+  label: string;
+}) {
+  return (
+    <div className="nq-stepper" aria-label={label}>
+      <button type="button" className="nq-stepper__btn" onClick={onMinus} disabled={qty < 1} aria-label={`Bớt ${label}`}>
+        −
+      </button>
+      <span className="nq-stepper__qty" aria-live="polite">
+        {qty}
+      </span>
+      <button type="button" className="nq-stepper__btn nq-stepper__btn--add" onClick={onPlus} aria-label={`Thêm ${label}`}>
+        +
+      </button>
     </div>
   );
 }
@@ -145,7 +171,7 @@ export default function QuayPage() {
 
   if (!token) return null;
   return (
-    <section className="nq-page">
+    <section className="nq-page nq-page--wide">
       <PageHeader
         kicker="Quầy nội bộ"
         title="Ghi đơn tại quầy"
@@ -163,39 +189,35 @@ export default function QuayPage() {
       ) : null}
       {loading ? <Loading skeleton="bento">Đang tải menu quầy…</Loading> : null}
       {!loading ? (
-        <div className="nq-split nq-split--pos">
+        <div className="nq-pos-shell">
           <div>
             <h2 className="mb-3 text-sm font-mono uppercase tracking-widest text-[var(--nq-dim)]">Menu đang bán</h2>
             {menu.length === 0 ? <Empty>Chủ quán chưa mở món nào trong menu.</Empty> : null}
-            <div className="nq-pos-grid">
+            <div className="nq-pos-menu">
               {menu.map((mon) => {
                 const qty = cart[mon.id] ?? 0;
                 return (
-                  <article
-                    key={mon.id}
-                    className={`nq-menu-card ${qty ? "nq-menu-card--on" : ""}`}
-                  >
+                  <article key={mon.id} className={`nq-pos-row ${qty ? "nq-pos-row--on" : ""}`}>
                     <PosThumb mon={mon} />
-                    <strong className="text-sm leading-tight">{mon.ten}</strong>
-                    <p className="nq-muted text-xs">{MONEY.format(mon.gia)}</p>
-                    <div className="mt-auto flex items-center justify-between gap-1 pt-1">
-                      <Btn variant="ghost" onClick={() => changeQty(mon.id, -1)} disabled={!qty} aria-label={`Bớt ${mon.ten}`}>
-                        −
-                      </Btn>
-                      <span className="min-w-[1.5rem] text-center font-mono text-sm">{qty}</span>
-                      <Btn onClick={() => changeQty(mon.id, 1)} aria-label={`Thêm ${mon.ten}`}>
-                        +
-                      </Btn>
+                    <div className="nq-pos-row__info">
+                      <strong className="nq-pos-row__name">{mon.ten}</strong>
+                      <p className="nq-pos-row__price">{MONEY.format(mon.gia)}</p>
                     </div>
+                    <QtyStepper
+                      qty={qty}
+                      label={mon.ten}
+                      onMinus={() => changeQty(mon.id, -1)}
+                      onPlus={() => changeQty(mon.id, 1)}
+                    />
                   </article>
                 );
               })}
             </div>
           </div>
 
-          <aside className="nq-sticky-panel nq-item space-y-4">
+          <aside className="nq-pos-cart space-y-4">
             <h2 className="text-sm font-mono uppercase tracking-widest">Đơn mới</h2>
-            {lines.length === 0 ? <p className="nq-muted text-sm">Chọn món từ lưới bên trái.</p> : null}
+            {lines.length === 0 ? <p className="nq-muted text-sm">Chọn món từ menu bên trái.</p> : null}
             <ul className="space-y-2 text-sm">
               {lines.map((line) => (
                 <li key={line.id} className="flex justify-between gap-2 border-b border-[var(--nq-line)] pb-2">
