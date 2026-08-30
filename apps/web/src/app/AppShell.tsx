@@ -114,15 +114,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Link
                   key={l.href}
                   href={l.href}
-                  className={`flex shrink-0 items-center whitespace-nowrap text-[11px] font-bold uppercase tracking-wide transition-colors xl:text-xs ${path === l.href ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
+                  className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11px] font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:text-xs ${path === l.href ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
                   data-tour={tourId(l.href)}
                   aria-current={path === l.href ? "page" : undefined}
                 >
-                  <span className="lg:hidden">
-                    <Icon name={iconForHref(l.href)} size={16} />
-                  </span>
-                  <span className="hidden lg:inline">{l.label}</span>
-                  <span className="lg:hidden">{l.short ?? l.label}</span>
+                  <Icon name={iconForHref(l.href)} size={16} />
+                  <span className="hidden xl:inline">{l.label}</span>
+                  <span className="xl:hidden">{l.short ?? l.label}</span>
                 </Link>
               ))}
               <div className="relative shrink-0" ref={moreRef}>

@@ -605,17 +605,6 @@ export default function RosterPage() {
                                       <span className="nq-roster-nv-name">
                                         {nvName(nv_id)}
                                       </span>
-                                      {canWrite && trangThai !== "da_dong" ? (
-                                        <button
-                                          type="button"
-                                          className="nq-roster-unpin"
-                                          disabled={pinBusy}
-                                          onClick={() => handlePin(shift.id, nv_id, false)}
-                                          aria-label={`Bỏ ${nvName(nv_id)} khỏi ca`}
-                                        >
-                                          ×
-                                        </button>
-                                      ) : null}
                                     </li>
                                   ))}
                                   {assigned.length === 0 ? (
@@ -685,9 +674,9 @@ export default function RosterPage() {
               <button
                 type="button"
                 onClick={() => setSelectedDay(null)}
-                className="w-8 h-8 rounded-full bg-neutral-800 text-neutral-300 hover:bg-neutral-700 flex items-center justify-center text-sm font-bold"
+                className="px-3 py-1 text-xs font-bold uppercase tracking-widest text-neutral-400 hover:text-amber-400"
               >
-                ✕
+                Đóng
               </button>
             </div>
 
@@ -743,17 +732,6 @@ export default function RosterPage() {
                           >
                             <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                             {nvName(nv_id)}
-                            {canWrite && trangThai !== "da_dong" && shift && (
-                              <button
-                                type="button"
-                                disabled={pinBusy}
-                                onClick={() => handlePin(shift.id, nv_id, false)}
-                                className="ml-1 text-neutral-400 hover:text-rose-400 text-sm font-bold"
-                                title={`Xóa ${nvName(nv_id)} khỏi ca`}
-                              >
-                                ×
-                              </button>
-                            )}
                           </span>
                         ))}
                       </div>
