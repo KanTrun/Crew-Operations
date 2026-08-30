@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
-GRAPH = "https://graph.facebook.com/v21.0"
+GRAPH = "https://graph.facebook.com/v26.0"
 
 
 def _token() -> str:
