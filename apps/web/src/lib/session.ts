@@ -15,6 +15,13 @@ export function getName(): string {
   return sessionStorage.getItem("nq_name") ?? "";
 }
 
+export function setSession(token: string, role: string, name: string, nvId: string): void {
+  sessionStorage.setItem("nq_token", token);
+  sessionStorage.setItem("nq_role", role);
+  sessionStorage.setItem("nq_name", name);
+  sessionStorage.setItem("nq_nv", nvId);
+}
+
 export function isManager(role = getRole()): boolean {
   return role === "quan_ly" || role === "chu_quan";
 }

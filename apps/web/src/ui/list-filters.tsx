@@ -55,6 +55,7 @@ function SelectFilter({
   );
 }
 
+/** Thanh lọc + tìm kiếm cho trang danh sách — dùng token nq-input / nq-select. */
 export function ListToolbar({
   search,
   onSearchChange,
@@ -134,6 +135,7 @@ export function ListToolbar({
   );
 }
 
+/** Empty khi lọc không ra kết quả — khác với Empty danh sách trống thật. */
 export function FilteredEmpty({ onClear }: { onClear?: () => void }) {
   return (
     <div className="nq-filtered-empty">

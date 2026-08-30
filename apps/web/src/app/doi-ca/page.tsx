@@ -12,7 +12,7 @@ import {
   Empty,
   Field,
   Hint,
-  inputStyle,
+  inputClassName,
   Loading,
   OpsCard,
   PageHeader,
@@ -21,6 +21,10 @@ import {
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 
 type Swap = { id: string; a: string; b: string; c: string; ca_id: string; trang_thai: string };
+
+function swapHaystack(it: Swap): string {
+  return [it.id, it.a, it.b, it.c, it.ca_id, swapLabel(it.trang_thai), nvLabel(it.a), nvLabel(it.b), nvLabel(it.c)].join(" ");
+}
 
 export default function DoiCaPage() {
   const [token, setToken] = useState("");
@@ -68,17 +72,14 @@ export default function DoiCaPage() {
     return [{ value: "all", label: "Mọi người" }, ...people.map((p) => ({ value: p, label: nvLabel(p) }))];
   }, [items]);
 
-  const filtered = useMemo(
-    () =>
-      items.filter((it) => {
-        const haystack = [it.id, it.a, it.b, it.c, it.ca_id, swapLabel(it.trang_thai), nvLabel(it.a), nvLabel(it.b), nvLabel(it.c)].join(" ");
-        if (!matchSearch(haystack, search)) return false;
-        if (!matchExact(it.trang_thai, statusF)) return false;
-        if (personF !== "all" && ![it.a, it.b, it.c].includes(personF)) return false;
-        return true;
-      }),
-    [items, search, statusF, personF],
-  );
+  const filtered = useMemo(() => {
+    return items.filter((it) => {
+      if (!matchSearch(swapHaystack(it), search)) return false;
+      if (!matchExact(it.trang_thai, statusF)) return false;
+      if (personF !== "all" && ![it.a, it.b, it.c].includes(personF)) return false;
+      return true;
+    });
+  }, [items, search, statusF, personF]);
 
   const filterActive = search.length > 0 || statusF !== "all" || personF !== "all";
 
@@ -125,65 +126,68 @@ export default function DoiCaPage() {
       <PageHeader
         kicker="Ba nhánh phải đồng ý"
         title="Chợ đổi ca"
-        meta="Đổi ca chỉ thành khi người nhả, người nhận và quản lý cùng đồng ý. Lệnh mở ở đây."
+        meta="Đổi ca chỉ thành khi người nhả, người nhận và quản lý cùng đồng ý."
       />
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
-      <OpsCard eyebrow="Mở lệnh mới" title="Ba nhánh của lệnh đổi">
+
+      <OpsCard eyebrow="Khu vực 1" title="Mở lệnh mới">
         <form onSubmit={onSubmit}>
           <Field label="Người nhả ca">
-            <input value={a} onChange={(e) => setA(e.target.value)} style={inputStyle} />
+            <input className={inputClassName} value={a} onChange={(e) => setA(e.target.value)} />
           </Field>
           <Field label="Người nhận ca">
-            <input value={b} onChange={(e) => setB(e.target.value)} style={inputStyle} />
+            <input className={inputClassName} value={b} onChange={(e) => setB(e.target.value)} />
           </Field>
           <Field label="Người xác nhận">
-            <input value={c} onChange={(e) => setC(e.target.value)} style={inputStyle} />
+            <input className={inputClassName} value={c} onChange={(e) => setC(e.target.value)} />
           </Field>
           <Hint>Nhập mã nhân viên như trên Lịch tuần, ví dụ nv_01.</Hint>
           <Field label="Mã ca cần đổi">
-            <input value={ca} onChange={(e) => setCa(e.target.value)} style={inputStyle} />
+            <input className={inputClassName} value={ca} onChange={(e) => setCa(e.target.value)} />
           </Field>
           <Btn type="submit" variant="primary" disabled={busy}>
             {busy ? "Đang mở lệnh…" : "Mở lệnh đổi ca"}
           </Btn>
         </form>
       </OpsCard>
-      <h2>Lệnh đang mở</h2>
-      <ListToolbar
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Tìm người, mã ca, trạng thái…"
-        status={statusF}
-        onStatusChange={setStatusF}
-        statusOptions={statusOptions}
-        person={personF}
-        onPersonChange={setPersonF}
-        personOptions={personOptions}
-        shown={filtered.length}
-        total={items.length}
-        filtered={filterActive}
-      />
-      {loading ? <Loading skeleton="list">Đang tải lệnh đổi ca…</Loading> : null}
-      {!loading && !error && items.length === 0 ? (
-        <Empty>Chưa có lệnh đổi ca nào đang mở.</Empty>
-      ) : null}
-      {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
-      <div className="nq-list">
-        {filtered.map((it) => (
-          <article key={it.id} className="nq-item">
-            <p className="nq-item-title">
-              {nvLabel(it.a)} nhả · {nvLabel(it.b)} nhận · {nvLabel(it.c)} xác nhận
-            </p>
-            <p className="nq-item-sub">
-              <StatusChip tone={it.trang_thai === "dong_y" ? "ok" : "warn"}>
-                {swapLabel(it.trang_thai)}
-              </StatusChip>
-              {it.ca_id ? ` · ca ${safeText(it.ca_id)}` : ""}
-            </p>
-          </article>
-        ))}
-      </div>
+
+      <OpsCard eyebrow="Khu vực 2" title="Lệnh đang mở" count={filtered.length} countLabel="lệnh">
+        <ListToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Tìm người, mã ca, trạng thái…"
+          status={statusF}
+          onStatusChange={setStatusF}
+          statusOptions={statusOptions}
+          person={personF}
+          onPersonChange={setPersonF}
+          personOptions={personOptions}
+          shown={filtered.length}
+          total={items.length}
+          filtered={filterActive}
+        />
+        {loading ? <Loading skeleton="list">Đang tải lệnh đổi ca…</Loading> : null}
+        {!loading && !error && items.length === 0 ? (
+          <Empty title="Chưa có lệnh">Chưa có lệnh đổi ca nào đang mở.</Empty>
+        ) : null}
+        {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
+        <div className="nq-list">
+          {filtered.map((it) => (
+            <article key={it.id} className="nq-item">
+              <p className="nq-item-title">
+                {nvLabel(it.a)} nhả · {nvLabel(it.b)} nhận · {nvLabel(it.c)} xác nhận
+              </p>
+              <p className="nq-item-sub">
+                <StatusChip tone={it.trang_thai === "dong_y" ? "ok" : "warn"}>
+                  {swapLabel(it.trang_thai)}
+                </StatusChip>
+                {it.ca_id ? ` · ca ${safeText(it.ca_id)}` : ""}
+              </p>
+            </article>
+          ))}
+        </div>
+      </OpsCard>
     </div>
   );
 }
