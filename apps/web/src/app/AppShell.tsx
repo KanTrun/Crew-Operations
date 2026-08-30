@@ -189,7 +189,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className={`flex-1 px-4 md:px-8 pt-16 ${wide ? "w-full max-w-none" : "max-w-[1280px] mx-auto w-full"}`} id="nq-content">
-        {children}
+        {token && !canAccess(role, path) ? (
+          <div className="nq-page nq-page--center py-16 text-center">
+            <h1 className="text-2xl font-black uppercase text-amber-500">Trang này dành cho vai trò khác</h1>
+            <p className="text-sm text-neutral-400 mt-2">Bạn không đủ quyền truy cập trang này với vai trò hiện tại.</p>
+          </div>
+        ) : (
+          children
+        )}
       </main>
       {token ? (
         <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[var(--nq-bg)]/90 backdrop-blur-md border-t-2 border-[var(--nq-dim)] flex justify-around items-center p-2 z-40 pb-safe" aria-label="Lối tắt">
