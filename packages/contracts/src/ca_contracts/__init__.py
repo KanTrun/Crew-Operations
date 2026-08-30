@@ -103,6 +103,111 @@ class DonQuay(BaseModel):
     luc: str = ""
 
 
+class DoanThoaiTranscript(BaseModel):
+    nguoi_noi: str
+    bat_dau_s: float | None = None
+    ket_thuc_s: float | None = None
+    noi_dung: str
+
+
+class ActionItem(BaseModel):
+    id: str
+    tieu_de: str
+    noi_dung_chi_tiet: str = ""
+    tinh_chat: Literal["bat_buoc", "tuy_chon", "khuyen_khich"] = "bat_buoc"
+    ten_nguoi_giao: str = ""
+    nhan_vien_id: str | None = None
+    ten_nguoi_nhan: str
+    pham_vi: Literal["ca_nhan", "nhom"] = "ca_nhan"
+    thoi_gian_bat_dau: str = ""
+    han_chot: str = ""
+    muc_do_uu_tien: Literal["cao", "trung_binh", "thap"] = "trung_binh"
+    do_tin_cay: float = Field(ge=0.0, le=1.0, default=0.9)
+    da_chon: bool = True
+
+
+class DeXuatPheDuyet(BaseModel):
+    id: str
+    loai_de_xuat: Literal["quy_trinh_sop", "mua_sam_vat_tu", "chinh_sach_nhan_su", "khac"] = "quy_trinh_sop"
+    tieu_de: str
+    nguoi_de_xuat: str = ""
+    nguoi_phe_duyet: str = ""
+    noi_dung: str
+    ly_do: str = ""
+    trang_thai: Literal["da_duyet", "cho_duyet", "tu_choi"] = "cho_duyet"
+    quy_trinh_lien_quan: str | None = None
+    buoc_so: int | None = None
+
+
+class GopYLuuY(BaseModel):
+    id: str
+    nguoi_gop_y: str = ""
+    nguoi_nhan: str = ""
+    chu_de: Literal["thai_do_phuc_vu", "ky_nang_pha_che", "ve_sinh_an_toan", "dong_vien_khen_ngoi", "luu_y_chung"] = "luu_y_chung"
+    tinh_chat: Literal["nhac_nho", "khen_ngoi", "kinh_nghiem", "gop_y"] = "gop_y"
+    noi_dung: str
+    ghi_chu: str = ""
+
+
+class DeXuatSop(BaseModel):
+    quy_trinh_lien_quan: str
+    buoc_so: int | None = None
+    noi_dung_thay_doi: str
+    ly_do: str = ""
+
+
+class TieuChiAudit(BaseModel):
+    ma: str
+    ten_tieu_chi: str
+    dat: bool = False
+    chi_tiet: str = ""
+
+
+class AuditTuanThuSop(BaseModel):
+    diem_tuan_thu: int = Field(ge=0, le=100, default=100)
+    xep_hang: Literal["A", "B", "C", "D"] = "A"
+    tieu_chi: list[TieuChiAudit] = Field(default_factory=list)
+    canh_bao_do: list[str] = Field(default_factory=list)
+    nhan_xet_chung: str = ""
+
+
+class BanTinCaKhan(BaseModel):
+    ban_vip: list[str] = Field(default_factory=list)
+    luu_y_di_ung_khach: list[str] = Field(default_factory=list)
+    su_co_thiet_bi_khan: list[str] = Field(default_factory=list)
+    danh_sach_mon_86: list[str] = Field(default_factory=list)
+    noi_dung_tin_nhan_gui_nhom: str = ""
+
+
+class HuanLuyenQuanLy(BaseModel):
+    ty_le_noi_quan_ly_pct: int = Field(ge=0, le=100, default=70)
+    ty_le_noi_nhan_vien_pct: int = Field(ge=0, le=100, default=30)
+    diem_tuong_tac_2_chieu: int = Field(ge=0, le=10, default=8)
+    diem_truyen_cam_hung: int = Field(ge=0, le=10, default=8)
+    phong_cach_dieu_hanh: str = "Chuẩn mực & Tương tác"
+    loi_khuyen_ai_coaching: list[str] = Field(default_factory=list)
+
+
+class CuocHop(BaseModel):
+    id: str
+    tieu_de: str
+    loai_hop: Literal["giao_ca", "hop_tuan", "dao_tao", "khac"] = "giao_ca"
+    thoi_gian: str = ""
+    nguon_am_thanh: Literal["google_meet_tab", "microphone", "file_upload", "ghi_chep_tay"] = "microphone"
+    transcript_thoai: list[DoanThoaiTranscript] = Field(default_factory=list)
+    tom_tat: str
+    quyet_dinh: list[str] = Field(default_factory=list)
+    de_xuat_phe_duyet: list[DeXuatPheDuyet] = Field(default_factory=list)
+    action_items: list[ActionItem] = Field(default_factory=list)
+    gop_y_luu_y: list[GopYLuuY] = Field(default_factory=list)
+    audit_sop: AuditTuanThuSop | None = None
+    ban_tin_ca: BanTinCaKhan | None = None
+    huan_luyen_quan_ly: HuanLuyenQuanLy | None = None
+    de_xuat_sop: list[DeXuatSop] = Field(default_factory=list)
+    do_tin_cay_tong_the: float = Field(ge=0.0, le=1.0, default=0.9)
+    trang_thai: Literal["cho_duyet", "da_duyet", "tu_choi"] = "cho_duyet"
+
+
 CONTRACTS = {
     "NhanVien": NhanVien,
     "Ca": Ca,
@@ -112,4 +217,16 @@ CONTRACTS = {
     "MonNuoc": MonNuoc,
     "DonQuay": DonQuay,
     "DongDon": DongDon,
+    "CuocHop": CuocHop,
+    "ActionItem": ActionItem,
+    "DeXuatSop": DeXuatSop,
+    "DeXuatPheDuyet": DeXuatPheDuyet,
+    "GopYLuuY": GopYLuuY,
+    "AuditTuanThuSop": AuditTuanThuSop,
+    "BanTinCaKhan": BanTinCaKhan,
+    "HuanLuyenQuanLy": HuanLuyenQuanLy,
 }
+
+
+
+

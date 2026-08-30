@@ -1,0 +1,88 @@
+{
+  "id": "gold_meet_01",
+  "tieu_de": "Họp giao ca chiều & xử lý sự cố máy pha",
+  "loai_hop": "giao_ca",
+  "thoi_gian": "2026-08-29T14:30:00+07:00",
+  "nguon_am_thanh": "google_meet_tab",
+  "raw_transcript": "Quản lý (00:00): Chào cả nhà, ca chiều nay chúng ta có mấy việc gấp. Thứ nhất máy pha số 2 đang bị rỉ nước ở ron cao su. Thứ hai là khách bàn 4 sáng nay phàn nàn trà sữa đào bị ngọt gắt. Tuấn (00:35): Dạ máy pha số 2 em đã kiểm tra, ron bị lỏng. Em sẽ thay ron dự phòng và vệ sinh họng pha trước 16h chiều nay. Quản lý (01:10): Tốt. Còn phần trà đào, từ chiều nay thống nhất đổi định lượng: chỉ cho 20ml syrup đào thay vì 30ml như cũ. My (01:45): Dạ em ghi nhận, em sẽ dán giấy nhắc công thức mới ở quầy pha chế trước ca tối lúc 17h. Quản lý (02:15): Nhất trí. Tuấn nhớ kiểm tra lại tủ đá nữa nhé trước 18h.",
+  "transcript_thoai": [
+    {
+      "nguoi_noi": "Quản lý",
+      "bat_dau_s": 0.0,
+      "ket_thuc_s": 34.0,
+      "noi_dung": "Chào cả nhà, ca chiều nay chúng ta có mấy việc gấp. Thứ nhất máy pha số 2 đang bị rỉ nước ở ron cao su. Thứ hai là khách bàn 4 sáng nay phàn nàn trà sữa đào bị ngọt gắt."
+    },
+    {
+      "nguoi_noi": "Tuấn",
+      "bat_dau_s": 35.0,
+      "ket_thuc_s": 69.0,
+      "noi_dung": "Dạ máy pha số 2 em đã kiểm tra, ron bị lỏng. Em sẽ thay ron dự phòng và vệ sinh họng pha trước 16h chiều nay."
+    },
+    {
+      "nguoi_noi": "Quản lý",
+      "bat_dau_s": 70.0,
+      "ket_thuc_s": 104.0,
+      "noi_dung": "Tốt. Còn phần trà đào, từ chiều nay thống nhất đổi định lượng: chỉ cho 20ml syrup đào thay vì 30ml như cũ."
+    },
+    {
+      "nguoi_noi": "My",
+      "bat_dau_s": 105.0,
+      "ket_thuc_s": 134.0,
+      "noi_dung": "Dạ em ghi nhận, em sẽ dán giấy nhắc công thức mới ở quầy pha chế trước ca tối lúc 17h."
+    },
+    {
+      "nguoi_noi": "Quản lý",
+      "bat_dau_s": 135.0,
+      "ket_thuc_s": 160.0,
+      "noi_dung": "Nhất trí. Tuấn nhớ kiểm tra lại tủ đá nữa nhé trước 18h."
+    }
+  ],
+  "expected_extraction": {
+    "tom_tat": "Cuộc họp giao ca chiều giải quyết 2 vấn đề: xử lý sự cố rỉ nước máy pha số 2 và điều chỉnh định lượng syrup món trà sữa đào do khách phản hồi ngọt gắt.",
+    "quyet_dinh": [
+      "Thay ron cao su và bảo dưỡng máy pha số 2",
+      "Giảm định lượng syrup đào từ 30ml xuống 20ml cho món trà đào"
+    ],
+    "action_items": [
+      {
+        "id": "act_01",
+        "tieu_de": "Thay ron dự phòng và vệ sinh họng máy pha số 2",
+        "ten_nguoi_nhan": "Tuấn",
+        "nhan_vien_id": "nv_01",
+        "han_chot": "16:00",
+        "muc_do_uu_tien": "cao",
+        "do_tin_cay": 0.95,
+        "da_chon": true
+      },
+      {
+        "id": "act_02",
+        "tieu_de": "Dán bảng công thức trà đào mới (20ml syrup) tại quầy bar",
+        "ten_nguoi_nhan": "My",
+        "nhan_vien_id": "nv_02",
+        "han_chot": "17:00",
+        "muc_do_uu_tien": "cao",
+        "do_tin_cay": 0.92,
+        "da_chon": true
+      },
+      {
+        "id": "act_03",
+        "tieu_de": "Kiểm tra tình trạng tủ đá và vệ sinh khay",
+        "ten_nguoi_nhan": "Tuấn",
+        "nhan_vien_id": "nv_01",
+        "han_chot": "18:00",
+        "muc_do_uu_tien": "trung_binh",
+        "do_tin_cay": 0.88,
+        "da_chon": true
+      }
+    ],
+    "de_xuat_sop": [
+      {
+        "quy_trinh_lien_quan": "Pha chế Trà Đào",
+        "buoc_so": 3,
+        "noi_dung_thay_doi": "Định lượng syrup đào giảm từ 30ml xuống 20ml",
+        "ly_do": "Khách phàn nàn bị ngọt gắt"
+      }
+    ],
+    "do_tin_cay_tong_the": 0.94
+  }
+}

@@ -23,6 +23,8 @@ USERS = (
     ("hung", "nhipquan", "chu_quan", "nv_02", "Hùng — chủ quán"),
 )
 
+
+
 # ── Mật khẩu ──────────────────────────────────────────────────────────────
 # Bản đầu hash SHA256 trần, không salt. Khi chỉ có 3 tài khoản fixture thì đó
 # là nợ chấp nhận được; từ lúc mở màn hình đăng ký thì nó thành lỗ hổng thật
