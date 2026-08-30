@@ -1,14 +1,41 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { apiGet, apiSend } from "../../lib/api";
+import { apiGet, apiSend, apiUpload } from "../../lib/api";
+import { menuImageUrl } from "../../lib/menu-image";
 import { viError } from "../../lib/present";
 import { getToken } from "../../lib/session";
 import { Alert, Btn, Empty, Field, Loading, PageHeader, StatusChip } from "../../ui/kit";
 
-type Mon = { id: string; ten: string; gia: number; an: boolean; bom: Record<string, number> };
+type Mon = { id: string; ten: string; gia: number; an: boolean; bom: Record<string, number>; hinh_url?: string };
 
-const EMPTY = { id: "", ten: "", gia: "", an: false, bom: "{\"ly\": 1}" };
+const EMPTY = { id: "", ten: "", gia: "", an: false, bom: "{\n  \"ly\": 1\n}", hinh_url: "" };
+
+function MenuThumb({ mon, selected }: { mon: Mon; selected: boolean }) {
+  const [err, setErr] = useState(false);
+  const src = menuImageUrl(mon.id, mon.hinh_url);
+  return (
+    <div className="relative aspect-square w-full overflow-hidden rounded-[var(--nq-radius-bubble)] border border-[var(--nq-line)] bg-[var(--nq-surface-hi)]">
+      {!err ? (
+        <img
+          src={src}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setErr(true)}
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center text-xs font-mono uppercase tracking-widest text-[var(--nq-dim)]">
+          {mon.ten.slice(0, 2)}
+        </div>
+      )}
+      {selected ? (
+        <span className="absolute inset-x-0 bottom-0 bg-[var(--nq-copper)] py-0.5 text-center text-[10px] font-bold uppercase text-black">
+          Đang sửa
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 export default function MenuPage() {
   const [token, setToken] = useState("");
@@ -34,11 +61,46 @@ export default function MenuPage() {
   }, []);
 
   useEffect(() => setToken(getToken()), []);
-  useEffect(() => { if (token) void load(); }, [load, token]);
+  useEffect(() => {
+    if (token) void load();
+  }, [load, token]);
 
-  function edit(mon: Mon) {
-    setForm({ id: mon.id, ten: mon.ten, gia: String(mon.gia), an: mon.an, bom: JSON.stringify(mon.bom) });
+  function select(mon: Mon) {
+    setForm({
+      id: mon.id,
+      ten: mon.ten,
+      gia: String(mon.gia),
+      an: mon.an,
+      bom: JSON.stringify(mon.bom, null, 2),
+      hinh_url: mon.hinh_url ?? "",
+    });
     setMsg(null);
+  }
+
+  function resetForm() {
+    setForm(EMPTY);
+    setMsg(null);
+  }
+
+  async function onImage(file: File | null) {
+    if (!file || !form.id.trim()) {
+      setError("Lưu mã món trước khi tải ảnh.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const out = await apiUpload<{ hinh_url?: string }>(`/api/v1/menu/${form.id.trim()}/anh`, fd);
+      setForm((f) => ({ ...f, hinh_url: out.hinh_url ?? f.hinh_url }));
+      setMsg("Đã tải ảnh món.");
+      await load();
+    } catch (e) {
+      setError(viError(e, { doing: "tải ảnh món" }));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function submit(e: FormEvent) {
@@ -58,9 +120,12 @@ export default function MenuPage() {
     }
     setBusy(true);
     try {
-      await apiSend(`/api/v1/menu/${form.id.trim()}`, { ten: form.ten, gia, an: form.an, bom }, "PUT");
+      await apiSend(
+        `/api/v1/menu/${form.id.trim()}`,
+        { ten: form.ten, gia, an: form.an, bom, hinh_url: form.hinh_url },
+        "PUT",
+      );
       setMsg("Đã lưu món. Menu này chỉ dùng tại quầy nội bộ.");
-      setForm(EMPTY);
       await load();
     } catch (err) {
       setError(viError(err, { doing: "lưu món" }));
@@ -70,38 +135,94 @@ export default function MenuPage() {
   }
 
   if (!token) return null;
+
   return (
     <section className="nq-page">
-      <PageHeader kicker="Admin quán" title="Menu & giá" meta="Chủ quán cấu hình món, giá và BOM ước lượng. Không có định giá tự động hoặc menu khách." />
+      <PageHeader
+        kicker="Admin quán"
+        title="Menu & giá"
+        meta="Cấu hình món, giá, ảnh và BOM ước lượng. Chọn món bên trái để sửa bên phải."
+      />
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
-      <form className="nq-item" onSubmit={(e) => void submit(e)}>
-        <h2>{form.id ? "Sửa món" : "Thêm món"}</h2>
-        <Field label="Mã món">
-          <input value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value.toLowerCase() })} placeholder="tra_chanh" required />
-        </Field>
-        <Field label="Tên món">
-          <input value={form.ten} onChange={(e) => setForm({ ...form, ten: e.target.value })} required />
-        </Field>
-        <Field label="Giá (đồng)">
-          <input value={form.gia} onChange={(e) => setForm({ ...form, gia: e.target.value })} inputMode="numeric" required />
-        </Field>
-        <Field label="BOM ước lượng (JSON)">
-          <textarea value={form.bom} onChange={(e) => setForm({ ...form, bom: e.target.value })} rows={3} />
-        </Field>
-        <label><input type="checkbox" checked={form.an} onChange={(e) => setForm({ ...form, an: e.target.checked })} /> Ẩn món khỏi quầy</label>
-        <p><Btn type="submit" busy={busy}>Lưu món</Btn></p>
-      </form>
-      <h2>Toàn bộ menu</h2>
-      {loading ? <Loading skeleton="list">Đang tải menu…</Loading> : null}
-      {!loading && items.length === 0 ? <Empty>Chưa có món nào.</Empty> : null}
-      <div className="nq-list">
-        {items.map((mon) => (
-          <article key={mon.id} className="nq-item">
-            <div><strong>{mon.ten}</strong><p className="nq-muted">{mon.id} · {mon.gia.toLocaleString("vi-VN")}đ · BOM {JSON.stringify(mon.bom)}</p></div>
-            <div className="flex gap-2"><StatusChip tone={mon.an ? "warn" : "ok"}>{mon.an ? "đang ẩn" : "đang bán"}</StatusChip><Btn variant="ghost" onClick={() => edit(mon)}>Sửa</Btn></div>
-          </article>
-        ))}
+
+      <div className="nq-split">
+        <div>
+          <h2 className="mb-4 text-sm font-mono uppercase tracking-widest text-[var(--nq-dim)]">Danh mục món</h2>
+          {loading ? <Loading skeleton="list">Đang tải menu…</Loading> : null}
+          {!loading && items.length === 0 ? <Empty>Chưa có món nào.</Empty> : null}
+          <div className="nq-card-grid">
+            {items.map((mon) => (
+              <button
+                key={mon.id}
+                type="button"
+                className={`nq-menu-card ${form.id === mon.id ? "nq-menu-card--on" : ""}`}
+                onClick={() => select(mon)}
+              >
+                <MenuThumb mon={mon} selected={form.id === mon.id} />
+                <div>
+                  <strong className="block text-sm">{mon.ten}</strong>
+                  <p className="nq-muted text-xs font-mono">
+                    {mon.gia.toLocaleString("vi-VN")}đ · {mon.an ? "ẩn" : "bán"}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <aside className="nq-sticky-panel nq-item space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-mono uppercase tracking-widest">{form.id ? "Sửa món" : "Thêm món"}</h2>
+            {form.id ? (
+              <Btn variant="ghost" onClick={resetForm}>
+                Mới
+              </Btn>
+            ) : null}
+          </div>
+          <form className="space-y-4" onSubmit={(e) => void submit(e)}>
+            <Field label="Mã món">
+              <input
+                value={form.id}
+                onChange={(e) => setForm({ ...form, id: e.target.value.toLowerCase() })}
+                placeholder="tra_chanh"
+                required
+                readOnly={Boolean(form.id && items.some((m) => m.id === form.id))}
+              />
+            </Field>
+            <Field label="Tên món">
+              <input value={form.ten} onChange={(e) => setForm({ ...form, ten: e.target.value })} required />
+            </Field>
+            <Field label="Giá (đồng)">
+              <input value={form.gia} onChange={(e) => setForm({ ...form, gia: e.target.value })} inputMode="numeric" required />
+            </Field>
+            <Field label="Ảnh món">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(e) => void onImage(e.target.files?.[0] ?? null)}
+                disabled={!form.id.trim() || busy}
+              />
+              <p className="nq-muted mt-1 text-xs">JPG/PNG/WebP, tối đa 4MB. Lưu mã món trước khi tải.</p>
+            </Field>
+            <Field label="BOM ước lượng (JSON)">
+              <textarea value={form.bom} onChange={(e) => setForm({ ...form, bom: e.target.value })} rows={5} className="font-mono text-sm" />
+            </Field>
+            {form.bom ? (
+              <div>
+                <p className="mb-1 text-xs font-mono uppercase tracking-widest text-[var(--nq-dim)]">Xem trước</p>
+                <pre className="nq-code-panel">{form.bom}</pre>
+              </div>
+            ) : null}
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.an} onChange={(e) => setForm({ ...form, an: e.target.checked })} />
+              Ẩn món khỏi quầy
+            </label>
+            <Btn type="submit" busy={busy} block>
+              Lưu món
+            </Btn>
+          </form>
+        </aside>
       </div>
     </section>
   );

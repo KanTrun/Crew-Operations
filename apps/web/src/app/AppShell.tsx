@@ -95,7 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const primary = isChuQuan(role) ? ADMIN_PRIMARY : isManager(role) ? MANAGER_PRIMARY : STAFF_PRIMARY;
   const more = MORE.filter((x) => !primary.some((p) => p.href === x.href) && canAccess(role, x.href));
-  const wide = path === "/roster";
+  const wide = path === "/roster" || path === "/cuoc-hop";
 
   function logout() {
     clearSession();
@@ -114,13 +114,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Link
                   key={l.href}
                   href={l.href}
-                  className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11px] font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:text-xs ${path === l.href ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
+                  className={`flex shrink-0 items-center whitespace-nowrap text-[11px] font-bold uppercase tracking-wide transition-colors xl:text-xs ${path === l.href ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
                   data-tour={tourId(l.href)}
                   aria-current={path === l.href ? "page" : undefined}
                 >
-                  <Icon name={iconForHref(l.href)} size={16} />
-                  <span className="hidden xl:inline">{l.label}</span>
-                  <span className="xl:hidden">{l.short ?? l.label}</span>
+                  <span className="lg:hidden">
+                    <Icon name={iconForHref(l.href)} size={16} />
+                  </span>
+                  <span className="hidden lg:inline">{l.label}</span>
+                  <span className="lg:hidden">{l.short ?? l.label}</span>
                 </Link>
               ))}
               <div className="relative shrink-0" ref={moreRef}>
@@ -188,7 +190,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className={`flex-1 pt-16 ${wide ? "w-full" : "max-w-[1440px] mx-auto w-full"}`} id="nq-content">
+      <main className={`flex-1 px-4 md:px-8 pt-16 ${wide ? "w-full max-w-none" : "max-w-[1280px] mx-auto w-full"}`} id="nq-content">
         {children}
       </main>
       {token ? (

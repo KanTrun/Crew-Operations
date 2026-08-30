@@ -9,12 +9,14 @@ from __future__ import annotations
 import re
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 UTC = timezone.utc
 
 from ca_contracts import DonQuay, DongDon, MonNuoc
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, File, Header, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from ca_api.interfaces.http.sprint3 import _require_chu_quan, _require_manager, _require_role
@@ -22,13 +24,16 @@ from ca_api.persist import (
     NangVaiLoi,
     audit_add,
     da_diem_danh,
+    db_path,
     don_get,
     don_insert,
     don_list,
     don_update,
+    ha_vai,
     list_users,
     menu_get,
     menu_list,
+    menu_set_hinh,
     menu_upsert,
     session as auth_session,
     set_role,
@@ -56,6 +61,7 @@ class MonBody(BaseModel):
     ten: str = Field(min_length=1, max_length=120)
     gia: int = Field(ge=0, le=10_000_000)
     an: bool = False
+    hinh_url: str = Field(default="", max_length=500)
     bom: dict[str, float] = Field(default_factory=dict)
 
 
@@ -81,6 +87,22 @@ class ChinhDonBody(BaseModel):
 
 class NangVaiBody(BaseModel):
     role: Literal["quan_ly"] = "quan_ly"
+
+
+def _menu_image_dir() -> Path:
+    base = db_path().parent / "menu_images"
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def _menu_image_path(mon_id: str) -> Path | None:
+    mid = mon_id.strip().lower()
+    base = _menu_image_dir()
+    for ext in (".webp", ".jpg", ".jpeg", ".png", ".gif"):
+        p = base / f"{mid}{ext}"
+        if p.is_file():
+            return p
+    return None
 
 
 def _session(authorization: str | None) -> dict[str, str]:
@@ -209,6 +231,57 @@ def nguoi_nang_vai(
         raise HTTPException(status_code=409, detail=exc.ma) from exc
     _audit(role, "nang_vai", {"username": out["username"], "role": out["role"]})
     return {**out, "nguon": "quan"}
+
+
+@router.post("/api/v1/nguoi/{username}/ha-vai")
+def nguoi_ha_vai(
+    username: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    role = _require_chu_quan(authorization)
+    try:
+        out = ha_vai(username)
+    except NangVaiLoi as exc:
+        raise HTTPException(status_code=409, detail=exc.ma) from exc
+    _audit(role, "ha_vai", {"username": out["username"], "role": out["role"]})
+    return {**out, "nguon": "quan"}
+
+
+@router.get("/api/v1/menu/{mon_id}/anh")
+def menu_anh_get(mon_id: str) -> FileResponse:
+    """Ảnh món — public read để <img> không cần Bearer."""
+    path = _menu_image_path(mon_id)
+    if not path:
+        raise HTTPException(status_code=404, detail="khong_co_anh")
+    return FileResponse(path)
+
+
+@router.post("/api/v1/menu/{mon_id}/anh")
+async def menu_anh_upload(
+    mon_id: str,
+    file: UploadFile = File(...),
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    _require_chu_quan(authorization)
+    mid = mon_id.strip().lower()
+    if not _MON_ID.fullmatch(mid):
+        raise HTTPException(status_code=422, detail="ma_mon_khong_hop_le")
+    if not menu_get(mid):
+        raise HTTPException(status_code=404, detail="mon_khong_co")
+    raw = await file.read()
+    if len(raw) > 4_000_000:
+        raise HTTPException(status_code=413, detail="anh_qua_lon")
+    suffix = Path(file.filename or "img.jpg").suffix.lower()
+    if suffix not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+        suffix = ".jpg"
+    dest = _menu_image_dir() / f"{mid}{suffix}"
+    for old in _menu_image_dir().glob(f"{mid}.*"):
+        if old != dest:
+            old.unlink(missing_ok=True)
+    dest.write_bytes(raw)
+    url = f"/api/v1/menu/{mid}/anh"
+    out = menu_set_hinh(mid, url)
+    return {**(out or {}), "hinh_url": url, "nguon": "quan"}
 
 
 @router.get("/api/v1/quay/don")

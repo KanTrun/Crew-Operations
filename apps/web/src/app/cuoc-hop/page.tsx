@@ -13,6 +13,8 @@ import {
   Loading,
   OpsCard,
   PageHeader,
+  TabBar,
+  TabButton,
   inputStyle,
   textareaStyle,
 } from "../../ui/kit";
@@ -573,7 +575,7 @@ export default function MeetingPage() {
   if (!token) return <AuthGate />;
 
   return (
-    <div className="nq-page nq-page--run max-w-5xl mx-auto p-4 space-y-6">
+    <div className="nq-page nq-page--wide nq-page--run space-y-6">
       <PageHeader
         kicker="AI MEETING OS"
         title="Cuộc họp & Giao ca Thông minh"
@@ -586,35 +588,22 @@ export default function MeetingPage() {
       {/* 1. INPUT HUB */}
       <OpsCard title="1. Thu thập & Tiếp nhận Cuộc họp">
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2 items-center justify-between">
-            <div className="flex gap-2">
-              <Btn
-                variant={inputMode === "mic" ? "primary" : "ghost"}
-                onClick={() => { setInputMode("mic"); setError(null); }}
-              >
-                🎙️ Micro Giao ca
-              </Btn>
-              <Btn
-                variant={inputMode === "meet" ? "primary" : "ghost"}
-                onClick={() => { setInputMode("meet"); setError(null); }}
-              >
-                🌐 Google Meet Tab
-              </Btn>
-              <Btn
-                variant={inputMode === "upload" ? "primary" : "ghost"}
-                onClick={() => { setInputMode("upload"); setError(null); }}
-              >
-                📁 Tải File Audio
-              </Btn>
-              <Btn
-                variant={inputMode === "text" ? "primary" : "ghost"}
-                onClick={() => { setInputMode("text"); setError(null); }}
-              >
-                📝 Dán Ghi chép
-              </Btn>
-            </div>
+          <TabBar>
+            <TabButton active={inputMode === "mic"} onClick={() => { setInputMode("mic"); setError(null); }}>
+              Micro giao ca
+            </TabButton>
+            <TabButton active={inputMode === "meet"} onClick={() => { setInputMode("meet"); setError(null); }}>
+              Google Meet
+            </TabButton>
+            <TabButton active={inputMode === "upload"} onClick={() => { setInputMode("upload"); setError(null); }}>
+              Tải audio
+            </TabButton>
+            <TabButton active={inputMode === "text"} onClick={() => { setInputMode("text"); setError(null); }}>
+              Dán ghi chép
+            </TabButton>
+          </TabBar>
 
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 justify-end">
               <span className="text-xs opacity-75 font-mono uppercase">Loại họp:</span>
               <select
                 value={meetingType}
@@ -626,15 +615,13 @@ export default function MeetingPage() {
                 <option value="dao_tao">Đào tạo / Phổ biến SOP</option>
               </select>
             </div>
-          </div>
 
           {/* Mode 1: Microphone Live Recording */}
           {inputMode === "mic" && (
             <div className="border border-amber-500/30 bg-amber-950/20 p-4 rounded-lg space-y-3">
               <div className="flex items-start gap-3">
-                <span className="text-2xl">🎙️</span>
                 <div className="text-sm">
-                  <p className="font-bold text-amber-300">Ghi âm trực tiếp tại Quầy quán (Hiển thị chữ thời gian thực)</p>
+                  <p className="font-bold text-amber-300">Ghi âm trực tiếp tại quầy (chữ thời gian thực)</p>
                   <p className="opacity-80">
                     Bấm bắt đầu và nói tự nhiên. Lời nói sẽ tự động chuyển thành văn bản và chạy trực tiếp trên màn hình.
                   </p>
@@ -644,7 +631,7 @@ export default function MeetingPage() {
               <div className="flex flex-wrap items-center gap-4 pt-2">
                 {!isRecording ? (
                   <Btn variant="primary" onClick={startMicRecording} disabled={busy}>
-                    🎙️ Bắt đầu ghi âm giao ca
+                    Bắt đầu ghi âm giao ca
                   </Btn>
                 ) : (
                   <div className="flex items-center gap-3 flex-wrap">
@@ -663,7 +650,7 @@ export default function MeetingPage() {
                     </div>
 
                     <Btn variant="danger" onClick={stopRecording}>
-                      ⏹️ Hoàn tất & Trích xuất
+                      Hoàn tất & trích xuất
                     </Btn>
                   </div>
                 )}
@@ -689,7 +676,7 @@ export default function MeetingPage() {
           {inputMode === "meet" && (
             <div className="border border-cyan-500/30 bg-cyan-950/20 p-4 rounded-lg space-y-3">
               <div className="flex items-start gap-3">
-                <span className="text-2xl">🌐</span>
+                <span className="text-sm font-mono uppercase tracking-widest text-[var(--nq-copper)]">Meet</span>
                 <div className="text-sm">
                   <p className="font-bold text-cyan-300">Bắt âm thanh trực tiếp từ Tab Google Meet (0đ / Miễn phí)</p>
                   <p className="opacity-80">
@@ -720,7 +707,7 @@ export default function MeetingPage() {
                     </div>
 
                     <Btn variant="danger" onClick={stopRecording}>
-                      ⏹️ Dừng & Phân tích AI
+                      Dừng & phân tích AI
                     </Btn>
                   </div>
                 )}
@@ -795,7 +782,7 @@ export default function MeetingPage() {
               <div className="p-4 bg-neutral-900/90 rounded border border-neutral-700 space-y-3">
                 <div className="flex justify-between items-center">
                   <h4 className="text-xs font-mono uppercase tracking-wider text-cyan-300 font-bold flex items-center gap-2">
-                    🎙️ Bản Bóc Băng Thoại Cuộc Họp (Speaker Diarization)
+                    Bản bóc băng thoại (Speaker Diarization)
                   </h4>
                   <span className="text-xs font-mono px-2 py-0.5 bg-neutral-800 text-neutral-400 rounded">
                     Nguồn: {meeting.nguon_am_thanh}
@@ -852,7 +839,7 @@ export default function MeetingPage() {
               {meeting.van_de_phat_sinh && meeting.van_de_phat_sinh.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-xs font-mono uppercase tracking-wider text-rose-400 font-bold">
-                    🔍 Vấn đề Phát sinh — Tình trạng Giải quyết
+                    Vấn đề phát sinh — tình trạng giải quyết
                   </h4>
                   <div className="space-y-2">
                     {meeting.van_de_phat_sinh.map((vd, idx) => (

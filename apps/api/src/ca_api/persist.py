@@ -150,7 +150,14 @@ def init_db() -> None:
                 (u, hash_password(pw), role, nv, name),
             )
         _seed_menu_neu_trong(cx)
+        _migrate_schema(cx)
     _INITIALIZED = True
+
+
+def _migrate_schema(cx: sqlite3.Connection) -> None:
+    cols = {r[1] for r in cx.execute("PRAGMA table_info(menu_mon)")}
+    if "hinh_url" not in cols:
+        cx.execute("ALTER TABLE menu_mon ADD COLUMN hinh_url TEXT NOT NULL DEFAULT ''")
 
 
 _MENU_MAC_DINH = (
@@ -469,23 +476,52 @@ def set_role(username: str, role: str) -> dict[str, str]:
         }
 
 
+def ha_vai(username: str) -> dict[str, str]:
+    """Chủ quán hạ quản lý xuống nhân viên."""
+    u = (username or "").strip().lower()
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT username, role, nv_id, display_name FROM users WHERE username=?", (u,)
+        ).fetchone()
+        if not row:
+            raise NangVaiLoi("khong_co_tai_khoan")
+        if row[1] == "chu_quan":
+            raise NangVaiLoi("khong_doi_chu_quan")
+        if row[1] != "quan_ly":
+            raise NangVaiLoi("vai_khong_hop_le")
+        cx.execute("UPDATE users SET role=? WHERE username=?", ("nhan_vien", u))
+        cx.execute("UPDATE sessions SET role=? WHERE username=?", ("nhan_vien", u))
+        return {
+            "username": str(row[0]),
+            "role": "nhan_vien",
+            "nv_id": str(row[2]),
+            "display_name": str(row[3]),
+        }
+
+
+def _menu_from_row(row: tuple[Any, ...]) -> dict[str, Any]:
+    return {
+        "id": str(row[0]),
+        "ten": str(row[1]),
+        "gia": int(row[2]),
+        "an": bool(row[3]),
+        "bom": json.loads(row[4]) if row[4] else {},
+        "hinh_url": str(row[5]) if len(row) > 5 and row[5] else "",
+    }
+
+
 def menu_list(*, gom_an: bool = False) -> list[dict[str, Any]]:
     init_db()
     with _conn() as cx:
-        rows = cx.execute("SELECT id, ten, gia, an, bom FROM menu_mon ORDER BY ten").fetchall()
+        rows = cx.execute(
+            "SELECT id, ten, gia, an, bom, hinh_url FROM menu_mon ORDER BY ten"
+        ).fetchall()
     out = []
-    for mid, ten, gia, an, bom in rows:
-        if not gom_an and int(an):
+    for row in rows:
+        if not gom_an and int(row[3]):
             continue
-        out.append(
-            {
-                "id": str(mid),
-                "ten": str(ten),
-                "gia": int(gia),
-                "an": bool(an),
-                "bom": json.loads(bom) if bom else {},
-            }
-        )
+        out.append(_menu_from_row(row))
     return out
 
 
@@ -495,34 +531,41 @@ def menu_upsert(mon: dict[str, Any]) -> dict[str, Any]:
     ten = str(mon["ten"]).strip()
     gia = int(mon["gia"])
     an = 1 if mon.get("an") else 0
+    hinh_url = str(mon.get("hinh_url") or "").strip()
     bom = json.dumps(mon.get("bom") or {}, ensure_ascii=False)
     with _conn() as cx:
         cx.execute(
             """
-            INSERT INTO menu_mon(id, ten, gia, an, bom) VALUES (?,?,?,?,?)
+            INSERT INTO menu_mon(id, ten, gia, an, bom, hinh_url) VALUES (?,?,?,?,?,?)
             ON CONFLICT(id) DO UPDATE SET ten=excluded.ten, gia=excluded.gia,
-                an=excluded.an, bom=excluded.bom
+                an=excluded.an, bom=excluded.bom, hinh_url=excluded.hinh_url
             """,
-            (mid, ten, gia, an, bom),
+            (mid, ten, gia, an, bom, hinh_url),
         )
-    return {"id": mid, "ten": ten, "gia": gia, "an": bool(an), "bom": json.loads(bom)}
+    return _menu_from_row((mid, ten, gia, an, bom, hinh_url))
 
 
 def menu_get(mon_id: str) -> dict[str, Any] | None:
     init_db()
     with _conn() as cx:
         row = cx.execute(
-            "SELECT id, ten, gia, an, bom FROM menu_mon WHERE id=?", (mon_id,)
+            "SELECT id, ten, gia, an, bom, hinh_url FROM menu_mon WHERE id=?", (mon_id,)
         ).fetchone()
     if not row:
         return None
-    return {
-        "id": str(row[0]),
-        "ten": str(row[1]),
-        "gia": int(row[2]),
-        "an": bool(row[3]),
-        "bom": json.loads(row[4]) if row[4] else {},
-    }
+    return _menu_from_row(row)
+
+
+def menu_set_hinh(mon_id: str, hinh_url: str) -> dict[str, Any] | None:
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT id, ten, gia, an, bom, hinh_url FROM menu_mon WHERE id=?", (mon_id,)
+        ).fetchone()
+        if not row:
+            return None
+        cx.execute("UPDATE menu_mon SET hinh_url=? WHERE id=?", (hinh_url, mon_id))
+    return _menu_from_row((*row[:5], hinh_url))
 
 
 def don_insert(don: dict[str, Any]) -> dict[str, Any]:

@@ -280,7 +280,7 @@ export default function RosterPage() {
 
 
   return (
-    <div className="nq-page">
+    <div className="nq-page nq-page--wide">
       <header className="mb-6 ops-animate-in">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
           <div>
@@ -558,7 +558,7 @@ export default function RosterPage() {
                       >
                         <div className="flex flex-col items-center gap-0.5">
                           <span className="font-bold text-sm text-neutral-100 group-hover:text-amber-400 flex items-center gap-1">
-                            {dayTitle(d)} 🔍
+                            {dayTitle(d)}
                           </span>
                           <span className="font-mono text-xs text-[var(--nq-dim)]">
                             {dayDate(monday, dayOffsets[i])}

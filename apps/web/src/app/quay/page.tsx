@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, apiGet, apiSend } from "../../lib/api";
+import { menuImageUrl } from "../../lib/menu-image";
 import { viError } from "../../lib/present";
 import { getRole, getToken, isManager } from "../../lib/session";
 import { Alert, Btn, Empty, Loading, PageHeader, StatusChip } from "../../ui/kit";
 
-type Mon = { id: string; ten: string; gia: number };
+type Mon = { id: string; ten: string; gia: number; hinh_url?: string };
 type Dong = { mon_id: string; ten: string; so_luong: number; gia: number };
 type Don = {
   id: string;
@@ -18,6 +19,26 @@ type Don = {
 type BaoCao = { so_don: number; tong_ly: number; tong_tien: number; chua_thu: number };
 
 const MONEY = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
+
+function PosThumb({ mon }: { mon: Mon }) {
+  const [err, setErr] = useState(false);
+  return (
+    <div className="mb-2 aspect-square w-full overflow-hidden rounded-md border border-[var(--nq-line)] bg-[var(--nq-surface-hi)]">
+      {!err ? (
+        <img
+          src={menuImageUrl(mon.id, mon.hinh_url)}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setErr(true)}
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center text-lg font-black text-[var(--nq-copper)]">
+          {mon.ten.slice(0, 1)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function QuayPage() {
   const [token, setToken] = useState("");
@@ -125,66 +146,103 @@ export default function QuayPage() {
   if (!token) return null;
   return (
     <section className="nq-page">
-      <PageHeader kicker="Quầy nội bộ" title="Ghi đơn tại quầy" meta="Đơn do nhân viên đang ca ghi. Đây không phải app khách hoặc số Grab." />
+      <PageHeader
+        kicker="Quầy nội bộ"
+        title="Ghi đơn tại quầy"
+        meta="Chạm món để thêm — giỏ cố định bên phải. Đơn do nhân viên đang ca ghi."
+      />
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
       {!checkedIn ? (
         <Alert kind="info">
-          Chưa điểm danh ca nên quầy đang khóa. <Btn onClick={() => void checkIn()} busy={busy}>Điểm danh để mở quầy</Btn>
+          Chưa điểm danh ca nên quầy đang khóa.{" "}
+          <Btn onClick={() => void checkIn()} busy={busy}>
+            Điểm danh để mở quầy
+          </Btn>
         </Alert>
       ) : null}
       {loading ? <Loading skeleton="bento">Đang tải menu quầy…</Loading> : null}
       {!loading ? (
-        <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
+        <div className="nq-split nq-split--pos">
           <div>
-            <h2>Menu đang bán</h2>
+            <h2 className="mb-3 text-sm font-mono uppercase tracking-widest text-[var(--nq-dim)]">Menu đang bán</h2>
             {menu.length === 0 ? <Empty>Chủ quán chưa mở món nào trong menu.</Empty> : null}
-            <div className="nq-list">
-              {menu.map((mon) => (
-                <article key={mon.id} className="nq-item">
-                  <div>
-                    <strong>{mon.ten}</strong>
-                    <p className="nq-muted">{MONEY.format(mon.gia)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Btn variant="ghost" onClick={() => changeQty(mon.id, -1)} title={`Bớt ${mon.ten}`}>−</Btn>
-                    <span aria-label={`Số lượng ${mon.ten}`}>{cart[mon.id] ?? 0}</span>
-                    <Btn onClick={() => changeQty(mon.id, 1)} title={`Thêm ${mon.ten}`}>+</Btn>
-                  </div>
-                </article>
-              ))}
+            <div className="nq-pos-grid">
+              {menu.map((mon) => {
+                const qty = cart[mon.id] ?? 0;
+                return (
+                  <article
+                    key={mon.id}
+                    className={`nq-menu-card ${qty ? "nq-menu-card--on" : ""}`}
+                  >
+                    <PosThumb mon={mon} />
+                    <strong className="text-sm leading-tight">{mon.ten}</strong>
+                    <p className="nq-muted text-xs">{MONEY.format(mon.gia)}</p>
+                    <div className="mt-auto flex items-center justify-between gap-1 pt-1">
+                      <Btn variant="ghost" onClick={() => changeQty(mon.id, -1)} disabled={!qty} aria-label={`Bớt ${mon.ten}`}>
+                        −
+                      </Btn>
+                      <span className="min-w-[1.5rem] text-center font-mono text-sm">{qty}</span>
+                      <Btn onClick={() => changeQty(mon.id, 1)} aria-label={`Thêm ${mon.ten}`}>
+                        +
+                      </Btn>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
-          <aside className="nq-item">
-            <h2>Đơn mới</h2>
-            {lines.length === 0 ? <p className="nq-muted">Chọn món từ menu.</p> : null}
-            {lines.map((line) => <p key={line.id}>{line.ten} × {line.so_luong} — {MONEY.format(line.gia * line.so_luong)}</p>)}
-            <p><strong>Tổng tạm tính: {MONEY.format(total)}</strong></p>
-            <label>
-              Thanh toán
-              <select value={payment} onChange={(e) => setPayment(e.target.value as Don["thanh_toan"])}>
+
+          <aside className="nq-sticky-panel nq-item space-y-4">
+            <h2 className="text-sm font-mono uppercase tracking-widest">Đơn mới</h2>
+            {lines.length === 0 ? <p className="nq-muted text-sm">Chọn món từ lưới bên trái.</p> : null}
+            <ul className="space-y-2 text-sm">
+              {lines.map((line) => (
+                <li key={line.id} className="flex justify-between gap-2 border-b border-[var(--nq-line)] pb-2">
+                  <span>
+                    {line.ten} × {line.so_luong}
+                  </span>
+                  <span className="font-mono">{MONEY.format(line.gia * line.so_luong)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-lg font-black">
+              Tổng: <span className="text-[var(--nq-copper)]">{MONEY.format(total)}</span>
+            </p>
+            <label className="block text-sm">
+              <span className="mb-1 block font-mono text-xs uppercase tracking-widest text-[var(--nq-dim)]">Thanh toán</span>
+              <select className="nq-select w-full" value={payment} onChange={(e) => setPayment(e.target.value as Don["thanh_toan"])}>
                 <option value="chua_thu">Chưa thu</option>
                 <option value="tien_mat">Tiền mặt</option>
                 <option value="da_ck">Đã chuyển khoản</option>
               </select>
             </label>
-            <p><Btn type="button" onClick={() => void createOrder()} busy={busy} disabled={!checkedIn || !lines.length}>Gửi sang pha chế</Btn></p>
+            <Btn type="button" onClick={() => void createOrder()} busy={busy} disabled={!checkedIn || !lines.length} block>
+              Gửi sang pha chế
+            </Btn>
           </aside>
         </div>
       ) : null}
+
       {report && role !== "nhan_vien" ? (
-        <section className="nq-item" aria-label="Tổng quầy">
-          <h2>Tổng ca</h2>
-          <p>{report.so_don} đơn · {report.tong_ly} ly · {MONEY.format(report.tong_tien)} · chưa thu {MONEY.format(report.chua_thu)}</p>
+        <section className="nq-item mt-8" aria-label="Tổng quầy">
+          <h2 className="text-sm font-mono uppercase tracking-widest">Tổng ca</h2>
+          <p className="nq-muted mt-2 text-sm">
+            {report.so_don} đơn · {report.tong_ly} ly · {MONEY.format(report.tong_tien)} · chưa thu {MONEY.format(report.chua_thu)}
+          </p>
         </section>
       ) : null}
-      <h2>Đơn của ca</h2>
+
+      <h2 className="mb-3 mt-10 text-sm font-mono uppercase tracking-widest text-[var(--nq-dim)]">Đơn của ca</h2>
       {!loading && orders.length === 0 ? <Empty>Chưa có đơn nào trong ca của bạn.</Empty> : null}
-      <div className="nq-list">
+      <div className="nq-card-grid">
         {orders.map((order) => (
           <article key={order.id} className="nq-item">
-            <div><strong>{order.dong.map((line) => `${line.ten} × ${line.so_luong}`).join(", ")}</strong><p className="nq-muted">{order.thanh_toan}</p></div>
-            <StatusChip tone={order.trang_thai === "xong" ? "ok" : order.trang_thai === "huy" ? "danger" : "warn"}>{order.trang_thai.replace("_", " ")}</StatusChip>
+            <p className="text-sm font-bold">{order.dong.map((line) => `${line.ten} × ${line.so_luong}`).join(", ")}</p>
+            <p className="nq-muted mt-1 text-xs">{order.thanh_toan.replace("_", " ")}</p>
+            <StatusChip tone={order.trang_thai === "xong" ? "ok" : order.trang_thai === "huy" ? "danger" : "warn"}>
+              {order.trang_thai.replace("_", " ")}
+            </StatusChip>
           </article>
         ))}
       </div>

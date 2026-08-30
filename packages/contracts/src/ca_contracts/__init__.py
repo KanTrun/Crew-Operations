@@ -86,6 +86,7 @@ class MonNuoc(BaseModel):
     ten: str
     gia: int = Field(ge=0, description="Đồng, số nguyên")
     an: bool = False
+    hinh_url: str = Field(default="", max_length=500, description="URL ảnh món (hoặc /api/v1/menu/{id}/anh)")
     bom: dict[str, float] = Field(
         default_factory=dict,
         description="Nguyên liệu ước lượng khi hoàn thành đơn, vd cafe_g, sua_ml, ly",
