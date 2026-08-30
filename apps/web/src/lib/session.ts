@@ -85,11 +85,13 @@ export function roleLabel(role: string): string {
 
 export function lifeLabel(state: string): string {
   const map: Record<string, string> = {
+    may_sinh: "Tự sinh — chờ rà soát",
     nhap: "Nháp",
     dang_giai: "Đang giải",
     cho_duyet: "Chờ duyệt",
+    da_duyet: "Đã duyệt",
     da_cong_bo: "Đã công bố",
     da_dong: "Đã đóng",
   };
-  return map[state] ?? state;
+  return map[state] ?? state.replace(/_/g, " ");
 }

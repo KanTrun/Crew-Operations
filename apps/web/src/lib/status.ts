@@ -3,9 +3,11 @@ import { lifeLabel } from "./session";
 /** Nhãn human-facing — không dump mã nội bộ lên hero. */
 export function lifeLabelPublic(state: string): string {
   const map: Record<string, string> = {
+    may_sinh: "Lịch tự sinh — chờ quản lý rà soát",
     nhap: "Lịch nháp",
     dang_giai: "Đang xếp lịch",
     cho_duyet: "Chờ duyệt",
+    da_duyet: "Đã duyệt",
     da_cong_bo: "Lịch đã công bố",
     da_dong: "Tuần đã đóng",
   };

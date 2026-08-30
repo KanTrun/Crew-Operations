@@ -623,6 +623,48 @@ a:focus-visible {
   box-shadow: var(--nq-shadow-bubble-hover), var(--nq-inner-hi);
 }
 
+.nq-bom-editor {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
+}
+
+.nq-bom-row {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius);
+  background: var(--nq-surface);
+}
+
+@media (min-width: 640px) {
+  .nq-bom-row {
+    grid-template-columns: 1fr 1fr minmax(6rem, 7.5rem) auto;
+    align-items: end;
+  }
+
+  .nq-bom-row__field--qty {
+    max-width: 7.5rem;
+  }
+}
+
+.nq-bom-row__label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--nq-ink-muted);
+}
+
+.nq-bom-row__remove {
+  align-self: end;
+  min-height: 2.75rem;
+}
+
 .nq-sticky-panel {
   position: sticky;
   top: 5.5rem;

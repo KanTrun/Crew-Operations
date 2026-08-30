@@ -5,11 +5,28 @@ import { apiGet, apiSend, apiUpload } from "../../lib/api";
 import { menuImageUrl } from "../../lib/menu-image";
 import { viError } from "../../lib/present";
 import { getToken } from "../../lib/session";
-import { Alert, Btn, Empty, Field, Input, Loading, PageHeader, StatusChip, Textarea } from "../../ui/kit";
+import { BomEditor, bomToRows, rowsToBom, type BomRow } from "../../ui/bom-editor";
+import { Alert, Btn, Empty, Field, Input, Loading, PageHeader } from "../../ui/kit";
 
 type Mon = { id: string; ten: string; gia: number; an: boolean; bom: Record<string, number>; hinh_url?: string };
 
-const EMPTY = { id: "", ten: "", gia: "", an: false, bom: "{\n  \"ly\": 1\n}", hinh_url: "" };
+type FormState = {
+  id: string;
+  ten: string;
+  gia: string;
+  an: boolean;
+  bomRows: BomRow[];
+  hinh_url: string;
+};
+
+const EMPTY: FormState = {
+  id: "",
+  ten: "",
+  gia: "",
+  an: false,
+  bomRows: bomToRows({ ly: 1 }),
+  hinh_url: "",
+};
 
 function MenuThumb({ mon, selected }: { mon: Mon; selected: boolean }) {
   const [err, setErr] = useState(false);
@@ -17,12 +34,7 @@ function MenuThumb({ mon, selected }: { mon: Mon; selected: boolean }) {
   return (
     <div className="relative aspect-square w-full overflow-hidden rounded-[var(--nq-radius-bubble)] border border-[var(--nq-line)] bg-[var(--nq-surface-hi)]">
       {!err ? (
-        <img
-          src={src}
-          alt=""
-          className="h-full w-full object-cover"
-          onError={() => setErr(true)}
-        />
+        <img src={src} alt="" className="h-full w-full object-cover" onError={() => setErr(true)} />
       ) : (
         <div className="flex h-full items-center justify-center text-xs font-mono uppercase tracking-widest text-[var(--nq-dim)]">
           {mon.ten.slice(0, 2)}
@@ -40,7 +52,7 @@ function MenuThumb({ mon, selected }: { mon: Mon; selected: boolean }) {
 export default function MenuPage() {
   const [token, setToken] = useState("");
   const [items, setItems] = useState<Mon[]>([]);
-  const [form, setForm] = useState(EMPTY);
+  const [form, setForm] = useState<FormState>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +83,7 @@ export default function MenuPage() {
       ten: mon.ten,
       gia: String(mon.gia),
       an: mon.an,
-      bom: JSON.stringify(mon.bom, null, 2),
+      bomRows: bomToRows(mon.bom),
       hinh_url: mon.hinh_url ?? "",
     });
     setMsg(null);
@@ -106,11 +118,9 @@ export default function MenuPage() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    let bom: Record<string, number>;
-    try {
-      bom = JSON.parse(form.bom) as Record<string, number>;
-    } catch {
-      setError("BOM cần là JSON hợp lệ, ví dụ {\"cafe_g\": 18, \"ly\": 1}.");
+    const bom = rowsToBom(form.bomRows);
+    if (Object.keys(bom).length === 0) {
+      setError("Thêm ít nhất một nguyên liệu với số lượng lớn hơn 0.");
       return;
     }
     const gia = Number(form.gia);
@@ -141,7 +151,7 @@ export default function MenuPage() {
       <PageHeader
         kicker="Admin quán"
         title="Menu & giá"
-        meta="Cấu hình món, giá, ảnh và BOM ước lượng. Chọn món bên trái để sửa bên phải."
+        meta="Chọn món bên trái, chỉnh tên – giá – ảnh – nguyên liệu ước lượng bên phải. Không cần biết lập trình."
       />
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
@@ -181,11 +191,11 @@ export default function MenuPage() {
             ) : null}
           </div>
           <form className="space-y-4" onSubmit={(e) => void submit(e)}>
-            <Field label="Mã món">
+            <Field label="Mã món" hint="Chữ thường, không dấu — dùng nội bộ, nhân viên không cần nhớ.">
               <Input
                 value={form.id}
                 onChange={(e) => setForm({ ...form, id: e.target.value.toLowerCase() })}
-                placeholder="tra_chanh"
+                placeholder="tra_dao"
                 required
                 readOnly={Boolean(form.id && items.some((m) => m.id === form.id))}
               />
@@ -193,27 +203,22 @@ export default function MenuPage() {
             <Field label="Tên món">
               <Input value={form.ten} onChange={(e) => setForm({ ...form, ten: e.target.value })} required />
             </Field>
-            <Field label="Giá (đồng)">
+            <Field label="Giá bán (đồng)">
               <Input value={form.gia} onChange={(e) => setForm({ ...form, gia: e.target.value })} inputMode="numeric" required />
             </Field>
             <Field label="Ảnh món">
               <input
                 type="file"
+                className="nq-input"
                 accept="image/jpeg,image/png,image/webp,image/gif"
                 onChange={(e) => void onImage(e.target.files?.[0] ?? null)}
                 disabled={!form.id.trim() || busy}
               />
               <p className="nq-muted mt-1 text-xs">JPG/PNG/WebP, tối đa 4MB. Lưu mã món trước khi tải.</p>
             </Field>
-            <Field label="BOM ước lượng (JSON)">
-              <Textarea value={form.bom} onChange={(e) => setForm({ ...form, bom: e.target.value })} rows={6} className="font-mono text-sm" />
+            <Field label="Nguyên liệu ước lượng (mỗi ly / phần)">
+              <BomEditor rows={form.bomRows} onChange={(bomRows) => setForm({ ...form, bomRows })} />
             </Field>
-            {form.bom ? (
-              <div>
-                <p className="mb-1 text-xs font-mono uppercase tracking-widest text-[var(--nq-dim)]">Xem trước</p>
-                <pre className="nq-code-panel">{form.bom}</pre>
-              </div>
-            ) : null}
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={form.an} onChange={(e) => setForm({ ...form, an: e.target.checked })} />
               Ẩn món khỏi quầy
