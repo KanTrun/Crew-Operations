@@ -1,0 +1,30 @@
+{
+  "properties": {
+    "mon_id": {
+      "title": "Mon Id",
+      "type": "string"
+    },
+    "ten": {
+      "title": "Ten",
+      "type": "string"
+    },
+    "so_luong": {
+      "minimum": 1,
+      "title": "So Luong",
+      "type": "integer"
+    },
+    "gia": {
+      "minimum": 0,
+      "title": "Gia",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "mon_id",
+    "ten",
+    "so_luong",
+    "gia"
+  ],
+  "title": "DongDon",
+  "type": "object"
+}

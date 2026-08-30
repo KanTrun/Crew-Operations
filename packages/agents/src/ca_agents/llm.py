@@ -24,22 +24,24 @@ _KEY_ENV = {
     "openrouter": "OPENROUTER_API_KEY",
 }
 _GROQ_MODELS = (
-    "llama-3.1-8b-instant",
     "llama-3.3-70b-versatile",
-    "openai/gpt-oss-20b",
+    "llama-3.1-8b-instant",
+    "qwen-2.5-32b",
 )
 _GEMINI_MODELS = (
+    "gemini-2.0-flash",
     "gemini-2.5-flash",
     "gemini-flash-latest",
 )
 
 
 _OPENROUTER_MODELS = (
-    "openai/gpt-oss-20b:free",
-    "qwen/qwen3-8b:free",
-    "google/gemini-2.0-flash-exp:free",
+    "deepseek/deepseek-r1:free",
+    "deepseek/deepseek-chat:free",
     "meta-llama/llama-3.3-70b-instruct:free",
-    "meta-llama/llama-3.1-8b-instruct",
+    "google/gemini-2.0-flash-exp:free",
+    "qwen/qwen-2.5-72b-instruct:free",
+    "openai/gpt-oss-20b:free",
 )
 _UA = "nhip-quan/0.1 (https://github.com/KanTrun/Crew-Operations)"
 _DOTENV_LOADED = False

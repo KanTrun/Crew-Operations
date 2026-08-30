@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "TieuChiAudit": {
+      "properties": {
+        "ma": {
+          "title": "Ma",
+          "type": "string"
+        },
+        "ten_tieu_chi": {
+          "title": "Ten Tieu Chi",
+          "type": "string"
+        },
+        "dat": {
+          "default": false,
+          "title": "Dat",
+          "type": "boolean"
+        },
+        "chi_tiet": {
+          "default": "",
+          "title": "Chi Tiet",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ma",
+        "ten_tieu_chi"
+      ],
+      "title": "TieuChiAudit",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "diem_tuan_thu": {
+      "default": 100,
+      "maximum": 100,
+      "minimum": 0,
+      "title": "Diem Tuan Thu",
+      "type": "integer"
+    },
+    "xep_hang": {
+      "default": "A",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "title": "Xep Hang",
+      "type": "string"
+    },
+    "tieu_chi": {
+      "items": {
+        "$ref": "#/$defs/TieuChiAudit"
+      },
+      "title": "Tieu Chi",
+      "type": "array"
+    },
+    "canh_bao_do": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Canh Bao Do",
+      "type": "array"
+    },
+    "nhan_xet_chung": {
+      "default": "",
+      "title": "Nhan Xet Chung",
+      "type": "string"
+    }
+  },
+  "title": "AuditTuanThuSop",
+  "type": "object"
+}

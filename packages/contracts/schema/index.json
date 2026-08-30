@@ -4,5 +4,15 @@
   "LichTuan": "packages/contracts/schema/LichTuan.json",
   "PhieuMau": "packages/contracts/schema/PhieuMau.json",
   "RangBuocTrichXuat": "packages/contracts/schema/RangBuocTrichXuat.json",
-  "CuocHop": "packages/contracts/schema/CuocHop.json"
+  "MonNuoc": "packages/contracts/schema/MonNuoc.json",
+  "DonQuay": "packages/contracts/schema/DonQuay.json",
+  "DongDon": "packages/contracts/schema/DongDon.json",
+  "CuocHop": "packages/contracts/schema/CuocHop.json",
+  "ActionItem": "packages/contracts/schema/ActionItem.json",
+  "DeXuatSop": "packages/contracts/schema/DeXuatSop.json",
+  "DeXuatPheDuyet": "packages/contracts/schema/DeXuatPheDuyet.json",
+  "GopYLuuY": "packages/contracts/schema/GopYLuuY.json",
+  "AuditTuanThuSop": "packages/contracts/schema/AuditTuanThuSop.json",
+  "BanTinCaKhan": "packages/contracts/schema/BanTinCaKhan.json",
+  "HuanLuyenQuanLy": "packages/contracts/schema/HuanLuyenQuanLy.json"
 }

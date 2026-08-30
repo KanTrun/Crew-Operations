@@ -1,0 +1,83 @@
+{
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "loai_de_xuat": {
+      "default": "quy_trinh_sop",
+      "enum": [
+        "quy_trinh_sop",
+        "mua_sam_vat_tu",
+        "chinh_sach_nhan_su",
+        "khac"
+      ],
+      "title": "Loai De Xuat",
+      "type": "string"
+    },
+    "tieu_de": {
+      "title": "Tieu De",
+      "type": "string"
+    },
+    "nguoi_de_xuat": {
+      "default": "",
+      "title": "Nguoi De Xuat",
+      "type": "string"
+    },
+    "nguoi_phe_duyet": {
+      "default": "",
+      "title": "Nguoi Phe Duyet",
+      "type": "string"
+    },
+    "noi_dung": {
+      "title": "Noi Dung",
+      "type": "string"
+    },
+    "ly_do": {
+      "default": "",
+      "title": "Ly Do",
+      "type": "string"
+    },
+    "trang_thai": {
+      "default": "cho_duyet",
+      "enum": [
+        "da_duyet",
+        "cho_duyet",
+        "tu_choi"
+      ],
+      "title": "Trang Thai",
+      "type": "string"
+    },
+    "quy_trinh_lien_quan": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Quy Trinh Lien Quan"
+    },
+    "buoc_so": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Buoc So"
+    }
+  },
+  "required": [
+    "id",
+    "tieu_de",
+    "noi_dung"
+  ],
+  "title": "DeXuatPheDuyet",
+  "type": "object"
+}

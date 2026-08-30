@@ -221,6 +221,9 @@ def kenh_bind_list(nv_id: str | None = None) -> list[dict[str, str]]:
     ]
 
 
+_FAILED_BINDS: dict[str, list[float]] = {}
+
+
 def kenh_bind_code_issue(nv_id: str) -> str:
     from datetime import datetime, timezone
 
@@ -235,16 +238,46 @@ def kenh_bind_code_issue(nv_id: str) -> str:
     return code
 
 
-def kenh_bind_code_consume(code: str, channel: str, external_user_id: str) -> str | None:
+def kenh_bind_code_consume(code: str, channel: str, external_user_id: str, max_age_seconds: int = 300) -> str | None:
+    import time
+    from datetime import datetime, timezone
+    now_ts = time.time()
+    user_key = f"{channel}:{external_user_id}"
+
+    # Rate limit: tối đa 5 lần sai trong 15 phút
+    attempts = [t for t in _FAILED_BINDS.get(user_key, []) if now_ts - t < 900]
+    if len(attempts) >= 5:
+        return None
+
     init_db()
     with _conn() as cx:
         row = cx.execute(
-            "SELECT nv_id FROM kenh_bind_code WHERE code=?", (code.strip().lower(),)
+            "SELECT nv_id, created_at FROM kenh_bind_code WHERE code=?", (code.strip().lower(),)
         ).fetchone()
         if not row:
+            attempts.append(now_ts)
+            _FAILED_BINDS[user_key] = attempts
             return None
+        
         nv_id = str(row[0])
+        created_at_str = str(row[1]) if len(row) > 1 else ""
+
+        # Kiểm tra TTL
+        if created_at_str:
+            try:
+                created_dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+                age = (datetime.now(timezone.utc) - created_dt).total_seconds()
+                if age > max_age_seconds:
+                    cx.execute("DELETE FROM kenh_bind_code WHERE code=?", (code.strip().lower(),))
+                    attempts.append(now_ts)
+                    _FAILED_BINDS[user_key] = attempts
+                    return None
+            except Exception:
+                pass
+
         cx.execute("DELETE FROM kenh_bind_code WHERE code=?", (code.strip().lower(),))
+        _FAILED_BINDS.pop(user_key, None)
+
     kenh_bind_set(channel, external_user_id, nv_id)
     return nv_id
 

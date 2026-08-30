@@ -1,0 +1,38 @@
+{
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "ten": {
+      "title": "Ten",
+      "type": "string"
+    },
+    "gia": {
+      "description": "Đồng, số nguyên",
+      "minimum": 0,
+      "title": "Gia",
+      "type": "integer"
+    },
+    "an": {
+      "default": false,
+      "title": "An",
+      "type": "boolean"
+    },
+    "bom": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "description": "Nguyên liệu ước lượng khi hoàn thành đơn, vd cafe_g, sua_ml, ly",
+      "title": "Bom",
+      "type": "object"
+    }
+  },
+  "required": [
+    "id",
+    "ten",
+    "gia"
+  ],
+  "title": "MonNuoc",
+  "type": "object"
+}

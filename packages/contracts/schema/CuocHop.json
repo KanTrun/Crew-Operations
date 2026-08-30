@@ -1,167 +1,612 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CuocHop",
-  "type": "object",
-  "properties": {
-    "id": {
-      "type": "string",
-      "description": "Mã định danh cuộc họp (meeting UUID)"
-    },
-    "tieu_de": {
-      "type": "string",
-      "description": "Tiêu đề hoặc chủ đề cuộc họp"
-    },
-    "loai_hop": {
-      "type": "string",
-      "enum": ["giao_ca", "hop_tuan", "dao_tao", "khac"],
-      "description": "Phân loại cuộc họp"
-    },
-    "thoi_gian": {
-      "type": "string",
-      "description": "Thời gian diễn ra cuộc họp (ISO 8601 string)"
-    },
-    "nguon_am_thanh": {
-      "type": "string",
-      "enum": ["google_meet_tab", "microphone", "file_upload", "ghi_chep_tay"],
-      "description": "Nguồn gốc của dữ liệu cuộc họp"
-    },
-    "transcript_thoai": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "nguoi_noi": { "type": "string" },
-          "bat_dau_s": { "type": "number" },
-          "ket_thuc_s": { "type": "number" },
-          "noi_dung": { "type": "string" }
+  "$defs": {
+    "ActionItem": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
         },
-        "required": ["nguoi_noi", "noi_dung"]
-      }
-    },
-    "tom_tat": {
-      "type": "string",
-      "description": "Tóm tắt ngắn gọn các điểm chính trong cuộc họp"
-    },
-    "quyet_dinh": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Danh sách các quyết định quan trọng đã thống nhất"
-    },
-    "action_items": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "tieu_de": { "type": "string" },
-          "noi_dung_chi_tiet": { "type": "string" },
-          "tinh_chat": {
-            "type": "string",
-            "enum": ["bat_buoc", "tuy_chon", "khuyen_khich"],
-            "default": "bat_buoc"
-          },
-          "ten_nguoi_giao": { "type": "string" },
-          "nhan_vien_id": {
-            "type": ["string", "null"],
-            "description": "Mã nhân viên khớp với hệ thống (Entity Resolution)"
-          },
-          "ten_nguoi_nhan": { "type": "string" },
-          "pham_vi": {
-            "type": "string",
-            "enum": ["ca_nhan", "nhom"],
-            "default": "ca_nhan"
-          },
-          "thoi_gian_bat_dau": { "type": "string" },
-          "han_chot": { "type": "string" },
-          "muc_do_uu_tien": {
-            "type": "string",
-            "enum": ["cao", "trung_binh", "thap"]
-          },
-          "do_tin_cay": {
-            "type": "number",
-            "minimum": 0.0,
-            "maximum": 1.0
-          },
-          "da_chon": {
-            "type": "boolean",
-            "default": true
-          }
+        "tieu_de": {
+          "title": "Tieu De",
+          "type": "string"
         },
-        "required": ["id", "tieu_de", "ten_nguoi_nhan", "do_tin_cay"]
-      }
-    },
-    "de_xuat_phe_duyet": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "loai_de_xuat": {
-            "type": "string",
-            "enum": ["quy_trinh_sop", "mua_sam_vat_tu", "chinh_sach_nhan_su", "khac"]
-          },
-          "tieu_de": { "type": "string" },
-          "nguoi_de_xuat": { "type": "string" },
-          "nguoi_phe_duyet": { "type": "string" },
-          "noi_dung": { "type": "string" },
-          "ly_do": { "type": "string" },
-          "trang_thai": {
-            "type": "string",
-            "enum": ["da_duyet", "cho_duyet", "tu_choi"]
-          },
-          "quy_trinh_lien_quan": { "type": ["string", "null"] },
-          "buoc_so": { "type": ["integer", "null"] }
+        "noi_dung_chi_tiet": {
+          "default": "",
+          "title": "Noi Dung Chi Tiet",
+          "type": "string"
         },
-        "required": ["id", "tieu_de", "noi_dung", "trang_thai"]
-      }
-    },
-    "gop_y_luu_y": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "nguoi_gop_y": { "type": "string" },
-          "nguoi_nhan": { "type": "string" },
-          "chu_de": {
-            "type": "string",
-            "enum": ["thai_do_phuc_vu", "ky_nang_pha_che", "ve_sinh_an_toan", "dong_vien_khen_ngoi", "luu_y_chung"]
-          },
-          "tinh_chat": {
-            "type": "string",
-            "enum": ["nhac_nho", "khen_ngoi", "kinh_nghiem", "gop_y"]
-          },
-          "noi_dung": { "type": "string" },
-          "ghi_chu": { "type": "string" }
+        "tinh_chat": {
+          "default": "bat_buoc",
+          "enum": [
+            "bat_buoc",
+            "tuy_chon",
+            "khuyen_khich"
+          ],
+          "title": "Tinh Chat",
+          "type": "string"
         },
-        "required": ["id", "noi_dung"]
-      }
-    },
-    "de_xuat_sop": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "quy_trinh_lien_quan": { "type": "string" },
-          "buoc_so": { "type": ["integer", "null"] },
-          "noi_dung_thay_doi": { "type": "string" },
-          "ly_do": { "type": "string" }
+        "ten_nguoi_giao": {
+          "default": "",
+          "title": "Ten Nguoi Giao",
+          "type": "string"
         },
-        "required": ["quy_trinh_lien_quan", "noi_dung_thay_doi"]
-      }
+        "nhan_vien_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nhan Vien Id"
+        },
+        "ten_nguoi_nhan": {
+          "title": "Ten Nguoi Nhan",
+          "type": "string"
+        },
+        "pham_vi": {
+          "default": "ca_nhan",
+          "enum": [
+            "ca_nhan",
+            "nhom"
+          ],
+          "title": "Pham Vi",
+          "type": "string"
+        },
+        "thoi_gian_bat_dau": {
+          "default": "",
+          "title": "Thoi Gian Bat Dau",
+          "type": "string"
+        },
+        "han_chot": {
+          "default": "",
+          "title": "Han Chot",
+          "type": "string"
+        },
+        "muc_do_uu_tien": {
+          "default": "trung_binh",
+          "enum": [
+            "cao",
+            "trung_binh",
+            "thap"
+          ],
+          "title": "Muc Do Uu Tien",
+          "type": "string"
+        },
+        "do_tin_cay": {
+          "default": 0.9,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Do Tin Cay",
+          "type": "number"
+        },
+        "da_chon": {
+          "default": true,
+          "title": "Da Chon",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "tieu_de",
+        "ten_nguoi_nhan"
+      ],
+      "title": "ActionItem",
+      "type": "object"
     },
-
-
-    "do_tin_cay_tong_the": {
-      "type": "number",
-      "minimum": 0.0,
-      "maximum": 1.0
+    "AuditTuanThuSop": {
+      "properties": {
+        "diem_tuan_thu": {
+          "default": 100,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Diem Tuan Thu",
+          "type": "integer"
+        },
+        "xep_hang": {
+          "default": "A",
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "title": "Xep Hang",
+          "type": "string"
+        },
+        "tieu_chi": {
+          "items": {
+            "$ref": "#/$defs/TieuChiAudit"
+          },
+          "title": "Tieu Chi",
+          "type": "array"
+        },
+        "canh_bao_do": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Canh Bao Do",
+          "type": "array"
+        },
+        "nhan_xet_chung": {
+          "default": "",
+          "title": "Nhan Xet Chung",
+          "type": "string"
+        }
+      },
+      "title": "AuditTuanThuSop",
+      "type": "object"
     },
-    "trang_thai": {
-      "type": "string",
-      "enum": ["cho_duyet", "da_duyet", "tu_choi"],
-      "default": "cho_duyet"
+    "BanTinCaKhan": {
+      "properties": {
+        "ban_vip": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Ban Vip",
+          "type": "array"
+        },
+        "luu_y_di_ung_khach": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Luu Y Di Ung Khach",
+          "type": "array"
+        },
+        "su_co_thiet_bi_khan": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Su Co Thiet Bi Khan",
+          "type": "array"
+        },
+        "danh_sach_mon_86": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Danh Sach Mon 86",
+          "type": "array"
+        },
+        "noi_dung_tin_nhan_gui_nhom": {
+          "default": "",
+          "title": "Noi Dung Tin Nhan Gui Nhom",
+          "type": "string"
+        }
+      },
+      "title": "BanTinCaKhan",
+      "type": "object"
+    },
+    "DeXuatPheDuyet": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "loai_de_xuat": {
+          "default": "quy_trinh_sop",
+          "enum": [
+            "quy_trinh_sop",
+            "mua_sam_vat_tu",
+            "chinh_sach_nhan_su",
+            "khac"
+          ],
+          "title": "Loai De Xuat",
+          "type": "string"
+        },
+        "tieu_de": {
+          "title": "Tieu De",
+          "type": "string"
+        },
+        "nguoi_de_xuat": {
+          "default": "",
+          "title": "Nguoi De Xuat",
+          "type": "string"
+        },
+        "nguoi_phe_duyet": {
+          "default": "",
+          "title": "Nguoi Phe Duyet",
+          "type": "string"
+        },
+        "noi_dung": {
+          "title": "Noi Dung",
+          "type": "string"
+        },
+        "ly_do": {
+          "default": "",
+          "title": "Ly Do",
+          "type": "string"
+        },
+        "trang_thai": {
+          "default": "cho_duyet",
+          "enum": [
+            "da_duyet",
+            "cho_duyet",
+            "tu_choi"
+          ],
+          "title": "Trang Thai",
+          "type": "string"
+        },
+        "quy_trinh_lien_quan": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quy Trinh Lien Quan"
+        },
+        "buoc_so": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Buoc So"
+        }
+      },
+      "required": [
+        "id",
+        "tieu_de",
+        "noi_dung"
+      ],
+      "title": "DeXuatPheDuyet",
+      "type": "object"
+    },
+    "DeXuatSop": {
+      "properties": {
+        "quy_trinh_lien_quan": {
+          "title": "Quy Trinh Lien Quan",
+          "type": "string"
+        },
+        "buoc_so": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Buoc So"
+        },
+        "noi_dung_thay_doi": {
+          "title": "Noi Dung Thay Doi",
+          "type": "string"
+        },
+        "ly_do": {
+          "default": "",
+          "title": "Ly Do",
+          "type": "string"
+        }
+      },
+      "required": [
+        "quy_trinh_lien_quan",
+        "noi_dung_thay_doi"
+      ],
+      "title": "DeXuatSop",
+      "type": "object"
+    },
+    "DoanThoaiTranscript": {
+      "properties": {
+        "nguoi_noi": {
+          "title": "Nguoi Noi",
+          "type": "string"
+        },
+        "bat_dau_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bat Dau S"
+        },
+        "ket_thuc_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ket Thuc S"
+        },
+        "noi_dung": {
+          "title": "Noi Dung",
+          "type": "string"
+        }
+      },
+      "required": [
+        "nguoi_noi",
+        "noi_dung"
+      ],
+      "title": "DoanThoaiTranscript",
+      "type": "object"
+    },
+    "GopYLuuY": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "nguoi_gop_y": {
+          "default": "",
+          "title": "Nguoi Gop Y",
+          "type": "string"
+        },
+        "nguoi_nhan": {
+          "default": "",
+          "title": "Nguoi Nhan",
+          "type": "string"
+        },
+        "chu_de": {
+          "default": "luu_y_chung",
+          "enum": [
+            "thai_do_phuc_vu",
+            "ky_nang_pha_che",
+            "ve_sinh_an_toan",
+            "dong_vien_khen_ngoi",
+            "luu_y_chung"
+          ],
+          "title": "Chu De",
+          "type": "string"
+        },
+        "tinh_chat": {
+          "default": "gop_y",
+          "enum": [
+            "nhac_nho",
+            "khen_ngoi",
+            "kinh_nghiem",
+            "gop_y"
+          ],
+          "title": "Tinh Chat",
+          "type": "string"
+        },
+        "noi_dung": {
+          "title": "Noi Dung",
+          "type": "string"
+        },
+        "ghi_chu": {
+          "default": "",
+          "title": "Ghi Chu",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "noi_dung"
+      ],
+      "title": "GopYLuuY",
+      "type": "object"
+    },
+    "HuanLuyenQuanLy": {
+      "properties": {
+        "ty_le_noi_quan_ly_pct": {
+          "default": 70,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Ty Le Noi Quan Ly Pct",
+          "type": "integer"
+        },
+        "ty_le_noi_nhan_vien_pct": {
+          "default": 30,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Ty Le Noi Nhan Vien Pct",
+          "type": "integer"
+        },
+        "diem_tuong_tac_2_chieu": {
+          "default": 8,
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Diem Tuong Tac 2 Chieu",
+          "type": "integer"
+        },
+        "diem_truyen_cam_hung": {
+          "default": 8,
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Diem Truyen Cam Hung",
+          "type": "integer"
+        },
+        "phong_cach_dieu_hanh": {
+          "default": "Chuẩn mực & Tương tác",
+          "title": "Phong Cach Dieu Hanh",
+          "type": "string"
+        },
+        "loi_khuyen_ai_coaching": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Loi Khuyen Ai Coaching",
+          "type": "array"
+        }
+      },
+      "title": "HuanLuyenQuanLy",
+      "type": "object"
+    },
+    "TieuChiAudit": {
+      "properties": {
+        "ma": {
+          "title": "Ma",
+          "type": "string"
+        },
+        "ten_tieu_chi": {
+          "title": "Ten Tieu Chi",
+          "type": "string"
+        },
+        "dat": {
+          "default": false,
+          "title": "Dat",
+          "type": "boolean"
+        },
+        "chi_tiet": {
+          "default": "",
+          "title": "Chi Tiet",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ma",
+        "ten_tieu_chi"
+      ],
+      "title": "TieuChiAudit",
+      "type": "object"
     }
   },
-  "required": ["id", "tieu_de", "loai_hop", "tom_tat", "action_items"]
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "tieu_de": {
+      "title": "Tieu De",
+      "type": "string"
+    },
+    "loai_hop": {
+      "default": "giao_ca",
+      "enum": [
+        "giao_ca",
+        "hop_tuan",
+        "dao_tao",
+        "khac"
+      ],
+      "title": "Loai Hop",
+      "type": "string"
+    },
+    "thoi_gian": {
+      "default": "",
+      "title": "Thoi Gian",
+      "type": "string"
+    },
+    "nguon_am_thanh": {
+      "default": "microphone",
+      "enum": [
+        "google_meet_tab",
+        "microphone",
+        "file_upload",
+        "ghi_chep_tay"
+      ],
+      "title": "Nguon Am Thanh",
+      "type": "string"
+    },
+    "transcript_thoai": {
+      "items": {
+        "$ref": "#/$defs/DoanThoaiTranscript"
+      },
+      "title": "Transcript Thoai",
+      "type": "array"
+    },
+    "tom_tat": {
+      "title": "Tom Tat",
+      "type": "string"
+    },
+    "quyet_dinh": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Quyet Dinh",
+      "type": "array"
+    },
+    "de_xuat_phe_duyet": {
+      "items": {
+        "$ref": "#/$defs/DeXuatPheDuyet"
+      },
+      "title": "De Xuat Phe Duyet",
+      "type": "array"
+    },
+    "action_items": {
+      "items": {
+        "$ref": "#/$defs/ActionItem"
+      },
+      "title": "Action Items",
+      "type": "array"
+    },
+    "gop_y_luu_y": {
+      "items": {
+        "$ref": "#/$defs/GopYLuuY"
+      },
+      "title": "Gop Y Luu Y",
+      "type": "array"
+    },
+    "audit_sop": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AuditTuanThuSop"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "ban_tin_ca": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BanTinCaKhan"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "huan_luyen_quan_ly": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/HuanLuyenQuanLy"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "de_xuat_sop": {
+      "items": {
+        "$ref": "#/$defs/DeXuatSop"
+      },
+      "title": "De Xuat Sop",
+      "type": "array"
+    },
+    "do_tin_cay_tong_the": {
+      "default": 0.9,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Do Tin Cay Tong The",
+      "type": "number"
+    },
+    "trang_thai": {
+      "default": "cho_duyet",
+      "enum": [
+        "cho_duyet",
+        "da_duyet",
+        "tu_choi"
+      ],
+      "title": "Trang Thai",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "tieu_de",
+    "tom_tat"
+  ],
+  "title": "CuocHop",
+  "type": "object"
 }
