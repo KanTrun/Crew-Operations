@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -12,12 +15,87 @@ from typing import Any
 GRAPH = "https://graph.facebook.com/v26.0"
 
 
+import pathlib
+
+_ENV_LOADED = False
+
+
+def _ensure_env() -> None:
+    global _ENV_LOADED
+    if _ENV_LOADED:
+        return
+    candidates = [
+        pathlib.Path.cwd() / ".env",
+        pathlib.Path(__file__).resolve().parents[4] / ".env",
+    ]
+    for c in candidates:
+        if c.exists():
+            for line in c.read_text(encoding="utf-8").splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#") or "=" not in stripped:
+                    continue
+                k, _, v = stripped.partition("=")
+                k = k.strip()
+                v = v.strip().strip("'").strip('"')
+                if k and k not in os.environ:
+                    os.environ[k] = v
+            break
+    _ENV_LOADED = True
+
+
 def _token() -> str:
-    return os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip()
+    _ensure_env()
+    return (os.environ.get("NHIPQUAN_FB_PAGE_TOKEN") or os.environ.get("FACEBOOK_PAGE_ACCESS_TOKEN") or "").strip()
 
 
 def _page_id() -> str:
-    return os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    _ensure_env()
+    pid = (os.environ.get("NHIPQUAN_FB_PAGE_ID") or os.environ.get("FACEBOOK_PAGE_ID") or "").strip()
+    return pid if pid else "me"
+
+
+def _app_secret() -> str:
+    _ensure_env()
+    return os.environ.get("NHIPQUAN_FB_APP_SECRET", "").strip()
+
+
+def verify_fb_webhook_signature(payload_bytes: bytes, signature_header: str) -> bool:
+    """
+    Verify X-Hub-Signature-256 header sent by Meta Webhook.
+    Format: sha256=<hex_digest>
+    """
+    secret = _app_secret()
+    if not secret:
+        # If secret is not configured in dev/test, return True if signature header is missing/dev
+        return True
+    if not signature_header or not signature_header.startswith("sha256="):
+        return False
+    expected_hash = hmac.new(
+        secret.encode("utf-8"),
+        payload_bytes,
+        hashlib.sha256
+    ).hexdigest()
+    provided_hash = signature_header.split("sha256=", 1)[1]
+    return hmac.compare_digest(expected_hash, provided_hash)
+
+
+def is_within_24h_window(last_message_timestamp: float | str | None) -> bool:
+    """Check if the last customer message was sent within 24 hours."""
+    if not last_message_timestamp:
+        return True
+    try:
+        if isinstance(last_message_timestamp, (int, float)):
+            ts = float(last_message_timestamp)
+            # if ms timestamp
+            if ts > 1e11:
+                ts = ts / 1000.0
+            return (time.time() - ts) <= 86400.0
+        # parse ISO string
+        from datetime import datetime, timezone
+        dt = datetime.fromisoformat(str(last_message_timestamp).replace("Z", "+00:00"))
+        return (datetime.now(timezone.utc) - dt).total_seconds() <= 86400.0
+    except Exception:
+        return True
 
 
 def graph_get(path: str, params: dict[str, str] | None = None) -> dict[str, Any]:
@@ -112,16 +190,22 @@ def fetch_conversations(limit: int = 15) -> list[dict[str, Any]]:
     return out
 
 
-def send_messenger_text(psid: str, text: str) -> dict[str, Any]:
-    """Gửi tin Messenger tới PSID (người dùng đã nhắn Page)."""
-    return graph_post(
-        "me/messages",
-        {
-            "recipient": json.dumps({"id": psid}),
-            "messaging_type": "RESPONSE",
-            "message": json.dumps({"text": text}),
-        },
-    )
+def send_messenger_text(psid: str, text: str, *, tag: str | None = None) -> dict[str, Any]:
+    """
+    Gửi tin Messenger tới PSID.
+    Hỗ trợ message_tag khi gửi ngoài cửa sổ 24h (vd: CONFIRMED_EVENT_UPDATE).
+    """
+    data: dict[str, str] = {
+        "recipient": json.dumps({"id": psid}),
+        "message": json.dumps({"text": text}),
+    }
+    if tag:
+        data["messaging_type"] = "MESSAGE_TAG"
+        data["tag"] = tag
+    else:
+        data["messaging_type"] = "RESPONSE"
+
+    return graph_post("me/messages", data)
 
 
 def publish_page_post(message: str) -> dict[str, Any]:

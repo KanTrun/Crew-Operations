@@ -1,0 +1,96 @@
+{
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "tieu_de": {
+      "title": "Tieu De",
+      "type": "string"
+    },
+    "noi_dung_chi_tiet": {
+      "default": "",
+      "title": "Noi Dung Chi Tiet",
+      "type": "string"
+    },
+    "tinh_chat": {
+      "default": "bat_buoc",
+      "enum": [
+        "bat_buoc",
+        "tuy_chon",
+        "khuyen_khich"
+      ],
+      "title": "Tinh Chat",
+      "type": "string"
+    },
+    "ten_nguoi_giao": {
+      "default": "",
+      "title": "Ten Nguoi Giao",
+      "type": "string"
+    },
+    "nhan_vien_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Nhan Vien Id"
+    },
+    "ten_nguoi_nhan": {
+      "title": "Ten Nguoi Nhan",
+      "type": "string"
+    },
+    "pham_vi": {
+      "default": "ca_nhan",
+      "enum": [
+        "ca_nhan",
+        "nhom"
+      ],
+      "title": "Pham Vi",
+      "type": "string"
+    },
+    "thoi_gian_bat_dau": {
+      "default": "",
+      "title": "Thoi Gian Bat Dau",
+      "type": "string"
+    },
+    "han_chot": {
+      "default": "",
+      "title": "Han Chot",
+      "type": "string"
+    },
+    "muc_do_uu_tien": {
+      "default": "trung_binh",
+      "enum": [
+        "cao",
+        "trung_binh",
+        "thap"
+      ],
+      "title": "Muc Do Uu Tien",
+      "type": "string"
+    },
+    "do_tin_cay": {
+      "default": 0.9,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Do Tin Cay",
+      "type": "number"
+    },
+    "da_chon": {
+      "default": true,
+      "title": "Da Chon",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "tieu_de",
+    "ten_nguoi_nhan"
+  ],
+  "title": "ActionItem",
+  "type": "object"
+}

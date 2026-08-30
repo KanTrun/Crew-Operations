@@ -1,5 +1,5 @@
 .PHONY: setup contracts dev test test-unit lint demo demo-local demo-reset seed seed-ops bench eval ab replay budget metrics \
-	docker-up docker-down docker-logs docker-smoke docker-ps docker-reset docker-seed-ops
+	docker-up docker-down docker-logs docker-smoke docker-ps docker-reset docker-seed-ops test-fb test-fb-post
 
 setup:
 	python -m pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api pytest httpx ruff pyyaml
@@ -25,6 +25,14 @@ test:
 
 test-unit:
 	CA_AGENT_MODE=replay python -m pytest -q
+
+test-fb:
+	@python -m pip install -q python-dotenv requests || true
+	python scripts/test_facebook_api.py
+
+test-fb-post:
+	@python -m pip install -q python-dotenv requests || true
+	python scripts/facebook_page_poster.py
 
 lint:
 	ruff check apps/api/src packages scripts

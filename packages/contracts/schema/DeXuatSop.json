@@ -1,0 +1,35 @@
+{
+  "properties": {
+    "quy_trinh_lien_quan": {
+      "title": "Quy Trinh Lien Quan",
+      "type": "string"
+    },
+    "buoc_so": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Buoc So"
+    },
+    "noi_dung_thay_doi": {
+      "title": "Noi Dung Thay Doi",
+      "type": "string"
+    },
+    "ly_do": {
+      "default": "",
+      "title": "Ly Do",
+      "type": "string"
+    }
+  },
+  "required": [
+    "quy_trinh_lien_quan",
+    "noi_dung_thay_doi"
+  ],
+  "title": "DeXuatSop",
+  "type": "object"
+}

@@ -1,0 +1,39 @@
+{
+  "properties": {
+    "ban_vip": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Ban Vip",
+      "type": "array"
+    },
+    "luu_y_di_ung_khach": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Luu Y Di Ung Khach",
+      "type": "array"
+    },
+    "su_co_thiet_bi_khan": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Su Co Thiet Bi Khan",
+      "type": "array"
+    },
+    "danh_sach_mon_86": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Danh Sach Mon 86",
+      "type": "array"
+    },
+    "noi_dung_tin_nhan_gui_nhom": {
+      "default": "",
+      "title": "Noi Dung Tin Nhan Gui Nhom",
+      "type": "string"
+    }
+  },
+  "title": "BanTinCaKhan",
+  "type": "object"
+}

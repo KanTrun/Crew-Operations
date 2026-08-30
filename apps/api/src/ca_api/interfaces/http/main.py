@@ -20,6 +20,7 @@ from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.pos import router as pos_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
+from ca_api.interfaces.http.trends import router as trends_router
 from ca_api.persist import DangKyLoi, kv_get, kv_mutate
 from ca_api.persist import login as persist_login
 from ca_api.persist import register as persist_register
@@ -41,6 +42,7 @@ app.include_router(sprint45_router)
 app.include_router(channels_router)
 app.include_router(pos_router)
 app.include_router(meeting_router)
+app.include_router(trends_router)
 
 
 ROOT = Path(__file__).resolve().parents[6]

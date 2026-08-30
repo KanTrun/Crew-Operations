@@ -1,0 +1,46 @@
+{
+  "properties": {
+    "ty_le_noi_quan_ly_pct": {
+      "default": 70,
+      "maximum": 100,
+      "minimum": 0,
+      "title": "Ty Le Noi Quan Ly Pct",
+      "type": "integer"
+    },
+    "ty_le_noi_nhan_vien_pct": {
+      "default": 30,
+      "maximum": 100,
+      "minimum": 0,
+      "title": "Ty Le Noi Nhan Vien Pct",
+      "type": "integer"
+    },
+    "diem_tuong_tac_2_chieu": {
+      "default": 8,
+      "maximum": 10,
+      "minimum": 0,
+      "title": "Diem Tuong Tac 2 Chieu",
+      "type": "integer"
+    },
+    "diem_truyen_cam_hung": {
+      "default": 8,
+      "maximum": 10,
+      "minimum": 0,
+      "title": "Diem Truyen Cam Hung",
+      "type": "integer"
+    },
+    "phong_cach_dieu_hanh": {
+      "default": "Chuẩn mực & Tương tác",
+      "title": "Phong Cach Dieu Hanh",
+      "type": "string"
+    },
+    "loi_khuyen_ai_coaching": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Loi Khuyen Ai Coaching",
+      "type": "array"
+    }
+  },
+  "title": "HuanLuyenQuanLy",
+  "type": "object"
+}

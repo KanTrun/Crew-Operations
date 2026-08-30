@@ -12,15 +12,29 @@ from typing import Annotated, Any, cast
 
 UTC = timezone.utc
 
+from ca_agents.ag_fbpage import (
+    FBMessageInput,
+    FBMessageOutput,
+    process_fb_message,
+)
 from ca_agents.ag_msg import classify
 from ca_agents.facebook_page import (
     fetch_conversations,
+    is_within_24h_window,
     page_health,
     publish_page_post,
     send_messenger_text,
     upsert_thread_from_messaging,
+    verify_fb_webhook_signature,
 )
 from ca_agents.llm import agent_mode
+from ca_api.services.store_public_context import (
+    get_active_promotions,
+    get_public_menu,
+    get_store_profile,
+    set_active_promotions,
+    set_store_profile,
+)
 from ca_agents.messaging import (
     InboundMessage,
     get_port,
@@ -394,7 +408,7 @@ def page_sync(authorization: Annotated[str | None, Header()] = None) -> dict[str
 
 @router.api_route("/api/v1/channels/facebook/webhook", methods=["GET", "POST"])
 async def facebook_webhook(request: Request) -> Any:
-    """Meta webhook: GET verify challenge; POST Messenger events → page store."""
+    """Meta webhook: GET verify challenge; POST Messenger events → AG-FBPAGE processing."""
     if request.method == "GET":
         mode = request.query_params.get("hub.mode", "")
         token = request.query_params.get("hub.verify_token", "")
@@ -404,12 +418,27 @@ async def facebook_webhook(request: Request) -> Any:
             return Response(content=challenge, media_type="text/plain")
         raise HTTPException(status_code=403, detail="verify_fail")
 
+    body_bytes = await request.body()
+    sig_header = request.headers.get("x-hub-signature-256", "")
+    if not verify_fb_webhook_signature(body_bytes, sig_header):
+        raise HTTPException(status_code=403, detail="invalid_signature")
+
     if _page_mode() != "live" or not os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip():
         return {"ok": False, "detail": "page_chua_live"}
 
-    payload = await request.json()
+    try:
+        payload = json.loads(body_bytes.decode("utf-8"))
+    except Exception:
+        return {"ok": True, "ignored": True}
+
     if not isinstance(payload, dict):
         return {"ok": True, "ignored": True}
+
+    public_ctx = {
+        "profile": get_store_profile(),
+        "menu": get_public_menu(),
+        "promotions": get_active_promotions(),
+    }
 
     n = 0
     for entry in payload.get("entry") or []:
@@ -419,7 +448,40 @@ async def facebook_webhook(request: Request) -> Any:
             text = (msg.get("text") or "").strip()
             if not sender or not text:
                 continue
-            th = upsert_thread_from_messaging(sender, text, str(msg.get("mid") or ""))
+
+            mid = str(msg.get("mid") or "")
+            ts = float(ev.get("timestamp") or 0)
+            input_msg = FBMessageInput(psid=sender, text=text, message_id=mid, timestamp=ts)
+
+            # Xử lý tin nhắn qua AG-FBPAGE với Guardrails và Ngưỡng tin cậy
+            out: FBMessageOutput = await process_fb_message(
+                input_msg,
+                auto_respond_enabled=True,
+                public_context=public_ctx,
+            )
+
+            th = upsert_thread_from_messaging(sender, text, mid)
+            th["intent"] = out.intent
+            th["confidence"] = out.confidence
+            th["suggested_reply"] = out.suggested_reply
+            th["pending_approval"] = out.action == "queue_to_inbox"
+            th["last_message_ts"] = ts
+            th["is_within_24h"] = is_within_24h_window(ts)
+
+            if out.action == "auto_respond" and out.response:
+                bot_reply = {
+                    "id": f"bot_{uuid.uuid4().hex[:6]}",
+                    "text": out.response,
+                    "by": "Chatbot (Tự động)",
+                    "at": _now(),
+                    "mock": False,
+                }
+                th.setdefault("replies", []).append(bot_reply)
+                if _page_mode() == "live":
+                    try:
+                        send_messenger_text(sender, out.response)
+                    except Exception:
+                        pass
 
             def mut(doc: dict[str, Any], thread: dict[str, Any] = th) -> dict[str, Any]:
                 threads = doc.setdefault("threads", [])
@@ -428,6 +490,12 @@ async def facebook_webhook(request: Request) -> Any:
                     existing["tom_tat"] = thread["tom_tat"]
                     existing.setdefault("replies", []).extend(thread.get("replies") or [])
                     existing["psid"] = thread.get("psid")
+                    existing["intent"] = thread.get("intent")
+                    existing["confidence"] = thread.get("confidence")
+                    existing["suggested_reply"] = thread.get("suggested_reply")
+                    existing["pending_approval"] = thread.get("pending_approval")
+                    existing["last_message_ts"] = thread.get("last_message_ts")
+                    existing["is_within_24h"] = thread.get("is_within_24h")
                 else:
                     threads.insert(0, thread)
                 doc["mode"] = "live"
@@ -442,11 +510,16 @@ async def facebook_webhook(request: Request) -> Any:
 def page_threads(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_manager(authorization)
     doc = _page_store()
-    return {"items": doc.get("threads", []), "mode": _page_mode(), "nguon": "quan"}
+    threads = doc.get("threads", [])
+    # Update is_within_24h dynamic flag
+    for t in threads:
+        t["is_within_24h"] = is_within_24h_window(t.get("last_message_ts"))
+    return {"items": threads, "mode": _page_mode(), "nguon": "quan"}
 
 
 class PageReplyBody(BaseModel):
     text: str
+    tag: str | None = None
 
 
 @router.post("/api/v1/page/threads/{thread_id}/reply")
@@ -465,12 +538,13 @@ def page_reply(
         nonlocal found
         for th in doc.get("threads", []):
             if th.get("id") == thread_id:
+                th["pending_approval"] = False
                 replies = th.setdefault("replies", [])
                 replies.append(
                     {
                         "id": f"pr_{uuid.uuid4().hex[:6]}",
                         "text": body.text.strip(),
-                        "by": s["nv_id"],
+                        "by": s.get("display_name", s["nv_id"]),
                         "at": _now(),
                         "mock": _page_mode() != "live",
                     }
@@ -487,11 +561,119 @@ def page_reply(
         psid = str(found.get("psid") or "")
         if psid:
             try:
-                send_messenger_text(psid, body.text.strip())
+                tag = body.tag
+                if not tag and not is_within_24h_window(found.get("last_message_ts")):
+                    tag = "CONFIRMED_EVENT_UPDATE"
+                send_messenger_text(psid, body.text.strip(), tag=tag)
                 graph_sent = True
             except RuntimeError as e:
                 raise HTTPException(status_code=502, detail=str(e)[:180]) from e
+
+    _audit(s["nv_id"], "page_reply", {"thread_id": thread_id, "text": body.text.strip(), "graph_sent": graph_sent})
     return {"ok": True, "thread": found, "mode": _page_mode(), "graph_sent": graph_sent}
+
+
+class PageThreadApproveBody(BaseModel):
+    final_reply: str
+    tag: str | None = None
+
+
+@router.post("/api/v1/page/threads/{thread_id}/approve")
+def page_thread_approve(
+    thread_id: str,
+    body: PageThreadApproveBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Quản lý duyệt câu trả lời gợi ý của bot hoặc sửa câu trả lời trước khi gửi."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    _require_manager(authorization)
+    found: dict[str, Any] | None = None
+    suggested_orig: str = ""
+
+    def mut(doc: dict[str, Any]) -> dict[str, Any]:
+        nonlocal found, suggested_orig
+        for th in doc.get("threads", []):
+            if th.get("id") == thread_id:
+                suggested_orig = str(th.get("suggested_reply") or "")
+                th["pending_approval"] = False
+                replies = th.setdefault("replies", [])
+                replies.append(
+                    {
+                        "id": f"pr_{uuid.uuid4().hex[:6]}",
+                        "text": body.final_reply.strip(),
+                        "by": f"Quản lý {s.get('display_name', s['nv_id'])} (Đã duyệt)",
+                        "at": _now(),
+                        "mock": _page_mode() != "live",
+                    }
+                )
+                found = th
+                break
+        return doc
+
+    kv_mutate("page_quan", mut, _page_store())
+    if not found:
+        raise HTTPException(status_code=404, detail="thread")
+
+    graph_sent = False
+    if _page_mode() == "live":
+        psid = str(found.get("psid") or "")
+        if psid:
+            try:
+                tag = body.tag
+                if not tag and not is_within_24h_window(found.get("last_message_ts")):
+                    tag = "CONFIRMED_EVENT_UPDATE"
+                send_messenger_text(psid, body.final_reply.strip(), tag=tag)
+                graph_sent = True
+            except RuntimeError as e:
+                raise HTTPException(status_code=502, detail=str(e)[:180]) from e
+
+    # Audit log with diff tracking
+    _audit(
+        s["nv_id"],
+        "page_thread_approve",
+        {
+            "thread_id": thread_id,
+            "suggested": suggested_orig,
+            "final": body.final_reply.strip(),
+            "diff_detected": suggested_orig.strip() != body.final_reply.strip(),
+            "graph_sent": graph_sent,
+        },
+    )
+    return {"ok": True, "thread": found, "graph_sent": graph_sent}
+
+
+@router.get("/api/v1/store/profile")
+def get_profile() -> dict[str, Any]:
+    return get_store_profile()
+
+
+@router.put("/api/v1/store/profile")
+def update_profile(
+    data: dict[str, Any],
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    role = _require_manager(authorization)
+    set_store_profile(data)
+    _audit(role, "store_profile_update", data)
+    return {"ok": True, "profile": get_store_profile()}
+
+
+@router.get("/api/v1/store/promotions")
+def get_promos() -> list[dict[str, Any]]:
+    return get_active_promotions()
+
+
+@router.put("/api/v1/store/promotions")
+def update_promos(
+    promotions: list[dict[str, Any]],
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    role = _require_manager(authorization)
+    set_active_promotions(promotions)
+    _audit(role, "store_promotions_update", {"count": len(promotions)})
+    return {"ok": True, "promotions": get_active_promotions()}
 
 
 class PageDraftBody(BaseModel):

@@ -1,0 +1,56 @@
+{
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "nguoi_gop_y": {
+      "default": "",
+      "title": "Nguoi Gop Y",
+      "type": "string"
+    },
+    "nguoi_nhan": {
+      "default": "",
+      "title": "Nguoi Nhan",
+      "type": "string"
+    },
+    "chu_de": {
+      "default": "luu_y_chung",
+      "enum": [
+        "thai_do_phuc_vu",
+        "ky_nang_pha_che",
+        "ve_sinh_an_toan",
+        "dong_vien_khen_ngoi",
+        "luu_y_chung"
+      ],
+      "title": "Chu De",
+      "type": "string"
+    },
+    "tinh_chat": {
+      "default": "gop_y",
+      "enum": [
+        "nhac_nho",
+        "khen_ngoi",
+        "kinh_nghiem",
+        "gop_y"
+      ],
+      "title": "Tinh Chat",
+      "type": "string"
+    },
+    "noi_dung": {
+      "title": "Noi Dung",
+      "type": "string"
+    },
+    "ghi_chu": {
+      "default": "",
+      "title": "Ghi Chu",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "noi_dung"
+  ],
+  "title": "GopYLuuY",
+  "type": "object"
+}
