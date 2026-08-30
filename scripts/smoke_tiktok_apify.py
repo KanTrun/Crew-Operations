@@ -13,10 +13,34 @@ import sys
 import time
 from pathlib import Path
 
+# Fix unicode cho Windows console (cp1252 default)
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # Thêm packages/agents/src vào sys.path để import ca_agents
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "packages" / "agents" / "src"))
 sys.path.insert(0, str(ROOT / "apps" / "api" / "src"))
+
+# Load .env nếu có (không cần python-dotenv — parse thủ công)
+_ENV_PATH = ROOT / ".env"
+if _ENV_PATH.exists():
+    try:
+        with open(_ENV_PATH, "r", encoding="utf-8") as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if not _line or _line.startswith("#") or "=" not in _line:
+                    continue
+                _k, _v = _line.split("=", 1)
+                # Chỉ set nếu chưa có (ưu tiên env thật)
+                if _k.strip() and _k.strip() not in os.environ:
+                    os.environ[_k.strip()] = _v.strip()
+    except Exception as _e:
+        print(f"[WARN] Không đọc được .env: {_e}")
 
 try:
     from ca_agents.ag_trend import _scrape_tiktok_smart  # noqa: E402
@@ -54,14 +78,15 @@ def main() -> int:
     if args.no_color:
         _USE_COLOR = False
 
-    print(_colored("═" * 60, _CYAN))
-    print(_colored("  TikTok scraper smoke test", _CYAN))
-    print(_colored("═" * 60, _CYAN))
-    print(f"  keyword  : {args.keyword}")
-    print(f"  count    : {args.count}")
-    print(f"  nguon_goc: {args.nguon_goc}")
-    print(f"  token?   : {'YES' if os.getenv('APIFY_TOKEN') else 'NO  ← sẽ fallback TikWM'}")
-    print(_colored("─" * 60, _CYAN))
+    print(_colored("═" * 60, _CYAN), flush=True)
+    print(_colored("  TikTok scraper smoke test", _CYAN), flush=True)
+    print(_colored("═" * 60, _CYAN), flush=True)
+    print(f"  keyword  : {args.keyword}", flush=True)
+    print(f"  count    : {args.count}", flush=True)
+    print(f"  nguon_goc: {args.nguon_goc}", flush=True)
+    print(f"  token?   : {'YES' if os.getenv('APIFY_TOKEN') else 'NO  ← sẽ fallback TikWM'}", flush=True)
+    print(_colored("─" * 60, _CYAN), flush=True)
+    print("  → calling Apify...", flush=True)
 
     start = time.monotonic()
     try:

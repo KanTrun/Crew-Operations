@@ -9,12 +9,15 @@ import json
 import logging
 import re
 import ssl
+import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
+
+from ca_agents.clients.apify_client import ApifyError  # noqa: F401  (re-exported)
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +73,86 @@ def extract_core_tiktok_keyword(title: str) -> str:
     return clean[:30].strip() or title[:30].strip()
 
 
-def _scrape_direct_tiktok_videos(keyword: str = "", count: int = 12) -> list[TrendItem]:
-    """Cào trực tiếp 100% Video và Comment thật từ TikTok Việt Nam (Feed hoặc theo Từ khóa)."""
+def _scrape_tiktok_smart(
+    keyword: str = "",
+    count: int = 12,
+    nguon_goc: str = "tiktok_vn",
+) -> list[TrendItem]:
+    """Apify primary → TikWM fallback duy nhất.
+
+    Decision matrix:
+        Apify OK                → return Apify results
+        Apify raise ApifyError  → log warning + return TikWM results
+        Apify raise Exception   → log warning + return TikWM results
+        TikWM cũng fail/empty   → return [] (giữ behavior cũ)
+
+    Lazy import để tránh circular: ag_trend → tiktok_apify_source → ag_trend.
+    """
+    # Lazy import: tránh circular khi ag_trend được import trước
+    from ca_agents.sources.tiktok_apify_source import scrape_tiktok_apify
+
+    start = time.monotonic()
+    try:
+        items = scrape_tiktok_apify(
+            keyword=keyword,
+            count=count,
+            mode="search",
+            nguon_goc=nguon_goc,
+        )
+        logger.info(
+            "tiktok_source_apify",
+            extra={
+                "source": "apify",
+                "nguon_goc": nguon_goc,
+                "items_count": len(items),
+                "duration_ms": int((time.monotonic() - start) * 1000),
+            },
+        )
+        return items
+    except ApifyError as e:
+        reason = "apify_error"
+        msg = str(e)[:200]
+        logger.warning(
+            "tiktok_source_fallback",
+            extra={
+                "source": "tiktokwm",
+                "reason": reason,
+                "error_msg": msg,
+            },
+        )
+    except Exception as e:  # noqa: BLE001
+        reason = f"unexpected:{type(e).__name__}"
+        msg = str(e)[:200]
+        logger.warning(
+            "tiktok_source_fallback",
+            extra={
+                "source": "tiktokwm",
+                "reason": reason,
+                "error_msg": msg,
+            },
+        )
+
+    # Fallback duy nhất — nếu TikWM cũng lỗi thì trả [] (không crash)
+    try:
+        return _scrape_tiktokwm_fallback(keyword=keyword, count=count)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "tiktok_source_all_failed",
+            extra={
+                "source": "tiktokwm",
+                "reason": f"fallback_failed:{type(e).__name__}",
+                "error_msg": str(e)[:200],
+            },
+        )
+        return []
+
+
+def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendItem]:
+    """FALLBACK ONLY — gọi khi Apify fail. Không nên dùng trực tiếp.
+
+    Giữ nguyên logic TikWM cũ (từng có tên _scrape_direct_tiktok_videos).
+    Đổi tên để grep dễ thấy fallback path.
+    """
     items_out: list[TrendItem] = []
     now_str = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
     
@@ -444,9 +525,9 @@ def fetch_trend_radar(
     """CÀO ĐỘC QUYỀN THEO NGUỒN ĐƯỢC CHỌN (Targeted Scraping) để tăng tốc và đúng nhu cầu."""
     results: list[TrendItem] = []
     
-    # 1. Nếu chỉ chọn TikTok VN -> CHỈ cào đúng TikTok!
+    # 1. Nếu chỉ chọn TikTok VN -> CHỈ cào đúng TikTok (Apify primary → TikWM fallback)!
     if platform_filter == "tiktok_vn":
-        results = _scrape_direct_tiktok_videos(keyword=keyword)
+        results = _scrape_tiktok_smart(keyword=keyword, count=12, nguon_goc="tiktok_vn")
     # 2. Nếu chọn Threads VN -> CHỈ cào đúng chuyên trang Gen Z / Threads!
     elif platform_filter == "threads_vn":
         results = _scrape_genz_media_vn(keyword=keyword)
@@ -461,7 +542,7 @@ def fetch_trend_radar(
         results = _scrape_google_trends_global(keyword=keyword)
     # 6. Nếu chọn "Tất cả nguồn" (all) -> Mới cào tổng hợp tất cả!
     else:
-        tt = _scrape_direct_tiktok_videos(keyword=keyword, count=8)
+        tt = _scrape_tiktok_smart(keyword=keyword, count=8, nguon_goc="tiktok_vn")
         gg = _scrape_google_trends_vn(keyword=keyword)
         gz = _scrape_genz_media_vn(keyword=keyword)
         st = _scrape_showbiz_kols_vn(keyword=keyword)

@@ -35,6 +35,10 @@ Thumbs.db
 .coverage.*
 htmlcov/
 
+# Local test/debug artifacts (không commit)
+_*.txt
+_*.log
+
 # AgentKit / Kiro — công cụ trợ lý cục bộ, không phải mã sản phẩm.
 # .kiro/agentkit chứa bản export portable (1491 tệp) nên tuyệt đối không commit.
 .kiro/
