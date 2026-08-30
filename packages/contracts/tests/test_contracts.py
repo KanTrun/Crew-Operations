@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
-
 from ca_contracts import (
     CONTRACTS,
     ActionItem,
@@ -10,8 +8,8 @@ from ca_contracts import (
     CuocHop,
     DeXuatSop,
     DoanThoaiTranscript,
-    DonQuay,
     DongDon,
+    DonQuay,
     LichTuan,
     MinhChungLoai,
     MonNuoc,
@@ -19,6 +17,7 @@ from ca_contracts import (
     PhieuMau,
     RangBuocTrichXuat,
 )
+from pydantic import ValidationError
 
 
 def test_contracts_registered() -> None:
@@ -40,10 +39,6 @@ def test_contracts_registered() -> None:
         "BanTinCaKhan",
         "HuanLuyenQuanLy",
     }
-
-
-
-
 
 
 def test_round_trip_models() -> None:
@@ -130,5 +125,3 @@ def test_cuoc_hop_model() -> None:
     assert len(meeting.action_items) == 1
     assert meeting.action_items[0].ten_nguoi_nhan == "Tuấn"
     assert meeting.trang_thai == "cho_duyet"
-
-

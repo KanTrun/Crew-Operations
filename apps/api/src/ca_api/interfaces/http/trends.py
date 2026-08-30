@@ -5,13 +5,14 @@ HTTP Router for Pure AI Trend Intelligence & Live Scraper.
 from __future__ import annotations
 
 from typing import Annotated, Any
-from fastapi import APIRouter, Header, HTTPException, Query
 
 from ca_agents.ag_trend import (
     TrendItem,
     fetch_trend_radar,
     get_trend_by_id,
 )
+from fastapi import APIRouter, Header, HTTPException, Query
+
 from ca_api.persist import session as auth_session
 
 router = APIRouter(prefix="/api/v1/trends", tags=["trends"])

@@ -2,7 +2,7 @@
 
 from ca_agents.ag_barista import consult_beverage
 from ca_agents.ag_concierge import handle_complaint, handle_reservation
-from ca_agents.ag_supervisor import supervise_outgoing_response, audit_conversations_summary
+from ca_agents.ag_supervisor import audit_conversations_summary, supervise_outgoing_response
 
 
 def test_ag_barista_taste_consultation():
@@ -34,7 +34,10 @@ def test_ag_concierge_complaint_and_booking():
     r_ticket = handle_reservation("Tối nay mình muốn đặt bàn nhóm 10 người lúc 19h")
     assert r_ticket.ticket_type == "reservation"
     assert r_ticket.urgency == "medium"
-    assert "chuẩn bị bàn" in r_ticket.suggested_reply.lower() or "bàn" in r_ticket.suggested_reply.lower()
+    assert (
+        "chuẩn bị bàn" in r_ticket.suggested_reply.lower()
+        or "bàn" in r_ticket.suggested_reply.lower()
+    )
 
 
 def test_ag_supervisor_preflight_gate():

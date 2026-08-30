@@ -8,11 +8,9 @@ import json
 import os
 import uuid
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, cast
-
-UTC = timezone.utc
 
 from ca_agents.ag_msg import classify
 from ca_agents.ag_tkb.extract import extract_tkb
@@ -404,10 +402,7 @@ def orc_dispatch(
             return {"i": i, "ok": True}
 
         # cast: lambda có tham số mặc định nên mypy không suy được kiểu từ ngữ cảnh
-        tasks = [
-            cast("Callable[[], dict[str, Any]]", lambda i=i: write(i))
-            for i in range(body.n)
-        ]
+        tasks = [cast("Callable[[], dict[str, Any]]", lambda i=i: write(i)) for i in range(body.n)]
         results = dispatch_parallel(tasks)
         return {"n": len(results), "results": results, "writes": _orc_writes[body.key]}
 
@@ -618,9 +613,7 @@ def toi_lich(
 
 
 @router.post("/api/v1/ca/nha")
-def ca_nha(
-    body: CaBody, authorization: Annotated[str | None, Header()] = None
-) -> dict[str, Any]:
+def ca_nha(body: CaBody, authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     nv = _nv_from_token(authorization)
     if not _known_ca(body.ca_id):
         raise HTTPException(status_code=404, detail="ca_khong_tim_thay")
@@ -655,9 +648,7 @@ def ca_nha(
 
 
 @router.post("/api/v1/ca/nhan")
-def ca_nhan(
-    body: CaBody, authorization: Annotated[str | None, Header()] = None
-) -> dict[str, Any]:
+def ca_nhan(body: CaBody, authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     nv = _nv_from_token(authorization)
     if not _known_ca(body.ca_id):
         raise HTTPException(status_code=404, detail="ca_khong_tim_thay")

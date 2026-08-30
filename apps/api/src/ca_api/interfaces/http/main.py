@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, cast
 
-UTC = timezone.utc
-
-from ca_contracts import Ca, DonQuay, DongDon, LichTuan, MonNuoc, NhanVien, PhieuMau, RangBuocTrichXuat
+from ca_contracts import (
+    Ca,
+    DongDon,
+    DonQuay,
+    LichTuan,
+    MonNuoc,
+    NhanVien,
+    PhieuMau,
+    RangBuocTrichXuat,
+)
 from ca_playbook import record_sua
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -148,6 +155,7 @@ def _format_ca_list(ca_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _tuan_list(base_tuan: str, so_tuan: int) -> list[str]:
     """Sinh danh sách các tuần ISO liên tiếp từ tuần bắt đầu."""
     import re
+
     m = re.match(r"^(\d{4})-W(\d{2})$", base_tuan)
     if not m:
         return [base_tuan]
@@ -163,7 +171,9 @@ def _tuan_list(base_tuan: str, so_tuan: int) -> list[str]:
     return weeks
 
 
-def _build_lich_tuan_from_seed(seed: dict[str, Any], tuan: str | None, so_tuan: int = 1) -> dict[str, Any]:
+def _build_lich_tuan_from_seed(
+    seed: dict[str, Any], tuan: str | None, so_tuan: int = 1
+) -> dict[str, Any]:
     """Build a schedule response from seed data for the requested ISO week."""
     nhan_vien = seed.get("nhan_vien", [])
     ca_raw = seed.get("ca_mau_21", [])
@@ -235,9 +245,6 @@ def get_lich_tuan(
     return result
 
 
-
-
-
 @app.post("/api/v1/lich-tuan/pin")
 def pin_assignment(
     body: PinBody,
@@ -283,6 +290,7 @@ def patch_lifecycle(
             status_code=422,
             detail=f"trang_thai_khong_hop_le — cho phep: {', '.join(_LIFECYCLE_STATES)}",
         )
+
     def mut(cur: dict) -> dict:
         cur["trang_thai"] = body.trang_thai
         if body.tuan_iso:

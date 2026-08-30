@@ -63,16 +63,12 @@ def test_viec_treo_qua_han_len_dau() -> None:
 
 
 def test_dau_hieu_bat_thuong_truoc_ton_kho() -> None:
-    r = viet_ban_tin(
-        [_f("ton_duoi_nguong", "Sữa ít"), _f("dau_hieu_bat_thuong", "Có dấu hiệu")]
-    )
+    r = viet_ban_tin([_f("ton_duoi_nguong", "Sữa ít"), _f("dau_hieu_bat_thuong", "Có dấu hiệu")])
     assert r.nguon_loai == ["dau_hieu_bat_thuong", "ton_duoi_nguong"]
 
 
 def test_uu_tien_tu_khai_thang_bang_mac_dinh() -> None:
-    r = viet_ban_tin(
-        [_f("viec_treo_qua_han", "Treo"), _f("phieu_chua_xong", "Phiếu", uu=1)]
-    )
+    r = viet_ban_tin([_f("viec_treo_qua_han", "Treo"), _f("phieu_chua_xong", "Phiếu", uu=1)])
     assert r.nguon_loai[0] == "phieu_chua_xong"
 
 
@@ -127,9 +123,7 @@ def test_giu_dau_cau_da_co() -> None:
 
 
 def test_van_ban_noi_bang_khoang_trang() -> None:
-    r = viet_ban_tin(
-        [_f("viec_treo_qua_han", "A"), _f("dau_hieu_bat_thuong", "B")]
-    )
+    r = viet_ban_tin([_f("viec_treo_qua_han", "A"), _f("dau_hieu_bat_thuong", "B")])
     assert r.van_ban == "A. B."
 
 

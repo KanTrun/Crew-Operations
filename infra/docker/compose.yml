@@ -31,7 +31,8 @@ services:
       context: ../..
       dockerfile: infra/docker/Dockerfile.api
     env_file:
-      - ../../.env
+      - path: ../../.env
+        required: false
     environment:
       DATABASE_URL: postgresql+psycopg://nhipquan:nhipquan@postgres:5432/nhipquan
       REDIS_URL: redis://redis:6379/0
@@ -74,7 +75,8 @@ services:
       dockerfile: infra/docker/Dockerfile.api
     command: ["python", "-m", "ca_api.worker"]
     env_file:
-      - ../../.env
+      - path: ../../.env
+        required: false
     environment:
       DATABASE_URL: postgresql+psycopg://nhipquan:nhipquan@postgres:5432/nhipquan
       REDIS_URL: redis://redis:6379/0

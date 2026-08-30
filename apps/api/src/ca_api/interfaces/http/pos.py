@@ -8,13 +8,11 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-UTC = timezone.utc
-
-from ca_contracts import DonQuay, DongDon, MonNuoc
+from ca_contracts import DongDon, DonQuay, MonNuoc
 from fastapi import APIRouter, File, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -35,9 +33,11 @@ from ca_api.persist import (
     menu_list,
     menu_set_hinh,
     menu_upsert,
-    session as auth_session,
     set_role,
     tieu_thu_append,
+)
+from ca_api.persist import (
+    session as auth_session,
 )
 
 router = APIRouter()
@@ -173,7 +173,9 @@ def _ghi_tieu_thu_uoc_luong(don: dict[str, Any], ai: str) -> None:
             )
 
 
-def _don_cho_role(authorization: str | None, *, trang_thai: str | None = None) -> list[dict[str, Any]]:
+def _don_cho_role(
+    authorization: str | None, *, trang_thai: str | None = None
+) -> list[dict[str, Any]]:
     s = _require_dang_ca(authorization)
     items = don_list(trang_thai=trang_thai)
     if s["role"] == "nhan_vien":
@@ -184,7 +186,11 @@ def _don_cho_role(authorization: str | None, *, trang_thai: str | None = None) -
 @router.get("/api/v1/menu")
 def menu(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_role(authorization)
-    return {"items": menu_list(), "nguon": "quan", "ghi": "Menu quầy nội bộ, không phải storefront khách."}
+    return {
+        "items": menu_list(),
+        "nguon": "quan",
+        "ghi": "Menu quầy nội bộ, không phải storefront khách.",
+    }
 
 
 @router.get("/api/v1/menu/quan-tri")
@@ -362,9 +368,7 @@ def quay_bao_cao(authorization: Annotated[str | None, Header()] = None) -> dict[
     _require_manager(authorization)
     items = [x for x in don_list() if x["trang_thai"] != "huy"]
     tong_ly = sum(int(row["so_luong"]) for don in items for row in don["dong"])
-    tong_tien = sum(
-        int(row["so_luong"]) * int(row["gia"]) for don in items for row in don["dong"]
-    )
+    tong_tien = sum(int(row["so_luong"]) * int(row["gia"]) for don in items for row in don["dong"])
     chua_thu = sum(
         int(row["so_luong"]) * int(row["gia"])
         for don in items

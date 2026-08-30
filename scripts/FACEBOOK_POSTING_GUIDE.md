@@ -111,10 +111,7 @@ if result.get("success"):
 ### Post Link
 
 ```python
-result = poster.post_link(
-    url="https://example.com",
-    message="Check this out!"
-)
+result = poster.post_link(url="https://example.com", message="Check this out!")
 ```
 
 ### Get Post Stats

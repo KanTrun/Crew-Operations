@@ -66,9 +66,7 @@ def run_vf_pipeline(
     Returns:
         GateResult summarising all gate decisions.
     """
-    schema_result = validate_schema(
-        extraction, schema_keys, already_retried=already_retried
-    )
+    schema_result = validate_schema(extraction, schema_keys, already_retried=already_retried)
     trace_result = validate_trace(extraction, evidence)
     conf_result = validate_conf(extraction, threshold=confidence_threshold)
 

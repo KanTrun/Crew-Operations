@@ -10,6 +10,7 @@ import re
 import sqlite3
 import uuid
 from collections.abc import Callable
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +25,6 @@ USERS = (
 )
 
 
-
 # ── Mật khẩu ──────────────────────────────────────────────────────────────
 # Bản đầu hash SHA256 trần, không salt. Khi chỉ có 3 tài khoản fixture thì đó
 # là nợ chấp nhận được; từ lúc mở màn hình đăng ký thì nó thành lỗ hổng thật
@@ -35,7 +35,12 @@ USERS = (
 #   - "pbkdf2_sha256$<vòng>$<salt hex>$<hash hex>"  (bản mới)
 #   - "<sha256 hex>"                                 (bản cũ, vẫn đăng nhập được)
 PBKDF2_VONG = int(
-    os.environ.get("NHIPQUAN_PBKDF2_VONG", "1000" if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("PYTEST_VERSION") else "240000")
+    os.environ.get(
+        "NHIPQUAN_PBKDF2_VONG",
+        "1000"
+        if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("PYTEST_VERSION")
+        else "240000",
+    )
 )
 _PREFIX = "pbkdf2_sha256"
 
@@ -190,10 +195,10 @@ def kenh_bind_get(channel: str, external_user_id: str) -> str | None:
 
 
 def kenh_bind_set(channel: str, external_user_id: str, nv_id: str) -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     init_db()
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     with _conn() as cx:
         cx.execute(
             """
@@ -232,11 +237,11 @@ _FAILED_BINDS: dict[str, list[float]] = {}
 
 
 def kenh_bind_code_issue(nv_id: str) -> str:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     init_db()
     code = uuid.uuid4().hex[:8]
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     with _conn() as cx:
         cx.execute(
             "INSERT INTO kenh_bind_code(code, nv_id, created_at) VALUES (?,?,?)",
@@ -245,9 +250,12 @@ def kenh_bind_code_issue(nv_id: str) -> str:
     return code
 
 
-def kenh_bind_code_consume(code: str, channel: str, external_user_id: str, max_age_seconds: int = 300) -> str | None:
+def kenh_bind_code_consume(
+    code: str, channel: str, external_user_id: str, max_age_seconds: int = 300
+) -> str | None:
     import time
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     now_ts = time.time()
     user_key = f"{channel}:{external_user_id}"
 
@@ -265,7 +273,7 @@ def kenh_bind_code_consume(code: str, channel: str, external_user_id: str, max_a
             attempts.append(now_ts)
             _FAILED_BINDS[user_key] = attempts
             return None
-        
+
         nv_id = str(row[0])
         created_at_str = str(row[1]) if len(row) > 1 else ""
 
@@ -273,7 +281,7 @@ def kenh_bind_code_consume(code: str, channel: str, external_user_id: str, max_a
         if created_at_str:
             try:
                 created_dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-                age = (datetime.now(timezone.utc) - created_dt).total_seconds()
+                age = (datetime.now(UTC) - created_dt).total_seconds()
                 if age > max_age_seconds:
                     cx.execute("DELETE FROM kenh_bind_code WHERE code=?", (code.strip().lower(),))
                     attempts.append(now_ts)
@@ -337,9 +345,7 @@ class DangKyLoi(ValueError):
 
 def _nv_id_ke_tiep(cx: sqlite3.Connection) -> str:
     """Cấp mã nhân viên chưa dùng, dạng nv_XX."""
-    dung = {
-        r[0] for r in cx.execute("SELECT nv_id FROM users").fetchall() if isinstance(r[0], str)
-    }
+    dung = {r[0] for r in cx.execute("SELECT nv_id FROM users").fetchall() if isinstance(r[0], str)}
     i = 1
     while f"nv_{i:02d}" in dung:
         i += 1

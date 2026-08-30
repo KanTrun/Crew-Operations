@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, cast
-
-UTC = timezone.utc
 
 from ca_agents.ag_handover import extract as extract_handover
 from ca_agents.ag_rule import propose as propose_rule
@@ -31,11 +29,17 @@ from ca_solver.fairness import AXES, update_debt_from_assignment, zero_debt
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
-from ca_api.interfaces.http.sprint3 import _known_ca, _require_chu_quan, _require_manager, _require_role
+from ca_api.interfaces.http.sprint3 import (
+    _known_ca,
+    _require_chu_quan,
+    _require_manager,
+    _require_role,
+)
 from ca_api.orchestration import Clock
 from ca_api.persist import audit_add, audit_list, kv_get, kv_mutate, kv_set, list_users
 from ca_api.persist import session as auth_session
 
+UTC = UTC
 router = APIRouter()
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"

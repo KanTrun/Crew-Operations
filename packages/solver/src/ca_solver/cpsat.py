@@ -35,9 +35,7 @@ def _abs_min(meta: dict[str, str], moc: str) -> int | None:
     return _THU_ORD[thu] * 24 * 60 + _to_min(meta[moc])
 
 
-def _vi_pham_khoang_nghi(
-    ma: dict[str, str], mb: dict[str, str], khoang_nghi_gio: float
-) -> bool:
+def _vi_pham_khoang_nghi(ma: dict[str, str], mb: dict[str, str], khoang_nghi_gio: float) -> bool:
     """c04 — hai ca có khoảng nghỉ ngắn hơn mức cấu hình.
 
     Tách thành hàm riêng để mốc thời gian không dùng chung tên biến với
@@ -147,9 +145,7 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
     # s01: prefer even ids for sang (synthetic nguyện vọng)
     if "s01" in soft_ids:
         for nv, ca in x:
-            if data.ca_meta[ca].get("khung") == "sang" and nv.endswith(
-                ("0", "2", "4", "6", "8")
-            ):
+            if data.ca_meta[ca].get("khung") == "sang" and nv.endswith(("0", "2", "4", "6", "8")):
                 obj_terms.append(x[nv, ca] * (-soft_mod.W_S01_NGUYEN_VONG))
 
     # s05: prefer pairing experienced (even) with newbie (odd) on same ca — soft bonus

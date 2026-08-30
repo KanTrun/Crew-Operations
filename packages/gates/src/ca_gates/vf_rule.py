@@ -47,7 +47,5 @@ def validate_rule(luat: dict[str, Any], *, fields: set[str] | None = None) -> Ru
     known = fields if fields is not None else DEFAULT_FIELDS
     extra = set(dieu) - known
     if extra:
-        return RuleResult(
-            passed=False, loai=loai, reason=f"truong_khong_ton_tai:{sorted(extra)}"
-        )
+        return RuleResult(passed=False, loai=loai, reason=f"truong_khong_ton_tai:{sorted(extra)}")
     return RuleResult(passed=True, loai=loai)

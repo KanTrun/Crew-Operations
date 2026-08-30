@@ -6,6 +6,7 @@ Public API:
     ApifyError                    -- raise khi actor fail / timeout / quota / token sai.
     run_actor_sync(actor_id, payload, timeout_s) -> list[dict]
 """
+
 from __future__ import annotations
 
 import json

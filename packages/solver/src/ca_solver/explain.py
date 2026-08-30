@@ -97,15 +97,11 @@ def sinh_ly_do(data: LichInput, ca_id: str, nhan_vien_id: str) -> LyDoPhanCong:
     # CON_TRAN_GIO — mang theo 2 số: đã làm và trần tuần
     da_lam = data.gio_da_lam.get(nhan_vien_id)
     if da_lam is not None and data.tran_gio_tuan > 0 and da_lam < data.tran_gio_tuan:
-        out.ly_do.append(
-            LyDo("CON_TRAN_GIO", so_lieu=[_fmt(da_lam), _fmt(data.tran_gio_tuan)])
-        )
+        out.ly_do.append(LyDo("CON_TRAN_GIO", so_lieu=[_fmt(da_lam), _fmt(data.tran_gio_tuan)]))
 
     # DU_KHOANG_NGHI — mang theo số giờ nghỉ tối thiểu đang cấu hình
     if data.khoang_nghi_gio > 0:
-        out.ly_do.append(
-            LyDo("DU_KHOANG_NGHI", so_lieu=[_fmt(data.khoang_nghi_gio)])
-        )
+        out.ly_do.append(LyDo("DU_KHOANG_NGHI", so_lieu=[_fmt(data.khoang_nghi_gio)]))
 
     # Nợ công bằng — so với trung vị nhóm, mang theo tổng nợ của người này
     if data.debt:

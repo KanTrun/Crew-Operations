@@ -8,15 +8,18 @@ Usage:
     python scripts/fb_auto_poster.py --topic "khuyen mai cuoi tuan" --tone hai huoc
     python scripts/fb_auto_poster.py --dry-run --topic gio mo cua
 """
+
 import argparse
 import os
 import sys
-import requests
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
-from facebook_page_poster import FacebookPagePoster
+import requests
 
+sys.path.insert(0, str(Path(__file__).parent))
+from datetime import UTC
+
+from facebook_page_poster import FacebookPagePoster
 
 PROMPT_TEMPLATE = """Ban la quan ly truyen thong cho quan ca phe "Nhip Quan" o Viet Nam.
 Hay viet mot bai dang Facebook tieng Viet, gioi thieu/dam thoai voi khach hang.
@@ -46,8 +49,7 @@ def llm_generate_gemini(prompt: str) -> str:
 
     model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip()
     url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}"
-        f":generateContent?key={key}"
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
     )
     body = {
         "contents": [{"parts": [{"text": prompt}]}],
@@ -82,7 +84,8 @@ def llm_generate_groq(prompt: str) -> str:
 
 def _parse_iso(s: str):
     """Parse ISO 8601 tu Facebook (co the la '2026-08-30T09:57:16+0000' hoac '...Z')."""
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     s = s.replace("Z", "+00:00")
     # Them ':' vao timezone neu thieu (vd: +0000 -> +00:00).
     if len(s) >= 5 and s[-5] in "+-" and s[-3] != ":":
@@ -104,8 +107,8 @@ def _count_posts_today(poster: FacebookPagePoster) -> int:
 
     FB tra created_time theo UTC. VN = UTC+7.
     """
-    from datetime import datetime, timedelta, timezone
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
+
     try:
         # Lay 10 bai moi nhat, dem trong hom nay theo gio VN.
         url = f"{poster.BASE_URL}/{poster.page_id}/posts"
@@ -120,7 +123,7 @@ def _count_posts_today(poster: FacebookPagePoster) -> int:
         )
         r.raise_for_status()
         data = r.json().get("data") or []
-        vn_today = (datetime.now(timezone.utc) + timedelta(hours=7)).date()
+        vn_today = (datetime.now(UTC) + timedelta(hours=7)).date()
         count = 0
         for p in data:
             ct = p.get("created_time", "")
@@ -142,7 +145,11 @@ def _count_posts_today(poster: FacebookPagePoster) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--topic", required=True, help="Chu de bai dang")
-    ap.add_argument("--tone", default="than thien", help="Giong: than thien | trang trong | hai huoc | truyen cam hung")
+    ap.add_argument(
+        "--tone",
+        default="than thien",
+        help="Giong: than thien | trang trong | hai huoc | truyen cam hung",
+    )
     ap.add_argument("--dry-run", action="store_true", help="Chi in preview, khong dang that")
     args = ap.parse_args()
 

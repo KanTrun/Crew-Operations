@@ -31,9 +31,9 @@ def main() -> int:
     from fastapi.testclient import TestClient  # noqa: E402
 
     c = TestClient(app)
-    tok = c.post(
-        "/api/v1/auth/login", json={"username": "lan", "password": "nhipquan"}
-    ).json()["token"]
+    tok = c.post("/api/v1/auth/login", json={"username": "lan", "password": "nhipquan"}).json()[
+        "token"
+    ]
     r = c.post(
         "/api/v1/cam-nang/chay-8-buoc",
         headers={"Authorization": f"Bearer {tok}"},

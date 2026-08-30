@@ -9,6 +9,8 @@ except ImportError:
 
     class StrEnum(str, Enum):
         pass
+
+
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -129,7 +131,9 @@ class ActionItem(BaseModel):
 
 class DeXuatPheDuyet(BaseModel):
     id: str
-    loai_de_xuat: Literal["quy_trinh_sop", "mua_sam_vat_tu", "chinh_sach_nhan_su", "khac"] = "quy_trinh_sop"
+    loai_de_xuat: Literal["quy_trinh_sop", "mua_sam_vat_tu", "chinh_sach_nhan_su", "khac"] = (
+        "quy_trinh_sop"
+    )
     tieu_de: str
     nguoi_de_xuat: str = ""
     nguoi_phe_duyet: str = ""
@@ -144,7 +148,13 @@ class GopYLuuY(BaseModel):
     id: str
     nguoi_gop_y: str = ""
     nguoi_nhan: str = ""
-    chu_de: Literal["thai_do_phuc_vu", "ky_nang_pha_che", "ve_sinh_an_toan", "dong_vien_khen_ngoi", "luu_y_chung"] = "luu_y_chung"
+    chu_de: Literal[
+        "thai_do_phuc_vu",
+        "ky_nang_pha_che",
+        "ve_sinh_an_toan",
+        "dong_vien_khen_ngoi",
+        "luu_y_chung",
+    ] = "luu_y_chung"
     tinh_chat: Literal["nhac_nho", "khen_ngoi", "kinh_nghiem", "gop_y"] = "gop_y"
     noi_dung: str
     ghi_chu: str = ""
@@ -194,7 +204,9 @@ class CuocHop(BaseModel):
     tieu_de: str
     loai_hop: Literal["giao_ca", "hop_tuan", "dao_tao", "khac"] = "giao_ca"
     thoi_gian: str = ""
-    nguon_am_thanh: Literal["google_meet_tab", "microphone", "file_upload", "ghi_chep_tay"] = "microphone"
+    nguon_am_thanh: Literal["google_meet_tab", "microphone", "file_upload", "ghi_chep_tay"] = (
+        "microphone"
+    )
     transcript_thoai: list[DoanThoaiTranscript] = Field(default_factory=list)
     tom_tat: str
     quyet_dinh: list[str] = Field(default_factory=list)
@@ -227,7 +239,3 @@ CONTRACTS = {
     "BanTinCaKhan": BanTinCaKhan,
     "HuanLuyenQuanLy": HuanLuyenQuanLy,
 }
-
-
-
-

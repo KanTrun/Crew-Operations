@@ -38,7 +38,7 @@ def transcribe_audio(
     timeout_s: float = 60.0,
 ) -> TranscribeResult:
     """Transcribe audio with speaker diarization.
-    
+
     Supports Gemini-3.5-Transcribe / Gemini Flash multimodal audio, Groq Whisper, and Replay mode.
     """
     mode = agent_mode()
@@ -94,13 +94,13 @@ def _transcribe_with_gemini(
     timeout_s: float,
 ) -> TranscribeResult:
     """Call Google Gemini for batch audio transcription.
-    
+
     Excludes models known ahead-of-time not to support REST batch audio JSON output
     (e.g., gemini-3.5-transcribe is stream-only) to avoid wasting time waiting on API failures.
     """
     default_model = os.environ.get("GEMINI_TRANSCRIBE_MODEL", "gemini-2.5-flash").strip()
     raw_models = [default_model, "gemini-2.5-flash", "gemini-flash-latest"]
-    
+
     # Pre-filter known incompatible models for REST batch audio + JSON response
     models_to_try: list[str] = []
     for m in raw_models:
@@ -111,12 +111,17 @@ def _transcribe_with_gemini(
     if not models_to_try:
         models_to_try = ["gemini-2.5-flash", "gemini-flash-latest"]
 
-
-
-    
     # Strip any codec parameters like ';codecs=opus' for Google Gemini API compatibility
     clean_mime = (mime_type or "audio/webm").split(";")[0].strip().lower()
-    if clean_mime not in {"audio/webm", "audio/mp3", "audio/wav", "audio/ogg", "audio/aac", "audio/m4a", "audio/flac"}:
+    if clean_mime not in {
+        "audio/webm",
+        "audio/mp3",
+        "audio/wav",
+        "audio/ogg",
+        "audio/aac",
+        "audio/m4a",
+        "audio/flac",
+    }:
         clean_mime = "audio/webm"
 
     prompt = (
@@ -169,7 +174,7 @@ def _transcribe_with_gemini(
             parts = data["candidates"][0]["content"]["parts"]
             text = "".join(str(p.get("text") or "") for p in parts)
             parsed = parse_json_object(text) or {}
-            
+
             raw_text = str(parsed.get("raw_text") or "")
             segments_raw = parsed.get("segments") or []
             segs: list[TranscriptSegment] = []
@@ -179,8 +184,12 @@ def _transcribe_with_gemini(
                         TranscriptSegment(
                             nguoi_noi=str(s.get("nguoi_noi") or "Người nói"),
                             noi_dung=str(s.get("noi_dung") or ""),
-                            bat_dau_s=float(s.get("bat_dau_s")) if s.get("bat_dau_s") is not None else None,
-                            ket_thuc_s=float(s.get("ket_thuc_s")) if s.get("ket_thuc_s") is not None else None,
+                            bat_dau_s=float(s.get("bat_dau_s"))
+                            if s.get("bat_dau_s") is not None
+                            else None,
+                            ket_thuc_s=float(s.get("ket_thuc_s"))
+                            if s.get("ket_thuc_s") is not None
+                            else None,
                         )
                     )
             if not raw_text and segs:
@@ -201,7 +210,6 @@ def _transcribe_with_gemini(
     raise last_err or RuntimeError("Gemini transcribe all models failed")
 
 
-
 def _transcribe_with_groq(
     audio_bytes: bytes,
     mime_type: str,
@@ -212,10 +220,10 @@ def _transcribe_with_groq(
     """Call Groq Whisper API."""
     import io
     import urllib.request
-    
+
     boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
     filename = "audio.webm" if "webm" in mime_type else "audio.mp3"
-    
+
     buf = io.BytesIO()
     buf.write(f"--{boundary}\r\n".encode())
     buf.write(f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'.encode())
@@ -223,7 +231,11 @@ def _transcribe_with_groq(
     buf.write(audio_bytes)
     buf.write(b"\r\n")
 
-    for key, val in [("model", "whisper-large-v3-turbo"), ("language", language), ("response_format", "verbose_json")]:
+    for key, val in [
+        ("model", "whisper-large-v3-turbo"),
+        ("language", language),
+        ("response_format", "verbose_json"),
+    ]:
         buf.write(f"--{boundary}\r\n".encode())
         buf.write(f'Content-Disposition: form-data; name="{key}"\r\n\r\n'.encode())
         buf.write(val.encode())
@@ -243,7 +255,7 @@ def _transcribe_with_groq(
         body = resp.read().decode("utf-8")
     data = json.loads(body)
     raw_text = str(data.get("text") or "")
-    
+
     segs: list[TranscriptSegment] = []
     for s in data.get("segments") or []:
         segs.append(
@@ -266,9 +278,16 @@ def _transcribe_with_groq(
 def _replay_transcribe() -> TranscribeResult:
     """Fixture fallback for offline/CI replay."""
     fixture_segs = [
-        TranscriptSegment(nguoi_noi="Quản lý", noi_dung="Chào cả nhà, ca chiều nay chúng ta cần vệ sinh máy pha và kiểm tra tủ đá."),
-        TranscriptSegment(nguoi_noi="Tuấn", noi_dung="Dạ em Tuấn nhận lau máy pha và thay ron trước 16h."),
-        TranscriptSegment(nguoi_noi="My", noi_dung="Dạ em My sẽ dán lại công thức trà đào mới trước 17h."),
+        TranscriptSegment(
+            nguoi_noi="Quản lý",
+            noi_dung="Chào cả nhà, ca chiều nay chúng ta cần vệ sinh máy pha và kiểm tra tủ đá.",
+        ),
+        TranscriptSegment(
+            nguoi_noi="Tuấn", noi_dung="Dạ em Tuấn nhận lau máy pha và thay ron trước 16h."
+        ),
+        TranscriptSegment(
+            nguoi_noi="My", noi_dung="Dạ em My sẽ dán lại công thức trà đào mới trước 17h."
+        ),
     ]
     raw = " ".join(s.noi_dung for s in fixture_segs)
     return TranscribeResult(

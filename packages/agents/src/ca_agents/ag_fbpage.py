@@ -34,47 +34,142 @@ CUSTOMER_INTENTS = (
 )
 
 _COMPLAINT_WORDS = (
-    "thất vọng", "that vong", "dở", "do ", "nguội", "nguoi", "chậm", "cham",
-    "thái độ", "thai do", "phản ánh", "phan anh", "góp ý", "gop y",
-    "khiếu nại", "khieu nai", "tệ", "te ", "đau bụng", "dau bung", "bực", "buc", "tẩy chay"
+    "thất vọng",
+    "that vong",
+    "dở",
+    "do ",
+    "nguội",
+    "nguoi",
+    "chậm",
+    "cham",
+    "thái độ",
+    "thai do",
+    "phản ánh",
+    "phan anh",
+    "góp ý",
+    "gop y",
+    "khiếu nại",
+    "khieu nai",
+    "tệ",
+    "te ",
+    "đau bụng",
+    "dau bung",
+    "bực",
+    "buc",
+    "tẩy chay",
 )
 
 _BOOKING_WORDS = (
-    "đặt bàn", "dat ban", "giữ chỗ", "giu cho", "bàn 10 người", "bàn mấy người",
-    "reserve", "booking", "đặt trước", "dat truoc", "ghép bàn", "tiệc", "tiec"
+    "đặt bàn",
+    "dat ban",
+    "giữ chỗ",
+    "giu cho",
+    "bàn 10 người",
+    "bàn mấy người",
+    "reserve",
+    "booking",
+    "đặt trước",
+    "dat truoc",
+    "ghép bàn",
+    "tiệc",
+    "tiec",
 )
 
 _PROMO_WORDS = (
-    "khuyến mãi", "khuyen mai", "ưu đãi", "uu dai", "giảm giá", "giam gia",
-    "voucher", "combo", "discount", "sale", "chương trình", "chuong trinh"
+    "khuyến mãi",
+    "khuyen mai",
+    "ưu đãi",
+    "uu dai",
+    "giảm giá",
+    "giam gia",
+    "voucher",
+    "combo",
+    "discount",
+    "sale",
+    "chương trình",
+    "chuong trinh",
 )
 
 _INFO_WORDS = (
-    "mở cửa", "mo cua", "mấy giờ", "may gio", "đóng cửa", "dong cua",
-    "ở đâu", "o dau", "địa chỉ", "dia chi", "vị trí", "vi tri",
-    "tìm đường", "tim duong", "quán ở", "quan o", "wifi", "pass wifi"
+    "mở cửa",
+    "mo cua",
+    "mấy giờ",
+    "may gio",
+    "đóng cửa",
+    "dong cua",
+    "ở đâu",
+    "o dau",
+    "địa chỉ",
+    "dia chi",
+    "vị trí",
+    "vi tri",
+    "tìm đường",
+    "tim duong",
+    "quán ở",
+    "quan o",
+    "wifi",
+    "pass wifi",
 )
 
 _CONSULT_WORDS = (
-    "tư vấn", "tu van", "món gì ngon", "mon gi ngon", "chưa biết chọn gì",
-    "không uống được", "khong uong duoc", "say cà phê", "say ca phe",
-    "ít ngọt", "it ngọt", "bán chạy", "signature", "gợi ý", "goi y"
+    "tư vấn",
+    "tu van",
+    "món gì ngon",
+    "mon gi ngon",
+    "chưa biết chọn gì",
+    "không uống được",
+    "khong uong duoc",
+    "say cà phê",
+    "say ca phe",
+    "ít ngọt",
+    "it ngọt",
+    "bán chạy",
+    "signature",
+    "gợi ý",
+    "goi y",
 )
 
 _MENU_WORDS = (
-    "menu", "thực đơn", "thuc don", "giá", "gia", "bao nhiêu", "bao nhieu",
-    "món gì", "mon gi", "uống gì", "uong gi", "cà phê", "ca phe", "cafe",
-    "bạc xỉu", "bac xiu", "trà đào", "tra dao", "sinh tố", "nước ép"
+    "menu",
+    "thực đơn",
+    "thuc don",
+    "giá",
+    "gia",
+    "bao nhiêu",
+    "bao nhieu",
+    "món gì",
+    "mon gi",
+    "uống gì",
+    "uong gi",
+    "cà phê",
+    "ca phe",
+    "cafe",
+    "bạc xỉu",
+    "bac xiu",
+    "trà đào",
+    "tra dao",
+    "sinh tố",
+    "nước ép",
 )
 
 _GREETING_WORDS = (
-    "chào", "chao", "hi", "hello", "alo", "quán ơi", "quan oi", "ad ơi", "ad oi", "shop ơi"
+    "chào",
+    "chao",
+    "hi",
+    "hello",
+    "alo",
+    "quán ơi",
+    "quan oi",
+    "ad ơi",
+    "ad oi",
+    "shop ơi",
 )
 
 
 @dataclass(frozen=True)
 class FBMessageInput:
     """Standardized Facebook message input."""
+
     psid: str
     text: str
     message_id: str
@@ -85,6 +180,7 @@ class FBMessageInput:
 @dataclass(frozen=True)
 class FBMessageOutput:
     """Result of processing a Facebook message."""
+
     action: str
     response: str | None
     intent: str
@@ -139,33 +235,42 @@ def detect_customer_psychology(text: str) -> tuple[str, str, float]:
 
 
 def build_human_response(
-    intent: str,
-    emotion: str,
-    text: str,
-    context: dict[str, Any] | None = None
+    intent: str, emotion: str, text: str, context: dict[str, Any] | None = None
 ) -> tuple[str, bool, str]:
     """
     Route task to specialized agent squad and generate response.
     Returns (reply_text, requires_human_approval, agent_name).
     """
     ctx = context or {}
-    profile = ctx.get("profile", {
-        "ten_quan": "Nhịp Quán",
-        "dia_chi": "123 Đường Cà Phê, P.5, Q.3, TP.HCM",
-        "hotline": "0901234567",
-        "gio_mo_cua": "07:00 - 22:30 hàng ngày",
-        "wifi_ssid": "NhipQuan_Guest",
-        "wifi_pass": "nhipquan2026",
-    })
-    menu = ctx.get("menu", [
-        {"ten": "Cà phê đen", "gia_formatted": "25,000đ"},
-        {"ten": "Cà phê sữa", "gia_formatted": "30,000đ"},
-        {"ten": "Bạc xỉu", "gia_formatted": "32,000đ"},
-        {"ten": "Trà đào", "gia_formatted": "35,000đ"},
-    ])
-    promos = ctx.get("promotions", [
-        {"tieu_de": "Combo Sáng Tỉnh Táo", "chi_tiet": "Giảm 10% khi mua Cà phê sữa + Bánh mì trước 09:00"}
-    ])
+    profile = ctx.get(
+        "profile",
+        {
+            "ten_quan": "Nhịp Quán",
+            "dia_chi": "123 Đường Cà Phê, P.5, Q.3, TP.HCM",
+            "hotline": "0901234567",
+            "gio_mo_cua": "07:00 - 22:30 hàng ngày",
+            "wifi_ssid": "NhipQuan_Guest",
+            "wifi_pass": "nhipquan2026",
+        },
+    )
+    menu = ctx.get(
+        "menu",
+        [
+            {"ten": "Cà phê đen", "gia_formatted": "25,000đ"},
+            {"ten": "Cà phê sữa", "gia_formatted": "30,000đ"},
+            {"ten": "Bạc xỉu", "gia_formatted": "32,000đ"},
+            {"ten": "Trà đào", "gia_formatted": "35,000đ"},
+        ],
+    )
+    promos = ctx.get(
+        "promotions",
+        [
+            {
+                "tieu_de": "Combo Sáng Tỉnh Táo",
+                "chi_tiet": "Giảm 10% khi mua Cà phê sữa + Bánh mì trước 09:00",
+            }
+        ],
+    )
 
     # Case A: AG-CONCIERGE (Complaint)
     if intent == "khieu_nai_gop_y" or emotion == "complaining":
@@ -178,13 +283,19 @@ def build_human_response(
         return ticket.suggested_reply, True, "AG-CONCIERGE"
 
     # Case C: AG-BARISTA (Taste consultation)
-    if emotion == "hesitant" or any(k in _norm(text) for k in ("tư vấn", "không uống được", "say cà phê", "ít ngọt")):
+    if emotion == "hesitant" or any(
+        k in _norm(text) for k in ("tư vấn", "không uống được", "say cà phê", "ít ngọt")
+    ):
         reply, _ = consult_beverage(text, menu)
         return reply, False, "AG-BARISTA"
 
     # Case D: AG-FRONTDESK (Greeting, Info, Menu list, Promo)
     if intent == "chao_hoi":
-        return f"Dạ Nhịp Quán xin chào mình ạ! Em có thể gửi mình xem menu hoặc tư vấn đồ uống hôm nay nha!", False, "AG-FRONTDESK"
+        return (
+            "Dạ Nhịp Quán xin chào mình ạ! Em có thể gửi mình xem menu hoặc tư vấn đồ uống hôm nay nha!",
+            False,
+            "AG-FRONTDESK",
+        )
 
     if intent == "hoi_gio_dia_chi":
         reply = (
@@ -197,7 +308,12 @@ def build_human_response(
         return reply, False, "AG-FRONTDESK"
 
     if intent == "hoi_menu_gia":
-        items_str = "\n".join([f"• {m['ten']}: {m.get('gia_formatted', str(m.get('gia', '')) + 'đ')}" for m in menu[:6]])
+        items_str = "\n".join(
+            [
+                f"• {m['ten']}: {m.get('gia_formatted', str(m.get('gia', '')) + 'đ')}"
+                for m in menu[:6]
+            ]
+        )
         reply = (
             f"Dạ em gửi mình menu nổi bật của quán nha:\n{items_str}\n\n"
             "Quán có đầy đủ cà phê truyền thống, trà trái cây và bánh ngọt. "
@@ -222,7 +338,7 @@ async def process_fb_message(
     *,
     confidence_threshold: float = CONFIDENCE_THRESHOLD_DEFAULT,
     auto_respond_enabled: bool = True,
-    public_context: dict[str, Any] | None = None
+    public_context: dict[str, Any] | None = None,
 ) -> FBMessageOutput:
     """
     Process a customer message through the 4-Agent Squad Architecture.
@@ -237,7 +353,7 @@ async def process_fb_message(
             confidence=1.0,
             emotion="suspicious",
             delegated_agent="AG-SUPERVISOR",
-            reason=f"Guardrail triggered: {guard.reason}"
+            reason=f"Guardrail triggered: {guard.reason}",
         )
 
     # 2. Emotion & Intent Detection
@@ -268,9 +384,9 @@ async def process_fb_message(
                     user=guard.sanitized_text,
                     task="text",
                     json_mode=False,
-                    timeout_s=3.0
+                    timeout_s=3.0,
                 ),
-                timeout=3.5
+                timeout=3.5,
             )
             if llm_res.ok and llm_res.text.strip():
                 reply_text = llm_res.text.strip()
@@ -293,7 +409,7 @@ async def process_fb_message(
             emotion=emotion,
             delegated_agent=agent_name,
             suggested_reply=reply_text,
-            reason=f"Approved by AG-SUPERVISOR ({agent_name})"
+            reason=f"Approved by AG-SUPERVISOR ({agent_name})",
         )
     else:
         return FBMessageOutput(
@@ -304,7 +420,7 @@ async def process_fb_message(
             emotion=emotion,
             delegated_agent=agent_name,
             suggested_reply=reply_text,
-            reason="Queued for manager approval"
+            reason="Queued for manager approval",
         )
 
 
@@ -339,9 +455,7 @@ def classify_customer_intent(text: str) -> tuple[str, float]:
 
 
 def build_response_for_intent(
-    intent: str,
-    text: str,
-    context: dict[str, Any] | None = None
+    intent: str, text: str, context: dict[str, Any] | None = None
 ) -> tuple[str, bool]:
     """Helper alias for response generation."""
     reply, req, _ = build_human_response(intent, "neutral", text, context)

@@ -48,10 +48,7 @@ _LEAK_REGEX = re.compile("|".join(_LEAK_PATTERNS), re.IGNORECASE)
 _ROBOT_REGEX = re.compile("|".join(_ROBOT_PHRASES), re.IGNORECASE)
 
 
-def supervise_outgoing_response(
-    customer_query: str,
-    proposed_response: str
-) -> SupervisionResult:
+def supervise_outgoing_response(customer_query: str, proposed_response: str) -> SupervisionResult:
     """
     Pre-flight safety check on AI-generated response before sending to customer.
     """

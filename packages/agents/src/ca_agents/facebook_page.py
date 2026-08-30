@@ -6,16 +6,15 @@ import hashlib
 import hmac
 import json
 import os
+import pathlib
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import UTC
 from typing import Any
 
 GRAPH = "https://graph.facebook.com/v26.0"
-
-
-import pathlib
 
 _ENV_LOADED = False
 
@@ -45,12 +44,18 @@ def _ensure_env() -> None:
 
 def _token() -> str:
     _ensure_env()
-    return (os.environ.get("NHIPQUAN_FB_PAGE_TOKEN") or os.environ.get("FACEBOOK_PAGE_ACCESS_TOKEN") or "").strip()
+    return (
+        os.environ.get("NHIPQUAN_FB_PAGE_TOKEN")
+        or os.environ.get("FACEBOOK_PAGE_ACCESS_TOKEN")
+        or ""
+    ).strip()
 
 
 def _page_id() -> str:
     _ensure_env()
-    pid = (os.environ.get("NHIPQUAN_FB_PAGE_ID") or os.environ.get("FACEBOOK_PAGE_ID") or "").strip()
+    pid = (
+        os.environ.get("NHIPQUAN_FB_PAGE_ID") or os.environ.get("FACEBOOK_PAGE_ID") or ""
+    ).strip()
     return pid if pid else "me"
 
 
@@ -70,11 +75,7 @@ def verify_fb_webhook_signature(payload_bytes: bytes, signature_header: str) -> 
         return True
     if not signature_header or not signature_header.startswith("sha256="):
         return False
-    expected_hash = hmac.new(
-        secret.encode("utf-8"),
-        payload_bytes,
-        hashlib.sha256
-    ).hexdigest()
+    expected_hash = hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
     provided_hash = signature_header.split("sha256=", 1)[1]
     return hmac.compare_digest(expected_hash, provided_hash)
 
@@ -91,9 +92,10 @@ def is_within_24h_window(last_message_timestamp: float | str | None) -> bool:
                 ts = ts / 1000.0
             return (time.time() - ts) <= 86400.0
         # parse ISO string
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         dt = datetime.fromisoformat(str(last_message_timestamp).replace("Z", "+00:00"))
-        return (datetime.now(timezone.utc) - dt).total_seconds() <= 86400.0
+        return (datetime.now(UTC) - dt).total_seconds() <= 86400.0
     except Exception:
         return True
 
@@ -154,10 +156,7 @@ def fetch_conversations(limit: int = 15) -> list[dict[str, Any]]:
     pid = _page_id()
     if not pid or not _token():
         return []
-    fields = (
-        "id,updated_time,participants{name,id},"
-        "messages.limit(5){message,from,created_time}"
-    )
+    fields = "id,updated_time,participants{name,id},messages.limit(5){message,from,created_time}"
     data = graph_get(f"{pid}/conversations", {"fields": fields, "limit": str(limit)})
     out: list[dict[str, Any]] = []
     for c in data.get("data") or []:

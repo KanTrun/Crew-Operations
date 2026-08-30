@@ -75,6 +75,7 @@ def validate_conf(
 # blur_case helper
 # ---------------------------------------------------------------------------
 
+
 def blur_case(blur_score: float, *, max_blur: float = 100.0) -> float:
     """Convert a *blur_score* (higher = sharper) to a confidence in [0, 1].
 

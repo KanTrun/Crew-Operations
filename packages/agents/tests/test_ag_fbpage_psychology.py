@@ -1,28 +1,35 @@
 """Unit tests for AG-FBPAGE Human Persona and Psychological Profiling."""
 
 import asyncio
+
 from ca_agents.ag_fbpage import (
     FBMessageInput,
-    detect_customer_psychology,
     build_human_response,
+    detect_customer_psychology,
     process_fb_message,
 )
 
 
 def test_detect_customer_psychology_states():
     # 1. Complaining / Angry
-    emotion, intent, conf = detect_customer_psychology("Hôm nay nhân viên phục vụ thái độ tệ quá, nước thì dở")
+    emotion, intent, conf = detect_customer_psychology(
+        "Hôm nay nhân viên phục vụ thái độ tệ quá, nước thì dở"
+    )
     assert emotion == "complaining"
     assert intent == "khieu_nai_gop_y"
     assert conf >= 0.90
 
     # 2. Hesitant / Needs consultation
-    emotion, intent, conf = detect_customer_psychology("Mình không uống được cà phê đậm, có món gì thanh mát ít ngọt không?")
+    emotion, intent, conf = detect_customer_psychology(
+        "Mình không uống được cà phê đậm, có món gì thanh mát ít ngọt không?"
+    )
     assert emotion == "hesitant"
     assert intent == "hoi_menu_gia"
 
     # 3. Booking
-    emotion, intent, conf = detect_customer_psychology("Tối nay quán có bàn 10 người lúc 19h30 không?")
+    emotion, intent, conf = detect_customer_psychology(
+        "Tối nay quán có bàn 10 người lúc 19h30 không?"
+    )
     assert emotion == "booking"
     assert intent == "dat_ban"
 
@@ -56,7 +63,9 @@ def test_human_persona_anti_robot_rules():
 
         # Must not contain robotic AI phrases
         for robot_term in robotic_phrases:
-            assert robot_term not in reply_lower, f"Robotic phrase found in response: '{robot_term}' in '{reply}'"
+            assert robot_term not in reply_lower, (
+                f"Robotic phrase found in response: '{robot_term}' in '{reply}'"
+            )
 
         # Must sound natural and polite (contains 'dạ' or 'ạ')
         assert "dạ" in reply_lower or "ạ" in reply_lower, f"Polite particle missing in: '{reply}'"

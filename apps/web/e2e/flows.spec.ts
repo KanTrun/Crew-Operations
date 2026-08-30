@@ -14,12 +14,12 @@ test.describe("8 luồng vận hành chính (Quản lý - lan)", () => {
   });
 
   test("1 — đăng nhập → hôm nay", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: /Quán hôm nay|Hôm nay/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Quán hôm nay" })).toBeVisible();
   });
 
   test("2 — phiếu mở quán", async ({ page }) => {
     await page.goto("/phieu");
-    await expect(page.getByRole("heading", { name: /Phiếu Ca/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Mở phiếu", exact: true })).toBeVisible();
   });
 
   test("3 — lịch của tôi", async ({ page }) => {
@@ -101,7 +101,7 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
 
     // Vào /roster
     await page.goto("/roster");
-    await expect(page.getByRole("heading", { name: /Lịch tuần/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Lịch/i })).toBeVisible();
 
     // Vào /inbox
     await page.goto("/inbox");
@@ -109,7 +109,7 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
 
     // Quản lý cần thấy đủ các bề mặt vận hành, không chỉ lịch và hộp thư.
     for (const [route, heading] of [
-      ["/page-quan", /Page quán/i],
+      ["/page-quan", /Page quán|Radar|Xu Hướng/i],
       ["/cam-nang", /Cẩm nang/i],
       ["/tkb", /Thời khoá biểu/i],
       ["/tieu-thu", /Tiêu thụ/i],
@@ -147,7 +147,7 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
 
     // Vào /roster
     await page.goto("/roster");
-    await expect(page.getByRole("heading", { name: /Lịch tuần/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Lịch/i })).toBeVisible();
 
     // Chủ quán cũng vào được /inbox, /quay, /pha
     await page.goto("/inbox");

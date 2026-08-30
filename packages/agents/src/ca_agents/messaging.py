@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_FIXTURE = ROOT / "data" / "golden" / "msg" / "inbound_01.jsonl"
@@ -71,9 +72,7 @@ class ReplayPort(MessagePort):
     name = "replay"
 
     def __init__(self, fixture: Path | None = None) -> None:
-        self.fixture = fixture or Path(
-            os.environ.get("NHIPQUAN_MSG_FIXTURE", str(DEFAULT_FIXTURE))
-        )
+        self.fixture = fixture or Path(os.environ.get("NHIPQUAN_MSG_FIXTURE", str(DEFAULT_FIXTURE)))
 
     def send(self, to: str, text: str) -> SendResult:
         _append_outbox("replay", to, text)

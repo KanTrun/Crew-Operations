@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import re
 import uuid
 from pathlib import Path
 from typing import Any
 
 from ca_agents.llm import agent_mode, complete, ensure_dotenv, parse_json_object
-
 
 
 def resolve_staff_id(name: str, staff_list: list[dict[str, Any]] | None) -> str | None:
@@ -23,7 +21,11 @@ def resolve_staff_id(name: str, staff_list: list[dict[str, Any]] | None) -> str 
         if not nv_ten:
             continue
         # Exact match or substring / first name match
-        if clean_name in nv_ten or nv_ten.endswith(clean_name) or clean_name.endswith(nv_ten.split()[-1]):
+        if (
+            clean_name in nv_ten
+            or nv_ten.endswith(clean_name)
+            or clean_name.endswith(nv_ten.split()[-1])
+        ):
             return nv_id
     return None
 
@@ -41,7 +43,6 @@ def extract_meeting(
     ensure_dotenv()
     mid = meeting_id or f"meet_{uuid.uuid4().hex[:8]}"
     mode = agent_mode()
-
 
     # If in replay mode
     if mode == "replay":
@@ -69,25 +70,24 @@ def extract_meeting(
     prompt_path = prompt_base / "v2.md"
     if not prompt_path.is_file():
         prompt_path = prompt_base / "v1.md"
-    system_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.is_file() else "Bạn là AG-MEETING."
+    system_prompt = (
+        prompt_path.read_text(encoding="utf-8") if prompt_path.is_file() else "Bạn là AG-MEETING."
+    )
 
     # Build segment detail string for better context
     seg_detail = ""
     if segments:
-        seg_lines = [f"  [{s.get('nguoi_noi','?')}]: {s.get('noi_dung','')}" for s in segments]
+        seg_lines = [f"  [{s.get('nguoi_noi', '?')}]: {s.get('noi_dung', '')}" for s in segments]
         seg_detail = "\n\nChi tiết từng đoạn thoại:\n" + "\n".join(seg_lines)
 
     user_prompt = (
         f"Loại cuộc họp: {meeting_type}\n"
-        f"Danh sách nhân viên trong quán: {', '.join(nv.get('ten','') for nv in (staff_list or []))}\n"
+        f"Danh sách nhân viên trong quán: {', '.join(nv.get('ten', '') for nv in (staff_list or []))}\n"
         f"Nội dung bản bóc băng thoại:\n{text.strip()}"
         f"{seg_detail}\n\n"
         "Hãy phân tích kỹ và trả về JSON đầy đủ gồm: "
         "khong_lien_quan, tieu_de, tom_tat, quyet_dinh, audit_sop, ban_tin_ca, huan_luyen_quan_ly, de_xuat_phe_duyet, action_items, gop_y_luu_y, do_tin_cay_tong_the."
     )
-
-
-
 
     res = complete(
         system=system_prompt,
@@ -117,7 +117,6 @@ def extract_meeting(
     )
 
 
-
 def _extract_rule_or_fixture(
     text: str,
     meeting_id: str,
@@ -128,7 +127,7 @@ def _extract_rule_or_fixture(
 ) -> dict[str, Any]:
     """Rule-based heuristic extractor and golden fixture fallback."""
     raw = text.strip()
-    
+
     # 1. Check if matches golden coffee meeting
     if "rỉ nước" in raw or "máy pha" in raw:
         items = [
@@ -213,12 +212,11 @@ def _extract_rule_or_fixture(
             "trang_thai": "cho_duyet",
         }
 
-
     # 2. Generic Rule-based extraction
     lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
     action_items: list[dict[str, Any]] = []
     quyet_dinh: list[str] = []
-    
+
     idx = 1
     for line in lines:
         low = line.lower()
@@ -305,11 +303,13 @@ def _normalize_output(
             trang_thai = vd.get("trang_thai", "can_hanh_dong")
             if trang_thai not in ("da_giai_quyet", "can_hanh_dong", "theo_doi"):
                 trang_thai = "can_hanh_dong"
-            van_de_phat_sinh.append({
-                "van_de": str(vd.get("van_de")),
-                "trang_thai": trang_thai,
-                "ghi_chu": str(vd.get("ghi_chu") or ""),
-            })
+            van_de_phat_sinh.append(
+                {
+                    "van_de": str(vd.get("van_de")),
+                    "trang_thai": trang_thai,
+                    "ghi_chu": str(vd.get("ghi_chu") or ""),
+                }
+            )
 
     # Action items — if khong_lien_quan, return empty
     raw_actions = [] if khong_lien_quan else (data.get("action_items") or [])
@@ -324,13 +324,15 @@ def _normalize_output(
             tinh_chat = "bat_buoc"
         pham_vi = a.get("pham_vi", "ca_nhan")
         if pham_vi not in ("ca_nhan", "nhom"):
-            pham_vi = "nhom" if ten_nhan in ("Nhóm ca", "Mọi người", "Tất cả", "Chưa rõ") else "ca_nhan"
+            pham_vi = (
+                "nhom" if ten_nhan in ("Nhóm ca", "Mọi người", "Tất cả", "Chưa rõ") else "ca_nhan"
+            )
         score = float(a.get("do_tin_cay", 0.9))
         if ten_nhan == "Chưa rõ" or not ten_nhan:
             score = min(score, 0.7)
         norm_actions.append(
             {
-                "id": str(a.get("id") or f"act_{i+1}"),
+                "id": str(a.get("id") or f"act_{i + 1}"),
                 "tieu_de": str(a.get("tieu_de") or "Công việc cần làm"),
                 "noi_dung_chi_tiet": str(a.get("noi_dung_chi_tiet") or ""),
                 "tinh_chat": tinh_chat,
@@ -340,7 +342,9 @@ def _normalize_output(
                 "nhan_vien_id": resolve_staff_id(ten_nhan, staff_list),
                 "thoi_gian_bat_dau": str(a.get("thoi_gian_bat_dau") or ""),
                 "han_chot": str(a.get("han_chot") or "Hết ca"),
-                "muc_do_uu_tien": a.get("muc_do_uu_tien") if a.get("muc_do_uu_tien") in ["cao", "trung_binh", "thap"] else "trung_binh",
+                "muc_do_uu_tien": a.get("muc_do_uu_tien")
+                if a.get("muc_do_uu_tien") in ["cao", "trung_binh", "thap"]
+                else "trung_binh",
                 "do_tin_cay": score,
                 "da_chon": bool(a.get("da_chon", True)),
             }
@@ -350,7 +354,7 @@ def _normalize_output(
     raw_props = [] if khong_lien_quan else (data.get("de_xuat_phe_duyet") or [])
     norm_props: list[dict[str, Any]] = []
     norm_sop: list[dict[str, Any]] = []
-    
+
     for i, p in enumerate(raw_props):
         if not isinstance(p, dict):
             continue
@@ -360,9 +364,9 @@ def _normalize_output(
         loai = p.get("loai_de_xuat", "quy_trinh_sop")
         if loai not in ("quy_trinh_sop", "mua_sam_vat_tu", "chinh_sach_nhan_su", "khac"):
             loai = "quy_trinh_sop"
-        
+
         prop_obj = {
-            "id": str(p.get("id") or f"prop_{i+1}"),
+            "id": str(p.get("id") or f"prop_{i + 1}"),
             "loai_de_xuat": loai,
             "tieu_de": str(p.get("tieu_de") or "Đề xuất cải tiến"),
             "nguoi_de_xuat": str(p.get("nguoi_de_xuat") or ""),
@@ -374,15 +378,17 @@ def _normalize_output(
             "buoc_so": int(p["buoc_so"]) if p.get("buoc_so") is not None else None,
         }
         norm_props.append(prop_obj)
-        
+
         # Populate de_xuat_sop backward-compatibility
         if loai == "quy_trinh_sop" and p.get("quy_trinh_lien_quan"):
-            norm_sop.append({
-                "quy_trinh_lien_quan": str(p["quy_trinh_lien_quan"]),
-                "buoc_so": int(p["buoc_so"]) if p.get("buoc_so") is not None else None,
-                "noi_dung_thay_doi": str(p.get("noi_dung") or ""),
-                "ly_do": str(p.get("ly_do") or ""),
-            })
+            norm_sop.append(
+                {
+                    "quy_trinh_lien_quan": str(p["quy_trinh_lien_quan"]),
+                    "buoc_so": int(p["buoc_so"]) if p.get("buoc_so") is not None else None,
+                    "noi_dung_thay_doi": str(p.get("noi_dung") or ""),
+                    "ly_do": str(p.get("ly_do") or ""),
+                }
+            )
 
     # Gop y & Luu y noi bo (Team feedback & Notes)
     raw_fb = [] if khong_lien_quan else (data.get("gop_y_luu_y") or [])
@@ -391,20 +397,28 @@ def _normalize_output(
         if not isinstance(fb, dict) or not fb.get("noi_dung"):
             continue
         chu_de = fb.get("chu_de", "luu_y_chung")
-        if chu_de not in ("thai_do_phuc_vu", "ky_nang_pha_che", "ve_sinh_an_toan", "dong_vien_khen_ngoi", "luu_y_chung"):
+        if chu_de not in (
+            "thai_do_phuc_vu",
+            "ky_nang_pha_che",
+            "ve_sinh_an_toan",
+            "dong_vien_khen_ngoi",
+            "luu_y_chung",
+        ):
             chu_de = "luu_y_chung"
         tinh_chat = fb.get("tinh_chat", "gop_y")
         if tinh_chat not in ("nhac_nho", "khen_ngoi", "kinh_nghiem", "gop_y"):
             tinh_chat = "gop_y"
-        norm_fb.append({
-            "id": str(fb.get("id") or f"fb_{i+1}"),
-            "nguoi_gop_y": str(fb.get("nguoi_gop_y") or ""),
-            "nguoi_nhan": str(fb.get("nguoi_nhan") or "Cả ca"),
-            "chu_de": chu_de,
-            "tinh_chat": tinh_chat,
-            "noi_dung": str(fb.get("noi_dung")),
-            "ghi_chu": str(fb.get("ghi_chu") or ""),
-        })
+        norm_fb.append(
+            {
+                "id": str(fb.get("id") or f"fb_{i + 1}"),
+                "nguoi_gop_y": str(fb.get("nguoi_gop_y") or ""),
+                "nguoi_nhan": str(fb.get("nguoi_nhan") or "Cả ca"),
+                "chu_de": chu_de,
+                "tinh_chat": tinh_chat,
+                "noi_dung": str(fb.get("noi_dung")),
+                "ghi_chu": str(fb.get("ghi_chu") or ""),
+            }
+        )
 
     # Audit SOP Compliance
     raw_audit = None if khong_lien_quan else data.get("audit_sop")
@@ -414,15 +428,19 @@ def _normalize_output(
         norm_tc = []
         for tc in raw_tc:
             if isinstance(tc, dict) and tc.get("ten_tieu_chi"):
-                norm_tc.append({
-                    "ma": str(tc.get("ma") or "tc"),
-                    "ten_tieu_chi": str(tc.get("ten_tieu_chi")),
-                    "dat": bool(tc.get("dat", False)),
-                    "chi_tiet": str(tc.get("chi_tiet") or ""),
-                })
+                norm_tc.append(
+                    {
+                        "ma": str(tc.get("ma") or "tc"),
+                        "ten_tieu_chi": str(tc.get("ten_tieu_chi")),
+                        "dat": bool(tc.get("dat", False)),
+                        "chi_tiet": str(tc.get("chi_tiet") or ""),
+                    }
+                )
         diem = int(raw_audit.get("diem_tuan_thu", 80))
         diem = max(0, min(100, diem))
-        xep_hang = raw_audit.get("xep_hang", "A" if diem >= 90 else "B" if diem >= 70 else "C" if diem >= 50 else "D")
+        xep_hang = raw_audit.get(
+            "xep_hang", "A" if diem >= 90 else "B" if diem >= 70 else "C" if diem >= 50 else "D"
+        )
         if xep_hang not in ("A", "B", "C", "D"):
             xep_hang = "B"
         norm_audit = {
@@ -439,9 +457,15 @@ def _normalize_output(
     if isinstance(raw_bt, dict):
         norm_bt = {
             "ban_vip": [str(x) for x in (raw_bt.get("ban_vip") or []) if str(x).strip()],
-            "luu_y_di_ung_khach": [str(x) for x in (raw_bt.get("luu_y_di_ung_khach") or []) if str(x).strip()],
-            "su_co_thiet_bi_khan": [str(x) for x in (raw_bt.get("su_co_thiet_bi_khan") or []) if str(x).strip()],
-            "danh_sach_mon_86": [str(x) for x in (raw_bt.get("danh_sach_mon_86") or []) if str(x).strip()],
+            "luu_y_di_ung_khach": [
+                str(x) for x in (raw_bt.get("luu_y_di_ung_khach") or []) if str(x).strip()
+            ],
+            "su_co_thiet_bi_khan": [
+                str(x) for x in (raw_bt.get("su_co_thiet_bi_khan") or []) if str(x).strip()
+            ],
+            "danh_sach_mon_86": [
+                str(x) for x in (raw_bt.get("danh_sach_mon_86") or []) if str(x).strip()
+            ],
             "noi_dung_tin_nhan_gui_nhom": str(raw_bt.get("noi_dung_tin_nhan_gui_nhom") or ""),
         }
 
@@ -457,8 +481,12 @@ def _normalize_output(
             "ty_le_noi_nhan_vien_pct": s_pct,
             "diem_tuong_tac_2_chieu": max(1, min(10, int(raw_hl.get("diem_tuong_tac_2_chieu", 8)))),
             "diem_truyen_cam_hung": max(1, min(10, int(raw_hl.get("diem_truyen_cam_hung", 8)))),
-            "phong_cach_dieu_hanh": str(raw_hl.get("phong_cach_dieu_hanh") or "Chuẩn mực & Tương tác"),
-            "loi_khuyen_ai_coaching": [str(x) for x in (raw_hl.get("loi_khuyen_ai_coaching") or []) if str(x).strip()],
+            "phong_cach_dieu_hanh": str(
+                raw_hl.get("phong_cach_dieu_hanh") or "Chuẩn mực & Tương tác"
+            ),
+            "loi_khuyen_ai_coaching": [
+                str(x) for x in (raw_hl.get("loi_khuyen_ai_coaching") or []) if str(x).strip()
+            ],
         }
 
     # Legacy de_xuat_sop fallback if raw_props was empty
@@ -496,7 +524,3 @@ def _normalize_output(
         "do_tin_cay_tong_the": float(data.get("do_tin_cay_tong_the", 0.9)),
         "trang_thai": "cho_duyet",
     }
-
-
-
-

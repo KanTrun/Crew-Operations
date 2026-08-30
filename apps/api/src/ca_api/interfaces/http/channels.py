@@ -6,11 +6,9 @@ import json
 import os
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, cast
-
-UTC = timezone.utc
 
 from ca_agents.ag_fbpage import (
     FBMessageInput,
@@ -28,13 +26,6 @@ from ca_agents.facebook_page import (
     verify_fb_webhook_signature,
 )
 from ca_agents.llm import agent_mode
-from ca_api.services.store_public_context import (
-    get_active_promotions,
-    get_public_menu,
-    get_store_profile,
-    set_active_promotions,
-    set_store_profile,
-)
 from ca_agents.messaging import (
     InboundMessage,
     get_port,
@@ -46,7 +37,11 @@ from ca_agents.messaging import (
 from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
-from ca_api.interfaces.http.sprint3 import _nv_from_token, _phan_cong, _require_manager, _require_role
+from ca_api.interfaces.http.sprint3 import (
+    _nv_from_token,
+    _phan_cong,
+    _require_manager,
+)
 from ca_api.persist import (
     audit_add,
     kenh_bind_code_consume,
@@ -59,7 +54,15 @@ from ca_api.persist import (
     kv_set,
 )
 from ca_api.persist import session as auth_session
+from ca_api.services.store_public_context import (
+    get_active_promotions,
+    get_public_menu,
+    get_store_profile,
+    set_active_promotions,
+    set_store_profile,
+)
 
+UTC = UTC
 router = APIRouter()
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
@@ -192,16 +195,23 @@ def process_inbound(msg: InboundMessage, *, reply_backend: str | None = None) ->
     if bind_m:
         nv = kenh_bind_code_consume(bind_m.group(1), msg.channel, msg.external_user_id)
         if not nv:
-            sent = port.send(msg.external_user_id, "Mã bind không đúng hoặc đã dùng. Lấy mã mới trên /toi.")
+            sent = port.send(
+                msg.external_user_id,
+                "Mã bind không đúng hoặc đã dùng. Lấy mã mới trên /toi.",
+            )
             return {"ok": False, "ly_do": "bind_code", "message": sent.__dict__}
-        sent = port.send(msg.external_user_id, f"Đã nối kênh với {nv}. Bạn có thể hỏi lịch hoặc gửi ý định ca.")
+        sent = port.send(
+            msg.external_user_id,
+            f"Đã nối kênh với {nv}. Bạn có thể hỏi lịch hoặc gửi ý định ca.",
+        )
         return {"ok": True, "hanh": "bind", "nv_id": nv, "message": sent.__dict__}
 
     nv_id = kenh_bind_get(msg.channel, msg.external_user_id)
     if not nv_id:
         sent = port.send(
             msg.external_user_id,
-            "Chưa nối tài khoản quán. Vào web NHỊP QUÁN → Ca của tôi → lấy mã bind, rồi nhắn: /bind <mã>",
+            "Chưa nối tài khoản quán. Vào web NHỊP QUÁN → Ca của tôi → lấy mã bind, "
+            "rồi nhắn: /bind <mã>",
         )
         return {"ok": False, "ly_do": "chua_bind", "message": sent.__dict__}
 
@@ -255,7 +265,11 @@ def channels_status(authorization: Annotated[str | None, Header()] = None) -> di
     zalo_token = bool(os.environ.get("NHIPQUAN_ZALO_OA_ACCESS_TOKEN", "").strip())
     tg_token = bool(os.environ.get("NHIPQUAN_TELEGRAM_BOT_TOKEN", "").strip())
     fb_token = bool(os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip())
-    binds = kenh_bind_list() if caller["role"] in {"quan_ly", "chu_quan"} else kenh_bind_list(caller["nv_id"])
+    binds = (
+        kenh_bind_list()
+        if caller["role"] in {"quan_ly", "chu_quan"}
+        else kenh_bind_list(caller["nv_id"])
+    )
     return {
         "uu_tien": ["zalo", "telegram", "facebook"],
         "agent_mode": agent_mode(),
@@ -379,7 +393,10 @@ def page_status(authorization: Annotated[str | None, Header()] = None) -> dict[s
         "page_name": health.get("page_name") if health.get("ok") else None,
         "graph_ok": bool(health.get("ok")),
         "graph_detail": None if health.get("ok") else health.get("detail"),
-        "huong_dan": "Tạo Page Facebook rồi làm theo docs/runbooks/facebook-page-connect.md — không dùng dữ liệu giả.",
+        "huong_dan": (
+            "Tạo Page Facebook rồi làm theo docs/runbooks/facebook-page-connect.md "
+            "— không dùng dữ liệu giả."
+        ),
     }
 
 
@@ -569,7 +586,11 @@ def page_reply(
             except RuntimeError as e:
                 raise HTTPException(status_code=502, detail=str(e)[:180]) from e
 
-    _audit(s["nv_id"], "page_reply", {"thread_id": thread_id, "text": body.text.strip(), "graph_sent": graph_sent})
+    _audit(
+        s["nv_id"],
+        "page_reply",
+        {"thread_id": thread_id, "text": body.text.strip(), "graph_sent": graph_sent},
+    )
     return {"ok": True, "thread": found, "mode": _page_mode(), "graph_sent": graph_sent}
 
 
@@ -759,7 +780,15 @@ def page_draft_decide(
             found = {**found, "trang_thai": "da_dang", "graph_post_id": graph_post_id}
         except RuntimeError as e:
             raise HTTPException(status_code=502, detail=str(e)[:180]) from e
-    _audit(role, "page_draft", {"id": draft_id, "q": body.quyet_dinh, "graph_post_id": graph_post_id})
+    _audit(
+        role,
+        "page_draft",
+        {
+            "id": draft_id,
+            "q": body.quyet_dinh,
+            "graph_post_id": graph_post_id,
+        },
+    )
     return found
 
 

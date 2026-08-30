@@ -15,14 +15,10 @@ META = GOLDEN / "meta.json"
 
 def main() -> None:
     easy = [
-        json.loads(line)
-        for line in MAIN.read_text(encoding="utf-8").splitlines()
-        if line.strip()
+        json.loads(line) for line in MAIN.read_text(encoding="utf-8").splitlines() if line.strip()
     ]
     hard = [
-        json.loads(line)
-        for line in HARD.read_text(encoding="utf-8").splitlines()
-        if line.strip()
+        json.loads(line) for line in HARD.read_text(encoding="utf-8").splitlines() if line.strip()
     ]
     # Giữ 120 easy đầu (cân bằng intent), thay 80 cuối bằng hard
     head = easy[:120]

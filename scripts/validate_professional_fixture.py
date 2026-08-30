@@ -1,4 +1,5 @@
 """Validate the professional synthetic fixture without touching the application store."""
+
 from __future__ import annotations
 
 import json
@@ -40,15 +41,26 @@ def main() -> int:
     assert all(row["staff_id"] in staff_ids for row in operations["inbox_constraints"])
     assert all(row["thread_id"] in thread_ids for row in channels["page_drafts"])
     assert {row["trang_thai"] for row in pos["orders"]} >= {"cho_pha", "dang_pha", "xong", "huy"}
-    assert {row["status"] for row in operations["checklist_runs"]} == {"in_progress", "completed", "blocked"}
-    assert {row["status"] for row in channels["page_drafts"]} == {"nhap", "cho_duyet", "da_dang_mock"}
+    assert {row["status"] for row in operations["checklist_runs"]} == {
+        "in_progress",
+        "completed",
+        "blocked",
+    }
+    assert {row["status"] for row in channels["page_drafts"]} == {
+        "nhap",
+        "cho_duyet",
+        "da_dang_mock",
+    }
     assert all(
         section["metadata"] == {"synthetic": True, "nguon": "mo_phong_fixture"}
         for section in (base, pos, operations, channels)
     )
 
     print("professional fixture: OK")
-    print(f"staff={len(base['staff'])} shifts={len(base['shifts'])} orders={len(pos['orders'])} runs={len(operations['checklist_runs'])}")
+    print(
+        f"staff={len(base['staff'])} shifts={len(base['shifts'])} "
+        f"orders={len(pos['orders'])} runs={len(operations['checklist_runs'])}"
+    )
     print(f"bindings={len(channels['channel_bindings'])} threads={len(channels['page_threads'])}")
     return 0
 

@@ -1,8 +1,8 @@
 """Load the professional synthetic fixture into the local SQLite runtime store."""
+
 from __future__ import annotations
 
 import json
-import sqlite3
 import sys
 from pathlib import Path
 from typing import Any
@@ -50,11 +50,9 @@ def mark(row: dict[str, Any]) -> dict[str, Any]:
 
 def add_users(base: dict[str, Any]) -> int:
     init_db()
-    staff_by_id = {row["id"]: row for row in base["staff"]}
     inserted = 0
     with _conn() as cx:
         for fixture_id, (username, display_name) in NEW_USERS.items():
-            staff = staff_by_id[fixture_id]
             before = cx.execute("SELECT 1 FROM users WHERE username=?", (username,)).fetchone()
             cx.execute(
                 """
@@ -91,10 +89,10 @@ def upsert_pos(pos: dict[str, Any]) -> tuple[int, int]:
     return menu_count, order_count
 
 
-def runtime_operations(base: dict[str, Any], pos: dict[str, Any], operations: dict[str, Any], channels: dict[str, Any]) -> None:
-    assignments = {
-        row["shift_id"]: [db_staff_id(row["staff_id"])] for row in base["assignments"]
-    }
+def runtime_operations(
+    base: dict[str, Any], pos: dict[str, Any], operations: dict[str, Any], channels: dict[str, Any]
+) -> None:
+    assignments = {row["shift_id"]: [db_staff_id(row["staff_id"])] for row in base["assignments"]}
     kv_set("phan_cong", assignments)
     current_attendance = list(kv_get("diem_danh", []))
     for staff_id in ("nv_01", "nv_02", "nv_03", *NEW_USERS):
@@ -102,7 +100,13 @@ def runtime_operations(base: dict[str, Any], pos: dict[str, Any], operations: di
         if resolved not in current_attendance:
             current_attendance.append(resolved)
     kv_set("diem_danh", current_attendance)
-    kv_set("treo", [mark({**row, "nguoi_nhan": db_staff_id(row["nguoi_nhan"])}) for row in operations["pending_work"]])
+    kv_set(
+        "treo",
+        [
+            mark({**row, "nguoi_nhan": db_staff_id(row["nguoi_nhan"])})
+            for row in operations["pending_work"]
+        ],
+    )
     inbox = []
     for row in operations["inbox_constraints"]:
         item = mark(row)
@@ -110,16 +114,28 @@ def runtime_operations(base: dict[str, Any], pos: dict[str, Any], operations: di
         item["nv_id"] = item["staff_id"]
         inbox.append(item)
     kv_set("inbox_rang_buoc", inbox)
-    kv_set("inbox_msg", [{key: row[key] for key in ("id", "tom_tat", "agent", "trang_thai", "do_tin_cay")} for row in inbox])
+    kv_set(
+        "inbox_msg",
+        [
+            {key: row[key] for key in ("id", "tom_tat", "agent", "trang_thai", "do_tin_cay")}
+            for row in inbox
+        ],
+    )
     sample = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
     kv_set("waste_notes", [mark(row) for row in sample.get("hao_phi", [])])
     kv_set("kiem_ke", [mark(row) for row in pos["inventory_snapshots"]])
     kv_set("tieu_thu", [mark(row) for row in pos["consumption_links"]])
-    kv_set("page_quan", {
-        "mode": "fixture",
-        "threads": [mark(row) for row in channels["page_threads"]],
-        "drafts": [mark({**row, "created_by": db_staff_id(row["created_by"])}) for row in channels["page_drafts"]],
-    })
+    kv_set(
+        "page_quan",
+        {
+            "mode": "fixture",
+            "threads": [mark(row) for row in channels["page_threads"]],
+            "drafts": [
+                mark({**row, "created_by": db_staff_id(row["created_by"])})
+                for row in channels["page_drafts"]
+            ],
+        },
+    )
     run = start_phieu(
         run_id="fx_run_open_001",
         mau="mo_quan",
@@ -132,15 +148,18 @@ def runtime_operations(base: dict[str, Any], pos: dict[str, Any], operations: di
     bag = kv_get("phieu", {})
     bag[run.id] = dump_run(run)
     kv_set("phieu", bag)
-    kv_set("professional_fixture", {
-        "source": SOURCE,
-        "manifest": read("manifest.json"),
-        "base": base,
-        "pos": pos,
-        "operations": operations,
-        "channels": channels,
-        "staff_to_db": STAFF_TO_DB,
-    })
+    kv_set(
+        "professional_fixture",
+        {
+            "source": SOURCE,
+            "manifest": read("manifest.json"),
+            "base": base,
+            "pos": pos,
+            "operations": operations,
+            "channels": channels,
+            "staff_to_db": STAFF_TO_DB,
+        },
+    )
 
     from ca_api.persist import kenh_bind_set
 
@@ -150,6 +169,7 @@ def runtime_operations(base: dict[str, Any], pos: dict[str, Any], operations: di
 
 def wipe_db() -> None:
     from ca_api.persist import db_path, reset_init_flag
+
     p = db_path()
     if p.exists():
         p.unlink()
