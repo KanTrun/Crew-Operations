@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiSend } from "../../lib/api";
-import { safeText, viError } from "../../lib/present";
+import { useCallback, useEffect, useState } from "react";
+import { apiGet, apiSend } from "../../lib/api";
+import { actorLabel, formatLuc, safeText, viError } from "../../lib/present";
 import { getToken } from "../../lib/session";
 import {
   Alert,
@@ -16,20 +16,37 @@ import {
   Textarea,
 } from "../../ui/kit";
 
-type Sbar = { tinh_hinh?: unknown; boi_canh?: unknown; danh_gia?: unknown; de_nghi?: unknown };
+type Sbar = {
+  id?: string;
+  luc?: string;
+  tinh_hinh?: unknown;
+  boi_canh?: unknown;
+  danh_gia?: unknown;
+  de_nghi?: unknown;
+};
 
 export default function HandoverPage() {
   const [token, setToken] = useState("");
-  const [text, setText] = useState(
-    "Tình hình: hết đá\nBối cảnh: ca sáng đông\nĐánh giá: máy pha ổn\nĐề nghị: mua đá\nTreo: khăn ướt",
-  );
+  const [text, setText] = useState("");
   const [out, setOut] = useState<Sbar | null>(null);
+  const [history, setHistory] = useState<Sbar[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     setToken(getToken());
   }, []);
+
+  const loadHistory = useCallback(() => {
+    if (!getToken()) return;
+    apiGet<{ items: Sbar[] }>("/api/v1/handover")
+      .then((d) => setHistory((d.items ?? []).slice().reverse()))
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (token) loadHistory();
+  }, [token, loadHistory]);
 
   async function run() {
     setError(null);
@@ -41,6 +58,7 @@ export default function HandoverPage() {
     try {
       const d = await apiSend<Sbar>("/api/v1/handover", { text: text.trim() });
       setOut(d);
+      loadHistory();
     } catch (e) {
       setError(viError(e, { doing: "tách được bàn giao thành bốn phần" }));
     } finally {
@@ -55,10 +73,17 @@ export default function HandoverPage() {
       <PageHeader
         kicker="SBAR"
         title="Bàn giao"
-        meta="Ghi lại ca vừa rồi, hệ thống tách thành Tình hình · Bối cảnh · Đánh giá · Đề nghị cho ca sau."
+        meta="Ghi ca vừa rồi theo mẫu Tình hình · Bối cảnh · Đánh giá · Đề nghị — hệ thống tách và lưu cho ca sau."
       />
       <Field label="Nội dung ca">
-        <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} />
+        <Textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={8}
+          placeholder={
+            "Tình hình: …\nBối cảnh: …\nĐánh giá: …\nĐề nghị: …\nTreo: … (nếu có việc kẹt)"
+          }
+        />
       </Field>
       <Btn variant="primary" disabled={busy} onClick={run}>
         {busy ? "Đang tách…" : "Tách thành bàn giao"}
@@ -83,6 +108,21 @@ export default function HandoverPage() {
       ) : (
         !busy && !error && <Empty>Chưa tách lần nào. Ghi nội dung ca rồi bấm tách.</Empty>
       )}
+
+      {history.length > 0 ? (
+        <OpsCard eyebrow="Lịch sử" title="Bàn giao gần đây" count={history.length} countLabel="lần">
+          <div className="nq-list">
+            {history.slice(0, 7).map((h) => (
+              <article key={h.id ?? h.luc} className="nq-item">
+                <p className="nq-item-title">{safeText(h.tinh_hinh, "Bàn giao ca")}</p>
+                <p className="nq-item-sub">
+                  {formatLuc(h.luc)} · {actorLabel("nhan_vien")}
+                </p>
+              </article>
+            ))}
+          </div>
+        </OpsCard>
+      ) : null}
     </div>
   );
 }

@@ -1,17 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
-import { luatLabel, luatTone, safeText, viError } from "../../lib/present";
+import { luatLabel, luatTone, safeText, vfRuleLyDo, viError } from "../../lib/present";
+import { matchSearch } from "../../lib/list-filters";
 import { getRole, getToken, isChuQuan, isManager } from "../../lib/session";
 import {
   Alert,
   AuthGate,
   Btn,
+  BtnLink,
   Empty,
+  Field,
+  Input,
   Loading,
   Notice,
   PageHeader,
+  ProgressBar,
   StatusChip,
   TechnicalDrawer,
 } from "../../ui/kit";
@@ -27,12 +32,22 @@ type Luat = {
   bang_chung?: string[];
 };
 
+const LOC_TRANG_THAI = [
+  { value: "all", label: "Mọi trạng thái" },
+  { value: "hieu_luc", label: "Đang hiệu lực" },
+  { value: "de_xuat", label: "Mới đề xuất" },
+  { value: "qua_vf_rule", label: "Qua vòng kiểm" },
+  { value: "cho_chu_quan", label: "Chờ chủ quán" },
+];
+
 export default function CamNangPage() {
   const [token, setToken] = useState("");
   const [manager, setManager] = useState(false);
   const [chuQuan, setChuQuan] = useState(false);
   const [items, setItems] = useState<Luat[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusF, setStatusF] = useState("all");
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [soThat, setSoThat] = useState<number | null>(null);
@@ -62,6 +77,15 @@ export default function CamNangPage() {
   useEffect(() => {
     if (token) load();
   }, [token, load]);
+
+  const filtered = useMemo(() => {
+    return items.filter((luat) => {
+      const text = safeText(luat.cau, "");
+      if (!matchSearch(text, search)) return false;
+      if (statusF !== "all" && luat.trang_thai !== statusF) return false;
+      return true;
+    });
+  }, [items, search, statusF]);
 
   async function chay() {
     setError(null);
@@ -107,6 +131,20 @@ export default function CamNangPage() {
     }
   }
 
+  async function goLuat(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiSend("/api/v1/cam-nang/go", { id });
+      setMsg("Đã gỡ luật khỏi hiệu lực.");
+      load();
+    } catch (e) {
+      setError(viError(e, { doing: "gỡ luật" }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!token) return <AuthGate />;
 
   return (
@@ -124,18 +162,45 @@ export default function CamNangPage() {
         ) : (
           <Notice>Bạn xem được luật quán. Quản lý hoặc chủ quán mới chạy 8 bước xét luật.</Notice>
         )}
+        <BtnLink href="/sop" variant="ghost">
+          Hỏi cẩm nang
+        </BtnLink>
       </div>
+
+      <div className="flex flex-wrap gap-3 mb-4">
+        <div className="flex-1 min-w-[200px]">
+          <Field label="Tìm luật">
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm theo nội dung…" />
+          </Field>
+        </div>
+        <Field label="Trạng thái">
+          <select
+            className="nq-input"
+            value={statusF}
+            onChange={(e) => setStatusF(e.target.value)}
+          >
+            {LOC_TRANG_THAI.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
       {error ? <Alert>{error}</Alert> : null}
       {chiTiet.length > 0 ? <TechnicalDrawer lines={chiTiet} /> : null}
       {loading ? <Loading skeleton="list">Đang mở cẩm nang…</Loading> : null}
-      {!loading && !error && items.length === 0 ? (
-        <Empty>Chưa có luật nào. Luật sinh ra từ lần sửa có bằng chứng trong ca.</Empty>
+      {!loading && !error && filtered.length === 0 ? (
+        <Empty>Chưa có luật phù hợp bộ lọc. Luật sinh ra từ lần sửa có bằng chứng trong ca.</Empty>
       ) : null}
       <div className="nq-card-grid">
-        {items.map((luat) => {
+        {filtered.map((luat) => {
           const open = expanded === luat.id;
           const text = safeText(luat.cau, "Luật chưa có câu diễn giải");
+          const tapSu = typeof luat.tap_su_dung === "number" ? luat.tap_su_dung : 0;
+          const apDung = typeof luat.ap_dung === "number" ? luat.ap_dung : 0;
           return (
             <article key={luat.id} className="nq-item flex flex-col gap-3">
               <p className={open ? "nq-item-title" : "nq-item-title nq-clamp-3"}>{text}</p>
@@ -150,18 +215,33 @@ export default function CamNangPage() {
               ) : null}
               <p className="nq-item-sub flex flex-wrap items-center gap-2">
                 <StatusChip tone={luatTone(luat.trang_thai)}>{luatLabel(luat.trang_thai)}</StatusChip>
-                {typeof luat.tap_su_dung === "number" ? (
-                  <span className="text-xs text-[var(--nq-dim)]">Tập sự {luat.tap_su_dung}</span>
-                ) : null}
-                {typeof luat.ap_dung === "number" ? (
-                  <span className="text-xs text-[var(--nq-dim)]">Áp dụng {luat.ap_dung}</span>
-                ) : null}
               </p>
-              {chuQuan && luat.trang_thai === "cho_chu_quan" ? (
-                <Btn busy={busy} onClick={() => void chot(luat.id)}>
-                  Chốt hiệu lực
-                </Btn>
+              {tapSu > 0 || apDung > 0 ? (
+                <div>
+                  <p className="text-xs text-[var(--nq-dim)] mb-1">
+                    Tập sự {tapSu} · Áp dụng {apDung}
+                  </p>
+                  <ProgressBar value={Math.min(apDung, 10)} max={10} />
+                </div>
               ) : null}
+              {open && luat.vf_rule ? (
+                <p className="text-sm text-[var(--nq-ink-muted)]">{vfRuleLyDo(luat.vf_rule)}</p>
+              ) : null}
+              {open && (luat.bang_chung?.length ?? 0) > 0 ? (
+                <p className="text-xs text-[var(--nq-dim)]">Bằng chứng: {luat.bang_chung?.length} lần sửa</p>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                {chuQuan && luat.trang_thai === "cho_chu_quan" ? (
+                  <Btn busy={busy} onClick={() => void chot(luat.id)}>
+                    Chốt hiệu lực
+                  </Btn>
+                ) : null}
+                {chuQuan && luat.trang_thai === "hieu_luc" ? (
+                  <Btn variant="ghost" busy={busy} onClick={() => void goLuat(luat.id)}>
+                    Gỡ luật
+                  </Btn>
+                ) : null}
+              </div>
             </article>
           );
         })}

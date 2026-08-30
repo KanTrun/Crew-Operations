@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
-import { matchSearch, matchTime, TIME_FILTER_OPTIONS, type TimeFilter } from "../../lib/list-filters";
+import { matchSearch, matchTime, TIME_FILTER_OPTIONS, uniqueSorted, type TimeFilter } from "../../lib/list-filters";
 import { getToken, isManager } from "../../lib/session";
 import {
   Alert,
@@ -28,8 +28,9 @@ function rowHaystack(it: Row): string {
 export default function TieuThuPage() {
   const [token, setToken] = useState("");
   const [items, setItems] = useState<Row[]>([]);
-  const [hang, setHang] = useState("sữa tươi");
-  const [so, setSo] = useState("3");
+  const [hang, setHang] = useState("");
+  const [so, setSo] = useState("");
+  const [donVi, setDonVi] = useState("khay");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -52,6 +53,9 @@ export default function TieuThuPage() {
   useEffect(() => {
     if (token) load();
   }, [token, load]);
+
+  const hangGoiY = useMemo(() => uniqueSorted(items.map((i) => i.hang)), [items]);
+  const duoiNguong = useMemo(() => items.filter((i) => i.duoi_nguong), [items]);
 
   const statusOptions = useMemo(
     () => [
@@ -82,8 +86,14 @@ export default function TieuThuPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!hang.trim() || !so.trim()) {
+      setError("Nhập tên hàng và số lượng trước khi ghi.");
+      return;
+    }
     try {
-      await apiSend("/api/v1/tieu-thu", { hang, so_luong: Number(so), don_vi: "khay" });
+      await apiSend("/api/v1/tieu-thu", { hang: hang.trim(), so_luong: Number(so), don_vi: donVi });
+      setHang("");
+      setSo("");
       load();
     } catch {
       setError("Cần quyền quản lý để ghi số lượng.");
@@ -101,11 +111,28 @@ export default function TieuThuPage() {
       />
       {error ? <Alert>{error}</Alert> : null}
 
+      {duoiNguong.length > 0 ? (
+        <Alert kind="info">
+          Đang dưới ngưỡng: {duoiNguong.map((x) => x.hang).join(", ")}. Cảnh báo cũng hiện trên Hôm nay.
+        </Alert>
+      ) : null}
+
       {isManager() ? (
         <OpsCard eyebrow="Khu vực 1" title="Ghi kiểm kê mới">
           <form onSubmit={onSubmit}>
             <Field label="Hàng">
-              <input className={inputClassName} value={hang} onChange={(e) => setHang(e.target.value)} />
+              <input
+                className={inputClassName}
+                value={hang}
+                onChange={(e) => setHang(e.target.value)}
+                list="hang-goi-y"
+                placeholder="Tên hàng kiểm kê…"
+              />
+              <datalist id="hang-goi-y">
+                {hangGoiY.map((h) => (
+                  <option key={h} value={h} />
+                ))}
+              </datalist>
             </Field>
             <Field label="Số lượng">
               <input
@@ -113,7 +140,15 @@ export default function TieuThuPage() {
                 value={so}
                 onChange={(e) => setSo(e.target.value)}
                 inputMode="decimal"
+                placeholder="Ví dụ: 3"
               />
+            </Field>
+            <Field label="Đơn vị">
+              <select className={inputClassName} value={donVi} onChange={(e) => setDonVi(e.target.value)}>
+                <option value="khay">Khay</option>
+                <option value="hop">Hộp</option>
+                <option value="kg">Kg</option>
+              </select>
             </Field>
             <Btn type="submit" variant="primary">
               Ghi kiểm kê

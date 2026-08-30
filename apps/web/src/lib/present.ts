@@ -123,6 +123,21 @@ export function viTriLabel(code: unknown): string {
   return pick(VI_TRI, raw, raw.includes("_") ? raw.replace(/_/g, " ") : raw);
 }
 
+/** Ca từ picker API — không in mã nội bộ lên nhãn chính. */
+export function caHumanLabel(
+  shift?: { label?: string; thu?: string; bat_dau?: string; ket_thuc?: string; vi_tri?: string } | null,
+  fallbackId?: string | null,
+): string {
+  if (shift?.label) return shift.label;
+  const thu = safeText(shift?.thu, "");
+  const bat = safeText(shift?.bat_dau, "");
+  const ket = safeText(shift?.ket_thuc, "");
+  const vi = shift?.vi_tri ? viTriLabel(shift.vi_tri) : "";
+  const parts = [thu, bat && ket ? `${bat}–${ket}` : "", vi].filter(Boolean);
+  if (parts.length) return parts.join(" · ");
+  return fallbackId ? "Ca trong tuần" : "Chưa chọn ca";
+}
+
 
 function pick(map: Record<string, string>, code: unknown, fallback: string): string {
   const key = typeof code === "string" ? code : "";

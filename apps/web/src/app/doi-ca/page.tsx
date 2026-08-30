@@ -2,25 +2,32 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
-import { nvLabel, safeText, swapLabel, viError } from "../../lib/present";
-import { matchExact, matchSearch, uniqueSorted } from "../../lib/list-filters";
 import { getToken } from "../../lib/session";
+import { caHumanLabel, nvLabel, nvTenHienThi, safeText, swapLabel, viError } from "../../lib/present";
+import { matchExact, matchSearch, uniqueSorted } from "../../lib/list-filters";
+import { useOpsPickers } from "../../lib/ops-context";
 import {
   Alert,
   AuthGate,
   Btn,
   Empty,
-  Field,
-  Hint,
-  inputClassName,
   Loading,
   OpsCard,
   PageHeader,
   StatusChip,
 } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
+import { PersonSelect, ShiftSelect } from "../../ui/ops-pickers";
 
-type Swap = { id: string; a: string; b: string; c: string; ca_id: string; trang_thai: string };
+type Swap = {
+  id: string;
+  a: string;
+  b: string;
+  c: string;
+  ca_id: string;
+  trang_thai: string;
+  dong_y?: string[];
+};
 
 function swapHaystack(it: Swap): string {
   return [it.id, it.a, it.b, it.c, it.ca_id, swapLabel(it.trang_thai), nvLabel(it.a), nvLabel(it.b), nvLabel(it.c)].join(" ");
@@ -34,12 +41,14 @@ export default function DoiCaPage() {
   const [a, setA] = useState("");
   const [b, setB] = useState("");
   const [c, setC] = useState("");
-  const [ca, setCa] = useState("w1_c01");
+  const [ca, setCa] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("all");
   const [personF, setPersonF] = useState("all");
+  const { data: pickers } = useOpsPickers(!!token);
+  const meNv = pickers?.me_nv_id ?? null;
 
   useEffect(() => {
     setToken(getToken());
@@ -96,7 +105,7 @@ export default function DoiCaPage() {
     setError(null);
     setMsg(null);
     if (!dayDu) {
-      setError("Điền cả ba người và mã ca rồi mới mở được lệnh đổi.");
+      setError("Chọn đủ ba người và một ca rồi mới mở được lệnh đổi.");
       return;
     }
     setBusy(true);
@@ -111,12 +120,36 @@ export default function DoiCaPage() {
       setError(
         viError(e, {
           doing: "mở được lệnh đổi ca",
-          missing: "Mã ca hoặc mã người không có trong quán. Kiểm tra lại trên Lịch tuần rồi nhập lại.",
+          missing: "Ca hoặc người không hợp lệ. Chọn lại từ danh sách.",
         }),
       );
     } finally {
       setBusy(false);
     }
+  }
+
+  async function dongY(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiSend(`/api/v1/cho-doi-ca/${encodeURIComponent(id)}/dong-y`, {});
+      setMsg("Đã ghi nhận đồng ý của bạn.");
+      load();
+    } catch (e) {
+      setError(viError(e, { doing: "ghi nhận đồng ý đổi ca" }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function caLabel(caId: string) {
+    const hit = pickers?.ca.find((x) => x.id === caId);
+    return caHumanLabel(hit, caId);
+  }
+
+  function personLabel(id: string) {
+    const hit = pickers?.nhan_vien.find((x) => x.id === id);
+    return hit ? nvTenHienThi(hit.ten, id) : nvLabel(id);
   }
 
   if (!token) return <AuthGate />;
@@ -126,26 +159,22 @@ export default function DoiCaPage() {
       <PageHeader
         kicker="Ba nhánh phải đồng ý"
         title="Chợ đổi ca"
-        meta="Đổi ca chỉ thành khi người nhả, người nhận và quản lý cùng đồng ý."
+        meta="Chọn người nhả, người nhận, người xác nhận và ca — mỗi nhánh bấm đồng ý trên lệnh."
       />
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
 
       <OpsCard eyebrow="Khu vực 1" title="Mở lệnh mới">
         <form onSubmit={onSubmit}>
-          <Field label="Người nhả ca">
-            <input className={inputClassName} value={a} onChange={(e) => setA(e.target.value)} />
-          </Field>
-          <Field label="Người nhận ca">
-            <input className={inputClassName} value={b} onChange={(e) => setB(e.target.value)} />
-          </Field>
-          <Field label="Người xác nhận">
-            <input className={inputClassName} value={c} onChange={(e) => setC(e.target.value)} />
-          </Field>
-          <Hint>Nhập mã nhân viên như trên Lịch tuần, ví dụ nv_01.</Hint>
-          <Field label="Mã ca cần đổi">
-            <input className={inputClassName} value={ca} onChange={(e) => setCa(e.target.value)} />
-          </Field>
+          <PersonSelect value={a} onChange={setA} label="Người nhả ca" staff={pickers?.nhan_vien} />
+          <PersonSelect value={b} onChange={setB} label="Người nhận ca" staff={pickers?.nhan_vien} />
+          <PersonSelect value={c} onChange={setC} label="Người xác nhận" staff={pickers?.nhan_vien} />
+          <ShiftSelect value={ca} onChange={setCa} label="Ca cần đổi" shifts={pickers?.ca} />
+          {meNv ? (
+            <p className="nq-muted text-sm mb-3">
+              Gợi ý: bạn có thể chọn mình làm một trong ba nhánh nếu tham gia đổi ca.
+            </p>
+          ) : null}
           <Btn type="submit" variant="primary" disabled={busy}>
             {busy ? "Đang mở lệnh…" : "Mở lệnh đổi ca"}
           </Btn>
@@ -156,7 +185,7 @@ export default function DoiCaPage() {
         <ListToolbar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Tìm người, mã ca, trạng thái…"
+          searchPlaceholder="Tìm người, ca, trạng thái…"
           status={statusF}
           onStatusChange={setStatusF}
           statusOptions={statusOptions}
@@ -173,19 +202,32 @@ export default function DoiCaPage() {
         ) : null}
         {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
         <div className="nq-list">
-          {filtered.map((it) => (
-            <article key={it.id} className="nq-item">
-              <p className="nq-item-title">
-                {nvLabel(it.a)} nhả · {nvLabel(it.b)} nhận · {nvLabel(it.c)} xác nhận
-              </p>
-              <p className="nq-item-sub">
-                <StatusChip tone={it.trang_thai === "dong_y" ? "ok" : "warn"}>
-                  {swapLabel(it.trang_thai)}
-                </StatusChip>
-                {it.ca_id ? ` · ca ${safeText(it.ca_id)}` : ""}
-              </p>
-            </article>
-          ))}
+          {filtered.map((it) => {
+            const agreed = new Set(it.dong_y ?? []);
+            const parties = [it.a, it.b, it.c];
+            const canAgree = meNv && parties.includes(meNv) && !agreed.has(meNv) && it.trang_thai !== "dong_y";
+            return (
+              <article key={it.id} className="nq-item">
+                <p className="nq-item-title">
+                  {personLabel(it.a)} nhả · {personLabel(it.b)} nhận · {personLabel(it.c)} xác nhận
+                </p>
+                <p className="nq-item-sub">
+                  <StatusChip tone={it.trang_thai === "dong_y" ? "ok" : "warn"}>
+                    {swapLabel(it.trang_thai)}
+                  </StatusChip>
+                  {it.ca_id ? ` · ${caLabel(it.ca_id)}` : ""}
+                </p>
+                <p className="nq-item-sub text-xs mt-2">
+                  Đồng ý: {parties.map((p) => (agreed.has(p) ? `✓ ${personLabel(p)}` : `○ ${personLabel(p)}`)).join(" · ")}
+                </p>
+                {canAgree ? (
+                  <Btn variant="primary" busy={busy} onClick={() => void dongY(it.id)} className="mt-2">
+                    Tôi đồng ý
+                  </Btn>
+                ) : null}
+              </article>
+            );
+          })}
         </div>
       </OpsCard>
     </div>

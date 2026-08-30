@@ -1,10 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { apiGet } from "../../lib/api";
+import Link from "next/link";
+import { apiGet, apiSend } from "../../lib/api";
 import { matchExact, matchSearch, matchTime, TIME_FILTER_OPTIONS, uniqueSorted, type TimeFilter } from "../../lib/list-filters";
-import { getToken } from "../../lib/session";
-import { Alert, AuthGate, Empty, Loading, OpsCard, PageHeader, TabBar, TabButton } from "../../ui/kit";
+import { actorLabel, formatLuc, ghiNhanLabel, nvLabel, safeText, treoLabel, treoTone, viError } from "../../lib/present";
+import { getToken, isManager } from "../../lib/session";
+import {
+  Alert,
+  AuthGate,
+  Btn,
+  Empty,
+  Loading,
+  OpsCard,
+  PageHeader,
+  StatusChip,
+  TabBar,
+  TabButton,
+} from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 
 type ViecTreo = {
@@ -24,6 +37,7 @@ type GhiNhan = {
   sau?: unknown;
   ai?: string;
   luc?: string;
+  nguon?: string;
 };
 
 function treoHaystack(v: ViecTreo): string {
@@ -31,7 +45,15 @@ function treoHaystack(v: ViecTreo): string {
 }
 
 function suaHaystack(g: GhiNhan): string {
-  return [g.loai, g.ai, JSON.stringify(g.truoc), JSON.stringify(g.sau)].filter(Boolean).join(" ");
+  return [g.loai, g.ai, ghiNhanLabel(g.loai), actorLabel(g.ai)].filter(Boolean).join(" ");
+}
+
+function suaTomTat(g: GhiNhan): string {
+  const loai = ghiNhanLabel(g.loai);
+  if (g.nguon === "mo_phong_fixture" || g.nguon === "dung_lai") {
+    return `${loai} (dữ liệu mẫu hệ thống)`;
+  }
+  return loai;
 }
 
 export default function TreoPage() {
@@ -39,11 +61,14 @@ export default function TreoPage() {
   const [treo, setTreo] = useState<ViecTreo[]>([]);
   const [sua, setSua] = useState<GhiNhan[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
   const [tab, setTab] = useState<"treo" | "sua">("treo");
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [personF, setPersonF] = useState("all");
   const [timeF, setTimeF] = useState<TimeFilter>("all");
+  const manager = isManager();
 
   useEffect(() => {
     setToken(getToken());
@@ -69,7 +94,7 @@ export default function TreoPage() {
   const activeList = tab === "treo" ? treo : sua;
   const personSource = tab === "treo" ? treo.map((t) => t.nhan_vien) : sua.map((s) => s.ai);
   const personOptions = useMemo(
-    () => [{ value: "all", label: "Mọi người" }, ...uniqueSorted(personSource).map((v) => ({ value: v, label: v }))],
+    () => [{ value: "all", label: "Mọi người" }, ...uniqueSorted(personSource).map((v) => ({ value: v ?? "", label: nvLabel(v) }))],
     [personSource, tab],
   );
 
@@ -106,6 +131,22 @@ export default function TreoPage() {
     setTimeF("all");
   }, [tab]);
 
+  async function danhDauXong(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiSend(`/api/v1/viec-treo/${encodeURIComponent(id)}`, { trang_thai: "xong" }, "PATCH");
+      setMsg("Đã đánh dấu việc treo là xong.");
+      load();
+    } catch (e) {
+      setError(viError(e, { doing: "đánh dấu việc treo", forbidden: "Chỉ quản lý mới đánh dấu xong việc treo." }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const treoDangCho = treo.filter((t) => t.trang_thai !== "xong").length;
+
   if (!token) return <AuthGate />;
 
   return (
@@ -113,9 +154,10 @@ export default function TreoPage() {
       <PageHeader
         kicker="Quản lý ca"
         title="Việc treo"
-        meta="Việc kẹt từ phiếu ca và sổ những lần quán sửa lịch — tách hai khu vực để không lẫn."
+        meta={`${treoDangCho} việc đang chờ · ghi nhận sửa lịch tách riêng để không lẫn.`}
       />
       {error ? <Alert>{error}</Alert> : null}
+      {msg ? <Alert kind="ok">{msg}</Alert> : null}
 
       <TabBar>
         <TabButton active={tab === "treo"} onClick={() => setTab("treo")}>
@@ -147,13 +189,26 @@ export default function TreoPage() {
           {!loading && treo.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
           <div className="nq-list">
             {filteredTreo.map((v) => (
-              <article key={v.id} className="nq-item nq-item--accent-danger">
+              <article
+                key={v.id}
+                className={`nq-item ${v.trang_thai === "xong" ? "" : "nq-item--accent-warn"}`}
+              >
                 <p className="nq-item-title">{v.noi_dung}</p>
-                <p className="nq-item-sub">
-                  {v.nhan_vien ? `NV ${v.nhan_vien}` : ""}
-                  {v.phieu_id ? ` · phiếu ${v.phieu_id}` : ""}
-                  {v.created_at ? ` · ${new Date(v.created_at).toLocaleString("vi-VN")}` : ""}
+                <p className="nq-item-sub flex flex-wrap items-center gap-2">
+                  <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
+                  {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
+                  {v.phieu_id ? (
+                    <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                      Mở phiếu
+                    </Link>
+                  ) : null}
+                  {v.created_at ? formatLuc(v.created_at) : ""}
                 </p>
+                {manager && v.trang_thai !== "xong" ? (
+                  <Btn variant="ghost" busy={busy} onClick={() => void danhDauXong(v.id)} className="mt-2">
+                    Đánh dấu xong
+                  </Btn>
+                ) : null}
               </article>
             ))}
           </div>
@@ -182,11 +237,9 @@ export default function TreoPage() {
           <div className="nq-list">
             {filteredSua.map((g, i) => (
               <article key={g.id ?? String(i)} className="nq-item">
-                <p className="nq-item-title">{g.loai ?? "sửa"}</p>
-                <p className="nq-item-sub font-mono text-sm">
-                  {g.ai ? `${g.ai} · ` : ""}
-                  {JSON.stringify(g.truoc)} → {JSON.stringify(g.sau)}
-                  {g.luc ? ` · ${new Date(g.luc).toLocaleString("vi-VN")}` : ""}
+                <p className="nq-item-title">{suaTomTat(g)}</p>
+                <p className="nq-item-sub">
+                  {actorLabel(g.ai)} · {formatLuc(g.luc)}
                 </p>
               </article>
             ))}

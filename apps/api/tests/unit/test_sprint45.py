@@ -156,3 +156,46 @@ def test_swap_requires_valid_shift_and_staff_participation() -> None:
     assert client.post("/api/v1/cho-doi-ca", json=outsider, headers=staff).status_code == 403
     invalid = {"a": "nv_03", "b": "nv_04", "c": "nv_05", "ca_id": "missing"}
     assert client.post("/api/v1/cho-doi-ca", json=invalid, headers=staff).status_code == 422
+
+
+def test_ops_pickers_for_staff() -> None:
+    nv = headers(client, "minh")
+    r = client.get("/api/v1/ops/pickers", headers=nv)
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["nhan_vien"]) >= 3
+    assert len(body["ca"]) >= 3
+    assert body["me_nv_id"] == "nv_03"
+
+
+def test_swap_consent_three_branches() -> None:
+    opened = client.post(
+        "/api/v1/cho-doi-ca",
+        json={"a": "nv_03", "b": "nv_02", "c": "nv_01", "ca_id": "w1_c01"},
+        headers=headers(client, "minh"),
+    ).json()
+    swap_id = opened["id"]
+    client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "minh"))
+    client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "hung"))
+    done = client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "lan")).json()
+    assert done["trang_thai"] == "dong_y"
+    assert len(done.get("dong_y", [])) == 3
+
+
+def test_hom_nay_preview_fields() -> None:
+    ql = headers(client, "lan")
+    body = client.get("/api/v1/hom-nay", headers=ql).json()
+    assert "treo_preview" in body
+    assert "sua_gan_day" in body
+    assert "ton_tom_tat" in body
+
+
+def test_handover_history_list() -> None:
+    nv = headers(client, "minh")
+    client.post(
+        "/api/v1/handover",
+        json={"text": "Tình hình: test\nBối cảnh: a\nĐánh giá: b\nĐề nghị: c"},
+        headers=nv,
+    )
+    items = client.get("/api/v1/handover", headers=nv).json()["items"]
+    assert len(items) >= 1

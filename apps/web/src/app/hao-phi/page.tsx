@@ -6,6 +6,7 @@ import { matchSearch, matchTime, TIME_FILTER_OPTIONS, uniqueSorted, type TimeFil
 import { getToken } from "../../lib/session";
 import { Alert, AuthGate, Btn, Empty, Field, inputClassName, Loading, OpsCard, PageHeader } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
+import { DayOfWeekSelect } from "../../ui/ops-pickers";
 
 type Cluster = { cau?: string; thu?: string; n?: number; created_at?: string };
 
@@ -16,7 +17,7 @@ function clusterHaystack(it: Cluster): string {
 export default function HaoPhiPage() {
   const [token, setToken] = useState("");
   const [items, setItems] = useState<Cluster[]>([]);
-  const [thu, setThu] = useState("T3");
+  const [thu, setThu] = useState("T2");
   const [ghi, setGhi] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,6 +47,10 @@ export default function HaoPhiPage() {
     [items],
   );
 
+  const topClusters = useMemo(() => {
+    return [...items].sort((a, b) => (b.n ?? 0) - (a.n ?? 0)).slice(0, 5);
+  }, [items]);
+
   const filtered = useMemo(() => {
     return items.filter((it) => {
       if (!matchSearch(clusterHaystack(it), search)) return false;
@@ -65,9 +70,14 @@ export default function HaoPhiPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!ghi.trim()) {
+      setError("Ghi nội dung ghi chú trước khi lưu.");
+      return;
+    }
     try {
-      await apiSend("/api/v1/waste", { thu, ghi_chu: ghi });
+      await apiSend("/api/v1/waste", { thu, ghi_chu: ghi.trim() });
       setGhi("");
+      setError(null);
       load();
     } catch {
       setError("Không ghi được ghi chú hao phí.");
@@ -85,13 +95,31 @@ export default function HaoPhiPage() {
       />
       {error ? <Alert>{error}</Alert> : null}
 
+      {topClusters.length > 0 ? (
+        <OpsCard eyebrow="Tóm tắt" title="Cụm hay gặp nhất" count={topClusters.length} countLabel="cụm">
+          <div className="nq-list">
+            {topClusters.map((it, i) => (
+              <article key={i} className="nq-item">
+                <p className="nq-item-title">{it.cau ?? "Chưa đủ mẫu để gom cụm"}</p>
+                <p className="nq-item-sub">
+                  {it.thu} · {it.n ?? 0} lần
+                </p>
+              </article>
+            ))}
+          </div>
+        </OpsCard>
+      ) : null}
+
       <OpsCard eyebrow="Khu vực 1" title="Ghi chú mới">
         <form onSubmit={onSubmit}>
-          <Field label="Thứ">
-            <input className={inputClassName} value={thu} onChange={(e) => setThu(e.target.value)} />
-          </Field>
+          <DayOfWeekSelect value={thu} onChange={setThu} />
           <Field label="Ghi chú">
-            <input className={inputClassName} value={ghi} onChange={(e) => setGhi(e.target.value)} />
+            <input
+              className={inputClassName}
+              value={ghi}
+              onChange={(e) => setGhi(e.target.value)}
+              placeholder="Mô tả hao phí trong ca…"
+            />
           </Field>
           <Btn type="submit" variant="primary">
             Ghi chú

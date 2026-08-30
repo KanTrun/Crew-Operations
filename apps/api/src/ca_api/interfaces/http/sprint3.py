@@ -373,6 +373,8 @@ def phieu_treo(
                 "nv_id": run.nv_id,
                 "nhan_vien": run.nv_id,
                 "noi_dung": body.noi_dung,
+                "trang_thai": "dang_cho",
+                "created_at": datetime.now(UTC).isoformat(),
             }
         )
         return hung
@@ -387,6 +389,36 @@ def phieu_treo(
 def viec_treo(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_role(authorization)
     return {"items": kv_get("treo", [])}
+
+
+class TreoPatchBody(BaseModel):
+    trang_thai: str = "xong"
+
+
+@router.patch("/api/v1/viec-treo/{treo_id}")
+def viec_treo_patch(
+    treo_id: str,
+    body: TreoPatchBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    role = _require_manager(authorization)
+    found: dict[str, Any] | None = None
+
+    def mut(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        nonlocal found
+        for it in items:
+            if it.get("id") == treo_id:
+                it["trang_thai"] = body.trang_thai
+                it["xong_luc"] = datetime.now(UTC).isoformat()
+                it["xong_boi"] = role
+                found = dict(it)
+                return items
+        raise HTTPException(status_code=404, detail="treo_khong_tim_thay")
+
+    kv_mutate("treo", mut, [])
+    if not found:
+        raise HTTPException(status_code=404, detail="treo_khong_tim_thay")
+    return found
 
 
 @router.post("/api/v1/orc/dispatch")

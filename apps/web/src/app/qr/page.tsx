@@ -8,20 +8,19 @@ import {
   Alert,
   AuthGate,
   Btn,
-  Field,
   Hint,
-  Input,
   MaskedCode,
   Notice,
   OpsCard,
   PageHeader,
 } from "../../ui/kit";
+import { PersonSelect, ShiftSelect } from "../../ui/ops-pickers";
 
 export default function QrPage() {
   const [token, setToken] = useState("");
   const [manager, setManager] = useState(false);
-  const [nv, setNv] = useState("nv_03");
-  const [ca, setCa] = useState("w1_c01");
+  const [nv, setNv] = useState("");
+  const [ca, setCa] = useState("");
   const [issued, setIssued] = useState("");
   const [useTok, setUseTok] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -37,6 +36,10 @@ export default function QrPage() {
     e.preventDefault();
     setError(null);
     setMsg(null);
+    if (!nv.trim() || !ca.trim()) {
+      setError("Chọn nhân viên và ca trước khi phát mã.");
+      return;
+    }
     setBusy(true);
     try {
       const d = await apiSend<{ token: string }>("/api/v1/qr", { nv_id: nv.trim(), ca_id: ca.trim() });
@@ -47,7 +50,7 @@ export default function QrPage() {
         viError(e, {
           doing: "phát được mã điểm danh",
           forbidden: "Chỉ quản lý hoặc chủ quán phát được mã điểm danh.",
-          missing: "Mã nhân viên hoặc mã ca không có trong quán. Kiểm tra lại trên Lịch tuần.",
+          missing: "Ca hoặc nhân viên không hợp lệ. Chọn lại từ danh sách.",
         }),
       );
     } finally {
@@ -88,7 +91,7 @@ export default function QrPage() {
       <PageHeader
         kicker="Một lần · hết hạn khi dùng"
         title="Điểm danh QR"
-        meta="Quản lý phát mã dùng một lần, nhân viên dán mã để điểm danh vào ca."
+        meta="Quản lý chọn người và ca rồi phát mã; nhân viên dán mã để vào ca."
       />
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
@@ -96,20 +99,13 @@ export default function QrPage() {
       {manager ? (
         <OpsCard eyebrow="Việc của quản lý" title="Phát mã cho một ca">
           <form onSubmit={issue}>
-            <Field label="Mã nhân viên">
-              <Input value={nv} onChange={(e) => setNv(e.target.value)} />
-            </Field>
-            <Field label="Mã ca">
-              <Input value={ca} onChange={(e) => setCa(e.target.value)} />
-            </Field>
-            <Hint>Lấy mã nhân viên và mã ca trên Lịch tuần.</Hint>
+            <PersonSelect value={nv} onChange={setNv} label="Nhân viên" />
+            <ShiftSelect value={ca} onChange={setCa} label="Ca" hint="Chọn ca trên lịch tuần của quán." />
+            <Hint>Mã chỉ dùng một lần. Sao chép và gửi riêng cho nhân viên — không chiếu lên màn hình chung.</Hint>
             <Btn type="submit" variant="primary" disabled={busy}>
               {busy ? "Đang phát mã…" : "Phát mã điểm danh"}
             </Btn>
           </form>
-          {/* Mã điểm danh là bí mật dùng-một-lần. In nguyên lên màn hình là để lộ
-              credential cho bất cứ ai đứng cạnh quầy đọc được — chỉ hiện dạng che,
-              nội dung thật đi qua clipboard. */}
           {issued ? <MaskedCode code={issued} masked={maskCode(issued)} /> : null}
         </OpsCard>
       ) : (
@@ -118,9 +114,16 @@ export default function QrPage() {
 
       <OpsCard eyebrow="Việc của nhân viên" title="Dùng mã để điểm danh">
         <form onSubmit={useCode}>
-          <Field label="Mã một lần">
-            <Input value={useTok} onChange={(e) => setUseTok(e.target.value)} autoComplete="off" />
-          </Field>
+          <label className="nq-field">
+            <span className="nq-label">Mã một lần</span>
+            <input
+              className="nq-input"
+              value={useTok}
+              onChange={(e) => setUseTok(e.target.value)}
+              autoComplete="off"
+              placeholder="Dán mã quản lý gửi…"
+            />
+          </label>
           <Btn type="submit" variant="primary" disabled={busy}>
             {busy ? "Đang điểm danh…" : "Điểm danh vào ca"}
           </Btn>

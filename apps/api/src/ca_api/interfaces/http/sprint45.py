@@ -45,6 +45,15 @@ ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
 LICH = ROOT / "data" / "out" / "lich_tuan.json"
 _clock = Clock()
+_THU_MAP = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN"}
+_VI_TRI_VI = {
+    "thu_ngan": "Thu ngân",
+    "pha_che": "Pha chế",
+    "phuc_vu": "Phục vụ",
+    "kho": "Kho",
+    "quan_ly_ca": "Quản lý ca",
+    "da_nang": "Đa năng",
+}
 _ALLOWED = {
     "nhap": {"dang_giai"},
     "dang_giai": {"cho_duyet", "nhap"},
@@ -391,6 +400,33 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
     ton = kv_get("tieu_thu", [])
     canh_bao = [x["hang"] for x in ton if x.get("duoi_nguong")]
     so_nv = sum(1 for u in list_users() if u.get("role") == "nhan_vien")
+    treo_preview = [
+        {
+            "id": t.get("id"),
+            "noi_dung": str(t.get("noi_dung") or "")[:120],
+            "trang_thai": t.get("trang_thai") or "dang_cho",
+            "nhan_vien": t.get("nhan_vien") or t.get("nv_id"),
+        }
+        for t in treo[:5]
+        if isinstance(t, dict)
+    ]
+    sua_gan_day = [
+        {
+            "loai": row.get("loai"),
+            "luc": row.get("at"),
+            "ai": row.get("ai"),
+        }
+        for row in list(reversed(list_sua(include_synthetic=False)))[:5]
+    ]
+    ton_tom_tat = [
+        {
+            "hang": x.get("hang"),
+            "so_luong": x.get("so_luong"),
+            "duoi_nguong": bool(x.get("duoi_nguong")),
+        }
+        for x in ton[-8:]
+        if isinstance(x, dict)
+    ]
     return {
         "ngay": datetime.now(UTC).date().isoformat(),
         "lich": life,
@@ -399,6 +435,9 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
         "so_luat": len(luat),
         "canh_bao_ton": canh_bao,
         "so_nhan_vien": so_nv if role == "chu_quan" else 0,
+        "treo_preview": treo_preview,
+        "sua_gan_day": sua_gan_day,
+        "ton_tom_tat": ton_tom_tat,
         "nguon": "quan",
     }
 
@@ -450,25 +489,47 @@ def waste_ghi(
     return {"ok": True, **note}
 
 
+@router.get("/api/v1/handover")
+def handover_list(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    _require_role(authorization)
+    return {"items": kv_get("handover_history", []), "nguon": "quan"}
+
+
 @router.post("/api/v1/handover")
 def handover(
     body: HandoverBody,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    _require_role(authorization)
+    role = _require_role(authorization)
+    s = auth_session(authorization) or {}
     h = extract_handover(body.text)
     out = h.__dict__
     nums = validate_num(body.text, {"2", "3", "8", "15"})
     out["vf_num"] = nums.__dict__
+    nv_id = s.get("nv_id") or role
     if body.alt_claim:
         other = {
-            "nguoi": "nv_03",
+            "nguoi": nv_id,
             "khung": "sang",
             "claim": body.alt_claim,
         }
-        mine = {"nguoi": "nv_03", "khung": "sang", "claim": h.tinh_hinh}
+        mine = {"nguoi": nv_id, "khung": "sang", "claim": h.tinh_hinh}
         c = present_conflict(mine, other)
         out["vf_conflict"] = c.__dict__
+    entry = {
+        "id": f"ho_{uuid.uuid4().hex[:8]}",
+        "luc": datetime.now(UTC).isoformat(),
+        "ai": role,
+        **out,
+    }
+
+    def mut_hist(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        rows.append(entry)
+        return rows[-50:]
+
+    kv_mutate("handover_history", mut_hist, [])
+    out["id"] = entry["id"]
+    out["luc"] = entry["luc"]
     return out
 
 
@@ -691,6 +752,78 @@ def swap_open(
 def swap_list(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_role(authorization)
     return {"items": kv_get("swap", [])}
+
+
+@router.post("/api/v1/cho-doi-ca/{swap_id}/dong-y")
+def swap_dong_y(
+    swap_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    caller = auth_session(authorization)
+    if not caller:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    nv = caller.get("nv_id")
+    found: dict[str, Any] | None = None
+
+    def mut(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        nonlocal found
+        for it in items:
+            if it.get("id") != swap_id:
+                continue
+            parties = {it["a"], it["b"], it["c"]}
+            agreed = set(it.get("dong_y", []))
+            if nv and nv in parties:
+                agreed.add(nv)
+            it["dong_y"] = sorted(agreed)
+            if parties <= agreed:
+                it["trang_thai"] = "dong_y"
+            found = dict(it)
+            return items
+        raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
+
+    kv_mutate("swap", mut, [])
+    if not found:
+        raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
+    _audit("swap_dong_y", nv or caller["role"], {"id": swap_id, "dong_y": found.get("dong_y", [])})
+    return found
+
+
+@router.get("/api/v1/ops/pickers")
+def ops_pickers(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    """Nhân viên và ca cho dropdown — mọi vai đăng nhập."""
+    _require_role(authorization)
+    seed = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
+    staff = [
+        {"id": n["id"], "ten": n.get("ten") or n["id"]}
+        for n in seed.get("nhan_vien", [])
+        if isinstance(n, dict) and n.get("id")
+    ]
+    shifts = []
+    for c in seed.get("ca_mau_21", []):
+        if not isinstance(c, dict) or not c.get("id"):
+            continue
+        thu = c.get("thu") or _THU_MAP.get(int(c.get("ngay_offset", 1)), "T2")
+        vi = _VI_TRI_VI.get(str(c.get("vi_tri", "")), str(c.get("vi_tri", "")).replace("_", " "))
+        bat = c.get("bat_dau", "")
+        ket = c.get("ket_thuc", "")
+        label = f"{thu} · {bat}–{ket} · {vi}".strip(" ·")
+        shifts.append(
+            {
+                "id": c["id"],
+                "label": label,
+                "thu": thu,
+                "bat_dau": bat,
+                "ket_thuc": ket,
+                "vi_tri": c.get("vi_tri"),
+            }
+        )
+    me = auth_session(authorization)
+    return {
+        "nhan_vien": staff,
+        "ca": shifts,
+        "me_nv_id": me.get("nv_id") if me else None,
+        "nguon": "quan",
+    }
 
 
 @router.get("/api/v1/ab")
