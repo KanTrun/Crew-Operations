@@ -1,13 +1,13 @@
 "use client";
 
-import { Btn, Field, Input, Select } from "./kit";
+import { Btn, Input, Select } from "./kit";
 
 export type BomRow = { key: string; qty: string };
 
 /** Nguyên liệu phổ biến — key giữ nguyên cho API, nhãn dành cho quản lý. */
 export const BOM_INGREDIENTS: Array<{ key: string; label: string; unit: string }> = [
   { key: "ca_phe_hat", label: "Cà phê hạt", unit: "g" },
-  { key: "cafe_g", label: "Cà phê (g)", unit: "g" },
+  { key: "cafe_g", label: "Cà phê", unit: "g" },
   { key: "sua_tuoi", label: "Sữa tươi", unit: "ml" },
   { key: "tra", label: "Trà", unit: "g" },
   { key: "matcha", label: "Matcha", unit: "g" },
@@ -27,7 +27,7 @@ export function ingredientLabel(key: string): string {
 }
 
 export function ingredientUnit(key: string): string {
-  return BOM_INGREDIENTS.find((i) => i.key === key)?.unit ?? "đv";
+  return BOM_INGREDIENTS.find((i) => i.key === key)?.unit ?? "đơn vị";
 }
 
 export function bomToRows(bom: Record<string, number>): BomRow[] {
@@ -59,30 +59,38 @@ export function BomEditor({ rows, onChange }: BomEditorProps) {
 
   function removeRow(index: number) {
     if (rows.length <= 1) {
-      onChange([{ key: "ly", qty: "1" }]);
+      onChange([{ key: "", qty: "" }]);
       return;
     }
     onChange(rows.filter((_, i) => i !== index));
   }
 
   return (
-    <div className="nq-bom-editor space-y-3">
-      <p className="text-xs leading-relaxed text-[var(--nq-ink-muted)]">
-        Ghi rõ nguyên liệu dùng cho <strong>một ly / một phần</strong>. Khi hoàn tất đơn ở quầy, hệ thống tự trừ kho theo
-        bảng này — không cần nhập mã JSON.
+    <div className="nq-bom-editor">
+      <p className="nq-bom-editor__intro">
+        Mỗi dòng = một nguyên liệu cho <strong>1 ly / 1 phần</strong>. Khi bán xong ở quầy, hệ thống tự trừ kho theo
+        bảng này.
       </p>
 
-      <ul className="space-y-2">
+      <ul className="nq-bom-list">
         {rows.map((row, index) => {
           const preset = BOM_INGREDIENTS.some((i) => i.key === row.key);
-          const selectValue = preset ? row.key : row.key ? CUSTOM : "";
-          const unit = ingredientUnit(row.key);
+          const isCustom = Boolean(row.key) && !preset;
+          const selectValue = preset ? row.key : isCustom ? CUSTOM : "";
+          const unit = row.key ? ingredientUnit(row.key) : "đơn vị";
 
           return (
-            <li key={`bom-${index}`} className="nq-bom-row">
-              <div className="nq-bom-row__field">
-                <label className="nq-bom-row__label" htmlFor={`bom-ing-${index}`}>
-                  Nguyên liệu
+            <li key={`bom-${index}`} className="nq-bom-card">
+              <div className="nq-bom-card__head">
+                <span className="nq-bom-card__num">Dòng {index + 1}</span>
+                <button type="button" className="nq-bom-card__remove" onClick={() => removeRow(index)}>
+                  Xóa dòng
+                </button>
+              </div>
+
+              <div className="nq-bom-card__field">
+                <label className="nq-bom-card__label" htmlFor={`bom-ing-${index}`}>
+                  Chọn nguyên liệu
                 </label>
                 <Select
                   id={`bom-ing-${index}`}
@@ -90,60 +98,64 @@ export function BomEditor({ rows, onChange }: BomEditorProps) {
                   onChange={(e) => {
                     const v = e.target.value;
                     if (v === CUSTOM) updateRow(index, { key: "" });
-                    else updateRow(index, { key: v });
+                    else if (v) updateRow(index, { key: v });
+                    else updateRow(index, { key: "", qty: "" });
                   }}
                 >
-                  <option value="">— Chọn —</option>
+                  <option value="">— Chọn trong danh sách —</option>
                   {BOM_INGREDIENTS.map((ing) => (
                     <option key={ing.key} value={ing.key}>
                       {ing.label}
                     </option>
                   ))}
-                  <option value={CUSTOM}>Khác (tự nhập)…</option>
+                  <option value={CUSTOM}>Nguyên liệu khác…</option>
                 </Select>
               </div>
 
-              {!preset ? (
-                <div className="nq-bom-row__field">
-                  <label className="nq-bom-row__label" htmlFor={`bom-key-${index}`}>
-                    Tên nguyên liệu
+              {selectValue === CUSTOM ? (
+                <div className="nq-bom-card__field">
+                  <label className="nq-bom-card__label" htmlFor={`bom-key-${index}`}>
+                    Tên nguyên liệu (ghi bằng tiếng Việt)
                   </label>
                   <Input
                     id={`bom-key-${index}`}
-                    value={row.key}
-                    onChange={(e) => updateRow(index, { key: e.target.value.toLowerCase().replace(/\s+/g, "_") })}
-                    placeholder="vd: siro_vai"
+                    value={row.key.replace(/_/g, " ")}
+                    onChange={(e) =>
+                      updateRow(index, {
+                        key: e.target.value
+                          .trim()
+                          .toLowerCase()
+                          .normalize("NFD")
+                          .replace(/[\u0300-\u036f]/g, "")
+                          .replace(/đ/g, "d")
+                          .replace(/[^a-z0-9]+/g, "_")
+                          .replace(/^_+|_+$/g, ""),
+                      })
+                    }
+                    placeholder="Ví dụ: Syrup vải"
                   />
                 </div>
               ) : null}
 
-              <div className="nq-bom-row__field nq-bom-row__field--qty">
-                <label className="nq-bom-row__label" htmlFor={`bom-qty-${index}`}>
-                  Số lượng ({unit})
+              <div className="nq-bom-card__field">
+                <label className="nq-bom-card__label" htmlFor={`bom-qty-${index}`}>
+                  Số lượng dùng ({unit})
                 </label>
                 <Input
                   id={`bom-qty-${index}`}
                   value={row.qty}
                   onChange={(e) => updateRow(index, { qty: e.target.value })}
                   inputMode="decimal"
-                  placeholder="0"
+                  placeholder={`Nhập số, đơn vị: ${unit}`}
                 />
               </div>
-
-              <Btn type="button" variant="ghost" className="nq-bom-row__remove" onClick={() => removeRow(index)}>
-                Xóa
-              </Btn>
             </li>
           );
         })}
       </ul>
 
-      <Btn
-        type="button"
-        variant="ghost"
-        onClick={() => onChange([...rows, { key: "", qty: "" }])}
-      >
-        + Thêm nguyên liệu
+      <Btn type="button" variant="ghost" block onClick={() => onChange([...rows, { key: "", qty: "" }])}>
+        + Thêm dòng nguyên liệu
       </Btn>
     </div>
   );
