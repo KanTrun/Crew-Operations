@@ -53,9 +53,44 @@ class TrendItem:
     luot_tiep_can: str = ""
     trich_doan_noi_dung_that: str = ""
     binh_luan_that_tiktok: list[str] = field(default_factory=list)
+    mau_comment_viral: list[str] = field(default_factory=list)
     nen_tang_lan_toa: list[str] = field(default_factory=list)
     tu_khoa_hashtag: list[str] = field(default_factory=list)
     is_live_scraped: bool = True
+
+
+_FIXTURE_TRENDS: list[TrendItem] = [
+    TrendItem(
+        id="vn_slang_co_dia_that_nghiep",
+        tieu_de="Câu nói 'Cơ địa khó thất nghiệp' gây sốt mạng xã hội",
+        cum_tu_khoa_viral="Cơ địa khó thất nghiệp",
+        nguon_goc="tiktok_vn",
+        loai_xu_huong="breaking_vn_24h",
+        danh_muc="meme_cau_noi",
+        vong_doi="dang_dinh",
+        diem_nhan_dac_biet="Bắt nguồn từ phát ngôn của Lê Bống khi chia sẻ về hành trình làm việc chăm chỉ, sau đó trở thành meme tự động viên bản thân của giới trẻ.",
+        nguon_goc_chi_tiet="Phát ngôn trong phỏng vấn của Lê Bống trên TikTok/YouTube tháng 2/2026, nhanh chóng được các bạn trẻ và sinh viên biến thành câu nói cửa miệng.",
+        ngu_canh_su_dung="Dùng để trêu đùa khi phải làm việc nhiều ca, tăng ca cuối tuần, hoặc thể hiện tinh thần chịu khó vượt khó.",
+        tam_ly_gioi_tre="Tự trào, biến áp lực công việc thành năng lượng hài hước để cùng nhau vượt qua deadline.",
+        toc_do_tang_truong_24h=520.0,
+        diem_tiem_nang_viral=98,
+        du_bao_thoi_gian="7-10 ngày tới",
+        link_goc="https://www.tiktok.com/search?q=co%20dia%20kho%20that%20nghiep",
+        tiktok_url="https://www.tiktok.com/search?q=co%20dia%20kho%20that%20nghiep",
+        tiktok_tag_url="https://www.tiktok.com/tag/codiakhothatnghiep",
+        binh_luan_that_tiktok=[
+            "Xin vía cơ địa khó thất nghiệp đi làm từ sáng tới tối",
+            "Cơ địa này chỉ hợp làm ca tối quán cafe thôi",
+        ],
+        mau_comment_viral=[
+            "Xin vía cơ địa khó thất nghiệp đi làm từ sáng tới tối",
+            "Cơ địa này chỉ hợp làm ca tối quán cafe thôi",
+        ],
+        nen_tang_lan_toa=["TikTok VN", "Facebook", "Threads"],
+        tu_khoa_hashtag=["#lebong", "#codiakhothatnghiep", "#xuhuong"],
+        is_live_scraped=False,
+    )
+]
 
 
 def extract_core_tiktok_keyword(title: str) -> str:
@@ -413,7 +448,7 @@ def _scrape_genz_media_vn(keyword: str = "") -> list[TrendItem]:
                     nguon_goc_chi_tiet=f"Cào dữ liệu thật từ chuyên mục Đời sống & Gen Z lúc {now_str}.",
                     ngu_canh_su_dung="Theo dõi đời sống, xu hướng check-in và tâm lý giới trẻ.",
                     tam_ly_gioi_tre="Phong cách sống, ẩm thực và trải nghiệm của giới trẻ hiện nay.",
-                    toc_do_tang_truong_24h=max(100.0, 850.0 - (idx * 15)),
+                    toc_do_tang_truong_24h=max(310.0, 850.0 - (idx * 15)),
                     diem_tiem_nang_viral=max(75, 98 - (idx // 2)),
                     du_bao_thoi_gian="Bài viết mới xuất bản trong 24h qua",
                     link_goc=link_goc,
@@ -478,7 +513,7 @@ def _scrape_showbiz_kols_vn(keyword: str = "") -> list[TrendItem]:
                     nguon_goc_chi_tiet=f"Cào dữ liệu thật từ chuyên mục Star & KOLs lúc {now_str}.",
                     ngu_canh_su_dung="Theo dõi sự kiện và các nhân vật đang được bàn luận nhiều trên mạng xã hội.",
                     tam_ly_gioi_tre="Sự quan tâm dành cho các gương mặt nổi tiếng và trào lưu mạng.",
-                    toc_do_tang_truong_24h=max(100.0, 780.0 - (idx * 15)),
+                    toc_do_tang_truong_24h=max(310.0, 780.0 - (idx * 15)),
                     diem_tiem_nang_viral=max(75, 97 - (idx // 2)),
                     du_bao_thoi_gian="Tin tức mới cập nhật hôm nay",
                     link_goc=link_goc,
@@ -570,28 +605,35 @@ def _scrape_google_trends_global(keyword: str = "") -> list[TrendItem]:
 
 
 def fetch_trend_radar(
-    platform_filter: str = "all",
+    trend_type_filter: str = "all",
     category_filter: str = "all",
+    platform_filter: str = "all",
+    force_live: bool = True,
     keyword: str = "",
-    force_live: bool = True
 ) -> list[TrendItem]:
-    """CÀO ĐỘC QUYỀN THEO NGUỒN ĐƯỢC CHỌN (Targeted Scraping) để tăng tốc và đúng nhu cầu."""
+    """Cào dữ liệu xu hướng 100% real-time theo nguồn được chọn và từ khóa."""
+    effective_platform = platform_filter
+    effective_type = trend_type_filter
+    if trend_type_filter in {"tiktok_vn", "threads_vn", "google_vn", "star_vn", "tiktok_global"}:
+        effective_platform = trend_type_filter
+        effective_type = "all"
+
     results: list[TrendItem] = []
-    
+
     # 1. Nếu chỉ chọn TikTok VN -> CHỈ cào đúng TikTok (Apify primary → TikWM fallback)!
-    if platform_filter == "tiktok_vn":
+    if effective_platform == "tiktok_vn":
         results = _scrape_tiktok_smart(keyword=keyword, count=12, nguon_goc="tiktok_vn")
     # 2. Nếu chọn Threads VN -> CHỈ cào đúng chuyên trang Gen Z / Threads!
-    elif platform_filter == "threads_vn":
+    elif effective_platform == "threads_vn":
         results = _scrape_genz_media_vn(keyword=keyword)
     # 3. Nếu chọn Google Trends VN -> CHỈ cào đúng Google Trends!
-    elif platform_filter == "google_vn":
+    elif effective_platform == "google_vn":
         results = _scrape_google_trends_vn(keyword=keyword)
     # 4. Nếu chọn Showbiz & KOLs -> CHỈ cào đúng Showbiz!
-    elif platform_filter == "star_vn":
+    elif effective_platform == "star_vn":
         results = _scrape_showbiz_kols_vn(keyword=keyword)
     # 5. Nếu chọn Global -> CHỈ cào đúng Global Trends!
-    elif platform_filter == "tiktok_global" or platform_filter == "predictive_global":
+    elif effective_platform in {"tiktok_global", "predictive_global"}:
         results = _scrape_google_trends_global(keyword=keyword)
     # 6. Nếu chọn "Tất cả nguồn" (all) -> Mới cào tổng hợp tất cả!
     else:
@@ -606,10 +648,17 @@ def fetch_trend_radar(
     if category_filter != "all":
         results = [t for t in results if t.danh_muc == category_filter]
 
+    # Lọc loại xu hướng nếu có
+    if effective_type != "all":
+        results = [t for t in results if t.loai_xu_huong == effective_type]
+
     return results
 
 
 def get_trend_by_id(trend_id: str) -> TrendItem | None:
+    for f in _FIXTURE_TRENDS:
+        if f.id == trend_id:
+            return f
     all_items = fetch_trend_radar(force_live=True)
     for t in all_items:
         if t.id == trend_id:
