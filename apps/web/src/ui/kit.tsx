@@ -919,6 +919,65 @@ export function DataTable({
   );
 }
 
+/** Hộp thoại xác nhận — thay `window.confirm` cho hành động quan trọng. */
+export function ConfirmDialog({
+  open,
+  title,
+  body,
+  confirmLabel,
+  cancelLabel = "Hủy",
+  variant = "primary",
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  body: ReactNode;
+  confirmLabel: string;
+  cancelLabel?: string;
+  variant?: BtnVariant;
+  busy?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !busy) onCancel();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, busy, onCancel]);
+
+  if (!open) return null;
+
+  return (
+    <div className="nq-confirm-overlay" onClick={busy ? undefined : onCancel}>
+      <div
+        className="nq-confirm-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="nq-confirm-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="nq-confirm-title" className="nq-confirm-title">
+          {title}
+        </h2>
+        <div className="nq-confirm-body">{body}</div>
+        <div className="nq-confirm-actions">
+          <Btn variant="ghost" onClick={onCancel} disabled={busy} className="nq-btn-compact">
+            {cancelLabel}
+          </Btn>
+          <Btn variant={variant} busy={busy} onClick={onConfirm} className="nq-btn-compact">
+            {confirmLabel}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export type ToastItem = { id: number; text: string; kind: "ok" | "err" };
 
 /**

@@ -585,6 +585,194 @@ a:focus-visible {
   color: var(--nq-copper);
 }
 
+.nq-filter-tabs--counts .nq-filter-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.nq-filter-tab__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--nq-radius-pill);
+  font-size: 0.62rem;
+  font-family: var(--nq-font-mono);
+  background: color-mix(in srgb, var(--nq-copper) 18%, transparent);
+  color: var(--nq-copper);
+}
+
+.nq-filter-tab--on .nq-filter-tab__count {
+  background: color-mix(in srgb, var(--nq-copper) 35%, transparent);
+}
+
+/* ── User management table ── */
+.nq-page--nguoi .nq-summary-cell {
+  min-width: min(100%, 148px);
+}
+
+.nq-user-table-wrap {
+  margin-top: var(--nq-s2);
+}
+
+.nq-user-table tbody tr {
+  transition: background-color var(--nq-dur-t0);
+}
+
+.nq-user-row:hover td {
+  background: color-mix(in srgb, var(--nq-copper) 6%, var(--nq-bg-elevated));
+}
+
+.nq-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.nq-user-avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--nq-radius-pill);
+  border: 1px solid color-mix(in srgb, var(--nq-copper) 45%, var(--nq-line));
+  background: color-mix(in srgb, var(--nq-copper) 14%, var(--nq-bg-elevated));
+  color: var(--nq-copper);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.nq-user-cell__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.nq-user-cell__name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--nq-fg);
+}
+
+.nq-user-cell__meta {
+  font-size: 0.72rem;
+  color: var(--nq-ink-muted);
+}
+
+.nq-user-cell__meta--sm {
+  display: none;
+}
+
+.nq-user-table__actions-head,
+.nq-user-table__actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.nq-user-protected {
+  display: inline-block;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--nq-radius-pill);
+  border: 1px dashed var(--nq-line);
+  font-size: 0.62rem;
+  font-family: var(--nq-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--nq-ink-muted);
+}
+
+.nq-btn-compact {
+  padding: 0.42rem 0.85rem !important;
+  font-size: 0.68rem !important;
+  letter-spacing: 0.06em !important;
+  box-shadow: 3px 3px 0 0 var(--nq-copper-dim) !important;
+}
+
+.nq-btn-compact:hover:not(:disabled) {
+  box-shadow: 4px 4px 0 0 var(--nq-copper-dim) !important;
+}
+
+.nq-btn-compact--danger {
+  border-color: color-mix(in srgb, var(--nq-red) 55%, var(--nq-line)) !important;
+  color: var(--nq-red) !important;
+}
+
+.nq-btn-compact--danger:hover:not(:disabled) {
+  border-color: var(--nq-red) !important;
+  background: color-mix(in srgb, var(--nq-red) 12%, transparent) !important;
+}
+
+@media (max-width: 639px) {
+  .nq-user-table__hide-sm {
+    display: none;
+  }
+
+  .nq-user-cell__meta--sm {
+    display: inline;
+  }
+}
+
+/* ── Confirm dialog ── */
+.nq-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--nq-bg) 35%, rgba(0, 0, 0, 0.72));
+  backdrop-filter: blur(6px);
+  animation: nq-fade-in var(--nq-dur-t0) var(--nq-ease-out) both;
+}
+
+.nq-confirm-panel {
+  width: min(100%, 28rem);
+  padding: 1.5rem;
+  border: 2px solid var(--nq-line-strong);
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-surface-hi);
+  box-shadow: var(--nq-shadow-bubble), 12px 12px 0 0 var(--nq-copper-dim);
+  animation: nq-rise var(--nq-dur-t1) var(--nq-ease-out) both;
+}
+
+.nq-confirm-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--nq-fg);
+}
+
+.nq-confirm-body {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--nq-ink-muted);
+}
+
+.nq-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nq-confirm-overlay,
+  .nq-confirm-panel {
+    animation: none;
+  }
+}
+
 .nq-code-panel {
   font-family: var(--nq-font-mono);
   font-size: 0.78rem;
