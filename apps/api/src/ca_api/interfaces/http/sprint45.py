@@ -11,6 +11,7 @@ from typing import Annotated, Any, cast
 from ca_agents.ag_handover import extract as extract_handover
 from ca_agents.ag_rule import propose as propose_rule
 from ca_agents.ag_sop import answer as sop_answer
+from ca_agents.ag_sop.context import load_all_buoc
 from ca_agents.ag_waste import cluster as cluster_waste
 from ca_gates import present_conflict, validate_num
 from ca_ops import load_template
@@ -657,8 +658,7 @@ def sop(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     _require_role(authorization)
-    tpl = load_template("mo_quan")
-    r = sop_answer(body.question, buoc=tpl["buoc"], luat=list_luat())
+    r = sop_answer(body.question, buoc=load_all_buoc(), luat=list_luat())
     return r.__dict__
 
 
@@ -668,12 +668,12 @@ def sop_golden(authorization: Annotated[str | None, Header()] = None) -> dict[st
     path = ROOT / "data" / "golden" / "sop" / "questions.jsonl"
     if not path.exists():
         raise HTTPException(status_code=409, detail="thieu_golden_sop")
-    tpl = load_template("mo_quan")
+    buoc = load_all_buoc()
     laws = list_luat()
     rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
     answers = []
     for row in rows:
-        a = sop_answer(row["q"], buoc=tpl["buoc"], luat=laws)
+        a = sop_answer(row["q"], buoc=buoc, luat=laws)
         answers.append({"q": row["q"], **a.__dict__})
     chua = sum(1 for x in answers if x["chua_co"])
     cited = sum(1 for x in answers if x["trich_dan"] or x["chua_co"])

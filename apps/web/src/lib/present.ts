@@ -408,6 +408,29 @@ export function trichDanTach(raw: unknown): TrichDan {
   return { loai: "khac", ma: "", nguon: "Nguồn quán" };
 }
 
+/** Nhãn người đọc cho trích dẫn SOP (phiếu / luật). */
+export function trichDanLabel(
+  raw: unknown,
+  opts?: { luat?: { id: string; cau?: string }[]; buocTen?: Record<string, string> },
+): string {
+  const { loai, ma, nguon } = trichDanTach(raw);
+  if (!ma) return safeText(raw, nguon);
+  if (loai === "luat") {
+    const hit = opts?.luat?.find((l) => l.id === ma);
+    if (hit?.cau) {
+      const c = hit.cau.trim();
+      return c.length > 80 ? `${c.slice(0, 80)}…` : c;
+    }
+    return `Luật ${ma}`;
+  }
+  if (loai === "phieu") {
+    const ten = opts?.buocTen?.[ma];
+    if (ten) return ten;
+    return ma.replace(/_/g, " ");
+  }
+  return safeText(raw, nguon);
+}
+
 /* ── Ý định tin nhắn trong ca (AG-MSG) ──
    Sáu ý định máy chủ nhận ra từ câu người nhắn. Chip ý định cho người duyệt
    biết đây là loại việc gì trước khi đọc hết tóm tắt. */

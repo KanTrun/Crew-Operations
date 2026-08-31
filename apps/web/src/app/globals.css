@@ -3774,8 +3774,151 @@ a:focus-visible {
 }
 
 .nq-sop-answer {
-  margin-top: 1.25rem;
+  margin-top: 0;
   animation: nq-rise var(--nq-dur-t0) var(--nq-ease-out) both;
+}
+
+.nq-sop-copilot__grid {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .nq-sop-copilot__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  }
+}
+
+.nq-sop-copilot__ask {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.nq-sop-copilot__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.nq-sop-copilot__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--nq-ink-muted);
+}
+
+.nq-sop-copilot__history {
+  margin-top: 0.25rem;
+}
+
+.nq-sop-copilot__section-label {
+  margin: 0 0 0.5rem;
+  font-family: var(--nq-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--nq-copper);
+}
+
+.nq-sop-copilot__answer {
+  min-height: 12rem;
+}
+
+.nq-sop-copilot__answer-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.nq-sop-copilot__confidence {
+  font-family: var(--nq-font-mono);
+  font-size: 0.75rem;
+  color: var(--nq-ink-muted);
+}
+
+.nq-sop-copilot__answer-text {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  margin: 0 0 0.75rem;
+}
+
+.nq-sop-copilot__sources {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--nq-line);
+}
+
+.nq-sop-copilot__source-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nq-sop-copilot__source-list li {
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.nq-sop-copilot__source-type {
+  display: inline-block;
+  margin-right: 0.35rem;
+  font-family: var(--nq-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--nq-copper);
+}
+
+.nq-sop-copilot__laws {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--nq-line);
+}
+
+.nq-sop-copilot__law-strip {
+  display: grid;
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .nq-sop-copilot__law-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .nq-sop-copilot__law-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.nq-sop-copilot__law-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-sm);
+  background: var(--nq-surface-1);
+  cursor: pointer;
+  transition: border-color var(--nq-dur-t0) var(--nq-ease-out);
+}
+
+.nq-sop-copilot__law-pill:hover:not(:disabled) {
+  border-color: var(--nq-copper);
+}
+
+.nq-sop-copilot__law-pill:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .nq-fairness-list {
