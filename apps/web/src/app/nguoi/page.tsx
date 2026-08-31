@@ -4,26 +4,32 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { matchSearch } from "../../lib/list-filters";
 import { viError } from "../../lib/present";
+import {
+  computeTeamInsight,
+  countRoles,
+  roleBreakdown,
+  technicalUserLines,
+  type TeamUser,
+} from "../../lib/team-stats";
 import { getRole, getToken, isChuQuan, roleLabel } from "../../lib/session";
+import { RoleDonutChart } from "../../ui/nguoi/role-donut";
+import { UserCard } from "../../ui/nguoi/user-card";
 import {
   Alert,
   AuthGate,
-  Btn,
   ConfirmDialog,
   Empty,
   Loading,
-  Notice,
   PageHeader,
-  StatusChip,
   Summary,
+  TechnicalDrawer,
   Toasts,
   useToasts,
 } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 
-type User = { username: string; role: string; nv_id: string; display_name: string };
 type RoleFilter = "all" | "chu_quan" | "quan_ly" | "nhan_vien";
-type PendingAction = { kind: "promote" | "demote"; user: User };
+type PendingAction = { kind: "promote" | "demote"; user: TeamUser };
 
 const ROLE_ORDER: Record<string, number> = {
   chu_quan: 0,
@@ -31,27 +37,14 @@ const ROLE_ORDER: Record<string, number> = {
   nhan_vien: 2,
 };
 
-function userHaystack(u: User): string {
-  return [u.display_name, u.username, u.nv_id, roleLabel(u.role)].join(" ");
-}
-
-function userInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-}
-
-function roleTone(role: string): "ok" | "warn" | "default" {
-  if (role === "chu_quan") return "ok";
-  if (role === "quan_ly") return "warn";
-  return "default";
+function userHaystack(u: TeamUser): string {
+  return [u.display_name, u.username, roleLabel(u.role)].join(" ");
 }
 
 export default function NguoiPage() {
   const [token, setToken] = useState("");
   const [myRole, setMyRole] = useState("");
-  const [items, setItems] = useState<User[]>([]);
+  const [items, setItems] = useState<TeamUser[]>([]);
   const [filter, setFilter] = useState<RoleFilter>("all");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -64,7 +57,7 @@ export default function NguoiPage() {
     if (!getToken()) return;
     setLoading(true);
     try {
-      const out = await apiGet<{ items: User[] }>("/api/v1/nguoi");
+      const out = await apiGet<{ items: TeamUser[] }>("/api/v1/nguoi");
       setItems(out.items ?? []);
       setError(null);
     } catch (e) {
@@ -82,15 +75,9 @@ export default function NguoiPage() {
     if (token) void load();
   }, [load, token]);
 
-  const counts = useMemo(() => {
-    const c = { all: items.length, chu_quan: 0, quan_ly: 0, nhan_vien: 0 };
-    for (const u of items) {
-      if (u.role === "chu_quan") c.chu_quan += 1;
-      else if (u.role === "quan_ly") c.quan_ly += 1;
-      else if (u.role === "nhan_vien") c.nhan_vien += 1;
-    }
-    return c;
-  }, [items]);
+  const counts = useMemo(() => countRoles(items), [items]);
+  const slices = useMemo(() => roleBreakdown(counts), [counts]);
+  const insight = useMemo(() => computeTeamInsight(counts), [counts]);
 
   const filtered = useMemo(() => {
     const roleFiltered = filter === "all" ? items : items.filter((u) => u.role === filter);
@@ -179,7 +166,7 @@ export default function NguoiPage() {
         <PageHeader
           kicker="Admin quán"
           title="Người dùng"
-          meta="Quản lý vai trò nhân sự: nâng nhân viên lên quản lý ca hoặc hạ quản lý xuống nhân viên. Chỉ chủ quán thực hiện được thay đổi."
+          meta="Quản lý vai trò nhân sự: nâng nhân viên lên quản lý ca hoặc hạ quản lý xuống nhân viên."
         />
 
         {error ? <Alert>{error}</Alert> : null}
@@ -195,14 +182,24 @@ export default function NguoiPage() {
           />
         ) : null}
 
-        {!canManage ? (
-          <Notice>Bạn đang xem danh sách ở chế độ chỉ đọc. Chỉ chủ quán mới nâng hoặc hạ vai trò.</Notice>
+        {!loading && items.length > 0 ? (
+          <div className="nq-nguoi-cockpit">
+            <RoleDonutChart slices={slices} total={counts.all} />
+            <div
+              className={`nq-nguoi-insight nq-nguoi-insight--${insight.severity}`}
+              role="status"
+              aria-live="polite"
+            >
+              <p className="nq-nguoi-insight__label">Cơ cấu đội</p>
+              <p className="nq-nguoi-insight__text">{insight.message}</p>
+            </div>
+          </div>
         ) : null}
 
         <ListToolbar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Tìm tên, @tài khoản hoặc mã NV…"
+          searchPlaceholder="Tìm tên hoặc @tài khoản…"
           shown={filtered.length}
           total={items.length}
           filtered={filteredActive}
@@ -235,77 +232,22 @@ export default function NguoiPage() {
         {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
 
         {!loading && filtered.length > 0 ? (
-          <div className="nq-data-table-wrap nq-user-table-wrap">
-            <table className="nq-data-table nq-user-table">
-              <caption className="sr-only">Danh sách người dùng và vai trò</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Nhân sự</th>
-                  <th scope="col" className="nq-user-table__hide-sm">
-                    Mã NV
-                  </th>
-                  <th scope="col">Vai trò</th>
-                  <th scope="col" className="nq-user-table__actions-head">
-                    {canManage ? "Thay đổi vai" : "Ghi chú"}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((user) => (
-                  <tr key={user.username} className="nq-user-row">
-                    <td>
-                      <div className="nq-user-cell">
-                        <span className="nq-user-avatar" aria-hidden="true">
-                          {userInitials(user.display_name)}
-                        </span>
-                        <div className="nq-user-cell__text">
-                          <strong className="nq-user-cell__name">{user.display_name}</strong>
-                          <span className="nq-user-cell__meta font-mono">@{user.username}</span>
-                          <span className="nq-user-cell__meta nq-user-cell__meta--sm font-mono">{user.nv_id}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="nq-muted font-mono text-xs nq-user-table__hide-sm">{user.nv_id}</td>
-                    <td>
-                      <StatusChip tone={roleTone(user.role)}>{roleLabel(user.role)}</StatusChip>
-                    </td>
-                    <td className="nq-user-table__actions">
-                      {canManage && user.role === "nhan_vien" ? (
-                        <Btn
-                          variant="ghost"
-                          busy={busy === user.username}
-                          busyLabel="Đang nâng…"
-                          className="nq-btn-compact"
-                          onClick={() => setPending({ kind: "promote", user })}
-                        >
-                          Nâng QL
-                        </Btn>
-                      ) : null}
-                      {canManage && user.role === "quan_ly" ? (
-                        <Btn
-                          variant="ghost"
-                          busy={busy === user.username}
-                          busyLabel="Đang hạ…"
-                          className="nq-btn-compact nq-btn-compact--danger"
-                          onClick={() => setPending({ kind: "demote", user })}
-                        >
-                          Hạ NV
-                        </Btn>
-                      ) : null}
-                      {user.role === "chu_quan" ? (
-                        <span className="nq-user-protected" title="Vai trò chủ quán không đổi được">
-                          Bảo vệ
-                        </span>
-                      ) : null}
-                      {!canManage && user.role !== "chu_quan" ? (
-                        <span className="nq-muted text-xs">Chỉ xem</span>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="nq-nguoi-grid">
+            {filtered.map((user) => (
+              <UserCard
+                key={user.username}
+                user={user}
+                canManage={canManage}
+                busy={busy === user.username}
+                onPromote={(u) => setPending({ kind: "promote", user: u })}
+                onDemote={(u) => setPending({ kind: "demote", user: u })}
+              />
+            ))}
           </div>
+        ) : null}
+
+        {!loading && items.length > 0 ? (
+          <TechnicalDrawer summary="Mã nhân viên nội bộ" lines={technicalUserLines(items)} />
         ) : null}
       </section>
     </>
