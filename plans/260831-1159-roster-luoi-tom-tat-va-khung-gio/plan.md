@@ -1,7 +1,7 @@
 ---
 title: "Roster lưới tóm tắt + khung giờ"
 description: "Approach A — lưới tuần gọn, zebra, lọc, giờ từ API, cấu hình template 3 khung (sáng/chiều/tối)."
-status: in-progress
+status: completed
 priority: P1
 effort: "2-3d"
 tags: [roster, ops-ui, web, api]

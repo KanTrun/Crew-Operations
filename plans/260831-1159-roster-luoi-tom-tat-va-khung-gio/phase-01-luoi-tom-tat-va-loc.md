@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Lưới tóm tắt & lọc"
-status: pending
+status: completed
 priority: P1
 effort: "1d"
 dependencies: []
