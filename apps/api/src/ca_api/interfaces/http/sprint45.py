@@ -12,6 +12,7 @@ from ca_agents.ag_handover import extract as extract_handover
 from ca_agents.ag_rule import propose as propose_rule
 from ca_agents.ag_sop import answer as sop_answer
 from ca_agents.ag_sop.context import load_all_buoc
+from ca_agents.ag_sop.ops import default_ops_context, ops_context_from_dict
 from ca_agents.ag_waste import cluster as cluster_waste
 from ca_gates import present_conflict, validate_num
 from ca_ops import load_template
@@ -186,6 +187,7 @@ class HandoverBody(BaseModel):
 
 class SopBody(BaseModel):
     question: str
+    ngu_canh: dict[str, str] | None = None
 
 
 class SwapBody(BaseModel):
@@ -658,7 +660,13 @@ def sop(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     _require_role(authorization)
-    r = sop_answer(body.question, buoc=load_all_buoc(), luat=list_luat())
+    ctx = ops_context_from_dict(body.ngu_canh) or default_ops_context()
+    r = sop_answer(
+        body.question,
+        buoc=load_all_buoc(),
+        luat=list_luat(),
+        ops_context=ctx,
+    )
     return r.__dict__
 
 
@@ -670,10 +678,11 @@ def sop_golden(authorization: Annotated[str | None, Header()] = None) -> dict[st
         raise HTTPException(status_code=409, detail="thieu_golden_sop")
     buoc = load_all_buoc()
     laws = list_luat()
+    ctx = default_ops_context()
     rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
     answers = []
     for row in rows:
-        a = sop_answer(row["q"], buoc=buoc, luat=laws)
+        a = sop_answer(row["q"], buoc=buoc, luat=laws, ops_context=ctx)
         answers.append({"q": row["q"], **a.__dict__})
     chua = sum(1 for x in answers if x["chua_co"])
     cited = sum(1 for x in answers if x["trich_dan"] or x["chua_co"])

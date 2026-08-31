@@ -22,6 +22,11 @@ type Ans = {
   mode?: string;
   provider?: string;
   do_tin?: number;
+  canh_bao?: string;
+  viec_lam?: string;
+  phieu_ma?: string;
+  phieu_buoc_ma?: string;
+  ngu_canh?: { ngay?: string; thu?: string; khung?: string };
 };
 type Luat = { id: string; cau?: string; trang_thai: string };
 
@@ -63,6 +68,7 @@ export default function SopPage() {
   const [busy, setBusy] = useState(false);
   const [luat, setLuat] = useState<Luat[]>([]);
   const [history, setHistory] = useState<string[]>([]);
+  const [ctxHint, setCtxHint] = useState("");
   const resultRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -79,6 +85,9 @@ export default function SopPage() {
     if (!token) return;
     apiGet<{ items: Luat[] }>("/api/v1/cam-nang")
       .then((d) => setLuat((d.items ?? []).filter((x) => x.trang_thai === "hieu_luc")))
+      .catch(() => undefined);
+    apiGet<{ ngay: string }>("/api/v1/hom-nay")
+      .then((d) => setCtxHint(d.ngay ? `Ngày ${d.ngay}` : ""))
       .catch(() => undefined);
   }, [token]);
 
@@ -139,8 +148,9 @@ export default function SopPage() {
         <p className="nq-sop-copilot__kicker">SOP Copilot</p>
         <h1 className="nq-sop-copilot__title">Hỏi quy trình quán</h1>
         <p className="nq-sop-copilot__lead">
-          Một câu trả lời rõ ràng từ phiếu và luật đã duyệt — không bịa, có nguồn dẫn.
+          Một câu trả lời rõ ràng từ phiếu và luật đã duyệt — lọc theo ca hôm nay, không bịa.
         </p>
+        {ctxHint ? <p className="nq-sop-copilot__ctx-hint">{ctxHint}</p> : null}
       </header>
 
       <section className="nq-sop-copilot__shell" aria-label="Hỏi cẩm nang">
@@ -227,7 +237,14 @@ export default function SopPage() {
                       Tin cậy {Math.round(a.do_tin * 100)}%
                     </span>
                   ) : null}
+                  {a.ngu_canh?.thu && a.ngu_canh?.khung ? (
+                    <span className="nq-sop-copilot__mode">
+                      Ca {a.ngu_canh.thu} · {a.ngu_canh.khung}
+                    </span>
+                  ) : null}
                 </div>
+
+                {a.canh_bao ? <Alert kind="info">{a.canh_bao}</Alert> : null}
 
                 <p className="nq-sop-copilot__answer-text">
                   {safeText(a.cau_tra_loi, "Cẩm nang chưa có câu trả lời cho câu này.")}
@@ -237,6 +254,12 @@ export default function SopPage() {
                   <p className="nq-sop-copilot__cta">
                     <BtnLink href="/cam-nang" variant="ghost">
                       Đề xuất luật mới
+                    </BtnLink>
+                  </p>
+                ) : a.phieu_ma ? (
+                  <p className="nq-sop-copilot__cta">
+                    <BtnLink href="/phieu" variant="ghost">
+                      Mở phiếu quy trình
                     </BtnLink>
                   </p>
                 ) : null}

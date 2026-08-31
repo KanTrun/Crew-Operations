@@ -3815,6 +3815,13 @@ a:focus-visible {
   max-width: 36rem;
 }
 
+.nq-sop-copilot__ctx-hint {
+  margin: 0.35rem 0 0;
+  font-family: var(--nq-font-mono);
+  font-size: 0.72rem;
+  color: var(--nq-copper);
+}
+
 .nq-sop-copilot__shell {
   border: 1px solid var(--nq-line);
   border-radius: var(--nq-radius-bubble);
