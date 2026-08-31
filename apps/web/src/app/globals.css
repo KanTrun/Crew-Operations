@@ -3259,6 +3259,168 @@ a:focus-visible {
   opacity: 0.35;
 }
 
+/* ── Roster compact grid (Approach A) ── */
+.nq-roster-table--compact .nq-roster-corner {
+  min-width: 8.5rem;
+}
+
+.nq-roster-day-head {
+  padding: 0;
+  vertical-align: bottom;
+}
+
+.nq-roster-day-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.55rem 0.35rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  transition: background-color var(--nq-dur-t0), color var(--nq-dur-t0);
+}
+
+.nq-roster-day-btn:hover,
+.nq-roster-day-head--spot .nq-roster-day-btn {
+  background: color-mix(in srgb, var(--nq-copper) 14%, transparent);
+  color: var(--nq-copper);
+}
+
+.nq-roster-day-date {
+  font-family: var(--nq-font-mono);
+  font-size: 0.68rem;
+  color: var(--nq-ink-muted);
+}
+
+.nq-roster-day-meta {
+  font-family: var(--nq-font-mono);
+  font-size: 0.62rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--nq-radius-pill);
+  border: 1px solid var(--nq-line);
+  margin-top: 0.15rem;
+}
+
+.nq-roster-band--even td,
+.nq-roster-band--even th.nq-roster-row-label {
+  background: color-mix(in srgb, var(--nq-bg-elevated) 94%, var(--nq-copper) 6%);
+}
+
+.nq-roster-band--odd td,
+.nq-roster-band--odd th.nq-roster-row-label {
+  background: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
+}
+
+.nq-roster-slot {
+  padding: 0.35rem;
+  vertical-align: middle;
+}
+
+.nq-roster-slot--spot {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--nq-copper) 55%, transparent);
+}
+
+.nq-roster-slot-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius);
+  background: color-mix(in srgb, var(--nq-bg) 70%, var(--nq-bg-elevated));
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--nq-dur-t0),
+    transform var(--nq-dur-press) var(--nq-ease-spring);
+}
+
+.nq-roster-slot-btn:hover {
+  border-color: color-mix(in srgb, var(--nq-copper) 50%, var(--nq-line));
+}
+
+.nq-roster-slot-btn:active {
+  transform: scale(var(--nq-press));
+}
+
+.nq-roster-slot-count {
+  font-family: var(--nq-font-mono);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--nq-fg);
+}
+
+.nq-roster-slot-role {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--nq-ink-muted);
+}
+
+.nq-roster-slot-btn--warn .nq-roster-slot-count {
+  color: var(--nq-warn);
+}
+
+.nq-roster-slot-btn--empty {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--nq-red) 40%, var(--nq-line));
+}
+
+.nq-roster-slot-btn--empty .nq-roster-slot-count {
+  color: var(--nq-red);
+}
+
+.nq-roster-khung-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 90%, transparent);
+}
+
+.nq-roster-khung-panel {
+  padding: 1rem;
+  border: 1px solid var(--nq-line-strong);
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-surface);
+  box-shadow: var(--nq-shadow-bubble), var(--nq-inner-hi);
+}
+
+.nq-roster-khung-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  margin-top: 1rem;
+}
+
+.nq-roster-khung-field {
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius);
+  padding: 0.75rem;
+  margin: 0;
+}
+
+.nq-roster-khung-field legend {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--nq-copper);
+  padding: 0 0.25rem;
+}
+
 .font-mono {
   font-family: var(--nq-font-mono);
 }

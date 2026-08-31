@@ -1,10 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Alert, AuthGate, Loading } from "../../ui/kit";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, AuthGate, Loading, Summary } from "../../ui/kit";
 import { canEdit, getNvId, getRole, getToken, isManager, lifeLabel } from "../../lib/session";
 import { apiSend } from "../../lib/api";
+import { matchSearch } from "../../lib/list-filters";
 import { viError } from "../../lib/present";
+import type { KhungGio } from "../../lib/roster";
+import { shiftRowLabel } from "../../lib/roster";
+import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
+import { KhungConfigPanel } from "./KhungConfigPanel";
+import { RosterGrid } from "./RosterGrid";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -31,6 +37,7 @@ type LichData = {
   ca?: Shift[];
   nhan_vien?: NhanVien[];
   phan_cong?: Record<string, string[]>;
+  khung_gio?: KhungGio;
 };
 
 const VI_TRI_LABEL: Record<string, string> = {
@@ -60,11 +67,16 @@ const TRANG_THAI_COLOR: Record<string, string> = {
   da_dong: "default",
 };
 
-function khungLabel(khung: string): string {
-  if (khung === "sang") return "Sáng · 07:00 – 12:00";
-  if (khung === "chieu") return "Chiều · 12:00 – 17:00";
-  return "Tối · 17:00 – 22:00";
+function viTriLabel(vt?: string): string {
+  if (!vt) return "Chung";
+  return VI_TRI_LABEL[vt] ?? vt;
 }
+
+const DEFAULT_KHUNG_GIO: KhungGio = {
+  sang: { bat_dau: "07:00", ket_thuc: "12:00" },
+  chieu: { bat_dau: "12:00", ket_thuc: "17:00" },
+  toi: { bat_dau: "17:00", ket_thuc: "22:00" },
+};
 
 function isoWeekToMonday(week: string): Date {
   const m = week.match(/^(\d{4})-W(\d{2})$/);
@@ -107,11 +119,6 @@ function dayTitle(d: string): string {
   return m[d] ?? d;
 }
 
-function viTriLabel(vt?: string): string {
-  if (!vt) return "Chung";
-  return VI_TRI_LABEL[vt] ?? vt;
-}
-
 function currentISOWeek(): string {
   const now = new Date();
   const tmp = new Date(now);
@@ -138,6 +145,9 @@ export default function RosterPage() {
   const [pinBusy, setPinBusy] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleMsg, setLifecycleMsg] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterKhung, setFilterKhung] = useState("all");
+  const [filterViTri, setFilterViTri] = useState("all");
 
   useEffect(() => {
     const t = getToken();
@@ -222,6 +232,50 @@ export default function RosterPage() {
     setActiveWeekIndex(0);
   }
 
+  const shiftsEarly = data?.ca ?? [];
+  const nhanVienEarly = data?.nhan_vien ?? [];
+
+  const viTriOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of shiftsEarly) {
+      if (s.vi_tri) set.add(s.vi_tri);
+    }
+    return [
+      { value: "all", label: "Mọi vị trí" },
+      ...[...set].sort().map((v) => ({ value: v, label: viTriLabel(v) })),
+    ];
+  }, [shiftsEarly]);
+
+  const matchCell = useCallback(
+    (assigned: string[], shift: { khung?: string; vi_tri?: string; thu?: string }) => {
+      if (filterKhung !== "all" && shift.khung !== filterKhung) return false;
+      if (filterViTri !== "all" && (shift.vi_tri ?? "") !== filterViTri) return false;
+      if (!search.trim()) return true;
+      const hay = [
+        ...assigned.map((id) => nhanVienEarly.find((x) => x.id === id)?.ten ?? id),
+        viTriLabel(shift.vi_tri),
+        shift.khung,
+        shift.thu,
+      ].join(" ");
+      return matchSearch(hay, search);
+    },
+    [filterKhung, filterViTri, search, nhanVienEarly],
+  );
+
+  const rosterStats = useMemo(() => {
+    const phanCongEarly = data?.phan_cong ?? {};
+    let slots = 0;
+    let staffed = 0;
+    let thin = 0;
+    for (const s of shiftsEarly) {
+      slots += 1;
+      const n = (phanCongEarly[s.id] ?? []).length;
+      if (n > 0) staffed += 1;
+      if (n > 0 && n < 2) thin += 1;
+    }
+    return { slots, staffed, thin };
+  }, [shiftsEarly, data?.phan_cong]);
+
   if (!token) return <AuthGate />;
 
   const canWrite = canEdit(role);
@@ -236,6 +290,22 @@ export default function RosterPage() {
   const monday = isoWeekToMonday(currentDisplayWeek);
   const trangThai = data?.trang_thai ?? "nhap";
   const nextAction = TRANG_THAI_NEXT[trangThai];
+  const khungGio = data?.khung_gio ?? DEFAULT_KHUNG_GIO;
+  const phanCong = data?.phan_cong ?? {};
+
+  const khungOptions = [
+    { value: "all", label: "Mọi khung" },
+    { value: "sang", label: "Ca sáng" },
+    { value: "chieu", label: "Ca chiều" },
+    { value: "toi", label: "Ca tối" },
+  ];
+
+  const filteredActive = filterKhung !== "all" || filterViTri !== "all" || search.trim().length > 0;
+
+  const dayLabelRows = days.map((d, i) => ({
+    title: dayTitle(d),
+    date: dayDate(monday, dayOffsets[i]),
+  }));
 
   const byDay: Record<string, Shift[]> = {};
   for (const d of days) byDay[d] = [];
@@ -497,7 +567,7 @@ export default function RosterPage() {
                         <div key={sIdx} className="p-2.5 rounded bg-neutral-950/60 border border-neutral-800 space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-xs font-bold text-neutral-200">
-                              {khungLabel(shift.khung ?? "")}
+                              {shiftRowLabel(shift, shift.khung ?? "", khungGio)}
                             </span>
                             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-900/70 text-emerald-300 font-bold border border-emerald-700">
                               {viTriLabel(shift.vi_tri)}
@@ -535,126 +605,68 @@ export default function RosterPage() {
       {/* ========================================================================= */}
       {!loading && viewMode === "all" && shifts.length > 0 && (
         <div className="space-y-4">
-          <div className="p-3 bg-amber-950/20 border border-amber-800/40 rounded-lg text-xs text-amber-200 flex items-center justify-between flex-wrap gap-2">
-            <span>
-              <strong>Gợi ý:</strong> Nhấp tiêu đề <strong>bất kỳ ngày nào</strong> trong bảng để mở chi tiết và điều chỉnh nhân sự từng ca.
-            </span>
-          </div>
+          <Summary
+            cells={[
+              { n: rosterStats.slots, k: "Ô ca tuần" },
+              { n: rosterStats.staffed, k: "Đã có người", tone: "ok" },
+              { n: rosterStats.thin, k: "Mỏng (<2 NV)", tone: rosterStats.thin > 0 ? "warn" : "default" },
+              { n: lifeLabel(trangThai), k: "Trạng thái lịch" },
+            ]}
+          />
 
-          <div className="nq-table-wrap">
-            <table className="nq-table">
-              <thead>
-                <tr>
-                  <th scope="col">Khung</th>
-                  {days.map((d, i) => {
-                    const dayShifts = byDay[d] ?? [];
-                    let totalDayStaff = 0;
-                    dayShifts.forEach((s) => {
-                      totalDayStaff += (data?.phan_cong?.[s.id] ?? []).length;
-                    });
+          {canWrite ? (
+            <KhungConfigPanel
+              template={khungGio}
+              disabled={trangThai === "da_dong" || lifecycleBusy}
+              onSaved={() => void loadLich(baseWeek, soTuan)}
+            />
+          ) : null}
 
-                    return (
-                      <th
-                        key={d}
-                        scope="col"
-                        onClick={() => setSelectedDay(d)}
-                        className="cursor-pointer hover:bg-neutral-800/70 transition-all group"
-                        title={`Bấm để xem chi tiết nhân sự ngày ${dayTitle(d)}`}
-                      >
-                        <div className="flex flex-col items-center gap-0.5">
-                          <span className="font-bold text-sm text-neutral-100 group-hover:text-amber-400 flex items-center gap-1">
-                            {dayTitle(d)}
-                          </span>
-                          <span className="font-mono text-xs text-[var(--nq-dim)]">
-                            {dayDate(monday, dayOffsets[i])}
-                          </span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/50 mt-1">
-                            {totalDayStaff} NV / 3 ca
-                          </span>
-                        </div>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {(["sang", "chieu", "toi"] as const).map((khung) => {
-                  const label =
-                    khung === "sang"
-                      ? "Sáng 07–12"
-                      : khung === "chieu"
-                      ? "Chiều 12–17"
-                      : "Tối 17–22";
-                  return (
-                    <tr key={khung}>
-                      <th scope="row" className="nq-roster-row-label">
-                        {label}
-                      </th>
-                      {days.map((d) => {
-                        const shift = (byDay[d] ?? []).find(
-                          (c) => (c.khung ?? "") === khung,
-                        );
-                        const assigned: string[] = shift
-                          ? data?.phan_cong?.[shift.id] ?? []
-                          : [];
-                        return (
-                          <td key={d}>
-                            {shift ? (
-                              <div className="nq-roster-cell">
-                                <p className="nq-roster-role">
-                                  {viTriLabel(shift.vi_tri)}
-                                </p>
-                                <ul className="nq-roster-people">
-                                  {assigned.map((nv_id) => (
-                                    <li key={nv_id} className="nq-roster-nv">
-                                      <span className="nq-roster-nv-name">
-                                        {nvName(nv_id)}
-                                      </span>
-                                    </li>
-                                  ))}
-                                  {assigned.length === 0 ? (
-                                    <li className="nq-roster-empty">
-                                      Chưa xếp người
-                                    </li>
-                                  ) : null}
-                                </ul>
-                                {canWrite && trangThai !== "da_dong" ? (
-                                  <div className="nq-roster-add">
-                                    <select
-                                      defaultValue=""
-                                      disabled={pinBusy}
-                                      aria-label={`Thêm người vào ${label} ${dayTitle(d)}`}
-                                      onChange={(e) => {
-                                        if (e.target.value) {
-                                          handlePin(shift.id, e.target.value, true);
-                                          e.target.value = "";
-                                        }
-                                      }}
-                                    >
-                                      <option value="">Thêm người…</option>
-                                      {(data?.nhan_vien ?? [])
-                                        .filter((nv) => !assigned.includes(nv.id))
-                                        .map((nv) => (
-                                          <option key={nv.id} value={nv.id}>
-                                            {nv.ten || nv.id}
-                                          </option>
-                                        ))}
-                                    </select>
-                                  </div>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <span className="nq-muted">—</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <ListToolbar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Tìm tên nhân viên, vị trí…"
+            status={filterKhung}
+            onStatusChange={setFilterKhung}
+            statusOptions={khungOptions}
+            statusLabel="Khung ca"
+            person={filterViTri}
+            onPersonChange={setFilterViTri}
+            personOptions={viTriOptions}
+            personLabel="Vị trí"
+            shown={rosterStats.slots}
+            total={rosterStats.slots}
+            filtered={filteredActive}
+          />
+
+          <p className="nq-muted text-xs">
+            Bấm <strong>tiêu đề ngày</strong> hoặc <strong>ô ca</strong> để mở chi tiết và ghim nhân sự.
+          </p>
+
+          <RosterGrid
+            byDay={byDay}
+            phanCong={phanCong}
+            khungGio={khungGio}
+            dayLabels={dayLabelRows}
+            spotlightDay={selectedDay}
+            filterKhung={filterKhung}
+            filterViTri={filterViTri}
+            searchNeedle={search}
+            viTriLabel={viTriLabel}
+            nvName={nvName}
+            matchCell={matchCell}
+            onSelectDay={setSelectedDay}
+          />
+
+          {filteredActive && shifts.every((s) => !matchCell(phanCong[s.id] ?? [], s)) ? (
+            <FilteredEmpty
+              onClear={() => {
+                setSearch("");
+                setFilterKhung("all");
+                setFilterViTri("all");
+              }}
+            />
+          ) : null}
         </div>
       )}
 
@@ -690,7 +702,7 @@ export default function RosterPage() {
               {(["sang", "chieu", "toi"] as const).map((khung) => {
                 const shift = (byDay[selectedDay] ?? []).find((c) => c.khung === khung);
                 const assigned = shift ? data?.phan_cong?.[shift.id] ?? [] : [];
-                const khungLabelText = khungLabel(khung);
+                const khungLabelText = shiftRowLabel(shift, khung, khungGio);
 
                 return (
                   <div

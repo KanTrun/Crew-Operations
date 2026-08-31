@@ -28,7 +28,7 @@ from ca_api.interfaces.http.pos import router as pos_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
 from ca_api.interfaces.http.trends import router as trends_router
-from ca_api.persist import DangKyLoi, kv_get, kv_mutate
+from ca_api.persist import DangKyLoi, kv_get, kv_mutate, kv_set
 from ca_api.persist import login as persist_login
 from ca_api.persist import register as persist_register
 from ca_api.persist import session as auth_session
@@ -142,6 +142,43 @@ def health() -> dict[str, str]:
 THU_MAP = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN"}
 
 
+_KHUNG_DEFAULTS: dict[str, dict[str, str]] = {
+    "sang": {"bat_dau": "07:00", "ket_thuc": "12:00"},
+    "chieu": {"bat_dau": "12:00", "ket_thuc": "17:00"},
+    "toi": {"bat_dau": "17:00", "ket_thuc": "22:00"},
+}
+
+
+def _khung_template() -> dict[str, dict[str, str]]:
+    stored = kv_get("khung_gio", None)
+    if not isinstance(stored, dict):
+        return {k: dict(v) for k, v in _KHUNG_DEFAULTS.items()}
+    out: dict[str, dict[str, str]] = {}
+    for key, default in _KHUNG_DEFAULTS.items():
+        slot = stored.get(key)
+        if not isinstance(slot, dict):
+            out[key] = dict(default)
+            continue
+        out[key] = {
+            "bat_dau": str(slot.get("bat_dau", default["bat_dau"])),
+            "ket_thuc": str(slot.get("ket_thuc", default["ket_thuc"])),
+        }
+    return out
+
+
+def _apply_khung_template(ca_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    tmpl = _khung_template()
+    out: list[dict[str, Any]] = []
+    for c in ca_list:
+        c_copy = dict(c)
+        khung = str(c_copy.get("khung", ""))
+        if khung in tmpl:
+            c_copy["bat_dau"] = tmpl[khung]["bat_dau"]
+            c_copy["ket_thuc"] = tmpl[khung]["ket_thuc"]
+        out.append(c_copy)
+    return out
+
+
 def _format_ca_list(ca_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
     out = []
     for c in ca_list:
@@ -149,7 +186,7 @@ def _format_ca_list(ca_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if "thu" not in c_copy or not c_copy["thu"]:
             c_copy["thu"] = THU_MAP.get(int(c_copy.get("ngay_offset", 1)), "T2")
         out.append(c_copy)
-    return out
+    return _apply_khung_template(out)
 
 
 def _tuan_list(base_tuan: str, so_tuan: int) -> list[str]:
@@ -233,6 +270,7 @@ def get_lich_tuan(
             "nhan_vien": seed.get("nhan_vien", []),
             "ca": ca_list,
             "phan_cong": phan_cong,
+            "khung_gio": _khung_template(),
             "solver": {
                 "ok": data.get("ok"),
                 "elapsed_s": data.get("elapsed_s"),
@@ -242,7 +280,61 @@ def get_lich_tuan(
     lifecycle = kv_get("lich_tuan_lifecycle", {})
     result = _build_lich_tuan_from_seed(_seed(), tuan_iso, so_tuan)
     result["trang_thai"] = lifecycle.get("trang_thai", result.get("trang_thai", "nhap"))
+    result["khung_gio"] = _khung_template()
     return result
+
+
+class KhungSlotBody(BaseModel):
+    bat_dau: str
+    ket_thuc: str
+
+
+class KhungGioBody(BaseModel):
+    sang: KhungSlotBody | None = None
+    chieu: KhungSlotBody | None = None
+    toi: KhungSlotBody | None = None
+
+
+def _valid_hhmm(value: str) -> bool:
+    import re
+
+    return bool(re.match(r"^\d{2}:\d{2}$", value))
+
+
+def _minutes_hhmm(value: str) -> int:
+    h, m = value.split(":", 1)
+    return int(h) * 60 + int(m)
+
+
+@app.patch("/api/v1/lich-tuan/khung-gio")
+def patch_khung_gio(
+    body: KhungGioBody,
+    _role: Annotated[str, Depends(_require_write_role)],
+) -> dict[str, Any]:
+    """Cập nhật template giờ cho 3 khung ca (sáng/chiều/tối)."""
+    current = _khung_template()
+    updates = {
+        "sang": body.sang,
+        "chieu": body.chieu,
+        "toi": body.toi,
+    }
+    for key, slot in updates.items():
+        if slot is None:
+            continue
+        if not _valid_hhmm(slot.bat_dau) or not _valid_hhmm(slot.ket_thuc):
+            raise HTTPException(status_code=422, detail="invalid_time_format")
+        if _minutes_hhmm(slot.bat_dau) >= _minutes_hhmm(slot.ket_thuc):
+            raise HTTPException(status_code=422, detail="bat_dau_must_be_before_ket_thuc")
+        current[key] = {"bat_dau": slot.bat_dau, "ket_thuc": slot.ket_thuc}
+    kv_set("khung_gio", current)
+    record_sua(
+        loai="khung_gio",
+        truoc={},
+        sau=current,
+        ai=_role,
+        now_iso=datetime.now(UTC).isoformat(),
+    )
+    return {"ok": True, "khung_gio": current}
 
 
 @app.post("/api/v1/lich-tuan/pin")
