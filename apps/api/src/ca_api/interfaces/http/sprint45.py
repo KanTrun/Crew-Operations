@@ -15,14 +15,18 @@ from ca_agents.ag_waste import cluster as cluster_waste
 from ca_gates import present_conflict, validate_num
 from ca_ops import load_template
 from ca_playbook import (
+    count_luat_that_quan,
     de_xuat,
     duyet,
+    enrich_luat_ui,
     go_luat,
     kiem_chung,
     list_luat,
     list_sua,
+    pipeline_snapshot,
     save_luat,
-    tap_su,
+    sua_rows_for_mau,
+    tap_su_tu_sua,
     tim_mau,
 )
 from ca_solver.fairness import AXES, update_debt_from_assignment, zero_debt
@@ -545,26 +549,36 @@ def handover(
 @router.get("/api/v1/cam-nang")
 def cam_nang_get(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_role(authorization)
-    return {"items": list_luat(), "mau": tim_mau(), "nguon": "dung_lai_8_tuan"}
+    items = [enrich_luat_ui(x) for x in list_luat()]
+    snap = pipeline_snapshot()
+    return {
+        "items": items,
+        "mau": tim_mau(list_sua(include_synthetic=False)),
+        "pipeline": snap,
+        "nguon": "dung_lai_8_tuan",
+        "so_luat_that_quan": snap["so_luat_that_quan"],
+    }
 
 
 @router.post("/api/v1/cam-nang/chay-8-buoc")
 def cam_nang_run(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     role = _require_manager(authorization)
-    if len(list_sua(include_synthetic=False)) < 3:
+    sua_that = list_sua(include_synthetic=False)
+    if len(sua_that) < 3:
         raise HTTPException(status_code=409, detail="chua_du_mau")
-    mau = tim_mau(list_sua(include_synthetic=False))
-    if not mau:
+    mau_list = tim_mau(sua_that)
+    if not mau_list:
         raise HTTPException(status_code=409, detail="chua_du_mau")
-    draft = propose_rule(mau[0])
-    luat = de_xuat(mau[0])
+    mau = mau_list[0]
+    sua_loai = sua_rows_for_mau(mau, sua_that)
+    draft = propose_rule(mau, sua_mau=sua_loai)
+    luat = de_xuat(mau, sua_rows=sua_loai)
     if draft:
         luat["cau"] = draft.cau
         luat["dieu_kien"] = draft.dieu_kien
+        luat["loai"] = draft.loai
     luat = kiem_chung(luat)
-    luat = tap_su(luat, [("them_1_pha_che", "them_1_pha_che")] * 5)
-    # Quản lý chỉ chốt phần tập sự (bước 6). Hiệu lực và tham số lõi ở bước 7
-    # luôn cần chủ quán gọi endpoint duyệt riêng.
+    luat = tap_su_tu_sua(luat, sua_loai)
     if luat.get("trang_thai") == "du_tap_su":
         luat["buoc"] = 6
         luat["trang_thai"] = "cho_chu_quan"
@@ -581,13 +595,16 @@ def cam_nang_run(authorization: Annotated[str | None, Header()] = None) -> dict[
     existing = {x.get("id"): x for x in list_luat()}
     for item in (luat, loai):
         existing[item["id"]] = item
-    save_luat(list(existing.values()))
+    saved = list(existing.values())
+    save_luat(saved)
+    so_that = count_luat_that_quan(saved)
     _audit("cam_nang_6_buoc", role, {"cho_chu_quan": luat["id"], "loai": loai["vf_rule"]})
     return {
         "cho_chot": luat,
         "bi_loai": loai,
-        "nguon": "dung_lai_8_tuan",
-        "so_luat_that_quan": 0,
+        "nguon": mau.get("nguon", "ghi_truc_tiep"),
+        "so_luat_that_quan": so_that,
+        "pipeline": pipeline_snapshot(),
     }
 
 

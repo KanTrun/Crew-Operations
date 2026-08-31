@@ -18,6 +18,7 @@ import {
   PageHeader,
   ProgressBar,
   StatusChip,
+  Summary,
   TechnicalDrawer,
 } from "../../ui/kit";
 
@@ -30,6 +31,18 @@ type Luat = {
   ghi_de?: number;
   vf_rule?: string;
   bang_chung?: string[];
+  mau_minh_hoa?: boolean;
+};
+
+type Pipeline = {
+  so_sua_that: number;
+  so_mau_san_sang: number;
+  so_luat_that_quan: number;
+  so_hieu_luc: number;
+  so_cho_chot: number;
+  so_mau_minh_hoa: number;
+  can_chay_8_buoc: boolean;
+  insight: { severity: string; message: string };
 };
 
 const LOC_TRANG_THAI = [
@@ -45,12 +58,12 @@ export default function CamNangPage() {
   const [manager, setManager] = useState(false);
   const [chuQuan, setChuQuan] = useState(false);
   const [items, setItems] = useState<Luat[]>([]);
+  const [pipeline, setPipeline] = useState<Pipeline | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("all");
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [soThat, setSoThat] = useState<number | null>(null);
   const [chiTiet, setChiTiet] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -65,9 +78,10 @@ export default function CamNangPage() {
   const load = useCallback(() => {
     if (!getToken()) return;
     setLoading(true);
-    apiGet<{ items: Luat[] }>("/api/v1/cam-nang")
+    apiGet<{ items: Luat[]; pipeline?: Pipeline; so_luat_that_quan?: number }>("/api/v1/cam-nang")
       .then((d) => {
         setItems((d.items ?? []).filter((x) => x && typeof x.id === "string"));
+        if (d.pipeline) setPipeline(d.pipeline);
         setError(null);
       })
       .catch((e) => setError(viError(e, { doing: "mở được cẩm nang quán" })))
@@ -87,20 +101,25 @@ export default function CamNangPage() {
     });
   }, [items, search, statusF]);
 
+  const soThat = pipeline?.so_luat_that_quan ?? 0;
+  const canChay = pipeline?.can_chay_8_buoc ?? false;
+
   async function chay() {
     setError(null);
     setMsg(null);
     setBusy(true);
     try {
-      const d = await apiSend<{ bi_loai?: { vf_rule?: string }; so_luat_that_quan?: number }>(
-        "/api/v1/cam-nang/chay-8-buoc",
-      );
+      const d = await apiSend<{
+        bi_loai?: { vf_rule?: string };
+        so_luat_that_quan?: number;
+        pipeline?: Pipeline;
+      }>("/api/v1/cam-nang/chay-8-buoc");
+      if (d.pipeline) setPipeline(d.pipeline);
       const that = typeof d.so_luat_that_quan === "number" ? d.so_luat_that_quan : 0;
-      setSoThat(that);
       setMsg(
         that > 0
-          ? `Đã hoàn tất phần đề xuất và tập sự. Quán đang có ${that} luật sinh từ người thật.`
-          : "Đã hoàn tất phần đề xuất và tập sự. Chủ quán cần chốt riêng trước khi luật có hiệu lực.",
+          ? `Đã hoàn tất đề xuất và tập sự. Quán có ${that} luật sinh từ sửa thật — chủ quán chốt để hiệu lực.`
+          : "Đã hoàn tất đề xuất và tập sự. Chủ quán cần chốt riêng trước khi luật có hiệu lực.",
       );
       setChiTiet([`Cổng loại luật: ${safeText(d.bi_loai?.vf_rule, "không có luật nào bị loại")}`]);
       load();
@@ -122,7 +141,7 @@ export default function CamNangPage() {
     setError(null);
     try {
       await apiSend("/api/v1/cam-nang/duyet", { id, ok: true });
-      setMsg("Chủ quán đã chốt luật có hiệu lực.");
+      setMsg("Chủ quán đã chốt luật có hiệu lực — luật sẽ ảnh hưởng lần xếp lịch kế tiếp.");
       load();
     } catch (e) {
       setError(viError(e, { doing: "chốt luật có hiệu lực" }));
@@ -147,23 +166,48 @@ export default function CamNangPage() {
 
   if (!token) return <AuthGate />;
 
+  const insight = pipeline?.insight;
+
   return (
-    <div className="nq-page">
+    <div className="nq-page nq-page--cam-nang">
       <PageHeader
         kicker="Cẩm nang sống"
         title="Cẩm nang quán"
-        meta={`Luật chỉ có hiệu lực khi đủ bằng chứng từ lần sửa thật. Luật sinh từ người quán: ${soThat ?? "chưa chạy hôm nay"}.`}
+        meta={`Luật học từ lần sửa thật trong ca. Luật sinh từ quán: ${soThat > 0 ? soThat : "chưa có"}.`}
       />
+
+      {!loading && pipeline ? (
+        <Summary
+          cells={[
+            { n: pipeline.so_sua_that, k: "Lần sửa thật" },
+            { n: pipeline.so_mau_san_sang, k: "Mẫu sẵn sàng", tone: pipeline.so_mau_san_sang > 0 ? "ok" : undefined },
+            { n: pipeline.so_hieu_luc, k: "Đang hiệu lực", tone: "ok" },
+            { n: pipeline.so_cho_chot, k: "Chờ chốt", tone: "warn" },
+          ]}
+        />
+      ) : null}
+
+      {insight ? (
+        <div
+          className={`nq-nguoi-insight nq-nguoi-insight--${insight.severity} mb-4`}
+          role="status"
+          aria-live="polite"
+        >
+          <p className="nq-nguoi-insight__label">Pipeline 8 bước</p>
+          <p className="nq-nguoi-insight__text">{insight.message}</p>
+        </div>
+      ) : null}
+
       <div className="mb-6 flex flex-wrap items-center gap-3">
         {manager ? (
-          <Btn variant="primary" disabled={busy} onClick={chay}>
+          <Btn variant="primary" disabled={busy || !canChay} onClick={chay} title={!canChay ? insight?.message : undefined}>
             {busy ? "Đang chạy…" : "Chạy 8 bước xét luật"}
           </Btn>
         ) : (
           <Notice>Bạn xem được luật quán. Quản lý hoặc chủ quán mới chạy 8 bước xét luật.</Notice>
         )}
         <BtnLink href="/sop" variant="ghost">
-          Hỏi cẩm nang
+          Hỏi cẩm nang (AG-SOP)
         </BtnLink>
       </div>
 
@@ -174,11 +218,7 @@ export default function CamNangPage() {
           </Field>
         </div>
         <Field label="Trạng thái">
-          <select
-            className="nq-input"
-            value={statusF}
-            onChange={(e) => setStatusF(e.target.value)}
-          >
+          <select className="nq-input" value={statusF} onChange={(e) => setStatusF(e.target.value)}>
             {LOC_TRANG_THAI.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -215,6 +255,9 @@ export default function CamNangPage() {
               ) : null}
               <p className="nq-item-sub flex flex-wrap items-center gap-2">
                 <StatusChip tone={luatTone(luat.trang_thai)}>{luatLabel(luat.trang_thai)}</StatusChip>
+                {luat.mau_minh_hoa ? (
+                  <StatusChip tone="default">Mẫu minh họa</StatusChip>
+                ) : null}
               </p>
               {tapSu > 0 || apDung > 0 ? (
                 <div>
@@ -236,7 +279,7 @@ export default function CamNangPage() {
                     Chốt hiệu lực
                   </Btn>
                 ) : null}
-                {chuQuan && luat.trang_thai === "hieu_luc" ? (
+                {chuQuan && luat.trang_thai === "hieu_luc" && !luat.mau_minh_hoa ? (
                   <Btn variant="ghost" busy={busy} onClick={() => void goLuat(luat.id)}>
                     Gỡ luật
                   </Btn>

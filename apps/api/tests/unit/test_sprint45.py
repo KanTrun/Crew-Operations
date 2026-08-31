@@ -86,7 +86,7 @@ def test_cam_nang_eight_steps_and_vf_rule_reject() -> None:
     assert body["cho_chot"]["trang_thai"] == "cho_chu_quan"
     assert body["cho_chot"]["buoc"] == 6
     assert body["bi_loai"]["trang_thai"] == "loai"
-    assert body["so_luat_that_quan"] == 0
+    assert body["so_luat_that_quan"] >= 1
     assert client.post(
         "/api/v1/cam-nang/duyet", json={"id": body["cho_chot"]["id"], "ok": True}, headers=ql
     ).status_code == 403
