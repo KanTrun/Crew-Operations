@@ -8,6 +8,7 @@ import {
   actorLabel,
   formatLuc,
   ghiNhanLabel,
+  matHangLabel,
   safeText,
   treoLabel,
   treoTone,
@@ -26,7 +27,8 @@ const SteamScene = dynamic(() => import("../../ui/hom-nay/steam-scene").then((m)
 
 type TreoPreview = { id: string; noi_dung: string; trang_thai?: string; nhan_vien?: string };
 type SuaPreview = { loai?: string; luc?: string; ai?: string };
-type TonRow = { hang?: string; so_luong?: number; duoi_nguong?: boolean };
+type TonRow = { hang?: string; so_luong?: number; don_vi?: string; duoi_nguong?: boolean };
+type TreoBreakdown = { trang_thai: string; so_luong: number };
 
 type Today = {
   ngay: string;
@@ -37,6 +39,7 @@ type Today = {
   canh_bao_ton?: string[];
   so_nhan_vien?: number;
   treo_preview?: TreoPreview[];
+  treo_theo_trang_thai?: TreoBreakdown[];
   sua_gan_day?: SuaPreview[];
   ton_tom_tat?: TonRow[];
 };
@@ -90,8 +93,9 @@ export default function HomNayPage() {
   const ngay = safeText(data?.ngay, "");
   const hero = data ? todayHeroLine(treo, data.lich?.trang_thai) : "Đang đọc nhịp quán…";
   const meta = data && ngay ? todayMetaLine(ngay, data.lich?.nguon) : undefined;
-  const canhBao = (data?.canh_bao_ton ?? []).map((x) => safeText(x, "")).filter(Boolean);
+  const canhBao = (data?.canh_bao_ton ?? []).map((x) => matHangLabel(x)).filter(Boolean);
   const preview = data?.treo_preview ?? [];
+  const treoBreakdown = data?.treo_theo_trang_thai ?? [];
   const sua = data?.sua_gan_day ?? [];
   const ton = data?.ton_tom_tat ?? [];
   const tonThap = ton.filter((t) => t.duoi_nguong);
@@ -138,7 +142,7 @@ export default function HomNayPage() {
             <div className="nq-dash-main">
               <div className="nq-dash-charts">
                 <TonBarChart rows={ton} />
-                <TreoDonutChart items={preview} total={treo} />
+                <TreoDonutChart breakdown={treoBreakdown} total={treo} />
               </div>
 
               {preview.length > 0 ? (
@@ -164,7 +168,7 @@ export default function HomNayPage() {
             <aside className="nq-dash-aside">
               {canhBao.length > 0 || tonThap.length > 0 ? (
                 <Alert kind="info">
-                  Tồn dưới ngưỡng: {(canhBao.length ? canhBao : tonThap.map((t) => t.hang)).join(", ")}.
+                  Tồn dưới ngưỡng: {(canhBao.length ? canhBao : tonThap.map((t) => matHangLabel(t.hang))).join(", ")}.
                   <BtnLink href="/tieu-thu" variant="ghost">
                     Mở sổ tiêu thụ
                   </BtnLink>

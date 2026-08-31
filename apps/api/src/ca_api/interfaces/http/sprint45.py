@@ -422,11 +422,19 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
         {
             "hang": x.get("hang"),
             "so_luong": x.get("so_luong"),
+            "don_vi": x.get("don_vi") or "đơn vị",
             "duoi_nguong": bool(x.get("duoi_nguong")),
         }
         for x in ton[-8:]
         if isinstance(x, dict)
     ]
+    treo_counts: dict[str, int] = {}
+    for t in treo:
+        if not isinstance(t, dict):
+            continue
+        st = str(t.get("trang_thai") or "dang_cho")
+        treo_counts[st] = treo_counts.get(st, 0) + 1
+    treo_theo_trang_thai = [{"trang_thai": k, "so_luong": v} for k, v in sorted(treo_counts.items(), key=lambda x: -x[1])]
     return {
         "ngay": datetime.now(UTC).date().isoformat(),
         "lich": life,
@@ -436,6 +444,7 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
         "canh_bao_ton": canh_bao,
         "so_nhan_vien": so_nv if role == "chu_quan" else 0,
         "treo_preview": treo_preview,
+        "treo_theo_trang_thai": treo_theo_trang_thai,
         "sua_gan_day": sua_gan_day,
         "ton_tom_tat": ton_tom_tat,
         "nguon": "quan",

@@ -1,8 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
-import type { ReactNode } from "react";
+import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
+import type { MouseEvent, ReactNode } from "react";
+
+function useTilt(reduced: boolean) {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [6, -6]), { stiffness: 260, damping: 22 });
+  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-6, 6]), { stiffness: 260, damping: 22 });
+
+  const onMove = (e: MouseEvent<HTMLElement>) => {
+    if (reduced) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    x.set((e.clientX - rect.left) / rect.width - 0.5);
+    y.set((e.clientY - rect.top) / rect.height - 0.5);
+  };
+  const onLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+  return { rotateX, rotateY, onMove, onLeave };
+}
 
 export function KpiCard({
   value,
@@ -18,6 +37,7 @@ export function KpiCard({
   delay?: number;
 }) {
   const reduced = useReducedMotion() ?? false;
+  const tilt = useTilt(reduced);
   const tileCls =
     accent === "warn"
       ? "nq-bento-tile nq-dash-kpi nq-dash-kpi--warn nq-ink-on-solid"
@@ -33,18 +53,21 @@ export function KpiCard({
   );
 
   const motionProps = reduced
-    ? { className: "nq-dash-kpi-cell" }
+    ? {}
     : {
-        className: "nq-dash-kpi-cell",
         initial: { opacity: 0, y: 14 },
         animate: { opacity: 1, y: 0 },
         transition: { duration: 0.42, delay, ease: [0.22, 1, 0.36, 1] as const },
-        whileHover: { y: -3, transition: { duration: 0.18 } },
+        style: { rotateX: tilt.rotateX, rotateY: tilt.rotateY, transformPerspective: 900 },
+        onMouseMove: tilt.onMove,
+        onMouseLeave: tilt.onLeave,
+        whileHover: { scale: 1.02, transition: { duration: 0.2 } },
+        whileTap: { scale: 0.98 },
       };
 
   if (href) {
     return (
-      <motion.div {...motionProps}>
+      <motion.div className="nq-dash-kpi-cell" {...motionProps}>
         <Link href={href} className={tileCls}>
           {inner}
         </Link>
@@ -52,16 +75,11 @@ export function KpiCard({
     );
   }
 
-  const staticMotion = reduced
-    ? { className: `nq-dash-kpi-cell ${tileCls}` }
-    : {
-        className: `nq-dash-kpi-cell ${tileCls}`,
-        initial: { opacity: 0, y: 14 },
-        animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.42, delay, ease: [0.22, 1, 0.36, 1] as const },
-      };
-
-  return <motion.div {...staticMotion}>{inner}</motion.div>;
+  return (
+    <motion.div className={`nq-dash-kpi-cell ${tileCls}`} {...motionProps}>
+      {inner}
+    </motion.div>
+  );
 }
 
 export function StatusStrip({ status, meta }: { status: ReactNode; meta?: ReactNode }) {
@@ -74,6 +92,7 @@ export function StatusStrip({ status, meta }: { status: ReactNode; meta?: ReactN
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
+      <div className="nq-dash-strip-glow" aria-hidden />
       <div className="nq-dash-strip-text">
         <p className="nq-dash-strip-kicker">NHỊP QUÁN · Ca hôm nay</p>
         <p className="nq-dash-strip-status">{status}</p>

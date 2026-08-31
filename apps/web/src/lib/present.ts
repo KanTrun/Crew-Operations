@@ -284,14 +284,15 @@ export function nguyenNhanLabel(code: unknown): string {
 }
 
 const MAT_HANG: Record<string, string> = {
-  sua_tuoi: "sữa tươi",
-  ca_phe_hat: "cà phê hạt",
-  tra: "trà",
-  duong: "đường",
-  ly_nhua: "ly nhựa",
-  ong_hut: "ống hút",
-  banh: "bánh",
-  da: "đá",
+  sua_tuoi: "Sữa tươi",
+  ca_phe_hat: "Cà phê hạt",
+  tra: "Trà",
+  duong: "Đường",
+  ly_nhua: "Ly nhựa",
+  ong_hut: "Ống hút",
+  banh: "Bánh",
+  da: "Đá",
+  matcha: "Matcha",
 };
 
 /** `sua_tuoi` → "sữa tươi". Tên đã là tiếng Việt thì giữ nguyên. */

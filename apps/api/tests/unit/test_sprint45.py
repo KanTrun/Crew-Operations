@@ -186,6 +186,7 @@ def test_hom_nay_preview_fields() -> None:
     ql = headers(client, "lan")
     body = client.get("/api/v1/hom-nay", headers=ql).json()
     assert "treo_preview" in body
+    assert "treo_theo_trang_thai" in body
     assert "sua_gan_day" in body
     assert "ton_tom_tat" in body
 
