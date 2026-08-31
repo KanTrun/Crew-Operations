@@ -235,7 +235,7 @@ export default function SopPage() {
 
                 {a.chua_co ? (
                   <p className="nq-sop-copilot__cta">
-                    <BtnLink href="/cam-nang" variant="secondary">
+                    <BtnLink href="/cam-nang" variant="ghost">
                       Đề xuất luật mới
                     </BtnLink>
                   </p>
