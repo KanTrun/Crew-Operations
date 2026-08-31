@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+try:
+    from datetime import UTC, datetime
+except ImportError:
+    from datetime import datetime, timezone
+    UTC = timezone.utc
 from pathlib import Path
 from typing import Annotated, Any, cast
 
@@ -23,6 +27,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ca_api.interfaces.http.channels import router as channels_router
+from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.pos import router as pos_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
@@ -47,6 +52,7 @@ app.add_middleware(
 app.include_router(sprint3_router)
 app.include_router(sprint45_router)
 app.include_router(channels_router)
+app.include_router(copilot_router)
 app.include_router(pos_router)
 app.include_router(meeting_router)
 app.include_router(trends_router)

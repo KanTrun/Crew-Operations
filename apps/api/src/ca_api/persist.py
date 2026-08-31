@@ -10,7 +10,11 @@ import re
 import sqlite3
 import uuid
 from collections.abc import Callable
-from datetime import UTC
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 from pathlib import Path
 from typing import Any
 
@@ -143,6 +147,36 @@ def init_db() -> None:
                 dong TEXT NOT NULL,
                 ly_do_huy TEXT,
                 luc TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS copilot_draft_actions (
+                action_id TEXT PRIMARY KEY,
+                intent TEXT NOT NULL,
+                status TEXT NOT NULL,
+                store_id TEXT NOT NULL,
+                created_by TEXT NOT NULL,
+                confidence REAL NOT NULL,
+                summary TEXT NOT NULL,
+                explanation TEXT NOT NULL,
+                payload_diff TEXT NOT NULL,
+                requires_confirmation INTEGER NOT NULL,
+                data_snapshot_hash TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                executed_at TEXT,
+                amended_from TEXT,
+                amended_by TEXT
+            );
+            CREATE TABLE IF NOT EXISTS copilot_audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action_id TEXT NOT NULL,
+                actor_user_id TEXT NOT NULL,
+                store_id TEXT NOT NULL,
+                intent TEXT NOT NULL,
+                decision TEXT NOT NULL,
+                payload_diff TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                channel TEXT NOT NULL,
+                latency_ms INTEGER NOT NULL
             );
             """
         )
@@ -716,3 +750,225 @@ def audit_list() -> list[dict[str, Any]]:
         item.update({"at": at, "ai": ai, "hanh": hanh})
         out.append(item)
     return out
+
+
+# ── Copilot Drafts & Audit ───────────────────────────────────────────────────
+
+def copilot_draft_save(draft: dict[str, Any]) -> None:
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            """
+            INSERT INTO copilot_draft_actions(
+                action_id, intent, status, store_id, created_by, confidence,
+                summary, explanation, payload_diff, requires_confirmation,
+                data_snapshot_hash, expires_at, created_at, executed_at,
+                amended_from, amended_by
+            )
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(action_id) DO UPDATE SET
+                status=excluded.status,
+                summary=excluded.summary,
+                explanation=excluded.explanation,
+                payload_diff=excluded.payload_diff,
+                data_snapshot_hash=excluded.data_snapshot_hash,
+                expires_at=excluded.expires_at,
+                executed_at=excluded.executed_at,
+                amended_from=excluded.amended_from,
+                amended_by=excluded.amended_by
+            """,
+            (
+                draft["action_id"],
+                draft["intent"],
+                draft.get("status", "draft"),
+                draft.get("store_id", "quan_01"),
+                draft.get("created_by", "system"),
+                float(draft.get("confidence", 1.0)),
+                draft.get("summary", ""),
+                draft.get("explanation", ""),
+                json.dumps(draft.get("payload_diff", {}), ensure_ascii=False),
+                1 if draft.get("requires_confirmation", True) else 0,
+                draft.get("data_snapshot_hash", ""),
+                draft.get("expires_at", ""),
+                draft.get("created_at", ""),
+                draft.get("executed_at"),
+                draft.get("amended_from"),
+                draft.get("amended_by"),
+            ),
+        )
+
+
+def copilot_draft_get(action_id: str) -> dict[str, Any] | None:
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            """
+            SELECT action_id, intent, status, store_id, created_by, confidence,
+                   summary, explanation, payload_diff, requires_confirmation,
+                   data_snapshot_hash, expires_at, created_at, executed_at,
+                   amended_from, amended_by
+            FROM copilot_draft_actions WHERE action_id=?
+            """,
+            (action_id,),
+        ).fetchone()
+        if not row:
+            return None
+        return {
+            "action_id": str(row[0]),
+            "intent": str(row[1]),
+            "status": str(row[2]),
+            "store_id": str(row[3]),
+            "created_by": str(row[4]),
+            "confidence": float(row[5]),
+            "summary": str(row[6]),
+            "explanation": str(row[7]),
+            "payload_diff": json.loads(row[8]),
+            "requires_confirmation": bool(row[9]),
+            "data_snapshot_hash": str(row[10]),
+            "expires_at": str(row[11]),
+            "created_at": str(row[12]),
+            "executed_at": str(row[13]) if row[13] else None,
+            "amended_from": str(row[14]) if row[14] else None,
+            "amended_by": str(row[15]) if row[15] else None,
+        }
+
+
+def copilot_draft_update_status(
+    action_id: str,
+    status: str,
+    executed_at: str | None = None,
+    amended_from: str | None = None,
+    amended_by: str | None = None,
+) -> bool:
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            """
+            UPDATE copilot_draft_actions
+            SET status=?, executed_at=?, amended_from=?, amended_by=?
+            WHERE action_id=?
+            """,
+            (status, executed_at, amended_from, amended_by, action_id),
+        )
+        return cur.rowcount > 0
+
+
+def copilot_draft_list(
+    store_id: str | None = None,
+    status: str | None = None,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    init_db()
+    query = """
+        SELECT action_id, intent, status, store_id, created_by, confidence,
+               summary, explanation, payload_diff, requires_confirmation,
+               data_snapshot_hash, expires_at, created_at, executed_at,
+               amended_from, amended_by
+        FROM copilot_draft_actions
+    """
+    params: list[Any] = []
+    conds = []
+    if store_id:
+        conds.append("store_id=?")
+        params.append(store_id)
+    if status:
+        conds.append("status=?")
+        params.append(status)
+    if conds:
+        query += " WHERE " + " AND ".join(conds)
+    query += " ORDER BY created_at DESC LIMIT ?"
+    params.append(limit)
+
+    with _conn() as cx:
+        rows = cx.execute(query, params).fetchall()
+        return [
+            {
+                "action_id": str(r[0]),
+                "intent": str(r[1]),
+                "status": str(r[2]),
+                "store_id": str(r[3]),
+                "created_by": str(r[4]),
+                "confidence": float(r[5]),
+                "summary": str(r[6]),
+                "explanation": str(r[7]),
+                "payload_diff": json.loads(r[8]),
+                "requires_confirmation": bool(r[9]),
+                "data_snapshot_hash": str(r[10]),
+                "expires_at": str(r[11]),
+                "created_at": str(r[12]),
+                "executed_at": str(r[13]) if r[13] else None,
+                "amended_from": str(r[14]) if r[14] else None,
+                "amended_by": str(r[15]) if r[15] else None,
+            }
+            for r in rows
+        ]
+
+
+def copilot_audit_add(
+    action_id: str,
+    actor_user_id: str,
+    store_id: str,
+    intent: str,
+    decision: str,
+    payload_diff: dict[str, Any] | None = None,
+    channel: str = "web",
+    latency_ms: int = 0,
+) -> None:
+    try:
+        from datetime import UTC, datetime
+    except ImportError:
+        from datetime import datetime, timezone
+        UTC = timezone.utc
+
+    init_db()
+    now_iso = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        cx.execute(
+            """
+            INSERT INTO copilot_audit_log(
+                action_id, actor_user_id, store_id, intent, decision,
+                payload_diff, timestamp, channel, latency_ms
+            )
+            VALUES (?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                action_id,
+                actor_user_id,
+                store_id,
+                intent,
+                decision,
+                json.dumps(payload_diff or {}, ensure_ascii=False),
+                now_iso,
+                channel,
+                latency_ms,
+            ),
+        )
+
+
+def copilot_audit_list(store_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+    init_db()
+    query = "SELECT action_id, actor_user_id, store_id, intent, decision, payload_diff, timestamp, channel, latency_ms FROM copilot_audit_log"
+    params: list[Any] = []
+    if store_id:
+        query += " WHERE store_id=?"
+        params.append(store_id)
+    query += " ORDER BY id DESC LIMIT ?"
+    params.append(limit)
+
+    with _conn() as cx:
+        rows = cx.execute(query, params).fetchall()
+        return [
+            {
+                "action_id": str(r[0]),
+                "actor_user_id": str(r[1]),
+                "store_id": str(r[2]),
+                "intent": str(r[3]),
+                "decision": str(r[4]),
+                "payload_diff": json.loads(r[5]),
+                "timestamp": str(r[6]),
+                "channel": str(r[7]),
+                "latency_ms": int(r[8]),
+            }
+            for r in rows
+        ]
+

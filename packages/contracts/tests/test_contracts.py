@@ -38,6 +38,8 @@ def test_contracts_registered() -> None:
         "AuditTuanThuSop",
         "BanTinCaKhan",
         "HuanLuyenQuanLy",
+        "CopilotMessage",
+        "ActionProposal",
     }
 
 

@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ActionProposal",
+  "type": "object",
+  "required": [
+    "action_id",
+    "intent",
+    "status",
+    "summary",
+    "requires_confirmation",
+    "store_id",
+    "created_by",
+    "confidence",
+    "data_snapshot_hash",
+    "expires_at"
+  ],
+  "properties": {
+    "action_id": {
+      "type": "string"
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "SCHEDULE_SOLVE",
+        "APPROVE_SHIFT_SWAP",
+        "GENERATE_DAILY_BRIEF",
+        "QUERY_SOP",
+        "ANALYZE_WASTE",
+        "CREATE_RULE_PROPOSAL",
+        "INVENTORY_RESTOCK_CHECK"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "ready_for_approval",
+        "executed",
+        "rejected",
+        "expired",
+        "stale_rejected"
+      ]
+    },
+    "summary": {
+      "type": "string"
+    },
+    "explanation": {
+      "type": "string",
+      "description": "Chỉ chứa câu chữ diễn giải; mọi con số phải trích nguyên từ payload_diff/tool output."
+    },
+    "payload_diff": {
+      "type": "object"
+    },
+    "requires_confirmation": {
+      "type": "boolean"
+    },
+    "store_id": {
+      "type": "string"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "user_id người khởi tạo yêu cầu"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "data_snapshot_hash": {
+      "type": "string",
+      "description": "Hash phiên bản dữ liệu lúc tạo draft — dùng cho VF-STALE"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "executed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "amended_from": {
+      "type": "string"
+    }
+  }
+}

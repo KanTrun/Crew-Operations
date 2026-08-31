@@ -11,7 +11,7 @@ except ImportError:
         pass
 
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -221,6 +221,66 @@ class CuocHop(BaseModel):
     trang_thai: Literal["cho_duyet", "da_duyet", "tu_choi"] = "cho_duyet"
 
 
+class CopilotIntent(StrEnum):
+    SCHEDULE_SOLVE = "SCHEDULE_SOLVE"
+    APPROVE_SHIFT_SWAP = "APPROVE_SHIFT_SWAP"
+    GENERATE_DAILY_BRIEF = "GENERATE_DAILY_BRIEF"
+    QUERY_SOP = "QUERY_SOP"
+    ANALYZE_WASTE = "ANALYZE_WASTE"
+    CREATE_RULE_PROPOSAL = "CREATE_RULE_PROPOSAL"
+    INVENTORY_RESTOCK_CHECK = "INVENTORY_RESTOCK_CHECK"
+    OUT_OF_SCOPE = "OUT_OF_SCOPE"
+
+
+class ActionProposalStatus(StrEnum):
+    draft = "draft"
+    ready_for_approval = "ready_for_approval"
+    executed = "executed"
+    rejected = "rejected"
+    expired = "expired"
+    stale_rejected = "stale_rejected"
+
+
+class CopilotContext(BaseModel):
+    store_id: str = "quan_01"
+    user_id: str
+    user_role: Literal["chu_quan", "quan_ly", "nhan_vien"]
+    active_date: str
+    channel: Literal["web", "telegram", "zalo"] = "web"
+    recent_messages: list[str] = Field(default_factory=list, max_length=3)
+
+
+class CopilotMessage(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+    context: CopilotContext
+
+
+class ActionProposal(BaseModel):
+    action_id: str
+    intent: CopilotIntent
+    status: ActionProposalStatus = ActionProposalStatus.draft
+    summary: str
+    explanation: str = ""
+    payload_diff: dict[str, Any] = Field(default_factory=dict)
+    requires_confirmation: bool = True
+    store_id: str = "quan_01"
+    created_by: str
+    confidence: float = Field(ge=0.0, le=1.0, default=1.0)
+    data_snapshot_hash: str = ""
+    expires_at: str
+    created_at: str = ""
+    executed_at: str | None = None
+    amended_from: str | None = None
+
+
+class CopilotResponse(BaseModel):
+    reply_text: str
+    intent: CopilotIntent
+    confidence: float = Field(ge=0.0, le=1.0)
+    action_proposal: ActionProposal | None = None
+    direct_answer: str | None = None
+
+
 CONTRACTS = {
     "NhanVien": NhanVien,
     "Ca": Ca,
@@ -238,4 +298,7 @@ CONTRACTS = {
     "AuditTuanThuSop": AuditTuanThuSop,
     "BanTinCaKhan": BanTinCaKhan,
     "HuanLuyenQuanLy": HuanLuyenQuanLy,
+    "CopilotMessage": CopilotMessage,
+    "ActionProposal": ActionProposal,
 }
+

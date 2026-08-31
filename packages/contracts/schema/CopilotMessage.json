@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CopilotMessage",
+  "type": "object",
+  "required": ["message", "context"],
+  "properties": {
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "context": {
+      "type": "object",
+      "required": ["store_id", "user_id", "user_role", "active_date", "channel"],
+      "properties": {
+        "store_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "user_role": {
+          "type": "string",
+          "enum": ["chu_quan", "quan_ly", "nhan_vien"]
+        },
+        "active_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "channel": {
+          "type": "string",
+          "enum": ["web", "telegram", "zalo"]
+        },
+        "recent_messages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 3
+        }
+      }
+    }
+  }
+}

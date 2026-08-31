@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime
+try:
+    from datetime import UTC, datetime
+except ImportError:
+    from datetime import datetime, timezone
+    UTC = timezone.utc
 from pathlib import Path
 from typing import Annotated, Any, cast
 

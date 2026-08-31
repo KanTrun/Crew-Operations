@@ -11,7 +11,11 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import UTC
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 from typing import Any
 
 GRAPH = "https://graph.facebook.com/v26.0"

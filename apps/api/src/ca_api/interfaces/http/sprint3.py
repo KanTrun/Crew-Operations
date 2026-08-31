@@ -8,7 +8,11 @@ import json
 import os
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime
+try:
+    from datetime import UTC, datetime
+except ImportError:
+    from datetime import datetime, timezone
+    UTC = timezone.utc
 from pathlib import Path
 from typing import Annotated, Any, cast
 
