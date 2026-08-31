@@ -29,12 +29,14 @@ export function KpiCard({
   href,
   accent,
   delay = 0,
+  "data-highlight": dataHighlight,
 }: {
   value: ReactNode;
   label: string;
   href?: string;
   accent?: "warn" | "ok" | "default";
   delay?: number;
+  "data-highlight"?: string;
 }) {
   const reduced = useReducedMotion() ?? false;
   const tilt = useTilt(reduced);
@@ -44,6 +46,7 @@ export function KpiCard({
       : accent === "ok"
         ? "nq-bento-tile nq-dash-kpi nq-dash-kpi--ok nq-ink-on-solid"
         : "nq-bento-tile nq-dash-kpi";
+  const highlightCls = dataHighlight === "on" ? " nq-dash-kpi--pulse-hi" : "";
 
   const inner = (
     <>
@@ -68,7 +71,7 @@ export function KpiCard({
   if (href) {
     return (
       <motion.div className="nq-dash-kpi-cell" {...motionProps}>
-        <Link href={href} className={tileCls}>
+        <Link href={href} className={tileCls + highlightCls}>
           {inner}
         </Link>
       </motion.div>
@@ -76,7 +79,7 @@ export function KpiCard({
   }
 
   return (
-    <motion.div className={`nq-dash-kpi-cell ${tileCls}`} {...motionProps}>
+    <motion.div className={`nq-dash-kpi-cell ${tileCls}${highlightCls}`} {...motionProps}>
       {inner}
     </motion.div>
   );

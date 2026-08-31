@@ -2,8 +2,9 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet } from "../../lib/api";
+import { computeOpsPulse } from "../../lib/ops-pulse";
 import {
   actorLabel,
   formatLuc,
@@ -18,11 +19,12 @@ import { getRole, getToken, isChuQuan, isManager } from "../../lib/session";
 import { todayHeroLine, todayMetaLine, todayTechnicalDetail } from "../../lib/status";
 import { SuaTimeline, TonBarChart, TreoDonutChart } from "../../ui/hom-nay/dashboard-charts";
 import { KpiCard, StatusStrip } from "../../ui/hom-nay/kpi-card";
+import { OpsPulseLite } from "../../ui/hom-nay/ops-pulse-lite";
 import { Alert, AuthGate, Btn, BtnLink, Loading, PageActions, StatusChip, TechnicalDrawer } from "../../ui/kit";
 
-const SteamScene = dynamic(() => import("../../ui/hom-nay/steam-scene").then((m) => m.SteamScene), {
+const OpsPulse3d = dynamic(() => import("../../ui/hom-nay/ops-pulse").then((m) => m.OpsPulse), {
   ssr: false,
-  loading: () => <div className="nq-dash-steam nq-dash-steam--placeholder" aria-hidden />,
+  loading: () => <div className="nq-ops-pulse nq-ops-pulse--loading" aria-busy="true" />,
 });
 
 type TreoPreview = { id: string; noi_dung: string; trang_thai?: string; nhan_vien?: string };
@@ -49,16 +51,14 @@ function soAnToan(v: unknown): number {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
-function useDesktop3d() {
-  const [ok, setOk] = useState(false);
+function usePulse3d() {
+  const [use3d, setUse3d] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px) and (prefers-reduced-motion: no-preference)");
-    const sync = () => setOk(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const wide = window.matchMedia("(min-width: 1024px)").matches;
+    setUse3d(wide && !reduced);
   }, []);
-  return ok;
+  return use3d;
 }
 
 export default function HomNayPage() {
@@ -67,7 +67,7 @@ export default function HomNayPage() {
   const [error, setError] = useState<string | null>(null);
   const [manager, setManager] = useState(false);
   const [chuQuan, setChuQuan] = useState(false);
-  const show3d = useDesktop3d();
+  const use3d = usePulse3d();
 
   useEffect(() => {
     setToken(getToken());
@@ -87,9 +87,25 @@ export default function HomNayPage() {
     if (token) load();
   }, [token, load]);
 
+  const treo = soAnToan(data?.so_treo);
+  const tonThapEarly = (data?.ton_tom_tat ?? []).filter((t) => t.duoi_nguong);
+  const canhBaoCount = (data?.canh_bao_ton ?? []).length;
+  const tonWarnEarly = canhBaoCount || tonThapEarly.length;
+
+  const pulseModel = useMemo(() => {
+    if (!data) return null;
+    return computeOpsPulse({
+      treo: soAnToan(data.so_treo),
+      tonWarn: tonWarnEarly,
+      inboxCho: chuQuan ? soAnToan(data.so_nhan_vien) : manager ? soAnToan(data.so_inbox_cho) : 0,
+      lichState: data.lich?.trang_thai,
+      solverStatus: data.lich?.solver?.status,
+      role: chuQuan ? "chu_quan" : manager ? "quan_ly" : "nhan_vien",
+    });
+  }, [data, tonWarnEarly, manager, chuQuan]);
+
   if (!token) return <AuthGate />;
 
-  const treo = soAnToan(data?.so_treo);
   const ngay = safeText(data?.ngay, "");
   const hero = data ? todayHeroLine(treo, data.lich?.trang_thai) : "Đang đọc nhịp quán…";
   const meta = data && ngay ? todayMetaLine(ngay, data.lich?.nguon) : undefined;
@@ -99,15 +115,17 @@ export default function HomNayPage() {
   const sua = data?.sua_gan_day ?? [];
   const ton = data?.ton_tom_tat ?? [];
   const tonThap = ton.filter((t) => t.duoi_nguong);
+  const tonWarn = canhBao.length || tonThap.length;
   const kpi2 = chuQuan ? soAnToan(data?.so_nhan_vien) : manager ? soAnToan(data?.so_inbox_cho) : soAnToan(data?.so_luat);
   const kpi2Label = chuQuan ? "Nhân viên chờ xem xét" : manager ? "Mục chờ duyệt" : "Luật cẩm nang";
   const kpi2Href = chuQuan ? "/nguoi" : manager ? "/inbox" : "/cam-nang";
+  const highlight = pulseModel?.highlightKpi;
 
   return (
     <div className="nq-page nq-page--dashboard">
       <div className="nq-dash-hero">
         <StatusStrip status={hero} meta={meta} />
-        {show3d ? <SteamScene /> : null}
+        {pulseModel ? use3d ? <OpsPulse3d model={pulseModel} /> : <OpsPulseLite model={pulseModel} /> : null}
       </div>
 
       {error ? (
@@ -126,14 +144,28 @@ export default function HomNayPage() {
       {data ? (
         <>
           <div className="nq-dash-kpis nq-bento">
-            <KpiCard value={treo} label="Việc treo" accent={treo > 0 ? "warn" : "default"} href="/treo" delay={0} />
-            <KpiCard value={kpi2} label={kpi2Label} href={kpi2Href} delay={0.05} />
             <KpiCard
-              value={canhBao.length || tonThap.length}
+              value={treo}
+              label="Việc treo"
+              accent={treo > 0 ? "warn" : "default"}
+              href="/treo"
+              delay={0}
+              data-highlight={highlight === "treo" ? "on" : undefined}
+            />
+            <KpiCard
+              value={kpi2}
+              label={kpi2Label}
+              href={kpi2Href}
+              delay={0.05}
+              data-highlight={highlight === "inbox" ? "on" : undefined}
+            />
+            <KpiCard
+              value={tonWarn}
               label="Cảnh báo tồn"
               accent={canhBao.length > 0 ? "warn" : "default"}
               href="/tieu-thu"
               delay={0.1}
+              data-highlight={highlight === "ton" ? "on" : undefined}
             />
             <KpiCard value={ngay ? ngay.slice(8, 10) : "—"} label={ngay ? `Tháng ${ngay.slice(5, 7)}` : "Ngày"} delay={0.15} />
           </div>
@@ -177,12 +209,7 @@ export default function HomNayPage() {
                 <p className="nq-muted nq-dash-aside-note">Chưa có cảnh báo tồn từ sổ tiêu thụ.</p>
               )}
 
-              <SuaTimeline
-                items={sua}
-                formatLuc={formatLuc}
-                ghiNhanLabel={ghiNhanLabel}
-                actorLabel={actorLabel}
-              />
+              <SuaTimeline items={sua} formatLuc={formatLuc} ghiNhanLabel={ghiNhanLabel} actorLabel={actorLabel} />
 
               {sua.length > 0 ? (
                 <Link href="/treo" className="nq-dash-aside-link">
@@ -195,44 +222,44 @@ export default function HomNayPage() {
           <TechnicalDrawer lines={todayTechnicalDetail(data.lich ?? {})} />
 
           <div className="nq-dash-actions">
-          <PageActions>
-            {chuQuan ? (
-              <>
-                <BtnLink href="/nguoi">Quản lý người dùng</BtnLink>
-                <BtnLink href="/cam-nang">Cẩm nang quán</BtnLink>
-                <BtnLink href="/menu" variant="ghost">
-                  Menu & giá
-                </BtnLink>
-                <BtnLink href="/vet" variant="ghost">
-                  Xem vết hệ thống
-                </BtnLink>
-              </>
-            ) : manager ? (
-              <>
-                <BtnLink href="/roster">Xếp lịch tuần</BtnLink>
-                <BtnLink href="/inbox">Duyệt hộp thư</BtnLink>
-                <BtnLink href="/cam-nang" variant="ghost">
-                  Chạy cẩm nang
-                </BtnLink>
-                <BtnLink href="/treo" variant="ghost">
-                  Xem việc treo
-                </BtnLink>
-              </>
-            ) : (
-              <>
-                <BtnLink href="/phieu">Mở phiếu ca</BtnLink>
-                <BtnLink href="/quay" variant="ghost">
-                  Ghi đơn tại quầy
-                </BtnLink>
-                <BtnLink href="/toi" variant="ghost">
-                  Ca của tôi
-                </BtnLink>
-                <BtnLink href="/sop" variant="ghost">
-                  Hỏi cẩm nang
-                </BtnLink>
-              </>
-            )}
-          </PageActions>
+            <PageActions>
+              {chuQuan ? (
+                <>
+                  <BtnLink href="/nguoi">Quản lý người dùng</BtnLink>
+                  <BtnLink href="/cam-nang">Cẩm nang quán</BtnLink>
+                  <BtnLink href="/menu" variant="ghost">
+                    Menu & giá
+                  </BtnLink>
+                  <BtnLink href="/vet" variant="ghost">
+                    Xem vết hệ thống
+                  </BtnLink>
+                </>
+              ) : manager ? (
+                <>
+                  <BtnLink href="/roster">Xếp lịch tuần</BtnLink>
+                  <BtnLink href="/inbox">Duyệt hộp thư</BtnLink>
+                  <BtnLink href="/cam-nang" variant="ghost">
+                    Chạy cẩm nang
+                  </BtnLink>
+                  <BtnLink href="/treo" variant="ghost">
+                    Xem việc treo
+                  </BtnLink>
+                </>
+              ) : (
+                <>
+                  <BtnLink href="/phieu">Mở phiếu ca</BtnLink>
+                  <BtnLink href="/quay" variant="ghost">
+                    Ghi đơn tại quầy
+                  </BtnLink>
+                  <BtnLink href="/toi" variant="ghost">
+                    Ca của tôi
+                  </BtnLink>
+                  <BtnLink href="/sop" variant="ghost">
+                    Hỏi cẩm nang
+                  </BtnLink>
+                </>
+              )}
+            </PageActions>
           </div>
         </>
       ) : null}
