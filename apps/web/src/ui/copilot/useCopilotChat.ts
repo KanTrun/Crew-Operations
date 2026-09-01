@@ -24,10 +24,15 @@ const TYPING_TICK_MS = 30;
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-function loadHistory(): ChatMessage[] | null {
+// Tách key theo mode để pane và /copilot page không ghi đè lịch sử nhau.
+function storageKey(mode: Mode): string {
+  return `${STORAGE_KEY}_${mode}`;
+}
+
+function loadHistory(mode: Mode): ChatMessage[] | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey(mode));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ChatMessage[];
     return Array.isArray(parsed) ? parsed : null;
@@ -36,11 +41,11 @@ function loadHistory(): ChatMessage[] | null {
   }
 }
 
-function saveHistory(messages: ChatMessage[]) {
+function saveHistory(messages: ChatMessage[], mode: Mode) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(
-      STORAGE_KEY,
+      storageKey(mode),
       JSON.stringify(messages.slice(-MAX_HISTORY))
     );
   } catch {
@@ -86,16 +91,16 @@ export function useCopilotChat(mode: Mode = "pane") {
 
   // Khôi phục lịch sử
   useEffect(() => {
-    const saved = loadHistory();
+    const saved = loadHistory(mode);
     if (saved && saved.length > 0) setMessages(saved);
     setHydrated(true);
-  }, []);
+  }, [mode]);
 
   // Lưu lịch sử
   useEffect(() => {
     if (!hydrated) return;
-    saveHistory(messages);
-  }, [messages, hydrated]);
+    saveHistory(messages, mode);
+  }, [messages, hydrated, mode]);
 
   // Cleanup timers khi unmount
   useEffect(() => {

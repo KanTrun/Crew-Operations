@@ -81,6 +81,25 @@ class IntentParseResult:
     security_flag: str | None = None
 
 
+def _iso_week(d: Any) -> str:
+    """Trả về ISO week dạng 'YYYY-Wnn'. Không hardcode."""
+    from datetime import date, timedelta
+
+    if not isinstance(d, date):
+        d = date.today()
+    iso = d.isocalendar()
+    return f"{iso[0]}-W{iso[1]:02d}"
+
+
+def _add_week(d: Any, n: int = 1) -> Any:
+    """Cộng n tuần (giữ nguyên kiểu date)."""
+    from datetime import date, timedelta
+
+    if not isinstance(d, date):
+        d = date.today()
+    return d + timedelta(weeks=n)
+
+
 def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentParseResult:
     """Parse intent from user message with confidence rules and injection checks."""
     text = (message or "").strip()
@@ -130,11 +149,17 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
 
     # Extract common parameters
     if matched_intent == SCHEDULE_SOLVE:
-        # Week detection
+        # Week detection (ISO week thực tế — không hardcode).
+        from datetime import date
+
+        tuan = _iso_week(date.today())
         if "tuần sau" in lower or "tuan sau" in lower:
-            params["tuan"] = "2026-W36"
+            params["tuan"] = _iso_week(_add_week(date.today(), 1))
+        elif "tuần này" in lower or "tuan nay" in lower:
+            params["tuan"] = tuan
         else:
-            params["tuan"] = "2026-W35"
+            # Mặc định tuần sau (nhu cầu lập lịch phổ biến).
+            params["tuan"] = _iso_week(_add_week(date.today(), 1))
         # Preference detection
         lan_match = re.search(r"ưu\s*tiên\s*(\w+)\s*ca\s*(\w+)", lower)
         if lan_match:
@@ -144,7 +169,9 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
         params["cau_hoi"] = text
 
     elif matched_intent == GENERATE_DAILY_BRIEF:
-        params["ngay"] = "2026-09-01"
+        from datetime import date
+
+        params["ngay"] = date.today().isoformat()
 
     elif matched_intent == ANALYZE_WASTE:
         params["khoang_ngay"] = "hom_nay"

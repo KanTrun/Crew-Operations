@@ -68,6 +68,23 @@ def _get_verified_user(authorization: str | None) -> dict[str, str]:
     }
 
 
+def _require_user(authorization: str | None) -> dict[str, str]:
+    """Validate user — raise 401 when token missing. For write-like endpoints.
+
+    Giữ `_get_verified_user` cho endpoint đọc (Telegram/Zalo webhook có thể không
+    có token user). Endpoint GHI dữ liệu (execute-action, amend) phải xác thực.
+    """
+    sess = auth_session(authorization)
+    if not sess:
+        raise HTTPException(status_code=401, detail="thieu_token_hoac_session_het_han")
+    return {
+        "username": sess["username"],
+        "user_id": sess["nv_id"],
+        "role": sess["role"],
+        "store_id": "quan_01",
+    }
+
+
 def _check_rate_limit(user_id: str, max_per_min: int = 30) -> None:
     now = time.time()
     times = [t for t in _RATE_LIMIT_STORE.get(user_id, []) if now - t < 60]
@@ -174,7 +191,7 @@ def copilot_execute_action(
 ) -> dict[str, Any]:
     """Confirm/Approve or Reject an ActionProposal with VF-SCOPE, VF-STALE and Idempotency."""
     t0 = time.time()
-    user = _get_verified_user(authorization)
+    user = _require_user(authorization)
     now_iso = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # 1. Fetch draft from DB
@@ -374,7 +391,7 @@ def copilot_amend_action(
 ) -> dict[str, Any]:
     """Amend / Correct an already executed action within the amendment time window (15 mins)."""
     t0 = time.time()
-    user = _get_verified_user(authorization)
+    user = _require_user(authorization)
     now_iso = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     draft = copilot_draft_get(action_id)

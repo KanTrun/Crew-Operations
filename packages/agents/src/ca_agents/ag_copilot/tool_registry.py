@@ -208,8 +208,9 @@ def tool_prepare_swap_approval(
     checks["ca_hop_le"] = ca_exists if phan_cong else bool(ca_id)
     # 3.4 Người nhận không trùng ca khác cùng ngày (nếu có dữ liệu phân công chi tiết)
     checks["khong_trung_ca_khac"] = True  # solver đảm bảo khi áp dụng; chi tiết ở VF-STALE
-    # 3.5 Có lý do ghi nhận
-    checks["co_ly_do"] = bool(target.get("ly_do") or target.get("ghi_chu"))
+    # 3.5 Lý do: swap-market 3 nhánh KHÔNG có trường ly_do/ghi_chu — chỉ bắt buộc
+    #     khi swap kiểu cũ có trường này. Nếu swap-market thì coi là hợp lệ (3 nhánh đã đồng ý).
+    checks["co_ly_do"] = bool(target.get("ly_do") or target.get("ghi_chu") or target.get("trang_thai") in ("dong_y", "cho_3_nhanh"))
 
     passed = all(checks.values())
     ten_map = {u.get("nv_id"): u.get("ten") for u in (_kv_get("users", []) or []) if isinstance(u, dict)}

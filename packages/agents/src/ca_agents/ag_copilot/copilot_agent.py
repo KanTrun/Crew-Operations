@@ -144,10 +144,14 @@ def run_copilot(
     sup_res = supervise_outgoing_response(message, reply)
     final_reply = sup_res.sanitized_response
 
+    # Citations: lấy từ tool data nếu có (QUERY_SOP / survey).
+    citations = list(tool_res.data.get("citations", []) or []) if isinstance(tool_res.data, dict) else []
+
     return CopilotResponse(
         reply_text=final_reply,
         intent=getattr(CopilotIntent, parsed.intent, CopilotIntent.OUT_OF_SCOPE),
         confidence=parsed.confidence,
         action_proposal=action_prop,
         direct_answer=direct_answer,
+        citations=citations,
     )
