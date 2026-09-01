@@ -246,7 +246,7 @@ def scrape_threads_google_bridge(
                 luot_tiep_can=reach_str,
                 trich_doan_noi_dung_that=snippet,
                 binh_luan_that_tiktok=cmts,
-                nen_tang_lan_toa=["Threads VN", "Instagram", "Facebook"],
+                nen_tang_lan_toa=["Meta Threads"],
                 tu_khoa_hashtag=[f"#{clean_tag}", "#threads", "#fnbvietnam", "#trend"],
                 is_live_scraped=True,
             )

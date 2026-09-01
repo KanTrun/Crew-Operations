@@ -214,7 +214,7 @@ def scrape_threads_apify(
                 luot_tiep_can=reach_str,
                 trich_doan_noi_dung_that=text[:250] + ("..." if len(text) > 250 else ""),
                 binh_luan_that_tiktok=formatted_replies,
-                nen_tang_lan_toa=["Threads VN", "Instagram", "Facebook"],
+                nen_tang_lan_toa=["Meta Threads"],
                 tu_khoa_hashtag=tags[:5],
                 is_live_scraped=True,
             )

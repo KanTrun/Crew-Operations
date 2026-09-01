@@ -750,10 +750,10 @@ export default function PageQuanPage() {
             <div className="flex flex-wrap gap-2 pt-1">
               {[
                 { id: "all", label: "🌐 Tất cả nguồn" },
-                { id: "tiktok_vn", label: "🎵 TikTok VN (Video & Comment)" },
-                { id: "threads_vn", label: "🧵 Threads & Gen Z" },
-                { id: "google_vn", label: "🔥 Google Trends VN" },
-                { id: "star_vn", label: "✨ Showbiz & KOLs" },
+                { id: "tiktok_vn", label: "🎵 TikTok Việt Nam" },
+                { id: "threads_vn", label: "🧵 Meta Threads" },
+                { id: "google_vn", label: "🔥 Google Trends" },
+                { id: "star_vn", label: "✨ Showbiz & Báo chí" },
                 { id: "tiktok_global", label: "🌐 Quốc tế (Global)" },
               ].map((p) => (
                 <button
@@ -1051,15 +1051,19 @@ export default function PageQuanPage() {
                     </div>
                   )}
 
-                  {/* Khối 3: TOP BÌNH LUẬN THẬT CÀO TRỰC TIẾP TỪ TIKTOK */}
+                  {/* Khối 3: TOP BÌNH LUẬN / THẢO LUẬN THẬT CÀO TỪ NỀN TẢNG */}
                   {selectedTrend.binh_luan_that_tiktok && selectedTrend.binh_luan_that_tiktok.length > 0 && (
                     <div className="space-y-2 rounded border border-emerald-500/40 bg-emerald-500/5 p-4">
                       <div className="flex items-center justify-between">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                          💬 Top Bình Luận Thật Cào Trực Tiếp Từ Video TikTok
+                          💬 {selectedTrend.nguon_goc === "threads_vn"
+                            ? "Top Thảo Luận & Phản Hồi Thật Từ Threads"
+                            : selectedTrend.nguon_goc === "tiktok_vn"
+                            ? "Top Bình Luận Thật Cào Trực Tiếp Từ TikTok"
+                            : "Thảo Luận Thật Từ Người Dùng"}
                         </h4>
                         <span className="text-[10px] text-emerald-400/90 font-mono bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
-                          100% Cào từ TikTok
+                          100% Cào từ {selectedTrend.nguon_goc === "threads_vn" ? "Threads" : selectedTrend.nguon_goc === "tiktok_vn" ? "TikTok" : "Nền tảng"}
                         </span>
                       </div>
                       <div className="space-y-1.5">
@@ -1078,7 +1082,7 @@ export default function PageQuanPage() {
                   {/* Khối 4: Giải Mã Tâm Lý Giới Trẻ */}
                   <div className="space-y-1 rounded border border-purple-500/30 bg-purple-500/5 p-4">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-purple-400">
-                      🧠 Giải Mã Tâm Lý Giới Trẻ / Gen Z
+                      🧠 Giải Mã Tâm Lý Khách Hàng / Giới Trẻ
                     </h4>
                     <p className="text-sm leading-relaxed text-[var(--nq-primary)]">
                       {selectedTrend.tam_ly_gioi_tre}
@@ -1110,9 +1114,9 @@ export default function PageQuanPage() {
                     </div>
 
                     <div className="flex items-center gap-1.5 text-[var(--nq-muted)]">
-                      <span>Nền tảng lan tỏa:</span>
-                      <strong className="text-[var(--nq-primary)]">
-                        {selectedTrend.nen_tang_lan_toa.join(", ")}
+                      <span>Nền tảng cào dữ liệu:</span>
+                      <strong className="text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/30">
+                        {selectedTrend.nen_tang_lan_toa?.[0] || (selectedTrend.nguon_goc === "threads_vn" ? "Meta Threads" : selectedTrend.nguon_goc === "tiktok_vn" ? "TikTok Việt Nam" : "Google Trends")}
                       </strong>
                     </div>
                   </div>

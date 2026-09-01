@@ -252,7 +252,7 @@ def scrape_threads_direct(
                 luot_tiep_can=reach_str,
                 trich_doan_noi_dung_that=text,
                 binh_luan_that_tiktok=cmts,
-                nen_tang_lan_toa=["Threads VN", "Instagram", "Facebook"],
+                nen_tang_lan_toa=["Meta Threads"],
                 tu_khoa_hashtag=[f"#{clean_tag}", "#threads", "#fnbvietnam", "#genz"],
                 is_live_scraped=True,
             )

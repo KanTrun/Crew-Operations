@@ -87,7 +87,7 @@ _FIXTURE_TRENDS: list[TrendItem] = [
             "Xin vía cơ địa khó thất nghiệp đi làm từ sáng tới tối",
             "Cơ địa này chỉ hợp làm ca tối quán cafe thôi",
         ],
-        nen_tang_lan_toa=["TikTok VN", "Facebook", "Threads"],
+        nen_tang_lan_toa=["TikTok Việt Nam"],
         tu_khoa_hashtag=["#lebong", "#codiakhothatnghiep", "#xuhuong"],
         is_live_scraped=False,
     )
@@ -308,7 +308,7 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
                         f'Cộng đồng TikTok đang thảo luận sôi nổi về "#{t_kw}"',
                         f"Bấm để xem video trending #{t_kw} trực tiếp trên TikTok",
                     ],
-                    nen_tang_lan_toa=["TikTok VN", "Facebook Reels", "Instagram Reels"],
+                    nen_tang_lan_toa=["TikTok Việt Nam"],
                     tu_khoa_hashtag=[f"#{clean_tag}", f"#{clean_tag}vietnam", "#xuhuongtiktok"],
                     is_live_scraped=True,
                 )
@@ -373,7 +373,7 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
                 luot_tiep_can=f"{play_count:,} views | {digg_count:,} tim",
                 trich_doan_noi_dung_that=f"Mô tả video: {title}",
                 binh_luan_that_tiktok=comments_list,
-                nen_tang_lan_toa=["TikTok VN", "Facebook Reels", "YouTube Shorts"],
+                nen_tang_lan_toa=["TikTok Việt Nam"],
                 tu_khoa_hashtag=[f"#{author}", f"#{clean_tag}", "#xuhuongtiktok"],
                 is_live_scraped=True,
             )
@@ -456,7 +456,7 @@ def _scrape_google_trends_vn(keyword: str = "") -> list[TrendItem]:
                         trich_doan_noi_dung_that=news_snippet
                         or "Từ khóa thịnh hành trên Google Search Việt Nam",
                         binh_luan_that_tiktok=[],
-                        nen_tang_lan_toa=["Google VN", "TikTok VN", "Facebook"],
+                        nen_tang_lan_toa=["Google Trends Việt Nam"],
                         tu_khoa_hashtag=[f"#{clean_tag}", "#xuhuongvn", "#googletrends"],
                         is_live_scraped=True,
                     )
@@ -503,7 +503,7 @@ def _scrape_genz_media_vn(keyword: str = "") -> list[TrendItem]:
                 items_out.append(
                     TrendItem(
                         id=trend_id,
-                        tieu_de=f"🧵 [THREADS & GEN Z] {title}",
+                        tieu_de=f"🧵 [META THREADS] {title}",
                         cum_tu_khoa_viral=short_kw,
                         nguon_goc="threads_vn",
                         loai_xu_huong="breaking_vn_24h",
@@ -525,7 +525,7 @@ def _scrape_genz_media_vn(keyword: str = "") -> list[TrendItem]:
                         luot_tiep_can="Tin mới xuất bản",
                         trich_doan_noi_dung_that=desc_clean,
                         binh_luan_that_tiktok=[],
-                        nen_tang_lan_toa=["Threads VN", "TikTok VN", "Facebook"],
+                        nen_tang_lan_toa=["Meta Threads"],
                         tu_khoa_hashtag=["#genzlifestyle", f"#{clean_tag}", "#threads"],
                         is_live_scraped=True,
                     )
@@ -592,7 +592,7 @@ def _scrape_showbiz_kols_vn(keyword: str = "") -> list[TrendItem]:
                         luot_tiep_can="Tin giải trí hot",
                         trich_doan_noi_dung_that=desc_clean,
                         binh_luan_that_tiktok=[],
-                        nen_tang_lan_toa=["TikTok VN", "Facebook", "Instagram"],
+                        nen_tang_lan_toa=["Showbiz & Báo chí"],
                         tu_khoa_hashtag=["#showbizviet", f"#{clean_tag}", "#idol"],
                         is_live_scraped=True,
                     )
@@ -668,7 +668,7 @@ def _scrape_google_trends_global(keyword: str = "") -> list[TrendItem]:
                         luot_tiep_can=f"{traffic} searches",
                         trich_doan_noi_dung_that=news_snippet or "Top Search Google US",
                         binh_luan_that_tiktok=[],
-                        nen_tang_lan_toa=["TikTok Global", "X (Twitter)", "Google US"],
+                        nen_tang_lan_toa=["Google Trends Quốc tế"],
                         tu_khoa_hashtag=[f"#{clean_tag}", "#globaltrend"],
                         is_live_scraped=True,
                     )
