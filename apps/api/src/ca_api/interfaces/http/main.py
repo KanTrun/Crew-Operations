@@ -38,6 +38,27 @@ from ca_api.persist import login as persist_login
 from ca_api.persist import register as persist_register
 from ca_api.persist import session as auth_session
 
+# Inject real data sources into AG-COPILOT tool registry (hexagonal boundary).
+# Agents không được import ca_api/ca_playbook trực tiếp (test_architecture) —
+# nên API layer cung cấp dữ liệu thật qua configure_data_sources().
+from ca_agents.ag_copilot.tool_registry import configure_data_sources
+from ca_agents.ag_sop import answer as _sop_answer
+from ca_agents.ag_waste import cluster as _waste_cluster
+from ca_ops.engine import load_template as _load_template
+from ca_playbook.sua import list_sua as _list_sua
+from ca_playbook.vong_doi import de_xuat as _de_xuat, list_luat as _list_luat, tim_mau as _tim_mau
+
+configure_data_sources(
+    kv_get=kv_get,
+    list_luat=_list_luat,
+    load_template=_load_template,
+    list_sua=_list_sua,
+    tim_mau=_tim_mau,
+    de_xuat=_de_xuat,
+    sop_answer=_sop_answer,
+    waste_cluster=_waste_cluster,
+)
+
 app = FastAPI(title="NHIP QUAN API", version="0.2.0")
 app.add_middleware(
     CORSMiddleware,

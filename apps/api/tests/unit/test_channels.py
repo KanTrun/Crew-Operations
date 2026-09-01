@@ -13,7 +13,13 @@ from unit.auth_util import headers
 client = TestClient(app)
 
 
-def test_channels_status_zalo_first_disconnected() -> None:
+def test_channels_status_zalo_first_disconnected(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Neo env sạch: test khác (vd ag_meeting qua ensure_dotenv) có thể load .env
+    # thật của máy vào os.environ và leak sang đây — phải cô lập để assert ổn định.
+    monkeypatch.delenv("NHIPQUAN_ZALO_ENABLED", raising=False)
+    monkeypatch.delenv("NHIPQUAN_ZALO_OA_ACCESS_TOKEN", raising=False)
+    monkeypatch.delenv("NHIPQUAN_TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("NHIPQUAN_FB_PAGE_TOKEN", raising=False)
     ql = headers(client, "lan")
     r = client.get("/api/v1/channels/status", headers=ql)
     assert r.status_code == 200, r.text
