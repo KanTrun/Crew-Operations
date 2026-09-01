@@ -45,3 +45,23 @@ Trả về `direct_answer`, hoặc `action_proposal` ở trạng thái `draft`/`
 - `VF-SCOPE`: Đúng quyền và đúng store_id.
 - `VF-STALE`: Kiểm tra data snapshot hash tại Pha Confirm.
 - `AG-SUPERVISOR`: Lọc rò rỉ dữ liệu nhạy cảm và lời hứa tài chính trái phép.
+
+## 10. Ma trận quyền Role → Intent (minh bạch, fail-closed)
+Nguồn duy nhất: `COPILOT_ROLE_INTENT_MATRIX` trong `ca_contracts`. Kiểm tra 2 lớp:
+1. **Pre-check trong agent** (`run_copilot`): chặn intent vượt quyền TRƯỚC khi chạy tool.
+2. **VF-SCOPE tại Pha Confirm** (`validate_scope`): chặn duyệt/thực thi nếu role không đủ.
+
+| Intent | nhan_vien | quan_ly | chu_quan |
+|---|---|---|---|
+| GENERATE_DAILY_BRIEF (bản tin) | ✅ | ✅ | ✅ |
+| QUERY_SOP (quy trình) | ✅ | ✅ | ✅ |
+| ANALYZE_WASTE (hao hụt) | ✅ | ✅ | ✅ |
+| SCHEDULE_SOLVE (xếp lịch) | ❌ | ✅ | ✅ |
+| APPROVE_SHIFT_SWAP (duyệt đổi ca) | ❌ | ✅ | ✅ |
+| CREATE_RULE_PROPOSAL (đề xuất luật) | ❌ | ✅ | ✅ |
+| INVENTORY_RESTOCK_CHECK (kiểm kê) | ❌ | ✅ | ✅ |
+
+Quy tắc fail-closed:
+- Role thiếu/lạ → coi như `nhan_vien` (đặc quyền thấp nhất).
+- Intent không có trong ma trận → không ai được gọi (`unknown_intent`).
+- Mọi lượt bị chặn quyền được ghi audit `role_blocked` để review.

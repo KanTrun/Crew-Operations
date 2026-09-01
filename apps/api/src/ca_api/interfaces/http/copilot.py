@@ -23,10 +23,12 @@ from ca_agents.ag_copilot import run_copilot
 from ca_contracts import (
     ActionProposal,
     ActionProposalStatus,
+    COPILOT_ROLE_INTENT_MATRIX,
     CopilotContext,
     CopilotIntent,
     CopilotMessage,
     CopilotResponse,
+    copilot_intents_allowed_for_role,
 )
 from ca_gates import compute_snapshot_hash, validate_scope, validate_stale
 from ca_api.persist import (
@@ -131,6 +133,19 @@ def copilot_message(
     # Run AG-COPILOT
     response = run_copilot(body.message, verified_context)
     latency_ms = int((time.time() - t0) * 1000)
+
+    # Minh bạch: log các lượt bị chặn do vượt quyền (role_blocked) để review.
+    if response.intent == CopilotIntent.OUT_OF_SCOPE and "vượt phạm vi vai trò" in response.reply_text:
+        copilot_audit_add(
+            action_id="n/a",
+            actor_user_id=user["user_id"],
+            store_id=user["store_id"],
+            intent="role_blocked",
+            decision="role_blocked",
+            payload_diff={"message": body.message[:200]},
+            channel=body.channel,
+            latency_ms=latency_ms,
+        )
 
     # If action proposal was generated, save draft and log propose audit
     if response.action_proposal:
@@ -412,3 +427,28 @@ def copilot_get_audit(
     user = _get_verified_user(authorization)
     target_store = store_id or user["store_id"]
     return copilot_audit_list(target_store, limit=limit)
+
+
+# ── 6. GET /api/v1/copilot/permissions ───────────────────────────────────────
+
+@router.get("/permissions")
+def copilot_get_permissions(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Minh bạch quyền: role hiện tại được (và không được) dùng intent nào."""
+    user = _get_verified_user(authorization)
+    role = user["role"]
+    allowed = sorted(copilot_intents_allowed_for_role(role))
+    all_intents = sorted(
+        str(i.value) if hasattr(i, "value") else str(i)
+        for i in CopilotIntent
+        if i != CopilotIntent.OUT_OF_SCOPE
+    )
+    return {
+        "role": role,
+        "allowed_intents": allowed,
+        "denied_intents": sorted(set(all_intents) - set(allowed)),
+        "matrix": {
+            r: sorted(v) for r, v in COPILOT_ROLE_INTENT_MATRIX.items()
+        },
+    }

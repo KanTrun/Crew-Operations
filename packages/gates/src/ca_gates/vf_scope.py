@@ -4,6 +4,8 @@ Rules:
 1. store_id must match target store_id (no cross-store operations).
 2. Privileged operations require appropriate role (quan_ly or chu_quan).
 3. Fail-closed on mismatch.
+4. Role→Intent permissions derive from COPILOT_ROLE_INTENT_MATRIX (contracts)
+   — single source of truth, fail-closed for unknown roles/intents.
 """
 
 from __future__ import annotations
@@ -11,19 +13,39 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-# Intent permissions
-_PRIVILEGED_INTENTS = {
-    "SCHEDULE_SOLVE": {"quan_ly", "chu_quan"},
-    "APPROVE_SHIFT_SWAP": {"quan_ly", "chu_quan"},
-    "CREATE_RULE_PROPOSAL": {"quan_ly", "chu_quan"},
-    "INVENTORY_RESTOCK_CHECK": {"quan_ly", "chu_quan"},
+from ca_contracts import (
+    COPILOT_ROLE_INTENT_MATRIX,
+    copilot_intents_allowed_for_role,
+)
+
+# Intent permissions — derived from the single-source matrix in contracts.
+# Kept as module-level names for backward compatibility with existing imports.
+_PRIVILEGED_INTENTS: dict[str, frozenset[str]] = {
+    intent: {
+        role
+        for role, intents in COPILOT_ROLE_INTENT_MATRIX.items()
+        if intent in intents
+    }
+    for intent in (
+        "SCHEDULE_SOLVE",
+        "APPROVE_SHIFT_SWAP",
+        "CREATE_RULE_PROPOSAL",
+        "INVENTORY_RESTOCK_CHECK",
+    )
 }
 
-_PUBLIC_INTENTS = {
-    "GENERATE_DAILY_BRIEF": {"nhan_vien", "quan_ly", "chu_quan"},
-    "QUERY_SOP": {"nhan_vien", "quan_ly", "chu_quan"},
-    "ANALYZE_WASTE": {"nhan_vien", "quan_ly", "chu_quan"},
-    "OUT_OF_SCOPE": {"nhan_vien", "quan_ly", "chu_quan"},
+_PUBLIC_INTENTS: dict[str, frozenset[str]] = {
+    intent: {
+        role
+        for role, intents in COPILOT_ROLE_INTENT_MATRIX.items()
+        if intent in intents
+    }
+    for intent in (
+        "GENERATE_DAILY_BRIEF",
+        "QUERY_SOP",
+        "ANALYZE_WASTE",
+        "OUT_OF_SCOPE",
+    )
 }
 
 
@@ -58,7 +80,19 @@ def validate_scope(
             reason=f"cross_store_forbidden:{caller_store_id}!={target_store_id}",
         )
 
-    allowed_roles = _PRIVILEGED_INTENTS.get(intent, _PUBLIC_INTENTS.get(intent, {"quan_ly", "chu_quan"}))
+    # Role→Intent từ ma trận single-source trong contracts.
+    allowed_roles = {
+        role
+        for role, intents in COPILOT_ROLE_INTENT_MATRIX.items()
+        if intent in intents
+    }
+    if not allowed_roles:
+        # Fail-closed: intent không có trong ma trận → không ai được gọi.
+        return ScopeResult(
+            passed=False,
+            blocked=True,
+            reason=f"unknown_intent:{intent}",
+        )
     if caller_role not in allowed_roles:
         return ScopeResult(
             passed=False,

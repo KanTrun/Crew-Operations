@@ -136,6 +136,31 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   </p>
 
                   {msg.sender === "copilot" &&
+                    msg.id === "welcome" &&
+                    profile.capabilities.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-zinc-800/80">
+                        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">
+                          Em làm được gì cho anh/chị
+                        </p>
+                        <ul className="flex flex-wrap gap-1">
+                          {profile.capabilities.map((cap, i) => (
+                            <li
+                              key={`cap-${i}`}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/80 border border-emerald-500/20 text-emerald-300"
+                            >
+                              ✓ {cap}
+                            </li>
+                          ))}
+                        </ul>
+                        {profile.deniedNote ? (
+                          <p className="text-[10px] text-zinc-500 mt-1.5 italic">
+                            ⚠ {profile.deniedNote}
+                          </p>
+                        ) : null}
+                      </div>
+                    )}
+
+                  {msg.sender === "copilot" &&
                     msg.citations &&
                     msg.citations.length > 0 && (
                       <div className="mt-2 pt-2 border-t border-zinc-800/80">

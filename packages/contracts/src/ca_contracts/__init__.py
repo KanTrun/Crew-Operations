@@ -232,6 +232,57 @@ class CopilotIntent(StrEnum):
     OUT_OF_SCOPE = "OUT_OF_SCOPE"
 
 
+# ── Ma trận quyền Role → Intent (single source of truth) ─────────────────────
+# Nguyên tắc: fail-closed — intent không liệt kê = không ai được gọi.
+# - nhan_vien: chỉ tra cứu/đọc (daily brief, SOP, hao hụt của chính mình).
+# - quan_ly: + xếp lịch, duyệt đổi ca, đề xuất luật, kiểm kê tồn kho.
+# - chu_quan: toàn bộ quyền quan_ly (không có intent riêng vượt quan_ly).
+COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
+    "nhan_vien": frozenset(
+        {
+            "GENERATE_DAILY_BRIEF",
+            "QUERY_SOP",
+            "ANALYZE_WASTE",
+            "OUT_OF_SCOPE",
+        }
+    ),
+    "quan_ly": frozenset(
+        {
+            "GENERATE_DAILY_BRIEF",
+            "QUERY_SOP",
+            "ANALYZE_WASTE",
+            "OUT_OF_SCOPE",
+            "SCHEDULE_SOLVE",
+            "APPROVE_SHIFT_SWAP",
+            "CREATE_RULE_PROPOSAL",
+            "INVENTORY_RESTOCK_CHECK",
+        }
+    ),
+    "chu_quan": frozenset(
+        {
+            "GENERATE_DAILY_BRIEF",
+            "QUERY_SOP",
+            "ANALYZE_WASTE",
+            "OUT_OF_SCOPE",
+            "SCHEDULE_SOLVE",
+            "APPROVE_SHIFT_SWAP",
+            "CREATE_RULE_PROPOSAL",
+            "INVENTORY_RESTOCK_CHECK",
+        }
+    ),
+}
+
+
+def copilot_intents_allowed_for_role(role: str) -> frozenset[str]:
+    """Trả về tập intent được phép cho role. Fail-closed: role lạ → rỗng."""
+    return COPILOT_ROLE_INTENT_MATRIX.get(role, frozenset())
+
+
+def copilot_role_can_use_intent(role: str, intent: str) -> bool:
+    """Kiểm tra role có được dùng intent không. Fail-closed."""
+    return intent in copilot_intents_allowed_for_role(role)
+
+
 class ActionProposalStatus(StrEnum):
     draft = "draft"
     ready_for_approval = "ready_for_approval"

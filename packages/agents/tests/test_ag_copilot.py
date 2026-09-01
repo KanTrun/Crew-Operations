@@ -62,3 +62,70 @@ def test_run_copilot_direct_query() -> None:
     assert res.intent == CopilotIntent.GENERATE_DAILY_BRIEF
     assert res.action_proposal is None
     assert res.direct_answer is not None
+
+
+def test_role_matrix_staff_cannot_schedule() -> None:
+    """Nhân viên yêu cầu xếp lịch → bị chặn, không tạo proposal."""
+    ctx = {
+        "store_id": "quan_01",
+        "user_id": "minh",
+        "user_role": "nhan_vien",
+        "active_date": "2026-09-01",
+    }
+    res = run_copilot("Xếp lịch tuần sau giúp em", context=ctx)
+    assert res.intent == CopilotIntent.OUT_OF_SCOPE
+    assert res.action_proposal is None
+    assert "vượt phạm vi vai trò" in res.reply_text
+
+
+def test_role_matrix_staff_cannot_approve_swap() -> None:
+    """Nhân viên yêu cầu duyệt đổi ca → bị chặn."""
+    ctx = {
+        "store_id": "quan_01",
+        "user_id": "minh",
+        "user_role": "nhan_vien",
+        "active_date": "2026-09-01",
+    }
+    res = run_copilot("Xem xét duyệt đổi ca cho bạn Lan", context=ctx)
+    assert res.intent == CopilotIntent.OUT_OF_SCOPE
+    assert res.action_proposal is None
+
+
+def test_role_matrix_staff_can_query_sop_and_brief() -> None:
+    """Nhân viên vẫn tra cứu được SOP + bản tin (public intents)."""
+    ctx = {
+        "store_id": "quan_01",
+        "user_id": "minh",
+        "user_role": "nhan_vien",
+        "active_date": "2026-09-01",
+    }
+    res = run_copilot("Quy trình mở quán gồm các bước nào?", context=ctx)
+    assert res.intent == CopilotIntent.QUERY_SOP
+    assert res.action_proposal is None
+
+
+def test_role_matrix_unknown_role_fail_closed() -> None:
+    """Role lạ (không nằm trong ma trận) → fail-closed thành nhan_vien."""
+    ctx = {
+        "store_id": "quan_01",
+        "user_id": "ghost",
+        "user_role": "super_admin",
+        "active_date": "2026-09-01",
+    }
+    res = run_copilot("Xếp lịch tuần sau giúp tôi", context=ctx)
+    # super_admin không có trong ma trận → fail-closed → bị chặn intent đặc quyền
+    assert res.intent == CopilotIntent.OUT_OF_SCOPE
+    assert res.action_proposal is None
+
+
+def test_role_matrix_manager_can_schedule() -> None:
+    """Quản lý vẫn xếp lịch được (regression check)."""
+    ctx = {
+        "store_id": "quan_01",
+        "user_id": "lan",
+        "user_role": "quan_ly",
+        "active_date": "2026-09-01",
+    }
+    res = run_copilot("Xếp lịch tuần sau giúp chị", context=ctx)
+    assert res.intent == CopilotIntent.SCHEDULE_SOLVE
+    assert res.action_proposal is not None

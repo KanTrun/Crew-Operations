@@ -23,6 +23,7 @@ from ca_contracts import (
     ActionProposalStatus,
     CopilotIntent,
     CopilotResponse,
+    copilot_role_can_use_intent,
 )
 
 
@@ -43,10 +44,31 @@ def run_copilot(
     ctx = context or {}
     store_id = str(ctx.get("store_id") or "quan_01")
     user_id = str(ctx.get("user_id") or "nv_01")
-    user_role = str(ctx.get("user_role") or "quan_ly")
+    # Fail-closed: role thiếu/lạ → nhan_vien (đặc quyền thấp nhất).
+    raw_role = str(ctx.get("user_role") or "").strip()
+    user_role = raw_role if raw_role in ("chu_quan", "quan_ly", "nhan_vien") else "nhan_vien"
 
     # 1. Parse Intent & Security Filter
     parsed = parse_intent(message, ctx)
+
+    # 1.0 Role-based intent authorization (VF-SCOPE pre-check, fail-closed).
+    # Chặn TRƯỚC khi chạy tool để AI của role thấp không bao giờ thực thi
+    # intent vượt quyền, kể cả khi LLM parse đúng intent đó.
+    if parsed.intent != OUT_OF_SCOPE and not copilot_role_can_use_intent(
+        user_role, parsed.intent
+    ):
+        reply = (
+            "Dạ lỗi này vượt phạm vi vai trò của anh/chị. "
+            "Việc này chỉ quản lý hoặc chủ quán mới có thể yêu cầu em thực hiện ạ. "
+            "Anh/chị có thể nhờ quản lý duyệt giúp, hoặc hỏi em các việc trong phạm vi ca của mình."
+        )
+        return CopilotResponse(
+            reply_text=reply,
+            intent=CopilotIntent.OUT_OF_SCOPE,
+            confidence=0.99,
+            action_proposal=None,
+            direct_answer=reply,
+        )
 
     # 1.1 Check Prompt Injection / Bypass Approval attempts
     if parsed.security_flag == "bypass_approval_rejected":

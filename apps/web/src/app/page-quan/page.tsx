@@ -304,24 +304,24 @@ export default function PageQuanPage() {
     setActiveKeyword(kw);
     setKeywordInput(kw);
     setShowSavedOnly(false);
-    fetchTrendsData(regionFilter, categoryFilter, kw, true);
+    fetchTrendsData(regionFilter, categoryFilter, kw, scrapeMode, true);
   };
 
   const handleClearKeyword = () => {
     setKeywordInput("");
     setActiveKeyword("");
-    fetchTrendsData(regionFilter, categoryFilter, "", true);
+    fetchTrendsData(regionFilter, categoryFilter, "", scrapeMode, true);
   };
 
   const handleRegionChange = (newRegion: string) => {
     setRegionFilter(newRegion);
     setShowSavedOnly(false);
-    fetchTrendsData(newRegion, categoryFilter, activeKeyword, true);
+    fetchTrendsData(newRegion, categoryFilter, activeKeyword, scrapeMode, true);
   };
 
   const handleCategoryChange = (newCategory: string) => {
     setCategoryFilter(newCategory);
-    fetchTrendsData(regionFilter, newCategory, activeKeyword, true);
+    fetchTrendsData(regionFilter, newCategory, activeKeyword, scrapeMode, true);
   };
 
   // Messenger Thread operations
@@ -746,7 +746,7 @@ export default function PageQuanPage() {
 
               {/* Nút Cào Độc Quyền theo Nguồn */}
               <button
-                onClick={() => fetchTrendsData(regionFilter, categoryFilter, activeKeyword, true)}
+                onClick={() => fetchTrendsData(regionFilter, categoryFilter, activeKeyword, scrapeMode, true)}
                 disabled={isScanning}
                 className="inline-flex items-center gap-1.5 rounded bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white shadow-md hover:bg-emerald-500 transition-all cursor-pointer disabled:opacity-50"
               >

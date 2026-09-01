@@ -22,6 +22,10 @@ export interface CopilotProfile {
   showAudit: boolean;
   /** Tin nhắn khi user mở drawer nhưng role rỗng. */
   emptyMessage?: string;
+  /** Danh mục việc AI làm được cho role này (hiện trong khung chat — minh bạch). */
+  capabilities: string[];
+  /** Danh mục việc AI KHÔNG làm được (hiện khi user hỏi vượt quyền). */
+  deniedNote?: string;
 }
 
 const STAFF: CopilotProfile = {
@@ -30,16 +34,23 @@ const STAFF: CopilotProfile = {
   persona: "nhan_vien",
   accent: "#fbbf24", // amber-400
   quickPrompts: [
-    "Ca hôm nay của em gồm những việc gì?",
-    "Còn bao nhiêu sữa, có kịp pha tối không?",
-    "Hao hụt sữa ca em hôm nay bao nhiêu?",
-    "Em xin đổi ca với Hương mai được không?",
-    "Quy trình đóng quán gồm những bước nào?",
+    "Bản tin sáng hôm nay",
+    "Quy trình mở quán gồm các bước nào?",
+    "Báo cáo hao hụt sữa hôm nay",
+    "Em cần làm gì trong ca này?",
+    "Hướng dẫn vệ sinh máy pha cà phê",
   ],
   greeting:
-    "Em chào anh/chị — em là AG-COPILOT hỗ trợ ca. Anh/chị cứ hỏi việc hôm nay, hao phí, quy trình đóng/mở ca ạ.",
+    "Em chào anh/chị — em là AG-COPILOT hỗ trợ ca. Em giúp được: xem bản tin, tra cứu quy trình, xem hao hụt. Việc xếp lịch hay duyệt đổi ca anh/chị nhờ quản lý giúp em ạ.",
   allowActionApproval: false,
   showAudit: false,
+  capabilities: [
+    "Xem bản tin ca",
+    "Tra cứu quy trình (SOP)",
+    "Xem báo cáo hao hụt",
+  ],
+  deniedNote:
+    "Không xếp lịch, không duyệt đổi ca, không đề xuất luật, không kiểm kê tồn kho — việc này thuộc quản lý/chủ quán.",
 };
 
 const MANAGER: CopilotProfile = {
@@ -49,15 +60,24 @@ const MANAGER: CopilotProfile = {
   accent: "#22d3ee", // cyan-400
   quickPrompts: [
     "Xếp lịch tuần sau, ưu tiên Lan ca sáng",
-    "Có bao nhiêu việc đang chờ em duyệt trong inbox?",
+    "Xem xét duyệt đổi ca cho bạn Minh",
     "Tóm tắt bản tin sáng hôm nay",
-    "Kiểm kê tồn kho và cảnh báo hết hàng",
-    "Chạy 8 bước xét luật cho cẩm nang",
+    "Kiểm tra tồn kho và cảnh báo hết hàng",
+    "Đề xuất luật mới từ các lần sửa của chị",
   ],
   greeting:
-    "Chào anh/chị — em là AG-COPILOT điều hành. Anh/chị có thể nhờ em xếp lịch, duyệt inbox, kiểm kê hoặc chạy xét luật cẩm nang.",
+    "Chào anh/chị — em là AG-COPILOT điều hành. Em giúp được: xếp lịch, duyệt đổi ca, bản tin, quy trình, hao hụt, đề xuất luật, kiểm kê. Mọi thay đổi đều chờ anh/chị duyệt trước khi áp dụng.",
   allowActionApproval: true,
   showAudit: false,
+  capabilities: [
+    "Xếp lịch tuần (solver)",
+    "Duyệt đổi ca",
+    "Bản tin + quy trình + hao hụt",
+    "Đề xuất luật mới",
+    "Kiểm kê tồn kho",
+  ],
+  deniedNote:
+    "Không tự áp dụng thay đổi — mọi đề xuất phải qua anh/chị duyệt (two-phase).",
 };
 
 const OWNER: CopilotProfile = {
@@ -66,16 +86,22 @@ const OWNER: CopilotProfile = {
   persona: "chu_quan",
   accent: "#a78bfa", // violet-400
   quickPrompts: [
-    "Báo cáo tuần này: doanh thu, hao hụt, lịch treo",
-    "Đối chiếu công bằng giữa các ca trong tháng",
-    "Vết (audit) có bất thường gì 7 ngày qua?",
-    "Menu nào đang bán chạm đáy, cần điều chỉnh?",
-    "Nhân sựng nào vắng > 2 ca liên tiếp?",
+    "Tóm tắt bản tin sáng hôm nay",
+    "Xếp lịch tuần sau, ưu tiên Lan ca sáng",
+    "Xem xét duyệt đổi ca cho bạn Minh",
+    "Báo cáo hao hụt sữa hôm nay",
+    "Quy trình mở quán gồm các bước nào?",
   ],
   greeting:
-    "Chào anh/chị — em là AG-COPILOT của Chủ quán. Mọi số liệu vận hành, audit, fairness, menu đều có thể hỏi em.",
+    "Chào anh/chị — em là AG-COPILOT của Chủ quán. Em có toàn bộ quyền điều hành như quản lý: xếp lịch, duyệt đổi ca, kiểm kê, đề xuất luật. Mọi thay đổi vẫn chờ anh/chị duyệt.",
   allowActionApproval: true,
   showAudit: true,
+  capabilities: [
+    "Toàn bộ quyền của Quản lý",
+    "Xem vết audit (vet)",
+  ],
+  deniedNote:
+    "Không tự áp dụng thay đổi — mọi đề xuất phải qua anh/chị duyệt (two-phase).",
 };
 
 const GUEST: CopilotProfile = {
@@ -88,6 +114,7 @@ const GUEST: CopilotProfile = {
   allowActionApproval: false,
   showAudit: false,
   emptyMessage: "Bạn cần đăng nhập để chat với AG-COPILOT.",
+  capabilities: [],
 };
 
 export function getCopilotProfile(role: Role): CopilotProfile {
