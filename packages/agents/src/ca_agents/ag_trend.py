@@ -682,6 +682,53 @@ def _scrape_google_trends_global(keyword: str = "") -> list[TrendItem]:
     return items_out
 
 
+def _scrape_threads_smart(
+    keyword: str = "",
+    count: int = 12,
+    nguon_goc: str = "threads_vn",
+) -> list[TrendItem]:
+    """Apify primary → RSS fallback cho Threads.net.
+
+    Decision matrix:
+        Apify OK                → return Apify results (bài post & comment thật từ Threads.net)
+        Apify raise ApifyError  → log warning + fallback sang _scrape_genz_media_vn
+        Apify raise Exception   → log warning + fallback sang _scrape_genz_media_vn
+    """
+    from ca_agents.sources.threads_apify_source import scrape_threads_apify
+
+    start = time.monotonic()
+    try:
+        items = scrape_threads_apify(
+            keyword=keyword,
+            count=count,
+            mode="search",
+            nguon_goc=nguon_goc,
+        )
+        logger.info(
+            "threads_source_apify",
+            extra={
+                "source": "apify_threads",
+                "nguon_goc": nguon_goc,
+                "items_count": len(items),
+                "duration_ms": int((time.monotonic() - start) * 1000),
+            },
+        )
+        if items:
+            return items
+    except ApifyError as e:
+        logger.warning(
+            "threads_source_fallback",
+            extra={"reason": "apify_error", "error_msg": str(e)[:200]},
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "threads_source_fallback",
+            extra={"reason": f"unexpected:{type(e).__name__}", "error_msg": str(e)[:200]},
+        )
+
+    return _scrape_genz_media_vn(keyword=keyword)
+
+
 def fetch_trend_radar(
     trend_type_filter: str = "all",
     category_filter: str = "all",
@@ -701,9 +748,9 @@ def fetch_trend_radar(
     # 1. Nếu chỉ chọn TikTok VN -> CHỈ cào đúng TikTok (Apify primary → TikWM fallback)!
     if effective_platform == "tiktok_vn":
         results = _scrape_tiktok_smart(keyword=keyword, count=12, nguon_goc="tiktok_vn")
-    # 2. Nếu chọn Threads VN -> CHỈ cào đúng chuyên trang Gen Z / Threads!
+    # 2. Nếu chọn Threads VN -> CHỈ cào đúng Threads (Apify primary → RSS fallback)!
     elif effective_platform == "threads_vn":
-        results = _scrape_genz_media_vn(keyword=keyword)
+        results = _scrape_threads_smart(keyword=keyword, count=12, nguon_goc="threads_vn")
     # 3. Nếu chọn Google Trends VN -> CHỈ cào đúng Google Trends!
     elif effective_platform == "google_vn":
         results = _scrape_google_trends_vn(keyword=keyword)
@@ -717,7 +764,7 @@ def fetch_trend_radar(
     else:
         tt = _scrape_tiktok_smart(keyword=keyword, count=8, nguon_goc="tiktok_vn")
         gg = _scrape_google_trends_vn(keyword=keyword)
-        gz = _scrape_genz_media_vn(keyword=keyword)
+        gz = _scrape_threads_smart(keyword=keyword, count=8, nguon_goc="threads_vn")
         st = _scrape_showbiz_kols_vn(keyword=keyword)
         gl = _scrape_google_trends_global(keyword=keyword)
         results = tt + gg + gz + st + gl

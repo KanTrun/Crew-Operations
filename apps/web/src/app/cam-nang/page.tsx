@@ -20,6 +20,7 @@ import {
   StatusChip,
   TechnicalDrawer,
 } from "../../ui/kit";
+import { CopilotDrawer } from "../../ui/copilot/CopilotDrawer";
 
 type Luat = {
   id: string;
@@ -54,6 +55,7 @@ export default function CamNangPage() {
   const [chiTiet, setChiTiet] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
 
   useEffect(() => {
     setToken(getToken());
@@ -165,6 +167,9 @@ export default function CamNangPage() {
         <BtnLink href="/sop" variant="ghost">
           Hỏi cẩm nang
         </BtnLink>
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          ✨ Hỏi AG-COPILOT
+        </Btn>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">
@@ -246,6 +251,9 @@ export default function CamNangPage() {
           );
         })}
       </div>
+
+      {/* AG-COPILOT drawer (lệch AppShell) */}
+      <CopilotDrawer open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }

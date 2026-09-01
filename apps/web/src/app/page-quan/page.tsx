@@ -813,22 +813,42 @@ export default function PageQuanPage() {
                       </div>
 
                       <div className="flex flex-wrap gap-2 pt-1 border-t border-emerald-500/20">
-                        <a
-                          href={selectedTrend.link_goc}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded bg-[var(--nq-surface)] px-3 py-1 text-xs font-bold text-[var(--nq-primary)] border border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] transition"
-                        >
-                          🔗 Xem Nguồn Gốc ↗
-                        </a>
-                        {selectedTrend.tiktok_url && (
+                        {selectedTrend.link_goc?.includes("threads.net") ? (
+                          <a
+                            href={selectedTrend.link_goc}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded bg-zinc-900 px-3 py-1 text-xs font-bold text-white border border-zinc-700 hover:bg-zinc-800 transition"
+                          >
+                            🧵 Mở Trên Threads ↗
+                          </a>
+                        ) : selectedTrend.link_goc?.includes("tiktok.com") ? (
+                          <a
+                            href={selectedTrend.link_goc}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded bg-[#fe2c55] px-3 py-1 text-xs font-bold text-white hover:bg-[#e0264b] transition"
+                          >
+                            🎬 Mở Trên TikTok ↗
+                          </a>
+                        ) : (
+                          <a
+                            href={selectedTrend.link_goc}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded bg-[var(--nq-surface)] px-3 py-1 text-xs font-bold text-[var(--nq-primary)] border border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] transition"
+                          >
+                            🔗 Xem Nguồn Gốc ↗
+                          </a>
+                        )}
+                        {selectedTrend.tiktok_url && !selectedTrend.link_goc?.includes("tiktok.com") && !selectedTrend.link_goc?.includes("threads.net") && (
                           <a
                             href={selectedTrend.tiktok_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 rounded bg-[#fe2c55] px-3 py-1 text-xs font-bold text-white hover:bg-[#e0264b] transition"
                           >
-                            🎬 Mở Trên TikTok ↗
+                            🎬 Tìm Trên TikTok ↗
                           </a>
                         )}
                         {selectedTrend.tiktok_tag_url && (
@@ -838,7 +858,7 @@ export default function PageQuanPage() {
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 rounded bg-[var(--nq-surface)] px-3 py-1 text-xs font-bold text-[var(--nq-primary)] border border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] transition"
                           >
-                            🏷️ Hashtag TikTok ↗
+                            🏷️ {selectedTrend.nguon_goc === "threads_vn" ? "Hashtag Threads ↗" : "Hashtag TikTok ↗"}
                           </a>
                         )}
                       </div>
