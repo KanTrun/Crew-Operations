@@ -160,17 +160,46 @@ export function useCopilotChat(mode: Mode = "pane") {
       try {
         const token = getToken();
         const recent = messagesRef.current.slice(-3).map((m) => m.text);
+        const payload = JSON.stringify({
+          message: text,
+          channel: mode === "page" ? "web-page" : "web",
+          recent_messages: recent,
+        });
+
+        // Ưu tiên SSE streaming; nếu thất bại fallback về POST /message (JSON).
+        const streamed = await streamCopilot(payload, token, (delta) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === copilotId
+                ? { ...m, text: (m.text || "") + delta }
+                : m
+            )
+          );
+        });
+
+        if (streamed.ok) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === copilotId
+                ? {
+                    ...m,
+                    action_proposal: streamed.action_proposal ?? null,
+                    citations: streamed.citations,
+                  }
+                : m
+            )
+          );
+          return;
+        }
+
+        // Fallback: POST /message (không stream).
         const res = await fetch(`${API_BASE}/api/v1/copilot/message`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            message: text,
-            channel: mode === "page" ? "web-page" : "web",
-            recent_messages: recent,
-          }),
+          body: payload,
         });
 
         const data = await res.json();
@@ -246,4 +275,75 @@ export function useCopilotChat(mode: Mode = "pane") {
     clearHistory,
     updateProposal,
   };
+}
+
+// ── SSE streaming helper ────────────────────────────────────────────────────
+interface StreamResult {
+  ok: boolean;
+  action_proposal?: ActionProposalData | null;
+  citations?: string[] | null;
+}
+
+/** Đọc SSE từ /api/v1/copilot/message/stream và gọi onDelta cho từng chunk text. */
+async function streamCopilot(
+  payload: string,
+  token: string,
+  onDelta: (delta: string) => void
+): Promise<StreamResult> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/copilot/message/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: payload,
+    });
+
+    if (!res.ok || !res.body) {
+      return { ok: false };
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let meta: { action_proposal?: ActionProposalData | null; citations?: string[] | null } = {};
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // Mỗi event SSE kết thúc bằng "\n\n".
+      let idx: number;
+      while ((idx = buffer.indexOf("\n\n")) !== -1) {
+        const rawEvent = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        const lines = rawEvent.split("\n");
+        let eventName = "message";
+        for (const line of lines) {
+          if (line.startsWith("event:")) eventName = line.slice(6).trim();
+          else if (line.startsWith("data:")) {
+            const dataStr = line.slice(5).trim();
+            try {
+              const data = JSON.parse(dataStr);
+              if (eventName === "meta") {
+                meta = {
+                  action_proposal: data.action_proposal ?? null,
+                  citations: Array.isArray(data.citations) ? data.citations : null,
+                };
+              } else if (eventName === "delta") {
+                onDelta(data.text || "");
+              }
+            } catch {
+              /* bỏ qua chunk không parse được */
+            }
+          }
+        }
+      }
+    }
+    return { ok: true, ...meta };
+  } catch {
+    return { ok: false };
+  }
 }

@@ -17,6 +17,7 @@ except ImportError:
     UTC = timezone.utc
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from ca_agents.ag_copilot import run_copilot
@@ -180,6 +181,74 @@ def copilot_message(
         )
 
     return response
+
+
+# ── 1b. POST /api/v1/copilot/message/stream (SSE) ────────────────────────────
+
+@router.post("/message/stream")
+def copilot_message_stream(
+    body: MessageRequestBody,
+    request: Request,
+    authorization: Annotated[str | None, Header()] = None,
+) -> StreamingResponse:
+    """SSE streaming: gửi event meta (intent/proposal) rồi delta text từng phần.
+
+    Trả về mỗi dòng dạng `event: <name>\\ndata: <json>\\n\\n`. Client dùng
+    fetch + ReadableStream đọc từng chunk. Fallback auto về /message (JSON)
+    nếu LLM stream không khả dụng.
+    """
+    user = _get_verified_user(authorization)
+    _check_rate_limit(user["user_id"])
+    verified_context = {
+        "store_id": user["store_id"],
+        "user_id": user["user_id"],
+        "user_role": user["role"],
+        "active_date": datetime.now(UTC).strftime("%Y-%m-%d"),
+        "channel": body.channel,
+        "recent_messages": body.recent_messages,
+    }
+
+    # 1. Chạy copilot bình thường (tất định: intent/tool/proposal) — nhanh vì replay.
+    response = run_copilot(body.message, verified_context)
+
+    # 2. Xây generator SSE
+    def _sse(
+        ev: str, payload: dict[str, Any]
+    ) -> str:
+        return f"event: {ev}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+    def _gen():
+        # Meta trước: intent + confidence + action_proposal (client biết trước).
+        meta = {
+            "intent": response.intent.value if hasattr(response.intent, "value") else str(response.intent),
+            "confidence": response.confidence,
+            "action_proposal": (
+                response.action_proposal.model_dump() if response.action_proposal else None
+            ),
+            "citations": list(getattr(response, "citations", []) or []),
+            "direct_answer": getattr(response, "direct_answer", None),
+        }
+        yield _sse("meta", meta)
+
+        # Text: stream từng phần từ reply_text.
+        reply_text = response.reply_text or ""
+        # Chia nhỏ theo từ khoá (giữ khoảng trắng) để mượt.
+        parts = _chunk_text(reply_text)
+        for chunk in parts:
+            yield _sse("delta", {"text": chunk})
+        yield _sse("done", {"ok": True})
+
+    return StreamingResponse(
+        _gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+def _chunk_text(text: str, size: int = 4) -> list[str]:
+    """Chia chuỗi thành các cụm nhỏ (SSE delta). Giữ nguyên khoảng trắng."""
+    chars = list(text)
+    return ["".join(chars[i : i + size]) for i in range(0, len(chars), size)]
 
 
 # ── 2. POST /api/v1/copilot/execute-action ───────────────────────────────────

@@ -350,3 +350,27 @@ def test_copilot_execute_action_requires_token() -> None:
     )
     assert res.status_code == 401
     assert "thieu_token" in res.json()["detail"]
+
+
+def test_copilot_message_stream_sse() -> None:
+    """Endpoint /message/stream phải trả SSE: event meta -> delta* -> done."""
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/message/stream",
+        json={"message": "Xếp lịch tuần sau giúp chị", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert "text/event-stream" in res.headers.get("content-type", "")
+
+    text = res.text
+    assert "event: meta" in text
+    assert "event: delta" in text
+    assert "event: done" in text
+
+    # Meta phải chứa intent SCHEDULE_SOLVE (manager lan có quyền).
+    import json as _json
+    meta_line = next((l for l in text.split("\n") if l.startswith("data:") and "intent" in l), "")
+    if meta_line:
+        meta = _json.loads(meta_line[len("data:"):].strip())
+        assert meta.get("intent") == "SCHEDULE_SOLVE"
