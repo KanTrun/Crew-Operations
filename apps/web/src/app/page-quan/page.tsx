@@ -69,6 +69,18 @@ type Promotion = {
   active: boolean;
 };
 
+type ApifyUsage = {
+  has_token: boolean;
+  username?: string;
+  plan: string;
+  monthly_limit_usd: number;
+  usage_usd: number;
+  remaining_usd: number;
+  usage_percent: number;
+  status_label: string;
+  active_actors: string[];
+};
+
 type TrendItem = {
   id: string;
   tieu_de: string;
@@ -115,6 +127,10 @@ export default function PageQuanPage() {
   const [selectedTrend, setSelectedTrend] = useState<TrendItem | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanStatusText, setScanStatusText] = useState("");
+
+  // Apify Usage & Scraping Mode State
+  const [apifyUsage, setApifyUsage] = useState<ApifyUsage | null>(null);
+  const [scrapeMode, setScrapeMode] = useState<"auto" | "direct_only" | "apify_force">("auto");
 
   // Keyword / Topic Filter State (Chức năng 1)
   const [keywordInput, setKeywordInput] = useState("");
@@ -175,8 +191,9 @@ export default function PageQuanPage() {
 
   // Fetch Trends function (Quét xong 100% mới cập nhật 1 lượt)
   const fetchTrendsData = useCallback(
-    async (region: string, category: string, kw: string, showToast = false) => {
+    async (region: string, category: string, kw: string, mode?: "auto" | "direct_only" | "apify_force", showToast = false) => {
       setIsScanning(true);
+      const effectiveMode = mode || scrapeMode;
       const sourceName =
         region === "tiktok_vn"
           ? "TikTok Việt Nam"
@@ -192,7 +209,7 @@ export default function PageQuanPage() {
 
       setScanStatusText(
         kw.trim()
-          ? `⏳ Đang quét chuyên sâu chủ đề "${kw.trim()}" từ ${sourceName}...`
+          ? `⏳ Đang quét chuyên sâu chủ đề "${kw.trim()}" từ ${sourceName} (${effectiveMode === "direct_only" ? "100% Miễn phí" : effectiveMode === "apify_force" ? "Ép dùng Apify" : "Tự động"})...`
           : `⏳ Đang cào dữ liệu độc quyền thời gian thực từ ${sourceName}...`
       );
 
@@ -201,6 +218,7 @@ export default function PageQuanPage() {
           region,
           category,
           keyword: kw.trim(),
+          mode: effectiveMode,
         });
         const res = await apiGet<{ trends: TrendItem[]; total: number }>(`/api/v1/trends/radar?${queryParams.toString()}`);
         const freshTrends = res.trends ?? [];
@@ -227,7 +245,7 @@ export default function PageQuanPage() {
         setIsScanning(false);
       }
     },
-    [push]
+    [scrapeMode, push]
   );
 
   const load = useCallback(() => {
@@ -239,20 +257,22 @@ export default function PageQuanPage() {
       apiGet<{ items: Draft[] }>("/api/v1/page/drafts"),
       apiGet<StoreProfile>("/api/v1/store/profile").catch(() => null),
       apiGet<Promotion[]>("/api/v1/store/promotions").catch(() => []),
+      apiGet<{ ok: boolean; usage: ApifyUsage }>("/api/v1/trends/apify-usage").catch(() => null),
     ])
-      .then(([st, th, dr, prof, promos]) => {
+      .then(([st, th, dr, prof, promos, usageRes]) => {
         setStatus(st);
         setThreads(th.items ?? []);
         setDrafts(dr.items ?? []);
         if (prof) setProfile(prof);
         if (promos) setPromotions(promos);
+        if (usageRes?.usage) setApifyUsage(usageRes.usage);
         setError(null);
       })
       .catch((e) => setError(viError(e, { doing: "mở được Page quán" })))
       .finally(() => setLoading(false));
 
-    fetchTrendsData(regionFilter, categoryFilter, activeKeyword);
-  }, [regionFilter, categoryFilter, activeKeyword, fetchTrendsData]);
+    fetchTrendsData(regionFilter, categoryFilter, activeKeyword, scrapeMode);
+  }, [regionFilter, categoryFilter, activeKeyword, scrapeMode, fetchTrendsData]);
 
   useEffect(() => {
     if (token) load();
@@ -423,6 +443,85 @@ export default function PageQuanPage() {
       {/* TAB 1: RADAR TRÍ TUỆ XU HƯỚNG & GIẢI MÃ TỪ KHÓA VIRAL */}
       {tab === "trends" && (
         <div className="space-y-6">
+          {/* KHỐI 0: GIÁM SÁT HẠN MỨC APIFY & BỘ CHUYỂN ĐỔI CHẾ ĐỘ CÀO DỮ LIỆU */}
+          <div className="rounded-lg border-2 border-indigo-500/30 bg-indigo-500/5 p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-500/20 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">💳</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">
+                  Hạn Mức & Chế Độ Cào Dữ Liệu
+                </span>
+              </div>
+
+              {/* Hạn Mức Apify Trực Tiếp */}
+              {apifyUsage ? (
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-zinc-400">Gói Apify:</span>
+                  <span className="font-bold text-zinc-200">{apifyUsage.plan}</span>
+                  <span className="text-zinc-600">|</span>
+                  <span className="text-zinc-400">Đã dùng:</span>
+                  <strong className="text-indigo-300">${apifyUsage.usage_usd} / ${apifyUsage.monthly_limit_usd}</strong>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono">
+                    Còn ${apifyUsage.remaining_usd} ({apifyUsage.usage_percent}%)
+                  </span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                    apifyUsage.usage_percent < 80
+                      ? "bg-emerald-500/20 text-emerald-400"
+                      : apifyUsage.usage_percent < 100
+                      ? "bg-amber-500/20 text-amber-400"
+                      : "bg-rose-500/20 text-rose-400"
+                  }`}>
+                    ● {apifyUsage.status_label}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[11px] text-zinc-400 font-mono">
+                  ● Chế độ: Direct Free Engine (0đ Apify)
+                </span>
+              )}
+            </div>
+
+            {/* Bộ Chuyển Đổi Phương Thức Cào (Mode Selector) */}
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+              <span className="font-medium text-zinc-400">
+                Lựa chọn phương thức cào dữ liệu:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  {
+                    id: "auto",
+                    label: "⚡ Tự động (Direct Free làm chính, Apify dự phòng)",
+                  },
+                  {
+                    id: "direct_only",
+                    label: "🆓 100% Miễn phí (0đ, không dùng Apify)",
+                  },
+                  {
+                    id: "apify_force",
+                    label: "🎯 Ép dùng Apify (Cào sâu qua Apify Actor)",
+                  },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => {
+                      const newMode = m.id as "auto" | "direct_only" | "apify_force";
+                      setScrapeMode(newMode);
+                      push(`Đã chuyển sang: ${m.label.split(" (")[0]}`);
+                      fetchTrendsData(regionFilter, categoryFilter, activeKeyword, newMode, true);
+                    }}
+                    className={`rounded px-3 py-1.5 text-xs font-bold transition cursor-pointer border ${
+                      scrapeMode === m.id
+                        ? "bg-indigo-600 text-white border-indigo-500 shadow-md ring-1 ring-indigo-400"
+                        : "bg-[var(--nq-surface)] text-[var(--nq-muted)] border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] hover:text-white"
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* KHỐI 1: TÙY CHỈNH TỰ ĐỘNG QUÉT & BẢO VỆ CHỐNG QUÁ TẢI (Chức năng 4) */}
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-4">
             <div className="flex items-center gap-3">

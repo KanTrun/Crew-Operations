@@ -11,6 +11,7 @@ from ca_agents.ag_trend import (
     fetch_trend_radar,
     get_trend_by_id,
 )
+from ca_agents.clients.apify_client import get_apify_usage
 from fastapi import APIRouter, Header, HTTPException, Query
 
 from ca_api.persist import session as auth_session
@@ -54,22 +55,36 @@ def _serialize_trend(t: TrendItem) -> dict[str, Any]:
     }
 
 
+@router.get("/apify-usage")
+def get_apify_usage_status(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Fetch current Apify quota, monthly usage & active actors."""
+    _require_auth(authorization)
+    usage = get_apify_usage()
+    return {"ok": True, "usage": usage}
+
+
 @router.get("/radar")
 def get_trends_radar(
     region: str = Query(default="all"),
     category: str = Query(default="all"),
     keyword: str = Query(default=""),
+    mode: str = Query(default="auto"),
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Fetch real-time scraped trends with news excerpts, TikTok videos & comments."""
     _require_auth(authorization)
-    trends = fetch_trend_radar(platform_filter=region, category_filter=category, keyword=keyword)
+    trends = fetch_trend_radar(
+        platform_filter=region, category_filter=category, keyword=keyword, scrape_mode=mode
+    )
     return {
         "ok": True,
         "total": len(trends),
         "region_filter": region,
         "category_filter": category,
         "keyword_filter": keyword,
+        "scrape_mode": mode,
         "trends": [_serialize_trend(t) for t in trends],
     }
 
