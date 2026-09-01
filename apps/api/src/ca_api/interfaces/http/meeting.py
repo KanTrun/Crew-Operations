@@ -187,17 +187,21 @@ def apply_meeting_decisions(
 
         kv_mutate("treo", mut_treo, [])
 
-    # 2. Record SOP proposals to playbook
+    # 2. Record SOP proposals to playbook (đúng signature record_sua)
     sop_count = 0
     if body.de_xuat_phe_duyet:
         for prop in body.de_xuat_phe_duyet:
             if prop.trang_thai == "da_duyet" and prop.loai_de_xuat == "quy_trinh_sop":
                 try:
                     record_sua(
-                        ma_quy_trinh=prop.quy_trinh_lien_quan or prop.tieu_de or "pha_che",
-                        buoc_so=prop.buoc_so or 1,
-                        noi_dung=prop.noi_dung,
-                        ly_do=prop.ly_do or f"Từ cuộc họp: {body.tieu_de}",
+                        loai="sop",
+                        truoc={"ma_quy_trinh": prop.quy_trinh_lien_quan or prop.tieu_de or "pha_che", "buoc_so": prop.buoc_so or 1},
+                        sau={
+                            "noi_dung": prop.noi_dung,
+                            "ly_do": prop.ly_do or f"Từ cuộc họp: {body.tieu_de}",
+                        },
+                        ai=str(user),
+                        now_iso=now_iso,
                     )
                     sop_count += 1
                 except Exception:  # noqa: BLE001
@@ -207,10 +211,14 @@ def apply_meeting_decisions(
         for sop in body.de_xuat_sop:
             try:
                 record_sua(
-                    ma_quy_trinh=sop.quy_trinh_lien_quan,
-                    buoc_so=sop.buoc_so or 1,
-                    noi_dung=sop.noi_dung_thay_doi,
-                    ly_do=sop.ly_do or f"Từ cuộc họp: {body.tieu_de}",
+                    loai="sop",
+                    truoc={"ma_quy_trinh": sop.quy_trinh_lien_quan, "buoc_so": sop.buoc_so or 1},
+                    sau={
+                        "noi_dung": sop.noi_dung_thay_doi,
+                        "ly_do": sop.ly_do or f"Từ cuộc họp: {body.tieu_de}",
+                    },
+                    ai=str(user),
+                    now_iso=now_iso,
                 )
                 sop_count += 1
             except Exception:  # noqa: BLE001
@@ -273,3 +281,26 @@ def get_meeting(
         if m.get("id") == meeting_id:
             return m
     raise HTTPException(status_code=404, detail="Meeting not found")
+
+
+@router.delete("/api/v1/meetings/{meeting_id}")
+def delete_meeting(
+    meeting_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Delete a recorded meeting by ID. Manager/owner only."""
+    _require_manager(authorization)
+
+    items = kv_get("meetings", [])
+    if not any(m.get("id") == meeting_id for m in items):
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    def mut(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        # KHÔNG gọi audit_add bên trong (tránh SQLite lock do ghi chéo trong transaction).
+        return [m for m in cur if m.get("id") != meeting_id]
+
+    kv_mutate("meetings", mut, [])
+
+    # Ghi audit SAU khi transaction đã commit (tránh deadlock).
+    audit_add(_now(), str(authorization), "xoa_cuoc_hop", {"meeting_id": meeting_id})
+    return {"ok": True, "meeting_id": meeting_id, "deleted": True}

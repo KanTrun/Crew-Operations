@@ -89,3 +89,58 @@ def test_meeting_apply_and_opsengine_integration() -> None:
     meetings = list_res.json()["items"]
     assert len(meetings) >= 1
     assert meetings[0]["id"] == analyze_res["id"]
+
+
+def test_meeting_apply_records_sop_proposals() -> None:
+    """Apply phải ghi đúng SOP qua record_sua (regression: sai signature trước đây)."""
+    from ca_api.persist import reset_init_flag
+
+    reset_init_flag()  # cô lập store (fixture autouse cũng set, nhưng an toàn)
+    ql = headers(client, "lan")
+    analyze = client.post(
+        "/api/v1/meeting/analyze",
+        json={
+            "text": "Quản lý: Tuấn thay ron máy pha số 2 bị rỉ nước trước 16h. My đổi định lượng trà đào sang 20ml.",
+            "meeting_type": "giao_ca",
+            "audio_source": "google_meet_tab",
+        },
+        headers=ql,
+    ).json()
+
+    # Force SOP proposal da_duyet để test apply ghi vào playbook
+    sop = analyze.get("de_xuat_sop") or []
+    for s in sop:
+        s["buoc_so"] = 3
+
+    apply_res = client.post("/api/v1/meeting/apply", json=analyze, headers=ql)
+    assert apply_res.status_code == 200, apply_res.text
+    body = apply_res.json()
+    assert body["ok"] is True
+    assert body["sop_proposals"] >= 1, f"Expected sop_proposals>=1, got {body['sop_proposals']}"
+
+
+def test_meeting_delete() -> None:
+    """Xoá cuộc họp: quản lý được, không tồn tại -> 404."""
+    ql = headers(client, "lan")
+    analyze = client.post(
+        "/api/v1/meeting/analyze",
+        json={
+            "text": "Quản lý: Tuấn thay ron máy pha số 2 bị rỉ nước trước 16h.",
+            "meeting_type": "giao_ca",
+            "audio_source": "google_meet_tab",
+        },
+        headers=ql,
+    ).json()
+    mid = analyze["id"]
+
+    # Chưa apply nên chưa có trong meetings -> delete trả 404 (vì chưa lưu).
+    # Apply trước rồi delete.
+    client.post("/api/v1/meeting/apply", json=analyze, headers=ql)
+
+    del_res = client.delete(f"/api/v1/meetings/{mid}", headers=ql)
+    assert del_res.status_code == 200, del_res.text
+    assert del_res.json()["ok"] is True
+
+    # Xoá lần nữa -> 404
+    del_res2 = client.delete(f"/api/v1/meetings/{mid}", headers=ql)
+    assert del_res2.status_code == 404
