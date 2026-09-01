@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 
+import pytest
 from ca_api.interfaces.http.main import app
 from ca_api.persist import kv_get
 from fastapi.testclient import TestClient
@@ -11,6 +12,13 @@ from fastapi.testclient import TestClient
 from unit.auth_util import headers
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _pin_replay_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Neo replay mode: test khác trong full suite có thể set CA_AGENT_MODE=live
+    # (qua ensure_dotenv) và leak env sang đây — phải cô lập để assert ổn định.
+    monkeypatch.setenv("CA_AGENT_MODE", "replay")
 
 
 def test_meeting_transcribe_endpoint() -> None:

@@ -195,3 +195,130 @@ def test_copilot_prompt_injection_rejection() -> None:
     assert res.json()["intent"] == "OUT_OF_SCOPE"
     assert res.json()["action_proposal"] is None
     assert "không thể bỏ qua bước duyệt" in res.json()["reply_text"]
+
+
+def _login_owner() -> str:
+    res = login("chu", "nhipquan")
+    assert res is not None
+    return res["token"]
+
+
+def test_apply_approve_swap_updates_swap_and_phan_cong() -> None:
+    """Duyệt đổi ca phải cập nhật KV 'swap' (id), 'shift_swaps' (swap_id) và 'phan_cong'."""
+    token = _login_manager()
+
+    # Setup: một swap 3 nhánh + một phân công có người trong ca
+    from ca_api.persist import kv_mutate, kv_set
+
+    kv_set(
+        "swap",
+        [
+            {
+                "id": "sw_test01",
+                "a": "nv_03",
+                "b": "nv_01",
+                "c": "nv_02",
+                "ca_id": "w1_c03",
+                "trang_thai": "dong_y",
+                "dong_y": ["nv_01", "nv_02", "nv_03"],
+            }
+        ],
+    )
+    kv_set(
+        "phan_cong",
+        {"w1_c03": ["nv_03", "nv_04"], "w1_c04": ["nv_01"]},
+    )
+
+    # Bản nháp đổi ca thủ công với shape đúng tool trả về.
+    payload_diff_swap = {
+        "swap_id": "sw_test01",
+        "ca_id": "w1_c03",
+        "tu_nv": "nv_03",
+        "nhan_nv": "nv_02",
+        "trung_gian": "nv_01",
+    }
+    from ca_gates import compute_snapshot_hash
+
+    draft = {
+        "action_id": "act_swap_t1",
+        "intent": "APPROVE_SHIFT_SWAP",
+        "status": "ready_for_approval",
+        "store_id": "quan_01",
+        "created_by": "nv_01",
+        "confidence": 0.9,
+        "summary": "Đề xuất duyệt đổi ca",
+        "explanation": "test",
+        "requires_confirmation": True,
+        "data_snapshot_hash": compute_snapshot_hash(payload_diff_swap),
+        "expires_at": "",
+        "created_at": "2026-09-01T00:00:00+00:00",
+        "payload_diff": payload_diff_swap,
+    }
+    copilot_draft_save(draft)
+
+    res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": "act_swap_t1", "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["status"] == "executed"
+
+    # KV 'swap' phải được cập nhật theo id
+    from ca_api.persist import kv_get
+
+    swaps = kv_get("swap", [])
+    hit = next(s for s in swaps if s.get("id") == "sw_test01")
+    assert hit["trang_thai"] == "da_duyet"
+
+    # 'phan_cong' phải hoán đổi người trong ca
+    phan_cong = kv_get("phan_cong", {})
+    assert "nv_03" not in phan_cong["w1_c03"]
+    assert "nv_02" in phan_cong["w1_c03"]
+
+
+def test_apply_inventory_restock_uses_canh_bao() -> None:
+    """Duyệt kiểm kê phải tạo đơn hàng từ 'canh_bao' (không phải 'items')."""
+    token = _login_manager()
+    from ca_api.persist import kv_get, kv_set
+
+    kv_set("restock_orders", [])
+
+    payload_diff_inv = {
+        "canh_bao": [
+            {"mat_hang": "Sữa tươi", "ton_hien_tai": 6, "don_vi": "hộp"},
+            {"mat_hang": "Cà phê Robusta", "ton_hien_tai": 3, "don_vi": "kg"},
+        ],
+        "so_mat_hang": 2,
+    }
+    from ca_gates import compute_snapshot_hash
+
+    draft = {
+        "action_id": "act_inv_t1",
+        "intent": "INVENTORY_RESTOCK_CHECK",
+        "status": "ready_for_approval",
+        "store_id": "quan_01",
+        "created_by": "nv_01",
+        "confidence": 0.9,
+        "summary": "Đề xuất đặt hàng bổ sung",
+        "explanation": "test",
+        "requires_confirmation": True,
+        "data_snapshot_hash": compute_snapshot_hash(payload_diff_inv),
+        "expires_at": "",
+        "created_at": "2026-09-01T00:00:00+00:00",
+        "payload_diff": payload_diff_inv,
+    }
+    copilot_draft_save(draft)
+
+    res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": "act_inv_t1", "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200, res.text
+
+    orders = kv_get("restock_orders", [])
+    assert len(orders) == 1
+    assert len(orders[0]["items"]) == 2
+    assert orders[0]["items"][0]["mat_hang"] == "Sữa tươi"
+    assert orders[0]["order_id"].startswith("ord_")

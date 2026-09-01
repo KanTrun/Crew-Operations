@@ -283,20 +283,60 @@ def copilot_execute_action(
         kv_set("lich_tuan", diff.get("phan_cong", {}))
         kv_set("lich_tuan_status", "da_cong_bo")
     elif intent == "APPROVE_SHIFT_SWAP":
-        def mut_swaps(swaps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        swap_id = diff.get("swap_id")
+        # UI + tool hiện dùng KV "swap" (swap-market 3 nhánh, khóa "id").
+        def mut_swap(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            for it in items:
+                if it.get("id") == swap_id or it.get("swap_id") == swap_id:
+                    it["trang_thai"] = "da_duyet"
+                    it["duyet_ai"] = user["user_id"]
+                    it["duyet_luc"] = now_iso
+            return items
+        kv_mutate("swap", mut_swap, [])
+        # Cũ (legacy) vẫn dùng khóa "shift_swaps" + "swap_id".
+        def mut_legacy(swaps: list[dict[str, Any]]) -> list[dict[str, Any]]:
             for sw in swaps:
-                if sw.get("swap_id") == diff.get("swap_id"):
+                if sw.get("swap_id") == swap_id:
                     sw["trang_thai"] = "da_duyet"
             return swaps
-        kv_mutate("shift_swaps", mut_swaps, [])
+        kv_mutate("shift_swaps", mut_legacy, [])
+        # Cập nhật phân công thật: hoán đổi người trong ca trên lịch tuần.
+        ca_id = diff.get("ca_id")
+        tu_nv, nhan_nv = diff.get("tu_nv"), diff.get("nhan_nv")
+        if ca_id and tu_nv and nhan_nv:
+            def mut_phan_cong(phan_cong: dict[str, Any]) -> dict[str, Any]:
+                for ca, nvs in phan_cong.items():
+                    if ca == ca_id and isinstance(nvs, list):
+                        for i, nv in enumerate(nvs):
+                            if nv == tu_nv:
+                                nvs[i] = nhan_nv
+                return phan_cong
+            kv_mutate("phan_cong", mut_phan_cong, {})
     elif intent == "CREATE_RULE_PROPOSAL":
-        def mut_rules(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
-            rules.append(diff)
-            return rules
-        kv_mutate("rules", mut_rules, [])
+        # Ghi luật thật vào cẩm nang sống (cam_nang.json) ở trạng thái de_xuat.
+        de_xuat = diff.get("de_xuat")
+        if isinstance(de_xuat, dict):
+            try:
+                from ca_playbook.vong_doi import list_luat, save_luat
+                luat = list(list_luat() or [])
+                luat.append(de_xuat)
+                save_luat(luat)
+            except Exception:
+                # Fallback sang KV nếu playbook chưa khả dụng.
+                def mut_rules(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
+                    rules.append(de_xuat)
+                    return rules
+                kv_mutate("rules", mut_rules, [])
+        else:
+            def mut_rules(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
+                rules.append(diff)
+                return rules
+            kv_mutate("rules", mut_rules, [])
     elif intent == "INVENTORY_RESTOCK_CHECK":
+        # Tool trả data.canh_bao (danh sách mặt hàng dưới ngưỡng).
+        items = diff.get("canh_bao") or diff.get("items") or []
         def mut_orders(orders: list[dict[str, Any]]) -> list[dict[str, Any]]:
-            orders.append({"order_id": f"ord_{uuid.uuid4().hex[:6]}", "items": diff.get("items", []), "created_at": now_iso})
+            orders.append({"order_id": f"ord_{uuid.uuid4().hex[:6]}", "items": items, "created_at": now_iso})
             return orders
         kv_mutate("restock_orders", mut_orders, [])
 
