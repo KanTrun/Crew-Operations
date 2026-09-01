@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { getToken } from "../../lib/session";
+import { ChatText } from "./ChatText";
 
 export interface ActionProposalData {
   action_id: string;
@@ -161,10 +162,12 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         </div>
       </div>
 
-      <p className="text-zinc-100 font-medium mb-1">{proposal.summary}</p>
+      <p className="text-zinc-100 font-medium mb-1">
+        <ChatText text={proposal.summary} />
+      </p>
       {proposal.explanation && (
         <p className="text-zinc-400 text-[11px] mb-2 leading-relaxed italic">
-          {proposal.explanation}
+          <ChatText text={proposal.explanation} />
         </p>
       )}
 

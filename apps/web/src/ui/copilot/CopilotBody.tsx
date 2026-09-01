@@ -11,6 +11,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { ActionProposalCard } from "./ActionProposalCard";
+import { ChatText } from "./ChatText";
 import type { ChatMessage, Mode } from "./useCopilotChat";
 
 interface Props {
@@ -129,7 +130,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   }`}
                 >
                   <p className="whitespace-pre-wrap leading-relaxed">
-                    {msg.text}
+                    <ChatText text={msg.text} />
                     {streamingId === msg.id && (
                       <span className="ml-0.5 inline-block w-1.5 h-3 align-middle bg-amber-400 animate-pulse" />
                     )}
