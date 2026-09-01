@@ -172,8 +172,8 @@ export function CopilotPane({ open, onClose }: Props = {}) {
       top = state.y;
     } else {
       // Gắn theo corner
-      const isLeft = state.corner.startsWith("l");
-      const isTop = state.corner.endsWith("t") ? true : state.corner === "tl";
+      const isLeft = state.corner.startsWith("b") ? false : true;
+      const isTop = state.corner === "tr" || state.corner === "tl";
       left = isLeft ? margin : window.innerWidth - w - margin;
       top = isTop ? margin : window.innerHeight - h - margin;
     }
@@ -252,13 +252,15 @@ export function CopilotPane({ open, onClose }: Props = {}) {
     >
       {/* Drag area: dùng header dưới dạng grab — đã có trong CopilotBody rồi,
           nhưng ta thêm 1 div kéo trên cùng để cả thanh tiêu đề kéo được. */}
+      {/* Thanh kéo mỏng trên cùng — không chặn click vào chat */}
       <div
         onMouseDown={onDragMouseDown}
-        className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing"
-        style={{ pointerEvents: "none" }}
-        aria-hidden
-      />
-      <div className="relative h-full">
+        className="h-3 shrink-0 cursor-grab active:cursor-grabbing bg-zinc-900 border-b border-zinc-800 flex items-center justify-center"
+        title="Kéo để di chuyển"
+      >
+        <div className="w-10 h-1 rounded-full bg-zinc-700" />
+      </div>
+      <div className="relative flex-1 min-h-0">
         <CopilotBody
           chat={chat}
           mode="pane"

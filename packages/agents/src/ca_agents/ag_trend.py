@@ -684,12 +684,12 @@ def _scrape_threads_smart(
     nguon_goc: str = "threads_vn",
     scrape_mode: str = "auto",
 ) -> list[TrendItem]:
-    """Threads Direct Free Engine as PRIMARY → Apify as SECONDARY (Backup) → RSS Fallback.
+    """Threads Google Index Bridge as PRIMARY → Apify as SECONDARY → RSS Fallback.
 
     Modes:
-        - auto: Direct first -> Apify backup -> RSS fallback
-        - direct_only: Direct only -> RSS fallback (never uses Apify)
-        - apify_force: Apify first -> Direct backup
+        - auto: Google Bridge first -> Direct Jina -> Apify backup -> RSS fallback
+        - direct_only: Google Bridge -> Direct Jina -> RSS fallback (never uses Apify)
+        - apify_force: Apify first -> Google Bridge backup
     """
     start = time.monotonic()
 
@@ -707,9 +707,34 @@ def _scrape_threads_smart(
             if items:
                 return items
         except Exception as e:
-            logger.warning("threads_apify_force_failed_trying_direct: %s", e)
+            logger.warning("threads_apify_force_failed_trying_bridge: %s", e)
 
-    # 1. PRIMARY: Direct Free Threads Scraper (0 cost, no token needed)
+    # 1. PRIMARY (Zero-Infra): Google Index Real-Time Bridge for Threads
+    try:
+        from ca_agents.sources.threads_google_bridge_source import scrape_threads_google_bridge
+
+        items = scrape_threads_google_bridge(
+            keyword=keyword,
+            count=count,
+            nguon_goc=nguon_goc,
+        )
+        if items:
+            logger.info(
+                "threads_source_google_bridge_primary",
+                extra={
+                    "source": "threads_google_bridge",
+                    "nguon_goc": nguon_goc,
+                    "items_count": len(items),
+                    "duration_ms": int((time.monotonic() - start) * 1000),
+                },
+            )
+            return items
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "threads_google_bridge_failed_trying_direct: %s", str(e)[:200]
+        )
+
+    # 2. SUB-PRIMARY: Direct Free Threads Scraper
     try:
         from ca_agents.sources.threads_direct_source import scrape_threads_direct
 
@@ -719,23 +744,11 @@ def _scrape_threads_smart(
             nguon_goc=nguon_goc,
         )
         if items:
-            logger.info(
-                "threads_source_direct_primary",
-                extra={
-                    "source": "threads_direct",
-                    "nguon_goc": nguon_goc,
-                    "items_count": len(items),
-                    "duration_ms": int((time.monotonic() - start) * 1000),
-                },
-            )
             return items
     except Exception as e:  # noqa: BLE001
-        logger.warning(
-            "threads_direct_primary_failed_trying_apify",
-            extra={"error": str(e)[:200]},
-        )
+        logger.warning("threads_direct_failed_trying_apify: %s", str(e)[:200])
 
-    # 2. SECONDARY / BACKUP: Apify Threads Scraper (only if mode != direct_only)
+    # 3. SECONDARY / BACKUP: Apify Threads Scraper (only if mode != direct_only)
     if scrape_mode != "direct_only":
         try:
             from ca_agents.sources.threads_apify_source import scrape_threads_apify
@@ -760,7 +773,7 @@ def _scrape_threads_smart(
         except Exception as e:  # noqa: BLE001
             logger.warning("threads_apify_backup_also_failed: %s", e)
 
-    # 3. FALLBACK: Gen Z RSS Media
+    # 4. FALLBACK: Gen Z RSS Media
     return _scrape_genz_media_vn(keyword=keyword)
 
 

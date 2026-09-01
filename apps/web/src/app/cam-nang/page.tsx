@@ -20,7 +20,7 @@ import {
   StatusChip,
   TechnicalDrawer,
 } from "../../ui/kit";
-import { CopilotDrawer } from "../../ui/copilot/CopilotDrawer";
+import { CopilotPane } from "../../ui/copilot/CopilotPane";
 
 type Luat = {
   id: string;
@@ -252,8 +252,8 @@ export default function CamNangPage() {
         })}
       </div>
 
-      {/* AG-COPILOT drawer (lệch AppShell) */}
-      <CopilotDrawer open={copilotOpen} onClose={() => setCopilotOpen(false)} />
+      {/* AG-COPILOT pane nổi (lệch AppShell) */}
+      <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }

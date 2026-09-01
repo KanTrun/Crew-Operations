@@ -1,18 +1,31 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { CopilotBody } from "../../ui/copilot/CopilotBody";
 import { useCopilotChat } from "../../ui/copilot/useCopilotChat";
-import { getRole } from "../../lib/session";
-import { roleLabel } from "../../lib/session";
+import { getRole, roleLabel, type Role } from "../../lib/session";
 import { AuthGate } from "../../ui/kit";
 
 export default function CopilotPage() {
-  const role = getRole();
-  if (!role) return <AuthGate />;
+  const [role, setRole] = useState<Role | null>(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    setRole(getRole());
+    setChecked(true);
+  }, []);
 
   const chat = useCopilotChat("page");
+
+  if (!checked) {
+    return (
+      <div className="nq-page flex items-center justify-center min-h-screen text-sm text-zinc-500">
+        Đang mở AG-COPILOT…
+      </div>
+    );
+  }
+  if (!role) return <AuthGate />;
 
   return (
     <div className="nq-page max-w-5xl mx-auto p-4 md:p-8">

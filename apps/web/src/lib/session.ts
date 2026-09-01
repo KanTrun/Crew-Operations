@@ -56,6 +56,7 @@ const STAFF_ACCESS = new Set([
   "/tkb",
   "/qr",
   "/cam-nang",
+  "/copilot",
   "/them",
   "/contracts",
 ]);
