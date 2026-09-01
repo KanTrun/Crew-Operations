@@ -116,7 +116,7 @@ export default function PageQuanPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [draftText, setDraftText] = useState("");
   const [replyDraft, setReplyDraft] = useState<Record<string, string>>({});
-  const [tab, setTab] = useState<"threads" | "drafts" | "trends" | "config">("trends");
+  const [tab, setTab] = useState<"threads" | "drafts" | "trends" | "saved_trends" | "config">("trends");
   const [profile, setProfile] = useState<StoreProfile | null>(null);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
 
@@ -198,7 +198,7 @@ export default function PageQuanPage() {
         region === "tiktok_vn"
           ? "TikTok Việt Nam"
           : region === "threads_vn"
-          ? "Threads & Gen Z"
+          ? "Meta Threads"
           : region === "google_vn"
           ? "Google Trends VN"
           : region === "star_vn"
@@ -290,7 +290,7 @@ export default function PageQuanPage() {
 
       setCountdownSeconds((prev) => {
         if (prev <= 1) {
-          fetchTrendsData(regionFilter, categoryFilter, activeKeyword, true);
+          fetchTrendsData(regionFilter, categoryFilter, activeKeyword, scrapeMode, false);
           return scanIntervalMinutes * 60;
         }
         return prev - 1;
@@ -298,7 +298,7 @@ export default function PageQuanPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [autoScanEnabled, scanIntervalMinutes, regionFilter, categoryFilter, activeKeyword, token, fetchTrendsData]);
+  }, [autoScanEnabled, scanIntervalMinutes, regionFilter, categoryFilter, activeKeyword, scrapeMode, token, fetchTrendsData]);
 
   const handleApplyKeywordSearch = (kw: string) => {
     setActiveKeyword(kw);
@@ -424,8 +424,24 @@ export default function PageQuanPage() {
       {loading ? <Loading skeleton="list">Đang đọc dữ liệu xu hướng…</Loading> : null}
 
       <div className="mb-6 flex flex-wrap gap-2 border-b-2 border-[var(--nq-dim)] pb-2">
-        <Btn variant={tab === "trends" ? "primary" : "ghost"} onClick={() => setTab("trends")}>
-          📡 Radar Trí Tuệ Xu Hướng ({showSavedOnly ? `${savedTrends.length} đã lưu` : trends.length})
+        <Btn
+          variant={tab === "trends" ? "primary" : "ghost"}
+          onClick={() => {
+            setTab("trends");
+            setShowSavedOnly(false);
+          }}
+        >
+          📡 Radar Trí Tuệ Xu Hướng ({trends.length})
+        </Btn>
+        <Btn
+          variant={tab === "saved_trends" ? "primary" : "ghost"}
+          onClick={() => {
+            setTab("saved_trends");
+            if (savedTrends.length > 0) setSelectedTrend(savedTrends[0]);
+          }}
+          className={tab === "saved_trends" ? "bg-amber-500/20 text-amber-300 border-2 border-amber-500 shadow-md font-bold" : "text-amber-300 hover:bg-amber-500/10 border border-amber-500/30"}
+        >
+          ⭐ Kho Xu Hướng Đã Lưu ({savedTrends.length})
         </Btn>
         <Btn variant={tab === "threads" ? "primary" : "ghost"} onClick={() => setTab("threads")}>
           Hội thoại Messenger ({threads.length})
@@ -1126,6 +1142,211 @@ export default function PageQuanPage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB 1.5: KHO XU HƯỚNG ĐÃ LƯU (DEDICATED SAVED TRENDS PAGE) */}
+      {tab === "saved_trends" && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border-2 border-amber-500/30 bg-gradient-to-r from-amber-950/40 via-zinc-900/60 to-orange-950/30 p-5 shadow-lg">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⭐</span>
+              <div>
+                <h3 className="text-base font-bold text-amber-300">
+                  Kho Xu Hướng Đã Lưu Cho Kế Hoạch Quán ({savedTrends.length})
+                </h3>
+                <p className="text-xs text-zinc-400">
+                  Danh mục các trào lưu, video và công thức bạn đã đánh dấu để chuẩn bị menu, sự kiện hoặc bài đăng Fanpage.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {savedTrends.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (confirm("Bạn có chắc muốn xóa tất cả xu hướng đã lưu?")) {
+                      setSavedTrends([]);
+                      localStorage.removeItem("nhp_saved_trends_v2");
+                      push("Đã xóa toàn bộ xu hướng đã lưu.");
+                    }
+                  }}
+                  className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/20 transition cursor-pointer"
+                >
+                  🗑️ Xóa Tất Cả
+                </button>
+              )}
+              <button
+                onClick={() => setTab("trends")}
+                className="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-bold text-black hover:bg-amber-400 transition cursor-pointer shadow"
+              >
+                + Khám Phá Thêm Xu Hướng Mới
+              </button>
+            </div>
+          </div>
+
+          {savedTrends.length === 0 ? (
+            <div className="rounded-xl border-2 border-dashed border-zinc-800 p-12 text-center space-y-4">
+              <span className="text-4xl">📂</span>
+              <h4 className="text-base font-bold text-zinc-300">Kho lưu trữ xu hướng đang trống</h4>
+              <p className="text-xs text-zinc-400 max-w-md mx-auto">
+                Khi lướt trên tab <strong>&quot;Radar Trí Tuệ Xu Hướng&quot;</strong>, hãy bấm biểu tượng ⭐ trên bất kỳ bài viết nào để lưu vào kho này và tiện xem lại bất cứ lúc nào!
+              </p>
+              <button
+                onClick={() => setTab("trends")}
+                className="rounded-lg bg-[var(--nq-primary)] px-5 py-2 text-xs font-bold text-black hover:opacity-90 transition cursor-pointer"
+              >
+                🚀 Đến Radar Cào Xu Hướng Ngay
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              {/* Danh sách Trend đã lưu */}
+              <div className="space-y-3 lg:col-span-5 max-h-[820px] overflow-y-auto pr-1">
+                {savedTrends.map((t) => {
+                  const isSelected = selectedTrend?.id === t.id;
+                  const platformBadge =
+                    t.nguon_goc === "threads_vn"
+                      ? "🧵 Threads"
+                      : t.nguon_goc === "tiktok_vn"
+                      ? "🎵 TikTok VN"
+                      : t.nguon_goc === "google_vn"
+                      ? "🔥 Google VN"
+                      : t.nguon_goc === "star_vn"
+                      ? "✨ Showbiz"
+                      : "🌐 Global";
+
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => setSelectedTrend(t)}
+                      className={`relative rounded-lg border-2 p-4 transition-all cursor-pointer ${
+                        isSelected
+                          ? "border-amber-400 bg-[var(--nq-surface-hi)] shadow-lg shadow-amber-500/10"
+                          : "border-[var(--nq-dim)] bg-[var(--nq-surface)] hover:border-amber-400/50 hover:bg-[var(--nq-surface-hi)]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded bg-[var(--nq-dim)] px-2 py-0.5 text-[10px] font-bold text-[var(--nq-primary)] font-mono">
+                            {platformBadge}
+                          </span>
+                          <span className="rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold">
+                            ⭐ ĐÃ LƯU
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={(e) => toggleSaveTrend(t, e)}
+                          className="text-amber-400 hover:text-amber-300 text-sm p-0.5 transition cursor-pointer"
+                          title="Bỏ lưu khỏi kho"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <h4 className="mt-2 text-sm font-bold text-[var(--nq-primary)] line-clamp-2">
+                        {t.tieu_de}
+                      </h4>
+
+                      <p className="mt-1 text-xs text-[var(--nq-muted)] line-clamp-2 italic">
+                        &quot;{t.trich_doan_noi_dung_that || t.diem_nhan_dac_biet}&quot;
+                      </p>
+
+                      <div className="mt-3 flex items-center justify-between border-t border-[var(--nq-dim)] pt-2 text-[11px]">
+                        <span className="font-mono text-emerald-400 font-bold">
+                          {t.luot_tiep_can || "Tương tác cao"}
+                        </span>
+                        <span className="font-bold text-amber-300">
+                          Điểm viral: {t.diem_tiem_nang_viral}/100
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Chi tiết Trend đã chọn */}
+              <div className="space-y-4 rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-5 lg:col-span-7">
+                {selectedTrend ? (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--nq-dim)] pb-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[var(--nq-primary)]">
+                          {selectedTrend.tieu_de}
+                        </h3>
+                        <p className="text-xs text-[var(--nq-muted)] mt-0.5">
+                          Từ khóa chính: <strong className="text-amber-300">#{selectedTrend.cum_tu_khoa_viral}</strong>
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={(e) => toggleSaveTrend(selectedTrend, e)}
+                        className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300 hover:bg-amber-500/20 transition cursor-pointer"
+                      >
+                        ⭐ Bỏ Lưu Xu Hướng Này
+                      </button>
+                    </div>
+
+                    {/* Nội dung chi tiết & Trích đoạn */}
+                    {selectedTrend.trich_doan_noi_dung_that && (
+                      <div className="space-y-2 rounded border border-emerald-500/30 bg-emerald-500/5 p-4">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                          📰 Trích Đoạn Nội Dung Gốc
+                        </h4>
+                        <p className="text-sm leading-relaxed text-[var(--nq-primary)] italic">
+                          &quot;{selectedTrend.trich_doan_noi_dung_that}&quot;
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Ngữ Cảnh Sử Dụng & Gợi Ý Cho Quán */}
+                    <div className="space-y-1 rounded border border-blue-500/30 bg-blue-500/5 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-blue-400">
+                        💡 Ngữ Cảnh Sử Dụng & Kế Hoạch Áp Dụng Cho Quán
+                      </h4>
+                      <p className="text-sm leading-relaxed text-[var(--nq-primary)]">
+                        {selectedTrend.ngu_canh_su_dung}
+                      </p>
+                    </div>
+
+                    {/* Tâm lý khách hàng */}
+                    <div className="space-y-1 rounded border border-purple-500/30 bg-purple-500/5 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-purple-400">
+                        🧠 Giải Mã Tâm Lý Khách Hàng / Giới Trẻ
+                      </h4>
+                      <p className="text-sm leading-relaxed text-[var(--nq-primary)]">
+                        {selectedTrend.tam_ly_gioi_tre}
+                      </p>
+                    </div>
+
+                    {/* Nút hành động trực tiếp */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--nq-dim)] pt-4">
+                      <div className="flex items-center gap-1.5 text-xs text-[var(--nq-muted)]">
+                        <span>Nguồn gốc:</span>
+                        <strong className="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                          {selectedTrend.nen_tang_lan_toa?.[0] || (selectedTrend.nguon_goc === "threads_vn" ? "Meta Threads" : "TikTok Việt Nam")}
+                        </strong>
+                      </div>
+
+                      {selectedTrend.link_goc && (
+                        <a
+                          href={selectedTrend.link_goc}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded bg-[var(--nq-surface)] px-3 py-1.5 text-xs font-bold text-[var(--nq-primary)] border border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] transition"
+                        >
+                          🔗 Mở Link Bài Gốc ↗
+                        </a>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <Empty>Chọn một xu hướng đã lưu ở danh sách bên trái để xem chi tiết.</Empty>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
