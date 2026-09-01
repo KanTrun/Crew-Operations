@@ -444,61 +444,111 @@ export default function PageQuanPage() {
       {tab === "trends" && (
         <div className="space-y-6">
           {/* KHỐI 0: GIÁM SÁT HẠN MỨC APIFY & BỘ CHUYỂN ĐỔI CHẾ ĐỘ CÀO DỮ LIỆU */}
-          <div className="rounded-lg border-2 border-indigo-500/30 bg-indigo-500/5 p-4 space-y-3">
+          <div className="rounded-xl border-2 border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-zinc-900/60 to-purple-950/30 p-4 space-y-4 shadow-lg">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-500/20 pb-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm">💳</span>
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">
-                  Hạn Mức & Chế Độ Cào Dữ Liệu
-                </span>
+                <span className="text-base">💳</span>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-300">
+                    Bảng Giám Sát Hạn Mức Apify & Chế Độ Cào
+                  </h3>
+                  <p className="text-[11px] text-zinc-400">
+                    Theo dõi số dư điện toán (Compute Units) và chủ động chuyển đổi phương thức cào
+                  </p>
+                </div>
               </div>
 
-              {/* Hạn Mức Apify Trực Tiếp */}
-              {apifyUsage ? (
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="text-zinc-400">Gói Apify:</span>
-                  <span className="font-bold text-zinc-200">{apifyUsage.plan}</span>
-                  <span className="text-zinc-600">|</span>
-                  <span className="text-zinc-400">Đã dùng:</span>
-                  <strong className="text-indigo-300">${apifyUsage.usage_usd} / ${apifyUsage.monthly_limit_usd}</strong>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono">
-                    Còn ${apifyUsage.remaining_usd} ({apifyUsage.usage_percent}%)
-                  </span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                    apifyUsage.usage_percent < 80
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : apifyUsage.usage_percent < 100
-                      ? "bg-amber-500/20 text-amber-400"
-                      : "bg-rose-500/20 text-rose-400"
-                  }`}>
-                    ● {apifyUsage.status_label}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-[11px] text-zinc-400 font-mono">
-                  ● Chế độ: Direct Free Engine (0đ Apify)
-                </span>
-              )}
+              {/* Nút Làm Mới Hạn Mức Ngay Lập Tức */}
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await apiGet<{ ok: boolean; usage: ApifyUsage }>("/api/v1/trends/apify-usage");
+                    if (res.usage) {
+                      setApifyUsage(res.usage);
+                      push("🔄 Đã cập nhật số dư hạn mức Apify thời gian thực!");
+                    }
+                  } catch {
+                    push("Không thể kết nối máy chủ Apify.");
+                  }
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-2.5 py-1 text-xs font-medium text-indigo-300 hover:bg-indigo-500/20 transition cursor-pointer"
+                title="Lấy dữ liệu số dư trực tiếp từ server Apify"
+              >
+                <span>🔄</span>
+                <span>Kiểm tra số dư</span>
+              </button>
             </div>
 
-            {/* Bộ Chuyển Đổi Phương Thức Cào (Mode Selector) */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-              <span className="font-medium text-zinc-400">
-                Lựa chọn phương thức cào dữ liệu:
+            {/* Chi tiết Hạn Mức & Thanh Tiến Trình (Visual Quota Progress Bar) */}
+            {apifyUsage ? (
+              <div className="space-y-2 bg-black/30 rounded-lg p-3 border border-indigo-500/20">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-zinc-400">Tài khoản:</span>
+                    <strong className="text-zinc-200 font-mono">{apifyUsage.username || "Apify Free"}</strong>
+                    <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-300 border border-indigo-500/30">
+                      {apifyUsage.plan}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-zinc-400">Đã tiêu thụ:</span>
+                    <strong className="text-indigo-300 font-mono text-sm">${apifyUsage.usage_usd.toFixed(2)}</strong>
+                    <span className="text-zinc-500">/</span>
+                    <span className="text-zinc-300 font-mono text-sm">${apifyUsage.monthly_limit_usd.toFixed(2)}</span>
+                    <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${
+                      apifyUsage.usage_percent < 80
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        : apifyUsage.usage_percent < 100
+                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                        : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                    }`}>
+                      ● {apifyUsage.status_label} (Còn ${apifyUsage.remaining_usd.toFixed(2)})
+                    </span>
+                  </div>
+                </div>
+
+                {/* Thanh đo % hạn mức */}
+                <div className="w-full bg-zinc-800/80 rounded-full h-2 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      apifyUsage.usage_percent < 70
+                        ? "bg-emerald-500"
+                        : apifyUsage.usage_percent < 90
+                        ? "bg-amber-500"
+                        : "bg-rose-500"
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(3, apifyUsage.usage_percent))}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-zinc-400 font-mono">
+                ● Đang kết nối trạng thái hạn mức điện toán...
+              </div>
+            )}
+
+            {/* Bộ 3 Nút Chuyển Đổi Phương Thức Cào (Mode Selector) */}
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1">
+              <span className="font-medium text-zinc-300">
+                Phương thức cào dữ liệu áp dụng:
               </span>
               <div className="flex flex-wrap gap-2">
                 {[
                   {
                     id: "auto",
-                    label: "⚡ Tự động (Direct Free làm chính, Apify dự phòng)",
+                    title: "⚡ Tự động (Khuyên dùng)",
+                    desc: "Google & TikWM chính (0đ) · Apify làm dự phòng khi lỗi",
                   },
                   {
                     id: "direct_only",
-                    label: "🆓 100% Miễn phí (0đ, không dùng Apify)",
+                    title: "🆓 100% Miễn phí (0đ Quota)",
+                    desc: "Chỉ dùng Google Bridge & TikWM, khóa hoàn toàn Apify",
                   },
                   {
                     id: "apify_force",
-                    label: "🎯 Ép dùng Apify (Cào sâu qua Apify Actor)",
+                    title: "🎯 Ép dùng Apify Actor",
+                    desc: "Bắt buộc cào sâu qua Apify scraper",
                   },
                 ].map((m) => (
                   <button
@@ -506,16 +556,17 @@ export default function PageQuanPage() {
                     onClick={() => {
                       const newMode = m.id as "auto" | "direct_only" | "apify_force";
                       setScrapeMode(newMode);
-                      push(`Đã chuyển sang: ${m.label.split(" (")[0]}`);
+                      push(`Đã kích hoạt: ${m.title}`);
                       fetchTrendsData(regionFilter, categoryFilter, activeKeyword, newMode, true);
                     }}
-                    className={`rounded px-3 py-1.5 text-xs font-bold transition cursor-pointer border ${
+                    title={m.desc}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
                       scrapeMode === m.id
-                        ? "bg-indigo-600 text-white border-indigo-500 shadow-md ring-1 ring-indigo-400"
+                        ? "bg-indigo-600 text-white border-indigo-400 shadow-md ring-2 ring-indigo-500/50"
                         : "bg-[var(--nq-surface)] text-[var(--nq-muted)] border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] hover:text-white"
                     }`}
                   >
-                    {m.label}
+                    <span>{m.title}</span>
                   </button>
                 ))}
               </div>
