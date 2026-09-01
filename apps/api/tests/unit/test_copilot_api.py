@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 import pytest
+from ca_gates import compute_snapshot_hash
 from fastapi.testclient import TestClient
 from ca_api.interfaces.http.main import app
 from ca_api.persist import (
@@ -322,3 +323,30 @@ def test_apply_inventory_restock_uses_canh_bao() -> None:
     assert len(orders[0]["items"]) == 2
     assert orders[0]["items"][0]["mat_hang"] == "Sữa tươi"
     assert orders[0]["order_id"].startswith("ord_")
+
+
+def test_copilot_execute_action_requires_token() -> None:
+    """Execute-action là endpoint GHI — thiếu token phải trả 401 (không fallback guest)."""
+    draft = {
+        "action_id": "act_noauth_t1",
+        "intent": "APPROVE_SHIFT_SWAP",
+        "status": "ready_for_approval",
+        "store_id": "quan_01",
+        "created_by": "nv_01",
+        "confidence": 0.9,
+        "summary": "test",
+        "explanation": "test",
+        "requires_confirmation": True,
+        "data_snapshot_hash": compute_snapshot_hash({}),
+        "expires_at": "",
+        "created_at": "2026-09-01T00:00:00+00:00",
+        "payload_diff": {},
+    }
+    copilot_draft_save(draft)
+
+    res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": "act_noauth_t1", "decision": "approve"},
+    )
+    assert res.status_code == 401
+    assert "thieu_token" in res.json()["detail"]

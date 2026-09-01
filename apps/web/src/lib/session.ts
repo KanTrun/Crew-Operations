@@ -2,29 +2,37 @@ export type Role = "quan_ly" | "chu_quan" | "nhan_vien" | string;
 
 export function getToken(): string {
   if (typeof window === "undefined") return "";
-  return sessionStorage.getItem("nq_token") ?? "";
+  return sessionStorage.getItem("nq_token") || localStorage.getItem("nq_token") || "";
 }
 
 export function getRole(): Role {
   if (typeof window === "undefined") return "";
-  return sessionStorage.getItem("nq_role") ?? "";
+  return sessionStorage.getItem("nq_role") || localStorage.getItem("nq_role") || "";
 }
 
 export function getName(): string {
   if (typeof window === "undefined") return "";
-  return sessionStorage.getItem("nq_name") ?? "";
+  return sessionStorage.getItem("nq_name") || localStorage.getItem("nq_name") || "";
 }
 
 export function setSession(token: string, role: string, name: string, nvId: string): void {
-  sessionStorage.setItem("nq_token", token);
-  sessionStorage.setItem("nq_role", role);
-  sessionStorage.setItem("nq_name", name);
-  sessionStorage.setItem("nq_nv", nvId);
+  try {
+    sessionStorage.setItem("nq_token", token);
+    sessionStorage.setItem("nq_role", role);
+    sessionStorage.setItem("nq_name", name);
+    sessionStorage.setItem("nq_nv", nvId);
+  } catch {}
+  try {
+    localStorage.setItem("nq_token", token);
+    localStorage.setItem("nq_role", role);
+    localStorage.setItem("nq_name", name);
+    localStorage.setItem("nq_nv", nvId);
+  } catch {}
 }
 
 export function getNvId(): string {
   if (typeof window === "undefined") return "";
-  return sessionStorage.getItem("nq_nv") ?? "";
+  return sessionStorage.getItem("nq_nv") || localStorage.getItem("nq_nv") || "";
 }
 
 export function isManager(role = getRole()): boolean {
@@ -71,10 +79,18 @@ export function canAccess(role: Role, path: string): boolean {
 }
 
 export function clearSession(): void {
-  sessionStorage.removeItem("nq_token");
-  sessionStorage.removeItem("nq_role");
-  sessionStorage.removeItem("nq_name");
-  sessionStorage.removeItem("nq_nv");
+  try {
+    sessionStorage.removeItem("nq_token");
+    sessionStorage.removeItem("nq_role");
+    sessionStorage.removeItem("nq_name");
+    sessionStorage.removeItem("nq_nv");
+  } catch {}
+  try {
+    localStorage.removeItem("nq_token");
+    localStorage.removeItem("nq_role");
+    localStorage.removeItem("nq_name");
+    localStorage.removeItem("nq_nv");
+  } catch {}
 }
 
 export function roleLabel(role: string): string {

@@ -129,3 +129,31 @@ def test_role_matrix_manager_can_schedule() -> None:
     res = run_copilot("Xếp lịch tuần sau giúp chị", context=ctx)
     assert res.intent == CopilotIntent.SCHEDULE_SOLVE
     assert res.action_proposal is not None
+
+
+def test_intent_parser_uses_dynamic_iso_week() -> None:
+    """Tuần lịch không hardcode: phải là ISO week của hôm nay hoặc tuần kế tiếp."""
+    from datetime import date, timedelta
+
+    import ca_agents.ag_copilot.intent_parser as ip
+
+    today = date.today()
+    # 'tuần sau' → tuần kế tiếp của hôm nay
+    p = ip.parse_intent("Xếp lịch tuần sau giúp chị")
+    assert p.intent == "SCHEDULE_SOLVE"
+    assert p.params["tuan"] == ip._iso_week(today + timedelta(weeks=1))
+
+    # 'tuần này' → tuần hiện tại
+    p2 = ip.parse_intent("Xếp lịch tuần này")
+    assert p2.params["tuan"] == ip._iso_week(today)
+
+
+def test_intent_parser_uses_dynamic_date() -> None:
+    """Ngày bản tin không hardcode: phải là ngày hôm nay."""
+    from datetime import date
+
+    import ca_agents.ag_copilot.intent_parser as ip
+
+    p = ip.parse_intent("Tóm tắt bản tin sáng hôm nay")
+    assert p.intent == "GENERATE_DAILY_BRIEF"
+    assert p.params["ngay"] == date.today().isoformat()
