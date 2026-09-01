@@ -108,11 +108,28 @@ def test_scrape_threads_apify_success():
 
 def test_scrape_threads_smart_fallback_when_apify_fails():
     with patch(
+        "ca_agents.sources.threads_direct_source.scrape_threads_direct",
+        side_effect=Exception("Direct mạng lỗi"),
+    ), patch(
         "ca_agents.sources.threads_apify_source.run_actor_sync",
-        side_effect=ApifyError("Token hết hạn hoặc mạng lỗi"),
+        side_effect=ApifyError("Apify token hết hạn"),
     ):
-        # When Apify fails, _scrape_threads_smart must NOT raise, but fallback to RSS gracefully
+        # When both Direct and Apify fail, _scrape_threads_smart must NOT raise, but fallback to RSS gracefully
         items = _scrape_threads_smart(keyword="", count=5)
         assert isinstance(items, list)
         assert len(items) > 0
         assert items[0].nguon_goc == "threads_vn"
+
+
+def test_scrape_threads_direct_primary():
+    from ca_agents.sources.threads_direct_source import scrape_threads_direct
+
+    items = scrape_threads_direct(keyword="matcha", count=4)
+    assert len(items) > 0
+    item = items[0]
+    assert item.nguon_goc == "threads_vn"
+    assert "threads.net" in item.link_goc
+    assert item.diem_tiem_nang_viral >= 80
+    assert item.vong_doi in ("moi_nhu", "dang_dinh")
+    assert len(item.binh_luan_that_tiktok) > 0
+

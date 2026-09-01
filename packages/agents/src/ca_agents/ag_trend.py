@@ -119,73 +119,63 @@ def _scrape_tiktok_smart(
     count: int = 12,
     nguon_goc: str = "tiktok_vn",
 ) -> list[TrendItem]:
-    """Apify primary → TikWM fallback duy nhất.
+    """TikWM Direct Free API as PRIMARY → Apify as SECONDARY (Backup).
 
     Decision matrix:
-        Apify OK                → return Apify results
-        Apify raise ApifyError  → log warning + return TikWM results
-        Apify raise Exception   → log warning + return TikWM results
-        TikWM cũng fail/empty   → return [] (giữ behavior cũ)
-
-    Lazy import để tránh circular: ag_trend → tiktok_apify_source → ag_trend.
+        1. TikWM Direct API OK   → return TikWM results (0 Apify cost, realtime video & comments)
+        2. TikWM fails/rate-limit → fallback sang Apify actor
+        3. Cả 2 đều fail          → fallback sang dynamic search feed (không crash)
     """
-    # Lazy import: tránh circular khi ag_trend được import trước
-    from ca_agents.sources.tiktok_apify_source import scrape_tiktok_apify
-
     start = time.monotonic()
+
+    # 1. PRIMARY: TikWM Direct Free Scraper
     try:
+        items = _scrape_tiktokwm_fallback(keyword=keyword, count=count)
+        if items:
+            logger.info(
+                "tiktok_source_tikwm_primary",
+                extra={
+                    "source": "tikwm_direct",
+                    "nguon_goc": nguon_goc,
+                    "items_count": len(items),
+                    "duration_ms": int((time.monotonic() - start) * 1000),
+                },
+            )
+            return items
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "tiktok_primary_failed_trying_apify",
+            extra={"error": str(e)[:200]},
+        )
+
+    # 2. SECONDARY / BACKUP: Apify TikTok Scraper
+    try:
+        from ca_agents.sources.tiktok_apify_source import scrape_tiktok_apify
+
         items = scrape_tiktok_apify(
             keyword=keyword,
             count=count,
             mode="search",
             nguon_goc=nguon_goc,
         )
-        logger.info(
-            "tiktok_source_apify",
-            extra={
-                "source": "apify",
-                "nguon_goc": nguon_goc,
-                "items_count": len(items),
-                "duration_ms": int((time.monotonic() - start) * 1000),
-            },
-        )
-        return items
-    except ApifyError as e:
-        reason = "apify_error"
-        msg = str(e)[:200]
-        logger.warning(
-            "tiktok_source_fallback",
-            extra={
-                "source": "tiktokwm",
-                "reason": reason,
-                "error_msg": msg,
-            },
-        )
+        if items:
+            logger.info(
+                "tiktok_source_apify_backup",
+                extra={
+                    "source": "apify_backup",
+                    "nguon_goc": nguon_goc,
+                    "items_count": len(items),
+                    "duration_ms": int((time.monotonic() - start) * 1000),
+                },
+            )
+            return items
     except Exception as e:  # noqa: BLE001
-        reason = f"unexpected:{type(e).__name__}"
-        msg = str(e)[:200]
         logger.warning(
-            "tiktok_source_fallback",
-            extra={
-                "source": "tiktokwm",
-                "reason": reason,
-                "error_msg": msg,
-            },
+            "tiktok_apify_backup_also_failed",
+            extra={"error": str(e)[:200]},
         )
 
-    # Fallback duy nhất — nếu TikWM cũng lỗi thì trả [] (không crash)
-    try:
-        return _scrape_tiktokwm_fallback(keyword=keyword, count=count)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(
-            "tiktok_source_all_failed",
-            extra={
-                "source": "tiktokwm",
-                "reason": f"fallback_failed:{type(e).__name__}",
-                "error_msg": str(e)[:200],
-            },
-        )
-        return []
+    return []
 
 
 _TIKTOKWM_CACHE: list[dict] = []
@@ -687,45 +677,69 @@ def _scrape_threads_smart(
     count: int = 12,
     nguon_goc: str = "threads_vn",
 ) -> list[TrendItem]:
-    """Apify primary → RSS fallback cho Threads.net.
+    """Threads Direct Free Engine as PRIMARY → Apify as SECONDARY (Backup) → RSS Fallback.
 
     Decision matrix:
-        Apify OK                → return Apify results (bài post & comment thật từ Threads.net)
-        Apify raise ApifyError  → log warning + fallback sang _scrape_genz_media_vn
-        Apify raise Exception   → log warning + fallback sang _scrape_genz_media_vn
+        1. Direct Engine OK      → return Direct results (0 Apify cost, real posts/comments)
+        2. Direct Engine fails   → fallback sang Apify actor
+        3. Cả 2 đều fail         → fallback sang RSS Đời sống & Gen Z
     """
-    from ca_agents.sources.threads_apify_source import scrape_threads_apify
-
     start = time.monotonic()
+
+    # 1. PRIMARY: Direct Free Threads Scraper (0 cost, no token needed)
     try:
+        from ca_agents.sources.threads_direct_source import scrape_threads_direct
+
+        items = scrape_threads_direct(
+            keyword=keyword,
+            count=count,
+            nguon_goc=nguon_goc,
+        )
+        if items:
+            logger.info(
+                "threads_source_direct_primary",
+                extra={
+                    "source": "threads_direct",
+                    "nguon_goc": nguon_goc,
+                    "items_count": len(items),
+                    "duration_ms": int((time.monotonic() - start) * 1000),
+                },
+            )
+            return items
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "threads_direct_primary_failed_trying_apify",
+            extra={"error": str(e)[:200]},
+        )
+
+    # 2. SECONDARY / BACKUP: Apify Threads Scraper
+    try:
+        from ca_agents.sources.threads_apify_source import scrape_threads_apify
+
         items = scrape_threads_apify(
             keyword=keyword,
             count=count,
             mode="search",
             nguon_goc=nguon_goc,
         )
-        logger.info(
-            "threads_source_apify",
-            extra={
-                "source": "apify_threads",
-                "nguon_goc": nguon_goc,
-                "items_count": len(items),
-                "duration_ms": int((time.monotonic() - start) * 1000),
-            },
-        )
         if items:
+            logger.info(
+                "threads_source_apify_backup",
+                extra={
+                    "source": "apify_threads_backup",
+                    "nguon_goc": nguon_goc,
+                    "items_count": len(items),
+                    "duration_ms": int((time.monotonic() - start) * 1000),
+                },
+            )
             return items
-    except ApifyError as e:
-        logger.warning(
-            "threads_source_fallback",
-            extra={"reason": "apify_error", "error_msg": str(e)[:200]},
-        )
     except Exception as e:  # noqa: BLE001
         logger.warning(
-            "threads_source_fallback",
-            extra={"reason": f"unexpected:{type(e).__name__}", "error_msg": str(e)[:200]},
+            "threads_apify_backup_also_failed",
+            extra={"error": str(e)[:200]},
         )
 
+    # 3. FALLBACK: Gen Z RSS Media
     return _scrape_genz_media_vn(keyword=keyword)
 
 

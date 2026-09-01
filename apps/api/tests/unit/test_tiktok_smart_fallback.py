@@ -47,80 +47,53 @@ def _apify_item(idx: int) -> TrendItem:
     )
 
 
-def test_apify_success_skips_tiktokwm():
-    """Khi Apify OK thì TikWM không được gọi."""
-    apify_items = [_apify_item(0), _apify_item(1)]
-    # Patch tại module gốc vì ag_trend import lazy
+def test_tiktokwm_primary_success_skips_apify():
+    """Khi TikWM Direct OK thì Apify không bị gọi (tiết kiệm quota 100%)."""
+    tiktokwm_items = [_tiktokwm_item(0), _tiktokwm_item(1)]
     with patch(
-        "ca_agents.sources.tiktok_apify_source.scrape_tiktok_apify",
-        return_value=apify_items,
-    ) as apify_mock, patch(
-        "ca_agents.ag_trend._scrape_tiktokwm_fallback"
-    ) as tiktokwm_mock:
+        "ca_agents.ag_trend._scrape_tiktokwm_fallback",
+        return_value=tiktokwm_items,
+    ) as tiktokwm_mock, patch(
+        "ca_agents.sources.tiktok_apify_source.scrape_tiktok_apify"
+    ) as apify_mock:
         result = _scrape_tiktok_smart(keyword="k", count=2)
 
-    assert result == apify_items
-    apify_mock.assert_called_once()
-    tiktokwm_mock.assert_not_called()
-
-
-def test_apify_error_triggers_tiktokwm():
-    """Khi Apify raise ApifyError → fallback TikWM được gọi."""
-    tiktokwm_items = [_tiktokwm_item(0)]
-    with patch(
-        "ca_agents.sources.tiktok_apify_source.scrape_tiktok_apify",
-        side_effect=ApifyError("quota exceeded"),
-    ), patch(
-        "ca_agents.ag_trend._scrape_tiktokwm_fallback",
-        return_value=tiktokwm_items,
-    ) as tiktokwm_mock:
-        result = _scrape_tiktok_smart(keyword="k", count=1)
-
     assert result == tiktokwm_items
-    tiktokwm_mock.assert_called_once_with(keyword="k", count=1)
+    tiktokwm_mock.assert_called_once_with(keyword="k", count=2)
+    apify_mock.assert_not_called()
 
 
-def test_apify_unexpected_error_triggers_tiktokwm():
-    """Khi Apify raise Exception không phải ApifyError → vẫn fallback."""
-    tiktokwm_items = [_tiktokwm_item(0)]
+def test_tiktokwm_error_triggers_apify_backup():
+    """Khi TikWM lỗi → tự động kích hoạt Apify backup."""
+    apify_items = [_apify_item(0)]
     with patch(
-        "ca_agents.sources.tiktok_apify_source.scrape_tiktok_apify",
-        side_effect=ValueError("boom"),
-    ), patch(
         "ca_agents.ag_trend._scrape_tiktokwm_fallback",
-        return_value=tiktokwm_items,
-    ) as tiktokwm_mock:
-        result = _scrape_tiktok_smart(keyword="k", count=1)
-
-    assert result == tiktokwm_items
-    tiktokwm_mock.assert_called_once()
-
-
-def test_both_fail_returns_empty():
-    """Khi cả 2 fail → trả [] (không crash)."""
-    with patch(
+        side_effect=Exception("TikWM rate limited"),
+    ) as tiktokwm_mock, patch(
         "ca_agents.sources.tiktok_apify_source.scrape_tiktok_apify",
-        side_effect=ApifyError("x"),
-    ), patch(
-        "ca_agents.ag_trend._scrape_tiktokwm_fallback",
-        side_effect=Exception("TikWM also dead"),
-    ):
-        result = _scrape_tiktok_smart(keyword="k", count=1)
-
-    assert result == []
-
-
-def test_nguon_goc_passed_through():
-    """Param nguon_goc được truyền xuống Apify call."""
-    with patch(
-        "ca_agents.sources.tiktok_apify_source.scrape_tiktok_apify",
-        return_value=[],
+        return_value=apify_items,
     ) as apify_mock:
-        _scrape_tiktok_smart(keyword="k", count=1, nguon_goc="tiktok_global")
+        result = _scrape_tiktok_smart(keyword="k", count=1)
 
+    assert result == apify_items
+    tiktokwm_mock.assert_called_once()
     apify_mock.assert_called_once_with(
         keyword="k",
         count=1,
         mode="search",
-        nguon_goc="tiktok_global",
+        nguon_goc="tiktok_vn",
     )
+
+
+def test_both_fail_returns_empty():
+    """Khi cả TikWM và Apify đều fail → trả [] an toàn (không crash)."""
+    with patch(
+        "ca_agents.ag_trend._scrape_tiktokwm_fallback",
+        side_effect=Exception("TikWM dead"),
+    ), patch(
+        "ca_agents.sources.tiktok_apify_source.scrape_tiktok_apify",
+        side_effect=ApifyError("Apify also dead"),
+    ):
+        result = _scrape_tiktok_smart(keyword="k", count=1)
+
+    assert result == []
