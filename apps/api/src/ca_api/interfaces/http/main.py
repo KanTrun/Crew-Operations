@@ -48,17 +48,6 @@ from ca_ops.engine import load_template as _load_template
 from ca_playbook.sua import list_sua as _list_sua
 from ca_playbook.vong_doi import de_xuat as _de_xuat, list_luat as _list_luat, tim_mau as _tim_mau
 
-configure_data_sources(
-    kv_get=kv_get,
-    list_luat=_list_luat,
-    load_template=_load_template,
-    list_sua=_list_sua,
-    tim_mau=_tim_mau,
-    de_xuat=_de_xuat,
-    sop_answer=_sop_answer,
-    waste_cluster=_waste_cluster,
-)
-
 app = FastAPI(title="NHIP QUAN API", version="0.2.0")
 app.add_middleware(
     CORSMiddleware,
@@ -138,9 +127,37 @@ def _seed() -> dict[str, Any]:
     return cast(dict[str, Any], json.loads(SEED.read_text(encoding="utf-8")))
 
 
+def _list_ca_meta() -> dict[str, dict[str, Any]]:
+    """Trả map ca_id -> {thu, khung, bat_dau, ket_thuc} từ seed ca_mau_21."""
+    seed = _seed()
+    thu_map = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN"}
+    return {
+        c["id"]: {
+            "thu": thu_map.get(int(c.get("ngay_offset", 1)), "T2"),
+            "khung": c.get("khung", ""),
+            "bat_dau": c.get("bat_dau", "07:00"),
+            "ket_thuc": c.get("ket_thuc", "12:00"),
+        }
+        for c in seed.get("ca_mau_21", [])
+    }
+
+
 def _resolve_role(authorization: str | None) -> str | None:
     s = auth_session(authorization)
     return None if s is None else s["role"]
+
+
+configure_data_sources(
+    kv_get=kv_get,
+    list_luat=_list_luat,
+    load_template=_load_template,
+    list_sua=_list_sua,
+    tim_mau=_tim_mau,
+    de_xuat=_de_xuat,
+    sop_answer=_sop_answer,
+    waste_cluster=_waste_cluster,
+    list_ca_meta=_list_ca_meta,
+)
 
 
 def _require_write_role(authorization: Annotated[str | None, Header()] = None) -> str:

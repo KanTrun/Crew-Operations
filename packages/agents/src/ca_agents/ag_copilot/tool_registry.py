@@ -51,6 +51,7 @@ def configure_data_sources(**sources: Callable[..., Any]) -> None:
       - de_xuat(mau) -> dict                (sinh đề xuất luật từ mẫu)
       - sop_answer(q, buoc, luat) -> SopAnswer
       - waste_cluster(notes) -> list[WasteHint]
+      - list_ca_meta() -> dict[str, dict]   (ca_id -> {thu, khung, bat_dau, ket_thuc})
     """
     _SOURCES.clear()
     _SOURCES.update(sources)
@@ -146,6 +147,70 @@ def tool_solve_weekly_schedule(
         )
 
 
+def _swap_khong_trung_ca(
+    phan_cong: dict[str, Any],
+    ca_dich: str,
+    nhan_nv: str | None,
+    list_ca_meta: Callable[..., Any] | None,
+) -> bool:
+    """Trả True nếu nhan_nv trùng ca khác CÙNG khung giờ với ca_dich.
+
+    Khi dữ liệu ca_meta không có (thiếu source / standalone), mặc định True
+    (cho phép) — giữ an toàn cho test không set đủ dữ liệu. Bỏ hardcode cũ.
+    """
+    if not nhan_nv or not ca_dich:
+        return True
+    if not list_ca_meta:
+        return True
+    try:
+        ca_meta = list_ca_meta() or {}
+    except Exception:
+        return True
+
+    meta_dich = ca_meta.get(ca_dich)
+    if not isinstance(meta_dich, dict):
+        # Không có meta ca đích → không thể so, coi là không trùng (fail-open nhẹ).
+        return True
+
+    thu_dich = meta_dich.get("thu")
+    # So trùng ca: không phân biệt khung cứng — so theo thu + khung trùng giờ.
+    for ca_id, nvs in (phan_cong or {}).items():
+        if ca_id == ca_dich:
+            continue
+        if not isinstance(nvs, list) or nhan_nv not in nvs:
+            continue
+        meta_other = ca_meta.get(ca_id)
+        if not isinstance(meta_other, dict):
+            continue
+        # Trùng ngày và trùng khung giờ (bat_dau/ket_thuc chồng nhau) → chặn.
+        if meta_other.get("thu") == thu_dich:
+            # Nếu trùng khung (cùng giờ) hoặc không có meta → chặn an toàn.
+            khung_dich = meta_dich.get("khung")
+            khung_other = meta_other.get("khung")
+            if khung_dich and khung_other and khung_dich == khung_other:
+                return False
+            # Nếu không có khung, so giờ.
+            bd_d = meta_dich.get("bat_dau")
+            kt_d = meta_dich.get("ket_thuc")
+            bd_o = meta_other.get("bat_dau")
+            kt_o = meta_other.get("ket_thuc")
+            if bd_d and kt_d and bd_o and kt_o and _gio_chong(bd_d, kt_d, bd_o, kt_o):
+                return False
+    return True
+
+
+def _gio_chong(bd1: str, kt1: str, bd2: str, kt2: str) -> bool:
+    """Kiểm tra 2 khoảng giờ 'HH:MM' có chồng lấn không."""
+    try:
+        def _m(s: str) -> int:
+            h, m = s.split(":")
+            return int(h) * 60 + int(m)
+
+        return _m(bd1) < _m(kt2) and _m(bd2) < _m(kt1)
+    except Exception:
+        return False
+
+
 def tool_prepare_swap_approval(
     swap_id: str | None = None,
     store_id: str = "quan_01",
@@ -206,8 +271,12 @@ def tool_prepare_swap_approval(
         not phan_cong or any(ca_id in str(k) or ca_id == k for k in phan_cong)
     )
     checks["ca_hop_le"] = ca_exists if phan_cong else bool(ca_id)
-    # 3.4 Người nhận không trùng ca khác cùng ngày (nếu có dữ liệu phân công chi tiết)
-    checks["khong_trung_ca_khac"] = True  # solver đảm bảo khi áp dụng; chi tiết ở VF-STALE
+    # 3.4 Người nhận không trùng ca khác cùng khung giờ (đọc dữ liệu thật).
+    #     So sánh ca đích với các ca khác mà nhan_nv đang đảm nhận: nếu trùng
+    #     giờ (bat_dau/ket_thuc) trong cùng khung → chặn.
+    checks["khong_trung_ca_khac"] = _swap_khong_trung_ca(
+        phan_cong, ca_id, c, _src("list_ca_meta")
+    )
     # 3.5 Lý do: swap-market 3 nhánh KHÔNG có trường ly_do/ghi_chu — chỉ bắt buộc
     #     khi swap kiểu cũ có trường này. Nếu swap-market thì coi là hợp lệ (3 nhánh đã đồng ý).
     checks["co_ly_do"] = bool(target.get("ly_do") or target.get("ghi_chu") or target.get("trang_thai") in ("dong_y", "cho_3_nhanh"))

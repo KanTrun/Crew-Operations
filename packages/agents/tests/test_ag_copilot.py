@@ -157,3 +157,28 @@ def test_intent_parser_uses_dynamic_date() -> None:
     p = ip.parse_intent("Tóm tắt bản tin sáng hôm nay")
     assert p.intent == "GENERATE_DAILY_BRIEF"
     assert p.params["ngay"] == date.today().isoformat()
+
+
+def test_swap_trung_ca_kiem_tra_khung() -> None:
+    """Kiểm tra _swap_khong_trung_ca: trùng khung cùng thứ chặn, khác khung/khác thứ cho phép."""
+    from ca_agents.ag_copilot.tool_registry import _swap_khong_trung_ca
+
+    ca_meta = {
+        "w1_c01": {"thu": "T2", "khung": "sang", "bat_dau": "07:00", "ket_thuc": "12:00"},
+        "w1_c02": {"thu": "T2", "khung": "chieu", "bat_dau": "12:00", "ket_thuc": "17:00"},
+        "w1_c03": {"thu": "T2", "khung": "sang", "bat_dau": "07:00", "ket_thuc": "12:00"},
+    }
+    phan = {"w1_c01": ["nv_01"], "w1_c02": ["nv_01"], "w1_c03": ["nv_04"]}
+
+    # nv_01 đang có w1_c01 (sang T2) + w1_c02 (chieu T2).
+    # Muốn đổi sang w1_c03 (sang T2): nv_01 KHÔNG có w1_c03, nhưng có w1_c01
+    # cùng khung sang T2 → trùng ca khác → chặn (False).
+    assert _swap_khong_trung_ca(phan, "w1_c03", "nv_01", lambda: ca_meta) is False
+    # nv_04 có w1_c03 (sang T2), muốn đổi sang w1_c01 (sang T2) — nv_04 có w1_c03
+    # cùng khung sang T2 → trùng ca khác → chặn (False). Logic đúng.
+    assert _swap_khong_trung_ca(phan, "w1_c01", "nv_04", lambda: ca_meta) is False
+    # nv_01 muốn đổi sang w1_c02 (chieu T2) — trùng w1_c02 (bản thân) bị skip,
+    # nhưng w1_c01 khác khung → không trùng giờ → OK (True).
+    assert _swap_khong_trung_ca(phan, "w1_c02", "nv_01", lambda: ca_meta) is True
+    # Không có ca_meta source → fail-open True (không chặn).
+    assert _swap_khong_trung_ca(phan, "w1_c01", "nv_01", None) is True
