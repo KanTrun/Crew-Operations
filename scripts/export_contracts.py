@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
-from ca_contracts import CONTRACTS
-
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "packages" / "contracts" / "src"))
+
+from ca_contracts import CONTRACTS  # noqa: E402
+
 OUT = ROOT / "packages" / "contracts" / "schema"
 
 

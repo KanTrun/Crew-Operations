@@ -3,10 +3,21 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+
+try:
+    from datetime import UTC, datetime
+except ImportError:
+    from datetime import datetime, timezone
+    UTC = timezone.utc
 from pathlib import Path
 from typing import Annotated, Any, cast
 
+# Inject real data sources into AG-COPILOT tool registry (hexagonal boundary).
+# Agents không được import ca_api/ca_playbook trực tiếp (test_architecture) —
+# nên API layer cung cấp dữ liệu thật qua configure_data_sources().
+from ca_agents.ag_copilot.tool_registry import configure_data_sources
+from ca_agents.ag_sop import answer as _sop_answer
+from ca_agents.ag_waste import cluster as _waste_cluster
 from ca_contracts import (
     Ca,
     DongDon,
@@ -17,12 +28,19 @@ from ca_contracts import (
     PhieuMau,
     RangBuocTrichXuat,
 )
+from ca_ops.engine import load_template as _load_template
 from ca_playbook import record_sua
+from ca_playbook.sua import list_sua as _list_sua
+from ca_playbook.vong_doi import de_xuat as _de_xuat
+from ca_playbook.vong_doi import list_luat as _list_luat
+from ca_playbook.vong_doi import tim_mau as _tim_mau
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ca_api.interfaces.http.channels import router as channels_router
+from ca_api.interfaces.http.copilot import router as copilot_router
+from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.pos import router as pos_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
@@ -47,9 +65,11 @@ app.add_middleware(
 app.include_router(sprint3_router)
 app.include_router(sprint45_router)
 app.include_router(channels_router)
+app.include_router(copilot_router)
 app.include_router(pos_router)
 app.include_router(meeting_router)
 app.include_router(trends_router)
+app.include_router(mail_router)
 
 
 ROOT = Path(__file__).resolve().parents[6]
@@ -111,9 +131,37 @@ def _seed() -> dict[str, Any]:
     return cast(dict[str, Any], json.loads(SEED.read_text(encoding="utf-8")))
 
 
+def _list_ca_meta() -> dict[str, dict[str, Any]]:
+    """Trả map ca_id -> {thu, khung, bat_dau, ket_thuc} từ seed ca_mau_21."""
+    seed = _seed()
+    thu_map = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN"}
+    return {
+        c["id"]: {
+            "thu": thu_map.get(int(c.get("ngay_offset", 1)), "T2"),
+            "khung": c.get("khung", ""),
+            "bat_dau": c.get("bat_dau", "07:00"),
+            "ket_thuc": c.get("ket_thuc", "12:00"),
+        }
+        for c in seed.get("ca_mau_21", [])
+    }
+
+
 def _resolve_role(authorization: str | None) -> str | None:
     s = auth_session(authorization)
     return None if s is None else s["role"]
+
+
+configure_data_sources(
+    kv_get=kv_get,
+    list_luat=_list_luat,
+    load_template=_load_template,
+    list_sua=_list_sua,
+    tim_mau=_tim_mau,
+    de_xuat=_de_xuat,
+    sop_answer=_sop_answer,
+    waste_cluster=_waste_cluster,
+    list_ca_meta=_list_ca_meta,
+)
 
 
 def _require_write_role(authorization: Annotated[str | None, Header()] = None) -> str:

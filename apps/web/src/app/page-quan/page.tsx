@@ -69,6 +69,18 @@ type Promotion = {
   active: boolean;
 };
 
+type ApifyUsage = {
+  has_token: boolean;
+  username?: string;
+  plan: string;
+  monthly_limit_usd: number;
+  usage_usd: number;
+  remaining_usd: number;
+  usage_percent: number;
+  status_label: string;
+  active_actors: string[];
+};
+
 type TrendItem = {
   id: string;
   tieu_de: string;
@@ -104,7 +116,10 @@ export default function PageQuanPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [draftText, setDraftText] = useState("");
   const [replyDraft, setReplyDraft] = useState<Record<string, string>>({});
-  const [tab, setTab] = useState<"threads" | "drafts" | "trends" | "config">("trends");
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiTone, setAiTone] = useState("than thien");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [tab, setTab] = useState<"threads" | "drafts" | "trends" | "saved_trends" | "config">("trends");
   const [profile, setProfile] = useState<StoreProfile | null>(null);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
 
@@ -115,6 +130,10 @@ export default function PageQuanPage() {
   const [selectedTrend, setSelectedTrend] = useState<TrendItem | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanStatusText, setScanStatusText] = useState("");
+
+  // Apify Usage & Scraping Mode State
+  const [apifyUsage, setApifyUsage] = useState<ApifyUsage | null>(null);
+  const [scrapeMode, setScrapeMode] = useState<"auto" | "direct_only" | "apify_force">("auto");
 
   // Keyword / Topic Filter State (Chức năng 1)
   const [keywordInput, setKeywordInput] = useState("");
@@ -175,13 +194,14 @@ export default function PageQuanPage() {
 
   // Fetch Trends function (Quét xong 100% mới cập nhật 1 lượt)
   const fetchTrendsData = useCallback(
-    async (region: string, category: string, kw: string, showToast = false) => {
+    async (region: string, category: string, kw: string, mode?: "auto" | "direct_only" | "apify_force", showToast = false) => {
       setIsScanning(true);
+      const effectiveMode = mode || scrapeMode;
       const sourceName =
         region === "tiktok_vn"
           ? "TikTok Việt Nam"
           : region === "threads_vn"
-          ? "Threads & Gen Z"
+          ? "Meta Threads"
           : region === "google_vn"
           ? "Google Trends VN"
           : region === "star_vn"
@@ -192,7 +212,7 @@ export default function PageQuanPage() {
 
       setScanStatusText(
         kw.trim()
-          ? `⏳ Đang quét chuyên sâu chủ đề "${kw.trim()}" từ ${sourceName}...`
+          ? `⏳ Đang quét chuyên sâu chủ đề "${kw.trim()}" từ ${sourceName} (${effectiveMode === "direct_only" ? "100% Miễn phí" : effectiveMode === "apify_force" ? "Ép dùng Apify" : "Tự động"})...`
           : `⏳ Đang cào dữ liệu độc quyền thời gian thực từ ${sourceName}...`
       );
 
@@ -201,6 +221,7 @@ export default function PageQuanPage() {
           region,
           category,
           keyword: kw.trim(),
+          mode: effectiveMode,
         });
         const res = await apiGet<{ trends: TrendItem[]; total: number }>(`/api/v1/trends/radar?${queryParams.toString()}`);
         const freshTrends = res.trends ?? [];
@@ -227,7 +248,7 @@ export default function PageQuanPage() {
         setIsScanning(false);
       }
     },
-    [push]
+    [scrapeMode, push]
   );
 
   const load = useCallback(() => {
@@ -239,20 +260,22 @@ export default function PageQuanPage() {
       apiGet<{ items: Draft[] }>("/api/v1/page/drafts"),
       apiGet<StoreProfile>("/api/v1/store/profile").catch(() => null),
       apiGet<Promotion[]>("/api/v1/store/promotions").catch(() => []),
+      apiGet<{ ok: boolean; usage: ApifyUsage }>("/api/v1/trends/apify-usage").catch(() => null),
     ])
-      .then(([st, th, dr, prof, promos]) => {
+      .then(([st, th, dr, prof, promos, usageRes]) => {
         setStatus(st);
         setThreads(th.items ?? []);
         setDrafts(dr.items ?? []);
         if (prof) setProfile(prof);
         if (promos) setPromotions(promos);
+        if (usageRes?.usage) setApifyUsage(usageRes.usage);
         setError(null);
       })
       .catch((e) => setError(viError(e, { doing: "mở được Page quán" })))
       .finally(() => setLoading(false));
 
-    fetchTrendsData(regionFilter, categoryFilter, activeKeyword);
-  }, [regionFilter, categoryFilter, activeKeyword, fetchTrendsData]);
+    fetchTrendsData(regionFilter, categoryFilter, activeKeyword, scrapeMode);
+  }, [regionFilter, categoryFilter, activeKeyword, scrapeMode, fetchTrendsData]);
 
   useEffect(() => {
     if (token) load();
@@ -270,7 +293,7 @@ export default function PageQuanPage() {
 
       setCountdownSeconds((prev) => {
         if (prev <= 1) {
-          fetchTrendsData(regionFilter, categoryFilter, activeKeyword, true);
+          fetchTrendsData(regionFilter, categoryFilter, activeKeyword, scrapeMode, false);
           return scanIntervalMinutes * 60;
         }
         return prev - 1;
@@ -278,30 +301,30 @@ export default function PageQuanPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [autoScanEnabled, scanIntervalMinutes, regionFilter, categoryFilter, activeKeyword, token, fetchTrendsData]);
+  }, [autoScanEnabled, scanIntervalMinutes, regionFilter, categoryFilter, activeKeyword, scrapeMode, token, fetchTrendsData]);
 
   const handleApplyKeywordSearch = (kw: string) => {
     setActiveKeyword(kw);
     setKeywordInput(kw);
     setShowSavedOnly(false);
-    fetchTrendsData(regionFilter, categoryFilter, kw, true);
+    fetchTrendsData(regionFilter, categoryFilter, kw, scrapeMode, true);
   };
 
   const handleClearKeyword = () => {
     setKeywordInput("");
     setActiveKeyword("");
-    fetchTrendsData(regionFilter, categoryFilter, "", true);
+    fetchTrendsData(regionFilter, categoryFilter, "", scrapeMode, true);
   };
 
   const handleRegionChange = (newRegion: string) => {
     setRegionFilter(newRegion);
     setShowSavedOnly(false);
-    fetchTrendsData(newRegion, categoryFilter, activeKeyword, true);
+    fetchTrendsData(newRegion, categoryFilter, activeKeyword, scrapeMode, true);
   };
 
   const handleCategoryChange = (newCategory: string) => {
     setCategoryFilter(newCategory);
-    fetchTrendsData(regionFilter, newCategory, activeKeyword, true);
+    fetchTrendsData(regionFilter, newCategory, activeKeyword, scrapeMode, true);
   };
 
   // Messenger Thread operations
@@ -367,6 +390,30 @@ export default function PageQuanPage() {
     }
   }
 
+  async function generateAiDraft(customTopic?: string) {
+    const topic = (customTopic || aiTopic).trim();
+    if (!topic) {
+      push("Vui lòng nhập chủ đề bài đăng cho AI.", "err");
+      return;
+    }
+    try {
+      setAiGenerating(true);
+      await apiSend("/api/v1/page/drafts/ai-generate", { topic, tone: aiTone });
+      push("AI đã soạn xong bài viết và lưu vào danh sách nháp!");
+      setAiTopic("");
+      load();
+    } catch (e) {
+      setError(viError(e, { doing: "AI soạn thảo bài viết", forbidden: "Chỉ quản lý mới yêu cầu AI soạn bài." }));
+    } finally {
+      setAiGenerating(false);
+    }
+  }
+
+  function useTrendForDraft(trend: TrendItem) {
+    setTab("drafts");
+    setAiTopic(`Bắt trend món: ${trend.cum_tu_khoa_viral || trend.tieu_de}`);
+  }
+
   if (!token) return <AuthGate />;
 
   const connected = Boolean(status?.connected);
@@ -404,8 +451,24 @@ export default function PageQuanPage() {
       {loading ? <Loading skeleton="list">Đang đọc dữ liệu xu hướng…</Loading> : null}
 
       <div className="mb-6 flex flex-wrap gap-2 border-b-2 border-[var(--nq-dim)] pb-2">
-        <Btn variant={tab === "trends" ? "primary" : "ghost"} onClick={() => setTab("trends")}>
-          📡 Radar Trí Tuệ Xu Hướng ({showSavedOnly ? `${savedTrends.length} đã lưu` : trends.length})
+        <Btn
+          variant={tab === "trends" ? "primary" : "ghost"}
+          onClick={() => {
+            setTab("trends");
+            setShowSavedOnly(false);
+          }}
+        >
+          📡 Radar Trí Tuệ Xu Hướng ({trends.length})
+        </Btn>
+        <Btn
+          variant={tab === "saved_trends" ? "primary" : "ghost"}
+          onClick={() => {
+            setTab("saved_trends");
+            if (savedTrends.length > 0) setSelectedTrend(savedTrends[0]);
+          }}
+          className={tab === "saved_trends" ? "bg-amber-500/20 text-amber-300 border-2 border-amber-500 shadow-md font-bold" : "text-amber-300 hover:bg-amber-500/10 border border-amber-500/30"}
+        >
+          ⭐ Kho Xu Hướng Đã Lưu ({savedTrends.length})
         </Btn>
         <Btn variant={tab === "threads" ? "primary" : "ghost"} onClick={() => setTab("threads")}>
           Hội thoại Messenger ({threads.length})
@@ -423,6 +486,136 @@ export default function PageQuanPage() {
       {/* TAB 1: RADAR TRÍ TUỆ XU HƯỚNG & GIẢI MÃ TỪ KHÓA VIRAL */}
       {tab === "trends" && (
         <div className="space-y-6">
+          {/* KHỐI 0: GIÁM SÁT HẠN MỨC APIFY & BỘ CHUYỂN ĐỔI CHẾ ĐỘ CÀO DỮ LIỆU */}
+          <div className="rounded-xl border-2 border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-zinc-900/60 to-purple-950/30 p-4 space-y-4 shadow-lg">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-500/20 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-base">💳</span>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-300">
+                    Bảng Giám Sát Hạn Mức Apify & Chế Độ Cào
+                  </h3>
+                  <p className="text-[11px] text-zinc-400">
+                    Theo dõi số dư điện toán (Compute Units) và chủ động chuyển đổi phương thức cào
+                  </p>
+                </div>
+              </div>
+
+              {/* Nút Làm Mới Hạn Mức Ngay Lập Tức */}
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await apiGet<{ ok: boolean; usage: ApifyUsage }>("/api/v1/trends/apify-usage");
+                    if (res.usage) {
+                      setApifyUsage(res.usage);
+                      push("🔄 Đã cập nhật số dư hạn mức Apify thời gian thực!");
+                    }
+                  } catch {
+                    push("Không thể kết nối máy chủ Apify.");
+                  }
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-2.5 py-1 text-xs font-medium text-indigo-300 hover:bg-indigo-500/20 transition cursor-pointer"
+                title="Lấy dữ liệu số dư trực tiếp từ server Apify"
+              >
+                <span>🔄</span>
+                <span>Kiểm tra số dư</span>
+              </button>
+            </div>
+
+            {/* Chi tiết Hạn Mức & Thanh Tiến Trình (Visual Quota Progress Bar) */}
+            {apifyUsage ? (
+              <div className="space-y-2 bg-black/30 rounded-lg p-3 border border-indigo-500/20">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-zinc-400">Tài khoản:</span>
+                    <strong className="text-zinc-200 font-mono">{apifyUsage.username || "Apify Free"}</strong>
+                    <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-300 border border-indigo-500/30">
+                      {apifyUsage.plan}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-zinc-400">Đã tiêu thụ:</span>
+                    <strong className="text-indigo-300 font-mono text-sm">${apifyUsage.usage_usd.toFixed(2)}</strong>
+                    <span className="text-zinc-500">/</span>
+                    <span className="text-zinc-300 font-mono text-sm">${apifyUsage.monthly_limit_usd.toFixed(2)}</span>
+                    <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${
+                      apifyUsage.usage_percent < 80
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        : apifyUsage.usage_percent < 100
+                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                        : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                    }`}>
+                      ● {apifyUsage.status_label} (Còn ${apifyUsage.remaining_usd.toFixed(2)})
+                    </span>
+                  </div>
+                </div>
+
+                {/* Thanh đo % hạn mức */}
+                <div className="w-full bg-zinc-800/80 rounded-full h-2 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      apifyUsage.usage_percent < 70
+                        ? "bg-emerald-500"
+                        : apifyUsage.usage_percent < 90
+                        ? "bg-amber-500"
+                        : "bg-rose-500"
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(3, apifyUsage.usage_percent))}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-zinc-400 font-mono">
+                ● Đang kết nối trạng thái hạn mức điện toán...
+              </div>
+            )}
+
+            {/* Bộ 3 Nút Chuyển Đổi Phương Thức Cào (Mode Selector) */}
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1">
+              <span className="font-medium text-zinc-300">
+                Phương thức cào dữ liệu áp dụng:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  {
+                    id: "auto",
+                    title: "⚡ Tự động (Khuyên dùng)",
+                    desc: "Google & TikWM chính (0đ) · Apify làm dự phòng khi lỗi",
+                  },
+                  {
+                    id: "direct_only",
+                    title: "🆓 100% Miễn phí (0đ Quota)",
+                    desc: "Chỉ dùng Google Bridge & TikWM, khóa hoàn toàn Apify",
+                  },
+                  {
+                    id: "apify_force",
+                    title: "🎯 Ép dùng Apify Actor",
+                    desc: "Bắt buộc cào sâu qua Apify scraper",
+                  },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => {
+                      const newMode = m.id as "auto" | "direct_only" | "apify_force";
+                      setScrapeMode(newMode);
+                      push(`Đã kích hoạt: ${m.title}`);
+                      fetchTrendsData(regionFilter, categoryFilter, activeKeyword, newMode, true);
+                    }}
+                    title={m.desc}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
+                      scrapeMode === m.id
+                        ? "bg-indigo-600 text-white border-indigo-400 shadow-md ring-2 ring-indigo-500/50"
+                        : "bg-[var(--nq-surface)] text-[var(--nq-muted)] border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] hover:text-white"
+                    }`}
+                  >
+                    <span>{m.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* KHỐI 1: TÙY CHỈNH TỰ ĐỘNG QUÉT & BẢO VỆ CHỐNG QUÁ TẢI (Chức năng 4) */}
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-4">
             <div className="flex items-center gap-3">
@@ -580,7 +773,7 @@ export default function PageQuanPage() {
 
               {/* Nút Cào Độc Quyền theo Nguồn */}
               <button
-                onClick={() => fetchTrendsData(regionFilter, categoryFilter, activeKeyword, true)}
+                onClick={() => fetchTrendsData(regionFilter, categoryFilter, activeKeyword, scrapeMode, true)}
                 disabled={isScanning}
                 className="inline-flex items-center gap-1.5 rounded bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white shadow-md hover:bg-emerald-500 transition-all cursor-pointer disabled:opacity-50"
               >
@@ -600,10 +793,10 @@ export default function PageQuanPage() {
             <div className="flex flex-wrap gap-2 pt-1">
               {[
                 { id: "all", label: "🌐 Tất cả nguồn" },
-                { id: "tiktok_vn", label: "🎵 TikTok VN (Video & Comment)" },
-                { id: "threads_vn", label: "🧵 Threads & Gen Z" },
-                { id: "google_vn", label: "🔥 Google Trends VN" },
-                { id: "star_vn", label: "✨ Showbiz & KOLs" },
+                { id: "tiktok_vn", label: "🎵 TikTok Việt Nam" },
+                { id: "threads_vn", label: "🧵 Meta Threads" },
+                { id: "google_vn", label: "🔥 Google Trends" },
+                { id: "star_vn", label: "✨ Showbiz & Báo chí" },
                 { id: "tiktok_global", label: "🌐 Quốc tế (Global)" },
               ].map((p) => (
                 <button
@@ -777,6 +970,15 @@ export default function PageQuanPage() {
                       </span>
                       <div className="flex items-center gap-2">
                         <button
+                          type="button"
+                          onClick={() => useTrendForDraft(selectedTrend)}
+                          className="px-2.5 py-1 rounded text-xs font-bold transition cursor-pointer flex items-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white shadow"
+                          title="Tạo bài viết Fanpage ăn theo xu hướng này với AI"
+                        >
+                          <span>✨</span>
+                          AI Viết Bài
+                        </button>
+                        <button
                           onClick={() => toggleSaveTrend(selectedTrend)}
                           className={`px-2.5 py-1 rounded text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
                             savedTrends.some((st) => st.id === selectedTrend.id)
@@ -813,22 +1015,42 @@ export default function PageQuanPage() {
                       </div>
 
                       <div className="flex flex-wrap gap-2 pt-1 border-t border-emerald-500/20">
-                        <a
-                          href={selectedTrend.link_goc}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded bg-[var(--nq-surface)] px-3 py-1 text-xs font-bold text-[var(--nq-primary)] border border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] transition"
-                        >
-                          🔗 Xem Nguồn Gốc ↗
-                        </a>
-                        {selectedTrend.tiktok_url && (
+                        {selectedTrend.link_goc?.includes("threads.net") ? (
+                          <a
+                            href={selectedTrend.link_goc}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded bg-zinc-900 px-3 py-1 text-xs font-bold text-white border border-zinc-700 hover:bg-zinc-800 transition"
+                          >
+                            🧵 Mở Trên Threads ↗
+                          </a>
+                        ) : selectedTrend.link_goc?.includes("tiktok.com") ? (
+                          <a
+                            href={selectedTrend.link_goc}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded bg-[#fe2c55] px-3 py-1 text-xs font-bold text-white hover:bg-[#e0264b] transition"
+                          >
+                            🎬 Mở Trên TikTok ↗
+                          </a>
+                        ) : (
+                          <a
+                            href={selectedTrend.link_goc}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded bg-[var(--nq-surface)] px-3 py-1 text-xs font-bold text-[var(--nq-primary)] border border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] transition"
+                          >
+                            🔗 Xem Nguồn Gốc ↗
+                          </a>
+                        )}
+                        {selectedTrend.tiktok_url && !selectedTrend.link_goc?.includes("tiktok.com") && !selectedTrend.link_goc?.includes("threads.net") && (
                           <a
                             href={selectedTrend.tiktok_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 rounded bg-[#fe2c55] px-3 py-1 text-xs font-bold text-white hover:bg-[#e0264b] transition"
                           >
-                            🎬 Mở Trên TikTok ↗
+                            🎬 Tìm Trên TikTok ↗
                           </a>
                         )}
                         {selectedTrend.tiktok_tag_url && (
@@ -838,7 +1060,7 @@ export default function PageQuanPage() {
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 rounded bg-[var(--nq-surface)] px-3 py-1 text-xs font-bold text-[var(--nq-primary)] border border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] transition"
                           >
-                            🏷️ Hashtag TikTok ↗
+                            🏷️ {selectedTrend.nguon_goc === "threads_vn" ? "Hashtag Threads ↗" : "Hashtag TikTok ↗"}
                           </a>
                         )}
                       </div>
@@ -881,15 +1103,19 @@ export default function PageQuanPage() {
                     </div>
                   )}
 
-                  {/* Khối 3: TOP BÌNH LUẬN THẬT CÀO TRỰC TIẾP TỪ TIKTOK */}
+                  {/* Khối 3: TOP BÌNH LUẬN / THẢO LUẬN THẬT CÀO TỪ NỀN TẢNG */}
                   {selectedTrend.binh_luan_that_tiktok && selectedTrend.binh_luan_that_tiktok.length > 0 && (
                     <div className="space-y-2 rounded border border-emerald-500/40 bg-emerald-500/5 p-4">
                       <div className="flex items-center justify-between">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                          💬 Top Bình Luận Thật Cào Trực Tiếp Từ Video TikTok
+                          💬 {selectedTrend.nguon_goc === "threads_vn"
+                            ? "Top Thảo Luận & Phản Hồi Thật Từ Threads"
+                            : selectedTrend.nguon_goc === "tiktok_vn"
+                            ? "Top Bình Luận Thật Cào Trực Tiếp Từ TikTok"
+                            : "Thảo Luận Thật Từ Người Dùng"}
                         </h4>
                         <span className="text-[10px] text-emerald-400/90 font-mono bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
-                          100% Cào từ TikTok
+                          100% Cào từ {selectedTrend.nguon_goc === "threads_vn" ? "Threads" : selectedTrend.nguon_goc === "tiktok_vn" ? "TikTok" : "Nền tảng"}
                         </span>
                       </div>
                       <div className="space-y-1.5">
@@ -908,7 +1134,7 @@ export default function PageQuanPage() {
                   {/* Khối 4: Giải Mã Tâm Lý Giới Trẻ */}
                   <div className="space-y-1 rounded border border-purple-500/30 bg-purple-500/5 p-4">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-purple-400">
-                      🧠 Giải Mã Tâm Lý Giới Trẻ / Gen Z
+                      🧠 Giải Mã Tâm Lý Khách Hàng / Giới Trẻ
                     </h4>
                     <p className="text-sm leading-relaxed text-[var(--nq-primary)]">
                       {selectedTrend.tam_ly_gioi_tre}
@@ -940,9 +1166,9 @@ export default function PageQuanPage() {
                     </div>
 
                     <div className="flex items-center gap-1.5 text-[var(--nq-muted)]">
-                      <span>Nền tảng lan tỏa:</span>
-                      <strong className="text-[var(--nq-primary)]">
-                        {selectedTrend.nen_tang_lan_toa.join(", ")}
+                      <span>Nền tảng cào dữ liệu:</span>
+                      <strong className="text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/30">
+                        {selectedTrend.nen_tang_lan_toa?.[0] || (selectedTrend.nguon_goc === "threads_vn" ? "Meta Threads" : selectedTrend.nguon_goc === "tiktok_vn" ? "TikTok Việt Nam" : "Google Trends")}
                       </strong>
                     </div>
                   </div>
@@ -952,6 +1178,211 @@ export default function PageQuanPage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB 1.5: KHO XU HƯỚNG ĐÃ LƯU (DEDICATED SAVED TRENDS PAGE) */}
+      {tab === "saved_trends" && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border-2 border-amber-500/30 bg-gradient-to-r from-amber-950/40 via-zinc-900/60 to-orange-950/30 p-5 shadow-lg">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⭐</span>
+              <div>
+                <h3 className="text-base font-bold text-amber-300">
+                  Kho Xu Hướng Đã Lưu Cho Kế Hoạch Quán ({savedTrends.length})
+                </h3>
+                <p className="text-xs text-zinc-400">
+                  Danh mục các trào lưu, video và công thức bạn đã đánh dấu để chuẩn bị menu, sự kiện hoặc bài đăng Fanpage.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {savedTrends.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (confirm("Bạn có chắc muốn xóa tất cả xu hướng đã lưu?")) {
+                      setSavedTrends([]);
+                      localStorage.removeItem("nhp_saved_trends_v2");
+                      push("Đã xóa toàn bộ xu hướng đã lưu.");
+                    }
+                  }}
+                  className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/20 transition cursor-pointer"
+                >
+                  🗑️ Xóa Tất Cả
+                </button>
+              )}
+              <button
+                onClick={() => setTab("trends")}
+                className="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-bold text-black hover:bg-amber-400 transition cursor-pointer shadow"
+              >
+                + Khám Phá Thêm Xu Hướng Mới
+              </button>
+            </div>
+          </div>
+
+          {savedTrends.length === 0 ? (
+            <div className="rounded-xl border-2 border-dashed border-zinc-800 p-12 text-center space-y-4">
+              <span className="text-4xl">📂</span>
+              <h4 className="text-base font-bold text-zinc-300">Kho lưu trữ xu hướng đang trống</h4>
+              <p className="text-xs text-zinc-400 max-w-md mx-auto">
+                Khi lướt trên tab <strong>&quot;Radar Trí Tuệ Xu Hướng&quot;</strong>, hãy bấm biểu tượng ⭐ trên bất kỳ bài viết nào để lưu vào kho này và tiện xem lại bất cứ lúc nào!
+              </p>
+              <button
+                onClick={() => setTab("trends")}
+                className="rounded-lg bg-[var(--nq-primary)] px-5 py-2 text-xs font-bold text-black hover:opacity-90 transition cursor-pointer"
+              >
+                🚀 Đến Radar Cào Xu Hướng Ngay
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              {/* Danh sách Trend đã lưu */}
+              <div className="space-y-3 lg:col-span-5 max-h-[820px] overflow-y-auto pr-1">
+                {savedTrends.map((t) => {
+                  const isSelected = selectedTrend?.id === t.id;
+                  const platformBadge =
+                    t.nguon_goc === "threads_vn"
+                      ? "🧵 Threads"
+                      : t.nguon_goc === "tiktok_vn"
+                      ? "🎵 TikTok VN"
+                      : t.nguon_goc === "google_vn"
+                      ? "🔥 Google VN"
+                      : t.nguon_goc === "star_vn"
+                      ? "✨ Showbiz"
+                      : "🌐 Global";
+
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => setSelectedTrend(t)}
+                      className={`relative rounded-lg border-2 p-4 transition-all cursor-pointer ${
+                        isSelected
+                          ? "border-amber-400 bg-[var(--nq-surface-hi)] shadow-lg shadow-amber-500/10"
+                          : "border-[var(--nq-dim)] bg-[var(--nq-surface)] hover:border-amber-400/50 hover:bg-[var(--nq-surface-hi)]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded bg-[var(--nq-dim)] px-2 py-0.5 text-[10px] font-bold text-[var(--nq-primary)] font-mono">
+                            {platformBadge}
+                          </span>
+                          <span className="rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold">
+                            ⭐ ĐÃ LƯU
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={(e) => toggleSaveTrend(t, e)}
+                          className="text-amber-400 hover:text-amber-300 text-sm p-0.5 transition cursor-pointer"
+                          title="Bỏ lưu khỏi kho"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <h4 className="mt-2 text-sm font-bold text-[var(--nq-primary)] line-clamp-2">
+                        {t.tieu_de}
+                      </h4>
+
+                      <p className="mt-1 text-xs text-[var(--nq-muted)] line-clamp-2 italic">
+                        &quot;{t.trich_doan_noi_dung_that || t.diem_nhan_dac_biet}&quot;
+                      </p>
+
+                      <div className="mt-3 flex items-center justify-between border-t border-[var(--nq-dim)] pt-2 text-[11px]">
+                        <span className="font-mono text-emerald-400 font-bold">
+                          {t.luot_tiep_can || "Tương tác cao"}
+                        </span>
+                        <span className="font-bold text-amber-300">
+                          Điểm viral: {t.diem_tiem_nang_viral}/100
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Chi tiết Trend đã chọn */}
+              <div className="space-y-4 rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-5 lg:col-span-7">
+                {selectedTrend ? (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--nq-dim)] pb-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[var(--nq-primary)]">
+                          {selectedTrend.tieu_de}
+                        </h3>
+                        <p className="text-xs text-[var(--nq-muted)] mt-0.5">
+                          Từ khóa chính: <strong className="text-amber-300">#{selectedTrend.cum_tu_khoa_viral}</strong>
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={(e) => toggleSaveTrend(selectedTrend, e)}
+                        className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300 hover:bg-amber-500/20 transition cursor-pointer"
+                      >
+                        ⭐ Bỏ Lưu Xu Hướng Này
+                      </button>
+                    </div>
+
+                    {/* Nội dung chi tiết & Trích đoạn */}
+                    {selectedTrend.trich_doan_noi_dung_that && (
+                      <div className="space-y-2 rounded border border-emerald-500/30 bg-emerald-500/5 p-4">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                          📰 Trích Đoạn Nội Dung Gốc
+                        </h4>
+                        <p className="text-sm leading-relaxed text-[var(--nq-primary)] italic">
+                          &quot;{selectedTrend.trich_doan_noi_dung_that}&quot;
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Ngữ Cảnh Sử Dụng & Gợi Ý Cho Quán */}
+                    <div className="space-y-1 rounded border border-blue-500/30 bg-blue-500/5 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-blue-400">
+                        💡 Ngữ Cảnh Sử Dụng & Kế Hoạch Áp Dụng Cho Quán
+                      </h4>
+                      <p className="text-sm leading-relaxed text-[var(--nq-primary)]">
+                        {selectedTrend.ngu_canh_su_dung}
+                      </p>
+                    </div>
+
+                    {/* Tâm lý khách hàng */}
+                    <div className="space-y-1 rounded border border-purple-500/30 bg-purple-500/5 p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-purple-400">
+                        🧠 Giải Mã Tâm Lý Khách Hàng / Giới Trẻ
+                      </h4>
+                      <p className="text-sm leading-relaxed text-[var(--nq-primary)]">
+                        {selectedTrend.tam_ly_gioi_tre}
+                      </p>
+                    </div>
+
+                    {/* Nút hành động trực tiếp */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--nq-dim)] pt-4">
+                      <div className="flex items-center gap-1.5 text-xs text-[var(--nq-muted)]">
+                        <span>Nguồn gốc:</span>
+                        <strong className="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                          {selectedTrend.nen_tang_lan_toa?.[0] || (selectedTrend.nguon_goc === "threads_vn" ? "Meta Threads" : "TikTok Việt Nam")}
+                        </strong>
+                      </div>
+
+                      {selectedTrend.link_goc && (
+                        <a
+                          href={selectedTrend.link_goc}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded bg-[var(--nq-surface)] px-3 py-1.5 text-xs font-bold text-[var(--nq-primary)] border border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] transition"
+                        >
+                          🔗 Mở Link Bài Gốc ↗
+                        </a>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <Empty>Chọn một xu hướng đã lưu ở danh sách bên trái để xem chi tiết.</Empty>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1033,12 +1464,77 @@ export default function PageQuanPage() {
       {/* TAB 3: NHÁP BÀI FANPAGE */}
       {tab === "drafts" && (
         <div className="space-y-4">
-          <div className="border-2 border-[var(--nq-dim)] p-4">
-            <h3 className="mb-2 text-sm font-bold">Soạn nháp bài đăng mới</h3>
+          {/* AI Auto-generator Box */}
+          <div className="border-2 border-indigo-500/40 bg-gradient-to-r from-indigo-950/30 to-purple-950/30 p-4 rounded shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-indigo-300 flex items-center gap-2">
+                <span>✨</span> AI Tự Động Soạn Thảo Bài Đăng (Gemini AI)
+              </h3>
+              <span className="text-xs text-[var(--nq-muted)] bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                Tự động chuẩn hóa văn phong, emoji & Call-To-Action
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div className="md:col-span-2">
+                <Field label="Chủ đề / Ý tưởng bài viết">
+                  <Input
+                    placeholder="VD: Cà phê trứng mùa thu, Khuyến mãi combo sáng, Bắt trend matcha..."
+                    value={aiTopic}
+                    onChange={(e) => setAiTopic(e.target.value)}
+                  />
+                </Field>
+              </div>
+              <div>
+                <Field label="Giọng điệu">
+                  <select
+                    className="w-full bg-[var(--nq-bg)] border border-[var(--nq-dim)] text-xs text-[var(--nq-primary)] p-2 rounded"
+                    value={aiTone}
+                    onChange={(e) => setAiTone(e.target.value)}
+                  >
+                    <option value="than thien">Thân thiện, gần gũi</option>
+                    <option value="truyen cam hung">Truyền cảm hứng, nghệ thuật</option>
+                    <option value="hai huoc">Hài hước, Gen Z, bắt trend</option>
+                    <option value="trang trong">Trang trọng, thông báo</option>
+                  </select>
+                </Field>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-1.5 text-xs items-center">
+                <span className="text-[var(--nq-muted)] mr-1">Gợi ý nhanh:</span>
+                {[
+                  "Cà phê specialty rang xay",
+                  "Combo bánh ngọt & trà thơm",
+                  "Không gian yên tĩnh làm việc",
+                  "Khuyến mãi cuối tuần",
+                ].map((sug) => (
+                  <button
+                    key={sug}
+                    type="button"
+                    onClick={() => setAiTopic(sug)}
+                    className="px-2 py-0.5 bg-[var(--nq-dim)]/60 hover:bg-indigo-500/20 text-[var(--nq-muted)] hover:text-indigo-300 rounded text-xs transition-colors"
+                  >
+                    + {sug}
+                  </button>
+                ))}
+              </div>
+              <Btn
+                variant="primary"
+                onClick={() => generateAiDraft()}
+                disabled={aiGenerating || !aiTopic.trim()}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
+              >
+                {aiGenerating ? "Đang sinh bài..." : "✨ AI Soạn & Thêm Nháp"}
+              </Btn>
+            </div>
+          </div>
+
+          <div className="border-2 border-[var(--nq-dim)] p-4 rounded">
+            <h3 className="mb-2 text-sm font-bold">Soạn nháp bài đăng thủ công</h3>
             <Field label="Nội dung bài đăng">
               <Textarea
-                rows={6}
-                placeholder="Nhập nội dung bài đăng..."
+                rows={4}
+                placeholder="Nhập nội dung bài đăng nếu muốn tự viết..."
                 value={draftText}
                 onChange={(e) => setDraftText(e.target.value)}
               />
@@ -1053,15 +1549,19 @@ export default function PageQuanPage() {
             {drafts.length === 0 ? (
               <Empty>Chưa có bài nháp nào.</Empty>
             ) : (
-              drafts.map((d) => (
-                <div key={d.id} className="border border-[var(--nq-dim)] p-3">
+              drafts.map((d: any) => (
+                <div key={d.id} className="border border-[var(--nq-dim)] p-3 rounded">
                   <div className="flex items-center justify-between text-xs text-[var(--nq-muted)]">
-                    <span>Người tạo: {d.nguoi_tao}</span>
-                    <span>Trạng thái: {d.trang_thai}</span>
+                    <span>Người tạo: <strong className="text-[var(--nq-primary)]">{d.nguoi_tao || d.by || "Hệ thống"}</strong></span>
+                    <span className="px-2 py-0.5 rounded bg-[var(--nq-dim)]/40 font-mono text-[11px]">
+                      {d.trang_thai === "da_dang" ? "✅ Đã đăng live" : d.trang_thai === "da_dang_mock" ? "✅ Đã đăng (Mock)" : d.trang_thai === "da_duyet" ? "✅ Đã duyệt" : d.trang_thai === "tu_choi" ? "❌ Đã từ chối" : "⏳ Chờ duyệt"}
+                    </span>
                   </div>
-                  <p className="my-2 text-xs text-[var(--nq-primary)]">{d.noi_dung}</p>
-                  {manager && d.trang_thai === "cho_duyet" ? (
-                    <div className="flex gap-2">
+                  <p className="my-2 text-xs text-[var(--nq-primary)] whitespace-pre-line leading-relaxed border-l-2 border-indigo-500/30 pl-3 py-1">
+                    {d.noi_dung}
+                  </p>
+                  {manager && (d.trang_thai === "cho_duyet" || d.trang_thai === "nhap") ? (
+                    <div className="flex gap-2 pt-2 border-t border-[var(--nq-dim)]/50">
                       <Btn variant="primary" onClick={() => decideDraft(d.id, "duyet")}>
                         Duyệt & Đăng
                       </Btn>

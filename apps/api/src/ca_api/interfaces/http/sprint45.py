@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime
+
+try:
+    from datetime import UTC, datetime
+except ImportError:
+    from datetime import datetime, timezone
+    UTC = timezone.utc
 from pathlib import Path
 from typing import Annotated, Any, cast
 
@@ -15,7 +20,6 @@ from ca_agents.ag_sop.context import load_all_buoc
 from ca_agents.ag_sop.ops import default_ops_context, ops_context_from_dict
 from ca_agents.ag_waste import cluster as cluster_waste
 from ca_gates import present_conflict, validate_num
-from ca_ops import load_template
 from ca_playbook import (
     count_luat_that_quan,
     de_xuat,
@@ -45,7 +49,6 @@ from ca_api.orchestration import Clock
 from ca_api.persist import audit_add, audit_list, kv_get, kv_mutate, kv_set, list_users
 from ca_api.persist import session as auth_session
 
-UTC = UTC
 router = APIRouter()
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"

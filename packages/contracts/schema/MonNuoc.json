@@ -19,6 +19,13 @@
       "title": "An",
       "type": "boolean"
     },
+    "hinh_url": {
+      "default": "",
+      "description": "URL ảnh món (hoặc /api/v1/menu/{id}/anh)",
+      "maxLength": 500,
+      "title": "Hinh Url",
+      "type": "string"
+    },
     "bom": {
       "additionalProperties": {
         "type": "number"

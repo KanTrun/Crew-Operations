@@ -97,7 +97,7 @@ export function StatusStrip({ status, meta }: { status: ReactNode; meta?: ReactN
     >
       <div className="nq-dash-strip-glow" aria-hidden />
       <div className="nq-dash-strip-text">
-        <p className="nq-dash-strip-kicker">NHỊP QUÁN · Ca hôm nay</p>
+        <h1 className="nq-dash-strip-kicker">Quán hôm nay · NHỊP QUÁN</h1>
         <p className="nq-dash-strip-status">{status}</p>
         {meta ? <p className="nq-dash-strip-meta">{meta}</p> : null}
       </div>

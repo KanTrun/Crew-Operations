@@ -208,7 +208,7 @@ def _map_item(
         luot_tiep_can=(f"{_format_count(play_count)} views | {_format_count(digg_count)} tim"),
         trich_doan_noi_dung_that=f"Caption: {text[:200]}",
         binh_luan_that_tiktok=_format_comments(item.get("comments") or []),
-        nen_tang_lan_toa=["TikTok VN", "Facebook Reels", "YouTube Shorts"],
+        nen_tang_lan_toa=["TikTok Việt Nam"],
         tu_khoa_hashtag=hashtags,
         is_live_scraped=True,
     )

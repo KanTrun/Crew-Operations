@@ -9,9 +9,8 @@ from typing import Any
 
 from ca_gates.vf_rule import validate_rule
 
-from ca_playbook.sua import list_sua
-
 from ca_playbook.derive import derive_rule_from_edits
+from ca_playbook.sua import list_sua
 
 ROOT = Path(__file__).resolve().parents[4]
 STORE = ROOT / "data" / "out" / "cam_nang.json"

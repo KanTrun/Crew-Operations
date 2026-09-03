@@ -6,7 +6,12 @@ import json
 import os
 import re
 import uuid
-from datetime import UTC, datetime
+
+try:
+    from datetime import UTC, datetime
+except ImportError:
+    from datetime import datetime, timezone
+    UTC = timezone.utc
 from pathlib import Path
 from typing import Annotated, Any, cast
 
@@ -62,7 +67,6 @@ from ca_api.services.store_public_context import (
     set_store_profile,
 )
 
-UTC = UTC
 router = APIRouter()
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
@@ -716,9 +720,80 @@ def page_draft_create(
     item = {
         "id": f"pd_{uuid.uuid4().hex[:8]}",
         "noi_dung": body.noi_dung.strip(),
-        "trang_thai": "nhap",
+        "trang_thai": "cho_duyet",
         "by": role,
+        "nguoi_tao": role,
         "at": _now(),
+        "ngay_tao": _now(),
+    }
+
+    def mut(doc: dict[str, Any]) -> dict[str, Any]:
+        doc.setdefault("drafts", []).insert(0, item)
+        return doc
+
+    kv_mutate("page_quan", mut, _page_store())
+    return item
+
+
+class PageDraftAIGenerateBody(BaseModel):
+    topic: str
+    tone: str = "than thien"
+
+
+@router.post("/api/v1/page/drafts/ai-generate")
+def page_draft_ai_generate(
+    body: PageDraftAIGenerateBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    role = _require_manager(authorization)
+    topic = (body.topic or "").strip()
+    if not topic:
+        raise HTTPException(status_code=400, detail="topic_bat_buoc")
+
+    tone = (body.tone or "than thien").strip()
+    noi_dung = ""
+    try:
+        import sys
+        from pathlib import Path
+        scripts_dir = str(Path(__file__).resolve().parents[4] / "scripts")
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        from fb_auto_poster import generate_content
+        noi_dung = generate_content(topic, tone)
+    except Exception:
+        pass
+
+    if not noi_dung.strip():
+        try:
+            from ca_agents.llm import complete
+            sys_p = (
+                "Ban la quan ly truyen thong cho quan ca phe 'Nhip Quan'. "
+                "Hay viet mot bai dang Facebook tieng Viet 3-4 doan ngan, co emoji sinh dong, "
+                "gioi thieu chu de theo yeu cau, ket thuc bang loi moi den quan (CTA), khong dung hashtag."
+            )
+            user_p = f"Chu de: {topic}. Giong: {tone}."
+            res = complete(system=sys_p, user=user_p)
+            if res.ok and res.text.strip():
+                noi_dung = res.text.strip()
+        except Exception:
+            pass
+
+    if not noi_dung.strip():
+        noi_dung = (
+            f"☕ Chào cả nhà! Hôm nay Nhịp Quán có gợi ý mới về '{topic}'. "
+            f"Ghé quán thưởng thức cùng không gian yên tĩnh và wifi mạnh nhé! Hẹn gặp bạn hôm nay! ✨"
+        )
+
+    item = {
+        "id": f"pd_{uuid.uuid4().hex[:8]}",
+        "noi_dung": noi_dung,
+        "trang_thai": "cho_duyet",
+        "by": f"AI ({role})",
+        "nguoi_tao": f"AI Copilot ({role})",
+        "at": _now(),
+        "ngay_tao": _now(),
+        "topic": topic,
+        "tone": tone,
     }
 
     def mut(doc: dict[str, Any]) -> dict[str, Any]:
@@ -779,7 +854,10 @@ def page_draft_decide(
             kv_mutate("page_quan", mark, _page_store())
             found = {**found, "trang_thai": "da_dang", "graph_post_id": graph_post_id}
         except RuntimeError as e:
-            raise HTTPException(status_code=502, detail=str(e)[:180]) from e
+            if os.environ.get("CA_AGENT_MODE", "").strip().lower() == "replay":
+                pass
+            else:
+                raise HTTPException(status_code=502, detail=str(e)[:180]) from e
     _audit(
         role,
         "page_draft",

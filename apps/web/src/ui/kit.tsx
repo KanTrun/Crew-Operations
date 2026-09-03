@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { CSSProperties, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes, useCallback, useEffect, useRef, useState } from "react";
+import { API } from "../lib/api";
 
 export const btnPrimary: CSSProperties = {};
 export const btnGhost: CSSProperties = {};
@@ -360,10 +361,88 @@ export function Loading({
 }
 
 export function AuthGate() {
+  const [loggingIn, setLoggingIn] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function quickLogin(username: string) {
+    setLoggingIn(username);
+    setError(null);
+    try {
+      const res = await fetch(`${API}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password: "nhipquan" }),
+      });
+      if (!res.ok) {
+        setError("Không thể đăng nhập. Kiểm tra backend API.");
+        return;
+      }
+      const data = (await res.json()) as {
+        token: string;
+        role: string;
+        display_name: string;
+        nv_id: string;
+      };
+      sessionStorage.setItem("nq_token", data.token);
+      sessionStorage.setItem("nq_role", data.role);
+      sessionStorage.setItem("nq_name", data.display_name);
+      sessionStorage.setItem("nq_nv", data.nv_id);
+      window.location.reload();
+    } catch {
+      setError("Lỗi kết nối máy chủ API.");
+    } finally {
+      setLoggingIn(null);
+    }
+  }
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-[var(--nq-bg)]">
-      <h1 className="text-4xl font-black uppercase tracking-tighter text-[var(--nq-fg)] mb-4">Cần phiên làm việc</h1>
-      <p className="text-xl text-[var(--nq-dim)] mb-8 max-w-md">Trang này đọc dữ liệu quán qua phiên của bạn. Đăng nhập để tiếp tục.</p>
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-[var(--nq-bg)]">
+      <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-[var(--nq-fg)] mb-3">Cần phiên làm việc</h1>
+      <p className="text-base md:text-lg text-[var(--nq-dim)] mb-6 max-w-md">Trang này đọc dữ liệu quán qua phiên của bạn. Đăng nhập để tiếp tục.</p>
+
+      {/* Nút 1-Chạm Đăng Nhập Nhanh */}
+      <div className="mb-6 p-4 rounded-xl border border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] max-w-md w-full text-left space-y-3 shadow-lg">
+        <p className="text-xs font-bold uppercase tracking-wider text-[var(--nq-copper)] text-center">
+          ⚡ Vào nhanh 1-chạm (Tài khoản thử nghiệm):
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => quickLogin("lan")}
+            disabled={Boolean(loggingIn)}
+            className="flex items-center gap-2.5 p-3 rounded-lg bg-[var(--nq-surface)] border border-amber-500/40 hover:bg-amber-500/10 text-xs font-bold text-amber-300 transition text-left cursor-pointer disabled:opacity-50"
+          >
+            <span className="text-xl">👔</span>
+            <div>
+              <div className="text-sm">Lan Nguyễn</div>
+              <div className="text-[10px] text-zinc-400 font-normal">Quản lý ca (Trưởng ca)</div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => quickLogin("hung")}
+            disabled={Boolean(loggingIn)}
+            className="flex items-center gap-2.5 p-3 rounded-lg bg-[var(--nq-surface)] border border-emerald-500/40 hover:bg-emerald-500/10 text-xs font-bold text-emerald-300 transition text-left cursor-pointer disabled:opacity-50"
+          >
+            <span className="text-xl">👑</span>
+            <div>
+              <div className="text-sm">Hùng Trần</div>
+              <div className="text-[10px] text-zinc-400 font-normal">Chủ quán (Toàn quyền)</div>
+            </div>
+          </button>
+        </div>
+        {loggingIn && (
+          <p className="text-xs text-amber-400 text-center animate-pulse pt-1">
+            Đang đăng nhập tài khoản @{loggingIn}…
+          </p>
+        )}
+        {error && (
+          <p className="text-xs text-red-400 text-center pt-1">
+            {error}
+          </p>
+        )}
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-4">
         <BtnLink href="/login" className="nq-ink-on-solid bg-[var(--nq-copper)] font-black uppercase tracking-widest py-4 px-8 border-2 border-[var(--nq-copper)] hover:bg-transparent hover:text-[var(--nq-copper)] transition-all shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-copper-dim)]">
           Đăng nhập

@@ -1,0 +1,126 @@
+{
+  "$defs": {
+    "ActionProposalStatus": {
+      "enum": [
+        "draft",
+        "ready_for_approval",
+        "executed",
+        "rejected",
+        "expired",
+        "stale_rejected"
+      ],
+      "title": "ActionProposalStatus",
+      "type": "string"
+    },
+    "CopilotIntent": {
+      "enum": [
+        "SCHEDULE_SOLVE",
+        "APPROVE_SHIFT_SWAP",
+        "GENERATE_DAILY_BRIEF",
+        "QUERY_SOP",
+        "ANALYZE_WASTE",
+        "CREATE_RULE_PROPOSAL",
+        "INVENTORY_RESTOCK_CHECK",
+        "SEND_MAIL",
+        "OUT_OF_SCOPE"
+      ],
+      "title": "CopilotIntent",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "action_id": {
+      "title": "Action Id",
+      "type": "string"
+    },
+    "intent": {
+      "$ref": "#/$defs/CopilotIntent"
+    },
+    "status": {
+      "$ref": "#/$defs/ActionProposalStatus",
+      "default": "draft"
+    },
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    },
+    "explanation": {
+      "default": "",
+      "title": "Explanation",
+      "type": "string"
+    },
+    "payload_diff": {
+      "additionalProperties": true,
+      "title": "Payload Diff",
+      "type": "object"
+    },
+    "requires_confirmation": {
+      "default": true,
+      "title": "Requires Confirmation",
+      "type": "boolean"
+    },
+    "store_id": {
+      "default": "quan_01",
+      "title": "Store Id",
+      "type": "string"
+    },
+    "created_by": {
+      "title": "Created By",
+      "type": "string"
+    },
+    "confidence": {
+      "default": 1.0,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "data_snapshot_hash": {
+      "default": "",
+      "title": "Data Snapshot Hash",
+      "type": "string"
+    },
+    "expires_at": {
+      "title": "Expires At",
+      "type": "string"
+    },
+    "created_at": {
+      "default": "",
+      "title": "Created At",
+      "type": "string"
+    },
+    "executed_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Executed At"
+    },
+    "amended_from": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Amended From"
+    }
+  },
+  "required": [
+    "action_id",
+    "intent",
+    "summary",
+    "created_by",
+    "expires_at"
+  ],
+  "title": "ActionProposal",
+  "type": "object"
+}

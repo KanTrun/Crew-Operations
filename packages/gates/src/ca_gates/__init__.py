@@ -10,6 +10,8 @@ from ca_gates.vf_conflict import ConflictResult, present_conflict
 from ca_gates.vf_num import NumResult, validate_num
 from ca_gates.vf_rule import RuleResult, validate_rule
 from ca_gates.vf_schema import SchemaResult, validate_schema
+from ca_gates.vf_scope import ScopeResult, validate_scope
+from ca_gates.vf_stale import StaleResult, compute_snapshot_hash, validate_stale
 from ca_gates.vf_trace import TraceResult, validate_trace
 
 __all__ = [
@@ -20,6 +22,9 @@ __all__ = [
     "validate_conf",
     "validate_num",
     "validate_rule",
+    "validate_scope",
+    "validate_stale",
+    "compute_snapshot_hash",
     "present_conflict",
     "SchemaResult",
     "TraceResult",
@@ -27,6 +32,8 @@ __all__ = [
     "NumResult",
     "RuleResult",
     "ConflictResult",
+    "ScopeResult",
+    "StaleResult",
 ]
 
 

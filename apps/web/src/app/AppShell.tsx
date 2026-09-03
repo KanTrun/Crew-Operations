@@ -7,6 +7,7 @@ import { canAccess, clearSession, getName, getRole, getToken, isChuQuan, isManag
 import { Icon, iconForHref } from "../ui/icons";
 import { Tour } from "../ui/tour";
 import { Logo } from "../ui/Logo";
+import { CopilotPane } from "../ui/copilot/CopilotPane";
 import { motion, AnimatePresence } from "framer-motion";
 
 /** `short` là nhãn cho thanh dưới dạng pill — chỗ hẹp, chữ dài sẽ gãy dòng. */
@@ -224,6 +225,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </nav>
       ) : null}
+      {token ? <CopilotPane /> : null}
       <Tour active={Boolean(token) && path === "/hom-nay"} />
     </div>
   );

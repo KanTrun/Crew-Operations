@@ -118,3 +118,67 @@ def run_actor_sync(
         raise ApifyError(f"Apify dataset {dataset_id} rỗng")
     logger.info("apify_run_done run_id=%s items=%d", run_id, len(items))
     return items
+
+
+def get_apify_usage() -> dict[str, Any]:
+    """Fetch current Apify quota, monthly spend & usage status."""
+    token = os.getenv("APIFY_TOKEN", "").strip()
+    tiktok_actor = os.getenv("APIFY_TIKTOK_ACTOR_ID", "clockworks/tiktok-scraper")
+    threads_actor = os.getenv("APIFY_THREADS_ACTOR_ID", "curious_coder/threads-scraper")
+
+    if not token:
+        return {
+            "has_token": False,
+            "username": "N/A",
+            "plan": "Chưa cấu hình APIFY_TOKEN",
+            "monthly_limit_usd": 5.0,
+            "usage_usd": 0.0,
+            "remaining_usd": 5.0,
+            "usage_percent": 0.0,
+            "status_label": "Chưa cấu hình Token (Đang chạy 100% Miễn Phí)",
+            "active_actors": [tiktok_actor, threads_actor],
+        }
+
+    try:
+        user_url = f"{APIFY_BASE}/users/me?token={token}"
+        user_data = _http_json(user_url, timeout=5)
+        if user_data and "data" in user_data:
+            d = user_data["data"]
+            plan_obj = d.get("plan", {})
+            plan_name = plan_obj.get("name") or "Free Tier ($5.00/tháng)"
+            limit_usd = float(plan_obj.get("maxMonthlyUsageUsd", 5.0))
+            usage_usd = float(d.get("currentMonthlyUsageUsd", 0.0))
+            remaining_usd = max(0.0, limit_usd - usage_usd)
+            pct = round((usage_usd / limit_usd * 100), 1) if limit_usd > 0 else 0.0
+
+            status_label = (
+                "Hoạt động bình thường"
+                if pct < 80
+                else ("Sắp hết hạn mức" if pct < 100 else "Đã vượt hạn mức")
+            )
+            return {
+                "has_token": True,
+                "username": d.get("username", "user"),
+                "plan": plan_name,
+                "monthly_limit_usd": limit_usd,
+                "usage_usd": round(usage_usd, 3),
+                "remaining_usd": round(remaining_usd, 3),
+                "usage_percent": pct,
+                "status_label": status_label,
+                "active_actors": [tiktok_actor, threads_actor],
+            }
+    except Exception as e:
+        logger.warning("Lỗi fetch Apify usage: %s", e)
+
+    return {
+        "has_token": True,
+        "username": "Apify User",
+        "plan": "Free Tier ($5.00/tháng)",
+        "monthly_limit_usd": 5.0,
+        "usage_usd": 0.0,
+        "remaining_usd": 5.0,
+        "usage_percent": 0.0,
+        "status_label": "Đang kết nối (Chế độ dự phòng)",
+        "active_actors": [tiktok_actor, threads_actor],
+    }
+

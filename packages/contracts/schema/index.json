@@ -14,5 +14,7 @@
   "GopYLuuY": "packages/contracts/schema/GopYLuuY.json",
   "AuditTuanThuSop": "packages/contracts/schema/AuditTuanThuSop.json",
   "BanTinCaKhan": "packages/contracts/schema/BanTinCaKhan.json",
-  "HuanLuyenQuanLy": "packages/contracts/schema/HuanLuyenQuanLy.json"
+  "HuanLuyenQuanLy": "packages/contracts/schema/HuanLuyenQuanLy.json",
+  "CopilotMessage": "packages/contracts/schema/CopilotMessage.json",
+  "ActionProposal": "packages/contracts/schema/ActionProposal.json"
 }

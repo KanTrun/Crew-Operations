@@ -398,6 +398,106 @@ def _openai_compat(
     return content
 
 
+def _openai_compat_stream(
+    *,
+    url: str,
+    token: str,
+    model: str,
+    system: str,
+    user: str,
+    timeout_s: float,
+    json_mode: bool,
+) -> Any:
+    """Return a line-iterator over SSE deltas for an OpenAI-compatible endpoint.
+
+    Không đụng `_openai_compat` (vẫn dùng cho tác vụ JSON tất định). Trả về
+    generator các chunk text — chỉ dùng cho copilot streaming.
+    """
+    payload: dict[str, Any] = {
+        "model": model,
+        "temperature": 0,
+        "stream": True,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+    }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("User-Agent", _UA)
+    req.add_header("Authorization", f"Bearer {token}")
+    try:
+        resp = urllib.request.urlopen(req, timeout=timeout_s)
+    except urllib.error.HTTPError as exc:
+        raise _ProviderError(f"http_{exc.code}") from exc
+    except urllib.error.URLError as exc:
+        raise _ProviderError(f"net:{exc.reason}") from exc
+
+    def _iter_lines() -> Any:
+        for raw_line in resp:
+            line = raw_line.decode("utf-8", "replace").strip()
+            if not line or not line.startswith("data:"):
+                continue
+            data = line[len("data:") :].strip()
+            if data == "[DONE]":
+                break
+            try:
+                obj = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            choices = obj.get("choices") or []
+            if not choices:
+                continue
+            delta = (choices[0].get("delta") or {}).get("content")
+            if delta:
+                yield delta
+        resp.close()
+        return
+
+    return _iter_lines()
+
+
+def complete_stream(
+    *,
+    system: str,
+    user: str,
+    task: str = "text",
+    timeout_s: float = 45.0,
+) -> tuple[str, Any]:
+    """Stream a live LLM response (copilot). Trả về (provider, generator chunk text).
+
+    Dàn xếp: groq → openrouter (những provider OpenAI-compatible có stream).
+    Nếu không có credential / replay → trả () rỗng (caller fallback về complete).
+    """
+    ensure_dotenv()
+    router = FreeTierRouter(mode="live")
+    for provider in ("groq", "openrouter"):
+        decision = router.choose(task, set())
+        # Chỉ thử provider OpenAI-compatible đã có key.
+        if decision.provider != provider or not provider_status().get(provider, False):
+            continue
+        try:
+            gen = _openai_compat_stream(
+                url={"groq": "https://api.groq.com/openai/v1/chat/completions", "openrouter": "https://openrouter.ai/api/v1/chat/completions"}[provider],
+                token=os.environ[_KEY_ENV[provider]].strip(),
+                model=_env_model(
+                    "GROQ_MODEL" if provider == "groq" else "OPENROUTER_MODEL",
+                    ("llama-3.1-8b-instant",) if provider == "groq" else _OPENROUTER_MODELS,
+                ),
+                system=system,
+                user=user,
+                timeout_s=timeout_s,
+                json_mode=False,
+            )
+            return provider, gen
+        except _ProviderError:
+            continue
+    return "", ()
+
+
 def _gemini(
     *,
     token: str,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { API } from "../lib/api";
-import { getToken } from "../lib/session";
+import { getToken, setSession } from "../lib/session";
 import { Logo } from "../ui/Logo";
 
 type StaffProfile = {
@@ -88,10 +88,7 @@ export default function HomePage() {
         display_name: string;
         nv_id: string;
       };
-      sessionStorage.setItem("nq_token", data.token);
-      sessionStorage.setItem("nq_role", data.role);
-      sessionStorage.setItem("nq_name", data.display_name);
-      sessionStorage.setItem("nq_nv", data.nv_id);
+      setSession(data.token, data.role, data.display_name, data.nv_id);
 
       router.push("/hom-nay");
     } catch {

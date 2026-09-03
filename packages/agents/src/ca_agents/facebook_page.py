@@ -11,7 +11,12 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import UTC
+
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 from typing import Any
 
 GRAPH = "https://graph.facebook.com/v26.0"
@@ -42,13 +47,43 @@ def _ensure_env() -> None:
     _ENV_LOADED = True
 
 
+_RESOLVED_FB_TOKEN: str | None = None
+_RESOLVED_FB_PID: str | None = None
+
+
 def _token() -> str:
+    global _RESOLVED_FB_TOKEN, _RESOLVED_FB_PID
+    if _RESOLVED_FB_TOKEN:
+        return _RESOLVED_FB_TOKEN
     _ensure_env()
-    return (
+    raw = (
         os.environ.get("NHIPQUAN_FB_PAGE_TOKEN")
         or os.environ.get("FACEBOOK_PAGE_ACCESS_TOKEN")
         or ""
     ).strip()
+    if not raw:
+        return ""
+    try:
+        import json
+        import urllib.request
+        url = f"https://graph.facebook.com/v26.0/me/accounts?access_token={raw}"
+        req = urllib.request.Request(url, headers={"User-Agent": "ca-crew/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+            accounts = data.get("data", [])
+            for p in accounts:
+                if "nhịp quán" in p.get("name", "").lower():
+                    _RESOLVED_FB_TOKEN = p["access_token"]
+                    _RESOLVED_FB_PID = str(p.get("id") or "")
+                    return _RESOLVED_FB_TOKEN
+            if accounts and accounts[0].get("access_token"):
+                _RESOLVED_FB_TOKEN = accounts[0]["access_token"]
+                _RESOLVED_FB_PID = str(accounts[0].get("id") or "")
+                return _RESOLVED_FB_TOKEN
+    except Exception:
+        pass
+    _RESOLVED_FB_TOKEN = raw
+    return raw
 
 
 def _page_id() -> str:
@@ -56,7 +91,11 @@ def _page_id() -> str:
     pid = (
         os.environ.get("NHIPQUAN_FB_PAGE_ID") or os.environ.get("FACEBOOK_PAGE_ID") or ""
     ).strip()
-    return pid if pid else "me"
+    if pid and pid != "me":
+        return pid
+    if _RESOLVED_FB_PID:
+        return _RESOLVED_FB_PID
+    return "1367177249801969"
 
 
 def _app_secret() -> str:

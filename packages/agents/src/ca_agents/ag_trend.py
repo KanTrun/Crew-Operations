@@ -87,7 +87,7 @@ _FIXTURE_TRENDS: list[TrendItem] = [
             "Xin vía cơ địa khó thất nghiệp đi làm từ sáng tới tối",
             "Cơ địa này chỉ hợp làm ca tối quán cafe thôi",
         ],
-        nen_tang_lan_toa=["TikTok VN", "Facebook", "Threads"],
+        nen_tang_lan_toa=["TikTok Việt Nam"],
         tu_khoa_hashtag=["#lebong", "#codiakhothatnghiep", "#xuhuong"],
         is_live_scraped=False,
     )
@@ -118,74 +118,70 @@ def _scrape_tiktok_smart(
     keyword: str = "",
     count: int = 12,
     nguon_goc: str = "tiktok_vn",
+    scrape_mode: str = "auto",
 ) -> list[TrendItem]:
-    """Apify primary → TikWM fallback duy nhất.
+    """TikWM Direct Free API as PRIMARY → Apify as SECONDARY (Backup).
 
-    Decision matrix:
-        Apify OK                → return Apify results
-        Apify raise ApifyError  → log warning + return TikWM results
-        Apify raise Exception   → log warning + return TikWM results
-        TikWM cũng fail/empty   → return [] (giữ behavior cũ)
-
-    Lazy import để tránh circular: ag_trend → tiktok_apify_source → ag_trend.
+    Modes:
+        - auto: TikWM first -> Apify backup -> dynamic fallback
+        - direct_only: TikWM only -> dynamic fallback (never uses Apify)
+        - apify_force: Apify first -> TikWM backup
     """
-    # Lazy import: tránh circular khi ag_trend được import trước
-    from ca_agents.sources.tiktok_apify_source import scrape_tiktok_apify
-
     start = time.monotonic()
+
+    # If user selected APIFY FORCE mode
+    if scrape_mode == "apify_force":
+        try:
+            from ca_agents.sources.tiktok_apify_source import scrape_tiktok_apify
+
+            items = scrape_tiktok_apify(
+                keyword=keyword,
+                count=count,
+                mode="search",
+                nguon_goc=nguon_goc,
+            )
+            if items:
+                return items
+        except Exception as e:
+            logger.warning("tiktok_apify_force_failed_trying_tikwm: %s", e)
+
+    # PRIMARY: TikWM Direct Free Scraper
     try:
-        items = scrape_tiktok_apify(
-            keyword=keyword,
-            count=count,
-            mode="search",
-            nguon_goc=nguon_goc,
-        )
-        logger.info(
-            "tiktok_source_apify",
-            extra={
-                "source": "apify",
-                "nguon_goc": nguon_goc,
-                "items_count": len(items),
-                "duration_ms": int((time.monotonic() - start) * 1000),
-            },
-        )
-        return items
-    except ApifyError as e:
-        reason = "apify_error"
-        msg = str(e)[:200]
-        logger.warning(
-            "tiktok_source_fallback",
-            extra={
-                "source": "tiktokwm",
-                "reason": reason,
-                "error_msg": msg,
-            },
-        )
+        items = _scrape_tiktokwm_fallback(keyword=keyword, count=count)
+        if items:
+            logger.info(
+                "tiktok_source_tikwm_primary",
+                extra={
+                    "source": "tikwm_direct",
+                    "nguon_goc": nguon_goc,
+                    "items_count": len(items),
+                    "duration_ms": int((time.monotonic() - start) * 1000),
+                },
+            )
+            return items
     except Exception as e:  # noqa: BLE001
-        reason = f"unexpected:{type(e).__name__}"
-        msg = str(e)[:200]
         logger.warning(
-            "tiktok_source_fallback",
-            extra={
-                "source": "tiktokwm",
-                "reason": reason,
-                "error_msg": msg,
-            },
+            "tiktok_primary_failed_trying_apify",
+            extra={"error": str(e)[:200]},
         )
 
-    # Fallback duy nhất — nếu TikWM cũng lỗi thì trả [] (không crash)
-    try:
-        return _scrape_tiktokwm_fallback(keyword=keyword, count=count)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(
-            "tiktok_source_all_failed",
-            extra={
-                "source": "tiktokwm",
-                "reason": f"fallback_failed:{type(e).__name__}",
-                "error_msg": str(e)[:200],
-            },
-        )
-        return []
+    # SECONDARY / BACKUP: Apify TikTok Scraper (only if mode != direct_only)
+    if scrape_mode != "direct_only":
+        try:
+            from ca_agents.sources.tiktok_apify_source import scrape_tiktok_apify
+
+            items = scrape_tiktok_apify(
+                keyword=keyword,
+                count=count,
+                mode="search",
+                nguon_goc=nguon_goc,
+            )
+            if items:
+                return items
+        except Exception as e:  # noqa: BLE001
+            logger.warning("tiktok_apify_backup_also_failed: %s", e)
+
+    return []
 
 
 _TIKTOKWM_CACHE: list[dict] = []
@@ -312,7 +308,7 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
                         f'Cộng đồng TikTok đang thảo luận sôi nổi về "#{t_kw}"',
                         f"Bấm để xem video trending #{t_kw} trực tiếp trên TikTok",
                     ],
-                    nen_tang_lan_toa=["TikTok VN", "Facebook Reels", "Instagram Reels"],
+                    nen_tang_lan_toa=["TikTok Việt Nam"],
                     tu_khoa_hashtag=[f"#{clean_tag}", f"#{clean_tag}vietnam", "#xuhuongtiktok"],
                     is_live_scraped=True,
                 )
@@ -377,7 +373,7 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
                 luot_tiep_can=f"{play_count:,} views | {digg_count:,} tim",
                 trich_doan_noi_dung_that=f"Mô tả video: {title}",
                 binh_luan_that_tiktok=comments_list,
-                nen_tang_lan_toa=["TikTok VN", "Facebook Reels", "YouTube Shorts"],
+                nen_tang_lan_toa=["TikTok Việt Nam"],
                 tu_khoa_hashtag=[f"#{author}", f"#{clean_tag}", "#xuhuongtiktok"],
                 is_live_scraped=True,
             )
@@ -460,7 +456,7 @@ def _scrape_google_trends_vn(keyword: str = "") -> list[TrendItem]:
                         trich_doan_noi_dung_that=news_snippet
                         or "Từ khóa thịnh hành trên Google Search Việt Nam",
                         binh_luan_that_tiktok=[],
-                        nen_tang_lan_toa=["Google VN", "TikTok VN", "Facebook"],
+                        nen_tang_lan_toa=["Google Trends Việt Nam"],
                         tu_khoa_hashtag=[f"#{clean_tag}", "#xuhuongvn", "#googletrends"],
                         is_live_scraped=True,
                     )
@@ -507,7 +503,7 @@ def _scrape_genz_media_vn(keyword: str = "") -> list[TrendItem]:
                 items_out.append(
                     TrendItem(
                         id=trend_id,
-                        tieu_de=f"🧵 [THREADS & GEN Z] {title}",
+                        tieu_de=f"🧵 [META THREADS] {title}",
                         cum_tu_khoa_viral=short_kw,
                         nguon_goc="threads_vn",
                         loai_xu_huong="breaking_vn_24h",
@@ -529,7 +525,7 @@ def _scrape_genz_media_vn(keyword: str = "") -> list[TrendItem]:
                         luot_tiep_can="Tin mới xuất bản",
                         trich_doan_noi_dung_that=desc_clean,
                         binh_luan_that_tiktok=[],
-                        nen_tang_lan_toa=["Threads VN", "TikTok VN", "Facebook"],
+                        nen_tang_lan_toa=["Meta Threads"],
                         tu_khoa_hashtag=["#genzlifestyle", f"#{clean_tag}", "#threads"],
                         is_live_scraped=True,
                     )
@@ -596,7 +592,7 @@ def _scrape_showbiz_kols_vn(keyword: str = "") -> list[TrendItem]:
                         luot_tiep_can="Tin giải trí hot",
                         trich_doan_noi_dung_that=desc_clean,
                         binh_luan_that_tiktok=[],
-                        nen_tang_lan_toa=["TikTok VN", "Facebook", "Instagram"],
+                        nen_tang_lan_toa=["Showbiz & Báo chí"],
                         tu_khoa_hashtag=["#showbizviet", f"#{clean_tag}", "#idol"],
                         is_live_scraped=True,
                     )
@@ -672,7 +668,7 @@ def _scrape_google_trends_global(keyword: str = "") -> list[TrendItem]:
                         luot_tiep_can=f"{traffic} searches",
                         trich_doan_noi_dung_that=news_snippet or "Top Search Google US",
                         binh_luan_that_tiktok=[],
-                        nen_tang_lan_toa=["TikTok Global", "X (Twitter)", "Google US"],
+                        nen_tang_lan_toa=["Google Trends Quốc tế"],
                         tu_khoa_hashtag=[f"#{clean_tag}", "#globaltrend"],
                         is_live_scraped=True,
                     )
@@ -682,14 +678,114 @@ def _scrape_google_trends_global(keyword: str = "") -> list[TrendItem]:
     return items_out
 
 
+def _scrape_threads_smart(
+    keyword: str = "",
+    count: int = 12,
+    nguon_goc: str = "threads_vn",
+    scrape_mode: str = "auto",
+) -> list[TrendItem]:
+    """Threads Google Index Bridge as PRIMARY → Apify as SECONDARY → RSS Fallback.
+
+    Modes:
+        - auto: Google Bridge first -> Direct Jina -> Apify backup -> RSS fallback
+        - direct_only: Google Bridge -> Direct Jina -> RSS fallback (never uses Apify)
+        - apify_force: Apify first -> Google Bridge backup
+    """
+    start = time.monotonic()
+
+    # If user selected APIFY FORCE mode
+    if scrape_mode == "apify_force":
+        try:
+            from ca_agents.sources.threads_apify_source import scrape_threads_apify
+
+            items = scrape_threads_apify(
+                keyword=keyword,
+                count=count,
+                mode="search",
+                nguon_goc=nguon_goc,
+            )
+            if items:
+                return items
+        except Exception as e:
+            logger.warning("threads_apify_force_failed_trying_bridge: %s", e)
+
+    # 1. PRIMARY (Zero-Infra): Google Index Real-Time Bridge for Threads
+    try:
+        from ca_agents.sources.threads_google_bridge_source import scrape_threads_google_bridge
+
+        items = scrape_threads_google_bridge(
+            keyword=keyword,
+            count=count,
+            nguon_goc=nguon_goc,
+        )
+        if items:
+            logger.info(
+                "threads_source_google_bridge_primary",
+                extra={
+                    "source": "threads_google_bridge",
+                    "nguon_goc": nguon_goc,
+                    "items_count": len(items),
+                    "duration_ms": int((time.monotonic() - start) * 1000),
+                },
+            )
+            return items
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "threads_google_bridge_failed_trying_direct: %s", str(e)[:200]
+        )
+
+    # 2. SUB-PRIMARY: Direct Free Threads Scraper
+    try:
+        from ca_agents.sources.threads_direct_source import scrape_threads_direct
+
+        items = scrape_threads_direct(
+            keyword=keyword,
+            count=count,
+            nguon_goc=nguon_goc,
+        )
+        if items:
+            return items
+    except Exception as e:  # noqa: BLE001
+        logger.warning("threads_direct_failed_trying_apify: %s", str(e)[:200])
+
+    # 3. SECONDARY / BACKUP: Apify Threads Scraper (only if mode != direct_only)
+    if scrape_mode != "direct_only":
+        try:
+            from ca_agents.sources.threads_apify_source import scrape_threads_apify
+
+            items = scrape_threads_apify(
+                keyword=keyword,
+                count=count,
+                mode="search",
+                nguon_goc=nguon_goc,
+            )
+            if items:
+                logger.info(
+                    "threads_source_apify_backup",
+                    extra={
+                        "source": "apify_threads_backup",
+                        "nguon_goc": nguon_goc,
+                        "items_count": len(items),
+                        "duration_ms": int((time.monotonic() - start) * 1000),
+                    },
+                )
+                return items
+        except Exception as e:  # noqa: BLE001
+            logger.warning("threads_apify_backup_also_failed: %s", e)
+
+    # 4. FALLBACK: Gen Z RSS Media
+    return _scrape_genz_media_vn(keyword=keyword)
+
+
 def fetch_trend_radar(
     trend_type_filter: str = "all",
     category_filter: str = "all",
     platform_filter: str = "all",
     force_live: bool = True,
     keyword: str = "",
+    scrape_mode: str = "auto",
 ) -> list[TrendItem]:
-    """Cào dữ liệu xu hướng 100% real-time theo nguồn được chọn và từ khóa."""
+    """Cào dữ liệu xu hướng 100% real-time theo nguồn được chọn, từ khóa và chế độ cào."""
     effective_platform = platform_filter
     effective_type = trend_type_filter
     if trend_type_filter in {"tiktok_vn", "threads_vn", "google_vn", "star_vn", "tiktok_global"}:
@@ -698,12 +794,16 @@ def fetch_trend_radar(
 
     results: list[TrendItem] = []
 
-    # 1. Nếu chỉ chọn TikTok VN -> CHỈ cào đúng TikTok (Apify primary → TikWM fallback)!
+    # 1. Nếu chỉ chọn TikTok VN -> CHỈ cào đúng TikTok
     if effective_platform == "tiktok_vn":
-        results = _scrape_tiktok_smart(keyword=keyword, count=12, nguon_goc="tiktok_vn")
-    # 2. Nếu chọn Threads VN -> CHỈ cào đúng chuyên trang Gen Z / Threads!
+        results = _scrape_tiktok_smart(
+            keyword=keyword, count=12, nguon_goc="tiktok_vn", scrape_mode=scrape_mode
+        )
+    # 2. Nếu chọn Threads VN -> CHỈ cào đúng Threads
     elif effective_platform == "threads_vn":
-        results = _scrape_genz_media_vn(keyword=keyword)
+        results = _scrape_threads_smart(
+            keyword=keyword, count=12, nguon_goc="threads_vn", scrape_mode=scrape_mode
+        )
     # 3. Nếu chọn Google Trends VN -> CHỈ cào đúng Google Trends!
     elif effective_platform == "google_vn":
         results = _scrape_google_trends_vn(keyword=keyword)
@@ -715,9 +815,13 @@ def fetch_trend_radar(
         results = _scrape_google_trends_global(keyword=keyword)
     # 6. Nếu chọn "Tất cả nguồn" (all) -> Mới cào tổng hợp tất cả!
     else:
-        tt = _scrape_tiktok_smart(keyword=keyword, count=8, nguon_goc="tiktok_vn")
+        tt = _scrape_tiktok_smart(
+            keyword=keyword, count=8, nguon_goc="tiktok_vn", scrape_mode=scrape_mode
+        )
         gg = _scrape_google_trends_vn(keyword=keyword)
-        gz = _scrape_genz_media_vn(keyword=keyword)
+        gz = _scrape_threads_smart(
+            keyword=keyword, count=8, nguon_goc="threads_vn", scrape_mode=scrape_mode
+        )
         st = _scrape_showbiz_kols_vn(keyword=keyword)
         gl = _scrape_google_trends_global(keyword=keyword)
         results = tt + gg + gz + st + gl

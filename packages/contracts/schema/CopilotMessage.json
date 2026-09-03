@@ -1,0 +1,72 @@
+{
+  "$defs": {
+    "CopilotContext": {
+      "properties": {
+        "store_id": {
+          "default": "quan_01",
+          "title": "Store Id",
+          "type": "string"
+        },
+        "user_id": {
+          "title": "User Id",
+          "type": "string"
+        },
+        "user_role": {
+          "enum": [
+            "chu_quan",
+            "quan_ly",
+            "nhan_vien"
+          ],
+          "title": "User Role",
+          "type": "string"
+        },
+        "active_date": {
+          "title": "Active Date",
+          "type": "string"
+        },
+        "channel": {
+          "default": "web",
+          "enum": [
+            "web",
+            "telegram",
+            "zalo"
+          ],
+          "title": "Channel",
+          "type": "string"
+        },
+        "recent_messages": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Recent Messages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "user_id",
+        "user_role",
+        "active_date"
+      ],
+      "title": "CopilotContext",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "message": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Message",
+      "type": "string"
+    },
+    "context": {
+      "$ref": "#/$defs/CopilotContext"
+    }
+  },
+  "required": [
+    "message",
+    "context"
+  ],
+  "title": "CopilotMessage",
+  "type": "object"
+}

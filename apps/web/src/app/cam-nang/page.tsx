@@ -21,6 +21,7 @@ import {
   Summary,
   TechnicalDrawer,
 } from "../../ui/kit";
+import { CopilotPane } from "../../ui/copilot/CopilotPane";
 
 type Luat = {
   id: string;
@@ -67,6 +68,7 @@ export default function CamNangPage() {
   const [chiTiet, setChiTiet] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
 
   useEffect(() => {
     setToken(getToken());
@@ -209,6 +211,9 @@ export default function CamNangPage() {
         <BtnLink href="/sop" variant="ghost">
           Hỏi cẩm nang (AG-SOP)
         </BtnLink>
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          ✨ Hỏi AG-COPILOT
+        </Btn>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">
@@ -289,6 +294,9 @@ export default function CamNangPage() {
           );
         })}
       </div>
+
+      {/* AG-COPILOT pane nổi (lệch AppShell) */}
+      <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }
