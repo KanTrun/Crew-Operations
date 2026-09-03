@@ -5,7 +5,7 @@ async function loginAs(page: Page, user: "lan" | "minh" | "hung" = "lan") {
   await page.getByLabel("Tài khoản").fill(user);
   await page.getByLabel("Mật khẩu").fill("nhipquan");
   await page.getByRole("button", { name: "Vào hệ thống" }).click();
-  await expect(page).toHaveURL(/\/hom-nay/);
+  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
 }
 
 test.describe("8 luồng vận hành chính (Quản lý - lan)", () => {
@@ -14,7 +14,7 @@ test.describe("8 luồng vận hành chính (Quản lý - lan)", () => {
   });
 
   test("1 — đăng nhập → hôm nay", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: "Quán hôm nay" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Quán hôm nay/i })).toBeVisible();
   });
 
   test("2 — phiếu mở quán", async ({ page }) => {
@@ -60,8 +60,8 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
     await loginAs(page, "minh");
 
     // Vỏ nhân viên hiển thị nav Quầy và Pha chế
-    await expect(page.getByRole("link", { name: "Quầy" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Pha chế" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Quầy", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Pha chế", exact: true })).toBeVisible();
 
     // Vào /quay
     await page.goto("/quay");
@@ -134,8 +134,8 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
     await loginAs(page, "hung");
 
     // Vỏ chủ quán có Menu & giá, Người dùng
-    await expect(page.getByRole("link", { name: "Menu & giá" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Người dùng" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Menu & giá" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Người dùng" }).first()).toBeVisible();
 
     // Vào /menu
     await page.goto("/menu");

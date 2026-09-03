@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 import uvicorn
+
+os.environ.setdefault("NHIPQUAN_PBKDF2_VONG", "1000")
 
 ROOT = Path(__file__).resolve().parents[1]
 for p in [
