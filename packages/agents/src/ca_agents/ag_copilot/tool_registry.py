@@ -56,7 +56,7 @@ def configure_data_sources(**sources: Callable[..., Any]) -> None:
       - load_template(ma) -> dict | None    (mẫu phiếu YAML)
       - list_sua() -> list[dict]            (lịch sử sửa lịch thật)
       - tim_mau(sua) -> list[dict]          (mẫu lặp từ lịch sử sửa)
-      - de_xuat(mau) -> dict                (sinh đề xuất luật từ mẫu)
+      - de_xuat(mau) -> dict | None         (sinh đề xuất luật; None khi thiếu tín hiệu)
       - sop_answer(q, buoc, luat) -> SopAnswer
       - waste_cluster(notes) -> list[WasteHint]
       - list_ca_meta() -> dict[str, dict]   (ca_id -> {thu, khung, bat_dau, ket_thuc})
@@ -570,9 +570,23 @@ def tool_propose_rule_from_recent_edits(
             requires_confirmation=False,
         )
 
-    # Đề xuất từ mẫu mạnh nhất
-    de_xuat_list = [de_xuat(m) for m in mau]
-    best = de_xuat_list[0]
+    # Đề xuất từ mẫu mạnh nhất — de_xuat trả None khi mẫu thiếu tín hiệu
+    # (không đủ nhân sự suy ra được), nên lọc trước khi chọn.
+    co_le = [d for d in (de_xuat(m) for m in mau) if d]
+    if not co_le:
+        return ToolExecutionResult(
+            success=True,
+            tool_name="tool_propose_rule_from_recent_edits",
+            intent="CREATE_RULE_PROPOSAL",
+            data={"so_lan_sua": len(sua), "so_mau": len(mau), "co_de_xuat": False},
+            summary="Chưa đủ tín hiệu từ các mẫu sửa để dựng đề xuất luật.",
+            explanation=(
+                f"Có {len(mau)} mẫu lặp nhưng chưa mẫu nào cho phép suy tất định "
+                "nội dung luật (thiếu số người/vị trí trong dữ liệu sửa)."
+            ),
+            requires_confirmation=False,
+        )
+    best = co_le[0]
 
     return ToolExecutionResult(
         success=True,
