@@ -15,7 +15,6 @@ from typing import Annotated, Any
 
 from ca_agents.ag_meeting import extract_meeting, transcribe_audio
 from ca_contracts import CuocHop
-from ca_playbook import record_sua
 from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
@@ -187,42 +186,57 @@ def apply_meeting_decisions(
 
         kv_mutate("treo", mut_treo, [])
 
-    # 2. Record SOP proposals to playbook (đúng signature record_sua)
+    # 2. Persist approved SOP proposals — key kv riêng, KHÔNG ghi vào bảng
+    # sửa ca: đề xuất từ cuộc họp chưa phải là lần sửa đã xảy ra trong ca.
+    new_proposals: list[dict[str, Any]] = []
+    for prop in body.de_xuat_phe_duyet:
+        if prop.trang_thai == "da_duyet" and prop.loai_de_xuat == "quy_trinh_sop":
+            new_proposals.append(
+                {
+                    "loai": "de_xuat_phe_duyet",
+                    "id": prop.id,
+                    "meeting_id": body.id,
+                    "meeting_tieu_de": body.tieu_de,
+                    "quy_trinh": prop.quy_trinh_lien_quan or prop.tieu_de,
+                    "buoc_so": prop.buoc_so,
+                    "noi_dung": prop.noi_dung,
+                    "ly_do": prop.ly_do or f"Từ cuộc họp: {body.tieu_de}",
+                    "nguoi_de_xuat": prop.nguoi_de_xuat,
+                    "nguoi_phe_duyet": prop.nguoi_phe_duyet or str(user),
+                    "ghi_luc": now_iso,
+                }
+            )
+    for sop in body.de_xuat_sop:
+        new_proposals.append(
+            {
+                "loai": "de_xuat_sop",
+                "id": "",
+                "meeting_id": body.id,
+                "meeting_tieu_de": body.tieu_de,
+                "quy_trinh": sop.quy_trinh_lien_quan,
+                "buoc_so": sop.buoc_so,
+                "noi_dung": sop.noi_dung_thay_doi,
+                "ly_do": sop.ly_do or f"Từ cuộc họp: {body.tieu_de}",
+                "nguoi_de_xuat": "",
+                "nguoi_phe_duyet": str(user),
+                "ghi_luc": now_iso,
+            }
+        )
     sop_count = 0
-    if body.de_xuat_phe_duyet:
-        for prop in body.de_xuat_phe_duyet:
-            if prop.trang_thai == "da_duyet" and prop.loai_de_xuat == "quy_trinh_sop":
-                try:
-                    record_sua(
-                        loai="sop",
-                        truoc={"ma_quy_trinh": prop.quy_trinh_lien_quan or prop.tieu_de or "pha_che", "buoc_so": prop.buoc_so or 1},
-                        sau={
-                            "noi_dung": prop.noi_dung,
-                            "ly_do": prop.ly_do or f"Từ cuộc họp: {body.tieu_de}",
-                        },
-                        ai=str(user),
-                        now_iso=now_iso,
-                    )
-                    sop_count += 1
-                except Exception:  # noqa: BLE001
-                    pass
+    if new_proposals:
 
-    if body.de_xuat_sop:
-        for sop in body.de_xuat_sop:
-            try:
-                record_sua(
-                    loai="sop",
-                    truoc={"ma_quy_trinh": sop.quy_trinh_lien_quan, "buoc_so": sop.buoc_so or 1},
-                    sau={
-                        "noi_dung": sop.noi_dung_thay_doi,
-                        "ly_do": sop.ly_do or f"Từ cuộc họp: {body.tieu_de}",
-                    },
-                    ai=str(user),
-                    now_iso=now_iso,
-                )
+        def mut_sop(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            nonlocal sop_count
+            da_co = {(x.get("meeting_id"), x.get("noi_dung")) for x in cur}
+            for p in new_proposals:
+                if (p["meeting_id"], p["noi_dung"]) in da_co:
+                    continue
+                cur.append(p)
+                da_co.add((p["meeting_id"], p["noi_dung"]))
                 sop_count += 1
-            except Exception:  # noqa: BLE001
-                pass
+            return cur
+
+        kv_mutate("sop_de_xuat", mut_sop, [])
 
     # 3. Persist meeting to store
     meeting_dict = body.model_dump()
@@ -304,3 +318,13 @@ def delete_meeting(
     # Ghi audit SAU khi transaction đã commit (tránh deadlock).
     audit_add(_now(), str(authorization), "xoa_cuoc_hop", {"meeting_id": meeting_id})
     return {"ok": True, "meeting_id": meeting_id, "deleted": True}
+
+
+@router.get("/api/v1/sop/de-xuat")
+def list_sop_de_xuat(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Đề xuất sửa quy trình đã được duyệt từ cuộc họp — nguồn thật, không bịa."""
+    _require_role(authorization)
+    items = kv_get("sop_de_xuat", [])
+    return {"items": list(reversed(items))}
