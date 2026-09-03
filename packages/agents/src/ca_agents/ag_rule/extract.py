@@ -1,31 +1,32 @@
-"""AG-RULE — one Vietnamese law sentence from a mined pattern. No DB."""
+"""AG-RULE — one Vietnamese law sentence from a mined pattern.
+
+Agent thuần: chỉ trích xuất và đề xuất. Không chạm DB, không gọi cổng VF,
+không gọi package điều phối. Cổng VF-RULE và bước suy luật tất định là việc
+của lớp điều phối; agent nhận gợi ý tất định qua tham số ``goi_y``.
+"""
 
 from __future__ import annotations
 
-import importlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any
 
 from ca_agents.llm import agent_mode, complete, parse_json_object
 
-
-def _validate_rule(rule_dict: dict[str, Any]) -> Any:
-    try:
-        mod = importlib.import_module("ca_gates.vf_rule")
-        return mod.validate_rule(rule_dict)
-    except Exception:
-        class _FallbackResult:
-            passed = True
-        return _FallbackResult()
-
-
-def _derive_rule_from_edits(mau: dict[str, Any], rows: list[dict[str, Any]]) -> Any:
-    try:
-        mod = importlib.import_module("ca_playbook.derive")
-        return mod.derive_rule_from_edits(mau, rows)
-    except Exception:
-        return None
+# Hợp đồng đầu ra của agent — trùng danh sách khóa nêu trong prompt bên dưới.
+# Cổng VF-RULE ở lớp điều phối vẫn là nơi phán quyết cuối cùng; bộ lọc này chỉ
+# để agent không đẩy khóa lạ do LLM bịa ra xuống dưới.
+_TRUONG_DIEU_KIEN = frozenset(
+    {
+        "thu",
+        "khung",
+        "vi_tri",
+        "so_nguoi",
+        "nguong",
+        "ma_buoc",
+        "thang_kinh_nghiem",
+    }
+)
 
 _RULE_SYSTEM = """Bạn là AG-RULE của NHỊP QUÁN.
 Từ các lần sửa lịch/ca của quán, đề xuất ĐÚNG MỘT câu luật tiếng Việt ngắn gọn.
@@ -44,22 +45,23 @@ class RuleDraft:
     do_tin_cay: float
 
 
-def _replay_stub(mau: dict[str, Any]) -> RuleDraft:
-    return RuleDraft(
-        cau="Thứ Bảy ca chiều cần 3 người pha chế, không phải 2",
-        loai=str(mau.get("loai_luat") or "nhu_cau_ca"),
-        dieu_kien={"thu": "T7", "khung": "chieu", "vi_tri": "pha_che", "so_nguoi": 3},
-        bang_chung=list(mau.get("bang_chung") or [])[:4],
-        do_tin_cay=0.8,
-    )
+def _loc_dieu_kien(raw: Any) -> dict[str, Any]:
+    """Chỉ giữ các khóa nằm trong hợp đồng. LLM hay bịa khóa mới."""
+    if not isinstance(raw, dict):
+        return {}
+    return {k: v for k, v in raw.items() if k in _TRUONG_DIEU_KIEN}
 
 
-def _from_derived(mau: dict[str, Any], derived: dict[str, Any]) -> RuleDraft:
+def _from_goi_y(mau: dict[str, Any], goi_y: dict[str, Any]) -> RuleDraft | None:
+    """Dựng bản nháp từ gợi ý tất định do lớp điều phối suy ra."""
+    cau = str(goi_y.get("cau") or "").strip()
+    if not cau:
+        return None
     return RuleDraft(
-        cau=str(derived["cau"]),
-        loai=str(derived.get("loai") or mau.get("loai_luat") or "nhu_cau_ca"),
-        dieu_kien=dict(derived.get("dieu_kien") or {}),
-        bang_chung=list(derived.get("bang_chung") or mau.get("bang_chung") or [])[:4],
+        cau=cau,
+        loai=str(goi_y.get("loai") or mau.get("loai_luat") or "nhu_cau_ca"),
+        dieu_kien=_loc_dieu_kien(goi_y.get("dieu_kien")),
+        bang_chung=list(goi_y.get("bang_chung") or mau.get("bang_chung") or [])[:4],
         do_tin_cay=0.75,
     )
 
@@ -77,27 +79,43 @@ def _propose_live(mau: dict[str, Any], sua_rows: list[dict[str, Any]]) -> RuleDr
     if not res.ok:
         return None
     data = parse_json_object(res.text)
-    if not data or not data.get("cau"):
+    if not data:
         return None
-    draft = RuleDraft(
-        cau=str(data["cau"]),
+    cau = str(data.get("cau") or "").strip()
+    dieu_kien = _loc_dieu_kien(data.get("dieu_kien"))
+    bang_chung = list(mau.get("bang_chung") or [])[:4]
+    # Fail closed: không có câu, không có điều kiện máy đọc được, hoặc thiếu
+    # bằng chứng thì coi như LLM không trả lời được — để lớp điều phối dùng
+    # gợi ý tất định thay vì đẩy rác xuống cổng VF.
+    if not cau or not dieu_kien or len(bang_chung) < 3:
+        return None
+    try:
+        do_tin_cay = float(data.get("do_tin_cay") or 0.7)
+    except (TypeError, ValueError):
+        do_tin_cay = 0.7
+    return RuleDraft(
+        cau=cau,
         loai=str(data.get("loai") or mau.get("loai_luat") or "nhu_cau_ca"),
-        dieu_kien=dict(data.get("dieu_kien") or {}),
-        bang_chung=list(mau.get("bang_chung") or [])[:4],
-        do_tin_cay=float(data.get("do_tin_cay") or 0.7),
+        dieu_kien=dieu_kien,
+        bang_chung=bang_chung,
+        do_tin_cay=max(0.0, min(1.0, do_tin_cay)),
     )
-    check = _validate_rule({**asdict(draft), "bang_chung": draft.bang_chung})
-    if not check.passed:
-        return None
-    return draft
 
 
 def propose(
     mau: dict[str, Any],
     *,
     sua_mau: list[dict[str, Any]] | None = None,
+    goi_y: dict[str, Any] | None = None,
     mode: str | None = None,
 ) -> RuleDraft | None:
+    """Đề xuất một luật từ mẫu đã gom.
+
+    ``goi_y`` là bản nháp tất định do lớp điều phối suy ra từ lần sửa thật
+    (``ca_playbook.derive``). Agent không tự suy — nó chỉ diễn đạt lại bằng LLM
+    khi ở chế độ live, và trả về gợi ý tất định khi LLM không dùng được.
+    Không có tín hiệu nào thì trả ``None`` — tuyệt đối không bịa luật.
+    """
     if int(mau.get("n") or 0) < 3:
         return None
 
@@ -109,11 +127,7 @@ def propose(
         if live:
             return live
 
-    if rows:
-        derived = _derive_rule_from_edits(mau, rows)
-        if derived:
-            draft = _from_derived(mau, derived)
-            if _validate_rule({**asdict(draft), "bang_chung": draft.bang_chung}).passed:
-                return draft
+    if goi_y:
+        return _from_goi_y(mau, goi_y)
 
-    return _replay_stub(mau)
+    return None

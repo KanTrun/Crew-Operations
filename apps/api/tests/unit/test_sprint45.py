@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pytest
+from ca_agents.ag_rule import RuleDraft
+from ca_api.interfaces.http import sprint45
 from ca_api.interfaces.http.main import app
 from ca_playbook import record_sua
 from fastapi.testclient import TestClient
@@ -17,6 +20,18 @@ def _seed_three_sua() -> None:
             sau={"ca_id": "w1_c10", "nv": [f"nv_{i + 10:02d}"]},
             ai="lan",
             now_iso=f"2026-01-0{i + 1}T08:00:00Z",
+        )
+
+
+def _seed_three_nha_ca() -> None:
+    """Ba lần nhả ca — ``sau`` không còn ai nên không suy ra được số người."""
+    for i in range(3):
+        record_sua(
+            loai="nha_ca",
+            truoc={"ca_id": "w1_c11", "nv": [f"nv_{i + 10:02d}"]},
+            sau={"ca_id": "w1_c11", "nv": []},
+            ai="lan",
+            now_iso=f"2026-01-0{i + 1}T09:00:00Z",
         )
 
 
@@ -76,7 +91,14 @@ def test_handover_sbar() -> None:
     assert "hết đá" in r.json()["tinh_hinh"]
 
 
-def test_cam_nang_eight_steps_and_vf_rule_reject() -> None:
+def test_cam_nang_eight_steps_den_cho_chu_quan() -> None:
+    """Chạy 8 bước trên lần sửa thật: luật suy tất định phải qua VF và chờ chủ quán.
+
+    Không có ``bi_loai`` ở đường này là đúng: suy luật tất định
+    (``derive_rule_from_edits``) chỉ sinh câu và ``dieu_kien`` hợp hợp đồng nên
+    cổng VF-RULE không có gì để loại. Ví dụ luật bị loại cho demo nằm ở fixture
+    ``luat_cam_nang`` (xem test_seed_van_hanh), không do API bịa ra.
+    """
     _seed_three_sua()
     ql = headers(client, "lan")
     chu = headers(client, "hung")
@@ -85,8 +107,10 @@ def test_cam_nang_eight_steps_and_vf_rule_reject() -> None:
     body = r.json()
     assert body["cho_chot"]["trang_thai"] == "cho_chu_quan"
     assert body["cho_chot"]["buoc"] == 6
-    assert body["bi_loai"]["trang_thai"] == "loai"
+    assert body["cho_chot"]["cau"].strip()
+    assert body["bi_loai"] is None
     assert body["so_luat_that_quan"] >= 1
+    assert [x["mau"] for x in body["ung_vien"]] == ["nhan_ca"]
     assert client.post(
         "/api/v1/cam-nang/duyet", json={"id": body["cho_chot"]["id"], "ok": True}, headers=ql
     ).status_code == 403
@@ -97,6 +121,49 @@ def test_cam_nang_eight_steps_and_vf_rule_reject() -> None:
     assert final.json()["trang_thai"] == "hieu_luc"
     cards = client.get("/api/v1/cam-nang", headers=ql).json()["items"]
     assert any(x.get("trang_thai") == "hieu_luc" for x in cards)
+
+
+def test_cam_nang_bao_luat_bi_vf_rule_loai(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bản nháp của agent vi phạm VF-RULE thì bị loại và được báo ra, không lọt."""
+    _seed_three_sua()
+    xau = RuleDraft(
+        cau="nv_03 lười không xếp cuối tuần",
+        loai="ghep_ky_nang",
+        dieu_kien={"thu": "T7"},
+        bang_chung=["0", "1", "2"],
+        do_tin_cay=0.75,
+    )
+    monkeypatch.setattr(sprint45, "propose_rule", lambda *a, **k: xau)
+
+    ql = headers(client, "lan")
+    r = client.post("/api/v1/cam-nang/chay-8-buoc", headers=ql)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["cho_chot"] is None
+    assert body["bi_loai"]["trang_thai"] == "loai"
+    assert body["bi_loai"]["vf_rule"] == "luat_ve_nguoi"
+    assert body["ung_vien"][0]["vf_rule"] == "luat_ve_nguoi"
+    cards = client.get("/api/v1/cam-nang", headers=ql).json()["items"]
+    assert any(x.get("trang_thai") == "loai" for x in cards)
+
+
+def test_cam_nang_bao_khong_du_tin_hieu_khi_thieu_tin_hieu() -> None:
+    """Ba lần nhả ca làm trống ca: không có tín hiệu số người nên không suy được luật.
+
+    Đường này phải báo ``khong_du_tin_hieu`` chứ không được dựng một câu luật
+    bịa để lấp chỗ trống.
+    """
+    _seed_three_nha_ca()
+    ql = headers(client, "lan")
+    r = client.post("/api/v1/cam-nang/chay-8-buoc", headers=ql)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["cho_chot"] is None
+    assert body["bi_loai"] is None
+    assert body["ung_vien"] == [
+        {"mau": "nha_ca", "trang_thai": "khong_du_tin_hieu", "buoc": 3, "id": None}
+    ]
+    assert client.get("/api/v1/cam-nang", headers=ql).json()["items"] == []
 
 
 def test_cam_nang_requires_real_edits() -> None:

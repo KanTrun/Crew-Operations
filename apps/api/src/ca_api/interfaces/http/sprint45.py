@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import json
 import uuid
+from dataclasses import asdict
 
 try:
     from datetime import UTC, datetime
 except ImportError:
     from datetime import datetime, timezone
+
     UTC = timezone.utc
+
 from pathlib import Path
 from typing import Annotated, Any, cast
 
@@ -23,6 +26,7 @@ from ca_gates import present_conflict, validate_num
 from ca_playbook import (
     count_luat_that_quan,
     de_xuat,
+    derive_rule_from_edits,
     duyet,
     enrich_luat_ui,
     go_luat,
@@ -575,40 +579,79 @@ def cam_nang_run(authorization: Annotated[str | None, Header()] = None) -> dict[
     mau_list = tim_mau(sua_that)
     if not mau_list:
         raise HTTPException(status_code=409, detail="chua_du_mau")
-    mau = mau_list[0]
-    sua_loai = sua_rows_for_mau(mau, sua_that)
-    draft = propose_rule(mau, sua_mau=sua_loai)
-    luat = de_xuat(mau, sua_rows=sua_loai)
-    if draft:
-        luat["cau"] = draft.cau
-        luat["dieu_kien"] = draft.dieu_kien
-        luat["loai"] = draft.loai
-    luat = kiem_chung(luat)
-    luat = tap_su_tu_sua(luat, sua_loai)
-    if luat.get("trang_thai") == "du_tap_su":
-        luat["buoc"] = 6
-        luat["trang_thai"] = "cho_chu_quan"
-        luat["nguoi_de_xuat"] = role
-        luat["nguoi_duyet_tap_su"] = role
-    bad = {
-        "id": "luat_thai_do",
-        "loai": "ghep_ky_nang",
-        "cau": "nv_03 lười không xếp cuối tuần",
-        "dieu_kien": {"thu": "T7"},
-        "bang_chung": ["1", "2", "3"],
-    }
-    loai = kiem_chung(bad)
+
     existing = {x.get("id"): x for x in list_luat()}
-    for item in (luat, loai):
-        existing[item["id"]] = item
+    cho_chot: dict[str, Any] | None = None
+    bi_loai: dict[str, Any] | None = None
+    ung_vien: list[dict[str, Any]] = []
+
+    for mau in mau_list:
+        sua_loai = sua_rows_for_mau(mau, sua_that)
+        goi_y = derive_rule_from_edits(mau, sua_loai)
+        draft = propose_rule(mau, sua_mau=sua_loai, goi_y=goi_y)
+        luat = de_xuat(
+            mau,
+            sua_rows=sua_loai,
+            ban_nhap=asdict(draft) if draft is not None else None,
+        )
+        if luat is None:
+            ung_vien.append(
+                {"mau": mau["mau"], "trang_thai": "khong_du_tin_hieu", "buoc": 3, "id": None}
+            )
+            continue
+
+        luat = kiem_chung(luat)
+        if luat.get("trang_thai") == "loai":
+            existing[luat["id"]] = luat
+            if bi_loai is None:
+                bi_loai = luat
+            ung_vien.append(
+                {
+                    "mau": mau["mau"],
+                    "id": luat["id"],
+                    "trang_thai": luat["trang_thai"],
+                    "buoc": luat["buoc"],
+                    "vf_rule": luat.get("vf_rule", ""),
+                }
+            )
+            continue
+
+        luat = tap_su_tu_sua(luat, sua_loai)
+        if luat.get("trang_thai") == "du_tap_su":
+            luat["buoc"] = 6
+            luat["trang_thai"] = "cho_chu_quan"
+            luat["nguoi_de_xuat"] = role
+            luat["nguoi_duyet_tap_su"] = role
+            if cho_chot is None:
+                cho_chot = luat
+        existing[luat["id"]] = luat
+        ung_vien.append(
+            {
+                "mau": mau["mau"],
+                "id": luat["id"],
+                "trang_thai": luat["trang_thai"],
+                "buoc": luat["buoc"],
+                "tap_su_dung": luat.get("tap_su_dung", 0),
+            }
+        )
+
     saved = list(existing.values())
     save_luat(saved)
     so_that = count_luat_that_quan(saved)
-    _audit("cam_nang_6_buoc", role, {"cho_chu_quan": luat["id"], "loai": loai["vf_rule"]})
+    _audit(
+        "cam_nang_8_buoc",
+        role,
+        {
+            "so_mau": len(mau_list),
+            "cho_chu_quan": (cho_chot or {}).get("id"),
+            "bi_loai": (bi_loai or {}).get("id"),
+        },
+    )
     return {
-        "cho_chot": luat,
-        "bi_loai": loai,
-        "nguon": mau.get("nguon", "ghi_truc_tiep"),
+        "cho_chot": cho_chot,
+        "bi_loai": bi_loai,
+        "ung_vien": ung_vien,
+        "nguon": mau_list[0].get("nguon", "ghi_truc_tiep"),
         "so_luat_that_quan": so_that,
         "pipeline": pipeline_snapshot(),
     }
