@@ -9,7 +9,7 @@ from ca_agents.ag_mail import send_mail
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
-from ca_api.interfaces.http.sprint3 import _require_manager, _require_role
+from ca_api.interfaces.http.sprint3 import _require_manager
 from ca_api.persist import get_user_emails, session, set_user_email
 
 router = APIRouter(tags=["mail"])

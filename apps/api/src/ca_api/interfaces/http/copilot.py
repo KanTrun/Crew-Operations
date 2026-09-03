@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hmac
-import hashlib
 import json
 import os
 import time
@@ -16,30 +14,24 @@ except ImportError:
     from datetime import datetime, timezone
     UTC = timezone.utc
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
-
 from ca_agents.ag_copilot import run_copilot
 from ca_contracts import (
-    ActionProposal,
-    ActionProposalStatus,
     COPILOT_ROLE_INTENT_MATRIX,
-    CopilotContext,
     CopilotIntent,
-    CopilotMessage,
     CopilotResponse,
     copilot_intents_allowed_for_role,
 )
 from ca_gates import compute_snapshot_hash, validate_scope, validate_stale
+from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+
 from ca_api.persist import (
     copilot_audit_add,
     copilot_audit_list,
     copilot_draft_get,
-    copilot_draft_list,
     copilot_draft_save,
     copilot_draft_update_status,
-    kv_get,
     kv_mutate,
     kv_set,
 )

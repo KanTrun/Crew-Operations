@@ -16,3 +16,5 @@ export type GopYLuuY = Record<string, unknown>;
 export type AuditTuanThuSop = Record<string, unknown>;
 export type BanTinCaKhan = Record<string, unknown>;
 export type HuanLuyenQuanLy = Record<string, unknown>;
+export type CopilotMessage = Record<string, unknown>;
+export type ActionProposal = Record<string, unknown>;

@@ -89,7 +89,7 @@ class IntentParseResult:
 
 def _iso_week(d: Any) -> str:
     """Trả về ISO week dạng 'YYYY-Wnn'. Không hardcode."""
-    from datetime import date, timedelta
+    from datetime import date
 
     if not isinstance(d, date):
         d = date.today()

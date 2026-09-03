@@ -13,7 +13,6 @@ import html
 import logging
 import re
 import ssl
-import time
 import urllib.parse
 import urllib.request
 from datetime import datetime

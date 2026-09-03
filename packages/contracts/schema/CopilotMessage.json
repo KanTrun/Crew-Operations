@@ -1,44 +1,72 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CopilotMessage",
-  "type": "object",
-  "required": ["message", "context"],
-  "properties": {
-    "message": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 2000
-    },
-    "context": {
-      "type": "object",
-      "required": ["store_id", "user_id", "user_role", "active_date", "channel"],
+  "$defs": {
+    "CopilotContext": {
       "properties": {
         "store_id": {
+          "default": "quan_01",
+          "title": "Store Id",
           "type": "string"
         },
         "user_id": {
+          "title": "User Id",
           "type": "string"
         },
         "user_role": {
-          "type": "string",
-          "enum": ["chu_quan", "quan_ly", "nhan_vien"]
+          "enum": [
+            "chu_quan",
+            "quan_ly",
+            "nhan_vien"
+          ],
+          "title": "User Role",
+          "type": "string"
         },
         "active_date": {
-          "type": "string",
-          "format": "date"
+          "title": "Active Date",
+          "type": "string"
         },
         "channel": {
-          "type": "string",
-          "enum": ["web", "telegram", "zalo"]
+          "default": "web",
+          "enum": [
+            "web",
+            "telegram",
+            "zalo"
+          ],
+          "title": "Channel",
+          "type": "string"
         },
         "recent_messages": {
-          "type": "array",
           "items": {
             "type": "string"
           },
-          "maxItems": 3
+          "maxItems": 3,
+          "title": "Recent Messages",
+          "type": "array"
         }
-      }
+      },
+      "required": [
+        "user_id",
+        "user_role",
+        "active_date"
+      ],
+      "title": "CopilotContext",
+      "type": "object"
     }
-  }
+  },
+  "properties": {
+    "message": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Message",
+      "type": "string"
+    },
+    "context": {
+      "$ref": "#/$defs/CopilotContext"
+    }
+  },
+  "required": [
+    "message",
+    "context"
+  ],
+  "title": "CopilotMessage",
+  "type": "object"
 }

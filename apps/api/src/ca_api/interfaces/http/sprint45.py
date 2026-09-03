@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
+
 try:
     from datetime import UTC, datetime
 except ImportError:
@@ -43,7 +44,6 @@ from ca_api.orchestration import Clock
 from ca_api.persist import audit_add, audit_list, kv_get, kv_mutate, kv_set, list_users
 from ca_api.persist import session as auth_session
 
-UTC = UTC
 router = APIRouter()
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"

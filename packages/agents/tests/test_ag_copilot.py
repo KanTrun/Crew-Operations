@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 from ca_agents.ag_copilot import parse_intent, run_copilot
 from ca_contracts import ActionProposalStatus, CopilotIntent
 

@@ -7,6 +7,7 @@ Run this after migration to populate initial chatbot configuration.
 
 import json
 import sqlite3
+
 try:
     from datetime import UTC, datetime
 except ImportError:

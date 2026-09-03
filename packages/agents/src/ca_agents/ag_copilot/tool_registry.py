@@ -15,9 +15,16 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
+
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 WHITELISTED_INTENTS = {
     "SCHEDULE_SOLVE": "tool_solve_weekly_schedule",
@@ -334,9 +341,9 @@ def tool_get_daily_brief(
     Tổng hợp: phân công ca, việc treo, tồn kho dưới ngưỡng, luật mới.
     Không có dữ liệu nào → báo trung thực, không bịa.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    ngay = ngay or datetime.now(timezone.utc).date().isoformat()
+    ngay = ngay or datetime.now(UTC).date().isoformat()
 
     # 1. Phân công ca hôm nay (KV "phan_cong": {ca_id: [nv_id...]})
     phan_cong = _kv_get("phan_cong", {}) or {}
@@ -504,7 +511,6 @@ def tool_get_waste_summary(
     if waste_cluster is not None:
         clusters = [x.__dict__ if hasattr(x, "__dict__") else dict(x) for x in waste_cluster(pairs)]
     n = len(pairs)
-    top = clusters[0] if clusters else {}
     summary = f"Đã ghi nhận {n} ghi chú hao hụt."
     if clusters:
         summary += f" Phát hiện {len(clusters)} mẫu lặp: " + "; ".join(

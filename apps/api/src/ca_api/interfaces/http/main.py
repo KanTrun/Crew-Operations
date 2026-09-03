@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+
 try:
     from datetime import UTC, datetime
 except ImportError:
@@ -11,6 +12,12 @@ except ImportError:
 from pathlib import Path
 from typing import Annotated, Any, cast
 
+# Inject real data sources into AG-COPILOT tool registry (hexagonal boundary).
+# Agents không được import ca_api/ca_playbook trực tiếp (test_architecture) —
+# nên API layer cung cấp dữ liệu thật qua configure_data_sources().
+from ca_agents.ag_copilot.tool_registry import configure_data_sources
+from ca_agents.ag_sop import answer as _sop_answer
+from ca_agents.ag_waste import cluster as _waste_cluster
 from ca_contracts import (
     Ca,
     DongDon,
@@ -21,7 +28,12 @@ from ca_contracts import (
     PhieuMau,
     RangBuocTrichXuat,
 )
+from ca_ops.engine import load_template as _load_template
 from ca_playbook import record_sua
+from ca_playbook.sua import list_sua as _list_sua
+from ca_playbook.vong_doi import de_xuat as _de_xuat
+from ca_playbook.vong_doi import list_luat as _list_luat
+from ca_playbook.vong_doi import tim_mau as _tim_mau
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -38,16 +50,6 @@ from ca_api.persist import DangKyLoi, kv_get, kv_mutate, kv_set
 from ca_api.persist import login as persist_login
 from ca_api.persist import register as persist_register
 from ca_api.persist import session as auth_session
-
-# Inject real data sources into AG-COPILOT tool registry (hexagonal boundary).
-# Agents không được import ca_api/ca_playbook trực tiếp (test_architecture) —
-# nên API layer cung cấp dữ liệu thật qua configure_data_sources().
-from ca_agents.ag_copilot.tool_registry import configure_data_sources
-from ca_agents.ag_sop import answer as _sop_answer
-from ca_agents.ag_waste import cluster as _waste_cluster
-from ca_ops.engine import load_template as _load_template
-from ca_playbook.sua import list_sua as _list_sua
-from ca_playbook.vong_doi import de_xuat as _de_xuat, list_luat as _list_luat, tim_mau as _tim_mau
 
 app = FastAPI(title="NHIP QUAN API", version="0.2.0")
 app.add_middleware(

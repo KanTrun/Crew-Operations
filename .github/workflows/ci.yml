@@ -92,7 +92,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pytest
-      - run: pytest -q packages/agents/tests/test_architecture.py packages/gates/tests packages/solver/tests -k architecture || pytest -q packages/agents/tests/test_architecture.py
+      - run: pytest -q packages/agents/tests/test_architecture.py
 
   solver-bench:
     name: "05 solver bench"

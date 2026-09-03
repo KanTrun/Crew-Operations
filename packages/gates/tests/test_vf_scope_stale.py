@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 from ca_gates import (
     compute_snapshot_hash,
     validate_scope,

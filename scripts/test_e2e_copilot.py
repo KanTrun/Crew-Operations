@@ -10,11 +10,10 @@ Chạy: python scripts/test_e2e_copilot.py
 """
 from __future__ import annotations
 
-import json
+import faulthandler
 import os
 import sys
 import tempfile
-import faulthandler
 
 faulthandler.dump_traceback_later(20, exit=True)  # in stack nếu treo >20s
 
@@ -40,12 +39,12 @@ for p in (
     if os.path.isdir(abs_p) and abs_p not in sys.path:
         sys.path.insert(0, abs_p)
 
-from fastapi.testclient import TestClient  # noqa: E402
 from ca_api.interfaces.http.main import app  # noqa: E402
 from ca_api.persist import (  # noqa: E402
-    reset_init_flag,
     kv_get,
+    reset_init_flag,
 )
+from fastapi.testclient import TestClient  # noqa: E402
 
 client = TestClient(app)
 reset_init_flag()

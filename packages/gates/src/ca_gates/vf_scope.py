@@ -11,11 +11,9 @@ Rules:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from ca_contracts import (
     COPILOT_ROLE_INTENT_MATRIX,
-    copilot_intents_allowed_for_role,
 )
 
 # Intent permissions — derived from the single-source matrix in contracts.

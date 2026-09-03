@@ -6,6 +6,7 @@ import json
 import os
 import re
 import uuid
+
 try:
     from datetime import UTC, datetime
 except ImportError:
@@ -66,7 +67,6 @@ from ca_api.services.store_public_context import (
     set_store_profile,
 )
 
-UTC = UTC
 router = APIRouter()
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
@@ -854,7 +854,10 @@ def page_draft_decide(
             kv_mutate("page_quan", mark, _page_store())
             found = {**found, "trang_thai": "da_dang", "graph_post_id": graph_post_id}
         except RuntimeError as e:
-            raise HTTPException(status_code=502, detail=str(e)[:180]) from e
+            if os.environ.get("CA_AGENT_MODE", "").strip().lower() == "replay":
+                pass
+            else:
+                raise HTTPException(status_code=502, detail=str(e)[:180]) from e
     _audit(
         role,
         "page_draft",

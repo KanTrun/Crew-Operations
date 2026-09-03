@@ -10,6 +10,7 @@ import re
 import sqlite3
 import uuid
 from collections.abc import Callable
+
 try:
     from datetime import UTC
 except ImportError:

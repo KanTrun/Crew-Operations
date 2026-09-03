@@ -3,12 +3,21 @@
 from __future__ import annotations
 
 import uuid
+
 try:
     from datetime import UTC, datetime, timedelta
 except ImportError:
     from datetime import datetime, timedelta, timezone
     UTC = timezone.utc
 from typing import Any
+
+from ca_contracts import (
+    ActionProposal,
+    ActionProposalStatus,
+    CopilotIntent,
+    CopilotResponse,
+    copilot_role_can_use_intent,
+)
 
 from ca_agents.ag_copilot.intent_parser import (
     OUT_OF_SCOPE,
@@ -18,13 +27,6 @@ from ca_agents.ag_copilot.tool_registry import (
     execute_whitelisted_tool,
 )
 from ca_agents.ag_supervisor import supervise_outgoing_response
-from ca_contracts import (
-    ActionProposal,
-    ActionProposalStatus,
-    CopilotIntent,
-    CopilotResponse,
-    copilot_role_can_use_intent,
-)
 
 
 def _compute_hash(data: Any) -> str:

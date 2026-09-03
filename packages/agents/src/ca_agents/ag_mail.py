@@ -11,9 +11,9 @@ from __future__ import annotations
 import json
 import os
 import smtplib
+from dataclasses import dataclass, field
 from email.mime.text import MIMEText
 from pathlib import Path
-from dataclasses import dataclass, field
 
 
 @dataclass

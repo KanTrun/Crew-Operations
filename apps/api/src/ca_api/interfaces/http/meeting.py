@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+
 try:
     from datetime import UTC, datetime
 except ImportError:
@@ -21,7 +22,6 @@ from pydantic import BaseModel, Field
 from ca_api.interfaces.http.sprint3 import _require_manager, _require_role
 from ca_api.persist import audit_add, kv_get, kv_mutate, list_users
 
-UTC = UTC
 router = APIRouter(tags=["meeting"])
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
