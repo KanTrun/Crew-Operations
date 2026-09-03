@@ -51,6 +51,7 @@ const MORE: LinkItem[] = [
   { href: "/inbox", label: "Hộp thư" },
   { href: "/roster", label: "Lịch tuần" },
   { href: "/page-quan", label: "Page quán (FB)" },
+  { href: "/page-quan/fb-inbox", label: "Hộp thư Fanpage (duyệt)" },
   { href: "/cong-bang", label: "Công bằng" },
   { href: "/toi", label: "Ca của tôi" },
   { href: "/phieu", label: "Phiếu" },

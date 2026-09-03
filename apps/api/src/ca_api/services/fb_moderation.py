@@ -208,6 +208,27 @@ def moderate_fb_message(
                 reason=decision.reason,
                 notified_channel="in_app",
             )
+    elif decision.action == FbPolicyAction.AUTO_SEND:
+        # Ghi dấu auto_sent để thống kê tỷ lệ (§5.4) — không cần ai duyệt.
+        review_id = fb_review_insert(
+            {
+                "source": "messenger",
+                "external_thread_id": f"fb_{psid}",
+                "external_psid": psid,
+                "message_text": guard.sanitized_text,
+                "detected_intent": intent,
+                "confidence": confidence,
+                "policy_action": decision.action.value,
+                "assigned_role": None,
+                "proposed_response": response,
+                "flagged_reasons": flagged,
+                "status": "auto_sent",
+                "final_response": response,
+                "trace_id": uuid.uuid4().hex[:12],
+                "created_at": _now_iso(),
+                "expires_at": None,
+            }
+        )
 
     audit_add(
         _now_iso(),
