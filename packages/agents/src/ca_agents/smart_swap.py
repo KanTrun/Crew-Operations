@@ -129,20 +129,25 @@ def find_swap_candidates(
         # 3. Kiểm tra Cẩm nang: Ca liên tiếp trong ngày
         reasons: list[str] = []
         warnings: list[str] = []
-        consecutive_today = len(shifts_today)
-        violates_consecutive = False
+        # Xác định độ dài chuỗi ca liên tiếp nếu nhận thêm ca này
+        today_frames = {str(c.get("khung")) for c in shifts_today} | {target_khung}
+        if {"sang", "chieu", "toi"}.issubset(today_frames):
+            consecutive_today = 3
+        elif {"sang", "chieu"}.issubset(today_frames) or {"chieu", "toi"}.issubset(today_frames):
+            consecutive_today = 2
+        else:
+            consecutive_today = 1 if today_frames else 0
 
+        violates_consecutive = False
         if is_available and shifts_today:
-            # Kiểm tra xem có tạo thành chuỗi ca vượt ngưỡng max_ca_lien_tuc không
             for existing_c in shifts_today:
                 ex_khung = str(existing_c.get("khung") or "")
                 if _is_adjacent(ex_khung, target_khung):
-                    consecutive_today += 1
                     warnings.append(f"Làm ca {ex_khung} liền kề trên cùng ngày {target_thu}")
 
             if consecutive_today > max_ca_lien_tuc:
                 violates_consecutive = True
-                warnings.append(f"Vượt giới hạn Cẩm nang: tối đa {max_ca_lien_tuc} ca liên tiếp/ngày")
+                warnings.append(f"Vượt giới hạn Cẩm nang: làm {consecutive_today} ca liên tiếp/ngày (tối đa {max_ca_lien_tuc})")
 
         # 4. Chấm điểm độ phù hợp (Score 0 - 100)
         score = 0

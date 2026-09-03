@@ -711,9 +711,9 @@ def page_thread_approve(
             customer_name=str(found.get("sender_name") or "Khách hàng"),
         )
         if pair:
-            def mut_golden(items: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
-                lst = list(items or [])
-                lst.insert(0, pair)
+            def mut_golden(items: list[dict[str, Any]] | None, _p: dict[str, Any] = pair) -> list[dict[str, Any]]:
+                lst = [x for x in (items or []) if x.get("customer_msg") != _p["customer_msg"]]
+                lst.insert(0, _p)
                 return lst[:20]
 
             kv_mutate(f"cskh_golden_memory:{store_id}", mut_golden, [])

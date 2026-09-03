@@ -41,6 +41,12 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
   const [editBody, setEditBody] = useState(proposal.payload_diff?.body || "");
 
   useEffect(() => {
+    setEditSubject(proposal.payload_diff?.subject || "");
+    setEditBody(proposal.payload_diff?.body || "");
+    setCurrentStatus(proposal.status);
+  }, [proposal]);
+
+  useEffect(() => {
     if (!proposal.expires_at || currentStatus === "executed" || currentStatus === "rejected") {
       setTimeLeft("");
       return;
