@@ -1,8 +1,31 @@
 # Facebook Chatbot System — Complete Analysis & Deliverables
 
 **Created:** 2026-08-30  
-**Status:** Design & Foundation Complete ✅  
-**Next Phase:** Implementation Ready
+**Updated:** 2026-09-04  
+**Status:** Moderation pipeline SHIPPED ✅ (policy engine + review queue + UI + eval)  
+**Next Phase:** Bật auto-send thật sau khi Chủ quán ký duyệt chính sách
+
+---
+
+## 🚦 Trạng thái hiện tại (2026-09-04)
+
+Pipeline kiểm duyệt 5 lớp cổng đã chạy hoàn chỉnh trên `feat/page-quan-inbox`:
+
+| Thành phần | Trạng thái | Vị trí |
+|---|---|---|
+| Policy engine tất định (ma trận §3.2) | ✅ Đã ship | `packages/agents/src/ca_agents/fb_policy.py` |
+| Rate limiter + blacklist | ✅ Đã ship | `fb_rate_limiter.py` + bảng `fb_psid_blacklist` |
+| Webhook L0 (echo/idempotency/page-filter) | ✅ Đã ship | `apps/api/.../channels.py` |
+| Review queue + SLA + escalation | ✅ Đã ship | bảng `fb_review_queue`, `fb_escalation_log` |
+| API duyệt `/api/v1/page/fb-inbox*` | ✅ Đã ship | RBAC: QL duyệt thường, Chủ duyệt escalate |
+| UI duyệt `/page-quan/fb-inbox` | ✅ Đã ship | tab trong menu "More" |
+| Feature flag auto-send (mặc định OFF) | ✅ Đã ship | `PUT /api/v1/page/fb-policy` (chỉ Chủ quán) |
+| Golden eval 25 case — 100% pass, 0 hard-fail | ✅ Xanh | `scripts/eval_fb_moderation.py` |
+| Runbook vận hành | ✅ Đã viết | `docs/runbooks/fb-chatbot-moderation.md` |
+| Comment handler (reply bài viết) | ⏳ Chưa nối | cần PR riêng sau khi Messenger ổn |
+| Bật auto-send thật | ⏳ Chờ Chủ quán duyệt ma trận §3.2 | runbook mục 2 |
+
+**Kết quả kiểm chứng:** API suite 191/0F · Agents suite 248/0F · web tsc sạch · eval 25/25 GREEN.
 
 ---
 

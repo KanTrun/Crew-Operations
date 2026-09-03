@@ -374,3 +374,86 @@ def test_copilot_message_stream_sse() -> None:
     if meta_line:
         meta = _json.loads(meta_line[len("data:"):].strip())
         assert meta.get("intent") == "SCHEDULE_SOLVE"
+
+
+def test_copilot_send_mail_proposal_and_execute() -> None:
+    token = _login_manager()
+    # 1. Ask Copilot to draft mail
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Gửi email cho Minh nhắc mai đi làm đúng 7h sáng", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "SEND_MAIL"
+    assert data["action_proposal"] is not None
+    action_id = data["action_proposal"]["action_id"]
+    assert "Thân gửi Minh" in data["action_proposal"]["payload_diff"]["body"]
+
+    # 2. Owner approves proposal -> execute action
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+    exec_data = exec_res.json()
+    assert exec_data["status"] == "executed"
+    assert "mail_result" in exec_data["payload_diff"]
+
+
+def test_copilot_mail_tone_memory_feedback_loop() -> None:
+    token = _login_manager()
+
+    # 1. Ask Copilot to draft first mail (default style)
+    res1 = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Gửi email cho Minh nhắc mai đi làm ca sáng", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res1.status_code == 200
+    p1 = res1.json()["action_proposal"]
+    assert p1 is not None
+    action_id_1 = p1["action_id"]
+
+    # Compound context check: shift info injected
+    assert "Ca sáng" in p1["payload_diff"]["body"]
+    assert p1["payload_diff"]["ops_context"] is not None
+    assert p1["payload_diff"]["ops_context"]["type"] == "shift"
+
+    # 2. Owner customizes greeting & signoff before approving
+    edited_body = (
+        "Chào em Minh,\n\n"
+        "Anh nhắc em mai đi làm ca sáng đúng giờ nhé.\n\n"
+        "Thân mến,\n"
+        "Anh Hùng - Chủ quán"
+    )
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={
+            "action_id": action_id_1,
+            "decision": "approve",
+            "correction_diff": {"body": edited_body},
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+
+    # 3. Ask Copilot to draft second mail for Lan
+    res2 = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Gửi email cho Lan nhắc mai đi làm ca sáng", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res2.status_code == 200
+    p2 = res2.json()["action_proposal"]
+    assert p2 is not None
+
+    # Verify Tone Memory applied: uses "Chào em Lan" and "Anh Hùng - Chủ quán"
+    assert p2["payload_diff"]["has_learned_style"] is True
+    body_2 = p2["payload_diff"]["body"]
+    assert "Chào em Lan," in body_2
+    assert "Anh Hùng - Chủ quán" in body_2
+
+

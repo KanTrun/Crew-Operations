@@ -142,6 +142,20 @@ export default function DoiCaPage() {
     }
   }
 
+  async function tuChoi(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiSend(`/api/v1/cho-doi-ca/${encodeURIComponent(id)}/tu-choi`, {});
+      setMsg("Đã từ chối lệnh đổi ca.");
+      load();
+    } catch (e) {
+      setError(viError(e, { doing: "từ chối đổi ca" }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function caLabel(caId: string) {
     const hit = pickers?.ca.find((x) => x.id === caId);
     return caHumanLabel(hit, caId);
@@ -221,9 +235,14 @@ export default function DoiCaPage() {
                   Đồng ý: {parties.map((p) => (agreed.has(p) ? `✓ ${personLabel(p)}` : `○ ${personLabel(p)}`)).join(" · ")}
                 </p>
                 {canAgree ? (
-                  <Btn variant="primary" busy={busy} onClick={() => void dongY(it.id)} className="mt-2">
-                    Tôi đồng ý
-                  </Btn>
+                  <div className="flex gap-2 mt-2">
+                    <Btn variant="primary" busy={busy} onClick={() => void dongY(it.id)}>
+                      Tôi đồng ý
+                    </Btn>
+                    <Btn variant="danger" disabled={busy} onClick={() => void tuChoi(it.id)}>
+                      Từ chối
+                    </Btn>
+                  </div>
                 ) : null}
               </article>
             );

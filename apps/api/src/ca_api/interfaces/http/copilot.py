@@ -101,6 +101,7 @@ class ExecuteActionBody(BaseModel):
     decision: str = Field(pattern="^(approve|reject)$")
     idempotency_key: str = Field(default_factory=lambda: uuid.uuid4().hex)
     reason: str | None = None
+    correction_diff: dict[str, Any] | None = None
 
 
 class AmendActionBody(BaseModel):
@@ -356,6 +357,36 @@ def copilot_execute_action(
     # 7. Apply Action Execution (Single Transaction)
     intent = draft["intent"]
     diff = draft["payload_diff"]
+    orig_body = str(diff.get("body", ""))
+
+    if body.correction_diff and isinstance(body.correction_diff, dict):
+        diff.update(body.correction_diff)
+        if intent == "SEND_MAIL":
+            new_body = str(diff.get("body", ""))
+            if orig_body and new_body and orig_body != new_body:
+                from ca_agents.ag_mailwriter import extract_style_preferences
+
+                prefs = extract_style_preferences(orig_body, new_body)
+                if prefs:
+                    store_key = f"mail_style_memory:{user['store_id']}"
+
+                    def mut_style(cur: dict[str, Any] | None) -> dict[str, Any]:
+                        style = dict(cur or {})
+                        if prefs.get("greeting_style"):
+                            style["greeting_style"] = prefs["greeting_style"]
+                        if prefs.get("signoff_name"):
+                            style["signoff_name"] = prefs["signoff_name"]
+                        if prefs.get("brevity"):
+                            style["brevity"] = prefs["brevity"]
+                        samples = list(style.get("samples") or [])
+                        samples.append({
+                            "subject": str(diff.get("subject", "")),
+                            "body": new_body,
+                        })
+                        style["samples"] = samples[-5:]
+                        return style
+
+                    kv_mutate(store_key, mut_style, {})
 
     if intent == "SCHEDULE_SOLVE":
         kv_set("lich_tuan", diff.get("phan_cong", {}))
@@ -417,6 +448,28 @@ def copilot_execute_action(
             orders.append({"order_id": f"ord_{uuid.uuid4().hex[:6]}", "items": items, "created_at": now_iso})
             return orders
         kv_mutate("restock_orders", mut_orders, [])
+    elif intent == "SEND_MAIL":
+        to_emails = diff.get("to_emails") or []
+        subject = diff.get("subject") or ""
+        body_text = diff.get("body") or ""
+        html_body = diff.get("html_body")
+        attachments = diff.get("attachments")
+        from ca_agents.ag_mail import send_mail
+
+        mail_res = send_mail(
+            to_emails=to_emails,
+            subject=subject,
+            body=body_text,
+            html_body=html_body,
+            attachments=attachments,
+        )
+        diff["mail_result"] = {
+            "ok": mail_res.ok,
+            "sent": mail_res.sent,
+            "failed": mail_res.failed,
+            "mode": mail_res.mode,
+            "reason": mail_res.reason,
+        }
 
     # Mark draft as executed
     copilot_draft_update_status(body.action_id, "executed", executed_at=now_iso)
@@ -494,6 +547,35 @@ def copilot_amend_action(
         "amended_by": user["user_id"],
     }
     copilot_draft_save(new_draft)
+
+    # Nếu là SEND_MAIL, cập nhật Tone Memory từ nội dung đính chính
+    if draft["intent"] == "SEND_MAIL":
+        orig_body = str((draft.get("payload_diff") or {}).get("body", ""))
+        new_body = str((body.correction_diff or {}).get("body") or body.reason)
+        if orig_body and new_body and orig_body != new_body:
+            from ca_agents.ag_mailwriter import extract_style_preferences
+
+            prefs = extract_style_preferences(orig_body, new_body)
+            if prefs:
+                store_key = f"mail_style_memory:{user['store_id']}"
+
+                def mut_amend_style(cur: dict[str, Any] | None) -> dict[str, Any]:
+                    style = dict(cur or {})
+                    if prefs.get("greeting_style"):
+                        style["greeting_style"] = prefs["greeting_style"]
+                    if prefs.get("signoff_name"):
+                        style["signoff_name"] = prefs["signoff_name"]
+                    if prefs.get("brevity"):
+                        style["brevity"] = prefs["brevity"]
+                    samples = list(style.get("samples") or [])
+                    samples.append({
+                        "subject": str((body.correction_diff or {}).get("subject") or (draft.get("payload_diff") or {}).get("subject", "")),
+                        "body": new_body,
+                    })
+                    style["samples"] = samples[-5:]
+                    return style
+
+                kv_mutate(store_key, mut_amend_style, {})
 
     # Link original action
     copilot_draft_update_status(action_id, "executed", amended_by=user["user_id"])

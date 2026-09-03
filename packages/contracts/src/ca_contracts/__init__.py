@@ -336,6 +336,41 @@ class CopilotResponse(BaseModel):
     citations: list[str] = Field(default_factory=list)
 
 
+class FbPolicyAction(StrEnum):
+    """Hành động kiểm duyệt FB — ma trận §3.2 của kế hoạch chatbot moderation."""
+
+    auto_send = "auto_send"
+    queue_review = "queue_review"
+    priority_review = "priority_review"
+    escalate_owner = "escalate_owner"
+    block_polite = "block_polite"
+    block_silent = "block_silent"
+
+    # Uppercase aliases
+    AUTO_SEND = "auto_send"
+    QUEUE_REVIEW = "queue_review"
+    PRIORITY_REVIEW = "priority_review"
+    ESCALATE_OWNER = "escalate_owner"
+    BLOCK_POLITE = "block_polite"
+    BLOCK_SILENT = "block_silent"
+
+
+class PolicyDecision(BaseModel):
+    """Kết quả của fb_policy.decide() — tất định, không LLM, không I/O (ADR-002).
+
+    Mang đủ reason + flagged_reasons để tầng API ghi audit (ADR-008: người quyết,
+    có dấu vết).
+    """
+
+    action: FbPolicyAction
+    reason: str
+    intent: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    assigned_role: Literal["quan_ly", "chu_quan"] | None = None
+    sla_minutes: int | None = None
+    flagged_reasons: list[str] = Field(default_factory=list)
+
+
 CONTRACTS = {
     "NhanVien": NhanVien,
     "Ca": Ca,
@@ -355,5 +390,6 @@ CONTRACTS = {
     "HuanLuyenQuanLy": HuanLuyenQuanLy,
     "CopilotMessage": CopilotMessage,
     "ActionProposal": ActionProposal,
+    "PolicyDecision": PolicyDecision,
 }
 

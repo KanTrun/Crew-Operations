@@ -35,6 +35,17 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
   const [showAmendModal, setShowAmendModal] = useState(false);
   const [amendReason, setAmendReason] = useState("");
 
+  // Email inline editing & personalization
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [editSubject, setEditSubject] = useState(proposal.payload_diff?.subject || "");
+  const [editBody, setEditBody] = useState(proposal.payload_diff?.body || "");
+
+  useEffect(() => {
+    setEditSubject(proposal.payload_diff?.subject || "");
+    setEditBody(proposal.payload_diff?.body || "");
+    setCurrentStatus(proposal.status);
+  }, [proposal]);
+
   useEffect(() => {
     if (!proposal.expires_at || currentStatus === "executed" || currentStatus === "rejected") {
       setTimeLeft("");
@@ -63,6 +74,18 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
     setLoading(true);
     setErrorMsg(null);
     try {
+      let correctionDiff: Record<string, any> | undefined = undefined;
+      if (
+        proposal.intent === "SEND_MAIL" &&
+        decision === "approve" &&
+        (editSubject !== proposal.payload_diff?.subject || editBody !== proposal.payload_diff?.body)
+      ) {
+        correctionDiff = {
+          subject: editSubject,
+          body: editBody,
+        };
+      }
+
       const res = await fetch("http://localhost:8000/api/v1/copilot/execute-action", {
         method: "POST",
         headers: {
@@ -73,6 +96,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           action_id: proposal.action_id,
           decision,
           idempotency_key: `key_${Date.now()}`,
+          correction_diff: correctionDiff,
         }),
       });
 
@@ -171,6 +195,112 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         </p>
       )}
 
+      {proposal.intent === "SEND_MAIL" && proposal.payload_diff && (
+        <div className="my-2 p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 text-xs font-sans space-y-2.5">
+          {/* Metadata Badges: Live Context & Learned Style */}
+          <div className="flex flex-wrap items-center gap-1.5 pb-1 border-b border-zinc-800/60">
+            {proposal.payload_diff.ops_context_summary && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-800/60 text-cyan-300 text-[10px] font-medium">
+                <span>⚡ Dữ liệu sống:</span>
+                <span>{proposal.payload_diff.ops_context_summary}</span>
+              </span>
+            )}
+            {proposal.payload_diff.has_learned_style && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-950/80 border border-purple-800/60 text-purple-300 text-[10px] font-medium">
+                <span>✨ Đã áp dụng văn phong ưa thích</span>
+              </span>
+            )}
+            {isPending && !isEditingEmail && (
+              <button
+                type="button"
+                onClick={() => setIsEditingEmail(true)}
+                className="ml-auto text-[10px] text-amber-400 hover:text-amber-300 underline flex items-center gap-0.5"
+              >
+                ✏️ Sửa trước khi duyệt
+              </button>
+            )}
+            {isPending && isEditingEmail && (
+              <button
+                type="button"
+                onClick={() => setIsEditingEmail(false)}
+                className="ml-auto text-[10px] text-zinc-400 hover:text-zinc-200 underline flex items-center gap-0.5"
+              >
+                Thu gọn chỉnh sửa
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-start gap-1.5 text-zinc-300">
+            <span className="text-zinc-500 font-semibold min-w-[70px]">Người nhận:</span>
+            <span className="text-amber-300 font-mono">
+              {Array.isArray(proposal.payload_diff.to_emails) && proposal.payload_diff.to_emails.length > 0
+                ? proposal.payload_diff.to_emails.join(", ")
+                : proposal.payload_diff.recip_label || "Chưa có email"}
+            </span>
+          </div>
+
+          <div className="flex items-start gap-1.5 text-zinc-300">
+            <span className="text-zinc-500 font-semibold min-w-[70px]">Tiêu đề:</span>
+            {isEditingEmail ? (
+              <input
+                type="text"
+                value={editSubject}
+                onChange={(e) => setEditSubject(e.target.value)}
+                className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 text-xs focus:outline-none focus:border-amber-500"
+              />
+            ) : (
+              <span className="text-zinc-100 font-medium">
+                {editSubject || proposal.payload_diff.subject || "(Chưa có tiêu đề)"}
+              </span>
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-zinc-800/80">
+            <span className="text-zinc-500 font-semibold block mb-1">Nội dung thư:</span>
+            {isEditingEmail ? (
+              <textarea
+                value={editBody}
+                onChange={(e) => setEditBody(e.target.value)}
+                rows={7}
+                className="w-full bg-zinc-900 border border-zinc-700 rounded p-2.5 text-zinc-100 text-[11px] leading-relaxed focus:outline-none focus:border-amber-500 font-sans"
+              />
+            ) : (
+              <div className="bg-zinc-900/90 rounded p-2.5 text-zinc-200 text-[11px] leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-sans border border-zinc-800/60">
+                {editBody || proposal.payload_diff.body || "(Trống)"}
+              </div>
+            )}
+          </div>
+
+          {Array.isArray(proposal.payload_diff.attachments) && proposal.payload_diff.attachments.length > 0 && (
+            <div className="pt-2 border-t border-zinc-800/80">
+              <span className="text-zinc-500 font-semibold block mb-1.5 flex items-center gap-1 text-[11px]">
+                <span>📎</span> Tệp & hình ảnh đính kèm ({proposal.payload_diff.attachments.length}):
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {proposal.payload_diff.attachments.map((att: any, idx: number) => {
+                  const fname = typeof att === "string" ? att.split(/[/\\]/).pop() : (att.filename || "file");
+                  const isInline = typeof att === "object" && (att.is_inline || att.cid);
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-700 text-[11px] text-zinc-200"
+                    >
+                      <span className="text-amber-400">🖼️</span>
+                      <span className="font-mono">{fname}</span>
+                      {isInline && (
+                        <span className="text-[9px] bg-blue-900/60 text-blue-300 px-1 py-0.5 rounded border border-blue-700">
+                          Chèn trong thư
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {errorMsg && (
         <div className="mb-2 p-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[11px]">
           {errorMsg}
@@ -184,7 +314,11 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
             disabled={loading}
             className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold text-white transition disabled:opacity-50"
           >
-            {loading ? "Đang xử lý..." : "✓ Duyệt & Áp dụng"}
+            {loading
+              ? "Đang gửi..."
+              : proposal.intent === "SEND_MAIL"
+              ? "✓ Duyệt & Gửi email"
+              : "✓ Duyệt & Áp dụng"}
           </button>
           <button
             onClick={() => handleDecision("reject")}

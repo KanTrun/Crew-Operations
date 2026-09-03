@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "FbPolicyAction": {
+      "description": "Hành động kiểm duyệt FB — ma trận §3.2 của kế hoạch chatbot moderation.",
+      "enum": [
+        "auto_send",
+        "queue_review",
+        "priority_review",
+        "escalate_owner",
+        "block_polite",
+        "block_silent",
+        "auto_send",
+        "queue_review",
+        "priority_review",
+        "escalate_owner",
+        "block_polite",
+        "block_silent"
+      ],
+      "title": "FbPolicyAction",
+      "type": "string"
+    }
+  },
+  "description": "Kết quả của fb_policy.decide() — tất định, không LLM, không I/O (ADR-002).\n\nMang đủ reason + flagged_reasons để tầng API ghi audit (ADR-008: người quyết,\ncó dấu vết).",
+  "properties": {
+    "action": {
+      "$ref": "#/$defs/FbPolicyAction"
+    },
+    "reason": {
+      "title": "Reason",
+      "type": "string"
+    },
+    "intent": {
+      "title": "Intent",
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "assigned_role": {
+      "anyOf": [
+        {
+          "enum": [
+            "quan_ly",
+            "chu_quan"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Assigned Role"
+    },
+    "sla_minutes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sla Minutes"
+    },
+    "flagged_reasons": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Flagged Reasons",
+      "type": "array"
+    }
+  },
+  "required": [
+    "action",
+    "reason",
+    "intent",
+    "confidence"
+  ],
+  "title": "PolicyDecision",
+  "type": "object"
+}

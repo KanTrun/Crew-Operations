@@ -20,7 +20,13 @@ from ca_agents.ag_fbpage import (
     FBMessageOutput,
     process_fb_message,
 )
+from ca_agents.ag_fbpage_memory import extract_cskh_golden_pair
 from ca_agents.ag_msg import classify
+from ca_agents.ag_supervisor import run_nightly_cskh_reflection
+from ca_agents.customer_memory import (
+    extract_customer_preferences,
+    merge_customer_profile,
+)
 from ca_agents.facebook_page import (
     fetch_conversations,
     is_within_24h_window,
@@ -49,6 +55,12 @@ from ca_api.interfaces.http.sprint3 import (
 )
 from ca_api.persist import (
     audit_add,
+    fb_escalation_add,
+    fb_review_decide,
+    fb_review_get,
+    fb_review_list,
+    fb_stats,
+    fb_try_claim_event,
     kenh_bind_code_consume,
     kenh_bind_code_issue,
     kenh_bind_get,
@@ -59,6 +71,7 @@ from ca_api.persist import (
     kv_set,
 )
 from ca_api.persist import session as auth_session
+from ca_api.services.fb_moderation import moderate_fb_message
 from ca_api.services.store_public_context import (
     get_active_promotions,
     get_public_menu,
@@ -174,6 +187,8 @@ def _enqueue_inbox(
         "nv_id": nv_id,
         "channel_user_id": external_user_id,
         "rang_buoc": rang_buoc,
+        "can_xac_minh": bool(rang_buoc.get("can_xac_minh") or do_tin_cay < 0.7),
+        "doi_tac_khong_ro": bool(rang_buoc.get("doi_tac_khong_ro", False)),
         "created_at": _now(),
     }
 
@@ -224,7 +239,21 @@ def process_inbound(msg: InboundMessage, *, reply_backend: str | None = None) ->
         sent = port.send(msg.external_user_id, body)
         return {"ok": True, "hanh": "xem_lich", "nv_id": nv_id, "message": sent.__dict__}
 
-    r = classify(text, mode=agent_mode())
+    staff_list: list[dict[str, str]] = []
+    try:
+        from ca_api.persist import list_users
+        users = list_users()
+        staff_list = [
+            {
+                "id": u.get("nv_id") or u.get("username", ""),
+                "ten": u.get("display_name") or u.get("username", ""),
+            }
+            for u in users
+        ]
+    except Exception:
+        pass
+
+    r = classify(text, mode=agent_mode(), staff=staff_list if staff_list else None)
     if not should_enqueue_constraint(text, r.intent, r.do_tin_cay):
         sent = port.send(
             msg.external_user_id,
@@ -372,11 +401,16 @@ def _page_mode() -> str:
     if env in {"live", "disconnected"}:
         return env
     token = bool(os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip())
-    if token and env == "live":
-        return "live"
     if token:
         return "live"
     return "disconnected"
+
+
+def _fb_auto_send_enabled() -> bool:
+    """Feature flag — delegate về service (single source of truth, §5.5)."""
+    from ca_api.services.fb_moderation import fb_auto_send_enabled
+
+    return fb_auto_send_enabled()
 
 
 @router.get("/api/v1/page/status")
@@ -462,24 +496,102 @@ async def facebook_webhook(request: Request) -> Any:
     }
 
     n = 0
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
     for entry in payload.get("entry") or []:
+        # L0a — chỉ nhận entry đúng Page cấu hình (kế hoạch §6.3.5); thiếu id → cho qua (tương thích ngược)
+        if page_id_cfg and entry.get("id") and str(entry.get("id")) != page_id_cfg:
+            continue
         for ev in entry.get("messaging") or []:
             sender = ((ev.get("sender") or {}).get("id")) or ""
             msg = ev.get("message") or {}
+            # L0b — lọc echo: tin do chính Page/bot gửi → tránh vòng lặp (§6.2a)
+            if msg.get("is_echo"):
+                continue
+            # postback / read / delivery (không có message) → nhánh riêng, không classify
             text = (msg.get("text") or "").strip()
             if not sender or not text:
                 continue
 
             mid = str(msg.get("mid") or "")
+            # L0c — idempotency chống webhook retry (§6.2b)
+            if mid and not fb_try_claim_event(mid):
+                continue
             ts = float(ev.get("timestamp") or 0)
+
+            # L1–L5 — moderation pipeline (policy engine + review queue)
+            moderation = moderate_fb_message(
+                psid=sender,
+                text=text,
+                message_id=mid,
+                timestamp=ts,
+                public_context=public_ctx,
+            )
+            action = moderation.get("action", "")
+            # Block: không trả lời, không tạo thread, không đếm
+            if action in {"block_silent", "block_polite"}:
+                continue
+
             input_msg = FBMessageInput(psid=sender, text=text, message_id=mid, timestamp=ts)
+
+            # Lấy hồ sơ khách quen & bài học mẫu Quản lý đã duyệt
+            store_id = "quan_01"
+            cust_prof = kv_get(f"customer_profile:{store_id}:{sender}", {})
+            goldens = kv_get(f"cskh_golden_memory:{store_id}", [])
 
             # Xử lý tin nhắn qua AG-FBPAGE với Guardrails và Ngưỡng tin cậy
             out: FBMessageOutput = await process_fb_message(
                 input_msg,
                 auto_respond_enabled=True,
                 public_context=public_ctx,
+                customer_profile=cust_prof if cust_prof else None,
+                golden_examples=goldens if goldens else None,
             )
+
+            # Policy engine là cổng cuối (ADR-008): auto chỉ khi fb_policy đồng thuận
+            # Nếu policy nói queue → ép queue bất kể kết quả AG-FBPAGE
+            if action in {"queue_review", "priority_review", "escalate_owner"}:
+                out = FBMessageOutput(
+                    action="queue_to_inbox",
+                    response=None,
+                    intent=out.intent,
+                    confidence=out.confidence,
+                    emotion=out.emotion,
+                    suggested_reply=out.suggested_reply or moderation.get("response"),
+                    delegated_agent=out.delegated_agent,
+                    reason=f"fb_policy:{moderation.get('reason')}",
+                )
+            # Ngược lại: fb_policy auto_send, AG-FBPAGE cũng auto_respond + feature flag bật
+            elif action == "auto_send" and out.action == "auto_respond" and _fb_auto_send_enabled():
+                out = FBMessageOutput(
+                    action="auto_respond",
+                    response=out.response,
+                    intent=out.intent,
+                    confidence=out.confidence,
+                    emotion=out.emotion,
+                    suggested_reply=out.suggested_reply,
+                    delegated_agent=out.delegated_agent,
+                    reason=f"fb_policy_auto:{moderation.get('reason')}",
+                )
+            else:
+                # Policy auto nhưng AG-FBPAGE queue, hoặc flag tắt → queue để QL duyệt tay
+                out = FBMessageOutput(
+                    action="queue_to_inbox",
+                    response=None,
+                    intent=out.intent,
+                    confidence=out.confidence,
+                    emotion=out.emotion,
+                    suggested_reply=out.suggested_reply or moderation.get("response"),
+                    delegated_agent=out.delegated_agent,
+                    reason="fb_policy_auto_guarded",
+                )
+
+            # Cập nhật hồ sơ khách quen nếu khách tự giới thiệu tên hoặc sở thích
+            new_prefs = extract_customer_preferences([text])
+            if new_prefs.get("ten_khach") or new_prefs.get("favorite_drinks") or new_prefs.get("special_notes"):
+                def mut_prof(cur: dict[str, Any] | None, _p: dict[str, Any] = new_prefs) -> dict[str, Any]:
+                    return merge_customer_profile(cur, _p)
+
+                cust_prof = kv_mutate(f"customer_profile:{store_id}:{sender}", mut_prof, {})
 
             th = upsert_thread_from_messaging(sender, text, mid)
             th["intent"] = out.intent
@@ -488,6 +600,7 @@ async def facebook_webhook(request: Request) -> Any:
             th["pending_approval"] = out.action == "queue_to_inbox"
             th["last_message_ts"] = ts
             th["is_within_24h"] = is_within_24h_window(ts)
+            th["customer_profile"] = cust_prof
 
             if out.action == "auto_respond" and out.response:
                 bot_reply = {
@@ -654,6 +767,42 @@ def page_thread_approve(
             except RuntimeError as e:
                 raise HTTPException(status_code=502, detail=str(e)[:180]) from e
 
+    # ── Vòng lặp học từ câu sửa của Quản lý (CSKH Golden Memory) ──
+    store_id = "quan_01"
+    clean_final = body.final_reply.strip()
+    msgs = found.get("messages") or []
+    cust_msg = ""
+    for m in reversed(msgs):
+        if m.get("from_customer"):
+            cust_msg = str(m.get("text") or "")
+            break
+
+    if cust_msg and suggested_orig and clean_final != suggested_orig:
+        pair = extract_cskh_golden_pair(
+            customer_msg=cust_msg,
+            ai_draft=suggested_orig,
+            manager_reply=clean_final,
+            intent=str(found.get("intent") or "khac"),
+            customer_name=str(found.get("sender_name") or "Khách hàng"),
+        )
+        if pair:
+            def mut_golden(items: list[dict[str, Any]] | None, _p: dict[str, Any] = pair) -> list[dict[str, Any]]:
+                lst = [x for x in (items or []) if x.get("customer_msg") != _p["customer_msg"]]
+                lst.insert(0, _p)
+                return lst[:20]
+
+            kv_mutate(f"cskh_golden_memory:{store_id}", mut_golden, [])
+
+    # Cập nhật hồ sơ Khách quen nếu có
+    if cust_msg:
+        prefs = extract_customer_preferences([cust_msg])
+        psid = str(found.get("psid") or found.get("sender_id") or "")
+        if psid and (prefs.get("ten_khach") or prefs.get("favorite_drinks") or prefs.get("special_notes")):
+            def mut_cust(cur: dict[str, Any] | None) -> dict[str, Any]:
+                return merge_customer_profile(cur, prefs)
+
+            kv_mutate(f"customer_profile:{store_id}:{psid}", mut_cust, {})
+
     # Audit log with diff tracking
     _audit(
         s["nv_id"],
@@ -667,6 +816,265 @@ def page_thread_approve(
         },
     )
     return {"ok": True, "thread": found, "graph_sent": graph_sent}
+
+
+# ── FB moderation inbox (kế hoạch chatbot §3.8) ───────────────────────────
+
+
+class FbInboxDecideBody(BaseModel):
+    quyet_dinh: str = Field(pattern="^(duyet|sua_gui|tu_choi|chuyen_cap)$")
+    noi_dung: str | None = None
+    ly_do: str | None = None
+
+
+@router.get("/api/v1/page/fb-inbox")
+def fb_inbox_list(
+    status: str | None = None,
+    assigned_role: str | None = None,
+    limit: int = 50,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Danh sách tin FB chờ duyệt. QL không xem hàng gán cho Chủ quán."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    role = _require_manager(authorization)
+    if role == "quan_ly" and assigned_role == "chu_quan":
+        raise HTTPException(status_code=403, detail="forbidden")
+    items = fb_review_list(status=status, assigned_role=assigned_role, limit=limit)
+    for it in items:
+        it["flagged_reasons"] = json.loads(it.get("flagged_reasons") or "[]")
+    return {"items": items, "role": role}
+
+
+@router.get("/api/v1/page/fb-inbox/stats")
+def fb_inbox_stats(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    _require_manager(authorization)
+    return fb_stats()
+
+
+@router.get("/api/v1/page/fb-inbox/{item_id}")
+def fb_inbox_detail(
+    item_id: int,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    _require_manager(authorization)
+    item = fb_review_get(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="khong_thay")
+    item["flagged_reasons"] = json.loads(item.get("flagged_reasons") or "[]")
+    return item
+
+
+@router.post("/api/v1/page/fb-inbox/{item_id}/decide")
+def fb_inbox_decide(
+    item_id: int,
+    body: FbInboxDecideBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Duyệt / sửa rồi gửi / từ chối / chuyển cấp. RBAC theo assigned_role."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    role = _require_manager(authorization)
+    item = fb_review_get(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="khong_thay")
+    if str(item.get("status")) != "pending":
+        raise HTTPException(status_code=409, detail="da_quyet_truoc_do")
+    # Escalate chủ quán: QL không được duyệt khi chưa được chuyển cấp
+    if str(item.get("assigned_role")) == "chu_quan" and role != "chu_quan":
+        raise HTTPException(status_code=403, detail="cho_chu_quan_duyet")
+
+    if body.quyet_dinh == "tu_choi":
+        updated = fb_review_decide(item_id, status="rejected", decided_by=s["nv_id"])
+        _audit(s["nv_id"], "fb_inbox_decide", {"id": item_id, "q": "tu_choi"})
+        return {"ok": True, "item": updated, "sent": False}
+
+    if body.quyet_dinh == "chuyen_cap":
+        if role != "chu_quan":
+            raise HTTPException(status_code=403, detail="chi_chu_quan_chuyen_cap")
+        fb_escalation_add(
+            item_id, escalated_to="chu_quan",
+            reason=body.ly_do or "chuyen_cap", notified_channel="in_app",
+        )
+        return {"ok": True, "item": fb_review_get(item_id), "sent": False}
+
+    # duyet / sua_gui — gửi qua Messenger
+    final_text = (body.noi_dung or str(item.get("proposed_response") or "")).strip()
+    if not final_text:
+        raise HTTPException(status_code=400, detail="thieu_noi_dung")
+    psid = str(item.get("external_psid") or "")
+    graph_sent = False
+    if _page_mode() == "live" and psid:
+        try:
+            send_messenger_text(psid, final_text)
+            graph_sent = True
+        except Exception:
+            graph_sent = False
+    new_status = "sent" if graph_sent else "approved"
+    updated = fb_review_decide(
+        item_id, status=new_status, decided_by=s["nv_id"], final_response=final_text
+    )
+    _audit(
+        s["nv_id"],
+        "fb_inbox_decide",
+        {"id": item_id, "q": body.quyet_dinh, "graph_sent": graph_sent,
+         "final_len": len(final_text)},
+    )
+    return {"ok": True, "item": updated, "sent": graph_sent}
+
+
+# ── FB policy runtime config (kế hoạch §5.5 — Chủ quán chỉnh không cần sửa code) ──
+
+
+class FbPolicyBody(BaseModel):
+    auto_send_enabled: bool | None = None
+    auto_price_cap_vnd: int | None = None
+    note: str | None = None
+
+
+def _fb_policy_get() -> dict[str, Any]:
+    """Đọc config hiện tại (env override lên trước)."""
+    return {
+        "auto_send_enabled": _fb_auto_send_enabled(),
+        "auto_price_cap_vnd": int(
+            os.environ.get("NHIPQUAN_FB_AUTO_PRICE_CAP_VND", "100000")
+        ),
+        "page_mode": _page_mode(),
+        "intent_thresholds": {
+            "chao_hoi": 0.90,
+            "hoi_gio_dia_chi": 0.85,
+            "hoi_menu_gia": 0.85,
+        },
+        "comment_threshold": 0.95,
+        "sla_minutes": {
+            "priority_review": 5,
+            "queue_review": 10,
+            "escalate_owner": 15,
+            "comment_queue": 15,
+        },
+    }
+
+
+@router.get("/api/v1/page/fb-policy")
+def fb_policy_get(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Chủ quán (và QL) xem policy hiện tại."""
+    _require_manager(authorization)
+    return _fb_policy_get()
+
+
+@router.put("/api/v1/page/fb-policy")
+def fb_policy_set(
+    body: FbPolicyBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Chỉ Chủ quán mới được chỉnh `auto_send_enabled` + `auto_price_cap_vnd`.
+
+    Thay đổi ghi audit + cập nhật env process hiện tại (tác dụng cho tới restart
+    service; rollback bằng tắt flag qua env file). Ngưỡng intent/SLA cố định
+    trong code (quyết định kinh doanh — đổi phải PR mới).
+    """
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    if s.get("role") != "chu_quan":
+        raise HTTPException(status_code=403, detail="chi_chu_quan")
+    changes: dict[str, Any] = {}
+    if body.auto_send_enabled is not None:
+        os.environ["NHIPQUAN_FB_AUTO_SEND"] = "1" if body.auto_send_enabled else "0"
+        changes["auto_send_enabled"] = body.auto_send_enabled
+    if body.auto_price_cap_vnd is not None:
+        if body.auto_price_cap_vnd < 0:
+            raise HTTPException(status_code=400, detail="price_cap_am")
+        os.environ["NHIPQUAN_FB_AUTO_PRICE_CAP_VND"] = str(int(body.auto_price_cap_vnd))
+        changes["auto_price_cap_vnd"] = int(body.auto_price_cap_vnd)
+    _audit(
+        s["nv_id"],
+        "fb_policy_update",
+        {"changes": changes, "note": body.note or ""},
+    )
+    return _fb_policy_get()
+
+
+class ApplyProposalBody(BaseModel):
+    proposal_id: str
+    title: str
+    suggested_rule: str
+    topic: str | None = None
+
+
+@router.post("/api/v1/page/audit/reflection")
+def page_audit_reflection(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Tự động kích hoạt Báo cáo Tự phê bình CSKH hàng đêm cho Quán."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    _require_manager(authorization)
+
+    store_id = "quan_01"
+    doc = _page_store()
+    threads = doc.get("threads", [])
+
+    report = run_nightly_cskh_reflection(threads, store_id=store_id)
+    kv_set(f"cskh_reflection_reports:{store_id}", report)
+
+    _audit(s["nv_id"], "cskh_nightly_reflection", {"csat": report["csat_score"], "proposals": len(report["playbook_rule_proposals"])})
+    return {"ok": True, "report": report}
+
+
+@router.get("/api/v1/page/audit/reflection/latest")
+def get_latest_reflection(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Lấy báo cáo tự phê bình CSKH mới nhất."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    store_id = "quan_01"
+    report = kv_get(f"cskh_reflection_reports:{store_id}", None)
+    if not report:
+        doc = _page_store()
+        threads = doc.get("threads", [])
+        report = run_nightly_cskh_reflection(threads, store_id=store_id)
+        kv_set(f"cskh_reflection_reports:{store_id}", report)
+    return {"ok": True, "report": report}
+
+
+@router.post("/api/v1/page/audit/reflection/apply-proposal")
+def apply_reflection_proposal(
+    body: ApplyProposalBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Chấp thuận đề xuất cẩm nang từ báo cáo tự phê bình để đưa vào quy trình quán."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    _require_manager(authorization)
+
+    store_id = "quan_01"
+    def mut_rules(rules: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+        lst = list(rules or [])
+        lst.append({
+            "id": body.proposal_id,
+            "title": body.title,
+            "rule": body.suggested_rule,
+            "topic": body.topic,
+            "created_by": f"AI Reflection ({s.get('display_name', s['nv_id'])})",
+            "created_at": _now(),
+        })
+        return lst
+
+    kv_mutate(f"playbook_rules:{store_id}", mut_rules, [])
+
+    _audit(s["nv_id"], "apply_cskh_proposal", {"proposal_id": body.proposal_id, "title": body.title})
+    return {"ok": True, "message": f"Đã bổ sung '{body.title}' vào cẩm nang quán thành công!"}
 
 
 @router.get("/api/v1/store/profile")

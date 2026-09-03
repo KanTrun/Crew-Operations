@@ -677,110 +677,125 @@ def tool_send_mail(
     body: str = "",
     **kwargs: Any,
 ) -> ToolExecutionResult:
-    """Send email to staff by nv_id. Reads real emails from user table.
+    """Delegate email drafting to AG-MAILWRITER and generate an ActionProposal.
 
-    Phân quyền được đảm bảo ở tầng agent (chỉ quan_ly/chu_quan có SEND_MAIL).
-    Ở đây chỉ tập hợp email + gọi ag_mail (replay/stub an toàn khi chưa cấu hình SMTP).
+    Tuân thủ Two-Phase Approval: Tool chỉ soạn thảo thư chuyên nghiệp và trả về
+    ActionProposal (requires_confirmation=True) để Chủ quán/Quản lý xem trước,
+    duyệt, sửa hoặc từ chối trước khi gửi thật qua SMTP.
     """
-    to_nv_ids = to_nv_ids or []
-    subject = (subject or "").strip()
-    body = (body or "").strip()
+    to_nv_ids = list(to_nv_ids or [])
+    direct_emails = list(kwargs.get("direct_emails") or [])
+    recipient_names = list(kwargs.get("recipient_names") or [])
+    raw_request = str(kwargs.get("raw_request") or body or subject or "Thông báo công việc").strip()
 
-    if not to_nv_ids:
-        return ToolExecutionResult(
-            success=False,
-            tool_name="tool_send_mail",
-            intent="SEND_MAIL",
-            data={},
-            summary="Chưa rõ gửi cho ai (thiếu nv_id).",
-            explanation="Cần chỉ định danh sách nhân viên nhận mail.",
-            requires_confirmation=False,
-            error="missing_recipients",
-        )
-
-    # Lấy email thật từ user table (inject qua get_user_emails).
+    # Tra cứu email thật từ user table (inject qua get_user_emails)
     get_emails = _src("get_user_emails")
     email_map = dict(get_emails() or {}) if get_emails else {}
-    to_emails: list[str] = []
+    to_emails: list[str] = list(direct_emails)
     missing: list[str] = []
+
     for nv in to_nv_ids:
         em = email_map.get(nv)
         if em:
-            to_emails.append(em)
+            if em not in to_emails:
+                to_emails.append(em)
         else:
             missing.append(nv)
 
-    if not to_emails:
-        return ToolExecutionResult(
-            success=False,
-            tool_name="tool_send_mail",
-            intent="SEND_MAIL",
-            data={"missing": missing},
-            summary="Không tìm thấy email nào (nhân viên chưa cập nhật gmail ở trang Cá nhân).",
-            explanation=(
-                "Nhân viên cần vào trang 'Cá nhân' (/toi) để cập nhật gmail của mình, "
-                "sau đó mới gửi mail được."
-            ),
-            requires_confirmation=False,
-            error="no_emails_found",
+    # Xác định danh xưng người nhận
+    if recipient_names:
+        recip_label = ", ".join(recipient_names)
+    elif to_emails:
+        recip_label = ", ".join(to_emails)
+    elif missing:
+        recip_label = ", ".join(missing)
+    else:
+        recip_label = "Nhân viên quán"
+
+    # Lấy dữ liệu vận hành sống (Compound Context) & Gu văn phong (Tone Memory)
+    get_ops_ctx = _src("get_ops_context")
+    ops_context = get_ops_ctx(store_id=store_id, to_nv_ids=to_nv_ids, raw_request=raw_request) if get_ops_ctx else None
+
+    get_style = _src("get_mail_style")
+    style_memory = get_style(store_id=store_id) if get_style else None
+
+    # Gọi Agent chuyên trách AG-MAILWRITER (inject qua _src("draft_mail"))
+    draft_fn = _src("draft_mail")
+    has_learned = bool(style_memory)
+    if draft_fn:
+        try:
+            draft = draft_fn(
+                raw_request=raw_request,
+                recipient_name=recip_label,
+                recipient_email=", ".join(to_emails),
+                sender_name="Ban Quản Lý Nhịp Quán",
+                store_name="Nhịp Quán",
+                ops_context=ops_context,
+                style_memory=style_memory,
+            )
+            draft_subject = getattr(draft, "subject", "") or subject or f"[Nhịp Quán] Thông báo gửi {recip_label}"
+            draft_body = getattr(draft, "body", "") or body or raw_request
+            has_learned = getattr(draft, "has_learned_style", has_learned)
+        except Exception:
+            draft_subject = subject or f"[Nhịp Quán] Thông báo gửi {recip_label}"
+            draft_body = body or raw_request
+    else:
+        draft_subject = (
+            subject if subject.startswith("[Nhịp Quán]") else f"[Nhịp Quán] Thông báo gửi {recip_label}"
+        )
+        draft_body = (
+            f"Thân gửi {recip_label},\n\n"
+            f"Ban Quản Lý Nhịp Quán xin thông báo:\n"
+            f"- {raw_request}\n\n"
+            f"Vui lòng phản hồi lại nếu cần thêm thông tin.\n\n"
+            f"Trân trọng,\n"
+            f"Ban Quản Lý Nhịp Quán"
         )
 
-    # Gọi ag_mail (replay ghi log; SMTP nếu cấu hình).
-    try:
-        from ca_agents.ag_mail import send_mail as _send_mail
+    ops_summary = ""
+    if ops_context:
+        if ops_context.get("type") == "shift":
+            ops_summary = f"Lịch ca {ops_context.get('ca_ten', '')} ({ops_context.get('gio', '')})"
+        elif ops_context.get("type") == "inventory":
+            ops_summary = f"Tồn kho {ops_context.get('mat_hang', '')} ({ops_context.get('ton_kho')} {ops_context.get('dvt', '')})"
+        elif ops_context.get("type") == "daily_summary":
+            ops_summary = "Số liệu vận hành ngày"
 
-        res = _send_mail(to_emails=to_emails, subject=subject or "(không tiêu đề)", body=body)
-        if not res.sent and res.failed:
-            return ToolExecutionResult(
-                success=False,
-                tool_name="tool_send_mail",
-                intent="SEND_MAIL",
-                data={"sent": res.sent, "failed": res.failed},
-                summary="Gửi mail thất bại.",
-                explanation=str(res.failed[:1]),
-                requires_confirmation=False,
-                error="smtp_failed",
-            )
-        payload = {
-            "to_emails": to_emails,
-            "missing": missing,
-            "mode": res.mode,
-            "sent": res.sent,
-        }
-        if missing:
-            return ToolExecutionResult(
-                success=False,
-                tool_name="tool_send_mail",
-                intent="SEND_MAIL",
-                data=payload,
-                summary=(f"Đã gửi {len(res.sent)} mail, {len(missing)} nhân viên chưa có email."),
-                explanation=(
-                    "Một số nhân viên chưa cập nhật gmail (trang Cá nhân /toi). "
-                    "Những người đã có email vẫn nhận được."
-                ),
-                requires_confirmation=False,
-                error="partial_missing_emails",
-            )
-        return ToolExecutionResult(
-            success=True,
-            tool_name="tool_send_mail",
-            intent="SEND_MAIL",
-            data=payload,
-            summary=f"Đã gửi {len(res.sent)} email cho nhân viên.",
-            explanation=f"Chế độ gửi: {res.mode}.",
-            requires_confirmation=False,
+    payload = {
+        "subject": draft_subject,
+        "body": draft_body,
+        "to_emails": to_emails,
+        "to_nv_ids": to_nv_ids,
+        "recipient_names": recipient_names,
+        "recip_label": recip_label,
+        "missing": missing,
+        "raw_request": raw_request,
+        "ops_context": ops_context,
+        "ops_context_summary": ops_summary,
+        "has_learned_style": has_learned,
+    }
+
+    if not to_emails and missing:
+        explanation = (
+            f"Agent AG-MAILWRITER đã soạn xong thư chuyên nghiệp cho {recip_label}. "
+            "Tuy nhiên nhân viên chưa cập nhật Gmail tại trang Cá nhân (/toi). "
+            "Anh/chị xem bản nháp, sau khi nhân viên bổ sung email là có thể gửi ngay."
         )
-    except Exception as exc:  # noqa: BLE001
-        return ToolExecutionResult(
-            success=False,
-            tool_name="tool_send_mail",
-            intent="SEND_MAIL",
-            data={},
-            summary="Lỗi khi gửi mail.",
-            explanation=str(exc),
-            requires_confirmation=False,
-            error="mail_error",
+    else:
+        explanation = (
+            f"Agent AG-MAILWRITER đã soạn xong thư chuyên nghiệp cho {recip_label}. "
+            "Anh/chị xem trước nội dung, có thể bấm 'Duyệt & Gửi' để gửi đi hoặc bảo em sửa lại nhé!"
         )
+
+    return ToolExecutionResult(
+        success=True,
+        tool_name="tool_send_mail",
+        intent="SEND_MAIL",
+        data=payload,
+        summary=f"Bản nháp email gửi {recip_label}: {draft_subject}",
+        explanation=explanation,
+        requires_confirmation=True,
+    )
 
 
 _TOOLS: dict[str, Callable[..., ToolExecutionResult]] = {

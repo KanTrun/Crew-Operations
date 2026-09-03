@@ -223,5 +223,11 @@ gh pr create --base main
 | Plan | Trạng thái |
 |------|------------|
 | [`260821-2221` Lô 1 full delivery](./plans/260821-2221-nhip-quan-lot1-full-delivery/) | Sprint 1–6 done · 7–8 pending |
-| [`260827-1438` Kênh tin + Facebook](./plans/260827-1438-kenh-tin-telegram-zalo-va-facebook-page/) | Phase 1–7 done (ops token ngoài repo) |
-| [`260827-2243` Inbox ↔ TKB](./plans/260827-2243-noi-logic-lich-inbox-tkb/) | Pending |
+| [`260827-1438` Kênh tin + Facebook](./plans/260827-1438-kenh-tin-telegram-zalo-va-facebook-page/) | Phase 1–6 done · Phase 7 pending (chờ kết nối Page thật ngoài repo) |
+| [`260827-2243` Inbox ↔ TKB](./plans/260827-2243-noi-logic-lich-inbox-tkb/) | Completed (11 edge cases, solver wire, UI modal, 11 tests pass) |
+| [`260827` TKB từ ảnh](./plans/260827-tkb-anh-upload-xac-nhan/) | Completed |
+| [`260830-0930` TikTok Apify](./plans/260830-0930-tiktok-apify-primary-tiktokwm-fallback/) | Completed (code + 22 tests pass) |
+| [`260831-0107` Nâng cấp Ops UI](./plans/260831-0107-nang-cap-mat-van-hanh-ops-ui/) | Completed (picker, hub, API đổi ca — merge `d50b0f5`) |
+| [`260831-1159` Roster lưới tóm tắt](./plans/260831-1159-roster-luoi-tom-tat-va-khung-gio/) | Completed (lưới tuần zebra + PATCH khung giờ — merge `fce0383`) |
+| [`260901` Copilot bỏ data cứng](./plans/260901-copilot-bo-data-cung/) | Completed (data thật, apply thật, SSE stream, 475 tests — merge PR #27) |
+

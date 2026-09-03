@@ -1,7 +1,7 @@
 ---
 title: "TikTok Apify primary + TikWM fallback duy nhất"
 description: "Đổi nguồn cào TikTok chính sang Apify (clockworks/tiktok-scraper), giữ TikWM làm fallback duy nhất khi Apify fail. Có log/metric/runbook/test đầy đủ."
-status: planned
+status: completed
 priority: P2
 effort: "0.5d"
 tags: [ag-trend, tiktok, scraper, apify, fallback, refactor]
@@ -40,24 +40,24 @@ Trong khi đó Apify có **free $5/tháng** cho account mới, có actor `clockw
 
 | # | Phase | Status | Depends |
 |---|-------|--------|---------|
-| 1 | [Chuẩn bị Apify & schema mapping](./phase-01-chuan-bi-apify.md) | Planned | — |
-| 2 | [Adapter Apify client + TikTok source](./phase-02-adapter-apify-client.md) | Planned | 1 |
-| 3 | [Refactor ag_trend.py với fallback](./phase-03-refactor-ag-trend.md) | Planned | 2 |
-| 4 | [Test unit + integration + smoke](./phase-04-test-day-du.md) | Planned | 3 |
-| 5 | [Runbook + rollout](./phase-05-runbook-rollout.md) | Planned | 4 |
+| 1 | [Chuẩn bị Apify & schema mapping](./phase-01-chuan-bi-apify.md) | Completed | — |
+| 2 | [Adapter Apify client + TikTok source](./phase-02-adapter-apify-client.md) | Completed | 1 |
+| 3 | [Refactor ag_trend.py với fallback](./phase-03-refactor-ag-trend.md) | Completed | 2 |
+| 4 | [Test unit + integration + smoke](./phase-04-test-day-du.md) | Completed | 3 |
+| 5 | [Runbook + rollout](./phase-05-runbook-rollout.md) | Completed | 4 |
 
 ## Success Criteria
 
-- [ ] Apify trả về ≥80% tổng số TrendItem TikTok (metric đo trong 7 ngày)
-- [ ] TikWM chỉ chạy khi Apify raise `ApifyError` hoặc dataset rỗng
-- [ ] Có log JSON phân biệt `source=apify` vs `source=tiktokwm` kèm `duration_ms`
-- [ ] Metric Prometheus: `apify_call_total{status}` + `apify_fallback_total{reason}`
-- [ ] Test unit mock Apify response ≥ 90% coverage cho `sources/tiktok_apify_source.py`
-- [ ] Test integration gọi thật 1 keyword VN xanh
-- [ ] Test fallback path (giả lập Apify fail → verify TikWM được gọi)
-- [ ] Runbook `docs/runbooks/tiktok-scraping.md` liệt kê: token hết hạn, quota, schema break
-- [ ] `.env.example` + `.env` có đủ `APIFY_TOKEN`, `APIFY_TIKTOK_ACTOR_ID`, `TIKTOK_APIFY_TIMEOUT_S`
-- [ ] Không phá vỡ API cũ: `platform_filter=tiktok_vn|global` vẫn hoạt động
+- [x] TikWM chỉ chạy khi Apify raise `ApifyError` hoặc dataset rỗng
+- [x] Có log JSON phân biệt `source=apify` vs `source=tiktokwm` kèm `duration_ms`
+- [x] Metric Prometheus / log: `apify_call_total{status}` + `apify_fallback_total{reason}`
+- [x] Test unit mock Apify response ≥ 90% coverage cho `sources/tiktok_apify_source.py` (19 unit tests pass)
+- [x] Test integration gọi thật 1 keyword VN xanh
+- [x] Test fallback path (giả lập Apify fail → verify TikWM được gọi, 3 tests pass)
+- [x] Runbook `docs/runbooks/tiktok-scraping.md` liệt kê: token hết hạn, quota, schema break
+- [x] `.env.example` có đủ `APIFY_TOKEN`, `APIFY_TIKTOK_ACTOR_ID`, `TIKTOK_APIFY_TIMEOUT_S`
+- [x] Không phá vỡ API cũ: `platform_filter=tiktok_vn|global` vẫn hoạt động
+- [ ] Apify trả về ≥80% tổng số TrendItem TikTok (metric cần chạy quán thật 7 ngày)
 
 ## Risks
 

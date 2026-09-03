@@ -33,6 +33,13 @@ type Thread = {
   is_within_24h: boolean;
   needs_action: boolean;
   suggested_reply?: string;
+  customer_profile?: {
+    ten_khach?: string;
+    visit_count?: number;
+    is_vip_or_regular?: boolean;
+    favorite_drinks?: string[];
+    special_notes?: string[];
+  };
   messages: Array<{
     id: string;
     from_customer: boolean;
@@ -119,9 +126,11 @@ export default function PageQuanPage() {
   const [aiTopic, setAiTopic] = useState("");
   const [aiTone, setAiTone] = useState("than thien");
   const [aiGenerating, setAiGenerating] = useState(false);
-  const [tab, setTab] = useState<"threads" | "drafts" | "trends" | "saved_trends" | "config">("trends");
+  const [tab, setTab] = useState<"threads" | "drafts" | "trends" | "saved_trends" | "config" | "reflection">("trends");
   const [profile, setProfile] = useState<StoreProfile | null>(null);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [reflectionReport, setReflectionReport] = useState<any | null>(null);
+  const [reflectionLoading, setReflectionLoading] = useState(false);
 
   // Trend Intelligence State
   const [trends, setTrends] = useState<TrendItem[]>([]);
@@ -357,6 +366,58 @@ export default function PageQuanPage() {
     }
   }
 
+  async function loadReflection() {
+    setReflectionLoading(true);
+    try {
+      const res = await apiGet<{ ok: boolean; report: any }>("/api/v1/page/audit/reflection/latest");
+      if (res && res.report) {
+        setReflectionReport(res.report);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setReflectionLoading(false);
+    }
+  }
+
+  async function triggerReflection() {
+    setReflectionLoading(true);
+    try {
+      const res = await apiSend<{ ok: boolean; report: any }>("/api/v1/page/audit/reflection", {});
+      if (res && res.report) {
+        setReflectionReport(res.report);
+        push("Đã hoàn tất phân tích tự đánh giá CSKH hôm nay!");
+      }
+    } catch (e) {
+      setError(viError(e, { doing: "chạy tự đánh giá" }));
+    } finally {
+      setReflectionLoading(false);
+    }
+  }
+
+  async function applyRuleProposal(p: any) {
+    try {
+      await apiSend("/api/v1/page/audit/reflection/apply-proposal", {
+        proposal_id: p.proposal_id,
+        title: p.title,
+        suggested_rule: p.suggested_rule,
+        topic: p.topic,
+      });
+      push(`Đã thêm "${p.title}" vào cẩm nang quán thành công!`);
+      setReflectionReport((r: any) => {
+        if (!r) return r;
+        return {
+          ...r,
+          playbook_rule_proposals: r.playbook_rule_proposals.map((item: any) =>
+            item.proposal_id === p.proposal_id ? { ...item, status: "da_ap_dung" } : item
+          ),
+        };
+      });
+    } catch (e) {
+      setError(viError(e, { doing: "áp dụng đề xuất cẩm nang" }));
+    }
+  }
+
   async function saveProfile() {
     if (!profile) return;
     try {
@@ -481,6 +542,20 @@ export default function PageQuanPage() {
             Cấu hình Thông tin quán
           </Btn>
         ) : null}
+        <Btn
+          variant={tab === "reflection" ? "primary" : "ghost"}
+          onClick={() => {
+            setTab("reflection");
+            loadReflection();
+          }}
+          className={
+            tab === "reflection"
+              ? "bg-purple-600 text-white font-bold shadow-md"
+              : "text-purple-300 hover:bg-purple-500/10 border border-purple-500/30"
+          }
+        >
+          🧠 Tự Đánh Giá CSKH {reflectionReport ? `(${reflectionReport.csat_score}⭐)` : ""}
+        </Btn>
       </div>
 
       {/* TAB 1: RADAR TRÍ TUỆ XU HƯỚNG & GIẢI MÃ TỪ KHÓA VIRAL */}
@@ -1410,7 +1485,19 @@ export default function PageQuanPage() {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[var(--nq-primary)]">{th.sender_name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-[var(--nq-primary)]">{th.sender_name}</span>
+                      {th.customer_profile?.is_vip_or_regular && (
+                        <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/40">
+                          ⭐ Khách quen ({th.customer_profile.visit_count} lần)
+                        </span>
+                      )}
+                      {th.customer_profile?.favorite_drinks && th.customer_profile.favorite_drinks.length > 0 && (
+                        <span className="rounded bg-cyan-950/60 px-1.5 py-0.5 text-[10px] text-cyan-300 border border-cyan-800/40">
+                          ☕ {th.customer_profile.favorite_drinks.join(", ")}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-xs text-[var(--nq-muted)]">
                       {th.is_within_24h ? "Trong 24h" : "Hết 24h (cần tag)"}
                     </span>
@@ -1622,6 +1709,145 @@ export default function PageQuanPage() {
           <Btn variant="primary" onClick={saveProfile}>
             Lưu cấu hình
           </Btn>
+        </div>
+      )}
+
+      {/* TAB 5: BÁO CÁO TỰ ĐÁNH GIÁ & TIẾN HÓA CSKH (AI REFLECTION) */}
+      {tab === "reflection" && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-purple-800/40 bg-purple-950/20 p-4">
+            <div>
+              <h2 className="text-base font-bold text-purple-200 flex items-center gap-2">
+                <span>🧠</span> Báo Cáo Tự Đánh Giá & Tiến Hóa CSKH (Nightly Reflection)
+              </h2>
+              <p className="text-xs text-purple-300/80 mt-1">
+                AG-SUPERVISOR tự động soi lại toàn bộ hội thoại của quán, chấm điểm chất lượng và đề xuất luật mới vào Cẩm nang.
+              </p>
+            </div>
+            <Btn
+              variant="primary"
+              disabled={reflectionLoading}
+              onClick={triggerReflection}
+              className="bg-purple-600 hover:bg-purple-500 font-semibold text-white"
+            >
+              {reflectionLoading ? "Đang phân tích..." : "🔄 Chạy Tự Đánh Giá Ngay"}
+            </Btn>
+          </div>
+
+          {reflectionLoading && !reflectionReport && (
+            <Loading skeleton="list">Đang phân tích dữ liệu hội thoại CSKH...</Loading>
+          )}
+
+          {reflectionReport && (
+            <div className="space-y-6">
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 text-center">
+                  <span className="text-xs text-[var(--nq-muted)] block mb-1">Điểm Hài Lòng (CSAT Dự Đoán)</span>
+                  <div className="text-3xl font-black text-amber-400 flex items-center justify-center gap-1">
+                    <span>{reflectionReport.csat_score}</span>
+                    <span className="text-base text-amber-500/80">/ 10.0 ⭐</span>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 text-center">
+                  <span className="text-xs text-[var(--nq-muted)] block mb-1">Tuân Thủ Chuẩn H.E.A.R</span>
+                  <div className="text-3xl font-black text-emerald-400">
+                    {reflectionReport.hear_compliance_rate}%
+                  </div>
+                  <span className="text-[10px] text-[var(--nq-muted)] block mt-1">Xin lỗi - Lấy SĐT - Quản lý gọi lại</span>
+                </div>
+
+                <div className="rounded-xl border border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 text-center">
+                  <span className="text-xs text-[var(--nq-muted)] block mb-1">Tổng Cuộc Hội Thoại</span>
+                  <div className="text-3xl font-black text-cyan-400">
+                    {reflectionReport.total_conversations}
+                  </div>
+                  <span className="text-[10px] text-[var(--nq-muted)] block mt-1">
+                    Tích cực: {reflectionReport.sentiment_breakdown?.positive || 0} | Phản ánh: {reflectionReport.sentiment_breakdown?.negative || 0}
+                  </span>
+                </div>
+              </div>
+
+              {/* Recommendations */}
+              <div className="rounded-xl border border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 space-y-2">
+                <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>💡</span> Bài Học & Khuyến Nghị Tự Hoàn Thiện
+                </h3>
+                <ul className="space-y-1.5 text-xs text-[var(--nq-primary)]">
+                  {reflectionReport.learning_recommendations?.map((rec: string, idx: number) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <span className="text-amber-400 font-bold">•</span>
+                      <span>{rec}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Unresolved Inquiries (Lỗ hổng tri thức) */}
+              {reflectionReport.unresolved_inquiries && reflectionReport.unresolved_inquiries.length > 0 && (
+                <div className="rounded-xl border border-rose-800/40 bg-rose-950/20 p-4 space-y-3">
+                  <h3 className="text-xs font-bold text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>❓</span> Câu Hỏi Khách Hỏi Nhiều Mà Quán Chưa Có Dữ Liệu
+                  </h3>
+                  <div className="space-y-2">
+                    {reflectionReport.unresolved_inquiries.map((un: any, idx: number) => (
+                      <div key={idx} className="rounded-lg border border-rose-900/50 bg-zinc-950/60 p-3 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-rose-200">{un.title}</span>
+                          <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-bold text-rose-300 border border-rose-500/30">
+                            {un.count} lượt hỏi
+                          </span>
+                        </div>
+                        {un.sample_questions && un.sample_questions.length > 0 && (
+                          <div className="mt-2 text-[11px] text-zinc-400 italic">
+                            &quot;{un.sample_questions[0]}&quot;
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Playbook Rule Proposals */}
+              {reflectionReport.playbook_rule_proposals && reflectionReport.playbook_rule_proposals.length > 0 && (
+                <div className="rounded-xl border border-purple-800/40 bg-purple-950/20 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-purple-200 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>📋</span> Đề Xuất Cập Nhật Cẩm Nang Quán (1-Click Apply)
+                    </h3>
+                  </div>
+                  <div className="space-y-3">
+                    {reflectionReport.playbook_rule_proposals.map((p: any) => (
+                      <div
+                        key={p.proposal_id}
+                        className="rounded-lg border border-purple-900/50 bg-zinc-950/60 p-3.5 space-y-2 text-xs"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-purple-300">{p.title}</span>
+                          {p.status === "da_ap_dung" ? (
+                            <span className="text-[11px] text-emerald-400 font-bold">✓ Đã thêm vào cẩm nang</span>
+                          ) : (
+                            <Btn
+                              variant="ghost"
+                              onClick={() => applyRuleProposal(p)}
+                              className="text-[11px] text-purple-300 hover:bg-purple-600/30 border border-purple-500/40 px-2 py-1"
+                            >
+                              ✓ Thêm vào Cẩm Nang
+                            </Btn>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-zinc-300 leading-relaxed bg-zinc-900/80 p-2 rounded border border-zinc-800">
+                          {p.suggested_rule}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

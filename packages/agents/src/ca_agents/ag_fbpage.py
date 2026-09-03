@@ -16,7 +16,9 @@ from typing import Any
 
 from ca_agents.ag_barista import consult_beverage
 from ca_agents.ag_concierge import handle_complaint, handle_reservation
+from ca_agents.ag_fbpage_memory import format_golden_cskh_prompt
 from ca_agents.ag_supervisor import supervise_outgoing_response
+from ca_agents.customer_memory import format_customer_greeting_context
 from ca_agents.guardrails import check_input_guardrail
 from ca_agents.llm import agent_mode, complete
 from ca_agents.prompts.ag_fbpage.system_prompt import build_fb_system_prompt
@@ -235,7 +237,12 @@ def detect_customer_psychology(text: str) -> tuple[str, str, float]:
 
 
 def build_human_response(
-    intent: str, emotion: str, text: str, context: dict[str, Any] | None = None
+    intent: str,
+    emotion: str,
+    text: str,
+    context: dict[str, Any] | None = None,
+    customer_profile: dict[str, Any] | None = None,
+    golden_examples: list[dict[str, Any]] | None = None,
 ) -> tuple[str, bool, str]:
     """
     Route task to specialized agent squad and generate response.
@@ -272,6 +279,12 @@ def build_human_response(
         ],
     )
 
+    # Ưu tiên áp dụng bài học mẫu Quản lý đã dạy nếu trùng ý định
+    if golden_examples and intent in ("hoi_gio_dia_chi", "hoi_khuyen_mai", "hoi_menu_gia"):
+        for g in golden_examples:
+            if g.get("intent") == intent and g.get("manager_reply"):
+                return g["manager_reply"], False, "AG-FRONTDESK"
+
     # Case A: AG-CONCIERGE (Complaint)
     if intent == "khieu_nai_gop_y" or emotion == "complaining":
         ticket = handle_complaint(text)
@@ -291,6 +304,20 @@ def build_human_response(
 
     # Case D: AG-FRONTDESK (Greeting, Info, Menu list, Promo)
     if intent == "chao_hoi":
+        cust_name = (customer_profile or {}).get("ten_khach")
+        favs = (customer_profile or {}).get("favorite_drinks", [])
+        if cust_name and (customer_profile or {}).get("is_vip_or_regular") and favs:
+            return (
+                f"Dạ Nhịp Quán chào anh/chị {cust_name} ạ! Hôm nay mình vẫn dùng món quen {favs[0]} đúng không ạ?",
+                False,
+                "AG-FRONTDESK",
+            )
+        if cust_name:
+            return (
+                f"Dạ Nhịp Quán chào anh/chị {cust_name} ạ! Em có thể gửi mình xem menu hoặc tư vấn đồ uống hôm nay nha!",
+                False,
+                "AG-FRONTDESK",
+            )
         return (
             "Dạ Nhịp Quán xin chào mình ạ! Em có thể gửi mình xem menu hoặc tư vấn đồ uống hôm nay nha!",
             False,
@@ -298,13 +325,21 @@ def build_human_response(
         )
 
     if intent == "hoi_gio_dia_chi":
-        reply = (
-            f"Dạ {profile.get('ten_quan')} mở cửa từ {profile.get('gio_mo_cua')} ạ.\n"
-            f"📍 Địa chỉ: {profile.get('dia_chi')}\n"
-            f"📞 Hotline: {profile.get('hotline')}\n"
-            f"📶 Wifi: {profile.get('wifi_ssid')} (Mật khẩu: {profile.get('wifi_pass')})\n"
-            "Mời mình ghé quán trải nghiệm không gian và thưởng thức cà phê nhé ạ!"
-        )
+        # Chỉ ghép field có dữ liệu — không bao giờ để "None" lọt vào tin nhắn
+        # khách (lỗ hổng văn bản khi profile thiếu field, review 2026-09-04).
+        lines = [f"Dạ {profile.get('ten_quan') or 'quán'} mở cửa từ "
+                 f"{profile.get('gio_mo_cua') or '07:00 - 22:30'} ạ."]
+        if profile.get("dia_chi"):
+            lines.append(f"📍 Địa chỉ: {profile['dia_chi']}")
+        if profile.get("hotline"):
+            lines.append(f"📞 Hotline: {profile['hotline']}")
+        if profile.get("wifi_ssid"):
+            wifi_line = f"📶 Wifi: {profile['wifi_ssid']}"
+            if profile.get("wifi_pass"):
+                wifi_line += f" (Mật khẩu: {profile['wifi_pass']})"
+            lines.append(wifi_line)
+        lines.append("Mời mình ghé quán trải nghiệm không gian và thưởng thức cà phê nhé ạ!")
+        reply = "\n".join(lines)
         return reply, False, "AG-FRONTDESK"
 
     if intent == "hoi_menu_gia":
@@ -339,6 +374,8 @@ async def process_fb_message(
     confidence_threshold: float = CONFIDENCE_THRESHOLD_DEFAULT,
     auto_respond_enabled: bool = True,
     public_context: dict[str, Any] | None = None,
+    customer_profile: dict[str, Any] | None = None,
+    golden_examples: list[dict[str, Any]] | None = None,
 ) -> FBMessageOutput:
     """
     Process a customer message through the 4-Agent Squad Architecture.
@@ -361,7 +398,12 @@ async def process_fb_message(
 
     # 3. Squad Routing (Frontdesk, Barista, Concierge)
     reply_text, requires_approval, agent_name = build_human_response(
-        intent, emotion, guard.sanitized_text, public_context
+        intent,
+        emotion,
+        guard.sanitized_text,
+        public_context,
+        customer_profile=customer_profile,
+        golden_examples=golden_examples,
     )
 
     # 4. Live LLM execution if enabled
@@ -377,6 +419,20 @@ async def process_fb_message(
                 f"Khuyến mãi: {', '.join([p.get('tieu_de', '') for p in promos])}"
             )
             sys_prompt = build_fb_system_prompt(ctx_summary)
+
+            extra_instructions = []
+            if customer_profile:
+                cust_ctx = format_customer_greeting_context(customer_profile)
+                if cust_ctx:
+                    extra_instructions.append(cust_ctx)
+            if golden_examples:
+                gold_ctx = format_golden_cskh_prompt(golden_examples)
+                if gold_ctx:
+                    extra_instructions.append(gold_ctx)
+
+            if extra_instructions:
+                sys_prompt += "\n\n" + "\n\n".join(extra_instructions)
+
             llm_res = await asyncio.wait_for(
                 asyncio.to_thread(
                     complete,
