@@ -20,7 +20,6 @@ from ca_agents.ag_sop.context import load_all_buoc
 from ca_agents.ag_sop.ops import default_ops_context, ops_context_from_dict
 from ca_agents.ag_waste import cluster as cluster_waste
 from ca_gates import present_conflict, validate_num
-from ca_ops import load_template
 from ca_playbook import (
     count_luat_that_quan,
     de_xuat,

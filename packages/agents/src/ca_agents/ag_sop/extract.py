@@ -72,7 +72,6 @@ _STOP = frozenset(
         "dẫn",
         "giúp",
         "tôi",
-        "cho",
         "biết",
     }
 )
@@ -192,7 +191,7 @@ def _build_context(
 ) -> tuple[str, set[str]]:
     valid: set[str] = set()
     lines: list[str] = [
-        f"=== Ngữ cảnh ca ===",
+        "=== Ngữ cảnh ca ===",
         f"ngay={ctx.ngay} thu={ctx.thu} khung={ctx.khung}",
         "=== Bước phiếu ===",
     ]

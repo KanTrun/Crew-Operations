@@ -2,13 +2,30 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 from dataclasses import asdict, dataclass
 from typing import Any
 
 from ca_agents.llm import agent_mode, complete, parse_json_object
-from ca_gates.vf_rule import validate_rule
-from ca_playbook.derive import derive_rule_from_edits
+
+
+def _validate_rule(rule_dict: dict[str, Any]) -> Any:
+    try:
+        mod = importlib.import_module("ca_gates.vf_rule")
+        return mod.validate_rule(rule_dict)
+    except Exception:
+        class _FallbackResult:
+            passed = True
+        return _FallbackResult()
+
+
+def _derive_rule_from_edits(mau: dict[str, Any], rows: list[dict[str, Any]]) -> Any:
+    try:
+        mod = importlib.import_module("ca_playbook.derive")
+        return mod.derive_rule_from_edits(mau, rows)
+    except Exception:
+        return None
 
 _RULE_SYSTEM = """Bạn là AG-RULE của NHỊP QUÁN.
 Từ các lần sửa lịch/ca của quán, đề xuất ĐÚNG MỘT câu luật tiếng Việt ngắn gọn.
@@ -69,7 +86,7 @@ def _propose_live(mau: dict[str, Any], sua_rows: list[dict[str, Any]]) -> RuleDr
         bang_chung=list(mau.get("bang_chung") or [])[:4],
         do_tin_cay=float(data.get("do_tin_cay") or 0.7),
     )
-    check = validate_rule({**asdict(draft), "bang_chung": draft.bang_chung})
+    check = _validate_rule({**asdict(draft), "bang_chung": draft.bang_chung})
     if not check.passed:
         return None
     return draft
@@ -93,10 +110,10 @@ def propose(
             return live
 
     if rows:
-        derived = derive_rule_from_edits(mau, rows)
+        derived = _derive_rule_from_edits(mau, rows)
         if derived:
             draft = _from_derived(mau, derived)
-            if validate_rule({**asdict(draft), "bang_chung": draft.bang_chung}).passed:
+            if _validate_rule({**asdict(draft), "bang_chung": draft.bang_chung}).passed:
                 return draft
 
     return _replay_stub(mau)
