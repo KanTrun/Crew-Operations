@@ -73,7 +73,7 @@ def _quet(clock: Clock, port: MessagePort, *, han_phut: int = 30) -> int:
 def main() -> None:
     han_phut = int(os.environ.get("WORKER_HAN_PHUT", "30"))
     chu_ky_s = int(os.environ.get("WORKER_INTERVAL_S", "30"))
-    port = get_port()
+    port = get_port(None)
     log.info(
         "worker nhắc việc chạy (backend=%s, han=%s phút, chu kỳ=%s giây)",
         port.name,
