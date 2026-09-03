@@ -270,6 +270,34 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
               </div>
             )}
           </div>
+
+          {Array.isArray(proposal.payload_diff.attachments) && proposal.payload_diff.attachments.length > 0 && (
+            <div className="pt-2 border-t border-zinc-800/80">
+              <span className="text-zinc-500 font-semibold block mb-1.5 flex items-center gap-1 text-[11px]">
+                <span>📎</span> Tệp & hình ảnh đính kèm ({proposal.payload_diff.attachments.length}):
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {proposal.payload_diff.attachments.map((att: any, idx: number) => {
+                  const fname = typeof att === "string" ? att.split(/[/\\]/).pop() : (att.filename || "file");
+                  const isInline = typeof att === "object" && (att.is_inline || att.cid);
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-700 text-[11px] text-zinc-200"
+                    >
+                      <span className="text-amber-400">🖼️</span>
+                      <span className="font-mono">{fname}</span>
+                      {isInline && (
+                        <span className="text-[9px] bg-blue-900/60 text-blue-300 px-1 py-0.5 rounded border border-blue-700">
+                          Chèn trong thư
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

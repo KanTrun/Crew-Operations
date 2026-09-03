@@ -452,9 +452,17 @@ def copilot_execute_action(
         to_emails = diff.get("to_emails") or []
         subject = diff.get("subject") or ""
         body_text = diff.get("body") or ""
+        html_body = diff.get("html_body")
+        attachments = diff.get("attachments")
         from ca_agents.ag_mail import send_mail
 
-        mail_res = send_mail(to_emails=to_emails, subject=subject, body=body_text)
+        mail_res = send_mail(
+            to_emails=to_emails,
+            subject=subject,
+            body=body_text,
+            html_body=html_body,
+            attachments=attachments,
+        )
         diff["mail_result"] = {
             "ok": mail_res.ok,
             "sent": mail_res.sent,

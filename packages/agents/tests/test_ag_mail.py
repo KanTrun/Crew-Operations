@@ -127,3 +127,50 @@ def test_send_mail_partial_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         assert res.failed[0]["email"] == "bad@gmail.com"
         assert res.reason == "some_failed"
 
+
+def test_send_mail_with_attachments_replay(tmp_path: pytest.TempPathFactory) -> None:
+    log_file = tmp_path / "mail_att.jsonl"
+    dummy_img = tmp_path / "lich_ca.png"
+    dummy_img.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDRfake")
+
+    with patch.dict(os.environ, {"CA_AGENT_MODE": "replay", "NHIPQUAN_MAIL_LOG": str(log_file)}):
+        res = send_mail(
+            to_emails=["lan@example.com"],
+            subject="Lịch ca tuần kèm ảnh",
+            body="Gửi Lan ảnh lịch tuần",
+            attachments=[
+                {"filename": "lich_ca.png", "path": str(dummy_img), "is_inline": True, "cid": "lich_img"},
+                {"filename": "quy_dinh.pdf", "content_bytes": b"%PDF-1.4...", "content_type": "application/pdf"},
+            ],
+        )
+        assert res.ok
+        assert res.mode == "replay"
+        assert log_file.exists()
+        logged_text = log_file.read_text(encoding="utf-8")
+        assert "lich_ca.png" in logged_text
+        assert "quy_dinh.pdf" in logged_text
+
+
+def test_build_mime_message_attachment_structure() -> None:
+    from ca_agents.ag_mail import _build_mime_message
+
+    msg = _build_mime_message(
+        sender="quan@example.com",
+        recipient="nhanvien@example.com",
+        subject="Ảnh thực đơn mới",
+        body="Chào bạn, đây là thực đơn mới.",
+        html_body="<p>Chào bạn, đây là thực đơn mới:</p><img src='cid:menu_cid'/>",
+        attachments=[
+            {
+                "filename": "menu_moi.png",
+                "content_bytes": b"\x89PNGfakeimage",
+                "cid": "menu_cid",
+                "is_inline": True,
+            }
+        ],
+    )
+    assert msg["Subject"] == "Ảnh thực đơn mới"
+    assert msg.is_multipart()
+    payload = msg.get_payload()
+    assert len(payload) >= 2
+
