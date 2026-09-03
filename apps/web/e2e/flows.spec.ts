@@ -44,7 +44,7 @@ test.describe("8 luồng vận hành chính (Quản lý - lan)", () => {
 
   test("7 — hỏi SOP", async ({ page }) => {
     await page.goto("/sop");
-    await expect(page.getByRole("heading", { name: /Hỏi SOP/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Hỏi quy trình quán|Hỏi SOP/i })).toBeVisible();
   });
 
   test("8 — công bằng", async ({ page }) => {
@@ -115,7 +115,7 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
       ["/tieu-thu", /Tiêu thụ/i],
       ["/hao-phi", /Hao phí/i],
       ["/cong-bang", /Công bằng/i],
-      ["/sop", /Hỏi SOP/i],
+      ["/sop", /Hỏi quy trình quán|Hỏi SOP/i],
     ] as const) {
       await page.goto(route);
       await expect(page.getByRole("heading", { name: heading })).toBeVisible();
