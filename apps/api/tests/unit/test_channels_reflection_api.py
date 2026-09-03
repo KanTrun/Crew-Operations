@@ -19,7 +19,12 @@ def _login_manager() -> str:
     return res["token"]
 
 
-def test_page_thread_approve_feedback_learning() -> None:
+import pytest
+
+
+def test_page_thread_approve_feedback_learning(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "disconnected")
+    monkeypatch.delenv("NHIPQUAN_FB_PAGE_TOKEN", raising=False)
     token = _login_manager()
 
     from ca_api.persist import kv_set
