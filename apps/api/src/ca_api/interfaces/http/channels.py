@@ -20,7 +20,13 @@ from ca_agents.ag_fbpage import (
     FBMessageOutput,
     process_fb_message,
 )
+from ca_agents.ag_fbpage_memory import extract_cskh_golden_pair
 from ca_agents.ag_msg import classify
+from ca_agents.ag_supervisor import run_nightly_cskh_reflection
+from ca_agents.customer_memory import (
+    extract_customer_preferences,
+    merge_customer_profile,
+)
 from ca_agents.facebook_page import (
     fetch_conversations,
     is_within_24h_window,
@@ -490,12 +496,27 @@ async def facebook_webhook(request: Request) -> Any:
             ts = float(ev.get("timestamp") or 0)
             input_msg = FBMessageInput(psid=sender, text=text, message_id=mid, timestamp=ts)
 
+            # Lấy hồ sơ khách quen & bài học mẫu Quản lý đã duyệt
+            store_id = "quan_01"
+            cust_prof = kv_get(f"customer_profile:{store_id}:{sender}", {})
+            goldens = kv_get(f"cskh_golden_memory:{store_id}", [])
+
             # Xử lý tin nhắn qua AG-FBPAGE với Guardrails và Ngưỡng tin cậy
             out: FBMessageOutput = await process_fb_message(
                 input_msg,
                 auto_respond_enabled=True,
                 public_context=public_ctx,
+                customer_profile=cust_prof if cust_prof else None,
+                golden_examples=goldens if goldens else None,
             )
+
+            # Cập nhật hồ sơ khách quen nếu khách tự giới thiệu tên hoặc sở thích
+            new_prefs = extract_customer_preferences([text])
+            if new_prefs.get("ten_khach") or new_prefs.get("favorite_drinks") or new_prefs.get("special_notes"):
+                def mut_prof(cur: dict[str, Any] | None, _p: dict[str, Any] = new_prefs) -> dict[str, Any]:
+                    return merge_customer_profile(cur, _p)
+
+                cust_prof = kv_mutate(f"customer_profile:{store_id}:{sender}", mut_prof, {})
 
             th = upsert_thread_from_messaging(sender, text, mid)
             th["intent"] = out.intent
@@ -504,6 +525,7 @@ async def facebook_webhook(request: Request) -> Any:
             th["pending_approval"] = out.action == "queue_to_inbox"
             th["last_message_ts"] = ts
             th["is_within_24h"] = is_within_24h_window(ts)
+            th["customer_profile"] = cust_prof
 
             if out.action == "auto_respond" and out.response:
                 bot_reply = {
@@ -670,6 +692,42 @@ def page_thread_approve(
             except RuntimeError as e:
                 raise HTTPException(status_code=502, detail=str(e)[:180]) from e
 
+    # ── Vòng lặp học từ câu sửa của Quản lý (CSKH Golden Memory) ──
+    store_id = "quan_01"
+    clean_final = body.final_reply.strip()
+    msgs = found.get("messages") or []
+    cust_msg = ""
+    for m in reversed(msgs):
+        if m.get("from_customer"):
+            cust_msg = str(m.get("text") or "")
+            break
+
+    if cust_msg and suggested_orig and clean_final != suggested_orig:
+        pair = extract_cskh_golden_pair(
+            customer_msg=cust_msg,
+            ai_draft=suggested_orig,
+            manager_reply=clean_final,
+            intent=str(found.get("intent") or "khac"),
+            customer_name=str(found.get("sender_name") or "Khách hàng"),
+        )
+        if pair:
+            def mut_golden(items: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+                lst = list(items or [])
+                lst.insert(0, pair)
+                return lst[:20]
+
+            kv_mutate(f"cskh_golden_memory:{store_id}", mut_golden, [])
+
+    # Cập nhật hồ sơ Khách quen nếu có
+    if cust_msg:
+        prefs = extract_customer_preferences([cust_msg])
+        psid = str(found.get("psid") or found.get("sender_id") or "")
+        if psid and (prefs.get("ten_khach") or prefs.get("favorite_drinks") or prefs.get("special_notes")):
+            def mut_cust(cur: dict[str, Any] | None) -> dict[str, Any]:
+                return merge_customer_profile(cur, prefs)
+
+            kv_mutate(f"customer_profile:{store_id}:{psid}", mut_cust, {})
+
     # Audit log with diff tracking
     _audit(
         s["nv_id"],
@@ -683,6 +741,82 @@ def page_thread_approve(
         },
     )
     return {"ok": True, "thread": found, "graph_sent": graph_sent}
+
+
+class ApplyProposalBody(BaseModel):
+    proposal_id: str
+    title: str
+    suggested_rule: str
+    topic: str | None = None
+
+
+@router.post("/api/v1/page/audit/reflection")
+def page_audit_reflection(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Tự động kích hoạt Báo cáo Tự phê bình CSKH hàng đêm cho Quán."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    _require_manager(authorization)
+
+    store_id = "quan_01"
+    doc = _page_store()
+    threads = doc.get("threads", [])
+
+    report = run_nightly_cskh_reflection(threads, store_id=store_id)
+    kv_set(f"cskh_reflection_reports:{store_id}", report)
+
+    _audit(s["nv_id"], "cskh_nightly_reflection", {"csat": report["csat_score"], "proposals": len(report["playbook_rule_proposals"])})
+    return {"ok": True, "report": report}
+
+
+@router.get("/api/v1/page/audit/reflection/latest")
+def get_latest_reflection(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Lấy báo cáo tự phê bình CSKH mới nhất."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    store_id = "quan_01"
+    report = kv_get(f"cskh_reflection_reports:{store_id}", None)
+    if not report:
+        doc = _page_store()
+        threads = doc.get("threads", [])
+        report = run_nightly_cskh_reflection(threads, store_id=store_id)
+        kv_set(f"cskh_reflection_reports:{store_id}", report)
+    return {"ok": True, "report": report}
+
+
+@router.post("/api/v1/page/audit/reflection/apply-proposal")
+def apply_reflection_proposal(
+    body: ApplyProposalBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Chấp thuận đề xuất cẩm nang từ báo cáo tự phê bình để đưa vào quy trình quán."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    _require_manager(authorization)
+
+    store_id = "quan_01"
+    def mut_rules(rules: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+        lst = list(rules or [])
+        lst.append({
+            "id": body.proposal_id,
+            "title": body.title,
+            "rule": body.suggested_rule,
+            "topic": body.topic,
+            "created_by": f"AI Reflection ({s.get('display_name', s['nv_id'])})",
+            "created_at": _now(),
+        })
+        return lst
+
+    kv_mutate(f"playbook_rules:{store_id}", mut_rules, [])
+
+    _audit(s["nv_id"], "apply_cskh_proposal", {"proposal_id": body.proposal_id, "title": body.title})
+    return {"ok": True, "message": f"Đã bổ sung '{body.title}' vào cẩm nang quán thành công!"}
 
 
 @router.get("/api/v1/store/profile")

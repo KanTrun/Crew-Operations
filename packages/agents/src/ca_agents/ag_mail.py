@@ -12,6 +12,7 @@ import json
 import os
 import smtplib
 from dataclasses import dataclass, field
+from email.header import Header
 from email.mime.text import MIMEText
 from pathlib import Path
 
@@ -62,22 +63,38 @@ def send_mail(
     host = os.environ["NHIPQUAN_SMTP_HOST"]
     port = int(os.environ.get("NHIPQUAN_SMTP_PORT", "587"))
     user = os.environ["NHIPQUAN_SMTP_USER"]
-    password = os.environ["NHIPQUAN_SMTP_PASSWORD"]
+    password = os.environ["NHIPQUAN_SMTP_PASSWORD"].strip()
+    # Google App Passwords thường có khoảng trắng 4 cụm ("abcd efgh ijkl mnop")
+    if ("gmail" in host.lower() or "google" in host.lower()) and " " in password:
+        password = password.replace(" ", "")
     sender = os.environ.get("NHIPQUAN_SMTP_FROM", user)
 
-    for t in to:
-        try:
-            msg = MIMEText(body, "plain", "utf-8")
-            msg["Subject"] = subject
-            msg["From"] = sender
-            msg["To"] = t
-            with smtplib.SMTP(host, port, timeout=15) as server:
+    try:
+        server_ctx = (
+            smtplib.SMTP_SSL(host, port, timeout=15)
+            if port == 465
+            else smtplib.SMTP(host, port, timeout=15)
+        )
+        with server_ctx as server:
+            if port != 465:
                 server.starttls()
-                server.login(user, password)
-                server.sendmail(sender, [t], msg.as_string())
-            sent.append({"email": t, "status": "sent"})
-        except Exception as exc:  # noqa: BLE001
-            failed.append({"email": t, "status": "failed", "reason": str(exc)[:120]})
+            server.login(user, password)
+            for t in to:
+                try:
+                    msg = MIMEText(body, "plain", "utf-8")
+                    msg["Subject"] = Header(subject, "utf-8")
+                    msg["From"] = sender
+                    msg["To"] = t
+                    server.sendmail(sender, [t], msg.as_string())
+                    sent.append({"email": t, "status": "sent"})
+                except Exception as exc:  # noqa: BLE001
+                    failed.append({"email": t, "status": "failed", "reason": str(exc)[:120]})
+    except Exception as exc:  # noqa: BLE001
+        reason_str = str(exc)[:120]
+        already_handled = {s["email"] for s in sent} | {f["email"] for f in failed}
+        for t in to:
+            if t not in already_handled:
+                failed.append({"email": t, "status": "failed", "reason": reason_str})
 
     return MailResult(
         ok=bool(sent) or not failed,

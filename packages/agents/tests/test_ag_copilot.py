@@ -181,3 +181,23 @@ def test_swap_trung_ca_kiem_tra_khung() -> None:
     assert _swap_khong_trung_ca(phan, "w1_c02", "nv_01", lambda: ca_meta) is True
     # Không có ca_meta source → fail-open True (không chặn).
     assert _swap_khong_trung_ca(phan, "w1_c01", "nv_01", None) is True
+
+
+def test_run_copilot_send_mail_proposal() -> None:
+    """Chủ quán yêu cầu gửi mail -> Copilot nhờ AG-MAILWRITER soạn và tạo ActionProposal."""
+    ctx = {
+        "store_id": "quan_01",
+        "user_id": "hung",
+        "user_role": "chu_quan",
+    }
+    res = run_copilot("Gửi gmail cho Minh nhắc mai đi làm đúng 7h sáng", context=ctx)
+    assert res.intent == CopilotIntent.SEND_MAIL
+    assert res.action_proposal is not None
+    assert res.action_proposal.status == ActionProposalStatus.ready_for_approval
+    assert res.action_proposal.requires_confirmation is True
+    assert "AG-MAILWRITER" in res.action_proposal.explanation
+    diff = res.action_proposal.payload_diff
+    assert "[Nhịp Quán]" in diff["subject"]
+    assert "Thân gửi Minh" in diff["body"]
+    assert "AG-MAILWRITER" in res.reply_text
+

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 
 # Whitelist of tool functions callable by the customer chatbot
@@ -73,3 +74,23 @@ def check_input_guardrail(text: str) -> GuardrailResult:
 def is_tool_allowed(tool_name: str) -> bool:
     """Validate that tool call is strictly within the public whitelist."""
     return tool_name in ALLOWED_PUBLIC_TOOLS
+
+
+def normalize_text(text: str) -> str:
+    """Chuẩn hóa văn bản để so khớp từ khóa (kế hoạch §6.2c).
+
+    Hạ chữ thường, bỏ dấu tiếng Việt (NFD + bỏ category Mn), quy 'đ'→'d',
+    bỏ ký tự chèn giữa từ để né filter (dấu chấm, gạch, ký tự đặc biệt),
+    gộp khoảng trắng. Dùng chung cho fb_policy / supervisor / eval.
+    """
+    lowered = text.lower()
+    decomposed = unicodedata.normalize("NFD", lowered)
+    stripped = "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
+    ascii_text = stripped.replace("đ", "d")
+    cleaned = re.sub(r"[^a-z0-9\s]", "", ascii_text)
+    collapsed = re.sub(r"\s+", " ", cleaned).strip()
+    # Nối các chữ cái rời bị chèn khoảng trắng để né filter (vd: "ch í" -> "chi", "b a o" -> "bao")
+    merged = re.sub(r"(?<=[a-z])\s+([a-z])(?=\s|$)", r"\1", collapsed)
+    # Rút gọn ký tự lặp do gõ dính / telex (vd: "baoo" -> "bao", "dd" -> "d")
+    de_duped = re.sub(r"([aeouid])\1+", r"\1", merged)
+    return re.sub(r"\s+", " ", de_duped).strip()

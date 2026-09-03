@@ -16,6 +16,7 @@ from typing import Annotated, Any, cast
 # Agents không được import ca_api/ca_playbook trực tiếp (test_architecture) —
 # nên API layer cung cấp dữ liệu thật qua configure_data_sources().
 from ca_agents.ag_copilot.tool_registry import configure_data_sources
+from ca_agents.ag_mailwriter import draft_email as _draft_email
 from ca_agents.ag_sop import answer as _sop_answer
 from ca_agents.ag_waste import cluster as _waste_cluster
 from ca_contracts import (
@@ -38,6 +39,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from ca_api.context_providers import get_mail_style_for_store, get_ops_context_for_mail
 from ca_api.interfaces.http.channels import router as channels_router
 from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.mail import router as mail_router
@@ -46,7 +48,7 @@ from ca_api.interfaces.http.pos import router as pos_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
 from ca_api.interfaces.http.trends import router as trends_router
-from ca_api.persist import DangKyLoi, kv_get, kv_mutate, kv_set
+from ca_api.persist import DangKyLoi, get_user_emails, kv_get, kv_mutate, kv_set
 from ca_api.persist import login as persist_login
 from ca_api.persist import register as persist_register
 from ca_api.persist import session as auth_session
@@ -161,6 +163,10 @@ configure_data_sources(
     sop_answer=_sop_answer,
     waste_cluster=_waste_cluster,
     list_ca_meta=_list_ca_meta,
+    draft_mail=_draft_email,
+    get_user_emails=get_user_emails,
+    get_ops_context=get_ops_context_for_mail,
+    get_mail_style=get_mail_style_for_store,
 )
 
 

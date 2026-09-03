@@ -9,6 +9,7 @@ import {
   AuthGate,
   Btn,
   Empty,
+  Input,
   Loading,
   OpsCard,
   PageHeader,
@@ -36,6 +37,12 @@ export default function ToiPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [profileEmail, setProfileEmail] = useState("");
+  const [emailInput, setEmailInput] = useState("");
+  const [emailMsg, setEmailMsg] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailBusy, setEmailBusy] = useState(false);
+
   useEffect(() => {
     setToken(getToken());
     if (!getToken()) setLoading(false);
@@ -51,7 +58,31 @@ export default function ToiPage() {
       })
       .catch(() => setError("Không tải được lịch của bạn."))
       .finally(() => setLoading(false));
+
+    apiGet<{ email?: string; username?: string }>("/api/v1/me/profile")
+      .then((p) => {
+        const em = p.email || "";
+        setProfileEmail(em);
+        setEmailInput(em);
+      })
+      .catch(() => {});
   }, []);
+
+  async function saveEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailBusy(true);
+    setEmailMsg(null);
+    setEmailError(null);
+    try {
+      await apiSend("/api/v1/me/profile/email", { email: emailInput.trim() }, "PATCH");
+      setProfileEmail(emailInput.trim());
+      setEmailMsg("Đã lưu email nhận thông báo.");
+    } catch {
+      setEmailError("Không cập nhật được email. Vui lòng kiểm tra lại định dạng.");
+    } finally {
+      setEmailBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (token) load();
@@ -89,6 +120,34 @@ export default function ToiPage() {
       />
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
+
+      <OpsCard eyebrow="Hồ sơ cá nhân" title="Email nhận thông báo ca">
+        <form onSubmit={saveEmail} className="nq-list">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
+            Cập nhật địa chỉ Gmail để nhận thông báo phân ca, đổi ca và nhắc việc từ quán qua email.
+          </p>
+          {emailMsg ? <Alert kind="ok">{emailMsg}</Alert> : null}
+          {emailError ? <Alert>{emailError}</Alert> : null}
+          <div className="flex flex-col sm:flex-row gap-2 mt-2">
+            <Input
+              type="email"
+              placeholder="nhan_vien@gmail.com"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              required
+              className="flex-1"
+            />
+            <Btn
+              variant="primary"
+              type="submit"
+              disabled={emailBusy || !emailInput.trim() || emailInput.trim() === profileEmail}
+            >
+              {emailBusy ? "Đang lưu…" : "Lưu Gmail"}
+            </Btn>
+          </div>
+        </form>
+      </OpsCard>
+
       {loading ? <Loading skeleton="list">Đang tải lịch của bạn…</Loading> : null}
       {!loading && ca.length === 0 && !error ? (
         <Empty title="Chưa có ca">Chưa có ca trong tuần này, hoặc lịch chưa công bố.</Empty>

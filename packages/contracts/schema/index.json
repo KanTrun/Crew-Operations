@@ -16,5 +16,6 @@
   "BanTinCaKhan": "packages/contracts/schema/BanTinCaKhan.json",
   "HuanLuyenQuanLy": "packages/contracts/schema/HuanLuyenQuanLy.json",
   "CopilotMessage": "packages/contracts/schema/CopilotMessage.json",
-  "ActionProposal": "packages/contracts/schema/ActionProposal.json"
+  "ActionProposal": "packages/contracts/schema/ActionProposal.json",
+  "PolicyDecision": "packages/contracts/schema/PolicyDecision.json"
 }

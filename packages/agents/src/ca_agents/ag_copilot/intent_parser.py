@@ -71,7 +71,30 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
     ),
     (
         SEND_MAIL,
-        ["gửi mail", "gui mail", "gửi email", "gửi gmail", "email cho", "mail cho", "nhắn qua email", "gửi thông báo qua email"],
+        [
+            "gửi mail",
+            "gui mail",
+            "gửi email",
+            "gửi gmail",
+            "email cho",
+            "mail cho",
+            "nhắn qua email",
+            "gửi thông báo qua email",
+            "soạn mail",
+            "soan mail",
+            "soạn email",
+            "soan email",
+            "soạn gmail",
+            "soan gmail",
+            "viết mail",
+            "viet mail",
+            "viết email",
+            "viet email",
+            "viết gmail",
+            "viet gmail",
+            "nhờ soạn mail",
+            "nhờ viết mail",
+        ],
         0.92,
     ),
 ]
@@ -186,11 +209,38 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
         params["nguong_canh_bao"] = 10.0
 
     elif matched_intent == SEND_MAIL:
-        # Người nhận: duyệt các tên xuất hiện trong câu (đơn giản hoá, LLM/tool resolve)
-        # Cụ thể hoá subject/body từ câu — để người quản lý có thể chỉnh qua clarify hoặc proposal.
+        t_low = text.lower()
+        # Direct email extraction
+        email_pattern = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
+        found_emails = email_pattern.findall(text)
+
+        # Trích xuất tên nhân viên thường gặp
+        staff_map = {
+            "minh": "nv_03",
+            "lan": "nv_01",
+            "hùng": "nv_02",
+            "hung": "nv_02",
+        }
+        to_nv_ids: list[str] = []
+        recip_names: list[str] = []
+        for name, nv_id in staff_map.items():
+            if re.search(r"\b" + re.escape(name) + r"\b", t_low):
+                if nv_id not in to_nv_ids:
+                    to_nv_ids.append(nv_id)
+                    recip_names.append(name.capitalize())
+
+        # Trích xuất mã nv_XX nếu có
+        for m in re.findall(r"\bnv_\d+\b", t_low):
+            if m not in to_nv_ids:
+                to_nv_ids.append(m)
+                recip_names.append(m.upper())
+
+        params["raw_request"] = text
+        params["to_nv_ids"] = to_nv_ids
+        params["direct_emails"] = found_emails
+        params["recipient_names"] = recip_names
         params["subject"] = text if len(text) <= 120 else text[:120]
         params["body"] = text
-        params["to_nv_ids"] = []  # tool sẽ require nv_id; nếu thiếu, agent sẽ clarify.
 
     # 4. Confidence thresholds:
     # >= 0.75: regular

@@ -137,7 +137,13 @@ def run_copilot(
             created_at=now_iso,
             expires_at=expires_iso,
         )
-        reply = f"Dạ em đã hoàn thành bước chuẩn bị: {tool_res.summary} Anh/chị xem qua và bấm duyệt để áp dụng nhé!"
+        if parsed.intent == "SEND_MAIL":
+            reply = (
+                f"Dạ em đã nhờ Agent Soạn Mail (AG-MAILWRITER) soạn xong: {tool_res.summary}. "
+                "Anh/chị xem qua nội dung bên dưới, có thể bấm 'Duyệt & Gửi', chỉnh sửa hoặc bảo em sửa lại nhé!"
+            )
+        else:
+            reply = f"Dạ em đã hoàn thành bước chuẩn bị: {tool_res.summary} Anh/chị xem qua và bấm duyệt để áp dụng nhé!"
     else:
         direct_answer = tool_res.summary
         reply = f"Dạ kết quả tra cứu cho anh/chị: {tool_res.summary}"

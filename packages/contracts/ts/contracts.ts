@@ -18,3 +18,4 @@ export type BanTinCaKhan = Record<string, unknown>;
 export type HuanLuyenQuanLy = Record<string, unknown>;
 export type CopilotMessage = Record<string, unknown>;
 export type ActionProposal = Record<string, unknown>;
+export type PolicyDecision = Record<string, unknown>;
