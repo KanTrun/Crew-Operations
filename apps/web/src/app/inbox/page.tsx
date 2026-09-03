@@ -43,6 +43,16 @@ type Lifecycle = {
   };
 };
 
+type Candidate = {
+  nv_id: string;
+  ten: string;
+  score: number;
+  is_qualified: boolean;
+  is_available: boolean;
+  reasons?: string[];
+  warnings?: string[];
+};
+
 type Item = {
   id: string;
   tom_tat: string;
@@ -56,6 +66,8 @@ type Item = {
   nv_id?: string;
   can_xac_minh?: boolean;
   doi_tac_khong_ro?: boolean;
+  khan_cap?: boolean;
+  goi_y_doi_tac?: Candidate[];
   hieu_luc?: { loai?: string; ghi?: string; swap_id?: string; tuan_id?: string };
   rang_buoc?: {
     loai?: string;
@@ -235,6 +247,25 @@ export default function InboxPage() {
     decide(it.id, "duyet");
   }
 
+  async function handleSmartApprove(it: Item, selectedNvId?: string) {
+    if (!manager) return;
+    setBusy(it.id);
+    setError(null);
+    try {
+      await apiSend(`/api/v1/inbox/rang-buoc/${it.id}/smart-approve`, {
+        selected_nv_id: selectedNvId || null,
+        ap_dat: true,
+      });
+      push("Đã duyệt đổi ca thông minh thành công!");
+      await load();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Không thể duyệt đổi ca.";
+      setError(msg);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (!token) return <AuthGate />;
 
   return (
@@ -339,6 +370,40 @@ export default function InboxPage() {
                     {it.created_at ? ` · ${formatLuc(it.created_at)}` : ""}
                     {it.noi_dung_goc ? ` · gốc: ${safeText(it.noi_dung_goc).slice(0, 80)}` : ""}
                     {it.hieu_luc?.ghi ? ` · ${it.hieu_luc.ghi}` : ""}
+                    {it.goi_y_doi_tac && it.goi_y_doi_tac.length > 0 && it.trang_thai === "cho_duyet" && (
+                      <div className="mt-2 rounded-lg border border-purple-800/40 bg-purple-950/20 p-2.5 text-xs space-y-1.5">
+                        <div className="font-bold text-purple-300 flex items-center gap-1.5">
+                          <span>💡</span> AI Đề Xuất Ứng Viên Phù Hợp Nhất:
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {it.goi_y_doi_tac.map((cand) => (
+                            <div
+                              key={cand.nv_id}
+                              className="flex items-center gap-1.5 rounded bg-zinc-900/90 px-2 py-1 border border-zinc-700"
+                            >
+                              <span className="font-semibold text-white">⭐ {cand.ten}</span>
+                              <span className="text-[10px] text-amber-300 font-bold">({cand.score}%)</span>
+                              {cand.reasons && cand.reasons.length > 0 && (
+                                <span className="text-[10px] text-zinc-400">· {cand.reasons[0]}</span>
+                              )}
+                              {manager && (
+                                <button
+                                  type="button"
+                                  disabled={busy === it.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSmartApprove(it, cand.nv_id);
+                                  }}
+                                  className="ml-1 rounded bg-purple-600 hover:bg-purple-500 text-white px-1.5 py-0.5 text-[10px] font-bold"
+                                >
+                                  ✓ Chọn & Duyệt
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </>
                 }
                 side={
@@ -346,6 +411,9 @@ export default function InboxPage() {
                     <StatusChip tone={inboxTone(it.trang_thai)}>{inboxLabel(it.trang_thai)}</StatusChip>
                     <StatusChip>{kenhLabel(it.nguon)}</StatusChip>
                     <StatusChip>{yDinhLabel(it.y_dinh)}</StatusChip>
+                    {it.khan_cap ? (
+                      <StatusChip tone="danger">🚨 Khẩn cấp (&lt;24h)</StatusChip>
+                    ) : null}
                     {it.trang_thai === "duyet" ? (
                       it.y_dinh === "doi_ca" || it.y_dinh === "nhan_ca" ? (
                         <Link href="/doi-ca">
@@ -369,14 +437,26 @@ export default function InboxPage() {
                 actions={
                   it.trang_thai === "cho_duyet" && manager ? (
                     <>
-                      <Btn
-                        variant="primary"
-                        busy={busy === it.id}
-                        busyLabel="Đang ghi quyết định…"
-                        onClick={() => handleDuyet(it)}
-                      >
-                        Duyệt ràng buộc
-                      </Btn>
+                      {it.goi_y_doi_tac && it.goi_y_doi_tac.length > 0 && (it.doi_tac_khong_ro || it.rang_buoc?.doi_tac_khong_ro) ? (
+                        <Btn
+                          variant="primary"
+                          busy={busy === it.id}
+                          busyLabel="Đang duyệt…"
+                          onClick={() => handleSmartApprove(it)}
+                          className="bg-purple-600 hover:bg-purple-500 font-bold text-white shadow-md border border-purple-400"
+                        >
+                          ⚡ Duyệt AI ({it.goi_y_doi_tac[0].ten})
+                        </Btn>
+                      ) : (
+                        <Btn
+                          variant="primary"
+                          busy={busy === it.id}
+                          busyLabel="Đang ghi quyết định…"
+                          onClick={() => handleDuyet(it)}
+                        >
+                          Duyệt ràng buộc
+                        </Btn>
+                      )}
                       <Btn variant="danger" disabled={busy === it.id} onClick={() => decide(it.id, "tu_choi")}>
                         Từ chối
                       </Btn>

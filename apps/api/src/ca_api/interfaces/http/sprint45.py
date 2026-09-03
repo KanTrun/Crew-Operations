@@ -20,6 +20,7 @@ from ca_agents.ag_sop import answer as sop_answer
 from ca_agents.ag_sop.context import load_all_buoc
 from ca_agents.ag_sop.ops import default_ops_context, ops_context_from_dict
 from ca_agents.ag_waste import cluster as cluster_waste
+from ca_agents.smart_swap import find_swap_candidates
 from ca_gates import present_conflict, validate_num
 from ca_playbook import (
     count_luat_that_quan,
@@ -268,6 +269,11 @@ class InboxBody(BaseModel):
     ap_dat: bool = False
 
 
+class SmartApproveBody(BaseModel):
+    selected_nv_id: str | None = None
+    ap_dat: bool = True
+
+
 class HandoverBody(BaseModel):
     text: str
     alt_claim: str | None = None
@@ -350,6 +356,48 @@ def audit_get(authorization: Annotated[str | None, Header()] = None) -> dict[str
     return {"items": audit_list(), "nguon": "quan"}
 
 
+def _get_swap_candidates_for_item(it: dict[str, Any]) -> list[dict[str, Any]]:
+    """Tính toán danh sách ứng viên đổi ca phù hợp cho một inbox item."""
+    nv_id = str(it.get("nv_id") or "")
+    rb = it.get("rang_buoc") or {}
+    ca_id = str(rb.get("ca_id") or "")
+
+    thu = str(rb.get("thu") or "")
+    start = str(rb.get("start") or "")
+    khung = "sang" if "07" in start else ("chieu" if "12" in start else ("toi" if "17" in start else ""))
+    vi_tri = str(rb.get("vi_tri") or "pha_che")
+    shift_info = {"thu": thu, "khung": khung, "vi_tri": vi_tri}
+
+    seed = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
+    staff_list = seed.get("nhan_vien", [])
+    raw_ca = seed.get("ca_mau_21", [])
+    ca_list = []
+    for c in raw_ca:
+        item_c = dict(c)
+        if "thu" not in item_c:
+            item_c["thu"] = _THU_MAP.get(int(item_c.get("ngay_offset") or 1), "T2")
+        ca_list.append(item_c)
+
+    phan_cong: dict[str, list[str]] = {}
+    if LICH.exists():
+        try:
+            lich_data = json.loads(LICH.read_text(encoding="utf-8"))
+            phan_cong = lich_data.get("phan_cong", {})
+        except Exception:
+            pass
+
+    cands = find_swap_candidates(
+        requester_id=nv_id,
+        ca_id=ca_id if ca_id else None,
+        shift_info=shift_info,
+        staff_list=staff_list,
+        ca_list=ca_list,
+        phan_cong=phan_cong,
+        max_ca_lien_tuc=2,
+    )
+    return [c.to_dict() for c in cands]
+
+
 @router.get("/api/v1/inbox/rang-buoc")
 def inbox_list(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_manager(authorization)
@@ -360,7 +408,23 @@ def inbox_list(authorization: Annotated[str | None, Header()] = None) -> dict[st
     )
     if not existing and not has_real_channel:
         _seed_inbox()
-    return {"items": kv_get("inbox_rang_buoc", []), "nguon": "quan"}
+    items = kv_get("inbox_rang_buoc", [])
+    enriched = []
+    for it in items:
+        if isinstance(it, dict):
+            item_copy = dict(it)
+            rb = item_copy.get("rang_buoc") or {}
+            item_copy["khan_cap"] = bool(rb.get("khan_cap"))
+            if item_copy.get("y_dinh") in {"doi_ca", "nhan_ca"}:
+                try:
+                    cands = _get_swap_candidates_for_item(item_copy)
+                    item_copy["goi_y_doi_tac"] = cands[:3]
+                except Exception:
+                    item_copy["goi_y_doi_tac"] = []
+            enriched.append(item_copy)
+        else:
+            enriched.append(it)
+    return {"items": enriched, "nguon": "quan"}
 
 
 @router.post("/api/v1/inbox/rang-buoc/{item_id}")
@@ -467,6 +531,62 @@ def inbox_decide(
         raise HTTPException(status_code=404, detail="inbox_item")
     _audit("inbox", role, {"id": item_id, "q": body.quyet_dinh, "y": found.get("y_dinh")})
     return found
+
+
+@router.get("/api/v1/inbox/candidates/{item_id}")
+def get_swap_candidates(
+    item_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Lấy danh sách xếp hạng các ứng viên đổi ca cho một yêu cầu."""
+    _require_manager(authorization)
+    items = kv_get("inbox_rang_buoc", [])
+    found = next((it for it in items if it.get("id") == item_id), None)
+    if not found:
+        raise HTTPException(status_code=404, detail="item_not_found")
+
+    cands = _get_swap_candidates_for_item(found)
+    return {
+        "item_id": item_id,
+        "nv_id": found.get("nv_id"),
+        "candidates": cands,
+    }
+
+
+@router.post("/api/v1/inbox/rang-buoc/{item_id}/smart-approve")
+def inbox_smart_approve(
+    item_id: str,
+    body: SmartApproveBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Duyệt đổi ca 1-chạm với ứng viên AI đề xuất tốt nhất (hoặc ứng viên được chọn)."""
+    _require_manager(authorization)
+    items = kv_get("inbox_rang_buoc", [])
+    found = next((it for it in items if it.get("id") == item_id), None)
+    if not found:
+        raise HTTPException(status_code=404, detail="item_not_found")
+
+    target_nv = body.selected_nv_id
+    if not target_nv:
+        cands = _get_swap_candidates_for_item(found)
+        top_cand = next((c for c in cands if c.get("score", 0) > 0), None)
+        if not top_cand:
+            raise HTTPException(status_code=400, detail="khong_co_ung_vien_phu_hop")
+        target_nv = top_cand["nv_id"]
+
+    rb = found.get("rang_buoc") or {}
+    ca_id = (rb.get("ca_id") or "w1_c01").strip()
+
+    decide_body = InboxBody(
+        quyet_dinh="duyet",
+        doi_tac_nv_id=target_nv,
+        ca_id=ca_id,
+        ap_dat=body.ap_dat,
+    )
+    res = inbox_decide(item_id, decide_body, authorization)
+    res["selected_candidate"] = target_nv
+    res["smart_matched"] = True
+    return res
 
 
 @router.get("/api/v1/cong-bang")

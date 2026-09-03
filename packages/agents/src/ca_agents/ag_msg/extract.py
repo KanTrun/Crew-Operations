@@ -187,6 +187,14 @@ def classify(
     if is_ambiguous:
         rang_buoc["doi_tac_khong_ro"] = True
 
+    _EMERGENCY_KEYS = (
+        "gấp", "gap", "khẩn", "khan", "ốm", "om", "sốt", "sot",
+        "bệnh", "benh", "cấp cứu", "cap cuu", "tai nạn", "tai nan",
+        "nhập viện", "nhap vien", "đột xuất", "dot xuat",
+    )
+    if any(k in t for k in _EMERGENCY_KEYS):
+        rang_buoc["khan_cap"] = True
+
     can_xac_minh = False
     do_tin_cay = 0.86
 
