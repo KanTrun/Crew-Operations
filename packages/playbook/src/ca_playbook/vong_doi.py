@@ -68,22 +68,30 @@ def tim_mau(sua: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     return out
 
 
-def _fallback_de_xuat(mau: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "cau": "Thứ Bảy ca chiều cần 3 người pha chế, không phải 2",
-        "dieu_kien": {"thu": "T7", "khung": "chieu", "vi_tri": "pha_che", "so_nguoi": 3},
-        "loai": mau["loai_luat"],
-    }
+def de_xuat(
+    mau: dict[str, Any],
+    *,
+    sua_rows: list[dict[str, Any]] | None = None,
+    ban_nhap: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Bước 3 — dựng luật ứng viên.
 
+    Nội dung luật phải đến từ dữ liệu: ``ban_nhap`` (bản nháp AG-RULE) hoặc
+    suy tất định từ ``sua_rows``. Không có nguồn nào thì trả ``None`` — quán
+    thà không có luật còn hơn có một câu bịa.
+    """
+    base = ban_nhap if (ban_nhap and str(ban_nhap.get("cau") or "").strip()) else None
+    if base is None:
+        base = derive_rule_from_edits(mau, sua_rows or []) if sua_rows else None
+    if base is None:
+        return None
 
-def de_xuat(mau: dict[str, Any], *, sua_rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-    derived = derive_rule_from_edits(mau, sua_rows or []) if sua_rows else None
-    base = derived if derived else _fallback_de_xuat(mau)
+    dieu_kien = base.get("dieu_kien")
     luat = {
         "id": f"luat_{mau['mau']}",
-        "loai": base.get("loai", mau["loai_luat"]),
-        "cau": base["cau"],
-        "dieu_kien": dict(base["dieu_kien"]),
+        "loai": str(base.get("loai") or mau["loai_luat"]),
+        "cau": str(base["cau"]).strip(),
+        "dieu_kien": dict(dieu_kien) if isinstance(dieu_kien, dict) else {},
         "bang_chung": list(base.get("bang_chung") or mau["bang_chung"][:4]),
         "buoc": 3,
         "nguon": mau.get("nguon", "dung_lai_8_tuan"),

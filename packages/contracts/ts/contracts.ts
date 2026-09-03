@@ -1,6 +1,5 @@
 // Sinh tự động từ JSON Schema của pydantic — chạy `make contracts`.
 // KHÔNG sửa tay: nguồn sự thật là packages/contracts/src/ca_contracts.
-
 export interface NhanVien { id: string; ten: string; ky_nang?: string[]; la_sinh_vien?: boolean; so_dien_thoai_hash?: string | null; }
 export interface Ca { id: string; ngay: string; bat_dau: string; ket_thuc: string; vi_tri: string; so_nguoi_toi_thieu?: number; }
 export interface LichTuan { tuan_iso: string; trang_thai?: "nhap" | "dang_giai" | "cho_duyet" | "da_cong_bo" | "da_dong"; phan_cong?: Record<string, string[]>; }

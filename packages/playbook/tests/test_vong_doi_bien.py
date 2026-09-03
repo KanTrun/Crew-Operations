@@ -18,6 +18,20 @@ from ca_playbook.vong_doi import (
 )
 
 
+def _sua_rows(n: int = 3, ca_id: str = "w1_c12") -> list[dict[str, Any]]:
+    """Lần sửa thật: mỗi lần nhận thêm một người vào cùng ca."""
+    return [
+        {
+            "loai": "nhan_ca",
+            "truoc": {"ca_id": ca_id, "nv": [f"nv_{j + 1:02d}" for j in range(i)]},
+            "sau": {"ca_id": ca_id, "nv": [f"nv_{j + 1:02d}" for j in range(i + 1)]},
+            "ai": "ql_01",
+            "at": f"2026-01-{i + 1:02d}T08:00:00Z",
+        }
+        for i in range(n)
+    ]
+
+
 def _luat_de_xuat() -> dict[str, Any]:
     mau: dict[str, Any] = {
         "mau": "nhan_ca",
@@ -26,8 +40,42 @@ def _luat_de_xuat() -> dict[str, Any]:
         "bang_chung": ["0", "1", "2"],
         "nguon": "ghi_truc_tiep",
     }
-    luat: dict[str, Any] = de_xuat(mau)
+    luat = de_xuat(mau, sua_rows=_sua_rows())
+    assert luat is not None
     return luat
+
+
+def test_de_xuat_khong_co_bang_chung_tra_ve_none() -> None:
+    """Không có lần sửa và không có bản nháp thì không được bịa luật."""
+    mau: dict[str, Any] = {
+        "mau": "nhan_ca",
+        "loai_luat": "nhu_cau_ca",
+        "n": 3,
+        "bang_chung": ["0", "1", "2"],
+        "nguon": "ghi_truc_tiep",
+    }
+    assert de_xuat(mau) is None
+
+
+def test_de_xuat_dung_ban_nhap_khi_co() -> None:
+    """Bản nháp AG-RULE thắng bước suy tất định."""
+    mau: dict[str, Any] = {
+        "mau": "nhan_ca",
+        "loai_luat": "nhu_cau_ca",
+        "n": 3,
+        "bang_chung": ["0", "1", "2"],
+        "nguon": "ghi_truc_tiep",
+    }
+    ban_nhap = {
+        "cau": "Ca tối vị trí pha chế cần ít nhất 3 người.",
+        "loai": "nhu_cau_ca",
+        "dieu_kien": {"khung": "toi", "vi_tri": "pha_che", "so_nguoi": 3},
+        "bang_chung": ["0", "1", "2"],
+    }
+    luat = de_xuat(mau, sua_rows=_sua_rows(), ban_nhap=ban_nhap)
+    assert luat is not None
+    assert luat["cau"] == ban_nhap["cau"]
+    assert luat["dieu_kien"] == ban_nhap["dieu_kien"]
 
 
 def test_luu_va_doc_cam_nang_theo_path_truyen_vao(tmp_path: Path) -> None:
