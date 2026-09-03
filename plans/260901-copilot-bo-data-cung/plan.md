@@ -46,9 +46,16 @@ Test: 370/370 pass (agents + playbook + gates + api).
 - `ensure_dotenv()` trong agents load `.env` vào process env — chỉ gọi trong luồng live, không gọi trong import-time.
 - Fixture vẫn giữ cho CI replay (`CA_AGENT_MODE=replay`) — nhưng giờ nằm ở tầng messaging/meeting, không còn ở copilot tools.
 
+## Tiến độ thực tế (Đã ship trong PR #27 — 2026-09-03)
+
+- **Giai đoạn 1**: Đã xong toàn bộ 4 mục (conflict check 5 điều kiện thật sự trong commit `db12fac`, users mapping, dọn sạch dữ liệu cứng trong `tool_registry.py`).
+- **Giai đoạn 2**: Đã xong toàn bộ 3 mục apply thật trong commit `8186e6f` (restock orders KV, rule proposal vào `cam_nang.json`, shift swap apply vào phân công thật).
+- **Giai đoạn 3**: Đã xong SSE streaming (`/api/v1/copilot/chat/stream`) trong commit `200c00c` và bổ sung E2E test smoke toàn diện trong commit `d4c57ea`.
+- **Tổng test hiện tại**: 475/475 tests pass xanh (0 lỗi, ruff sạch).
+
 ## Định nghĩa "xong"
 
-- [ ] Không còn chuỗi số liệu cố định trong `tool_registry.py` (grep `nv_0`, `Minh`, `Lan`, `400`, `6 hộp` → 0 kết quả ngoài test)
-- [ ] Mọi tool có nhánh "không dữ liệu" trung thực + test riêng
-- [ ] Duyệt 1 proposal → dữ liệu thật thay đổi trong KV/cam_nang, xem được trên UI
-- [ ] 370+ test pass, không skip âm thầm
+- [x] Không còn chuỗi số liệu cố định trong `tool_registry.py` (grep `nv_0`, `Minh`, `Lan`, `400`, `6 hộp` → 0 kết quả ngoài test)
+- [x] Mọi tool có nhánh "không dữ liệu" trung thực + test riêng
+- [x] Duyệt 1 proposal → dữ liệu thật thay đổi trong KV/cam_nang, xem được trên UI
+- [x] 370+ test pass, không skip âm thầm (thực tế: 475 tests pass)

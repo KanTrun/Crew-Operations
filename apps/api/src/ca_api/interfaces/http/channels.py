@@ -174,6 +174,8 @@ def _enqueue_inbox(
         "nv_id": nv_id,
         "channel_user_id": external_user_id,
         "rang_buoc": rang_buoc,
+        "can_xac_minh": bool(rang_buoc.get("can_xac_minh") or do_tin_cay < 0.7),
+        "doi_tac_khong_ro": bool(rang_buoc.get("doi_tac_khong_ro", False)),
         "created_at": _now(),
     }
 
@@ -224,7 +226,21 @@ def process_inbound(msg: InboundMessage, *, reply_backend: str | None = None) ->
         sent = port.send(msg.external_user_id, body)
         return {"ok": True, "hanh": "xem_lich", "nv_id": nv_id, "message": sent.__dict__}
 
-    r = classify(text, mode=agent_mode())
+    staff_list: list[dict[str, str]] = []
+    try:
+        from ca_api.persist import list_users
+        users = list_users()
+        staff_list = [
+            {
+                "id": u.get("nv_id") or u.get("username", ""),
+                "ten": u.get("display_name") or u.get("username", ""),
+            }
+            for u in users
+        ]
+    except Exception:
+        pass
+
+    r = classify(text, mode=agent_mode(), staff=staff_list if staff_list else None)
     if not should_enqueue_constraint(text, r.intent, r.do_tin_cay):
         sent = port.send(
             msg.external_user_id,

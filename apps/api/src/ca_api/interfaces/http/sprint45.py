@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import uuid
 
 try:
@@ -68,7 +69,7 @@ _ALLOWED = {
     "dang_giai": {"cho_duyet", "nhap"},
     "cho_duyet": {"da_cong_bo", "nhap"},
     "da_cong_bo": {"da_dong"},
-    "da_dong": set(),
+    "da_dong": {"nhap"},
 }
 _REASON = {
     "cuoi_tuan": "R-WKND",
@@ -86,6 +87,8 @@ def _run_solver() -> dict[str, Any]:
     from ca_solver import apply_luat, build_lich_input, solve_cpsat
 
     inp = build_lich_input()
+    tuan_hien_tai = _life().get("tuan_iso", "2026-W01")
+
     # TKB đã xác nhận từ ảnh đè lên (hoặc bổ sung) TKB synthetic của fixture.
     stored = kv_get("tkb_nv", {})
     if isinstance(stored, dict):
@@ -104,12 +107,87 @@ def _run_solver() -> dict[str, Any]:
                     tuples.append((thu, start, end))
             if tuples:
                 inp.tkb[str(nv_id)] = tuples
+
+    # Đọc các ràng buộc từ inbox_rang_buoc đã được duyệt khớp tuần hiện tại
+    inbox_items = kv_get("inbox_rang_buoc", [])
+    added_nghi: set[tuple[str, str]] = set()
+    added_tkb: set[tuple[str, str, str, str]] = set()
+
+    if isinstance(inbox_items, list):
+        for it in inbox_items:
+            if not isinstance(it, dict) or it.get("trang_thai") != "duyet":
+                continue
+            hl = it.get("hieu_luc") or {}
+            if hl.get("loai") != "rang_buoc_cho_solver":
+                continue
+
+            # Ngữ cảnh tuần: chỉ nạp item khớp tuần đang giải
+            it_tuan = it.get("rang_buoc", {}).get("tuan_id") or hl.get("tuan_id")
+            if it_tuan and it_tuan != tuan_hien_tai:
+                continue
+
+            nv_id = str(it.get("nv_id") or hl.get("nv_id") or "")
+            if not nv_id or nv_id == "unknown":
+                continue
+
+            y = str(it.get("y_dinh") or "")
+            rb = it.get("rang_buoc") or {}
+            thu = str(rb.get("thu") or hl.get("thu") or "")
+
+            if y == "xin_nghi" and thu:
+                pair = (nv_id, thu)
+                if pair not in added_nghi:
+                    added_nghi.add(pair)
+                    inp.nghi_phep.add(pair)
+            elif y in {"cap_nhat_tkb", "bao_tre"} and thu:
+                start = str(rb.get("start") or hl.get("start") or "07:00")
+                end = str(rb.get("end") or hl.get("end") or "12:00")
+                key = (nv_id, thu, start, end)
+                if key not in added_tkb:
+                    added_tkb.add(key)
+                    inp.tkb.setdefault(nv_id, []).append((thu, start, end))
+
     inp, applied = apply_luat(inp, list_luat())
     result = solve_cpsat(inp, time_limit_s=60.0)
+
+    # Phân tích danh sách xung đột cụ thể nếu INFEASIBLE hoặc không ok
+    danh_sach_xung_dot: list[str] = []
+    if not result.ok or "INFEASIBLE" in result.status:
+        for ca_id in inp.ca_ids:
+            meta = inp.ca_meta.get(ca_id, {})
+            thu_ca = meta.get("thu", "")
+            req = inp.so_nguoi_toi_thieu.get(ca_id, 1)
+            c_start = meta.get("bat_dau", "07:00")
+            c_end = meta.get("ket_thuc", "12:00")
+            available = 0
+            for nv in inp.nhan_vien_ids:
+                if (nv, thu_ca) in inp.nghi_phep:
+                    continue
+                nv_tkb = inp.tkb.get(nv, [])
+                overlap = False
+                for (b_thu, b_start, b_end) in nv_tkb:
+                    if b_thu == thu_ca:
+                        try:
+                            h_cs, m_cs = map(int, c_start.split(":"))
+                            h_ce, m_ce = map(int, c_end.split(":"))
+                            h_bs, m_bs = map(int, b_start.split(":"))
+                            h_be, m_be = map(int, b_end.split(":"))
+                            if max(h_cs * 60 + m_cs, h_bs * 60 + m_bs) < min(h_ce * 60 + m_ce, h_be * 60 + m_be):
+                                overlap = True
+                                break
+                        except Exception:
+                            pass
+                if not overlap:
+                    available += 1
+            if available < req:
+                danh_sach_xung_dot.append(
+                    f"Ca {ca_id} ({thu_ca} {c_start}-{c_end}) cần tối thiểu {req} người nhưng chỉ còn {available} nhân viên khả dụng do ràng buộc nghỉ phép/TKB."
+                )
+
     payload = {
         "nguon": "quan",
         "adr": "ADR-012",
-        "tuan_iso": "2026-W01",
+        "tuan_iso": tuan_hien_tai,
         "status": result.status,
         "ok": result.ok,
         "elapsed_s": round(result.elapsed_s, 3),
@@ -118,16 +196,19 @@ def _run_solver() -> dict[str, Any]:
         "phan_cong": result.phan_cong,
         "debt_after": result.debt_after,
         "luat_ap_dung": applied,
+        "danh_sach_xung_dot": danh_sach_xung_dot,
     }
     LICH.parent.mkdir(parents=True, exist_ok=True)
     LICH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    kv_set("phan_cong", result.phan_cong)
+    if result.ok:
+        kv_set("phan_cong", result.phan_cong)
     return {
         "status": result.status,
         "ok": result.ok,
         "best_effort": result.ok,
         "luat_ap_dung": applied,
         "violations": len(result.violations),
+        "danh_sach_xung_dot": danh_sach_xung_dot,
     }
 
 
@@ -149,13 +230,15 @@ def _seed_inbox() -> list[dict[str, Any]]:
     items = kv_get("inbox_rang_buoc", [])
     if items:
         return cast(list[dict[str, Any]], items)
+    if os.environ.get("NHIPQUAN_INBOX_SEED_FIXTURE", "1").strip() in {"0", "false", "no"}:
+        return []
     items = [
         {
             "id": f"in_{i + 1}",
             "agent": "ag_msg" if i % 2 == 0 else "ag_handover",
             "tom_tat": f"Ràng buộc #{i + 1} — chờ duyệt",
             "trang_thai": "cho_duyet",
-            "nguon": "quan",
+            "nguon": "mo_phong_fixture",
         }
         for i in range(10)
     ]
@@ -175,12 +258,14 @@ def _phan() -> dict[str, list[str]]:
 
 class LifeBody(BaseModel):
     to: str
+    ly_do: str | None = None
 
 
 class InboxBody(BaseModel):
     quyet_dinh: str
     ca_id: str | None = None
     doi_tac_nv_id: str | None = None
+    ap_dat: bool = False
 
 
 class HandoverBody(BaseModel):
@@ -228,6 +313,12 @@ def lich_transition(
         raise HTTPException(status_code=409, detail=f"illegal:{cur}->{body.to}")
     if body.to == "da_dong":
         _require_chu_quan(authorization)
+    if cur == "da_dong" and body.to == "nhap":
+        _require_chu_quan(authorization)
+        if not body.ly_do or not body.ly_do.strip():
+            raise HTTPException(status_code=400, detail="can_ly_do_mo_lai_lich")
+        _audit("lifecycle_reopen", role, {"from": cur, "to": body.to, "ly_do": body.ly_do.strip()})
+
     doc["trang_thai"] = body.to
     if body.to == "dang_giai":
         doc["solver"] = _run_solver()
@@ -262,7 +353,13 @@ def audit_get(authorization: Annotated[str | None, Header()] = None) -> dict[str
 @router.get("/api/v1/inbox/rang-buoc")
 def inbox_list(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_manager(authorization)
-    _seed_inbox()
+    existing = kv_get("inbox_rang_buoc", [])
+    has_real_channel = any(
+        isinstance(it, dict) and it.get("nguon") in {"telegram", "zalo", "facebook"}
+        for it in existing
+    )
+    if not existing and not has_real_channel:
+        _seed_inbox()
     return {"items": kv_get("inbox_rang_buoc", []), "nguon": "quan"}
 
 
@@ -273,6 +370,7 @@ def inbox_decide(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     role = _require_manager(authorization)
+    tuan_default = _life().get("tuan_iso", "2026-W01")
     found: dict[str, Any] | None = None
     pending_swap: dict[str, Any] | None = None
 
@@ -284,29 +382,70 @@ def inbox_decide(
                     raise HTTPException(status_code=400, detail="quyet_dinh")
                 it["trang_thai"] = body.quyet_dinh
                 if body.quyet_dinh == "duyet":
-                    # Không silent ghi phan_cong — chỉ ghi hiệu lực nghiệp vụ.
                     y = str(it.get("y_dinh") or "")
+                    rb = it.get("rang_buoc") or {}
+                    tuan_id = rb.get("tuan_id") or tuan_default
                     if y in {"doi_ca", "nhan_ca"}:
+                        ca_id = (body.ca_id or rb.get("ca_id") or "").strip()
+                        doi_tac_nv_id = (body.doi_tac_nv_id or rb.get("doi_tac") or "").strip()
+                        if it.get("doi_tac_khong_ro") and not body.doi_tac_nv_id:
+                            raise HTTPException(
+                                status_code=400,
+                                detail="doi_tac_khong_ro_can_chon_nhan_vien",
+                            )
+                        if not ca_id or not doi_tac_nv_id:
+                            raise HTTPException(
+                                status_code=400,
+                                detail="doi_ca_can_ca_id_va_doi_tac",
+                            )
+                        is_ap_dat = bool(body.ap_dat)
+                        swap_status = "dong_y" if is_ap_dat else "cho_xac_nhan"
+                        dong_y_list = [it.get("nv_id") or "unknown", doi_tac_nv_id, role] if is_ap_dat else [it.get("nv_id") or "unknown"]
                         pending_swap = {
                             "id": f"sw_inbox_{uuid.uuid4().hex[:6]}",
                             "a": it.get("nv_id") or "unknown",
-                            "b": body.doi_tac_nv_id or "",
-                            "c": "",
-                            "ca_id": body.ca_id or "",
-                            "trang_thai": "cho_3_nhanh",
+                            "b": doi_tac_nv_id,
+                            "c": role,
+                            "ca_id": ca_id,
+                            "trang_thai": swap_status,
+                            "dong_y": dong_y_list,
+                            "ap_dat": is_ap_dat,
                             "nguon": it.get("nguon") or "inbox",
                             "tu_inbox": item_id,
                             "tom_tat": it.get("tom_tat"),
+                            "tuan_id": tuan_id,
                         }
                         it["hieu_luc"] = {
                             "loai": "cho_doi_ca",
                             "swap_id": pending_swap["id"],
-                            "ghi": "Đã mở phiếu chợ đổi ca — chưa đổi lịch tự động",
+                            "ghi": (
+                                f"Đã áp đặt đổi ca {ca_id} với {doi_tac_nv_id}"
+                                if is_ap_dat
+                                else f"Đã mở phiếu đổi ca {ca_id} với {doi_tac_nv_id} — chờ đối tác xác nhận"
+                            ),
+                            "tuan_id": tuan_id,
                         }
-                    elif y in {"xin_nghi", "bao_tre", "cap_nhat_tkb"}:
+                    elif y == "xin_nghi":
+                        thu = rb.get("thu", "")
                         it["hieu_luc"] = {
                             "loai": "rang_buoc_cho_solver",
-                            "ghi": "Đã duyệt — áp vào lượt xếp lịch tới (không sửa phan_cong tại chỗ)",
+                            "ghi": f"Đã duyệt nghỉ phép {thu} ({tuan_id}) — áp vào lượt xếp lịch tới",
+                            "nv_id": it.get("nv_id"),
+                            "thu": thu,
+                            "tuan_id": tuan_id,
+                        }
+                    elif y in {"bao_tre", "cap_nhat_tkb"}:
+                        thu = rb.get("thu", "")
+                        start = rb.get("start", "07:00")
+                        end = rb.get("end", "12:00")
+                        it["hieu_luc"] = {
+                            "loai": "rang_buoc_cho_solver",
+                            "ghi": f"Đã duyệt TKB bận {thu} {start}-{end} ({tuan_id}) — áp vào lượt xếp lịch tới",
+                            "nv_id": it.get("nv_id"),
+                            "thu": thu,
+                            "start": start,
+                            "end": end,
+                            "tuan_id": tuan_id,
                         }
                     else:
                         it["hieu_luc"] = {
@@ -317,10 +456,8 @@ def inbox_decide(
                 break
         return items
 
-    _seed_inbox()
     kv_mutate("inbox_rang_buoc", mut, [])
     if pending_swap is not None:
-
         def add_swap(items_sw: list[dict[str, Any]]) -> list[dict[str, Any]]:
             items_sw.append(pending_swap)
             return items_sw
@@ -793,6 +930,7 @@ def swap_list(authorization: Annotated[str | None, Header()] = None) -> dict[str
 
 
 @router.post("/api/v1/cho-doi-ca/{swap_id}/dong-y")
+@router.post("/api/v1/doi-ca/{swap_id}/xac-nhan")
 def swap_dong_y(
     swap_id: str,
     authorization: Annotated[str | None, Header()] = None,
@@ -808,12 +946,14 @@ def swap_dong_y(
         for it in items:
             if it.get("id") != swap_id:
                 continue
-            parties = {it["a"], it["b"], it["c"]}
+            parties = {it["a"], it["b"]}
+            if it.get("c"):
+                parties.add(it["c"])
             agreed = set(it.get("dong_y", []))
-            if nv and nv in parties:
+            if nv and (nv in parties or caller.get("role") in {"quan_ly", "chu_quan"}):
                 agreed.add(nv)
             it["dong_y"] = sorted(agreed)
-            if parties <= agreed:
+            if {it["a"], it["b"]} <= agreed:
                 it["trang_thai"] = "dong_y"
             found = dict(it)
             return items
@@ -823,6 +963,35 @@ def swap_dong_y(
     if not found:
         raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
     _audit("swap_dong_y", nv or caller["role"], {"id": swap_id, "dong_y": found.get("dong_y", [])})
+    return found
+
+
+@router.post("/api/v1/cho-doi-ca/{swap_id}/tu-choi")
+@router.post("/api/v1/doi-ca/{swap_id}/tu-choi")
+def swap_tu_choi(
+    swap_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    caller = auth_session(authorization)
+    if not caller:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    nv = caller.get("nv_id")
+    found: dict[str, Any] | None = None
+
+    def mut(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        nonlocal found
+        for it in items:
+            if it.get("id") != swap_id:
+                continue
+            it["trang_thai"] = "tu_choi"
+            found = dict(it)
+            return items
+        raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
+
+    kv_mutate("swap", mut, [])
+    if not found:
+        raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
+    _audit("swap_tu_choi", nv or caller["role"], {"id": swap_id})
     return found
 
 
