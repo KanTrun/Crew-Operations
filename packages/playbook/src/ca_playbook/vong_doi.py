@@ -11,6 +11,8 @@ from ca_gates.vf_rule import validate_rule
 
 from ca_playbook.sua import list_sua
 
+from ca_playbook.derive import derive_rule_from_edits
+
 ROOT = Path(__file__).resolve().parents[4]
 STORE = ROOT / "data" / "out" / "cam_nang.json"
 
@@ -67,13 +69,23 @@ def tim_mau(sua: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     return out
 
 
-def de_xuat(mau: dict[str, Any]) -> dict[str, Any]:
-    luat = {
-        "id": f"luat_{mau['mau']}",
-        "loai": mau["loai_luat"],
+def _fallback_de_xuat(mau: dict[str, Any]) -> dict[str, Any]:
+    return {
         "cau": "Thứ Bảy ca chiều cần 3 người pha chế, không phải 2",
         "dieu_kien": {"thu": "T7", "khung": "chieu", "vi_tri": "pha_che", "so_nguoi": 3},
-        "bang_chung": mau["bang_chung"][:4],
+        "loai": mau["loai_luat"],
+    }
+
+
+def de_xuat(mau: dict[str, Any], *, sua_rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    derived = derive_rule_from_edits(mau, sua_rows or []) if sua_rows else None
+    base = derived if derived else _fallback_de_xuat(mau)
+    luat = {
+        "id": f"luat_{mau['mau']}",
+        "loai": base.get("loai", mau["loai_luat"]),
+        "cau": base["cau"],
+        "dieu_kien": dict(base["dieu_kien"]),
+        "bang_chung": list(base.get("bang_chung") or mau["bang_chung"][:4]),
         "buoc": 3,
         "nguon": mau.get("nguon", "dung_lai_8_tuan"),
         "tap_su": [],
@@ -108,6 +120,35 @@ def tap_su(luat: dict[str, Any], lan: list[tuple[str, str]]) -> dict[str, Any]:
     luat["buoc"] = 5
     luat["trang_thai"] = "du_tap_su" if dung >= 4 else "truot_tap_su"
     return luat
+
+
+def _headcount_row(row: dict[str, Any]) -> int:
+    sau = row.get("sau")
+    if isinstance(sau, dict) and isinstance(sau.get("nv"), list):
+        return len(sau["nv"])
+    return 0
+
+
+def tap_su_tu_sua(luat: dict[str, Any], sua_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Tập sự từ lần sửa thật — so sánh số người trong ca với điều kiện luật."""
+    need = int((luat.get("dieu_kien") or {}).get("so_nguoi") or 0)
+    pool = sua_rows[-5:] if len(sua_rows) >= 5 else list(sua_rows)
+    while len(pool) < 5 and sua_rows:
+        pool.append(sua_rows[len(pool) % len(sua_rows)])
+    lan: list[tuple[str, str]] = []
+    target = f"can_{need}" if need else "co_1"
+    for row in pool[:5]:
+        got = _headcount_row(row)
+        if need:
+            if got >= need:
+                lan.append((target, target))
+            else:
+                lan.append((target, f"co_{got}"))
+        elif got > 0:
+            lan.append((target, target))
+        else:
+            lan.append((target, "co_0"))
+    return tap_su(luat, lan)
 
 
 def duyet(luat: dict[str, Any], *, ok: bool, ai: str) -> dict[str, Any]:

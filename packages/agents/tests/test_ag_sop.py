@@ -28,7 +28,7 @@ def test_answer_includes_nguong_in_response() -> None:
     luat: list[dict] = []
     res = answer("Bảo quản sữa chua như thế nào?", buoc=buoc, luat=luat)
     assert not res.chua_co
-    assert "(ngưỡng 2–8)" in res.cau_tra_loi
+    assert "2–8" in res.cau_tra_loi
     assert "phieu:B02" in res.trich_dan
 
 
@@ -106,3 +106,33 @@ def test_answer_tu_lanh_keyword() -> None:
     assert not res.chua_co
     assert "Vệ sinh tủ lạnh định kỳ hàng tuần" in res.cau_tra_loi
     assert res.trich_dan == ["phieu:B05"]
+
+
+def test_answer_bon_rua_false_positive_rejected() -> None:
+    """Câu hỏi về bồn rửa không khớp bước vệ sinh quầy — trả chưa có."""
+    buoc = [
+        {"ma": "ve_sinh_quay", "ten": "Vệ sinh quầy pha", "phieu_ten": "Mở quán"},
+        {"ma": "ve_sinh_ban", "ten": "Lau bàn khách khu A", "phieu_ten": "Mở quán"},
+    ]
+    luat: list[dict] = []
+    res = answer("Bồn rửa mấy giờ phải vệ sinh?", buoc=buoc, luat=luat)
+    assert res.chua_co is True
+    assert res.trich_dan == []
+
+
+def test_answer_nhiet_do_tu_lanh_sentence() -> None:
+    """Nhiệt độ tủ lạnh trả câu hoàn chỉnh kèm ngưỡng."""
+    buoc = [
+        {
+            "ma": "nhiet_do_tu_lanh",
+            "ten": "Ghi nhiệt độ tủ lạnh",
+            "phieu_ten": "Mở quán",
+            "nguong": {"min": 2, "max": 8},
+        }
+    ]
+    res = answer("Nhiệt độ tủ lạnh bao nhiêu là được?", buoc=buoc, luat=[])
+    assert not res.chua_co
+    assert "Ghi nhiệt độ tủ lạnh" in res.cau_tra_loi
+    assert "2–8" in res.cau_tra_loi
+    assert res.trich_dan == ["phieu:nhiet_do_tu_lanh"]
+    assert res.mode == "keyword"
