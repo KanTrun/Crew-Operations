@@ -55,6 +55,12 @@ from ca_api.interfaces.http.sprint3 import (
 )
 from ca_api.persist import (
     audit_add,
+    fb_escalation_add,
+    fb_review_decide,
+    fb_review_get,
+    fb_review_list,
+    fb_stats,
+    fb_try_claim_event,
     kenh_bind_code_consume,
     kenh_bind_code_issue,
     kenh_bind_get,
@@ -65,6 +71,7 @@ from ca_api.persist import (
     kv_set,
 )
 from ca_api.persist import session as auth_session
+from ca_api.services.fb_moderation import moderate_fb_message
 from ca_api.services.store_public_context import (
     get_active_promotions,
     get_public_menu,
@@ -484,16 +491,41 @@ async def facebook_webhook(request: Request) -> Any:
     }
 
     n = 0
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
     for entry in payload.get("entry") or []:
+        # L0a — chỉ nhận entry đúng Page cấu hình (kế hoạch §6.3.5); thiếu id → cho qua (tương thích ngược)
+        if page_id_cfg and entry.get("id") and str(entry.get("id")) != page_id_cfg:
+            continue
         for ev in entry.get("messaging") or []:
             sender = ((ev.get("sender") or {}).get("id")) or ""
             msg = ev.get("message") or {}
+            # L0b — lọc echo: tin do chính Page/bot gửi → tránh vòng lặp (§6.2a)
+            if msg.get("is_echo"):
+                continue
+            # postback / read / delivery (không có message) → nhánh riêng, không classify
             text = (msg.get("text") or "").strip()
             if not sender or not text:
                 continue
 
             mid = str(msg.get("mid") or "")
+            # L0c — idempotency chống webhook retry (§6.2b)
+            if mid and not fb_try_claim_event(mid):
+                continue
             ts = float(ev.get("timestamp") or 0)
+
+            # L1–L5 — moderation pipeline (policy engine + review queue)
+            moderation = moderate_fb_message(
+                psid=sender,
+                text=text,
+                message_id=mid,
+                timestamp=ts,
+                public_context=public_ctx,
+            )
+            action = moderation.get("action", "")
+            # Block: không trả lời, không tạo thread, không đếm
+            if action in {"block_silent", "block_polite"}:
+                continue
+
             input_msg = FBMessageInput(psid=sender, text=text, message_id=mid, timestamp=ts)
 
             # Lấy hồ sơ khách quen & bài học mẫu Quản lý đã duyệt
@@ -509,6 +541,19 @@ async def facebook_webhook(request: Request) -> Any:
                 customer_profile=cust_prof if cust_prof else None,
                 golden_examples=goldens if goldens else None,
             )
+
+            # Policy engine là cổng cuối (ADR-008): auto chỉ khi fb_policy đồng thuận
+            if action in {"queue_review", "priority_review", "escalate_owner"}:
+                out = FBMessageOutput(
+                    action="queue_to_inbox",
+                    response=None,
+                    intent=out.intent,
+                    confidence=out.confidence,
+                    emotion=out.emotion,
+                    suggested_reply=out.suggested_reply or moderation.get("response"),
+                    delegated_agent=out.delegated_agent,
+                    reason=f"fb_policy:{moderation.get('reason')}",
+                )
 
             # Cập nhật hồ sơ khách quen nếu khách tự giới thiệu tên hoặc sở thích
             new_prefs = extract_customer_preferences([text])
@@ -741,6 +786,115 @@ def page_thread_approve(
         },
     )
     return {"ok": True, "thread": found, "graph_sent": graph_sent}
+
+
+# ── FB moderation inbox (kế hoạch chatbot §3.8) ───────────────────────────
+
+
+class FbInboxDecideBody(BaseModel):
+    quyet_dinh: str = Field(pattern="^(duyet|sua_gui|tu_choi|chuyen_cap)$")
+    noi_dung: str | None = None
+    ly_do: str | None = None
+
+
+@router.get("/api/v1/page/fb-inbox")
+def fb_inbox_list(
+    status: str | None = None,
+    assigned_role: str | None = None,
+    limit: int = 50,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Danh sách tin FB chờ duyệt. QL không xem hàng gán cho Chủ quán."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    role = _require_manager(authorization)
+    if role == "quan_ly" and assigned_role == "chu_quan":
+        raise HTTPException(status_code=403, detail="forbidden")
+    items = fb_review_list(status=status, assigned_role=assigned_role, limit=limit)
+    for it in items:
+        it["flagged_reasons"] = json.loads(it.get("flagged_reasons") or "[]")
+    return {"items": items, "role": role}
+
+
+@router.get("/api/v1/page/fb-inbox/stats")
+def fb_inbox_stats(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    _require_manager(authorization)
+    return fb_stats()
+
+
+@router.get("/api/v1/page/fb-inbox/{item_id}")
+def fb_inbox_detail(
+    item_id: int,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    _require_manager(authorization)
+    item = fb_review_get(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="khong_thay")
+    item["flagged_reasons"] = json.loads(item.get("flagged_reasons") or "[]")
+    return item
+
+
+@router.post("/api/v1/page/fb-inbox/{item_id}/decide")
+def fb_inbox_decide(
+    item_id: int,
+    body: FbInboxDecideBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Duyệt / sửa rồi gửi / từ chối / chuyển cấp. RBAC theo assigned_role."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    role = _require_manager(authorization)
+    item = fb_review_get(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="khong_thay")
+    if str(item.get("status")) != "pending":
+        raise HTTPException(status_code=409, detail="da_quyet_truoc_do")
+    # Escalate chủ quán: QL không được duyệt khi chưa được chuyển cấp
+    if str(item.get("assigned_role")) == "chu_quan" and role != "chu_quan":
+        raise HTTPException(status_code=403, detail="cho_chu_quan_duyet")
+
+    if body.quyet_dinh == "tu_choi":
+        updated = fb_review_decide(item_id, status="rejected", decided_by=s["nv_id"])
+        _audit(s["nv_id"], "fb_inbox_decide", {"id": item_id, "q": "tu_choi"})
+        return {"ok": True, "item": updated, "sent": False}
+
+    if body.quyet_dinh == "chuyen_cap":
+        if role != "chu_quan":
+            raise HTTPException(status_code=403, detail="chi_chu_quan_chuyen_cap")
+        fb_escalation_add(
+            item_id, escalated_to="chu_quan",
+            reason=body.ly_do or "chuyen_cap", notified_channel="in_app",
+        )
+        return {"ok": True, "item": fb_review_get(item_id), "sent": False}
+
+    # duyet / sua_gui — gửi qua Messenger
+    final_text = (body.noi_dung or str(item.get("proposed_response") or "")).strip()
+    if not final_text:
+        raise HTTPException(status_code=400, detail="thieu_noi_dung")
+    psid = str(item.get("external_psid") or "")
+    graph_sent = False
+    if _page_mode() == "live" and psid:
+        try:
+            send_messenger_text(psid, final_text)
+            graph_sent = True
+        except Exception:
+            graph_sent = False
+    new_status = "sent" if graph_sent else "approved"
+    updated = fb_review_decide(
+        item_id, status=new_status, decided_by=s["nv_id"], final_response=final_text
+    )
+    _audit(
+        s["nv_id"],
+        "fb_inbox_decide",
+        {"id": item_id, "q": body.quyet_dinh, "graph_sent": graph_sent,
+         "final_len": len(final_text)},
+    )
+    return {"ok": True, "item": updated, "sent": graph_sent}
 
 
 class ApplyProposalBody(BaseModel):

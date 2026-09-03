@@ -12,9 +12,9 @@ import uuid
 from collections.abc import Callable
 
 try:
-    from datetime import UTC
+    from datetime import UTC, datetime
 except ImportError:
-    from datetime import timezone
+    from datetime import datetime, timezone
     UTC = timezone.utc
 from pathlib import Path
 from typing import Any
@@ -179,6 +179,53 @@ def init_db() -> None:
                 timestamp TEXT NOT NULL,
                 channel TEXT NOT NULL,
                 latency_ms INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS fb_review_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source TEXT NOT NULL CHECK (source IN ('messenger','comment')),
+                external_thread_id TEXT NOT NULL,
+                external_psid TEXT NOT NULL,
+                external_user_name TEXT,
+                post_id TEXT,
+                post_is_sensitive INTEGER NOT NULL DEFAULT 0,
+                message_text TEXT NOT NULL,
+                detected_intent TEXT NOT NULL,
+                confidence REAL NOT NULL,
+                policy_action TEXT NOT NULL,
+                assigned_role TEXT CHECK (assigned_role IN ('quan_ly','chu_quan')),
+                proposed_response TEXT,
+                flagged_reasons TEXT NOT NULL DEFAULT '[]',
+                status TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending','approved','edited_approved','rejected','sent','expired','auto_sent')),
+                decided_by TEXT,
+                decided_at TEXT,
+                final_response TEXT,
+                audit_sent INTEGER,
+                trace_id TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                expires_at TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_fbrq_status ON fb_review_queue(status, created_at);
+            CREATE INDEX IF NOT EXISTS idx_fbrq_role ON fb_review_queue(assigned_role, status);
+            CREATE INDEX IF NOT EXISTS idx_fbrq_thread ON fb_review_queue(external_thread_id, created_at);
+            CREATE TABLE IF NOT EXISTS fb_escalation_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                review_queue_id INTEGER NOT NULL REFERENCES fb_review_queue(id),
+                escalated_to TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                notified_channel TEXT,
+                notified_at TEXT,
+                acked_at TEXT
+            );
+            CREATE TABLE IF NOT EXISTS fb_psid_blacklist (
+                psid TEXT PRIMARY KEY,
+                strikes INTEGER NOT NULL DEFAULT 1,
+                blocked_until TEXT NOT NULL,
+                reason TEXT
+            );
+            CREATE TABLE IF NOT EXISTS fb_processed_events (
+                event_id TEXT PRIMARY KEY,
+                processed_at TEXT NOT NULL
             );
             """
         )
@@ -1009,4 +1056,202 @@ def copilot_audit_list(store_id: str | None = None, limit: int = 50) -> list[dic
             }
             for r in rows
         ]
+
+
+# ── FB moderation store (kế hoạch chatbot §3.7) ───────────────────────────
+
+
+def _iso_now() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def fb_try_claim_event(event_id: str) -> bool:
+    """True nếu lần đầu thấy event_id (mid/comment_id); False nếu đã xử lý.
+
+    Idempotency chống webhook retry của Meta (kế hoạch §6.2b).
+    """
+    init_db()
+    with _conn() as cx:
+        try:
+            cx.execute(
+                "INSERT INTO fb_processed_events(event_id, processed_at) VALUES (?,?)",
+                (event_id, _iso_now()),
+            )
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+
+def fb_review_insert(item: dict[str, Any]) -> int:
+    """Ghi 1 hàng vào fb_review_queue, trả về id."""
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            """
+            INSERT INTO fb_review_queue(
+                source, external_thread_id, external_psid, external_user_name,
+                post_id, post_is_sensitive, message_text, detected_intent,
+                confidence, policy_action, assigned_role, proposed_response,
+                flagged_reasons, status, trace_id, created_at, expires_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                item["source"],
+                item["external_thread_id"],
+                item["external_psid"],
+                item.get("external_user_name"),
+                item.get("post_id"),
+                1 if item.get("post_is_sensitive") else 0,
+                item["message_text"],
+                item["detected_intent"],
+                float(item["confidence"]),
+                item["policy_action"],
+                item.get("assigned_role"),
+                item.get("proposed_response"),
+                json.dumps(item.get("flagged_reasons") or [], ensure_ascii=False),
+                item.get("status", "pending"),
+                item.get("trace_id", ""),
+                item["created_at"],
+                item.get("expires_at"),
+            ),
+        )
+        return int(cur.lastrowid or 0)
+
+
+def fb_review_list(
+    *,
+    status: str | None = None,
+    assigned_role: str | None = None,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    init_db()
+    q = "SELECT * FROM fb_review_queue WHERE 1=1"
+    params: list[Any] = []
+    if status:
+        q += " AND status=?"
+        params.append(status)
+    if assigned_role:
+        q += " AND assigned_role=?"
+        params.append(assigned_role)
+    q += " ORDER BY created_at DESC LIMIT ?"
+    params.append(max(1, min(int(limit), 200)))
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        rows = cx.execute(q, params).fetchall()
+    return [dict(r) for r in rows]
+
+
+def fb_review_get(item_id: int) -> dict[str, Any] | None:
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        row = cx.execute(
+            "SELECT * FROM fb_review_queue WHERE id=?", (item_id,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def fb_review_decide(
+    item_id: int,
+    *,
+    status: str,
+    decided_by: str,
+    final_response: str | None = None,
+) -> dict[str, Any] | None:
+    """Cập nhật quyết định duyệt/từ chối. Idempotent: đã quyết thì không đổi."""
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        row = cx.execute(
+            "SELECT status FROM fb_review_queue WHERE id=?", (item_id,)
+        ).fetchone()
+        if not row:
+            return None
+        if str(row["status"]) != "pending":
+            return dict(row)
+        cx.execute(
+            "UPDATE fb_review_queue SET status=?, decided_by=?, decided_at=?, final_response=? "
+            "WHERE id=? AND status='pending'",
+            (status, decided_by, _iso_now(), final_response, item_id),
+        )
+        row2 = cx.execute(
+            "SELECT * FROM fb_review_queue WHERE id=?", (item_id,)
+        ).fetchone()
+    return dict(row2) if row2 else None
+
+
+def fb_review_mark_sent(item_id: int, *, final_response: str, audit_id: int) -> None:
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            "UPDATE fb_review_queue SET status='sent', final_response=?, audit_sent=? WHERE id=?",
+            (final_response, audit_id, item_id),
+        )
+
+
+def fb_escalation_add(
+    review_queue_id: int, *, escalated_to: str, reason: str, notified_channel: str
+) -> None:
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            "INSERT INTO fb_escalation_log(review_queue_id, escalated_to, reason, notified_channel, notified_at) "
+            "VALUES (?,?,?,?,?)",
+            (review_queue_id, escalated_to, reason, notified_channel, _iso_now()),
+        )
+
+
+def fb_escalation_unacked() -> list[dict[str, Any]]:
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        rows = cx.execute(
+            "SELECT e.*, q.message_text, q.detected_intent FROM fb_escalation_log e "
+            "JOIN fb_review_queue q ON q.id = e.review_queue_id "
+            "WHERE e.acked_at IS NULL ORDER BY e.notified_at DESC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def fb_blacklist_check(psid: str) -> bool:
+    """True nếu PSID đang bị chặn (blocked_until > now)."""
+    init_db()
+    now = _iso_now()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT blocked_until FROM fb_psid_blacklist WHERE psid=?", (psid,)
+        ).fetchone()
+    return bool(row and str(row[0]) > now)
+
+
+def fb_blacklist_bump(psid: str, *, strikes: int, blocked_until: str, reason: str) -> None:
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            "INSERT INTO fb_psid_blacklist(psid, strikes, blocked_until, reason) VALUES (?,?,?,?) "
+            "ON CONFLICT(psid) DO UPDATE SET strikes=excluded.strikes, "
+            "blocked_until=excluded.blocked_until, reason=excluded.reason",
+            (psid, strikes, blocked_until, reason),
+        )
+
+
+def fb_stats() -> dict[str, Any]:
+    """Đếm theo status + auto rate (kế hoạch §5.4)."""
+    init_db()
+    with _conn() as cx:
+        by_status = {
+            str(r[0]): int(r[1])
+            for r in cx.execute(
+                "SELECT status, COUNT(*) FROM fb_review_queue GROUP BY status"
+            ).fetchall()
+        }
+        total = sum(by_status.values())
+    auto = by_status.get("auto_sent", 0)
+    return {
+        "by_status": by_status,
+        "total": total,
+        "auto_sent": auto,
+        "auto_rate": round(auto / total, 4) if total else 0.0,
+        "escalation_unacked": len(fb_escalation_unacked()),
+    }
 
