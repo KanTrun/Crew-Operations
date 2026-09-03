@@ -116,6 +116,9 @@ export default function PageQuanPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [draftText, setDraftText] = useState("");
   const [replyDraft, setReplyDraft] = useState<Record<string, string>>({});
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiTone, setAiTone] = useState("than thien");
+  const [aiGenerating, setAiGenerating] = useState(false);
   const [tab, setTab] = useState<"threads" | "drafts" | "trends" | "saved_trends" | "config">("trends");
   const [profile, setProfile] = useState<StoreProfile | null>(null);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -385,6 +388,30 @@ export default function PageQuanPage() {
     } catch (e) {
       setError(viError(e, { doing: "quyết được nháp bài" }));
     }
+  }
+
+  async function generateAiDraft(customTopic?: string) {
+    const topic = (customTopic || aiTopic).trim();
+    if (!topic) {
+      push("Vui lòng nhập chủ đề bài đăng cho AI.", "err");
+      return;
+    }
+    try {
+      setAiGenerating(true);
+      await apiSend("/api/v1/page/drafts/ai-generate", { topic, tone: aiTone });
+      push("AI đã soạn xong bài viết và lưu vào danh sách nháp!");
+      setAiTopic("");
+      load();
+    } catch (e) {
+      setError(viError(e, { doing: "AI soạn thảo bài viết", forbidden: "Chỉ quản lý mới yêu cầu AI soạn bài." }));
+    } finally {
+      setAiGenerating(false);
+    }
+  }
+
+  function useTrendForDraft(trend: TrendItem) {
+    setTab("drafts");
+    setAiTopic(`Bắt trend món: ${trend.cum_tu_khoa_viral || trend.tieu_de}`);
   }
 
   if (!token) return <AuthGate />;
@@ -943,6 +970,15 @@ export default function PageQuanPage() {
                       </span>
                       <div className="flex items-center gap-2">
                         <button
+                          type="button"
+                          onClick={() => useTrendForDraft(selectedTrend)}
+                          className="px-2.5 py-1 rounded text-xs font-bold transition cursor-pointer flex items-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white shadow"
+                          title="Tạo bài viết Fanpage ăn theo xu hướng này với AI"
+                        >
+                          <span>✨</span>
+                          AI Viết Bài
+                        </button>
+                        <button
                           onClick={() => toggleSaveTrend(selectedTrend)}
                           className={`px-2.5 py-1 rounded text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
                             savedTrends.some((st) => st.id === selectedTrend.id)
@@ -1428,12 +1464,77 @@ export default function PageQuanPage() {
       {/* TAB 3: NHÁP BÀI FANPAGE */}
       {tab === "drafts" && (
         <div className="space-y-4">
-          <div className="border-2 border-[var(--nq-dim)] p-4">
-            <h3 className="mb-2 text-sm font-bold">Soạn nháp bài đăng mới</h3>
+          {/* AI Auto-generator Box */}
+          <div className="border-2 border-indigo-500/40 bg-gradient-to-r from-indigo-950/30 to-purple-950/30 p-4 rounded shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-indigo-300 flex items-center gap-2">
+                <span>✨</span> AI Tự Động Soạn Thảo Bài Đăng (Gemini AI)
+              </h3>
+              <span className="text-xs text-[var(--nq-muted)] bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                Tự động chuẩn hóa văn phong, emoji & Call-To-Action
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div className="md:col-span-2">
+                <Field label="Chủ đề / Ý tưởng bài viết">
+                  <Input
+                    placeholder="VD: Cà phê trứng mùa thu, Khuyến mãi combo sáng, Bắt trend matcha..."
+                    value={aiTopic}
+                    onChange={(e) => setAiTopic(e.target.value)}
+                  />
+                </Field>
+              </div>
+              <div>
+                <Field label="Giọng điệu">
+                  <select
+                    className="w-full bg-[var(--nq-bg)] border border-[var(--nq-dim)] text-xs text-[var(--nq-primary)] p-2 rounded"
+                    value={aiTone}
+                    onChange={(e) => setAiTone(e.target.value)}
+                  >
+                    <option value="than thien">Thân thiện, gần gũi</option>
+                    <option value="truyen cam hung">Truyền cảm hứng, nghệ thuật</option>
+                    <option value="hai huoc">Hài hước, Gen Z, bắt trend</option>
+                    <option value="trang trong">Trang trọng, thông báo</option>
+                  </select>
+                </Field>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-1.5 text-xs items-center">
+                <span className="text-[var(--nq-muted)] mr-1">Gợi ý nhanh:</span>
+                {[
+                  "Cà phê specialty rang xay",
+                  "Combo bánh ngọt & trà thơm",
+                  "Không gian yên tĩnh làm việc",
+                  "Khuyến mãi cuối tuần",
+                ].map((sug) => (
+                  <button
+                    key={sug}
+                    type="button"
+                    onClick={() => setAiTopic(sug)}
+                    className="px-2 py-0.5 bg-[var(--nq-dim)]/60 hover:bg-indigo-500/20 text-[var(--nq-muted)] hover:text-indigo-300 rounded text-xs transition-colors"
+                  >
+                    + {sug}
+                  </button>
+                ))}
+              </div>
+              <Btn
+                variant="primary"
+                onClick={() => generateAiDraft()}
+                disabled={aiGenerating || !aiTopic.trim()}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
+              >
+                {aiGenerating ? "Đang sinh bài..." : "✨ AI Soạn & Thêm Nháp"}
+              </Btn>
+            </div>
+          </div>
+
+          <div className="border-2 border-[var(--nq-dim)] p-4 rounded">
+            <h3 className="mb-2 text-sm font-bold">Soạn nháp bài đăng thủ công</h3>
             <Field label="Nội dung bài đăng">
               <Textarea
-                rows={6}
-                placeholder="Nhập nội dung bài đăng..."
+                rows={4}
+                placeholder="Nhập nội dung bài đăng nếu muốn tự viết..."
                 value={draftText}
                 onChange={(e) => setDraftText(e.target.value)}
               />
@@ -1448,15 +1549,19 @@ export default function PageQuanPage() {
             {drafts.length === 0 ? (
               <Empty>Chưa có bài nháp nào.</Empty>
             ) : (
-              drafts.map((d) => (
-                <div key={d.id} className="border border-[var(--nq-dim)] p-3">
+              drafts.map((d: any) => (
+                <div key={d.id} className="border border-[var(--nq-dim)] p-3 rounded">
                   <div className="flex items-center justify-between text-xs text-[var(--nq-muted)]">
-                    <span>Người tạo: {d.nguoi_tao}</span>
-                    <span>Trạng thái: {d.trang_thai}</span>
+                    <span>Người tạo: <strong className="text-[var(--nq-primary)]">{d.nguoi_tao || d.by || "Hệ thống"}</strong></span>
+                    <span className="px-2 py-0.5 rounded bg-[var(--nq-dim)]/40 font-mono text-[11px]">
+                      {d.trang_thai === "da_dang" ? "✅ Đã đăng live" : d.trang_thai === "da_dang_mock" ? "✅ Đã đăng (Mock)" : d.trang_thai === "da_duyet" ? "✅ Đã duyệt" : d.trang_thai === "tu_choi" ? "❌ Đã từ chối" : "⏳ Chờ duyệt"}
+                    </span>
                   </div>
-                  <p className="my-2 text-xs text-[var(--nq-primary)]">{d.noi_dung}</p>
-                  {manager && d.trang_thai === "cho_duyet" ? (
-                    <div className="flex gap-2">
+                  <p className="my-2 text-xs text-[var(--nq-primary)] whitespace-pre-line leading-relaxed border-l-2 border-indigo-500/30 pl-3 py-1">
+                    {d.noi_dung}
+                  </p>
+                  {manager && (d.trang_thai === "cho_duyet" || d.trang_thai === "nhap") ? (
+                    <div className="flex gap-2 pt-2 border-t border-[var(--nq-dim)]/50">
                       <Btn variant="primary" onClick={() => decideDraft(d.id, "duyet")}>
                         Duyệt & Đăng
                       </Btn>

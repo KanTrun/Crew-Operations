@@ -17,6 +17,7 @@ QUERY_SOP = "QUERY_SOP"
 ANALYZE_WASTE = "ANALYZE_WASTE"
 CREATE_RULE_PROPOSAL = "CREATE_RULE_PROPOSAL"
 INVENTORY_RESTOCK_CHECK = "INVENTORY_RESTOCK_CHECK"
+SEND_MAIL = "SEND_MAIL"
 OUT_OF_SCOPE = "OUT_OF_SCOPE"
 
 # Patterns detecting attempts to bypass two-phase approval
@@ -67,6 +68,11 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
         INVENTORY_RESTOCK_CHECK,
         ["kiểm kho", "tồn kho", "sắp hết hàng", "hết sữa", "đặt hàng", "nhập hàng", "ngưỡng tồn", "restock"],
         0.90,
+    ),
+    (
+        SEND_MAIL,
+        ["gửi mail", "gui mail", "gửi email", "gửi gmail", "email cho", "mail cho", "nhắn qua email", "gửi thông báo qua email"],
+        0.92,
     ),
 ]
 
@@ -178,6 +184,13 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
 
     elif matched_intent == INVENTORY_RESTOCK_CHECK:
         params["nguong_canh_bao"] = 10.0
+
+    elif matched_intent == SEND_MAIL:
+        # Người nhận: duyệt các tên xuất hiện trong câu (đơn giản hoá, LLM/tool resolve)
+        # Cụ thể hoá subject/body từ câu — để người quản lý có thể chỉnh qua clarify hoặc proposal.
+        params["subject"] = text if len(text) <= 120 else text[:120]
+        params["body"] = text
+        params["to_nv_ids"] = []  # tool sẽ require nv_id; nếu thiếu, agent sẽ clarify.
 
     # 4. Confidence thresholds:
     # >= 0.75: regular

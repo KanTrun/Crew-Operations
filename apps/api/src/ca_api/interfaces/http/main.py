@@ -28,6 +28,7 @@ from pydantic import BaseModel
 
 from ca_api.interfaces.http.channels import router as channels_router
 from ca_api.interfaces.http.copilot import router as copilot_router
+from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.pos import router as pos_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
@@ -66,6 +67,7 @@ app.include_router(copilot_router)
 app.include_router(pos_router)
 app.include_router(meeting_router)
 app.include_router(trends_router)
+app.include_router(mail_router)
 
 
 ROOT = Path(__file__).resolve().parents[6]

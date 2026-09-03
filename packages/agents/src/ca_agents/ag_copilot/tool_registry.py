@@ -27,6 +27,7 @@ WHITELISTED_INTENTS = {
     "ANALYZE_WASTE": "tool_get_waste_summary",
     "CREATE_RULE_PROPOSAL": "tool_propose_rule_from_recent_edits",
     "INVENTORY_RESTOCK_CHECK": "tool_check_inventory_restock",
+    "SEND_MAIL": "tool_send_mail",
 }
 
 # ── Data source injection (hexagonal architecture) ────────────────────────────
@@ -649,6 +650,119 @@ def tool_check_inventory_restock(
     )
 
 
+def tool_send_mail(
+    store_id: str = "quan_01",
+    to_nv_ids: list[str] | None = None,
+    subject: str = "",
+    body: str = "",
+    **kwargs: Any,
+) -> ToolExecutionResult:
+    """Send email to staff by nv_id. Reads real emails from user table.
+
+    Phân quyền được đảm bảo ở tầng agent (chỉ quan_ly/chu_quan có SEND_MAIL).
+    Ở đây chỉ tập hợp email + gọi ag_mail (replay/stub an toàn khi chưa cấu hình SMTP).
+    """
+    to_nv_ids = to_nv_ids or []
+    subject = (subject or "").strip()
+    body = (body or "").strip()
+
+    if not to_nv_ids:
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_send_mail",
+            intent="SEND_MAIL",
+            data={},
+            summary="Chưa rõ gửi cho ai (thiếu nv_id).",
+            explanation="Cần chỉ định danh sách nhân viên nhận mail.",
+            requires_confirmation=False,
+            error="missing_recipients",
+        )
+
+    # Lấy email thật từ user table (inject qua get_user_emails).
+    get_emails = _src("get_user_emails")
+    email_map = dict(get_emails() or {}) if get_emails else {}
+    to_emails: list[str] = []
+    missing: list[str] = []
+    for nv in to_nv_ids:
+        em = email_map.get(nv)
+        if em:
+            to_emails.append(em)
+        else:
+            missing.append(nv)
+
+    if not to_emails:
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_send_mail",
+            intent="SEND_MAIL",
+            data={"missing": missing},
+            summary="Không tìm thấy email nào (nhân viên chưa cập nhật gmail ở trang Cá nhân).",
+            explanation=(
+                "Nhân viên cần vào trang 'Cá nhân' (/toi) để cập nhật gmail của mình, "
+                "sau đó mới gửi mail được."
+            ),
+            requires_confirmation=False,
+            error="no_emails_found",
+        )
+
+    # Gọi ag_mail (replay ghi log; SMTP nếu cấu hình).
+    try:
+        from ca_agents.ag_mail import send_mail as _send_mail
+
+        res = _send_mail(to_emails=to_emails, subject=subject or "(không tiêu đề)", body=body)
+        if not res.sent and res.failed:
+            return ToolExecutionResult(
+                success=False,
+                tool_name="tool_send_mail",
+                intent="SEND_MAIL",
+                data={"sent": res.sent, "failed": res.failed},
+                summary="Gửi mail thất bại.",
+                explanation=str(res.failed[:1]),
+                requires_confirmation=False,
+                error="smtp_failed",
+            )
+        payload = {
+            "to_emails": to_emails,
+            "missing": missing,
+            "mode": res.mode,
+            "sent": res.sent,
+        }
+        if missing:
+            return ToolExecutionResult(
+                success=False,
+                tool_name="tool_send_mail",
+                intent="SEND_MAIL",
+                data=payload,
+                summary=(f"Đã gửi {len(res.sent)} mail, {len(missing)} nhân viên chưa có email."),
+                explanation=(
+                    "Một số nhân viên chưa cập nhật gmail (trang Cá nhân /toi). "
+                    "Những người đã có email vẫn nhận được."
+                ),
+                requires_confirmation=False,
+                error="partial_missing_emails",
+            )
+        return ToolExecutionResult(
+            success=True,
+            tool_name="tool_send_mail",
+            intent="SEND_MAIL",
+            data=payload,
+            summary=f"Đã gửi {len(res.sent)} email cho nhân viên.",
+            explanation=f"Chế độ gửi: {res.mode}.",
+            requires_confirmation=False,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_send_mail",
+            intent="SEND_MAIL",
+            data={},
+            summary="Lỗi khi gửi mail.",
+            explanation=str(exc),
+            requires_confirmation=False,
+            error="mail_error",
+        )
+
+
 _TOOLS: dict[str, Callable[..., ToolExecutionResult]] = {
     "SCHEDULE_SOLVE": tool_solve_weekly_schedule,
     "APPROVE_SHIFT_SWAP": tool_prepare_swap_approval,
@@ -657,6 +771,7 @@ _TOOLS: dict[str, Callable[..., ToolExecutionResult]] = {
     "ANALYZE_WASTE": tool_get_waste_summary,
     "CREATE_RULE_PROPOSAL": tool_propose_rule_from_recent_edits,
     "INVENTORY_RESTOCK_CHECK": tool_check_inventory_restock,
+    "SEND_MAIL": tool_send_mail,
 }
 
 

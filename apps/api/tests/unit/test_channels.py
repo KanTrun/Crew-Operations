@@ -249,3 +249,41 @@ def test_staff_cannot_reply_or_create_treo_from_page() -> None:
     assert client.get("/api/v1/page/threads", headers=staff).status_code == 403
     assert client.post("/api/v1/page/threads/thread_1/reply", json={"text": "Tra loi"}, headers=staff).status_code == 403
     assert client.post("/api/v1/page/treo", json={"thread_id": "thread_1"}, headers=staff).status_code == 403
+
+
+def test_page_drafts_crud_and_ai_generate() -> None:
+    from ca_api.persist import kv_set
+
+    kv_set("page_quan", {"threads": [], "drafts": [], "mode": "mock"})
+    ql = headers(client, "lan")
+    staff = headers(client, "minh")
+
+    # Staff forbidden
+    assert client.post("/api/v1/page/drafts", json={"noi_dung": "Test"}, headers=staff).status_code == 403
+    assert client.post("/api/v1/page/drafts/ai-generate", json={"topic": "Cafe"}, headers=staff).status_code == 403
+
+    # QL tạo thủ công
+    r_create = client.post("/api/v1/page/drafts", json={"noi_dung": "Bai nhap 1"}, headers=ql)
+    assert r_create.status_code == 200
+    created = r_create.json()
+    assert created["noi_dung"] == "Bai nhap 1"
+    assert created["trang_thai"] == "cho_duyet"
+
+    # QL AI generate
+    r_ai = client.post("/api/v1/page/drafts/ai-generate", json={"topic": "Ca phe trung", "tone": "than thien"}, headers=ql)
+    assert r_ai.status_code == 200
+    ai_draft = r_ai.json()
+    assert len(ai_draft["noi_dung"]) > 10
+    assert ai_draft["trang_thai"] == "cho_duyet"
+
+    # QL xem danh sách drafts
+    r_list = client.get("/api/v1/page/drafts", headers=ql)
+    assert r_list.status_code == 200
+    items = r_list.json()["items"]
+    assert len(items) >= 2
+
+    # QL duyệt draft
+    r_decide = client.post(f"/api/v1/page/drafts/{created['id']}", json={"quyet_dinh": "duyet"}, headers=ql)
+    assert r_decide.status_code == 200
+    assert r_decide.json()["trang_thai"] in {"da_dang_mock", "da_dang"}
+

@@ -5,9 +5,17 @@ Safely post content to Facebook page with validation and error handling
 """
 
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 import requests
 from dotenv import load_dotenv
@@ -27,7 +35,7 @@ class FacebookPagePoster:
         self.page_token = os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN") or os.getenv(
             "NHIPQUAN_FB_PAGE_TOKEN"
         )
-        self.page_id = os.getenv("FACEBOOK_PAGE_ID") or os.getenv("NHIPQUAN_FB_PAGE_ID")
+        self.page_id = os.getenv("FACEBOOK_PAGE_ID") or os.getenv("NHIPQUAN_FB_PAGE_ID") or "me"
         self.page_name = os.getenv("FACEBOOK_PAGE_NAME", "Unknown Page")
 
         if not self.page_token:
@@ -37,8 +45,34 @@ class FacebookPagePoster:
                 "Copy page access token từ output vào .env"
             )
 
-        if not self.page_id:
-            raise ValueError("❌ FACEBOOK_PAGE_ID không được set trong .env")
+        self._resolve_page_token_if_needed()
+
+    def _resolve_page_token_if_needed(self) -> None:
+        """Tự động chuyển đổi User Access Token thành Page Access Token nếu cần."""
+        try:
+            r = requests.get(
+                f"{self.BASE_URL}/me/accounts",
+                params={"access_token": self.page_token},
+                timeout=10,
+            )
+            if r.status_code == 200:
+                data = r.json().get("data", [])
+                if data:
+                    target_page = None
+                    for p in data:
+                        if "nhịp quán" in p.get("name", "").lower():
+                            target_page = p
+                            break
+                    if not target_page:
+                        target_page = data[0]
+
+                    if target_page and target_page.get("access_token"):
+                        self.page_token = target_page["access_token"]
+                        self.page_id = target_page["id"]
+                        self.page_name = target_page["name"]
+                        print(f"🔄 Tự động kết nối Page Access Token: '{self.page_name}' (ID: {self.page_id})")
+        except Exception:
+            pass
 
     def verify_token(self) -> bool:
         """Verify token is valid"""
@@ -125,16 +159,41 @@ class FacebookPagePoster:
             print(f"❌ Request error: {str(e)}")
             return {"success": False, "error": str(e)}
 
-    def post_photo(self, image_url: str, caption: str = "") -> dict[str, Any]:
-        """Post photo from URL"""
+    def post_photo(self, image_path_or_url: str, caption: str = "") -> dict[str, Any]:
+        """Post photo from local file path or URL"""
         print("\n📸 Posting photo...")
-        print(f"   Image URL: {image_url}")
+        if os.path.isfile(image_path_or_url):
+            print(f"   Local file: {image_path_or_url}")
+            if caption:
+                print(f"   Caption: {caption[:60]}...")
+            try:
+                url = f"{self.BASE_URL}/{self.page_id}/photos"
+                data = {"access_token": self.page_token}
+                if caption:
+                    data["caption"] = caption
+                with open(image_path_or_url, "rb") as f:
+                    response = requests.post(url, data=data, files={"source": f}, timeout=30)
+
+                if response.status_code == 200:
+                    result = response.json()
+                    post_id = result.get("post_id") or result.get("id")
+                    print("✅ Photo posted!")
+                    print(f"   Photo ID: {result.get('id')}")
+                    print(f"   Post ID: {post_id}")
+                    return {"success": True, "photo_id": result.get("id"), "post_id": post_id}
+                else:
+                    print(f"❌ Post failed: {response.text}")
+                    return {"success": False, "error": response.text}
+            except Exception as e:
+                print(f"❌ Request error: {str(e)}")
+                return {"success": False, "error": str(e)}
+
+        print(f"   Image URL: {image_path_or_url}")
         if caption:
             print(f"   Caption: {caption[:60]}...")
 
         try:
-            data = {"url": image_url, "access_token": self.page_token}
-
+            data = {"url": image_path_or_url, "access_token": self.page_token}
             if caption:
                 data["caption"] = caption
 

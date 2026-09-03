@@ -101,7 +101,8 @@ def init_db() -> None:
                 password_sha TEXT NOT NULL,
                 role TEXT NOT NULL,
                 nv_id TEXT NOT NULL,
-                display_name TEXT NOT NULL
+                display_name TEXT NOT NULL,
+                email TEXT NOT NULL DEFAULT ''
             );
             CREATE TABLE IF NOT EXISTS sessions (
                 token TEXT PRIMARY KEY,
@@ -197,6 +198,9 @@ def _migrate_schema(cx: sqlite3.Connection) -> None:
     cols = {r[1] for r in cx.execute("PRAGMA table_info(menu_mon)")}
     if "hinh_url" not in cols:
         cx.execute("ALTER TABLE menu_mon ADD COLUMN hinh_url TEXT NOT NULL DEFAULT ''")
+    ucols = {r[1] for r in cx.execute("PRAGMA table_info(users)")}
+    if "email" not in ucols:
+        cx.execute("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''")
 
 
 _MENU_MAC_DINH = (
@@ -439,11 +443,13 @@ def session(authorization: str | None) -> dict[str, str] | None:
     raw = authorization.removeprefix("Bearer ").strip()
     with _conn() as cx:
         row = cx.execute(
-            "SELECT username, role, nv_id FROM sessions WHERE token=?", (raw,)
+            "SELECT s.username, s.role, s.nv_id, u.email FROM sessions s "
+            "LEFT JOIN users u ON u.nv_id = s.nv_id WHERE s.token=?",
+            (raw,),
         ).fetchone()
         if not row:
             return None
-        return {"username": row[0], "role": row[1], "nv_id": row[2]}
+        return {"username": row[0], "role": row[1], "nv_id": row[2], "email": str(row[3] or "")}
 
 
 def kv_get(key: str, default: Any) -> Any:
@@ -502,12 +508,43 @@ def list_users() -> list[dict[str, str]]:
     init_db()
     with _conn() as cx:
         rows = cx.execute(
-            "SELECT username, role, nv_id, display_name FROM users ORDER BY username"
+            "SELECT username, role, nv_id, display_name, email FROM users ORDER BY username"
         ).fetchall()
     return [
-        {"username": str(r[0]), "role": str(r[1]), "nv_id": str(r[2]), "display_name": str(r[3])}
+        {
+            "username": str(r[0]),
+            "role": str(r[1]),
+            "nv_id": str(r[2]),
+            "display_name": str(r[3]),
+            "email": str(r[4] or ""),
+        }
         for r in rows
     ]
+
+
+def set_user_email(username: str, email: str) -> dict[str, str]:
+    """Nick cập nhật gmail của chính mình (hoặc quản lý cập nhật cho NV)."""
+    u = (username or "").strip().lower()
+    em = (email or "").strip()
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT username FROM users WHERE username=?", (u,)
+        ).fetchone()
+        if not row:
+            raise DangKyLoi("khong_co_tai_khoan")
+        cx.execute("UPDATE users SET email=? WHERE username=?", (em, u))
+        return {"username": u, "email": em}
+
+
+def get_user_emails() -> dict[str, str]:
+    """Trả map nv_id -> email (đã set). Dùng cho AI gửi mail."""
+    init_db()
+    with _conn() as cx:
+        rows = cx.execute(
+            "SELECT nv_id, email FROM users WHERE email != ''"
+        ).fetchall()
+    return {str(r[0]): str(r[1]) for r in rows}
 
 
 class NangVaiLoi(ValueError):

@@ -16,8 +16,19 @@ from pathlib import Path
 
 import requests
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 sys.path.insert(0, str(Path(__file__).parent))
-from datetime import UTC
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 
 from facebook_page_poster import FacebookPagePoster
 
@@ -42,7 +53,7 @@ POST:
 
 
 def llm_generate_gemini(prompt: str) -> str:
-    """Sinh text qua Gemini (1.5 Flash — re, nhanh)."""
+    """Sinh text qua Gemini (1.5 / 2.5 Flash — re, nhanh)."""
     key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not key:
         raise RuntimeError("thieu GEMINI_API_KEY trong .env")
@@ -53,14 +64,19 @@ def llm_generate_gemini(prompt: str) -> str:
     )
     body = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 600},
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 2048,
+            "thinkingConfig": {"thinkingBudget": 0},
+        },
     }
     r = requests.post(url, json=body, timeout=30)
     r.raise_for_status()
     data = r.json()
     cand = (data.get("candidates") or [{}])[0]
     parts = cand.get("content", {}).get("parts", [])
-    return "".join(p.get("text", "") for p in parts).strip()
+    text_parts = [p.get("text", "") for p in parts if "text" in p]
+    return "".join(text_parts).strip()
 
 
 def llm_generate_groq(prompt: str) -> str:
@@ -153,39 +169,41 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="Chi in preview, khong dang that")
     args = ap.parse_args()
 
-    poster = FacebookPagePoster()
-    if not poster.verify_token():
-        return 2
+    poster = None
+    if not args.dry_run:
+        try:
+            poster = FacebookPagePoster()
+        except Exception as e:
+            print(f"❌ Khởi tạo FacebookPagePoster thất bại: {e}")
+            return 2
 
-    print(f"\n[LLM] Dang sinh bai: topic='{args.topic}', tone='{args.tone}' ...")
+        if not poster.verify_token():
+            return 2
+
+        # Chống spam: tối đa 2 bài/ngày (Facebook sẽ ẩn nếu đăng quá nhiều).
+        today_count = _count_posts_today(poster)
+        if today_count >= 2:
+            print(f"[rate-limit] Hôm nay đã đăng {today_count} bài -> BỎ QUA đăng thật.")
+            print("  (Facebook có thể bóp reach page nếu đăng quá nhiều trong 24h.)")
+            return 4
+    else:
+        print("[dry-run] Chế độ xem trước (không đăng thật lên Facebook)")
+
+    print(f"\n[LLM] Đang sinh bài: topic='{args.topic}', tone='{args.tone}' ...")
     text = generate_content(args.topic, args.tone)
-    print(f"\n=== PREVIEW ===\n{text}\n===============")
+    print(f"\n=== PREVIEW BÀI ĐĂNG ===\n{text}\n========================")
 
     if args.dry_run:
-        print("[dry-run] Khong dang that")
+        print("\n[dry-run] Thành công! Đã sinh nội dung bài đăng hoàn tất.")
         return 0
 
-    # Chong spam: toi da 2 bai/ngay (Facebook se an neu dang nhieu hon).
-    today_count = _count_posts_today(poster)
-    if today_count >= 2:
-        print(f"[rate-limit] Hom nay da dang {today_count} bai -> BO QUA dang that.")
-        print("  (Facebook co the an page neu dang qua nhieu trong 24h.)")
-        return 4
-
-    print(f"\n[LLM] Dang sinh bai: topic='{args.topic}', tone='{args.tone}' ...")
-    text = generate_content(args.topic, args.tone)
-    print(f"\n=== PREVIEW ===\n{text}\n===============")
-
-    if args.dry_run:
-        print("[dry-run] Khong dang that")
-        return 0
-
+    assert poster is not None
     result = poster.post_text(text)
     if not result.get("success"):
-        print(f"LOI: {result.get('error')}")
+        print(f"LỖI: {result.get('error')}")
         return 3
 
-    print(f"\n=== POSTED ===\nID: {result.get('post_id')}")
+    print(f"\n=== ĐÃ ĐĂNG THÀNH CÔNG ===\nPost ID: {result.get('post_id')}")
     return 0
 
 

@@ -229,6 +229,7 @@ class CopilotIntent(StrEnum):
     ANALYZE_WASTE = "ANALYZE_WASTE"
     CREATE_RULE_PROPOSAL = "CREATE_RULE_PROPOSAL"
     INVENTORY_RESTOCK_CHECK = "INVENTORY_RESTOCK_CHECK"
+    SEND_MAIL = "SEND_MAIL"
     OUT_OF_SCOPE = "OUT_OF_SCOPE"
 
 
@@ -256,6 +257,7 @@ COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
             "APPROVE_SHIFT_SWAP",
             "CREATE_RULE_PROPOSAL",
             "INVENTORY_RESTOCK_CHECK",
+            "SEND_MAIL",
         }
     ),
     "chu_quan": frozenset(
@@ -268,6 +270,7 @@ COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
             "APPROVE_SHIFT_SWAP",
             "CREATE_RULE_PROPOSAL",
             "INVENTORY_RESTOCK_CHECK",
+            "SEND_MAIL",
         }
     ),
 }
