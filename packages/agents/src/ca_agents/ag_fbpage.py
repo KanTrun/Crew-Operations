@@ -325,13 +325,21 @@ def build_human_response(
         )
 
     if intent == "hoi_gio_dia_chi":
-        reply = (
-            f"Dạ {profile.get('ten_quan')} mở cửa từ {profile.get('gio_mo_cua')} ạ.\n"
-            f"📍 Địa chỉ: {profile.get('dia_chi')}\n"
-            f"📞 Hotline: {profile.get('hotline')}\n"
-            f"📶 Wifi: {profile.get('wifi_ssid')} (Mật khẩu: {profile.get('wifi_pass')})\n"
-            "Mời mình ghé quán trải nghiệm không gian và thưởng thức cà phê nhé ạ!"
-        )
+        # Chỉ ghép field có dữ liệu — không bao giờ để "None" lọt vào tin nhắn
+        # khách (lỗ hổng văn bản khi profile thiếu field, review 2026-09-04).
+        lines = [f"Dạ {profile.get('ten_quan') or 'quán'} mở cửa từ "
+                 f"{profile.get('gio_mo_cua') or '07:00 - 22:30'} ạ."]
+        if profile.get("dia_chi"):
+            lines.append(f"📍 Địa chỉ: {profile['dia_chi']}")
+        if profile.get("hotline"):
+            lines.append(f"📞 Hotline: {profile['hotline']}")
+        if profile.get("wifi_ssid"):
+            wifi_line = f"📶 Wifi: {profile['wifi_ssid']}"
+            if profile.get("wifi_pass"):
+                wifi_line += f" (Mật khẩu: {profile['wifi_pass']})"
+            lines.append(wifi_line)
+        lines.append("Mời mình ghé quán trải nghiệm không gian và thưởng thức cà phê nhé ạ!")
+        reply = "\n".join(lines)
         return reply, False, "AG-FRONTDESK"
 
     if intent == "hoi_menu_gia":

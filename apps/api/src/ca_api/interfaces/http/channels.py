@@ -401,11 +401,16 @@ def _page_mode() -> str:
     if env in {"live", "disconnected"}:
         return env
     token = bool(os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip())
-    if token and env == "live":
-        return "live"
     if token:
         return "live"
     return "disconnected"
+
+
+def _fb_auto_send_enabled() -> bool:
+    """Feature flag — delegate về service (single source of truth, §5.5)."""
+    from ca_api.services.fb_moderation import fb_auto_send_enabled
+
+    return fb_auto_send_enabled()
 
 
 @router.get("/api/v1/page/status")
@@ -543,6 +548,7 @@ async def facebook_webhook(request: Request) -> Any:
             )
 
             # Policy engine là cổng cuối (ADR-008): auto chỉ khi fb_policy đồng thuận
+            # Nếu policy nói queue → ép queue bất kể kết quả AG-FBPAGE
             if action in {"queue_review", "priority_review", "escalate_owner"}:
                 out = FBMessageOutput(
                     action="queue_to_inbox",
@@ -553,6 +559,30 @@ async def facebook_webhook(request: Request) -> Any:
                     suggested_reply=out.suggested_reply or moderation.get("response"),
                     delegated_agent=out.delegated_agent,
                     reason=f"fb_policy:{moderation.get('reason')}",
+                )
+            # Ngược lại: fb_policy auto_send, AG-FBPAGE cũng auto_respond + feature flag bật
+            elif action == "auto_send" and out.action == "auto_respond" and _fb_auto_send_enabled():
+                out = FBMessageOutput(
+                    action="auto_respond",
+                    response=out.response,
+                    intent=out.intent,
+                    confidence=out.confidence,
+                    emotion=out.emotion,
+                    suggested_reply=out.suggested_reply,
+                    delegated_agent=out.delegated_agent,
+                    reason=f"fb_policy_auto:{moderation.get('reason')}",
+                )
+            else:
+                # Policy auto nhưng AG-FBPAGE queue, hoặc flag tắt → queue để QL duyệt tay
+                out = FBMessageOutput(
+                    action="queue_to_inbox",
+                    response=None,
+                    intent=out.intent,
+                    confidence=out.confidence,
+                    emotion=out.emotion,
+                    suggested_reply=out.suggested_reply or moderation.get("response"),
+                    delegated_agent=out.delegated_agent,
+                    reason="fb_policy_auto_guarded",
                 )
 
             # Cập nhật hồ sơ khách quen nếu khách tự giới thiệu tên hoặc sở thích
@@ -895,6 +925,80 @@ def fb_inbox_decide(
          "final_len": len(final_text)},
     )
     return {"ok": True, "item": updated, "sent": graph_sent}
+
+
+# ── FB policy runtime config (kế hoạch §5.5 — Chủ quán chỉnh không cần sửa code) ──
+
+
+class FbPolicyBody(BaseModel):
+    auto_send_enabled: bool | None = None
+    auto_price_cap_vnd: int | None = None
+    note: str | None = None
+
+
+def _fb_policy_get() -> dict[str, Any]:
+    """Đọc config hiện tại (env override lên trước)."""
+    return {
+        "auto_send_enabled": _fb_auto_send_enabled(),
+        "auto_price_cap_vnd": int(
+            os.environ.get("NHIPQUAN_FB_AUTO_PRICE_CAP_VND", "100000")
+        ),
+        "page_mode": _page_mode(),
+        "intent_thresholds": {
+            "chao_hoi": 0.90,
+            "hoi_gio_dia_chi": 0.85,
+            "hoi_menu_gia": 0.85,
+        },
+        "comment_threshold": 0.95,
+        "sla_minutes": {
+            "priority_review": 5,
+            "queue_review": 10,
+            "escalate_owner": 15,
+            "comment_queue": 15,
+        },
+    }
+
+
+@router.get("/api/v1/page/fb-policy")
+def fb_policy_get(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Chủ quán (và QL) xem policy hiện tại."""
+    _require_manager(authorization)
+    return _fb_policy_get()
+
+
+@router.put("/api/v1/page/fb-policy")
+def fb_policy_set(
+    body: FbPolicyBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Chỉ Chủ quán mới được chỉnh `auto_send_enabled` + `auto_price_cap_vnd`.
+
+    Thay đổi ghi audit + cập nhật env process hiện tại (tác dụng cho tới restart
+    service; rollback bằng tắt flag qua env file). Ngưỡng intent/SLA cố định
+    trong code (quyết định kinh doanh — đổi phải PR mới).
+    """
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    if s.get("role") != "chu_quan":
+        raise HTTPException(status_code=403, detail="chi_chu_quan")
+    changes: dict[str, Any] = {}
+    if body.auto_send_enabled is not None:
+        os.environ["NHIPQUAN_FB_AUTO_SEND"] = "1" if body.auto_send_enabled else "0"
+        changes["auto_send_enabled"] = body.auto_send_enabled
+    if body.auto_price_cap_vnd is not None:
+        if body.auto_price_cap_vnd < 0:
+            raise HTTPException(status_code=400, detail="price_cap_am")
+        os.environ["NHIPQUAN_FB_AUTO_PRICE_CAP_VND"] = str(int(body.auto_price_cap_vnd))
+        changes["auto_price_cap_vnd"] = int(body.auto_price_cap_vnd)
+    _audit(
+        s["nv_id"],
+        "fb_policy_update",
+        {"changes": changes, "note": body.note or ""},
+    )
+    return _fb_policy_get()
 
 
 class ApplyProposalBody(BaseModel):

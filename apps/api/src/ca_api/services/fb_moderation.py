@@ -42,6 +42,18 @@ from ca_api.persist import (
 
 _RATE_LIMITER = SlidingWindowRateLimiter()
 
+
+def fb_auto_send_enabled() -> bool:
+    """Feature flag — kế hoạch §5.5. Mặc định OFF; Chủ quán bật qua env/API.
+
+    Single source of truth cho cả service (ghi queue/stats) và webhook (gửi
+    thật). Khi OFF, nhánh auto_send được ghi là 'pending' cho QL duyệt —
+    không bao giờ ghi 'auto_sent' khi chưa gửi thật.
+    """
+    env = os.environ.get("NHIPQUAN_FB_AUTO_SEND", "0").strip().lower()
+    return env in {"1", "true", "yes", "on"}
+
+
 # Ngưỡng giá auto (kế hoạch §6.3.2 — chính sách kinh doanh, đọc env để Chủ quán
 # chỉnh không cần sửa code; default 100_000 đúng số đã thống nhất).
 PRICE_CAP_VND = int(os.environ.get("NHIPQUAN_FB_AUTO_PRICE_CAP_VND", "100000"))
@@ -209,26 +221,48 @@ def moderate_fb_message(
                 notified_channel="in_app",
             )
     elif decision.action == FbPolicyAction.AUTO_SEND:
-        # Ghi dấu auto_sent để thống kê tỷ lệ (§5.4) — không cần ai duyệt.
-        review_id = fb_review_insert(
-            {
-                "source": "messenger",
-                "external_thread_id": f"fb_{psid}",
-                "external_psid": psid,
-                "message_text": guard.sanitized_text,
-                "detected_intent": intent,
-                "confidence": confidence,
-                "policy_action": decision.action.value,
-                "assigned_role": None,
-                "proposed_response": response,
-                "flagged_reasons": flagged,
-                "status": "auto_sent",
-                "final_response": response,
-                "trace_id": uuid.uuid4().hex[:12],
-                "created_at": _now_iso(),
-                "expires_at": None,
-            }
-        )
+        if fb_auto_send_enabled():
+            # Ghi dấu auto_sent để thống kê tỷ lệ (§5.4) — không cần ai duyệt.
+            review_id = fb_review_insert(
+                {
+                    "source": "messenger",
+                    "external_thread_id": f"fb_{psid}",
+                    "external_psid": psid,
+                    "message_text": guard.sanitized_text,
+                    "detected_intent": intent,
+                    "confidence": confidence,
+                    "policy_action": decision.action.value,
+                    "assigned_role": None,
+                    "proposed_response": response,
+                    "flagged_reasons": flagged,
+                    "status": "auto_sent",
+                    "final_response": response,
+                    "trace_id": uuid.uuid4().hex[:12],
+                    "created_at": _now_iso(),
+                    "expires_at": None,
+                }
+            )
+        else:
+            # Flag OFF: auto-able nhưng chưa được phép gửi → pending cho QL
+            # duyệt tay (ADR-008: người quyết). KHÔNG ghi auto_sent.
+            review_id = fb_review_insert(
+                {
+                    "source": "messenger",
+                    "external_thread_id": f"fb_{psid}",
+                    "external_psid": psid,
+                    "message_text": guard.sanitized_text,
+                    "detected_intent": intent,
+                    "confidence": confidence,
+                    "policy_action": decision.action.value,
+                    "assigned_role": "quan_ly",
+                    "proposed_response": response,
+                    "flagged_reasons": flagged + ["auto_blocked_by_flag"],
+                    "status": "pending",
+                    "trace_id": uuid.uuid4().hex[:12],
+                    "created_at": _now_iso(),
+                    "expires_at": _sla_expiry(10),
+                }
+            )
 
     audit_add(
         _now_iso(),
