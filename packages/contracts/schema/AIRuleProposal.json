@@ -1,0 +1,25 @@
+{
+  "title": "AIRuleProposal",
+  "type": "object",
+  "required": ["id", "store_id", "channel", "rule_type", "rule", "evidence_count", "evidence_ids", "confidence", "version", "idempotency_key", "created_at", "updated_at"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "store_id": {"type": "string", "minLength": 1},
+    "channel": {"enum": ["gmail", "facebook"]},
+    "rule_type": {"enum": ["style", "prompt", "playbook", "safety"]},
+    "rule": {"type": "object", "required": ["text", "intent_scope", "audience_scope", "priority"]},
+    "evidence_count": {"type": "integer", "minimum": 1},
+    "evidence_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "status": {"enum": ["pending", "conflict_pending", "approved", "active", "paused", "rolled_back", "rejected"]},
+    "version": {"type": "integer", "minimum": 1},
+    "rollback_target_version": {"type": ["integer", "null"], "minimum": 1},
+    "rollout": {"type": "object"},
+    "approved_by": {"type": ["string", "null"]},
+    "approved_at": {"type": ["string", "null"]},
+    "rejection_reason": {"type": ["string", "null"]},
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "minLength": 1},
+    "updated_at": {"type": "string", "minLength": 1}
+  }
+}

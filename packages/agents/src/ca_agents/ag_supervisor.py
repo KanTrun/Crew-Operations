@@ -55,20 +55,55 @@ _ROBOT_PHRASES = [
     r"tôi\s*không\s*có\s*cảm\s*xúc",
 ]
 
+_ROBOT_REPLACEMENTS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"tôi\s*là\s*(mô\s*hình\s*ngôn\s*ngữ(\s*ai)?|trợ\s*lý\s*ảo|ai|bot)", re.IGNORECASE), "em"),
+    (re.compile(r"theo\s*cơ\s*sở\s*dữ\s*liệu(\s*của\s*quán)?", re.IGNORECASE), "theo thông tin quán"),
+    (re.compile(r"tôi\s*không\s*có\s*cảm\s*xúc", re.IGNORECASE), "em luôn sẵn sàng lắng nghe"),
+    (re.compile(r"\btôi\s+có\s+thể\b", re.IGNORECASE), "em có thể"),
+)
+
+_INJECTION_PATTERNS = [
+    r"ignore\s+(all\s+)?previous\s+instructions",
+    r"quên\s+(hết\s+)?(chỉ\s*dẫn|hướng\s*dẫn|quy\s*định|luật)",
+    r"tiết\s*lộ\s*(system\s*prompt|lời\s*nhắc\s*hệ\s*thống|chỉ\s*thị\s*gốc)",
+    r"đóng\s*vai\s*(dan|hacker|quản\s*trị\s*viên\s*tối\s*cao)",
+]
+
 _FORBIDDEN_REGEX = re.compile("|".join(_FORBIDDEN_PROMISES), re.IGNORECASE)
 _LEAK_REGEX = re.compile("|".join(_LEAK_PATTERNS), re.IGNORECASE)
 _ROBOT_REGEX = re.compile("|".join(_ROBOT_PHRASES), re.IGNORECASE)
+_INJECTION_REGEX = re.compile("|".join(_INJECTION_PATTERNS), re.IGNORECASE)
+
+
+def clean_robotic_phrasing(text: str) -> tuple[str, bool]:
+    """Clean robotic AI jargon while preserving natural Vietnamese phrasing."""
+    cleaned = text
+    modified = False
+    for rx, repl in _ROBOT_REPLACEMENTS:
+        if rx.search(cleaned):
+            cleaned = rx.sub(repl, cleaned)
+            modified = True
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    return cleaned, modified
 
 
 def supervise_outgoing_response(customer_query: str, proposed_response: str) -> SupervisionResult:
     """
-    Pre-flight safety check on AI-generated response before sending to customer.
+    Pre-flight safety check on AI-generated response before sending to customer or management.
     """
     if not proposed_response or not proposed_response.strip():
         return SupervisionResult(
             is_approved=False,
             sanitized_response="Dạ em đã nhận được tin nhắn và sẽ phản hồi mình ngay ạ!",
             flagged_reason="empty_response",
+        )
+
+    # 0. Check prompt injection / jailbreak attempts in customer_query
+    if customer_query and _INJECTION_REGEX.search(customer_query):
+        return SupervisionResult(
+            is_approved=False,
+            sanitized_response="Dạ em chỉ hỗ trợ các thông tin về dịch vụ, menu và hoạt động của quán thôi ạ!",
+            flagged_reason="prompt_injection_in_query",
         )
 
     # 1. Check for unauthorized financial promises or compensations
@@ -81,18 +116,27 @@ def supervise_outgoing_response(customer_query: str, proposed_response: str) -> 
 
     # 2. Check for data leaks
     if _LEAK_REGEX.search(proposed_response):
-        return SupervisionResult(
-            is_approved=False,
-            sanitized_response="Dạ thông tin này thuộc nội bộ quán nên em không thể chia sẻ được ạ. Mình cần em hỗ trợ thêm gì về Menu không ạ?",
-            flagged_reason="data_leak_detected",
-        )
+        # Tránh false-positive khi bot từ chối hợp lệ hoặc nêu rõ chính sách không dùng tài khoản cá nhân
+        is_safe_denial = bool(re.search(
+            r"không\s*(nhận|dùng|sử\s*dụng|chuyển|chia\s*sẻ|cung\s*cấp).{0,30}tài\s*khoản\s*ngân\s*hàng\s*cá\s*nhân",
+            proposed_response,
+            re.IGNORECASE,
+        ))
+        if not is_safe_denial:
+            return SupervisionResult(
+                is_approved=False,
+                sanitized_response="Dạ thông tin này thuộc nội bộ quán nên em không thể chia sẻ được ạ. Mình cần em hỗ trợ thêm gì về Menu không ạ?",
+                flagged_reason="data_leak_detected",
+            )
 
-    # 3. Clean any robotic phrasing
-    if _ROBOT_REGEX.search(proposed_response):
-        cleaned = _ROBOT_REGEX.sub("em", proposed_response)
+    # 3. Clean any robotic phrasing with contextual replacement
+    cleaned_resp, was_cleaned = clean_robotic_phrasing(proposed_response)
+    if was_cleaned or _ROBOT_REGEX.search(proposed_response):
+        if _ROBOT_REGEX.search(cleaned_resp):
+            cleaned_resp = _ROBOT_REGEX.sub("em", cleaned_resp)
         return SupervisionResult(
             is_approved=True,
-            sanitized_response=cleaned,
+            sanitized_response=cleaned_resp,
             flagged_reason="robotic_phrasing_cleaned",
         )
 
@@ -137,6 +181,9 @@ def audit_conversations_summary(threads: list[dict[str, Any]]) -> dict[str, Any]
     pending_approval = 0
     complaints = 0
     reservations = 0
+    positive_count = 0
+    neutral_count = 0
+    negative_count = 0
 
     for th in threads:
         if th.get("pending_approval"):
@@ -145,10 +192,15 @@ def audit_conversations_summary(threads: list[dict[str, Any]]) -> dict[str, Any]
             auto_replied += 1
 
         intent = str(th.get("intent", ""))
-        if intent == "khieu_nai_gop_y":
-            complaints += 1
-        elif intent == "dat_ban":
-            reservations += 1
+        sent = str(th.get("sentiment") or "").lower()
+        if intent == "khieu_nai_gop_y" or sent == "negative":
+            complaints += 1 if intent == "khieu_nai_gop_y" else 0
+            negative_count += 1
+        elif intent == "dat_ban" or sent == "positive":
+            reservations += 1 if intent == "dat_ban" else 0
+            positive_count += 1
+        else:
+            neutral_count += 1
 
     summary_text = (
         f"Tổng cộng {total} cuộc hội thoại: {auto_replied} cuộc trả lời tự động, "
@@ -161,6 +213,11 @@ def audit_conversations_summary(threads: list[dict[str, Any]]) -> dict[str, Any]
         "pending_approval_count": pending_approval,
         "reservations_count": reservations,
         "complaints_count": complaints,
+        "sentiment_breakdown": {
+            "positive": positive_count,
+            "neutral": neutral_count,
+            "negative": negative_count,
+        },
         "summary_text": summary_text,
     }
 
@@ -204,6 +261,8 @@ def run_nightly_cskh_reflection(
         ("to_chuc_su_kien", r"sinh\s*nhật|sự\s*kiện|thuê\s*quán|bao\s*quán|họp\s*nhóm", "Chính sách thuê không gian & tổ chức sự kiện"),
         ("xuat_hoa_don", r"hóa\s*đơn\s*đỏ|vat|hóa\s*đơn\s*công\s*ty", "Xuất hóa đơn VAT cho doanh nghiệp"),
         ("thu_cung_pet", r"thú\s*cưng|chó|mèo|pet", "Chính sách tiếp đón thú cưng (Pet-friendly)"),
+        ("giao_hang_ship", r"ship|giao\s*hàng|đặt\s*mang\s*về|shopee\s*food|grab", "Chính sách giao hàng & đối tác giao vận"),
+        ("chinh_sach_tich_diem", r"tích\s*điểm|thành\s*viên|ưu\s*đãi\s*sinh\s*nhật|thẻ\s*thành\s*viên", "Chính sách thành viên & tích điểm"),
     ]
     unresolved_map: dict[str, dict[str, Any]] = {}
 
@@ -248,8 +307,15 @@ def run_nightly_cskh_reflection(
                         "sample_questions": [],
                     })
                     entry["count"] += 1
-                    if len(entry["sample_questions"]) < 3 and cust_texts:
-                        entry["sample_questions"].append(cust_texts[0])
+                    # Tìm câu hỏi thực tế của khách hàng khớp với pattern thay vì luôn lấy câu đầu tiên
+                    matching_texts = [
+                        t.strip() for t in cust_texts if re.search(pattern, t, re.IGNORECASE) and t.strip()
+                    ]
+                    if not matching_texts and cust_texts:
+                        matching_texts = [cust_texts[-1].strip()]
+                    for q in matching_texts:
+                        if len(entry["sample_questions"]) < 3 and q not in entry["sample_questions"]:
+                            entry["sample_questions"].append(q)
 
     # 3. Tính điểm CSAT & Tỷ lệ HEAR
     hear_rate = (hear_passed / complaints * 100.0) if complaints > 0 else 100.0

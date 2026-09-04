@@ -371,6 +371,151 @@ class PolicyDecision(BaseModel):
     flagged_reasons: list[str] = Field(default_factory=list)
 
 
+class AIGenerationDraft(BaseModel):
+    subject: str | None = None
+    body: str = Field(min_length=1)
+
+
+class AIModelVersion(BaseModel):
+    provider: str = Field(min_length=1)
+    model_id: str = Field(min_length=1)
+    model_revision: str | None = None
+    temperature: float = Field(ge=0.0, le=2.0)
+    tool_context_hash: str = Field(min_length=1)
+
+
+class AIGenerationRecord(BaseModel):
+    id: str = Field(min_length=1)
+    store_id: str = Field(min_length=1)
+    channel: Literal["gmail", "facebook"]
+    conversation_id: str | None = None
+    request_kind: Literal["gmail_request", "facebook_message", "facebook_comment"]
+    external_event_hash: str | None = None
+    draft: AIGenerationDraft
+    context_snapshot_hash: str = Field(min_length=1)
+    verified_fact_refs: list[str] = Field(default_factory=list)
+    missing_context: bool = False
+    agent_version: str = Field(min_length=1)
+    prompt_version: str = Field(min_length=1)
+    rule_version: str = Field(min_length=1)
+    rollout_bucket: Literal["control", "canary_10", "canary_50", "active_100"]
+    model: AIModelVersion
+    policy_action: FbPolicyAction
+    idempotency_key: str = Field(min_length=1)
+    created_at: str = Field(min_length=1)
+
+
+class AIFeedbackContent(BaseModel):
+    subject: str | None = None
+    body: str | None = None
+
+
+class AIFeedbackEvent(BaseModel):
+    id: str = Field(min_length=1)
+    store_id: str = Field(min_length=1)
+    generation_id: str = Field(min_length=1)
+    channel: Literal["gmail", "facebook"]
+    type: Literal[
+        "manager_approve",
+        "manager_edit",
+        "manager_reject",
+        "customer_positive",
+        "customer_negative",
+        "customer_followup",
+        "send_success",
+        "send_failure",
+        "manual_rating",
+    ]
+    original: AIFeedbackContent | None = None
+    final: AIFeedbackContent | None = None
+    edited_fields: list[Literal["subject", "body"]] = Field(default_factory=list)
+    materially_edited: bool = False
+    actor_user_id: str | None = None
+    actor_role: Literal["chu_quan", "quan_ly", "system", "customer"]
+    send_status: Literal["not_applicable", "sent", "failed"] = "not_applicable"
+    failure_code: str | None = None
+    idempotency_key: str = Field(min_length=1)
+    created_at: str = Field(min_length=1)
+
+
+class AIEvaluationScores(BaseModel):
+    accuracy: float = Field(ge=0.0, le=1.0)
+    safety: float = Field(ge=0.0, le=1.0)
+    completeness: float | None = Field(default=None, ge=0.0, le=1.0)
+    tone: float | None = Field(default=None, ge=0.0, le=1.0)
+    naturalness: float | None = Field(default=None, ge=0.0, le=1.0)
+    personalization: float | None = Field(default=None, ge=0.0, le=1.0)
+    actionability: float | None = Field(default=None, ge=0.0, le=1.0)
+    policy_compliance: float | None = Field(default=None, ge=0.0, le=1.0)
+    intent_fit: float | None = Field(default=None, ge=0.0, le=1.0)
+    emotional_fit: float | None = Field(default=None, ge=0.0, le=1.0)
+    resolution_likelihood: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+class AIEvaluation(BaseModel):
+    id: str = Field(min_length=1)
+    store_id: str = Field(min_length=1)
+    generation_id: str = Field(min_length=1)
+    channel: Literal["gmail", "facebook"]
+    scores: AIEvaluationScores
+    aggregate_score: float = Field(ge=0.0, le=1.0)
+    passed: bool
+    action: FbPolicyAction
+    hard_fail_flags: list[str] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)
+    threshold_version: str = Field(min_length=1)
+    calibration_version: str = Field(min_length=1)
+    sample_count: int = Field(ge=0)
+    evaluation_window: str = Field(min_length=1)
+    evaluator: str = Field(min_length=1)
+    idempotency_key: str = Field(min_length=1)
+    created_at: str = Field(min_length=1)
+
+
+class AIRuleDefinition(BaseModel):
+    text: str = Field(min_length=1)
+    intent_scope: list[str] = Field(min_length=1)
+    audience_scope: list[str] = Field(min_length=1)
+    priority: int = Field(ge=0)
+
+
+class AIRuleRollout(BaseModel):
+    mode: Literal["none", "canary", "full"] = "none"
+    percentage: int = Field(default=0, ge=0, le=100)
+    min_sample: int = Field(default=20, ge=1)
+    start_at: str | None = None
+    end_at: str | None = None
+
+
+class AIRuleProposal(BaseModel):
+    id: str = Field(min_length=1)
+    store_id: str = Field(min_length=1)
+    channel: Literal["gmail", "facebook"]
+    rule_type: Literal["style", "prompt", "playbook", "safety"]
+    rule: AIRuleDefinition
+    evidence_count: int = Field(ge=1)
+    evidence_ids: list[str] = Field(min_length=1)
+    confidence: float = Field(ge=0.0, le=1.0)
+    status: Literal[
+        "pending",
+        "conflict_pending",
+        "approved",
+        "active",
+        "paused",
+        "rolled_back",
+        "rejected",
+    ] = "pending"
+    version: int = Field(ge=1)
+    rollback_target_version: int | None = Field(default=None, ge=1)
+    rollout: AIRuleRollout = Field(default_factory=AIRuleRollout)
+    approved_by: str | None = None
+    approved_at: str | None = None
+    rejection_reason: str | None = None
+    idempotency_key: str = Field(min_length=1)
+    created_at: str = Field(min_length=1)
+    updated_at: str = Field(min_length=1)
+
+
 CONTRACTS = {
     "NhanVien": NhanVien,
     "Ca": Ca,
@@ -391,5 +536,9 @@ CONTRACTS = {
     "CopilotMessage": CopilotMessage,
     "ActionProposal": ActionProposal,
     "PolicyDecision": PolicyDecision,
+    "AIGenerationRecord": AIGenerationRecord,
+    "AIFeedbackEvent": AIFeedbackEvent,
+    "AIEvaluation": AIEvaluation,
+    "AIRuleProposal": AIRuleProposal,
 }
 

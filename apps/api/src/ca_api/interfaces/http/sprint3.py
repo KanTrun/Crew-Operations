@@ -412,7 +412,7 @@ def viec_treo_patch(
     def mut(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         nonlocal found
         for it in items:
-            if it.get("id") == treo_id:
+            if isinstance(it, dict) and it.get("id") == treo_id:
                 it["trang_thai"] = body.trang_thai
                 it["xong_luc"] = datetime.now(UTC).isoformat()
                 it["xong_boi"] = role

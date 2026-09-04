@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from ca_api.persist import kv_get
+from ca_api.ai_learning.repository import AILearningRepository
 
 
 def get_ops_context_for_mail(
@@ -88,3 +89,8 @@ def get_mail_style_for_store(store_id: str = "quan_01") -> dict[str, Any] | None
     if isinstance(mem, dict) and mem:
         return mem
     return None
+
+
+def get_active_mail_rules_for_store(store_id: str = "quan_01") -> list[dict[str, Any]]:
+    """Return only owner-activated Gmail rules for the draft orchestration boundary."""
+    return AILearningRepository().active_rules(store_id=store_id, channel="gmail")

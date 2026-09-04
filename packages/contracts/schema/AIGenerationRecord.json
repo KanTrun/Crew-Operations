@@ -1,0 +1,25 @@
+{
+  "title": "AIGenerationRecord",
+  "type": "object",
+  "required": ["id", "store_id", "channel", "request_kind", "draft", "context_snapshot_hash", "agent_version", "prompt_version", "rule_version", "rollout_bucket", "model", "policy_action", "idempotency_key", "created_at"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "store_id": {"type": "string", "minLength": 1},
+    "channel": {"enum": ["gmail", "facebook"]},
+    "conversation_id": {"type": ["string", "null"]},
+    "request_kind": {"enum": ["gmail_request", "facebook_message", "facebook_comment"]},
+    "external_event_hash": {"type": ["string", "null"]},
+    "draft": {"type": "object", "required": ["body"], "properties": {"subject": {"type": ["string", "null"]}, "body": {"type": "string", "minLength": 1}}},
+    "context_snapshot_hash": {"type": "string", "minLength": 1},
+    "verified_fact_refs": {"type": "array", "items": {"type": "string"}},
+    "missing_context": {"type": "boolean"},
+    "agent_version": {"type": "string", "minLength": 1},
+    "prompt_version": {"type": "string", "minLength": 1},
+    "rule_version": {"type": "string", "minLength": 1},
+    "rollout_bucket": {"enum": ["control", "canary_10", "canary_50", "active_100"]},
+    "model": {"type": "object", "required": ["provider", "model_id", "temperature", "tool_context_hash"]},
+    "policy_action": {"enum": ["auto_send", "queue_review", "priority_review", "escalate_owner", "block_polite", "block_silent"]},
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "minLength": 1}
+  }
+}

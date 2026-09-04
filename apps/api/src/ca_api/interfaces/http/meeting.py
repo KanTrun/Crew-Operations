@@ -12,6 +12,7 @@ except ImportError:
     UTC = timezone.utc
 from pathlib import Path
 from typing import Annotated, Any
+import uuid
 
 from ca_agents.ag_meeting import extract_meeting, transcribe_audio
 from ca_contracts import CuocHop
@@ -175,13 +176,30 @@ def apply_meeting_decisions(
         def mut_treo(cur: list[Any]) -> list[Any]:
             nonlocal created_tasks
             res = list(cur)
+            da_co_treo = {
+                (x.get("meeting_id"), x.get("noi_dung"))
+                for x in res
+                if isinstance(x, dict)
+            }
             for act in selected_actions:
-                task_str = f"[{body.tieu_de}] {act.ten_nguoi_nhan}: {act.tieu_de}"
+                task_noi_dung = f"[{body.tieu_de}] {act.tieu_de}"
                 if act.han_chot:
-                    task_str += f" (Hạn: {act.han_chot})"
-                if task_str not in res:
-                    res.append(task_str)
-                    created_tasks += 1
+                    task_noi_dung += f" (Hạn: {act.han_chot})"
+                if (body.id, task_noi_dung) in da_co_treo:
+                    continue
+                treo_item = {
+                    "id": f"treo_{uuid.uuid4().hex[:8]}",
+                    "nv_id": act.nhan_vien_id or act.ten_nguoi_nhan,
+                    "nhan_vien": act.ten_nguoi_nhan,
+                    "noi_dung": task_noi_dung,
+                    "trang_thai": "dang_cho",
+                    "created_at": now_iso,
+                    "nguon": "cuoc_hop",
+                    "meeting_id": body.id,
+                }
+                res.insert(0, treo_item)
+                da_co_treo.add((body.id, task_noi_dung))
+                created_tasks += 1
             return res
 
         kv_mutate("treo", mut_treo, [])

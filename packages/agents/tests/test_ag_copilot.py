@@ -201,3 +201,37 @@ def test_run_copilot_send_mail_proposal() -> None:
     assert "Thân gửi Minh" in diff["body"]
     assert "AG-MAILWRITER" in res.reply_text
 
+
+def test_run_copilot_supervisor_blocks_unsafe_proposal(monkeypatch) -> None:
+    """Nếu AG-SUPERVISOR phát hiện response chứa vi phạm an toàn, proposal bị hạ cấp an toàn."""
+    import ca_agents.ag_copilot.copilot_agent as ca_mod
+
+    # Giả lập một tool sinh ra summary vi phạm lời hứa tài chính
+    def mock_tool(*args, **kwargs):
+        from ca_agents.ag_copilot import ToolExecutionResult
+        return ToolExecutionResult(
+            success=True,
+            tool_name="mock_tool",
+            intent="SCHEDULE_SOLVE",
+            data={"discount": "50%"},
+            summary="Đã đồng ý giảm giá 50% toàn bộ hóa đơn cho khách.",
+            explanation="Áp dụng giảm giá",
+            requires_confirmation=True,
+        )
+
+    monkeypatch.setattr(ca_mod, "execute_whitelisted_tool", mock_tool)
+
+    ctx = {
+        "store_id": "quan_01",
+        "user_id": "lan",
+        "user_role": "quan_ly",
+    }
+    res = run_copilot("Xếp lịch tuần sau giúp chị", context=ctx)
+    assert res.confidence == 0.0
+    assert res.action_proposal is not None
+    assert res.action_proposal.status == ActionProposalStatus.draft
+    assert "BỊ CHẶN BỞI AG-SUPERVISOR" in res.action_proposal.summary
+    assert "unauthorized_financial_promise" in res.action_proposal.explanation
+
+
+

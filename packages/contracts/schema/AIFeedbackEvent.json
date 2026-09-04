@@ -1,0 +1,22 @@
+{
+  "title": "AIFeedbackEvent",
+  "type": "object",
+  "required": ["id", "store_id", "generation_id", "channel", "type", "actor_role", "idempotency_key", "created_at"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "store_id": {"type": "string", "minLength": 1},
+    "generation_id": {"type": "string", "minLength": 1},
+    "channel": {"enum": ["gmail", "facebook"]},
+    "type": {"enum": ["manager_approve", "manager_edit", "manager_reject", "customer_positive", "customer_negative", "customer_followup", "send_success", "send_failure", "manual_rating"]},
+    "original": {"type": ["object", "null"]},
+    "final": {"type": ["object", "null"]},
+    "edited_fields": {"type": "array", "items": {"enum": ["subject", "body"]}},
+    "materially_edited": {"type": "boolean"},
+    "actor_user_id": {"type": ["string", "null"]},
+    "actor_role": {"enum": ["chu_quan", "quan_ly", "system", "customer"]},
+    "send_status": {"enum": ["not_applicable", "sent", "failed"]},
+    "failure_code": {"type": ["string", "null"]},
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "minLength": 1}
+  }
+}

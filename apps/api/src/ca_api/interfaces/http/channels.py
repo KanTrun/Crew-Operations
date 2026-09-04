@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import uuid
+import hashlib
 
 try:
     from datetime import UTC, datetime
@@ -37,6 +39,7 @@ from ca_agents.facebook_page import (
     verify_fb_webhook_signature,
 )
 from ca_agents.llm import agent_mode
+from ca_contracts import AIEvaluation, AIFeedbackEvent, AIGenerationRecord
 from ca_agents.messaging import (
     InboundMessage,
     get_port,
@@ -58,9 +61,10 @@ from ca_api.persist import (
     fb_escalation_add,
     fb_review_decide,
     fb_review_get,
+    fb_review_link_generation,
     fb_review_list,
     fb_stats,
-    fb_try_claim_event,
+    fb_try_claim_scoped_event,
     kenh_bind_code_consume,
     kenh_bind_code_issue,
     kenh_bind_get,
@@ -71,6 +75,9 @@ from ca_api.persist import (
     kv_set,
 )
 from ca_api.persist import session as auth_session
+from ca_api.ai_learning.repository import AILearningRepository
+from ca_api.ai_learning.operations import circuit_breaker_open
+from ca_api.ai_learning.rollout import select_active_rules
 from ca_api.services.fb_moderation import moderate_fb_message
 from ca_api.services.store_public_context import (
     get_active_promotions,
@@ -81,6 +88,7 @@ from ca_api.services.store_public_context import (
 )
 
 router = APIRouter()
+LOG = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
 PAGE_FIXTURE = ROOT / "data" / "golden" / "page" / "threads_01.json"
@@ -92,6 +100,48 @@ def _now() -> str:
 
 def _audit(ai: str, hanh: str, payload: dict[str, Any]) -> None:
     audit_add(_now(), ai, hanh, payload)
+
+def _record_fb_feedback(
+    *, store_id: str, conversation_id: str, feedback_type: str, original: str = "",
+    final: str = "", actor_user_id: str | None = None, actor_role: str = "quan_ly",
+    send_status: str = "not_applicable", failure_code: str | None = None, generation_id: str | None = None,
+) -> None:
+    """Persist feedback only when the source generation is explicitly known."""
+    if not generation_id:
+        LOG.warning(
+            "facebook learning feedback skipped without generation_id: type=%s conversation=%s",
+            feedback_type,
+            conversation_id,
+        )
+        return
+    try:
+        repository = AILearningRepository()
+        generation = next(
+            (item for item in repository.list("generation", store_id=store_id, limit=200) if item.get("id") == generation_id),
+            None,
+        )
+        if not generation:
+            return
+        fingerprint = hashlib.sha256(
+            f"{generation['id']}:{feedback_type}:{final}:{send_status}".encode()
+        ).hexdigest()
+        repository.save(AIFeedbackEvent(
+            id=f"fb-feedback-{fingerprint[:24]}", store_id=store_id, generation_id=str(generation["id"]),
+            channel="facebook", type=feedback_type, original={"body": original} if original else None,
+            final={"body": final} if final else None,
+            edited_fields=["body"] if original and final and original != final else [],
+            materially_edited=bool(original and final and original != final), actor_user_id=actor_user_id,
+            actor_role=actor_role, send_status=send_status, failure_code=failure_code,
+            idempotency_key=f"fb-feedback:{fingerprint}", created_at=_now(),
+        ))
+    except Exception:
+        LOG.exception("facebook learning feedback persistence failed")
+
+
+def _customer_negative_signal(text: str) -> bool:
+    """Use a deliberately small, explainable negative-signal vocabulary."""
+    normalized = " ".join(text.lower().split())
+    return any(term in normalized for term in ("không hài lòng", "that vong", "tệ quá", "quá tệ", "bực mình", "không đúng"))
 
 
 # ── Bind ──────────────────────────────────────────────────────────────────
@@ -512,9 +562,19 @@ async def facebook_webhook(request: Request) -> Any:
             if not sender or not text:
                 continue
 
-            mid = str(msg.get("mid") or "")
+            mid = str(msg.get("mid") or "").strip()
             # L0c — idempotency chống webhook retry (§6.2b)
-            if mid and not fb_try_claim_event(mid):
+            # Không dùng timestamp fallback: event thiếu ID không được vào pipeline.
+            page_id = str(entry.get("id") or page_id_cfg).strip()
+            if not mid or not page_id:
+                continue
+            store_id = "quan_01"
+            if not fb_try_claim_scoped_event(
+                store_id=store_id,
+                page_id=page_id,
+                event_type="messaging",
+                external_event_id=mid,
+            ):
                 continue
             ts = float(ev.get("timestamp") or 0)
 
@@ -534,9 +594,32 @@ async def facebook_webhook(request: Request) -> Any:
             input_msg = FBMessageInput(psid=sender, text=text, message_id=mid, timestamp=ts)
 
             # Lấy hồ sơ khách quen & bài học mẫu Quản lý đã duyệt
-            store_id = "quan_01"
             cust_prof = kv_get(f"customer_profile:{store_id}:{sender}", {})
             goldens = kv_get(f"cskh_golden_memory:{store_id}", [])
+            learning_repository = AILearningRepository()
+            active_rules, rollout_bucket = select_active_rules(
+                learning_repository.active_rules(store_id=store_id, channel="facebook"),
+                store_id=store_id,
+                identity=sender,
+            )
+
+            # A later inbound message is feedback only when this exact thread already
+            # carries a generation ID. Never guess based on the newest conversation.
+            prior_thread = next(
+                (thread for thread in _page_store().get("threads", []) if thread.get("psid") == sender),
+                None,
+            )
+            prior_generation_id = str((prior_thread or {}).get("ai_generation_id") or "")
+            if prior_generation_id:
+                _record_fb_feedback(
+                    store_id=store_id, conversation_id=sender, feedback_type="customer_followup",
+                    final=text, actor_role="customer", generation_id=prior_generation_id,
+                )
+                if _customer_negative_signal(text):
+                    _record_fb_feedback(
+                        store_id=store_id, conversation_id=sender, feedback_type="customer_negative",
+                        final=text, actor_role="customer", generation_id=prior_generation_id,
+                    )
 
             # Xử lý tin nhắn qua AG-FBPAGE với Guardrails và Ngưỡng tin cậy
             out: FBMessageOutput = await process_fb_message(
@@ -545,11 +628,12 @@ async def facebook_webhook(request: Request) -> Any:
                 public_context=public_ctx,
                 customer_profile=cust_prof if cust_prof else None,
                 golden_examples=goldens if goldens else None,
+                active_rules=active_rules,
             )
 
             # Policy engine là cổng cuối (ADR-008): auto chỉ khi fb_policy đồng thuận
             # Nếu policy nói queue → ép queue bất kể kết quả AG-FBPAGE
-            if action in {"queue_review", "priority_review", "escalate_owner"}:
+            if circuit_breaker_open(store_id=store_id, channel="facebook") or action in {"queue_review", "priority_review", "escalate_owner"}:
                 out = FBMessageOutput(
                     action="queue_to_inbox",
                     response=None,
@@ -558,7 +642,7 @@ async def facebook_webhook(request: Request) -> Any:
                     emotion=out.emotion,
                     suggested_reply=out.suggested_reply or moderation.get("response"),
                     delegated_agent=out.delegated_agent,
-                    reason=f"fb_policy:{moderation.get('reason')}",
+                    reason="ai_circuit_breaker_open" if circuit_breaker_open(store_id=store_id, channel="facebook") else f"fb_policy:{moderation.get('reason')}",
                 )
             # Ngược lại: fb_policy auto_send, AG-FBPAGE cũng auto_respond + feature flag bật
             elif action == "auto_send" and out.action == "auto_respond" and _fb_auto_send_enabled():
@@ -585,6 +669,29 @@ async def facebook_webhook(request: Request) -> Any:
                     reason="fb_policy_auto_guarded",
                 )
 
+            fingerprint = hashlib.sha256(f"{store_id}:{page_id}:{mid}:{out.action}:{out.suggested_reply or out.response or ''}".encode()).hexdigest()
+            policy_action = "auto_send" if out.action == "auto_respond" else "queue_review"
+            generation_id = f"facebook-{fingerprint[:24]}"
+            learning_repository.save(AIGenerationRecord(
+                id=generation_id, store_id=store_id, channel="facebook",
+                conversation_id=sender, request_kind="facebook_message", external_event_hash=hashlib.sha256(mid.encode()).hexdigest(),
+                draft={"body": out.suggested_reply or out.response or "Đã chuyển quản lý xử lý."}, context_snapshot_hash=fingerprint,
+                agent_version="ag-fbpage", prompt_version="fb-messenger-v1",
+                rule_version=",".join(str(rule.get("id")) for rule in active_rules) or "none",
+                rollout_bucket=rollout_bucket, model={"provider": agent_mode(), "model_id": "ag-fbpage", "temperature": 0, "tool_context_hash": fingerprint},
+                policy_action=policy_action, idempotency_key=f"generation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
+            ))
+            if moderation.get("review_id"):
+                fb_review_link_generation(int(moderation["review_id"]), generation_id=generation_id)
+            learning_repository.save(AIEvaluation(
+                id=f"facebook-evaluation-{fingerprint[:20]}", store_id=store_id, generation_id=f"facebook-{fingerprint[:24]}", channel="facebook",
+                scores={"accuracy": out.confidence, "safety": 1.0}, aggregate_score=out.confidence,
+                passed=out.action == "auto_respond", action=policy_action,
+                flags=[] if out.action == "auto_respond" else ["manager_review_required"], threshold_version="facebook-policy-v1",
+                calibration_version="deterministic-v1", sample_count=0, evaluation_window="per_messenger_event",
+                evaluator="ag-fbpage-policy", idempotency_key=f"evaluation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
+            ))
+
             # Cập nhật hồ sơ khách quen nếu khách tự giới thiệu tên hoặc sở thích
             new_prefs = extract_customer_preferences([text])
             if new_prefs.get("ten_khach") or new_prefs.get("favorite_drinks") or new_prefs.get("special_notes"):
@@ -594,6 +701,7 @@ async def facebook_webhook(request: Request) -> Any:
                 cust_prof = kv_mutate(f"customer_profile:{store_id}:{sender}", mut_prof, {})
 
             th = upsert_thread_from_messaging(sender, text, mid)
+            th["ai_generation_id"] = generation_id
             th["intent"] = out.intent
             th["confidence"] = out.confidence
             th["suggested_reply"] = out.suggested_reply
@@ -630,6 +738,8 @@ async def facebook_webhook(request: Request) -> Any:
                     existing["pending_approval"] = thread.get("pending_approval")
                     existing["last_message_ts"] = thread.get("last_message_ts")
                     existing["is_within_24h"] = thread.get("is_within_24h")
+                    existing["ai_generation_id"] = thread.get("ai_generation_id")
+                    existing["customer_profile"] = thread.get("customer_profile")
                 else:
                     threads.insert(0, thread)
                 doc["mode"] = "live"
@@ -793,6 +903,22 @@ def page_thread_approve(
 
             kv_mutate(f"cskh_golden_memory:{store_id}", mut_golden, [])
 
+    conversation_id = str(found.get("psid") or found.get("sender_id") or thread_id)
+    manager_feedback = "manager_edit" if suggested_orig and clean_final != suggested_orig else "manager_approve"
+    _record_fb_feedback(
+        store_id=store_id, conversation_id=conversation_id, feedback_type=manager_feedback,
+        original=suggested_orig, final=clean_final, actor_user_id=s["nv_id"], actor_role=str(s["role"]),
+        generation_id=str(found.get("ai_generation_id") or "") or None,
+    )
+    _record_fb_feedback(
+        store_id=store_id, conversation_id=conversation_id,
+        feedback_type="send_success" if graph_sent else "send_failure", final=clean_final,
+        actor_user_id=s["nv_id"], actor_role="system",
+        send_status="sent" if graph_sent else "failed",
+        failure_code=None if graph_sent else "not_sent_or_replay",
+        generation_id=str(found.get("ai_generation_id") or "") or None,
+    )
+
     # Cập nhật hồ sơ Khách quen nếu có
     if cust_msg:
         prefs = extract_customer_preferences([cust_msg])
@@ -890,6 +1016,12 @@ def fb_inbox_decide(
 
     if body.quyet_dinh == "tu_choi":
         updated = fb_review_decide(item_id, status="rejected", decided_by=s["nv_id"])
+        _record_fb_feedback(
+            store_id="quan_01", conversation_id=str(item.get("external_psid") or item_id),
+            feedback_type="manager_reject", original=str(item.get("proposed_response") or ""),
+            actor_user_id=s["nv_id"], actor_role=str(s["role"]),
+            generation_id=str(item.get("ai_generation_id") or "") or None,
+        )
         _audit(s["nv_id"], "fb_inbox_decide", {"id": item_id, "q": "tu_choi"})
         return {"ok": True, "item": updated, "sent": False}
 
@@ -917,6 +1049,20 @@ def fb_inbox_decide(
     new_status = "sent" if graph_sent else "approved"
     updated = fb_review_decide(
         item_id, status=new_status, decided_by=s["nv_id"], final_response=final_text
+    )
+    proposed = str(item.get("proposed_response") or "")
+    _record_fb_feedback(
+        store_id="quan_01", conversation_id=str(item.get("external_psid") or item_id),
+        feedback_type="manager_edit" if proposed and proposed != final_text else "manager_approve",
+        original=proposed, final=final_text, actor_user_id=s["nv_id"], actor_role=str(s["role"]),
+        generation_id=str(item.get("ai_generation_id") or "") or None,
+    )
+    _record_fb_feedback(
+        store_id="quan_01", conversation_id=str(item.get("external_psid") or item_id),
+        feedback_type="send_success" if graph_sent else "send_failure", final=final_text,
+        actor_user_id=s["nv_id"], actor_role="system", send_status="sent" if graph_sent else "failed",
+        failure_code=None if graph_sent else "not_sent_or_replay",
+        generation_id=str(item.get("ai_generation_id") or "") or None,
     )
     _audit(
         s["nv_id"],
