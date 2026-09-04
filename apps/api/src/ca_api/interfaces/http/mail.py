@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import hashlib
+import os
 from typing import Annotated, Any
 
 try:
@@ -18,10 +18,10 @@ from ca_contracts import AIEvaluation, AIFeedbackEvent, AIGenerationRecord
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
+from ca_api.ai_learning.operations import circuit_breaker_open
+from ca_api.ai_learning.repository import AILearningRepository
 from ca_api.interfaces.http.sprint3 import _require_manager
 from ca_api.persist import get_user_emails, session, set_user_email
-from ca_api.ai_learning.repository import AILearningRepository
-from ca_api.ai_learning.operations import circuit_breaker_open
 
 router = APIRouter(tags=["mail"])
 

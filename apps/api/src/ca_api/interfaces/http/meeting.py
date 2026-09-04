@@ -10,9 +10,9 @@ try:
 except ImportError:
     from datetime import datetime, timezone
     UTC = timezone.utc
+import uuid
 from pathlib import Path
 from typing import Annotated, Any
-import uuid
 
 from ca_agents.ag_meeting import extract_meeting, transcribe_audio
 from ca_contracts import CuocHop

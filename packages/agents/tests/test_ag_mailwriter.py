@@ -98,7 +98,6 @@ def test_draft_email_with_learned_style_memory() -> None:
 
 def test_draft_email_applies_only_active_style_rules() -> None:
     active_rule = {"rule": {"text": "Dùng lời chào 'Chào em' cho email nội bộ."}}
-    pending_rule = {"rule": {"text": "Dùng lời chào 'Kính gửi' cho email nội bộ."}}
     with patch.dict(os.environ, {"CA_AGENT_MODE": "replay"}):
         baseline = draft_email("nhắc đi làm", recipient_name="Minh")
         active = draft_email("nhắc đi làm", recipient_name="Minh", active_style_rules=[active_rule])

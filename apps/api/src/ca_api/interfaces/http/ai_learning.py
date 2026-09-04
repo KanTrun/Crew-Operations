@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import hashlib
 import os
+from datetime import datetime, timezone
 from typing import Annotated, Any, Literal
 
-from ca_agents.ag_mailwriter import run_gmail_reflection
 from ca_agents.ag_fbpage_reflection import run_facebook_reflection
+from ca_agents.ag_mailwriter import run_gmail_reflection
 from ca_contracts import AIFeedbackEvent, AIRuleProposal
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field

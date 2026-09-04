@@ -289,7 +289,9 @@ def copilot_role_can_use_intent(role: str, intent: str) -> bool:
 class ActionProposalStatus(StrEnum):
     draft = "draft"
     ready_for_approval = "ready_for_approval"
+    executing = "executing"
     executed = "executed"
+    execution_failed = "execution_failed"
     rejected = "rejected"
     expired = "expired"
     stale_rejected = "stale_rejected"

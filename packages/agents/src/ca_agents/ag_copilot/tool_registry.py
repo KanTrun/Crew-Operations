@@ -101,6 +101,7 @@ class ToolExecutionResult:
     explanation: str
     requires_confirmation: bool
     error: str | None = None
+    source_snapshot: Any | None = None
 
 
 # ── Whitelisted Tool Implementations ──────────────────────────────────────────
@@ -161,24 +162,19 @@ def _swap_khong_trung_ca(
     nhan_nv: str | None,
     list_ca_meta: Callable[..., Any] | None,
 ) -> bool:
-    """Trả True nếu nhan_nv trùng ca khác CÙNG khung giờ với ca_dich.
-
-    Khi dữ liệu ca_meta không có (thiếu source / standalone), mặc định True
-    (cho phép) — giữ an toàn cho test không set đủ dữ liệu. Bỏ hardcode cũ.
-    """
+    """Trả False khi không thể chứng minh ca đích không trùng lịch."""
     if not nhan_nv or not ca_dich:
-        return True
+        return False
     if not list_ca_meta:
-        return True
+        return False
     try:
         ca_meta = list_ca_meta() or {}
     except Exception:
-        return True
+        return False
 
     meta_dich = ca_meta.get(ca_dich)
     if not isinstance(meta_dich, dict):
-        # Không có meta ca đích → không thể so, coi là không trùng (fail-open nhẹ).
-        return True
+        return False
 
     thu_dich = meta_dich.get("thu")
     # So trùng ca: không phân biệt khung cứng — so theo thu + khung trùng giờ.
@@ -667,6 +663,7 @@ def tool_check_inventory_restock(
         summary=summary,
         explanation=explanation,
         requires_confirmation=True,
+        source_snapshot=ton,
     )
 
 
@@ -785,17 +782,22 @@ def tool_send_mail(
         "rollout_bucket": rollout_bucket,
     }
 
-    if not to_emails and missing:
-        explanation = (
-            f"Agent AG-MAILWRITER đã soạn xong thư chuyên nghiệp cho {recip_label}. "
-            "Tuy nhiên nhân viên chưa cập nhật Gmail tại trang Cá nhân (/toi). "
-            "Anh/chị xem bản nháp, sau khi nhân viên bổ sung email là có thể gửi ngay."
+    if not to_emails:
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_send_mail",
+            intent="SEND_MAIL",
+            data=payload,
+            summary=f"Chưa thể tạo đề xuất gửi email cho {recip_label}.",
+            explanation="Không tìm thấy địa chỉ email hợp lệ của người nhận.",
+            requires_confirmation=False,
+            error="no_recipient_email",
         )
-    else:
-        explanation = (
-            f"Agent AG-MAILWRITER đã soạn xong thư chuyên nghiệp cho {recip_label}. "
-            "Anh/chị xem trước nội dung, có thể bấm 'Duyệt & Gửi' để gửi đi hoặc bảo em sửa lại nhé!"
-        )
+
+    explanation = (
+        f"Agent AG-MAILWRITER đã soạn xong thư chuyên nghiệp cho {recip_label}. "
+        "Anh/chị xem trước nội dung, có thể bấm 'Duyệt & Gửi' để gửi đi hoặc bảo em sửa lại nhé!"
+    )
 
     return ToolExecutionResult(
         success=True,

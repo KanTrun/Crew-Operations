@@ -6,7 +6,6 @@ import hashlib
 from collections import Counter
 from typing import Any
 
-
 REFLECTION_VERSION = "gmail-reflection-v1"
 MINIMUM_EVIDENCE = 3
 

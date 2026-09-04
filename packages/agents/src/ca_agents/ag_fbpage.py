@@ -198,6 +198,28 @@ def _norm(text: str) -> str:
     return text.lower().strip()
 
 
+def _missing_verified_context(
+    intent: str, emotion: str, context: dict[str, Any] | None
+) -> str | None:
+    """Return the public fact set required before a response may be auto-sent."""
+    ctx = context or {}
+    if intent == "hoi_gio_dia_chi":
+        profile = ctx.get("profile")
+        if not isinstance(profile, dict) or not any(
+            str(profile.get(field) or "").strip() for field in ("gio_mo_cua", "dia_chi", "hotline")
+        ):
+            return "profile"
+    if intent == "hoi_khuyen_mai" and not isinstance(ctx.get("promotions"), list):
+        return "promotions"
+    if intent == "hoi_menu_gia":
+        menu = ctx.get("menu")
+        if not isinstance(menu, list) or not menu:
+            return "menu"
+    if emotion == "hesitant":
+        return "barista_review"
+    return None
+
+
 def detect_customer_psychology(text: str) -> tuple[str, str, float]:
     """
     Analyze customer emotion and intent.
@@ -249,35 +271,9 @@ def build_human_response(
     Returns (reply_text, requires_human_approval, agent_name).
     """
     ctx = context or {}
-    profile = ctx.get(
-        "profile",
-        {
-            "ten_quan": "Nhịp Quán",
-            "dia_chi": "123 Đường Cà Phê, P.5, Q.3, TP.HCM",
-            "hotline": "0901234567",
-            "gio_mo_cua": "07:00 - 22:30 hàng ngày",
-            "wifi_ssid": "NhipQuan_Guest",
-            "wifi_pass": "nhipquan2026",
-        },
-    )
-    menu = ctx.get(
-        "menu",
-        [
-            {"ten": "Cà phê đen", "gia_formatted": "25,000đ"},
-            {"ten": "Cà phê sữa", "gia_formatted": "30,000đ"},
-            {"ten": "Bạc xỉu", "gia_formatted": "32,000đ"},
-            {"ten": "Trà đào", "gia_formatted": "35,000đ"},
-        ],
-    )
-    promos = ctx.get(
-        "promotions",
-        [
-            {
-                "tieu_de": "Combo Sáng Tỉnh Táo",
-                "chi_tiet": "Giảm 10% khi mua Cà phê sữa + Bánh mì trước 09:00",
-            }
-        ],
-    )
+    profile = ctx.get("profile") if isinstance(ctx.get("profile"), dict) else {}
+    menu = ctx.get("menu") if isinstance(ctx.get("menu"), list) else []
+    promos = ctx.get("promotions") if isinstance(ctx.get("promotions"), list) else []
 
     # Ưu tiên áp dụng bài học mẫu Quản lý đã dạy nếu trùng ý định
     if golden_examples and intent in ("hoi_gio_dia_chi", "hoi_khuyen_mai", "hoi_menu_gia"):
@@ -292,7 +288,7 @@ def build_human_response(
 
     # Case B: AG-CONCIERGE (Booking)
     if intent == "dat_ban" or emotion == "booking":
-        ticket = handle_reservation(text, profile.get("ten_quan", "Nhịp Quán"))
+        ticket = handle_reservation(text, str(profile.get("ten_quan") or "quán"))
         return ticket.suggested_reply, True, "AG-CONCIERGE"
 
     # Case C: AG-BARISTA (Taste consultation)
@@ -327,8 +323,9 @@ def build_human_response(
     if intent == "hoi_gio_dia_chi":
         # Chỉ ghép field có dữ liệu — không bao giờ để "None" lọt vào tin nhắn
         # khách (lỗ hổng văn bản khi profile thiếu field, review 2026-09-04).
-        lines = [f"Dạ {profile.get('ten_quan') or 'quán'} mở cửa từ "
-                 f"{profile.get('gio_mo_cua') or '07:00 - 22:30'} ạ."]
+        lines = []
+        if profile.get("gio_mo_cua"):
+            lines.append(f"Dạ {profile.get('ten_quan') or 'quán'} mở cửa từ {profile['gio_mo_cua']} ạ.")
         if profile.get("dia_chi"):
             lines.append(f"📍 Địa chỉ: {profile['dia_chi']}")
         if profile.get("hotline"):
@@ -338,7 +335,10 @@ def build_human_response(
             if profile.get("wifi_pass"):
                 wifi_line += f" (Mật khẩu: {profile['wifi_pass']})"
             lines.append(wifi_line)
-        lines.append("Mời mình ghé quán trải nghiệm không gian và thưởng thức cà phê nhé ạ!")
+        if lines:
+            lines.append("Mời mình ghé quán trải nghiệm không gian và thưởng thức cà phê nhé ạ!")
+        else:
+            lines.append("Dạ em cần kiểm tra lại thông tin quán trước khi phản hồi mình ạ.")
         reply = "\n".join(lines)
         return reply, False, "AG-FRONTDESK"
 
@@ -398,6 +398,7 @@ async def process_fb_message(
     emotion, intent, confidence = detect_customer_psychology(guard.sanitized_text)
 
     # 3. Squad Routing (Frontdesk, Barista, Concierge)
+    missing_context = _missing_verified_context(intent, emotion, public_context)
     reply_text, requires_approval, agent_name = build_human_response(
         intent,
         emotion,
@@ -406,6 +407,8 @@ async def process_fb_message(
         customer_profile=customer_profile,
         golden_examples=golden_examples,
     )
+    if missing_context:
+        requires_approval = True
 
     # 4. Live LLM execution if enabled
     if agent_mode() == "live" and not requires_approval and auto_respond_enabled:
@@ -480,7 +483,11 @@ async def process_fb_message(
             emotion=emotion,
             delegated_agent=agent_name,
             suggested_reply=reply_text,
-            reason="Queued for manager approval",
+            reason=(
+                f"missing_verified_context:{missing_context}"
+                if missing_context
+                else "Queued for manager approval"
+            ),
         )
 
 
@@ -531,6 +538,7 @@ __all__ = [
     "classify_customer_intent",
     "build_human_response",
     "build_response_for_intent",
+    "_missing_verified_context",
     "CONFIDENCE_THRESHOLD_DEFAULT",
     "CUSTOMER_INTENTS",
 ]

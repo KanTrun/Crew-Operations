@@ -30,6 +30,7 @@ USERS = (
 )
 
 
+
 # ── Mật khẩu ──────────────────────────────────────────────────────────────
 # Bản đầu hash SHA256 trần, không salt. Khi chỉ có 3 tài khoản fixture thì đó
 # là nợ chấp nhận được; từ lúc mở màn hình đăng ký thì nó thành lỗ hổng thật
@@ -183,6 +184,19 @@ def init_db() -> None:
                 channel TEXT NOT NULL,
                 latency_ms INTEGER NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS copilot_execution_receipts (
+                store_id TEXT NOT NULL,
+                action_id TEXT NOT NULL,
+                idempotency_key TEXT NOT NULL,
+                request_hash TEXT NOT NULL,
+                status TEXT NOT NULL,
+                outcome TEXT,
+                created_at TEXT NOT NULL,
+                completed_at TEXT,
+                PRIMARY KEY (store_id, action_id, idempotency_key)
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_copilot_receipt_action
+                ON copilot_execution_receipts(store_id, action_id);
             CREATE TABLE IF NOT EXISTS fb_review_queue (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 source TEXT NOT NULL CHECK (source IN ('messenger','comment')),
@@ -994,6 +1008,108 @@ def copilot_draft_update_status(
             (status, executed_at, amended_from, amended_by, action_id),
         )
         return cur.rowcount > 0
+
+
+def copilot_draft_compare_and_set_status(
+    action_id: str,
+    expected_status: str,
+    new_status: str,
+) -> bool:
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            """
+            UPDATE copilot_draft_actions
+            SET status=?
+            WHERE action_id=? AND status=?
+            """,
+            (new_status, action_id, expected_status),
+        )
+        return cur.rowcount == 1
+
+
+def copilot_execution_reserve(
+    store_id: str,
+    action_id: str,
+    idempotency_key: str,
+    request_hash: str,
+) -> tuple[str, dict[str, Any] | None]:
+    init_db()
+    with _conn() as cx:
+        try:
+            cx.execute(
+                """
+                INSERT INTO copilot_execution_receipts(
+                    store_id, action_id, idempotency_key, request_hash, status, created_at
+                ) VALUES (?,?,?,?,?,?)
+                """,
+                (store_id, action_id, idempotency_key, request_hash, "pending", _iso_now()),
+            )
+            return "reserved", None
+        except sqlite3.IntegrityError:
+            row = cx.execute(
+                """
+                SELECT idempotency_key, request_hash, status, outcome
+                FROM copilot_execution_receipts
+                WHERE store_id=? AND action_id=?
+                """,
+                (store_id, action_id),
+            ).fetchone()
+            if not row or str(row[0]) != idempotency_key or str(row[1]) != request_hash:
+                return "conflict", None
+            if str(row[2]) == "completed" and row[3]:
+                return "replay", json.loads(row[3])
+            return "pending", None
+
+
+def copilot_execution_complete(
+    store_id: str,
+    action_id: str,
+    idempotency_key: str,
+    outcome: dict[str, Any],
+) -> bool:
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            """
+            UPDATE copilot_execution_receipts
+            SET status='completed', outcome=?, completed_at=?
+            WHERE store_id=? AND action_id=? AND idempotency_key=? AND status='pending'
+            """,
+            (
+                json.dumps(outcome, ensure_ascii=False),
+                _iso_now(),
+                store_id,
+                action_id,
+                idempotency_key,
+            ),
+        )
+        return cur.rowcount == 1
+
+
+def copilot_execution_fail(
+    store_id: str,
+    action_id: str,
+    idempotency_key: str,
+    error_type: str,
+) -> bool:
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            """
+            UPDATE copilot_execution_receipts
+            SET status='failed', outcome=?, completed_at=?
+            WHERE store_id=? AND action_id=? AND idempotency_key=? AND status='pending'
+            """,
+            (
+                json.dumps({"error_type": error_type}, ensure_ascii=False),
+                _iso_now(),
+                store_id,
+                action_id,
+                idempotency_key,
+            ),
+        )
+        return cur.rowcount == 1
 
 
 def copilot_draft_list(

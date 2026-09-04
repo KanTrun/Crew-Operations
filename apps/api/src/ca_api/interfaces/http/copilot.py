@@ -6,8 +6,9 @@ import json
 import os
 import time
 import uuid
-import hashlib
-from typing import Annotated, Any
+from collections.abc import Callable
+from functools import wraps
+from typing import Annotated, Any, ParamSpec, TypeVar
 
 try:
     from datetime import UTC, datetime
@@ -17,7 +18,6 @@ except ImportError:
 
 from ca_agents.ag_copilot import run_copilot
 from ca_contracts import (
-    AIGenerationRecord,
     COPILOT_ROLE_INTENT_MATRIX,
     CopilotIntent,
     CopilotResponse,
@@ -26,19 +26,23 @@ from ca_contracts import (
 from ca_gates import compute_snapshot_hash, validate_scope, validate_stale
 from fastapi import APIRouter, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ca_api.persist import (
     copilot_audit_add,
     copilot_audit_list,
+    copilot_draft_compare_and_set_status,
     copilot_draft_get,
     copilot_draft_save,
     copilot_draft_update_status,
+    copilot_execution_complete,
+    copilot_execution_fail,
+    copilot_execution_reserve,
+    kv_get,
     kv_mutate,
     kv_set,
 )
 from ca_api.persist import session as auth_session
-from ca_api.ai_learning.repository import AILearningRepository
 
 router = APIRouter(prefix="/api/v1/copilot", tags=["copilot"])
 
@@ -53,7 +57,7 @@ def _get_verified_user(authorization: str | None) -> dict[str, str]:
             "username": sess["username"],
             "user_id": sess["nv_id"],
             "role": sess["role"],
-            "store_id": "quan_01",
+            "store_id": sess["store_id"],
         }
     # For open endpoints with optional auth, check header or assign unauthenticated
     return {
@@ -77,7 +81,7 @@ def _require_user(authorization: str | None) -> dict[str, str]:
         "username": sess["username"],
         "user_id": sess["nv_id"],
         "role": sess["role"],
-        "store_id": "quan_01",
+        "store_id": sess["store_id"],
     }
 
 
@@ -111,6 +115,81 @@ class AmendActionBody(BaseModel):
     reason: str = Field(min_length=3)
     correction_diff: dict[str, Any] = Field(default_factory=dict)
     idempotency_key: str = Field(default_factory=lambda: uuid.uuid4().hex)
+
+
+class _NoCorrections(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class _MailCorrections(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    subject: str | None = Field(default=None, min_length=1, max_length=200)
+    body: str | None = Field(default=None, min_length=1, max_length=5000)
+
+
+_CORRECTION_MODELS: dict[str, type[BaseModel]] = {
+    "SEND_MAIL": _MailCorrections,
+}
+
+
+_Params = ParamSpec("_Params")
+_Result = TypeVar("_Result")
+
+
+def _recover_execution_failure(
+    endpoint: Callable[_Params, _Result],
+) -> Callable[_Params, _Result]:
+    @wraps(endpoint)
+    def wrapped(*args: _Params.args, **kwargs: _Params.kwargs) -> _Result:
+        try:
+            return endpoint(*args, **kwargs)
+        except Exception as exc:
+            body = kwargs.get("body")
+            if isinstance(body, ExecuteActionBody) and copilot_draft_compare_and_set_status(
+                body.action_id,
+                "executing",
+                "execution_failed",
+            ):
+                draft = copilot_draft_get(body.action_id)
+                if draft:
+                    copilot_execution_fail(
+                        draft["store_id"],
+                        body.action_id,
+                        body.idempotency_key,
+                        type(exc).__name__,
+                    )
+                    copilot_audit_add(
+                        action_id=body.action_id,
+                        actor_user_id="system",
+                        store_id=draft["store_id"],
+                        intent=draft["intent"],
+                        decision="execution_failed",
+                        payload_diff={"error_type": type(exc).__name__},
+                        channel="web",
+                    )
+                if isinstance(exc, HTTPException):
+                    raise
+                raise HTTPException(status_code=500, detail="action_execution_failed") from exc
+            raise
+
+    return wrapped
+
+
+def _current_snapshot_data(draft: dict[str, Any]) -> Any:
+    if draft["intent"] == "INVENTORY_RESTOCK_CHECK":
+        return [item for item in (kv_get("tieu_thu", []) or []) if isinstance(item, dict)]
+    return draft["payload_diff"]
+
+
+def _validate_correction_diff(intent: str, correction_diff: dict[str, Any] | None) -> dict[str, Any]:
+    if not correction_diff:
+        return {}
+    model = _CORRECTION_MODELS.get(intent, _NoCorrections)
+    try:
+        return model.model_validate(correction_diff).model_dump(exclude_none=True)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail="invalid_correction_diff") from exc
 
 
 # ── 1. POST /api/v1/copilot/message ──────────────────────────────────────────
@@ -265,6 +344,7 @@ def _chunk_text(text: str, size: int = 4) -> list[str]:
 # ── 2. POST /api/v1/copilot/execute-action ───────────────────────────────────
 
 @router.post("/execute-action")
+@_recover_execution_failure
 def copilot_execute_action(
     body: ExecuteActionBody,
     authorization: Annotated[str | None, Header()] = None,
@@ -279,17 +359,8 @@ def copilot_execute_action(
     if not draft:
         raise HTTPException(status_code=404, detail="action_proposal_not_found")
 
-    # 2. Check Idempotency / Already Executed
-    if draft["status"] == "executed":
-        return {
-            "ok": True,
-            "action_id": body.action_id,
-            "status": "executed",
-            "message": "Action already executed successfully (idempotent replay).",
-            "payload_diff": draft["payload_diff"],
-        }
-
-    # 3. VF-SCOPE: Multi-tenant and role check
+    # 2. VF-SCOPE: Multi-tenant and role check. Scope must precede replay so a
+    # caller cannot use an executed action ID to discover another action.
     scope_res = validate_scope(
         caller_store_id=user["store_id"],
         target_store_id=draft["store_id"],
@@ -311,28 +382,76 @@ def copilot_execute_action(
         )
         raise HTTPException(status_code=403, detail=f"scope_blocked:{scope_res.reason}")
 
-    # 4. Check Expiration
+    correction_diff = (
+        _validate_correction_diff(draft["intent"], body.correction_diff)
+        if body.decision == "approve"
+        else {}
+    )
+    request_hash = compute_snapshot_hash(
+        {
+            "action_id": body.action_id,
+            "decision": body.decision,
+            "reason": body.reason,
+            "correction_diff": correction_diff,
+        }
+    )
+
+    # 3. Durable replay is valid only for the same authorized request and key.
+    if draft["status"] == "executed" and body.decision == "approve":
+        receipt_status, outcome = copilot_execution_reserve(
+            user["store_id"],
+            body.action_id,
+            body.idempotency_key,
+            request_hash,
+        )
+        if receipt_status == "replay" and outcome:
+            return outcome
+        raise HTTPException(status_code=409, detail="idempotency_conflict")
+
+    # 4. Only a proposal explicitly ready for approval may be decided.
+    if draft["status"] != "ready_for_approval":
+        raise HTTPException(
+            status_code=409,
+            detail=f"invalid_action_status:{draft['status']}",
+        )
+
+    # 5. Check expiration and fail closed on malformed timestamps.
     if draft["expires_at"]:
         try:
             exp_dt = datetime.fromisoformat(draft["expires_at"].replace("Z", "+00:00"))
-            if datetime.now(UTC) > exp_dt:
-                copilot_draft_update_status(body.action_id, "expired")
-                copilot_audit_add(
-                    action_id=body.action_id,
-                    actor_user_id=user["user_id"],
-                    store_id=user["store_id"],
-                    intent=draft["intent"],
-                    decision="expired",
-                    channel="web",
-                    latency_ms=int((time.time() - t0) * 1000),
-                )
-                raise HTTPException(status_code=400, detail="action_proposal_expired")
-        except Exception:
-            pass
+            is_expired = datetime.now(UTC) > exp_dt
+        except (AttributeError, TypeError, ValueError):
+            copilot_audit_add(
+                action_id=body.action_id,
+                actor_user_id=user["user_id"],
+                store_id=user["store_id"],
+                intent=draft["intent"],
+                decision="invalid_expiry",
+                channel="web",
+                latency_ms=int((time.time() - t0) * 1000),
+            )
+            raise HTTPException(status_code=400, detail="invalid_action_expiry")
+        if is_expired:
+            copilot_draft_update_status(body.action_id, "expired")
+            copilot_audit_add(
+                action_id=body.action_id,
+                actor_user_id=user["user_id"],
+                store_id=user["store_id"],
+                intent=draft["intent"],
+                decision="expired",
+                channel="web",
+                latency_ms=int((time.time() - t0) * 1000),
+            )
+            raise HTTPException(status_code=400, detail="action_proposal_expired")
 
-    # 5. Handle REJECT
+    # 6. Handle REJECT
     if body.decision == "reject":
-        copilot_draft_update_status(body.action_id, "rejected")
+        if not copilot_draft_compare_and_set_status(
+            body.action_id,
+            "ready_for_approval",
+            "rejected",
+        ):
+            raise HTTPException(status_code=409, detail="action_decision_conflict")
         copilot_audit_add(
             action_id=body.action_id,
             actor_user_id=user["user_id"],
@@ -350,16 +469,34 @@ def copilot_execute_action(
             "message": "Action proposal rejected.",
         }
 
-    # 6. VF-STALE Check on APPROVE
+    receipt_status, outcome = copilot_execution_reserve(
+        user["store_id"],
+        body.action_id,
+        body.idempotency_key,
+        request_hash,
+    )
+    if receipt_status == "replay" and outcome:
+        return outcome
+    if receipt_status == "pending":
+        raise HTTPException(status_code=409, detail="action_execution_in_progress")
+    if receipt_status != "reserved":
+        raise HTTPException(status_code=409, detail="idempotency_conflict")
+
+    # 7. VF-STALE Check on APPROVE
     # Compute current data state snapshot
-    current_snapshot_data = draft["payload_diff"]
+    current_snapshot_data = _current_snapshot_data(draft)
     current_hash = compute_snapshot_hash(current_snapshot_data)
     stale_res = validate_stale(
         draft_snapshot_hash=draft["data_snapshot_hash"],
         current_snapshot_hash=current_hash,
     )
     if not stale_res.passed:
-        copilot_draft_update_status(body.action_id, "stale_rejected")
+        if not copilot_draft_compare_and_set_status(
+            body.action_id,
+            "ready_for_approval",
+            "stale_rejected",
+        ):
+            raise HTTPException(status_code=409, detail="action_decision_conflict")
         copilot_audit_add(
             action_id=body.action_id,
             actor_user_id=user["user_id"],
@@ -370,15 +507,30 @@ def copilot_execute_action(
             channel="web",
             latency_ms=int((time.time() - t0) * 1000),
         )
+        copilot_execution_fail(
+            user["store_id"],
+            body.action_id,
+            body.idempotency_key,
+            "stale_rejected",
+        )
         raise HTTPException(status_code=409, detail=f"stale_rejected:{stale_res.reason}")
 
-    # 7. Apply Action Execution (Single Transaction)
+    # 8. Claim execution before any side effect. Only one concurrent request
+    # can transition the proposal and enter an executor.
+    if not copilot_draft_compare_and_set_status(
+        body.action_id,
+        "ready_for_approval",
+        "executing",
+    ):
+        raise HTTPException(status_code=409, detail="action_execution_conflict")
+
+    # 9. Apply Action Execution
     intent = draft["intent"]
     diff = draft["payload_diff"]
     orig_body = str(diff.get("body", ""))
 
-    if body.correction_diff and isinstance(body.correction_diff, dict):
-        diff.update(body.correction_diff)
+    if correction_diff:
+        diff.update(correction_diff)
         if intent == "SEND_MAIL":
             new_body = str(diff.get("body", ""))
             if orig_body and new_body and orig_body != new_body:
@@ -407,7 +559,9 @@ def copilot_execute_action(
                     kv_mutate(store_key, mut_style, {})
 
     if intent == "SCHEDULE_SOLVE":
-        kv_set("lich_tuan", diff.get("phan_cong", {}))
+        phan_cong = diff.get("phan_cong", {})
+        kv_set("phan_cong", phan_cong)
+        kv_set("lich_tuan", phan_cong)
         kv_set("lich_tuan_status", "da_cong_bo")
     elif intent == "APPROVE_SHIFT_SWAP":
         swap_id = diff.get("swap_id")
@@ -472,7 +626,7 @@ def copilot_execute_action(
         body_text = diff.get("body") or ""
         from ca_api.interfaces.http.mail import execute_supervised_mail
 
-        diff["mail_result"] = execute_supervised_mail(
+        mail_result = execute_supervised_mail(
             store_id=user["store_id"], actor_user_id=user["user_id"], actor_role=user["role"],
             to_emails=to_emails, subject=subject, body=body_text,
             html_body=diff.get("html_body"), attachments=diff.get("attachments"),
@@ -481,6 +635,9 @@ def copilot_execute_action(
             prompt_version="copilot-mail-v1", rule_version=str(diff.get("rule_version") or "none"),
             rollout_bucket=str(diff.get("rollout_bucket") or "control"),
         )
+        diff["mail_result"] = mail_result
+        if not mail_result.get("ok"):
+            raise RuntimeError(f"mail_delivery_failed:{mail_result.get('reason') or 'unknown'}")
 
     # Mark draft as executed
     copilot_draft_update_status(body.action_id, "executed", executed_at=now_iso)
@@ -497,13 +654,20 @@ def copilot_execute_action(
         latency_ms=int((time.time() - t0) * 1000),
     )
 
-    return {
+    outcome = {
         "ok": True,
         "action_id": body.action_id,
         "status": "executed",
         "message": "Đã phê duyệt và thực thi hành động thành công!",
         "payload_diff": diff,
     }
+    copilot_execution_complete(
+        user["store_id"],
+        body.action_id,
+        body.idempotency_key,
+        outcome,
+    )
+    return outcome
 
 
 # ── 3. POST /api/v1/copilot/action/{action_id}/amend ─────────────────────────

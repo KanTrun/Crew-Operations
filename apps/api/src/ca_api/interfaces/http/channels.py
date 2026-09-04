@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
 import re
 import uuid
-import hashlib
 
 try:
     from datetime import UTC, datetime
@@ -39,7 +39,6 @@ from ca_agents.facebook_page import (
     verify_fb_webhook_signature,
 )
 from ca_agents.llm import agent_mode
-from ca_contracts import AIEvaluation, AIFeedbackEvent, AIGenerationRecord
 from ca_agents.messaging import (
     InboundMessage,
     get_port,
@@ -48,9 +47,13 @@ from ca_agents.messaging import (
     parse_zalo_webhook,
     should_enqueue_constraint,
 )
+from ca_contracts import AIEvaluation, AIFeedbackEvent, AIGenerationRecord
 from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
+from ca_api.ai_learning.operations import circuit_breaker_open
+from ca_api.ai_learning.repository import AILearningRepository
+from ca_api.ai_learning.rollout import select_active_rules
 from ca_api.interfaces.http.sprint3 import (
     _nv_from_token,
     _phan_cong,
@@ -75,9 +78,6 @@ from ca_api.persist import (
     kv_set,
 )
 from ca_api.persist import session as auth_session
-from ca_api.ai_learning.repository import AILearningRepository
-from ca_api.ai_learning.operations import circuit_breaker_open
-from ca_api.ai_learning.rollout import select_active_rules
 from ca_api.services.fb_moderation import moderate_fb_message
 from ca_api.services.store_public_context import (
     get_active_promotions,
