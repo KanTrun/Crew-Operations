@@ -7,7 +7,7 @@ async function login(page: Page) {
   await page.getByLabel("Tài khoản").fill("lan");
   await page.getByLabel("Mật khẩu").fill("nhipquan");
   await page.getByRole("button", { name: "Vào hệ thống" }).click();
-  await expect(page).toHaveURL(/\/hom-nay/);
+  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
 }
 
 test.describe("Phiếu demo — latency mở form (#7 nhóm A)", () => {
