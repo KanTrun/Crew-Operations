@@ -82,7 +82,9 @@ class AILearningRepository:
                 intent_scope == set(active_rule.get("intent_scope") or [])
                 and audience_scope == set(active_rule.get("audience_scope") or [])
             )
-            without_negation = lambda value: value.removeprefix("không ").removeprefix("khong ").strip()
+            def without_negation(value: str) -> str:
+                return value.removeprefix("không ").removeprefix("khong ").strip()
+
             contradictory = (
                 (text.startswith(("không ", "khong ")) and without_negation(text) == active_text)
                 or (active_text.startswith(("không ", "khong ")) and without_negation(active_text) == text)

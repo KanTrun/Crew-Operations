@@ -1,7 +1,6 @@
 """Kiểm tra trạng thái webhook Messenger của Page qua Graph API."""
 import json
 import os
-import sys
 import urllib.error
 import urllib.parse
 import urllib.request

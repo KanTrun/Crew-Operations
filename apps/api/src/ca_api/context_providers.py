@@ -9,8 +9,8 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any
 
-from ca_api.persist import kv_get
 from ca_api.ai_learning.repository import AILearningRepository
+from ca_api.persist import kv_get
 
 
 def get_ops_context_for_mail(

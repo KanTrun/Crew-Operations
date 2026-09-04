@@ -96,7 +96,8 @@ def test_beverage_consultation_flow():
         timestamp=1700000000,
     )
     out = asyncio.run(process_fb_message(msg, auto_respond_enabled=True))
-    assert out.action == "auto_respond"
+    assert out.action == "queue_to_inbox"
     assert out.intent == "hoi_menu_gia"
-    resp = (out.response or "").lower()
+    assert out.reason == "missing_verified_context:menu"
+    resp = (out.suggested_reply or "").lower()
     assert "trà đào" in resp or "bạc xỉu" in resp

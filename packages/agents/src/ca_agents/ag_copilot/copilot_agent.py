@@ -115,7 +115,8 @@ def run_copilot(
 
     now_iso = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     expires_iso = (datetime.now(UTC) + timedelta(minutes=ttl_minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    snapshot_hash = _compute_hash(tool_res.data)
+    snapshot_data = tool_res.source_snapshot if tool_res.source_snapshot is not None else tool_res.data
+    snapshot_hash = _compute_hash(snapshot_data)
 
     action_prop: ActionProposal | None = None
     direct_answer: str | None = None

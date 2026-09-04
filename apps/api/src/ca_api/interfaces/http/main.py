@@ -39,11 +39,15 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from ca_api.ai_learning.security import configure_data_protection, minimal_data_mode
-from ca_api.context_providers import get_active_mail_rules_for_store, get_mail_style_for_store, get_ops_context_for_mail
 from ca_api.ai_learning.rollout import select_active_rules
-from ca_api.interfaces.http.channels import router as channels_router
+from ca_api.ai_learning.security import configure_data_protection, minimal_data_mode
+from ca_api.context_providers import (
+    get_active_mail_rules_for_store,
+    get_mail_style_for_store,
+    get_ops_context_for_mail,
+)
 from ca_api.interfaces.http.ai_learning import router as ai_learning_router
+from ca_api.interfaces.http.channels import router as channels_router
 from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
@@ -173,8 +177,8 @@ def _draft_mail_with_active_rules(**kwargs: Any):
         identity=str(identities[0]) if identities else str(kwargs.get("recipient_name") or "default"),
     )
     draft = _draft_email(active_style_rules=selected, **kwargs)
-    setattr(draft, "rule_version", ",".join(str(rule["id"]) for rule in selected) or "none")
-    setattr(draft, "rollout_bucket", rollout_bucket)
+    draft.rule_version = ",".join(str(rule["id"]) for rule in selected) or "none"
+    draft.rollout_bucket = rollout_bucket
     return draft
 
 

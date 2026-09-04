@@ -45,6 +45,8 @@ class EmailDraft:
     summary: str = ""
     ops_context_used: dict[str, Any] | None = None
     has_learned_style: bool = False
+    rule_version: str = "none"
+    rollout_bucket: str = ""
 
 
 def _deterministic_draft(

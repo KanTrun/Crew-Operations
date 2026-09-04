@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getToken } from "../../lib/session";
 import { ChatText } from "./ChatText";
 
 export interface ActionProposalData {
   action_id: string;
   intent: string;
-  status: "draft" | "ready_for_approval" | "executed" | "rejected" | "expired" | "stale_rejected";
+  status: "draft" | "ready_for_approval" | "executing" | "executed" | "execution_failed" | "rejected" | "expired" | "stale_rejected";
   summary: string;
   explanation: string;
   payload_diff: Record<string, any>;
@@ -39,6 +39,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [editSubject, setEditSubject] = useState(proposal.payload_diff?.subject || "");
   const [editBody, setEditBody] = useState(proposal.payload_diff?.body || "");
+  const decisionKey = useRef(`approve_${proposal.action_id}_${crypto.randomUUID()}`);
 
   useEffect(() => {
     setEditSubject(proposal.payload_diff?.subject || "");
@@ -73,6 +74,9 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
   async function handleDecision(decision: "approve" | "reject") {
     setLoading(true);
     setErrorMsg(null);
+    if (decision === "approve") {
+      setCurrentStatus("executing");
+    }
     try {
       let correctionDiff: Record<string, any> | undefined = undefined;
       if (
@@ -95,7 +99,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         body: JSON.stringify({
           action_id: proposal.action_id,
           decision,
-          idempotency_key: `key_${Date.now()}`,
+          idempotency_key: decision === "approve" ? decisionKey.current : `reject_${crypto.randomUUID()}`,
           correction_diff: correctionDiff,
         }),
       });
@@ -110,6 +114,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         onExecuted({ ...proposal, status: data.status, executed_at: new Date().toISOString() });
       }
     } catch (err: any) {
+      setCurrentStatus(proposal.status);
       setErrorMsg(err.message || "Lỗi kết nối.");
     } finally {
       setLoading(false);
@@ -168,13 +173,17 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
             className={`text-[10px] font-medium px-2 py-0.5 rounded ${
               currentStatus === "executed"
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                : currentStatus === "rejected" || currentStatus === "stale_rejected" || currentStatus === "expired"
+                : currentStatus === "rejected" || currentStatus === "execution_failed" || currentStatus === "stale_rejected" || currentStatus === "expired"
                 ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
                 : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
             }`}
           >
             {currentStatus === "executed"
               ? "✓ ĐÃ DUYỆT"
+              : currentStatus === "executing"
+              ? "ĐANG THỰC THI"
+              : currentStatus === "execution_failed"
+              ? "THỰC THI THẤT BẠI"
               : currentStatus === "rejected"
               ? "✕ ĐÃ TỪ CHỐI"
               : currentStatus === "stale_rejected"

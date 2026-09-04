@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 from ca_contracts import (
+    CONTRACTS,
+    ActionItem,
     AIEvaluation,
     AIFeedbackEvent,
     AIGenerationRecord,
     AIRuleProposal,
-    CONTRACTS,
-    ActionItem,
     Ca,
     CuocHop,
     DeXuatSop,

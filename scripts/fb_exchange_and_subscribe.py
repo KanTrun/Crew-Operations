@@ -1,6 +1,5 @@
 """Dùng user token mới để lấy Page token + subscribe app vào Page (webhook fields)."""
 import json
-import os
 import sys
 import urllib.error
 import urllib.parse

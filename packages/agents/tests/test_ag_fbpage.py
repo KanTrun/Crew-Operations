@@ -76,11 +76,28 @@ def test_process_fb_message_auto_reply():
         message_id="mid_01",
         timestamp=1700000000,
     )
-    out = asyncio.run(process_fb_message(msg, auto_respond_enabled=True))
+    out = asyncio.run(process_fb_message(
+        msg,
+        auto_respond_enabled=True,
+        public_context={"profile": {"ten_quan": "Nhịp Quán", "gio_mo_cua": "07:00 - 22:30", "dia_chi": "1 Đường A"}},
+    ))
     assert out.action == "auto_respond"
     assert out.intent == "hoi_gio_dia_chi"
     assert out.confidence >= 0.82
     assert "mở cửa" in (out.response or "").lower()
+
+
+def test_missing_verified_public_facts_queue_for_review() -> None:
+    msg = FBMessageInput(
+        psid="123456",
+        text="Quán mở cửa tới mấy giờ và ở đâu vậy?",
+        message_id="mid_missing_context",
+        timestamp=1700000000,
+    )
+    out = asyncio.run(process_fb_message(msg, auto_respond_enabled=True))
+    assert out.action == "queue_to_inbox"
+    assert out.reason == "missing_verified_context:profile"
+    assert "123 Đường Cà Phê" not in (out.suggested_reply or "")
 
 
 def test_process_fb_message_reservation_queues_for_approval():
@@ -123,5 +140,9 @@ def test_active_rules_are_injected_only_for_live_prompt(monkeypatch):
 
     msg = FBMessageInput(psid="123456", text="Quán mở cửa tới mấy giờ?", message_id="mid_rule", timestamp=1700000000)
     with patch("ca_agents.ag_fbpage.complete", fake_complete):
-        asyncio.run(process_fb_message(msg, active_rules=[{"rule": {"text": "Luôn mở đầu bằng Dạ."}}]))
+        asyncio.run(process_fb_message(
+            msg,
+            public_context={"profile": {"ten_quan": "Nhịp Quán", "gio_mo_cua": "07:00 - 22:30"}},
+            active_rules=[{"rule": {"text": "Luôn mở đầu bằng Dạ."}}],
+        ))
     assert "Luôn mở đầu bằng Dạ." in captured["system"]

@@ -4,7 +4,9 @@
       "enum": [
         "draft",
         "ready_for_approval",
+        "executing",
         "executed",
+        "execution_failed",
         "rejected",
         "expired",
         "stale_rejected"
