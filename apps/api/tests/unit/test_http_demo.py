@@ -20,6 +20,7 @@ def test_login_and_contracts() -> None:
     ok = client.post("/api/v1/auth/login", json={"username": "lan", "password": "nhipquan"})
     assert ok.status_code == 200
     assert ok.json()["role"] == "quan_ly"
+    assert ok.json()["store_id"] == "quan_01"
     c = client.get("/api/v1/contracts")
     assert c.status_code == 200
     body = c.json()

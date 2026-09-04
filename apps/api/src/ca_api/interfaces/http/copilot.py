@@ -6,6 +6,7 @@ import json
 import os
 import time
 import uuid
+import hashlib
 from typing import Annotated, Any
 
 try:
@@ -16,6 +17,7 @@ except ImportError:
 
 from ca_agents.ag_copilot import run_copilot
 from ca_contracts import (
+    AIGenerationRecord,
     COPILOT_ROLE_INTENT_MATRIX,
     CopilotIntent,
     CopilotResponse,
@@ -36,6 +38,7 @@ from ca_api.persist import (
     kv_set,
 )
 from ca_api.persist import session as auth_session
+from ca_api.ai_learning.repository import AILearningRepository
 
 router = APIRouter(prefix="/api/v1/copilot", tags=["copilot"])
 
@@ -467,24 +470,17 @@ def copilot_execute_action(
         to_emails = diff.get("to_emails") or []
         subject = diff.get("subject") or ""
         body_text = diff.get("body") or ""
-        html_body = diff.get("html_body")
-        attachments = diff.get("attachments")
-        from ca_agents.ag_mail import send_mail
+        from ca_api.interfaces.http.mail import execute_supervised_mail
 
-        mail_res = send_mail(
-            to_emails=to_emails,
-            subject=subject,
-            body=body_text,
-            html_body=html_body,
-            attachments=attachments,
+        diff["mail_result"] = execute_supervised_mail(
+            store_id=user["store_id"], actor_user_id=user["user_id"], actor_role=user["role"],
+            to_emails=to_emails, subject=subject, body=body_text,
+            html_body=diff.get("html_body"), attachments=diff.get("attachments"),
+            original_subject=str(draft["payload_diff"].get("subject") or subject),
+            original_body=orig_body, ops_context=diff.get("ops_context"),
+            prompt_version="copilot-mail-v1", rule_version=str(diff.get("rule_version") or "none"),
+            rollout_bucket=str(diff.get("rollout_bucket") or "control"),
         )
-        diff["mail_result"] = {
-            "ok": mail_res.ok,
-            "sent": mail_res.sent,
-            "failed": mail_res.failed,
-            "mode": mail_res.mode,
-            "reason": mail_res.reason,
-        }
 
     # Mark draft as executed
     copilot_draft_update_status(body.action_id, "executed", executed_at=now_iso)

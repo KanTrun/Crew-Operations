@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import pytest
 from ca_contracts import (
+    AIEvaluation,
+    AIFeedbackEvent,
+    AIGenerationRecord,
+    AIRuleProposal,
     CONTRACTS,
     ActionItem,
     Ca,
@@ -41,6 +45,10 @@ def test_contracts_registered() -> None:
         "CopilotMessage",
         "ActionProposal",
         "PolicyDecision",
+        "AIGenerationRecord",
+        "AIFeedbackEvent",
+        "AIEvaluation",
+        "AIRuleProposal",
     }
 
 
@@ -64,6 +72,86 @@ def test_round_trip_models() -> None:
     assert mon.gia == 25000
     assert don.nguon == "quay_noi_bo"
     assert don.dong[0].so_luong == 1
+
+
+def test_ai_learning_contracts_require_store_id_and_round_trip() -> None:
+    common = {
+        "id": "gen_01",
+        "store_id": "quan_01",
+        "channel": "gmail",
+        "created_at": "2026-09-04T10:00:00Z",
+    }
+    generation = AIGenerationRecord(
+        **common,
+        request_kind="gmail_request",
+        draft={"body": "Chào Minh"},
+        context_snapshot_hash="ctx_hash",
+        agent_version="mailwriter-v1",
+        prompt_version="mail-v1",
+        rule_version="none",
+        rollout_bucket="control",
+        model={"provider": "replay", "model_id": "replay-v1", "temperature": 0, "tool_context_hash": "tool_hash"},
+        policy_action="queue_review",
+        idempotency_key="idem_gen_01",
+    )
+    feedback = AIFeedbackEvent(
+        id="feedback_01",
+        store_id="quan_01",
+        generation_id=generation.id,
+        channel="gmail",
+        type="manager_approve",
+        actor_role="quan_ly",
+        idempotency_key="idem_feedback_01",
+        created_at=common["created_at"],
+    )
+    evaluation = AIEvaluation(
+        id="eval_01",
+        store_id="quan_01",
+        generation_id=generation.id,
+        channel="gmail",
+        scores={"accuracy": 1, "safety": 1},
+        aggregate_score=1,
+        passed=True,
+        action="queue_review",
+        threshold_version="quality-v1",
+        calibration_version="calibration-v1",
+        sample_count=0,
+        evaluation_window="pre_send",
+        evaluator="deterministic-v1",
+        idempotency_key="idem_eval_01",
+        created_at=common["created_at"],
+    )
+    proposal = AIRuleProposal(
+        id="proposal_01",
+        store_id="quan_01",
+        channel="gmail",
+        rule_type="style",
+        rule={"text": "Ngắn gọn", "intent_scope": ["notify_shift"], "audience_scope": ["employee"], "priority": 100},
+        evidence_count=1,
+        evidence_ids=[feedback.id],
+        confidence=0.9,
+        version=1,
+        idempotency_key="idem_proposal_01",
+        created_at=common["created_at"],
+        updated_at=common["created_at"],
+    )
+    assert AIGenerationRecord.model_validate_json(generation.model_dump_json()).store_id == "quan_01"
+    assert feedback.generation_id == generation.id
+    assert evaluation.aggregate_score == 1
+    assert proposal.evidence_ids == [feedback.id]
+
+
+def test_ai_learning_contracts_reject_missing_store_id() -> None:
+    with pytest.raises(ValidationError):
+        AIFeedbackEvent(
+            id="feedback_01",
+            generation_id="gen_01",
+            channel="gmail",
+            type="manager_approve",
+            actor_role="quan_ly",
+            idempotency_key="idem_feedback_01",
+            created_at="2026-09-04T10:00:00Z",
+        )
 
 
 def test_do_tin_cay_rejects_negative() -> None:

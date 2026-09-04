@@ -166,10 +166,20 @@ def draft_email(
     store_name: str = "Nhịp Quán",
     ops_context: dict[str, Any] | None = None,
     style_memory: dict[str, Any] | None = None,
+    active_style_rules: list[dict[str, Any]] | None = None,
     **extra: Any,
 ) -> EmailDraft:
     """Soạn thảo email chuyên nghiệp kết hợp Ngữ cảnh vận hành và Gu văn phong của chủ quán."""
     recip = recipient_name.strip() or "Bạn"
+
+    active_rule_texts = [str((rule.get("rule") or {}).get("text") or "").strip() for rule in active_style_rules or []]
+    active_rule_texts = [text for text in active_rule_texts if text]
+    effective_style = dict(style_memory or {})
+    for rule_text in active_rule_texts:
+        if rule_text.startswith("Dùng lời chào '"):
+            effective_style["greeting_style"] = rule_text.split("'", 2)[1]
+        elif rule_text.startswith("Kết thư bằng '"):
+            effective_style["signoff_name"] = rule_text.split("'", 2)[1]
 
     if agent_mode() == "replay":
         draft = _deterministic_draft(
@@ -178,28 +188,31 @@ def draft_email(
             sender_name,
             store_name,
             ops_context=ops_context,
-            style_memory=style_memory,
+            style_memory=effective_style or None,
         )
         draft.recipient_email = recipient_email
         return draft
 
     # Chuẩn bị system prompt cá nhân hóa với Tone Memory
     system_prompt = _MAIL_SYSTEM_BASE
-    if style_memory:
-        style_prompt = format_style_prompt(style_memory)
+    if effective_style:
+        style_prompt = format_style_prompt(effective_style)
         if style_prompt:
             system_prompt += f"\n\n{style_prompt}"
 
     # Chuẩn bị prompt người dùng với Compound Context
     prompt_parts = [
+        "--- TASK ---",
         f"Yêu cầu từ Chủ quán / Quản lý: \"{raw_request}\"",
         f"Người nhận thư: {recip}",
         f"Người gửi đại diện: {sender_name}",
         f"Tên quán: {store_name}",
+        "--- STYLE ---",
+        "\n".join(f"- {text}" for text in active_rule_texts) or "- Dùng quy chuẩn email mặc định.",
     ]
 
     if ops_context:
-        prompt_parts.append("\n--- DỮ LIỆU VẬN HÀNH THỰC TẾ XÁC THỰC TỪ HỆ THỐNG (BẮT BUỘC ĐƯA VÀO EMAIL) ---")
+        prompt_parts.append("\n--- FACTS: DỮ LIỆU VẬN HÀNH THỰC TẾ XÁC THỰC (BẮT BUỘC ĐƯA VÀO EMAIL) ---")
         prompt_parts.append(json.dumps(ops_context, ensure_ascii=False, indent=2))
         prompt_parts.append("-----------------------------------------------------------------------------------")
 
@@ -219,7 +232,7 @@ def draft_email(
                     tone=str(data.get("tone") or "lich_su"),
                     summary=str(data.get("summary") or f"Bản nháp email gửi {recip}: {data['subject']}"),
                     ops_context_used=ops_context,
-                    has_learned_style=bool(style_memory),
+                    has_learned_style=bool(effective_style or active_rule_texts),
                 )
     except Exception:
         pass
@@ -231,7 +244,7 @@ def draft_email(
         sender_name,
         store_name,
         ops_context=ops_context,
-        style_memory=style_memory,
+        style_memory=effective_style or None,
     )
     draft.recipient_email = recipient_email
     return draft

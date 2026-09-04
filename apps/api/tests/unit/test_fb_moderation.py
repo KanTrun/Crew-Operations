@@ -101,6 +101,26 @@ def test_duplicate_mid_processed_once(api: TestClient) -> None:
     assert _post(api, "dup_mid_1", "quan mo cua may gio").json().get("n") == 0
 
 
+def test_scoped_event_dedupe_isolates_tenants(api: TestClient) -> None:
+    from ca_api.persist import fb_try_claim_scoped_event
+
+    assert fb_try_claim_scoped_event(
+        store_id="quan_02", page_id="page_1", event_type="messaging", external_event_id="same_mid"
+    )
+    assert not fb_try_claim_scoped_event(
+        store_id="quan_02", page_id="page_1", event_type="messaging", external_event_id="same_mid"
+    )
+    assert fb_try_claim_scoped_event(
+        store_id="quan_03", page_id="page_1", event_type="messaging", external_event_id="same_mid"
+    )
+
+
+def test_webhook_without_message_id_is_ignored(api: TestClient) -> None:
+    response = _post(api, "", "xin chao")
+    assert response.status_code == 200
+    assert response.json().get("n", 0) == 0
+
+
 def test_entry_wrong_page_id_skipped(api: TestClient) -> None:
     r = api.post(
         "/api/v1/channels/facebook/webhook",
@@ -184,6 +204,114 @@ def test_inbox_decide_sua_gui_and_idempotent(api: TestClient, monkeypatch) -> No
     )
     assert r2.status_code == 409
     assert len(sent) == 1
+
+
+def test_inbox_feedback_uses_explicit_generation_link(api: TestClient) -> None:
+    from ca_api.ai_learning.repository import AILearningRepository
+
+    _post(api, "learning_link_1", "đặt bàn 3 người lúc 20h")
+    hit = next(i for i in _pending(api) if "đặt bàn 3" in str(i["message_text"]))
+    assert hit["ai_generation_id"]
+    response = api.post(
+        f"/api/v1/page/fb-inbox/{hit['id']}/decide",
+        json={"quyet_dinh": "duyet"},
+        headers=headers(api, "lan"),
+    )
+    assert response.status_code == 200, response.text
+    feedback = AILearningRepository().list("feedback", store_id="quan_01", limit=20)
+    linked = [item for item in feedback if item.get("generation_id") == hit["ai_generation_id"]]
+    linked_types = {item["type"] for item in linked}
+    assert "manager_approve" in linked_types
+
+
+def test_followup_feedback_uses_prior_thread_generation(api: TestClient) -> None:
+    _post(api, "followup-1", "quán mở cửa mấy giờ", psid="psid_followup")
+    threads = api.get("/api/v1/page/threads", headers=headers(api, "lan")).json()["items"]
+    thread = next(item for item in threads if item["psid"] == "psid_followup")
+    prior_generation_id = thread["ai_generation_id"]
+
+    _post(api, "followup-2", "Tệ quá, tôi không hài lòng", psid="psid_followup")
+    from ca_api.ai_learning.repository import AILearningRepository
+
+    linked_types = {
+        item["type"] for item in AILearningRepository().list("feedback", store_id="quan_01", limit=20)
+        if item["generation_id"] == prior_generation_id
+    }
+    assert {"customer_followup", "customer_negative"}.issubset(linked_types)
+
+
+def test_webhook_audits_selected_facebook_canary_rule(api: TestClient) -> None:
+    from ca_api.ai_learning.repository import AILearningRepository
+    from ca_contracts import AIFeedbackEvent, AIGenerationRecord, AIRuleProposal
+
+    repository = AILearningRepository()
+    evidence_generation = AIGenerationRecord(
+        id="facebook-canary-evidence-generation",
+        store_id="quan_01",
+        channel="facebook",
+        conversation_id="psid_canary_evidence",
+        request_kind="facebook_message",
+        draft={"body": "Bản nháp"},
+        context_snapshot_hash="canary-evidence",
+        agent_version="ag-fbpage",
+        prompt_version="fb-messenger-v1",
+        rule_version="none",
+        rollout_bucket="control",
+        model={"provider": "replay", "model_id": "ag-fbpage", "temperature": 0, "tool_context_hash": "canary-evidence"},
+        policy_action="queue_review",
+        idempotency_key="facebook-canary-evidence-generation",
+        created_at="2026-09-04T09:00:00Z",
+    )
+    assert repository.save(evidence_generation)
+    evidence_ids = ["feedback-1", "feedback-2", "feedback-3"]
+    for index, feedback_id in enumerate(evidence_ids):
+        assert repository.save(AIFeedbackEvent(
+            id=feedback_id,
+            store_id="quan_01",
+            generation_id=evidence_generation.id,
+            channel="facebook",
+            type="manager_edit",
+            actor_role="quan_ly",
+            idempotency_key=f"facebook-canary-evidence-{index}",
+            created_at=f"2026-09-04T09:0{index}:00Z",
+        ))
+    rule = AIRuleProposal(
+        id="facebook-canary-rule",
+        store_id="quan_01",
+        channel="facebook",
+        rule_type="style",
+        rule={
+            "text": "Dùng lời chào thân thiện.",
+            "intent_scope": ["general"],
+            "audience_scope": ["customer"],
+            "priority": 1,
+        },
+        evidence_count=3,
+        evidence_ids=evidence_ids,
+        confidence=0.9,
+        version=1,
+        rollout={"mode": "canary", "percentage": 100, "min_sample": 20},
+        idempotency_key="facebook-canary-rule",
+        created_at="2026-09-04T10:00:00Z",
+        updated_at="2026-09-04T10:00:00Z",
+    )
+    assert repository.save(rule)
+    assert repository.transition_rule_proposal(
+        store_id="quan_01", proposal_id=rule.id, target_status="approved", actor_id="hung",
+        updated_at="2026-09-04T10:01:00Z",
+    )
+    assert repository.transition_rule_proposal(
+        store_id="quan_01", proposal_id=rule.id, target_status="active", actor_id="hung",
+        updated_at="2026-09-04T10:02:00Z",
+    )
+
+    assert _post(api, "canary-1", "quán mở cửa mấy giờ", psid="psid_canary").status_code == 200
+    generation = next(
+        item for item in AILearningRepository().list("generation", store_id="quan_01", limit=20)
+        if item["conversation_id"] == "psid_canary"
+    )
+    assert generation["rule_version"] == rule.id
+    assert generation["rollout_bucket"] == "canary_50"
 
 
 def test_inbox_reject(api: TestClient) -> None:

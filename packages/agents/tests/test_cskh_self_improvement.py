@@ -122,7 +122,10 @@ def test_nightly_cskh_reflection() -> None:
         {
             "id": "t2",
             "intent": "khac",
-            "messages": [{"from_customer": True, "text": "Quán có bán hạt cà phê Robusta đóng gói mang về không?"}],
+            "messages": [
+                {"from_customer": True, "text": "Alo quán ơi"},
+                {"from_customer": True, "text": "Quán có bán hạt cà phê Robusta đóng gói mang về không?"},
+            ],
             "suggested_reply": "Dạ em chưa có thông tin này, để em kiểm tra lại ạ.",
             "pending_approval": True,
         },
@@ -144,6 +147,8 @@ def test_nightly_cskh_reflection() -> None:
     unresolved = report["unresolved_inquiries"]
     assert len(unresolved) == 1
     assert unresolved[0]["slug"] == "ban_hat_cafe"
+    # Kiểm tra trích xuất đúng câu hỏi thật thay vì câu chào hỏi ban đầu
+    assert "bán hạt" in unresolved[0]["sample_questions"][0].lower()
 
     # Kiểm tra sinh đề xuất cẩm nang
     proposals = report["playbook_rule_proposals"]

@@ -68,7 +68,7 @@ const STAFF_ACCESS = new Set([
   "/them",
   "/contracts",
 ]);
-const MANAGER_ONLY = new Set(["/roster", "/inbox", "/page-quan"]);
+const MANAGER_ONLY = new Set(["/roster", "/inbox", "/page-quan", "/ai-learning"]);
 const OWNER_ONLY = new Set(["/menu", "/nguoi", "/vet"]);
 
 /** Client-side gate for navigation and hand-typed URLs. API remains authoritative. */

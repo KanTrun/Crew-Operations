@@ -5,10 +5,16 @@ from ca_agents.ag_mailwriter.style_extractor import (
     format_style_prompt,
 )
 from ca_agents.ag_mailwriter.writer import EmailDraft, draft_email
+from ca_agents.ag_mailwriter.quality_gate import QualityGateResult, evaluate_gmail, feedback_diff
+from ca_agents.ag_mailwriter.reflection import run_gmail_reflection
 
 __all__ = [
     "EmailDraft",
     "draft_email",
     "extract_style_preferences",
     "format_style_prompt",
+    "QualityGateResult",
+    "evaluate_gmail",
+    "feedback_diff",
+    "run_gmail_reflection",
 ]

@@ -53,6 +53,7 @@ _PREFIX = "pbkdf2_sha256"
 # mà lấy được vai quản lý thì bất kỳ ai cũng duyệt được ràng buộc và phát được
 # mã điểm danh. Nâng vai là việc của chủ quán, làm ngoài luồng đăng ký.
 VAI_TU_DANG_KY = "nhan_vien"
+DEFAULT_STORE_ID = os.environ.get("NHIPQUAN_DEFAULT_STORE_ID", "quan_01").strip() or "quan_01"
 
 
 def hash_password(password: str, *, salt: bytes | None = None) -> str:
@@ -103,13 +104,15 @@ def init_db() -> None:
                 role TEXT NOT NULL,
                 nv_id TEXT NOT NULL,
                 display_name TEXT NOT NULL,
-                email TEXT NOT NULL DEFAULT ''
+                email TEXT NOT NULL DEFAULT '',
+                store_id TEXT NOT NULL DEFAULT 'quan_01'
             );
             CREATE TABLE IF NOT EXISTS sessions (
                 token TEXT PRIMARY KEY,
                 username TEXT NOT NULL,
                 role TEXT NOT NULL,
-                nv_id TEXT NOT NULL
+                nv_id TEXT NOT NULL,
+                store_id TEXT NOT NULL DEFAULT 'quan_01'
             );
             CREATE TABLE IF NOT EXISTS kv (
                 k TEXT PRIMARY KEY,
@@ -194,6 +197,7 @@ def init_db() -> None:
                 policy_action TEXT NOT NULL,
                 assigned_role TEXT CHECK (assigned_role IN ('quan_ly','chu_quan')),
                 proposed_response TEXT,
+                ai_generation_id TEXT,
                 flagged_reasons TEXT NOT NULL DEFAULT '[]',
                 status TEXT NOT NULL DEFAULT 'pending'
                     CHECK (status IN ('pending','approved','edited_approved','rejected','sent','expired','auto_sent')),
@@ -227,18 +231,52 @@ def init_db() -> None:
                 event_id TEXT PRIMARY KEY,
                 processed_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS fb_event_receipts (
+                idempotency_key TEXT PRIMARY KEY,
+                store_id TEXT NOT NULL,
+                page_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                external_event_id TEXT NOT NULL,
+                processed_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_fb_event_receipts_scope
+                ON fb_event_receipts(store_id, page_id, event_type, processed_at);
+            CREATE TABLE IF NOT EXISTS ai_generation_records (
+                id TEXT PRIMARY KEY, store_id TEXT NOT NULL, channel TEXT NOT NULL,
+                idempotency_key TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL,
+                UNIQUE(store_id, idempotency_key)
+            );
+            CREATE INDEX IF NOT EXISTS idx_ai_generation_store_created ON ai_generation_records(store_id, created_at DESC);
+            CREATE TABLE IF NOT EXISTS ai_feedback_events (
+                id TEXT PRIMARY KEY, store_id TEXT NOT NULL, generation_id TEXT NOT NULL,
+                channel TEXT NOT NULL, idempotency_key TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL,
+                UNIQUE(store_id, idempotency_key)
+            );
+            CREATE INDEX IF NOT EXISTS idx_ai_feedback_store_generation ON ai_feedback_events(store_id, generation_id, created_at DESC);
+            CREATE TABLE IF NOT EXISTS ai_evaluations (
+                id TEXT PRIMARY KEY, store_id TEXT NOT NULL, generation_id TEXT NOT NULL,
+                channel TEXT NOT NULL, idempotency_key TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL,
+                UNIQUE(store_id, idempotency_key)
+            );
+            CREATE INDEX IF NOT EXISTS idx_ai_evaluation_store_generation ON ai_evaluations(store_id, generation_id, created_at DESC);
+            CREATE TABLE IF NOT EXISTS ai_rule_proposals (
+                id TEXT PRIMARY KEY, store_id TEXT NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL,
+                version INTEGER NOT NULL, idempotency_key TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+                UNIQUE(store_id, idempotency_key)
+            );
+            CREATE INDEX IF NOT EXISTS idx_ai_rule_proposal_store_status ON ai_rule_proposals(store_id, status, updated_at DESC);
             """
         )
+        _migrate_schema(cx)
         for u, pw, role, nv, name in USERS:
             cx.execute(
                 """
-                INSERT OR IGNORE INTO users(username, password_sha, role, nv_id, display_name)
-                VALUES (?,?,?,?,?)
+                INSERT OR IGNORE INTO users(username, password_sha, role, nv_id, display_name, store_id)
+                VALUES (?,?,?,?,?,?)
                 """,
-                (u, hash_password(pw), role, nv, name),
+                (u, hash_password(pw), role, nv, name, DEFAULT_STORE_ID),
             )
         _seed_menu_neu_trong(cx)
-        _migrate_schema(cx)
     _INITIALIZED = True
 
 
@@ -249,6 +287,24 @@ def _migrate_schema(cx: sqlite3.Connection) -> None:
     ucols = {r[1] for r in cx.execute("PRAGMA table_info(users)")}
     if "email" not in ucols:
         cx.execute("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''")
+    if "store_id" not in ucols:
+        cx.execute("ALTER TABLE users ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
+    cx.execute("UPDATE users SET store_id=? WHERE TRIM(store_id)=''", (DEFAULT_STORE_ID,))
+    scols = {r[1] for r in cx.execute("PRAGMA table_info(sessions)")}
+    if "store_id" not in scols:
+        cx.execute("ALTER TABLE sessions ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
+    cx.execute("UPDATE sessions SET store_id=(SELECT store_id FROM users WHERE users.username=sessions.username) WHERE store_id='quan_01' AND EXISTS (SELECT 1 FROM users WHERE users.username=sessions.username)")
+    evaluation_cols = {r[1] for r in cx.execute("PRAGMA table_info(ai_evaluations)")}
+    if "idempotency_key" not in evaluation_cols:
+        cx.execute("ALTER TABLE ai_evaluations ADD COLUMN idempotency_key TEXT NOT NULL DEFAULT ''")
+        cx.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_evaluation_store_idem ON ai_evaluations(store_id, idempotency_key)")
+    proposal_cols = {r[1] for r in cx.execute("PRAGMA table_info(ai_rule_proposals)")}
+    if "idempotency_key" not in proposal_cols:
+        cx.execute("ALTER TABLE ai_rule_proposals ADD COLUMN idempotency_key TEXT NOT NULL DEFAULT ''")
+        cx.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_rule_proposal_store_idem ON ai_rule_proposals(store_id, idempotency_key)")
+    review_cols = {r[1] for r in cx.execute("PRAGMA table_info(fb_review_queue)")}
+    if "ai_generation_id" not in review_cols:
+        cx.execute("ALTER TABLE fb_review_queue ADD COLUMN ai_generation_id TEXT")
 
 
 _MENU_MAC_DINH = (
@@ -394,7 +450,7 @@ def login(username: str, password: str) -> dict[str, str] | None:
     with _conn() as cx:
         row = cx.execute(
             """
-            SELECT username, role, nv_id, display_name, password_sha
+            SELECT username, role, nv_id, display_name, password_sha, store_id
             FROM users WHERE username=?
             """,
             (username.strip().lower(),),
@@ -405,14 +461,15 @@ def login(username: str, password: str) -> dict[str, str] | None:
             return None
         token = uuid.uuid4().hex
         cx.execute(
-            "INSERT INTO sessions(token, username, role, nv_id) VALUES (?,?,?,?)",
-            (token, row[0], row[1], row[2]),
+            "INSERT INTO sessions(token, username, role, nv_id, store_id) VALUES (?,?,?,?,?)",
+            (token, row[0], row[1], row[2], row[5]),
         )
         return {
             "token": token,
             "role": row[1],
             "nv_id": row[2],
             "display_name": row[3],
+            "store_id": row[5],
         }
 
 
@@ -451,6 +508,7 @@ def register(username: str, password: str, display_name: str) -> dict[str, str]:
     init_db()
     u = (username or "").strip().lower()
     ten = (display_name or "").strip()
+    store_id = DEFAULT_STORE_ID
     if not _USERNAME_RE.match(u):
         raise DangKyLoi("ten_khong_hop_le")
     if len(password or "") < MK_TOI_THIEU:
@@ -467,21 +525,21 @@ def register(username: str, password: str, display_name: str) -> dict[str, str]:
             nv = _nv_id_ke_tiep(cx)
             cx.execute(
                 """
-                INSERT INTO users(username, password_sha, role, nv_id, display_name)
-                VALUES (?,?,?,?,?)
+                INSERT INTO users(username, password_sha, role, nv_id, display_name, store_id)
+                VALUES (?,?,?,?,?,?)
                 """,
-                (u, hash_password(password), VAI_TU_DANG_KY, nv, ten),
+                (u, hash_password(password), VAI_TU_DANG_KY, nv, ten, store_id),
             )
             token = uuid.uuid4().hex
             cx.execute(
-                "INSERT INTO sessions(token, username, role, nv_id) VALUES (?,?,?,?)",
-                (token, u, VAI_TU_DANG_KY, nv),
+                "INSERT INTO sessions(token, username, role, nv_id, store_id) VALUES (?,?,?,?,?)",
+                (token, u, VAI_TU_DANG_KY, nv, store_id),
             )
             cx.execute("COMMIT")
         except Exception:
             cx.execute("ROLLBACK")
             raise
-    return {"token": token, "role": VAI_TU_DANG_KY, "nv_id": nv, "display_name": ten}
+    return {"token": token, "role": VAI_TU_DANG_KY, "nv_id": nv, "display_name": ten, "store_id": store_id}
 
 
 def session(authorization: str | None) -> dict[str, str] | None:
@@ -491,13 +549,13 @@ def session(authorization: str | None) -> dict[str, str] | None:
     raw = authorization.removeprefix("Bearer ").strip()
     with _conn() as cx:
         row = cx.execute(
-            "SELECT s.username, s.role, s.nv_id, u.email FROM sessions s "
+            "SELECT s.username, s.role, s.nv_id, u.email, s.store_id FROM sessions s "
             "LEFT JOIN users u ON u.nv_id = s.nv_id WHERE s.token=?",
             (raw,),
         ).fetchone()
         if not row:
             return None
-        return {"username": row[0], "role": row[1], "nv_id": row[2], "email": str(row[3] or "")}
+        return {"username": row[0], "role": row[1], "nv_id": row[2], "email": str(row[3] or ""), "store_id": row[4]}
 
 
 def kv_get(key: str, default: Any) -> Any:
@@ -1082,6 +1140,222 @@ def fb_try_claim_event(event_id: str) -> bool:
             return False
 
 
+def fb_try_claim_scoped_event(*, store_id: str, page_id: str, event_type: str, external_event_id: str) -> bool:
+    """Atomically claim one Facebook event in its tenant/Page/type scope."""
+    if not all(value.strip() for value in (store_id, page_id, event_type, external_event_id)):
+        return False
+    idempotency_key = hashlib.sha256(f"{store_id}:{page_id}:{event_type}:{external_event_id}".encode()).hexdigest()
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            "INSERT INTO fb_event_receipts(idempotency_key, store_id, page_id, event_type, external_event_id, processed_at) VALUES (?,?,?,?,?,?) ON CONFLICT(idempotency_key) DO NOTHING",
+            (idempotency_key, store_id, page_id, event_type, external_event_id, _iso_now()),
+        )
+        return cur.rowcount == 1
+
+
+_AI_LEARNING_TABLES = {"generation": "ai_generation_records", "feedback": "ai_feedback_events", "evaluation": "ai_evaluations", "rule_proposal": "ai_rule_proposals"}
+
+
+def _ai_generation_exists(cx: sqlite3.Connection, *, store_id: str, generation_id: str) -> bool:
+    return cx.execute("SELECT 1 FROM ai_generation_records WHERE store_id=? AND id=?", (store_id, generation_id)).fetchone() is not None
+
+
+def ai_learning_save(kind: str, record: dict[str, Any]) -> bool:
+    """Persist a pre-redacted AI-learning record; return False for idempotent replay."""
+    if kind not in _AI_LEARNING_TABLES:
+        raise ValueError("ai_learning_record_invalid")
+    try:
+        store_id, record_id, channel, created_at = (str(record[key]).strip() for key in ("store_id", "id", "channel", "created_at"))
+    except (KeyError, TypeError):
+        raise ValueError("ai_learning_record_invalid") from None
+    if not all((store_id, record_id, channel, created_at)):
+        raise ValueError("ai_learning_record_invalid")
+    payload = json.dumps(record, ensure_ascii=False, separators=(",", ":"))
+    init_db()
+    with _conn() as cx:
+        if kind == "generation":
+            cur = cx.execute("INSERT INTO ai_generation_records(id, store_id, channel, idempotency_key, payload, created_at) VALUES (?,?,?,?,?,?) ON CONFLICT(store_id, idempotency_key) DO NOTHING", (record_id, store_id, channel, str(record["idempotency_key"]), payload, created_at))
+        elif kind == "feedback":
+            if not _ai_generation_exists(cx, store_id=store_id, generation_id=str(record["generation_id"])):
+                raise ValueError("ai_learning_cross_tenant_generation")
+            cur = cx.execute("INSERT INTO ai_feedback_events(id, store_id, generation_id, channel, idempotency_key, payload, created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(store_id, idempotency_key) DO NOTHING", (record_id, store_id, str(record["generation_id"]), channel, str(record["idempotency_key"]), payload, created_at))
+        elif kind == "evaluation":
+            if not _ai_generation_exists(cx, store_id=store_id, generation_id=str(record["generation_id"])):
+                raise ValueError("ai_learning_cross_tenant_generation")
+            cur = cx.execute("INSERT INTO ai_evaluations(id, store_id, generation_id, channel, idempotency_key, payload, created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(store_id, idempotency_key) DO NOTHING", (record_id, store_id, str(record["generation_id"]), channel, str(record["idempotency_key"]), payload, created_at))
+        else:
+            evidence_ids = [str(value) for value in record.get("evidence_ids", [])]
+            if not evidence_ids:
+                raise ValueError("ai_learning_evidence_missing")
+            placeholders = ",".join("?" for _ in evidence_ids)
+            rows = cx.execute(f"SELECT id FROM ai_feedback_events WHERE store_id=? AND id IN ({placeholders})", [store_id, *evidence_ids]).fetchall()
+            if {str(row[0]) for row in rows} != set(evidence_ids):
+                raise ValueError("ai_learning_cross_tenant_evidence")
+            cur = cx.execute("INSERT INTO ai_rule_proposals(id, store_id, channel, status, version, idempotency_key, payload, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(store_id, idempotency_key) DO NOTHING", (record_id, store_id, channel, str(record.get("status", "pending")), int(record["version"]), str(record["idempotency_key"]), payload, created_at, str(record["updated_at"])))
+        return cur.rowcount == 1
+
+
+def ai_learning_list(kind: str, *, store_id: str, limit: int = 50) -> list[dict[str, Any]]:
+    """Read AI-learning records only from the requested tenant."""
+    if kind not in _AI_LEARNING_TABLES or not store_id.strip():
+        raise ValueError("ai_learning_query_invalid")
+    init_db()
+    with _conn() as cx:
+        rows = cx.execute(f"SELECT payload FROM {_AI_LEARNING_TABLES[kind]} WHERE store_id=? ORDER BY created_at DESC LIMIT ?", (store_id, max(1, min(limit, 200)))).fetchall()
+    return [json.loads(str(row[0])) for row in rows]
+
+
+_AI_RULE_TRANSITIONS = {
+    "pending": {"approved", "rejected", "conflict_pending"},
+    "conflict_pending": {"approved", "rejected"},
+    "approved": {"active", "rejected"},
+    "active": {"paused", "rolled_back"},
+    "paused": {"active", "rolled_back"},
+}
+
+
+def ai_rule_proposal_get(*, store_id: str, proposal_id: str) -> dict[str, Any] | None:
+    """Return one proposal only when it belongs to the requested tenant."""
+    if not store_id.strip() or not proposal_id.strip():
+        raise ValueError("ai_learning_query_invalid")
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT payload FROM ai_rule_proposals WHERE store_id=? AND id=?",
+            (store_id, proposal_id),
+        ).fetchone()
+    return json.loads(str(row[0])) if row else None
+
+
+def ai_rule_proposal_list(
+    *, store_id: str, channel: str | None = None, status: str | None = None, limit: int = 50
+) -> list[dict[str, Any]]:
+    """List proposal records scoped to one tenant, optionally by channel/status."""
+    if not store_id.strip():
+        raise ValueError("ai_learning_query_invalid")
+    init_db()
+    query = "SELECT payload FROM ai_rule_proposals WHERE store_id=?"
+    params: list[Any] = [store_id]
+    if channel:
+        query += " AND channel=?"
+        params.append(channel)
+    if status:
+        query += " AND status=?"
+        params.append(status)
+    query += " ORDER BY updated_at DESC LIMIT ?"
+    params.append(max(1, min(limit, 200)))
+    with _conn() as cx:
+        rows = cx.execute(query, params).fetchall()
+    return [json.loads(str(row[0])) for row in rows]
+
+
+def ai_rule_proposal_transition(
+    *, store_id: str, proposal_id: str, target_status: str, actor_id: str, updated_at: str,
+    rejection_reason: str | None = None,
+) -> dict[str, Any] | None:
+    """Atomically apply a legal, tenant-scoped human rule lifecycle transition."""
+    if not all(value.strip() for value in (store_id, proposal_id, target_status, actor_id, updated_at)):
+        raise ValueError("ai_learning_transition_invalid")
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT status, payload FROM ai_rule_proposals WHERE store_id=? AND id=?",
+            (store_id, proposal_id),
+        ).fetchone()
+        if not row:
+            return None
+        current_status = str(row[0])
+        if target_status not in _AI_RULE_TRANSITIONS.get(current_status, set()):
+            raise ValueError("ai_learning_transition_invalid")
+        proposal = json.loads(str(row[1]))
+        proposal["status"] = target_status
+        proposal["updated_at"] = updated_at
+        if target_status in {"approved", "active"}:
+            proposal["approved_by"] = actor_id
+            proposal["approved_at"] = updated_at
+            proposal["rejection_reason"] = None
+        elif target_status == "rejected":
+            proposal["rejection_reason"] = (rejection_reason or "rejected_by_owner").strip()
+        payload = json.dumps(proposal, ensure_ascii=False, separators=(",", ":"))
+        cur = cx.execute(
+            "UPDATE ai_rule_proposals SET status=?, payload=?, updated_at=? WHERE store_id=? AND id=? AND status=?",
+            (target_status, payload, updated_at, store_id, proposal_id, current_status),
+        )
+        return proposal if cur.rowcount == 1 else None
+
+
+def ai_rule_active_list(*, store_id: str, channel: str, limit: int = 50) -> list[dict[str, Any]]:
+    """Return active rules ordered deterministically for prompt construction."""
+    rules = ai_rule_proposal_list(store_id=store_id, channel=channel, status="active", limit=limit)
+    return sorted(
+        rules,
+        key=lambda rule: (-int((rule.get("rule") or {}).get("priority", 0)), str(rule.get("created_at", "")), str(rule.get("id", ""))),
+    )
+
+
+def ai_learning_snapshot(*, store_id: str) -> dict[str, Any]:
+    """Return a consistent per-store export and SHA-256 manifest for backup tooling."""
+    if not store_id.strip():
+        raise ValueError("ai_learning_query_invalid")
+    init_db()
+    with _conn() as cx:
+        cx.isolation_level = None
+        cx.execute("BEGIN")
+        try:
+            records = {kind: [json.loads(str(row[0])) for row in cx.execute(f"SELECT payload FROM {table} WHERE store_id=? ORDER BY created_at, id", (store_id,)).fetchall()] for kind, table in _AI_LEARNING_TABLES.items()}
+            cx.execute("COMMIT")
+        except Exception:
+            cx.execute("ROLLBACK")
+            raise
+    snapshot = {"schema_version": 1, "store_id": store_id, "records": records}
+    payload = json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    return {"snapshot": snapshot, "checksum_sha256": hashlib.sha256(payload).hexdigest()}
+
+
+def ai_learning_backup(*, store_id: str, directory: Path | None = None) -> dict[str, Any]:
+    """Write a tenant-scoped consistent snapshot plus checksum manifest atomically."""
+    from ca_api.ai_learning.security import require_encrypted_data_path
+
+    backup = ai_learning_snapshot(store_id=store_id)
+    output_dir = directory or Path(os.environ.get("NHIPQUAN_AI_LEARNING_BACKUP_DIR", ROOT / "data" / "backups"))
+    require_encrypted_data_path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    safe_store = re.sub(r"[^A-Za-z0-9_.-]", "_", store_id)
+    snapshot_path = output_dir / f"ai-learning-{safe_store}-{stamp}.json"
+    manifest_path = snapshot_path.with_suffix(".sha256.json")
+    snapshot_payload = json.dumps(backup["snapshot"], ensure_ascii=False, sort_keys=True, indent=2)
+    manifest = {
+        "backup_format_version": 1,
+        "created_at": datetime.now(UTC).isoformat(),
+        "schema_version": backup["snapshot"]["schema_version"],
+        "store_id": store_id,
+        "store_coverage": [store_id],
+        "record_counts": {kind: len(records) for kind, records in backup["snapshot"]["records"].items()},
+        "checksum_sha256": backup["checksum_sha256"],
+        "snapshot_file": snapshot_path.name,
+    }
+    for path, content in ((snapshot_path, snapshot_payload), (manifest_path, json.dumps(manifest, indent=2, sort_keys=True))):
+        temporary = path.with_suffix(f"{path.suffix}.tmp")
+        temporary.write_text(content, encoding="utf-8")
+        temporary.replace(path)
+    return {**backup, "snapshot_path": str(snapshot_path), "manifest_path": str(manifest_path)}
+
+
+def ai_learning_verify_backup(*, snapshot_path: Path, manifest_path: Path) -> bool:
+    """Verify backup format, manifest coverage, and SHA-256 before a restore."""
+    snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    digest = hashlib.sha256(json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return (
+        manifest.get("backup_format_version") == 1
+        and manifest.get("schema_version") == snapshot.get("schema_version") == 1
+        and manifest.get("store_coverage") == [snapshot.get("store_id")]
+        and manifest.get("checksum_sha256") == digest
+    )
+
+
 def fb_review_insert(item: dict[str, Any]) -> int:
     """Ghi 1 hàng vào fb_review_queue, trả về id."""
     init_db()
@@ -1149,6 +1423,16 @@ def fb_review_get(item_id: int) -> dict[str, Any] | None:
             "SELECT * FROM fb_review_queue WHERE id=?", (item_id,)
         ).fetchone()
     return dict(row) if row else None
+
+
+def fb_review_link_generation(item_id: int, *, generation_id: str) -> None:
+    """Attach the exact AI generation that produced this review draft."""
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            "UPDATE fb_review_queue SET ai_generation_id=? WHERE id=?",
+            (generation_id, item_id),
+        )
 
 
 def fb_review_decide(

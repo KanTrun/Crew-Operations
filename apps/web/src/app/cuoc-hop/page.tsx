@@ -130,6 +130,8 @@ interface CuocHop {
   de_xuat_sop?: DeXuatSop[];
   do_tin_cay_tong_the?: number;
   trang_thai?: "cho_duyet" | "da_duyet" | "tu_choi";
+  duyet_boi?: string;
+  duyet_luc?: string;
 }
 
 
@@ -171,6 +173,7 @@ export default function MeetingPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [liveTranscript, setLiveTranscript] = useState("");
+  const liveTranscriptRef = useRef("");
   const [interimText, setInterimText] = useState("");
   const [volumeLevel, setVolumeLevel] = useState(0);
 
@@ -252,7 +255,10 @@ export default function MeetingPage() {
           }
         }
         if (finalStr) {
-          setLiveTranscript((prev) => (prev ? prev + " " + finalStr.trim() : finalStr.trim()));
+          liveTranscriptRef.current = liveTranscriptRef.current
+            ? liveTranscriptRef.current + " " + finalStr.trim()
+            : finalStr.trim();
+          setLiveTranscript(liveTranscriptRef.current);
         }
         setInterimText(interimStr);
       };
@@ -269,9 +275,12 @@ export default function MeetingPage() {
   }
 
   // Setup Volume Meter Visualizer
-  function setupAudioMeter(stream: MediaStream) {
+  function setupAudioMeter(stream: MediaStream, existingCtx?: AudioContext) {
     try {
-      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const audioCtx =
+        existingCtx ||
+        audioContextRef.current ||
+        new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       audioContextRef.current = audioCtx;
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
@@ -300,6 +309,7 @@ export default function MeetingPage() {
     setError(null);
     setSuccess(null);
     audioChunksRef.current = [];
+    liveTranscriptRef.current = "";
     setLiveTranscript("");
     setInterimText("");
 
@@ -312,6 +322,13 @@ export default function MeetingPage() {
         } as MediaTrackConstraints,
       });
 
+      const videoTrack = displayStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.onended = () => {
+          stopRecording();
+        };
+      }
+
       let micStream: MediaStream | null = null;
       try {
         micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -320,6 +337,7 @@ export default function MeetingPage() {
       }
 
       const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      audioContextRef.current = audioCtx;
       const dest = audioCtx.createMediaStreamDestination();
 
       const tabAudioTracks = displayStream.getAudioTracks();
@@ -336,7 +354,7 @@ export default function MeetingPage() {
       }
 
       const mixedStream = dest.stream;
-      setupAudioMeter(mixedStream);
+      setupAudioMeter(mixedStream, audioCtx);
       initLiveSpeechRecognition();
 
       const recorder = new MediaRecorder(mixedStream, {
@@ -351,10 +369,18 @@ export default function MeetingPage() {
       recorder.onstop = async () => {
         displayStream.getTracks().forEach((t) => t.stop());
         if (micStream) micStream.getTracks().forEach((t) => t.stop());
-        if (audioContextRef.current) audioContextRef.current.close();
-        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+        if (audioContextRef.current) {
+          try { audioContextRef.current.close(); } catch {}
+          audioContextRef.current = null;
+        }
+        if (animFrameRef.current) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = null;
+        }
+        setVolumeLevel(0);
         if (speechRecognitionRef.current) {
           try { speechRecognitionRef.current.stop(); } catch {}
+          speechRecognitionRef.current = null;
         }
 
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
@@ -379,6 +405,7 @@ export default function MeetingPage() {
     setError(null);
     setSuccess(null);
     audioChunksRef.current = [];
+    liveTranscriptRef.current = "";
     setLiveTranscript("");
     setInterimText("");
 
@@ -398,10 +425,18 @@ export default function MeetingPage() {
 
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        if (audioContextRef.current) audioContextRef.current.close();
-        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+        if (audioContextRef.current) {
+          try { audioContextRef.current.close(); } catch {}
+          audioContextRef.current = null;
+        }
+        if (animFrameRef.current) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = null;
+        }
+        setVolumeLevel(0);
         if (speechRecognitionRef.current) {
           try { speechRecognitionRef.current.stop(); } catch {}
+          speechRecognitionRef.current = null;
         }
 
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
@@ -422,8 +457,11 @@ export default function MeetingPage() {
   }
 
   function stopRecording() {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (mediaRecorderRef.current && isRecording) {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
     }
     setIsRecording(false);
@@ -432,22 +470,22 @@ export default function MeetingPage() {
   // Handle Audio Blob Upload
   async function handleAudioBlob(blob: Blob, source: "google_meet_tab" | "microphone") {
     setBusy(true);
-    setStatusMsg("Đang truyền âm thanh & bóc băng thoại với Gemini 3.5 Transcribe...");
+    setStatusMsg("Đang truyền âm thanh & bóc băng thoại với Gemini Transcribe...");
     try {
       const form = new FormData();
       form.append("file", blob, "meeting_recording.webm");
       form.append("meeting_type", meetingType);
       form.append("audio_source", source);
-      form.append("live_transcript", liveTranscript);
+      const transcriptToSend = (liveTranscriptRef.current || liveTranscript).trim();
+      form.append("live_transcript", transcriptToSend);
 
       setStatusMsg("Đang phân tích Action Items & Đề xuất Cẩm nang quán...");
       const res = await apiUpload<CuocHop>("/api/v1/meeting/process-audio", form);
       
       // If the backend transcript is empty, fallback to captured live browser speech
-      if ((!res.transcript_thoai || res.transcript_thoai.length === 0) && liveTranscript.trim()) {
-        res.transcript_thoai = [{ nguoi_noi: "Giao ca", noi_dung: liveTranscript.trim() }];
+      if ((!res.transcript_thoai || res.transcript_thoai.length === 0) && transcriptToSend) {
+        res.transcript_thoai = [{ nguoi_noi: "Giao ca", noi_dung: transcriptToSend }];
       }
-
 
       setMeeting(res);
       setSuccess("Bóc băng và phân tích cuộc họp hoàn tất!");
@@ -526,6 +564,12 @@ export default function MeetingPage() {
       );
       if (res.ok) {
         setSuccess(`Đã duyệt! Tạo thành công ${res.tasks_created} việc treo vào ca và ${res.sop_proposals} đề xuất Cẩm nang.`);
+        setMeeting({
+          ...meeting,
+          trang_thai: "da_duyet",
+          duyet_boi: manager ? "Quản lý" : "Nhân viên",
+          duyet_luc: new Date().toISOString(),
+        });
         loadHistory();
       }
     } catch (e) {
@@ -564,6 +608,73 @@ export default function MeetingPage() {
         it.id === id ? { ...it, han_chot: due } : it
       ),
     });
+  }
+
+  function updateActionTitle(id: string, title: string) {
+    if (!meeting) return;
+    setMeeting({
+      ...meeting,
+      action_items: meeting.action_items.map((it) =>
+        it.id === id ? { ...it, tieu_de: title } : it
+      ),
+    });
+  }
+
+  function addActionItem() {
+    if (!meeting) return;
+    const newItem: ActionItem = {
+      id: `act_${Date.now().toString().slice(-4)}`,
+      tieu_de: "Việc mới cần làm",
+      noi_dung_chi_tiet: "",
+      ten_nguoi_nhan: "Cả ca",
+      tinh_chat: "bat_buoc",
+      pham_vi: "ca_nhan",
+      han_chot: "Hết ca",
+      muc_do_uu_tien: "trung_binh",
+      do_tin_cay: 1.0,
+      da_chon: true,
+    };
+    setMeeting({
+      ...meeting,
+      action_items: [newItem, ...meeting.action_items],
+    });
+  }
+
+  function removeActionItem(id: string) {
+    if (!meeting) return;
+    setMeeting({
+      ...meeting,
+      action_items: meeting.action_items.filter((it) => it.id !== id),
+    });
+  }
+
+  function updateProposalStatus(id: string, status: "da_duyet" | "cho_duyet" | "tu_choi") {
+    if (!meeting) return;
+    setMeeting({
+      ...meeting,
+      de_xuat_phe_duyet: (meeting.de_xuat_phe_duyet || []).map((p) =>
+        p.id === id ? { ...p, trang_thai: status } : p
+      ),
+    });
+  }
+
+  async function deleteMeeting(id: string) {
+    if (typeof window !== "undefined" && !window.confirm("Bạn có chắc chắn muốn xoá biên bản cuộc họp này khỏi lịch sử?")) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await apiSend(`/api/v1/meetings/${encodeURIComponent(id)}`, null, "DELETE");
+      setSuccess("Đã xoá cuộc họp thành công!");
+      if (meeting?.id === id) {
+        setMeeting(null);
+      }
+      loadHistory();
+    } catch (e) {
+      setError(viError(e, { doing: "xoá cuộc họp" }));
+    } finally {
+      setBusy(false);
+    }
   }
 
   const formatTimer = (sec: number) => {
@@ -779,6 +890,10 @@ export default function MeetingPage() {
             onToggleAction={toggleActionItem}
             onUpdateAssignee={updateActionAssignee}
             onUpdateDue={updateActionDue}
+            onUpdateActionTitle={updateActionTitle}
+            onAddActionItem={addActionItem}
+            onRemoveActionItem={removeActionItem}
+            onUpdateProposalStatus={updateProposalStatus}
             onApply={applyDecisions}
           />
         </OpsCard>
@@ -791,23 +906,42 @@ export default function MeetingPage() {
             {pastMeetings.map((m) => (
               <div key={m.id} className="nq-meeting-list__item flex items-center justify-between gap-4">
                 <div>
-                  <h4 className="nq-meeting-list__title">{m.tieu_de}</h4>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="nq-meeting-list__title">{m.tieu_de}</h4>
+                    <span className="text-[11px] px-2 py-0.5 rounded font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
+                      ĐÃ DUYỆT
+                    </span>
+                  </div>
                   <p className="nq-meeting-list__meta line-clamp-1">{m.tom_tat}</p>
                   <div className="mt-1 flex flex-wrap gap-3 text-[11px] font-mono text-[var(--nq-ink-muted)]">
                     <span>Loại: {m.loai_hop}</span>
                     <span>Việc: {m.action_items?.length || 0}</span>
                     <span>Nguồn: {m.nguon_am_thanh}</span>
+                    {m.duyet_luc && (
+                      <span>Duyệt: {new Date(m.duyet_luc).toLocaleDateString("vi-VN")}</span>
+                    )}
                   </div>
                 </div>
-                <Btn
-                  variant="ghost"
-                  onClick={() => {
-                    setMeeting(m);
-                    window.scrollTo({ top: 400, behavior: "smooth" });
-                  }}
-                >
-                  Xem lại
-                </Btn>
+                <div className="flex items-center gap-2">
+                  <Btn
+                    variant="ghost"
+                    onClick={() => {
+                      setMeeting(m);
+                      window.scrollTo({ top: 400, behavior: "smooth" });
+                    }}
+                  >
+                    Xem lại
+                  </Btn>
+                  {manager && (
+                    <Btn
+                      variant="danger"
+                      onClick={() => deleteMeeting(m.id)}
+                      disabled={busy}
+                    >
+                      Xoá
+                    </Btn>
+                  )}
+                </div>
               </div>
             ))}
           </div>

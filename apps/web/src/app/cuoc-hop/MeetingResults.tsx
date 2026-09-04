@@ -35,6 +35,7 @@ type ActionItem = {
 };
 
 type CuocHop = {
+  id?: string;
   tieu_de: string;
   nguon_am_thanh?: string;
   transcript_thoai?: { nguoi_noi: string; noi_dung: string }[];
@@ -87,6 +88,9 @@ type CuocHop = {
   de_xuat_sop?: { quy_trinh_lien_quan: string; buoc_so?: number | null; noi_dung_thay_doi: string; ly_do?: string }[];
   do_tin_cay_tong_the?: number;
   khong_lien_quan?: boolean;
+  trang_thai?: string;
+  duyet_boi?: string;
+  duyet_luc?: string;
 };
 
 function fbLabel(tinh_chat?: string): string {
@@ -121,6 +125,10 @@ export function MeetingResults({
   onToggleAction,
   onUpdateAssignee,
   onUpdateDue,
+  onUpdateActionTitle,
+  onAddActionItem,
+  onRemoveActionItem,
+  onUpdateProposalStatus,
   onApply,
 }: {
   meeting: CuocHop;
@@ -132,6 +140,10 @@ export function MeetingResults({
   onToggleAction: (id: string) => void;
   onUpdateAssignee: (id: string, name: string) => void;
   onUpdateDue: (id: string, due: string) => void;
+  onUpdateActionTitle?: (id: string, title: string) => void;
+  onAddActionItem?: () => void;
+  onRemoveActionItem?: (id: string) => void;
+  onUpdateProposalStatus?: (id: string, status: "da_duyet" | "cho_duyet" | "tu_choi") => void;
   onApply: () => void;
 }) {
   const [tab, setTab] = useState<ResultTab>("overview");
@@ -158,6 +170,25 @@ export function MeetingResults({
 
       {tab === "overview" ? (
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded bg-neutral-900/80 border border-neutral-800">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-mono uppercase text-[var(--nq-ink-muted)]">Trạng thái:</span>
+              <StatusChip tone={meeting.trang_thai === "da_duyet" ? "ok" : "warn"}>
+                {meeting.trang_thai === "da_duyet" ? "Đã duyệt vào ca" : "Chờ quản lý duyệt"}
+              </StatusChip>
+              {meeting.duyet_boi && (
+                <span className="text-xs text-[var(--nq-ink-muted)]">
+                  bởi <strong>{meeting.duyet_boi}</strong>
+                  {meeting.duyet_luc ? ` (${new Date(meeting.duyet_luc).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})` : ""}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 text-xs font-mono text-[var(--nq-ink-muted)]">
+              <span>Nguồn: {meeting.nguon_am_thanh ?? "không rõ"}</span>
+              <span>Độ tin cậy: {Math.round((meeting.do_tin_cay_tong_the || 0.9) * 100)}%</span>
+            </div>
+          </div>
+
           <div className="nq-meeting-transcript">
             <button
               type="button"
@@ -319,10 +350,44 @@ export function MeetingResults({
                     key={prop.id}
                     title={prop.tieu_de}
                     badge={
-                      <>
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <StatusChip tone={propTone(prop.trang_thai)}>{propLabel(prop.trang_thai)}</StatusChip>
                         <StatusChip>{loaiDeXuatLabel(prop.loai_de_xuat)}</StatusChip>
-                      </>
+                        {manager && onUpdateProposalStatus ? (
+                          <div className="flex items-center gap-1 ml-1">
+                            {prop.trang_thai !== "da_duyet" && (
+                              <button
+                                type="button"
+                                className="px-2 py-0.5 text-xs rounded bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 transition-colors"
+                                onClick={() => onUpdateProposalStatus(prop.id, "da_duyet")}
+                                title="Đồng ý duyệt đề xuất này"
+                              >
+                                Duyệt
+                              </button>
+                            )}
+                            {prop.trang_thai !== "tu_choi" && (
+                              <button
+                                type="button"
+                                className="px-2 py-0.5 text-xs rounded bg-red-950 hover:bg-red-900 text-red-300 border border-red-700/60 transition-colors"
+                                onClick={() => onUpdateProposalStatus(prop.id, "tu_choi")}
+                                title="Bác bỏ đề xuất này"
+                              >
+                                Bác bỏ
+                              </button>
+                            )}
+                            {prop.trang_thai !== "cho_duyet" && (
+                              <button
+                                type="button"
+                                className="px-2 py-0.5 text-xs rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-600/60 transition-colors"
+                                onClick={() => onUpdateProposalStatus(prop.id, "cho_duyet")}
+                                title="Chờ xem xét lại sau"
+                              >
+                                Chờ xét
+                              </button>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
                     }
                     meta={
                       <>
@@ -374,6 +439,14 @@ export function MeetingResults({
           hint={`Độ tin cậy AI: ${Math.round((meeting.do_tin_cay_tong_the || 0.9) * 100)}%`}
           count={meeting.action_items.length}
         >
+          {manager && onAddActionItem ? (
+            <div className="flex justify-end mb-3">
+              <Btn variant="ghost" onClick={onAddActionItem}>
+                + Thêm việc mới
+              </Btn>
+            </div>
+          ) : null}
+
           {meeting.action_items.length === 0 ? (
             <Empty title="Không có việc giao">Không phát hiện công việc bắt buộc từ cuộc họp.</Empty>
           ) : (
@@ -389,16 +462,40 @@ export function MeetingResults({
                       aria-label={`Chọn việc ${it.tieu_de}`}
                     />
                     <div className="min-w-0 flex-1 space-y-2">
-                      <div className="nq-meeting-list__row">
-                        <p className="nq-meeting-list__title">{it.tieu_de}</p>
-                        <StatusChip tone={it.tinh_chat === "bat_buoc" || !it.tinh_chat ? "danger" : "default"}>
-                          {it.tinh_chat === "bat_buoc" || !it.tinh_chat ? "Bắt buộc" : "Khuyến khích"}
-                        </StatusChip>
-                        <StatusChip>{it.pham_vi === "ca_nhan" ? "Cá nhân" : "Nhóm ca"}</StatusChip>
-                        {it.muc_do_uu_tien === "cao" ? <StatusChip tone="warn">Ưu tiên cao</StatusChip> : null}
-                        <StatusChip tone={it.do_tin_cay >= 0.9 ? "ok" : it.do_tin_cay >= 0.75 ? "warn" : "danger"}>
-                          {Math.round(it.do_tin_cay * 100)}% tin cậy
-                        </StatusChip>
+                      <div className="nq-meeting-list__row flex items-center justify-between gap-2">
+                        <div className="flex-1">
+                          {onUpdateActionTitle ? (
+                            <input
+                              type="text"
+                              className="w-full bg-transparent border-b border-dashed border-neutral-700 focus:border-copper text-sm font-semibold text-white outline-none py-0.5"
+                              value={it.tieu_de}
+                              onChange={(e) => onUpdateActionTitle(it.id, e.target.value)}
+                              placeholder="Tên công việc..."
+                            />
+                          ) : (
+                            <p className="nq-meeting-list__title">{it.tieu_de}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <StatusChip tone={it.tinh_chat === "bat_buoc" || !it.tinh_chat ? "danger" : "default"}>
+                            {it.tinh_chat === "bat_buoc" || !it.tinh_chat ? "Bắt buộc" : "Khuyến khích"}
+                          </StatusChip>
+                          <StatusChip>{it.pham_vi === "ca_nhan" ? "Cá nhân" : "Nhóm ca"}</StatusChip>
+                          {it.muc_do_uu_tien === "cao" ? <StatusChip tone="warn">Ưu tiên cao</StatusChip> : null}
+                          <StatusChip tone={it.do_tin_cay >= 0.9 ? "ok" : it.do_tin_cay >= 0.75 ? "warn" : "danger"}>
+                            {Math.round(it.do_tin_cay * 100)}% tin cậy
+                          </StatusChip>
+                          {manager && onRemoveActionItem && (
+                            <button
+                              type="button"
+                              className="px-1.5 py-0.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 rounded transition-colors"
+                              onClick={() => onRemoveActionItem(it.id)}
+                              title="Xoá việc này"
+                            >
+                              Xoá
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {it.noi_dung_chi_tiet ? (
@@ -545,12 +642,26 @@ export function MeetingResults({
         </p>
       ) : null}
 
-      <div className="nq-meeting-footer">
-        <p className="nq-meeting-footer__note">
-          Sau khi duyệt, việc được chọn sẽ đẩy vào OpsEngine (việc treo ca); đề xuất cẩm nang ghi vào Playbook.
-        </p>
+      <div className="nq-meeting-footer flex flex-wrap items-center justify-between gap-4">
+        <div>
+          {meeting.trang_thai === "da_duyet" ? (
+            <p className="text-sm text-emerald-400 font-medium m-0">
+              ✓ Biên bản đã được duyệt vào ca
+              {meeting.duyet_boi ? ` bởi ${meeting.duyet_boi}` : ""}
+              {meeting.duyet_luc ? ` lúc ${new Date(meeting.duyet_luc).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}.
+            </p>
+          ) : (
+            <p className="nq-meeting-footer__note m-0">
+              Sau khi duyệt, việc được chọn sẽ đẩy vào OpsEngine (việc treo ca); đề xuất cẩm nang ghi vào Playbook.
+            </p>
+          )}
+        </div>
         <Btn variant="primary" onClick={onApply} disabled={busy || !manager}>
-          {manager ? "Duyệt & phân công vào ca" : "Cần quyền quản lý để duyệt"}
+          {manager
+            ? meeting.trang_thai === "da_duyet"
+              ? "Cập nhật lại vào ca"
+              : "Duyệt & phân công vào ca"
+            : "Cần quyền quản lý để duyệt"}
         </Btn>
       </div>
     </div>

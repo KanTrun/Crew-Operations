@@ -12,6 +12,7 @@ from ca_api.persist import (
     login,
     reset_init_flag,
 )
+from ca_api.ai_learning.repository import AILearningRepository
 
 client = TestClient(app)
 
@@ -401,6 +402,20 @@ def test_copilot_send_mail_proposal_and_execute() -> None:
     exec_data = exec_res.json()
     assert exec_data["status"] == "executed"
     assert "mail_result" in exec_data["payload_diff"]
+    generation = next(item for item in AILearningRepository().list("generation", store_id="quan_01") if item["prompt_version"] == "copilot-mail-v1")
+    assert generation["rule_version"] == "none"
+    assert generation["rollout_bucket"] == "control"
+    repository = AILearningRepository()
+    assert any(item["generation_id"] == generation["id"] for item in repository.list("evaluation", store_id="quan_01"))
+    feedback_types = {
+        item["type"] for item in repository.list("feedback", store_id="quan_01")
+        if item["generation_id"] == generation["id"]
+    }
+    if exec_data["payload_diff"]["mail_result"]["ok"]:
+        assert {"manager_approve", "send_success"}.issubset(feedback_types)
+    else:
+        assert exec_data["payload_diff"]["mail_result"]["reason"] == "quality_gate"
+        assert feedback_types == {"manager_reject"}
 
 
 def test_copilot_mail_tone_memory_feedback_loop() -> None:

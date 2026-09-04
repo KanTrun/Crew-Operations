@@ -79,9 +79,23 @@ def test_meeting_apply_and_opsengine_integration() -> None:
     assert apply_body["ok"] is True
     assert apply_body["tasks_created"] >= 1
 
-    # 3. Verify tasks are now in opsengine treo
+    # 3. Verify tasks are now in opsengine treo as structured dicts
     treo_items = kv_get("treo", [])
-    assert any("Tuấn" in str(item) for item in treo_items)
+    tuan_treo = [t for t in treo_items if isinstance(t, dict) and "Tuấn" in t.get("nhan_vien", "")]
+    assert len(tuan_treo) >= 1
+    tuan_item = tuan_treo[0]
+    assert tuan_item["trang_thai"] == "dang_cho"
+    assert "treo_" in tuan_item["id"]
+    assert tuan_item["nguon"] == "cuoc_hop"
+
+    # Verify marking treo task completed via PATCH works smoothly without 500 error
+    patch_res = client.patch(
+        f"/api/v1/viec-treo/{tuan_item['id']}",
+        json={"trang_thai": "xong"},
+        headers=ql,
+    )
+    assert patch_res.status_code == 200, patch_res.text
+    assert patch_res.json()["trang_thai"] == "xong"
 
     # 4. Verify meeting is listed in meetings history
     list_res = client.get("/api/v1/meetings", headers=ql)

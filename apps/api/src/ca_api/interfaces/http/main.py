@@ -39,8 +39,11 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from ca_api.context_providers import get_mail_style_for_store, get_ops_context_for_mail
+from ca_api.ai_learning.security import configure_data_protection, minimal_data_mode
+from ca_api.context_providers import get_active_mail_rules_for_store, get_mail_style_for_store, get_ops_context_for_mail
+from ca_api.ai_learning.rollout import select_active_rules
 from ca_api.interfaces.http.channels import router as channels_router
+from ca_api.interfaces.http.ai_learning import router as ai_learning_router
 from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
@@ -72,6 +75,12 @@ app.include_router(pos_router)
 app.include_router(meeting_router)
 app.include_router(trends_router)
 app.include_router(mail_router)
+app.include_router(ai_learning_router)
+
+
+@app.on_event("startup")
+def _verify_data_protection() -> None:
+    configure_data_protection()
 
 
 ROOT = Path(__file__).resolve().parents[6]
@@ -119,6 +128,7 @@ class LoginOut(BaseModel):
     role: str
     display_name: str
     nv_id: str
+    store_id: str
 
 
 class PinBody(BaseModel):
@@ -153,6 +163,21 @@ def _resolve_role(authorization: str | None) -> str | None:
     return None if s is None else s["role"]
 
 
+def _draft_mail_with_active_rules(**kwargs: Any):
+    """Inject only the deterministic rollout slice of owner-active Gmail rules."""
+    store_id = str(kwargs.get("store_id") or "quan_01")
+    identities = list(kwargs.get("to_nv_ids") or kwargs.get("direct_emails") or [])
+    selected, rollout_bucket = select_active_rules(
+        get_active_mail_rules_for_store(store_id),
+        store_id=store_id,
+        identity=str(identities[0]) if identities else str(kwargs.get("recipient_name") or "default"),
+    )
+    draft = _draft_email(active_style_rules=selected, **kwargs)
+    setattr(draft, "rule_version", ",".join(str(rule["id"]) for rule in selected) or "none")
+    setattr(draft, "rollout_bucket", rollout_bucket)
+    return draft
+
+
 configure_data_sources(
     kv_get=kv_get,
     list_luat=_list_luat,
@@ -163,7 +188,7 @@ configure_data_sources(
     sop_answer=_sop_answer,
     waste_cluster=_waste_cluster,
     list_ca_meta=_list_ca_meta,
-    draft_mail=_draft_email,
+    draft_mail=_draft_mail_with_active_rules,
     get_user_emails=get_user_emails,
     get_ops_context=get_ops_context_for_mail,
     get_mail_style=get_mail_style_for_store,
@@ -187,8 +212,8 @@ def _require_authenticated_role(authorization: Annotated[str | None, Header()] =
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "ca-api"}
+def health() -> dict[str, str | bool]:
+    return {"status": "ok", "service": "ca-api", "minimal_data_mode": minimal_data_mode()}
 
 
 # ── Lich tuan ─────────────────────────────────────────────────────────────────
@@ -484,6 +509,7 @@ def login(body: LoginBody) -> LoginOut:
         role=row["role"],
         display_name=row["display_name"],
         nv_id=row["nv_id"],
+        store_id=row["store_id"],
     )
 
 
@@ -496,6 +522,7 @@ def me(authorization: Annotated[str | None, Header()] = None) -> dict[str, str]:
         "username": s["username"],
         "role": s["role"],
         "nv_id": s["nv_id"],
+        "store_id": s["store_id"],
     }
 
 

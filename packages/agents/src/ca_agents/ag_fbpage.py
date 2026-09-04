@@ -376,6 +376,7 @@ async def process_fb_message(
     public_context: dict[str, Any] | None = None,
     customer_profile: dict[str, Any] | None = None,
     golden_examples: list[dict[str, Any]] | None = None,
+    active_rules: list[dict[str, Any]] | None = None,
 ) -> FBMessageOutput:
     """
     Process a customer message through the 4-Agent Squad Architecture.
@@ -429,6 +430,9 @@ async def process_fb_message(
                 gold_ctx = format_golden_cskh_prompt(golden_examples)
                 if gold_ctx:
                     extra_instructions.append(gold_ctx)
+            rule_texts = [str((rule.get("rule") or {}).get("text") or "").strip() for rule in active_rules or []]
+            if rule_texts:
+                extra_instructions.append("QUY TẮC ĐÃ ĐƯỢC CHỦ QUÁN DUYỆT:\n" + "\n".join(f"- {text}" for text in rule_texts if text))
 
             if extra_instructions:
                 sys_prompt += "\n\n" + "\n\n".join(extra_instructions)

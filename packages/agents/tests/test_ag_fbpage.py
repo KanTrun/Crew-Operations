@@ -1,6 +1,7 @@
 """Unit tests for AG-FBPAGE and Guardrails."""
 
 import asyncio
+from unittest.mock import patch
 
 from ca_agents.ag_fbpage import (
     FBMessageInput,
@@ -108,3 +109,19 @@ def test_process_fb_message_injection_blocked():
     out = asyncio.run(process_fb_message(msg))
     assert out.intent == "blocked_injection"
     assert "không thể hỗ trợ" in (out.response or "")
+
+
+def test_active_rules_are_injected_only_for_live_prompt(monkeypatch):
+    from ca_agents.llm import LlmResult
+
+    monkeypatch.setenv("CA_AGENT_MODE", "live")
+    captured = {}
+
+    def fake_complete(*, system, **kwargs):
+        captured["system"] = system
+        return LlmResult(ok=False, text="", provider="mock", reason="")
+
+    msg = FBMessageInput(psid="123456", text="Quán mở cửa tới mấy giờ?", message_id="mid_rule", timestamp=1700000000)
+    with patch("ca_agents.ag_fbpage.complete", fake_complete):
+        asyncio.run(process_fb_message(msg, active_rules=[{"rule": {"text": "Luôn mở đầu bằng Dạ."}}]))
+    assert "Luôn mở đầu bằng Dạ." in captured["system"]

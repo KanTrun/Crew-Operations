@@ -152,13 +152,35 @@ def run_copilot(
     sup_res = supervise_outgoing_response(message, reply)
     final_reply = sup_res.sanitized_response
 
+    # Fail-closed: Nếu supervisor phát hiện vi phạm an toàn, hạ cấp action_proposal
+    confidence = parsed.confidence
+    if not sup_res.is_approved:
+        confidence = 0.0
+        direct_answer = None
+        if action_prop is not None:
+            action_prop = ActionProposal(
+                action_id=action_prop.action_id,
+                intent=action_prop.intent,
+                status=ActionProposalStatus.draft,
+                summary=f"[BỊ CHẶN BỞI AG-SUPERVISOR: {sup_res.flagged_reason}] {action_prop.summary}",
+                explanation=f"Đề xuất bị chặn do phát hiện rủi ro an toàn ({sup_res.flagged_reason}). Quản lý cần kiểm tra thủ công.",
+                payload_diff=action_prop.payload_diff,
+                requires_confirmation=True,
+                store_id=action_prop.store_id,
+                created_by=action_prop.created_by,
+                confidence=0.0,
+                data_snapshot_hash=action_prop.data_snapshot_hash,
+                created_at=action_prop.created_at,
+                expires_at=action_prop.expires_at,
+            )
+
     # Citations: lấy từ tool data nếu có (QUERY_SOP / survey).
     citations = list(tool_res.data.get("citations", []) or []) if isinstance(tool_res.data, dict) else []
 
     return CopilotResponse(
         reply_text=final_reply,
         intent=getattr(CopilotIntent, parsed.intent, CopilotIntent.OUT_OF_SCOPE),
-        confidence=parsed.confidence,
+        confidence=confidence,
         action_proposal=action_prop,
         direct_answer=direct_answer,
         citations=citations,

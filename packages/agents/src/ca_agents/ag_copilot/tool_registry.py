@@ -728,6 +728,8 @@ def tool_send_mail(
                 raw_request=raw_request,
                 recipient_name=recip_label,
                 recipient_email=", ".join(to_emails),
+                store_id=store_id,
+                to_nv_ids=to_nv_ids,
                 sender_name="Ban Quản Lý Nhịp Quán",
                 store_name="Nhịp Quán",
                 ops_context=ops_context,
@@ -736,9 +738,13 @@ def tool_send_mail(
             draft_subject = getattr(draft, "subject", "") or subject or f"[Nhịp Quán] Thông báo gửi {recip_label}"
             draft_body = getattr(draft, "body", "") or body or raw_request
             has_learned = getattr(draft, "has_learned_style", has_learned)
+            rule_version = getattr(draft, "rule_version", "none")
+            rollout_bucket = getattr(draft, "rollout_bucket", "control")
         except Exception:
             draft_subject = subject or f"[Nhịp Quán] Thông báo gửi {recip_label}"
             draft_body = body or raw_request
+            rule_version = "none"
+            rollout_bucket = "control"
     else:
         draft_subject = (
             subject if subject.startswith("[Nhịp Quán]") else f"[Nhịp Quán] Thông báo gửi {recip_label}"
@@ -751,6 +757,8 @@ def tool_send_mail(
             f"Trân trọng,\n"
             f"Ban Quản Lý Nhịp Quán"
         )
+        rule_version = "none"
+        rollout_bucket = "control"
 
     ops_summary = ""
     if ops_context:
@@ -773,6 +781,8 @@ def tool_send_mail(
         "ops_context": ops_context,
         "ops_context_summary": ops_summary,
         "has_learned_style": has_learned,
+        "rule_version": rule_version,
+        "rollout_bucket": rollout_bucket,
     }
 
     if not to_emails and missing:

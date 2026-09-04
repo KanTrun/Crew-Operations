@@ -17,5 +17,9 @@
   "HuanLuyenQuanLy": "packages/contracts/schema/HuanLuyenQuanLy.json",
   "CopilotMessage": "packages/contracts/schema/CopilotMessage.json",
   "ActionProposal": "packages/contracts/schema/ActionProposal.json",
-  "PolicyDecision": "packages/contracts/schema/PolicyDecision.json"
+  "PolicyDecision": "packages/contracts/schema/PolicyDecision.json",
+  "AIGenerationRecord": "packages/contracts/schema/AIGenerationRecord.json",
+  "AIFeedbackEvent": "packages/contracts/schema/AIFeedbackEvent.json",
+  "AIEvaluation": "packages/contracts/schema/AIEvaluation.json",
+  "AIRuleProposal": "packages/contracts/schema/AIRuleProposal.json"
 }
