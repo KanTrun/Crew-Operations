@@ -29,7 +29,7 @@ test.describe("8 luồng vận hành chính (Quản lý - lan)", () => {
 
   test("4 — việc treo", async ({ page }) => {
     await page.goto("/treo");
-    await expect(page.getByRole("heading", { name: /Việc treo/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Việc treo$/i })).toBeVisible();
   });
 
   test("5 — inbox ràng buộc", async ({ page }) => {
