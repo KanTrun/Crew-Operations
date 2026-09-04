@@ -39,7 +39,7 @@ for path in (
         sys.path.insert(0, str(path))
 
 
-from ca_api.persist import (
+from ca_api.persist import (  # noqa: E402
     _conn,
     audit_add,
     don_insert,
@@ -85,7 +85,7 @@ NHAN_SU_TIMELINE = [
 def seed_users_timeline() -> int:
     init_db()
     with _conn() as cx:
-        for nv_id, username, display_name, role, ngay_vao, _ in NHAN_SU_TIMELINE:
+        for nv_id, username, display_name, role, _ngay_vao, _ in NHAN_SU_TIMELINE:
             cx.execute(
                 """
                 INSERT INTO users(username, password_sha, role, nv_id, display_name, store_id)
@@ -167,7 +167,7 @@ def seed_historical_audit() -> int:
         ("2026-09-05T06:55:00Z", "lan", "tao_viec_treo_bu_ca", {"noi_dung": "Quân vắng ca sáng 05/09, điều động Uyên bù ca"}),
         ("2026-09-05T07:02:00Z", "minh", "diem_danh_ca_sang", {"trang_thai": "minh, an, bao có mặt; quan vắng"}),
     ]
-    with _conn() as cx:
+    with _conn():
         for at, ai, hanh, payload in logs:
             audit_add(at, ai, hanh, payload)
     return len(logs)
@@ -351,7 +351,7 @@ def main() -> int:
     print(f"[4] Cẩm nang sống: Đã nạp {n_sua} lần sửa -> Học ra {n_luat} luật vận hành")
 
     kv_stats = seed_kv_historical()
-    print(f"[5] KV Store đồng bộ:")
+    print("[5] KV Store đồng bộ:")
     for k, v in kv_stats.items():
         print(f"    • {k}: {v}")
 

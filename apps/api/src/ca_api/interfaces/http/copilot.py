@@ -8,7 +8,7 @@ import time
 import uuid
 from collections.abc import Callable
 from functools import wraps
-from typing import Annotated, Any, ParamSpec, TypeVar
+from typing import Annotated, Any
 
 try:
     from datetime import UTC, datetime
@@ -133,15 +133,11 @@ _CORRECTION_MODELS: dict[str, type[BaseModel]] = {
 }
 
 
-_Params = ParamSpec("_Params")
-_Result = TypeVar("_Result")
-
-
-def _recover_execution_failure(
-    endpoint: Callable[_Params, _Result],
-) -> Callable[_Params, _Result]:
+def _recover_execution_failure[P, R](
+    endpoint: Callable[P, R],
+) -> Callable[P, R]:
     @wraps(endpoint)
-    def wrapped(*args: _Params.args, **kwargs: _Params.kwargs) -> _Result:
+    def wrapped(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return endpoint(*args, **kwargs)
         except Exception as exc:
@@ -420,7 +416,7 @@ def copilot_execute_action(
         try:
             exp_dt = datetime.fromisoformat(draft["expires_at"].replace("Z", "+00:00"))
             is_expired = datetime.now(UTC) > exp_dt
-        except (AttributeError, TypeError, ValueError):
+        except (AttributeError, TypeError, ValueError) as exc:
             copilot_audit_add(
                 action_id=body.action_id,
                 actor_user_id=user["user_id"],
@@ -430,7 +426,7 @@ def copilot_execute_action(
                 channel="web",
                 latency_ms=int((time.time() - t0) * 1000),
             )
-            raise HTTPException(status_code=400, detail="invalid_action_expiry")
+            raise HTTPException(status_code=400, detail="invalid_action_expiry") from exc
         if is_expired:
             copilot_draft_update_status(body.action_id, "expired")
             copilot_audit_add(
