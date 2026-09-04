@@ -204,6 +204,21 @@ def copilot_message_stream(
     # 1. Chạy copilot bình thường (tất định: intent/tool/proposal) — nhanh vì replay.
     response = run_copilot(body.message, verified_context)
 
+    # 1b. Lưu draft khi có ActionProposal — /message/stream trước đây bỏ sót bước
+    # này nên bấm "Duyệt & Gửi" ở UI bị 404 action_proposal_not_found.
+    if response.action_proposal:
+        copilot_draft_save(response.action_proposal.model_dump())
+        copilot_audit_add(
+            action_id=response.action_proposal.action_id,
+            actor_user_id=user["user_id"],
+            store_id=user["store_id"],
+            intent=response.action_proposal.intent.value,
+            decision="propose",
+            payload_diff=response.action_proposal.payload_diff,
+            channel=body.channel,
+            latency_ms=0,
+        )
+
     # 2. Xây generator SSE
     def _sse(
         ev: str, payload: dict[str, Any]
