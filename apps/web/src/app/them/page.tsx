@@ -7,7 +7,7 @@ import { chayLaiTour } from "../../ui/tour";
 
 const LINKS: Array<[string, string]> = [
   ["/huong-dan", "Bản đồ hướng dẫn"],
-  ["/tkb", "Thời khoá biểu từ ảnh"],
+  ["/tkb", "Tải ảnh lịch bận"],
   ["/cong-bang", "Xem công bằng"],
   ["/page-quan", "Page quán"],
   ["/doi-ca", "Đổi ca"],

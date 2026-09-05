@@ -6,6 +6,8 @@ Flag ON: chỉ nhánh policy auto + supervisor pass mới gửi.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import uuid
 from pathlib import Path
 
@@ -21,7 +23,7 @@ def api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "live")
     monkeypatch.setenv("NHIPQUAN_FB_PAGE_TOKEN", "tok_test")
     monkeypatch.setenv("NHIPQUAN_FB_PAGE_ID", "page_1")
-    monkeypatch.delenv("NHIPQUAN_FB_APP_SECRET", raising=False)
+    monkeypatch.setenv("NHIPQUAN_FB_APP_SECRET", "secret_test")
     monkeypatch.setenv("NHIPQUAN_FB_AUTO_SEND", "0")
     monkeypatch.setenv("NHIPQUAN_DB", str(tmp_path / f"t_{uuid.uuid4().hex[:8]}.db"))
 
@@ -40,6 +42,15 @@ def api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     monkeypatch.setattr(ch, "send_messenger_text", fake_send)
     client = TestClient(fastapi_app)
+    original_send = client.send
+
+    def signed_send(request, *args, **kwargs):
+        if request.method == "POST" and request.url.path.endswith("/facebook/webhook"):
+            digest = hmac.new(b"secret_test", request.content, hashlib.sha256).hexdigest()
+            request.headers["x-hub-signature-256"] = f"sha256={digest}"
+        return original_send(request, *args, **kwargs)
+
+    client.send = signed_send  # type: ignore[method-assign]
     client.sent_calls = sent  # type: ignore[attr-defined]
     return client
 
@@ -94,6 +105,31 @@ def test_policy_put_negative_price_rejected(api: TestClient) -> None:
     assert r.status_code == 400
 
 
+def test_policy_put_price_cap_applies_without_restart(api: TestClient) -> None:
+    from ca_api.services.fb_moderation import moderate_fb_message
+
+    updated = api.put(
+        "/api/v1/page/fb-policy",
+        json={"auto_price_cap_vnd": 10_000},
+        headers=headers(api, "hung"),
+    )
+    assert updated.status_code == 200
+
+    result = moderate_fb_message(
+        psid="runtime_cap_psid",
+        text="Cà phê muối bao nhiêu tiền?",
+        message_id="runtime_cap_mid",
+        timestamp=1000.0,
+        public_context={
+            "profile": {},
+            "menu": [{"ten": "Cà phê muối", "gia": 30_000}],
+        },
+    )
+
+    assert result["action"] != "auto_send"
+    assert result["reason"] == "fact_not_in_kb_or_price_limit"
+
+
 def test_flag_off_auto_becomes_queue(api: TestClient) -> None:
     """Flag OFF: tin 'auto-able' KHÔNG gửi — phải vào queue cho QL duyệt."""
     from ca_api.services import fb_moderation as fm
@@ -121,6 +157,32 @@ def test_flag_on_auto_sends_for_safe_intent(api: TestClient, monkeypatch) -> Non
     assert psid == "psid_flag"
     # Nội dung phản hồi chứa thông tin menu (không khớp cứng định dạng)
     assert "menu" in text.lower() or "đ" in text
+
+
+def test_flag_on_provider_failure_queues_manual_retry(api: TestClient, monkeypatch) -> None:
+    monkeypatch.setenv("NHIPQUAN_FB_AUTO_SEND", "1")
+    from ca_api.interfaces.http import channels as ch
+    from ca_api.services import fb_moderation as fm
+
+    fm._RATE_LIMITER = type(fm._RATE_LIMITER)(now_fn=lambda: 2500.0)
+    monkeypatch.setattr(
+        ch,
+        "send_messenger_text",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("graph_unavailable")),
+    )
+
+    result = _post(api, "flag_on_fail_1", "Cà phê muối bao nhiêu tiền vậy ạ?")
+
+    assert result.status_code == 200
+    items = api.get(
+        "/api/v1/page/fb-inbox?status=pending", headers=headers(api, "lan")
+    ).json()["items"]
+    failed = next(i for i in items if i["message_text"] == "Cà phê muối bao nhiêu tiền vậy ạ?")
+    assert failed["status"] == "pending"
+    stats = api.get(
+        "/api/v1/page/fb-inbox/stats", headers=headers(api, "lan")
+    ).json()
+    assert stats["auto_sent"] == 0
 
 
 def test_flag_on_escalate_still_not_auto(api: TestClient, monkeypatch) -> None:

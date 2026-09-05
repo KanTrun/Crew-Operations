@@ -646,7 +646,25 @@ def toi_lich(
                 "co_the_nhan": nv not in phan.get(cid, []),
             }
         )
-    return {"nv_id": nv, "ca": ca, "ca_ids": mine_ids}
+    # Ràng buộc đã duyệt liên quan tới tôi (xin nghỉ / TKB bận) — để nhân viên
+    # thấy hiệu lực sau khi quản lý duyệt ở /inbox, không phải chờ xếp lịch sau.
+    inbox_duyet = [
+        {
+            "id": it.get("id"),
+            "y_dinh": it.get("y_dinh"),
+            "ghi": (it.get("hieu_luc") or {}).get("ghi", ""),
+        }
+        for it in kv_get("inbox_rang_buoc", [])
+        if isinstance(it, dict)
+        and it.get("trang_thai") == "duyet"
+        and it.get("nv_id") == nv
+    ]
+    return {
+        "nv_id": nv,
+        "ca": ca,
+        "ca_ids": mine_ids,
+        "rang_buoc_da_duyet": inbox_duyet,
+    }
 
 
 @router.post("/api/v1/ca/nha")

@@ -7,11 +7,23 @@ import { canAccess, clearSession, getName, getRole, getToken, isChuQuan, isManag
 import { Icon, iconForHref } from "../ui/icons";
 import { Tour } from "../ui/tour";
 import { Logo } from "../ui/Logo";
-import { CopilotPane } from "../ui/copilot/CopilotPane";
 import { motion, AnimatePresence } from "framer-motion";
+import { CopilotPane } from "../ui/copilot/CopilotPane";
 
 /** `short` là nhãn cho thanh dưới dạng pill — chỗ hẹp, chữ dài sẽ gãy dòng. */
 type LinkItem = { href: string; label: string; short?: string };
+
+const COPILOT_LAUNCHER_ROUTES = new Set([
+  "/roster",
+  "/qr",
+  "/phieu",
+  "/treo",
+  "/cong-bang",
+  "/tkb",
+  "/handover",
+  "/doi-ca",
+  "/cam-nang",
+]);
 
 /** `data-tour` để tour hướng dẫn trỏ vào đúng lối vào của từng việc. */
 function tourId(href: string): string {
@@ -20,32 +32,34 @@ function tourId(href: string): string {
 
 const STAFF_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/cuoc-hop", label: "Họp & Giao ca", short: "Họp" },
+  { href: "/cuoc-hop", label: "Họp & gửi nhóm", short: "Họp" },
   { href: "/quay", label: "Quầy", short: "Quầy" },
   { href: "/pha", label: "Pha chế", short: "Pha" },
-  { href: "/phieu", label: "Phiếu" },
+  { href: "/tkb", label: "Lịch bận", short: "Lịch bận" },
 ];
 
 const MANAGER_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/cuoc-hop", label: "Họp & Giao ca", short: "Họp" },
+  { href: "/cuoc-hop", label: "Họp & gửi nhóm", short: "Họp" },
   { href: "/roster", label: "Lịch tuần", short: "Lịch" },
   { href: "/inbox", label: "Hộp thư", short: "Hộp thư" },
   { href: "/quay", label: "Quầy", short: "Quầy" },
-  { href: "/pha", label: "Pha chế", short: "Pha" },
+  { href: "/tkb", label: "Lịch bận", short: "Lịch bận" },
 ];
 
 const ADMIN_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/cuoc-hop", label: "Họp & Giao ca", short: "Họp" },
+  { href: "/cuoc-hop", label: "Họp & gửi nhóm", short: "Họp" },
   { href: "/nguoi", label: "Người dùng", short: "Người" },
   { href: "/menu", label: "Menu & giá", short: "Menu" },
   { href: "/roster", label: "Lịch tuần", short: "Lịch" },
-  { href: "/cam-nang", label: "Cẩm nang", short: "Cẩm nang" },
+  { href: "/tkb", label: "Lịch bận", short: "Lịch bận" },
 ];
 
 const MORE: LinkItem[] = [
   { href: "/huong-dan", label: "Bản đồ hệ thống" },
+  { href: "/cuoc-hop", label: "Họp & gửi nhóm" },
+  { href: "/tkb", label: "Tải ảnh lịch bận" },
   { href: "/quay", label: "Quầy" },
   { href: "/pha", label: "Pha chế" },
   { href: "/inbox", label: "Hộp thư" },
@@ -227,7 +241,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </nav>
       ) : null}
-      {token ? <CopilotPane /> : null}
+      {token && !COPILOT_LAUNCHER_ROUTES.has(path) ? <CopilotPane /> : null}
       <Tour active={Boolean(token) && path === "/hom-nay"} />
     </div>
   );

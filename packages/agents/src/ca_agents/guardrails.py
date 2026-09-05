@@ -23,7 +23,7 @@ _INJECTION_PATTERNS = [
     r"system\s+prompt",
     r"developer\s+mode",
     r"chế\s+độ\s+nhà\s+phát\s+triển",
-    r"tiết\s+lộ\s+(system\s+prompt|hướng\s+dẫn\s+hệ\s+thống|công\s+thức\s+bí\s+mật|mật\s+khẩu|doanh\s+thu|giá\s+vốn)",
+    r"tiết\s+lộ\s+(system\s+prompt|hướng\s+dẫn\s+hệ\s+thống|công\s+thức\s+bí\s+mật|dữ\s+liệu\s+nội\s+bộ|mật\s+khẩu|doanh\s+thu|giá\s+vốn)",
     r"bạn\s+là\s+ai\s+trước\s+khi",
     r"đóng\s+vai\s+(hacker|admin|chủ\s+quán)",
     r"act\s+as\s+(an\s+unrestricted|admin|developer)",

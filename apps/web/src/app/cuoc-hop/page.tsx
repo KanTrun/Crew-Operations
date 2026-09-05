@@ -688,9 +688,9 @@ export default function MeetingPage() {
   return (
     <div className="nq-page nq-page--wide space-y-6">
       <PageHeader
-        kicker="AI MEETING OS"
-        title="Cuộc họp & Giao ca Thông minh"
-        meta="Tự động bóc băng Google Meet / Giao ca với Gemini 3.5 Transcribe · Trích xuất việc cần làm · Đề xuất Cẩm nang."
+        kicker="Ghi nhận · tổng hợp · gửi nhóm"
+        title="Họp & giao ca"
+        meta="Thu âm hoặc tải ghi chép, trích xuất việc cần làm và soạn nội dung để gửi vào nhóm của quán."
       />
 
       {error && <Alert kind="err">{error}</Alert>}

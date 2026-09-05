@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "Facebook connect khi co page"
-status: pending
+status: done
 priority: P2
 effort: "2d + App Review"
 dependencies: [6]
@@ -43,9 +43,9 @@ Publish approved draft → Graph feed (khi quyền đủ)
 
 ## Success Criteria
 
-- [ ] Runbook đủ để nối ≤ 30 phút khi đã có page
-- [ ] Flag replay vẫn chạy CI không token
-- [ ] Live chỉ khi manager bật + token hợp lệ
+- [x] Runbook đủ để nối ≤ 30 phút khi đã có page
+- [x] Flag replay vẫn chạy CI không token
+- [x] Live chỉ khi manager bật + token hợp lệ
 
 ## Risk Assessment
 

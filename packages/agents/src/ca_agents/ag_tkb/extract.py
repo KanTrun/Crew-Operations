@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import pathlib
 import re
 from typing import Any
@@ -157,16 +158,14 @@ def _extract_live(image_path_or_id: str) -> dict[str, Any]:
             provider="tu_choi",
         )
 
+    image_bytes: bytes | None = None
+    image_mime: str | None = None
     try:
         payload = source.read_text(encoding="utf-8")
     except UnicodeDecodeError:
-        return _empty(
-            name=name,
-            blur=blur,
-            confidence=0.2,
-            reason="binary_unsupported",
-            provider="tu_choi",
-        )
+        payload = "Trích lịch làm việc từ ảnh đính kèm."
+        image_bytes = source.read_bytes()
+        image_mime = mimetypes.guess_type(source.name)[0] or "application/octet-stream"
 
     system = (
         _PROMPT.read_text(encoding="utf-8")
@@ -178,6 +177,8 @@ def _extract_live(image_path_or_id: str) -> dict[str, Any]:
         user=payload,
         task="text:ag_tkb",
         json_mode=True,
+        image_bytes=image_bytes,
+        image_mime=image_mime,
     )
     if not result.ok:
         return _empty(

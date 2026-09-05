@@ -10,6 +10,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { Icon } from "../icons";
 import { ActionProposalCard } from "./ActionProposalCard";
 import { ChatText } from "./ChatText";
 import type { ChatMessage, Mode } from "./useCopilotChat";
@@ -51,27 +52,26 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
 
   return (
     <div
-      className="flex flex-col h-full bg-zinc-950 text-zinc-100"
+      className="flex h-full flex-col bg-[var(--nq-bg)] text-[var(--nq-fg)]"
       style={{ ["--accent" as any]: profile.accent }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/60 shrink-0">
+      <div className="flex shrink-0 items-center justify-between border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4">
         <div className="flex items-center gap-2.5">
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border"
+            className="flex h-8 w-8 items-center justify-center border-2"
             style={{
-              background: `color-mix(in srgb, ${profile.accent} 20%, transparent)`,
-              borderColor: `color-mix(in srgb, ${profile.accent} 40%, transparent)`,
-              color: profile.accent,
+              borderColor: "var(--nq-copper)",
+              color: "var(--nq-copper)",
             }}
           >
-            ✨
+            <Icon name="cam-nang" size={18} />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-zinc-100">{profile.label}</h3>
-            <p className="text-[11px] text-emerald-400 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>{" "}
-              Trực tuyến · Điều hành 1-Click
+            <h3 className="text-sm font-bold uppercase text-[var(--nq-fg)]">{profile.label}</h3>
+            <p className="flex items-center gap-1 text-[11px] text-[var(--nq-dim)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Sẵn sàng hỗ trợ
             </p>
           </div>
         </div>
@@ -80,27 +80,27 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             <button
               onClick={onClearHistory ?? clearHistory}
               title="Xoá lịch sử hội thoại"
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 transition text-xs"
+              className="border border-transparent px-2 py-1 text-[10px] font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-red)] hover:text-[var(--nq-red)]"
             >
-              🗑
+              Xoá
             </button>
           ) : null}
           {onOpenFullPage ? (
             <button
               onClick={onOpenFullPage}
-              title="Mở trang riêng AG-COPILOT"
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition text-xs"
+              title="Mở trợ lý ở trang riêng"
+              className="border border-transparent px-2 py-1 text-[10px] font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
             >
-              ⤢
+              Mở rộng
             </button>
           ) : null}
           {onClose ? (
             <button
               onClick={onClose}
               title="Đóng"
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition text-sm"
+              className="border border-transparent px-2 py-1 text-[10px] font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
             >
-              ✕
+              Đóng
             </button>
           ) : null}
         </div>
@@ -108,13 +108,13 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
 
       {/* Empty role */}
       {profile.quickPrompts.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center p-8 text-center text-sm text-zinc-400">
+        <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-[var(--nq-dim)]">
           {profile.emptyMessage ?? profile.greeting}
         </div>
       ) : (
         <>
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+          <div className="flex-1 space-y-4 overflow-y-auto p-4 text-xs">
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -123,10 +123,10 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 }`}
               >
                 <div
-                  className={`max-w-[85%] p-3 rounded-2xl ${
+                  className={`max-w-[88%] border p-3 ${
                     msg.sender === "user"
-                      ? "bg-amber-600 text-white rounded-br-none"
-                      : "bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-bl-none"
+                      ? "border-[var(--nq-copper)] bg-[var(--nq-copper)] text-[#0e0c0a]"
+                      : "border-[var(--nq-dim)] bg-[var(--nq-surface)] text-[var(--nq-fg)]"
                   }`}
                 >
                   <p className="whitespace-pre-wrap leading-relaxed">
@@ -201,28 +201,26 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                     </div>
                   )}
                 </div>
-                <span className="text-[9px] text-zinc-500 mt-1 px-1">{msg.timestamp}</span>
+                <span className="mt-1 px-1 text-[9px] text-[var(--nq-dim)]">{msg.timestamp}</span>
               </div>
             ))}
             {loading && (
-              <div className="flex items-center gap-2 text-zinc-400 text-xs italic bg-zinc-900/60 p-2 rounded-xl border border-zinc-800 w-fit">
-                <span className="animate-spin" style={{ color: profile.accent }}>
-                  ⏳
-                </span>{" "}
-                AG-COPILOT đang suy nghĩ…
+              <div className="flex w-fit items-center gap-2 border border-[var(--nq-dim)] bg-[var(--nq-surface)] p-2 text-xs italic text-[var(--nq-dim)]">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--nq-copper)]" />
+                Đang xử lý yêu cầu…
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Quick Prompts */}
-          <div className="px-4 py-2 border-t border-zinc-900 bg-zinc-900/30 overflow-x-auto flex gap-1.5 shrink-0">
+          <div className="flex shrink-0 gap-1.5 overflow-x-auto border-t border-[var(--nq-dim)] bg-[var(--nq-surface)] px-4 py-2">
             {profile.quickPrompts.map((qp, idx) => (
               <button
                 key={idx}
                 onClick={() => send(qp)}
                 disabled={loading || Boolean(streamingId)}
-                className="whitespace-nowrap text-[11px] px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 transition disabled:opacity-50"
+                className="whitespace-nowrap border border-[var(--nq-dim)] bg-[var(--nq-bg)] px-2.5 py-1 text-[11px] text-[var(--nq-dim)] transition hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)] disabled:opacity-50"
               >
                 {qp}
               </button>
@@ -230,7 +228,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
           </div>
 
           {/* Input */}
-          <div className="p-3 border-t border-zinc-800 bg-zinc-900/40 shrink-0">
+          <div className="shrink-0 border-t-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-3">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -245,20 +243,19 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Nhập lệnh hoặc hỏi quy trình..."
                 disabled={loading || Boolean(streamingId)}
-                className="flex-1 px-3.5 py-2 text-xs bg-zinc-900 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none disabled:opacity-50"
+                className="flex-1 border-2 bg-[var(--nq-bg)] px-3.5 py-2 text-xs text-[var(--nq-fg)] placeholder:text-[var(--nq-dim)] focus:outline-none disabled:opacity-50"
                 style={{ borderColor: "var(--accent)" }}
               />
               <button
                 type="submit"
                 disabled={loading || Boolean(streamingId) || !input.trim()}
-                className="px-3.5 py-2 rounded-xl font-semibold text-xs transition disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950"
-                style={{ backgroundColor: profile.accent }}
+                className="border-2 border-[var(--nq-copper)] bg-[var(--nq-copper)] px-3.5 py-2 text-xs font-bold uppercase text-[#0e0c0a] transition disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Gửi
               </button>
             </form>
-            <p className="mt-1.5 text-[10px] text-zinc-500 text-center">
-              Ctrl/Cmd+K mở·đóng · Esc thoát
+            <p className="mt-1.5 text-center text-[10px] text-[var(--nq-dim)]">
+              Ctrl/Cmd+K mở hoặc đóng · Esc thu nhỏ
             </p>
           </div>
         </>

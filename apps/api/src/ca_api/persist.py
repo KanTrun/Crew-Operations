@@ -1,4 +1,4 @@
-"""Persistent quán store — SQLite file, survives process restart."""
+"""Persistent quán store backed by PostgreSQL or a local SQLite file."""
 
 from __future__ import annotations
 
@@ -84,7 +84,71 @@ def db_path() -> Path:
     return Path(override) if override else ROOT / "data" / "quan.db"
 
 
-def _conn() -> sqlite3.Connection:
+def _database_url() -> str | None:
+    url = os.environ.get("DATABASE_URL", "").strip()
+    return url or None
+
+
+class _PostgresRow(dict[str, Any]):
+    def __getitem__(self, key: str | int) -> Any:
+        if isinstance(key, int):
+            return tuple(self.values())[key]
+        return super().__getitem__(key)
+
+
+class _PostgresCursor:
+    def __init__(self, cursor: Any, *, mapping: bool) -> None:
+        self._cursor = cursor
+        self._mapping = mapping
+
+    @property
+    def lastrowid(self) -> None:
+        return None
+
+    @property
+    def rowcount(self) -> int:
+        return int(self._cursor.rowcount)
+
+    def _row(self, row: Any) -> Any:
+        if row is None or not self._mapping:
+            return row
+        columns = [column.name for column in self._cursor.description]
+        return _PostgresRow(zip(columns, row, strict=True))
+
+    def fetchone(self) -> Any:
+        return self._row(self._cursor.fetchone())
+
+    def fetchall(self) -> list[Any]:
+        return [self._row(row) for row in self._cursor.fetchall()]
+
+
+class _PostgresConnection:
+    def __init__(self, connection: Any) -> None:
+        self._connection = connection
+        self.row_factory: Any = None
+        self.isolation_level: Any = None
+
+    def __enter__(self) -> _PostgresConnection:
+        self._connection.__enter__()
+        return self
+
+    def __exit__(self, *args: Any) -> Any:
+        return self._connection.__exit__(*args)
+
+    def execute(self, query: str, params: Any = None) -> _PostgresCursor:
+        sql = query.replace("BEGIN IMMEDIATE", "BEGIN").replace("?", "%s")
+        cursor = self._connection.execute(sql, params)
+        return _PostgresCursor(cursor, mapping=self.row_factory is not None)
+
+
+def _conn() -> Any:
+    url = _database_url()
+    if url:
+        import psycopg
+
+        psycopg_url = url.replace("postgresql+psycopg://", "postgresql://", 1)
+        return _PostgresConnection(psycopg.connect(psycopg_url))
+
     path = db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     cx = sqlite3.connect(path, timeout=30)
@@ -97,8 +161,9 @@ def init_db() -> None:
     with _conn() as cx:
         # Luôn chạy DDL IF NOT EXISTS — thêm bảng mới (kenh_bind) không bị kẹt
         # vì cờ _INITIALIZED sớm trên DB cũ.
-        cx.executescript(
-            """
+        if not _database_url():
+            cx.executescript(
+                """
             CREATE TABLE IF NOT EXISTS users (
                 username TEXT PRIMARY KEY,
                 password_sha TEXT NOT NULL,
@@ -221,6 +286,7 @@ def init_db() -> None:
                 audit_sent INTEGER,
                 trace_id TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL,
+                event_at TEXT,
                 expires_at TEXT
             );
             CREATE INDEX IF NOT EXISTS idx_fbrq_status ON fb_review_queue(status, created_at);
@@ -281,12 +347,14 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_ai_rule_proposal_store_status ON ai_rule_proposals(store_id, status, updated_at DESC);
             """
         )
-        _migrate_schema(cx)
+        if not _database_url():
+            _migrate_schema(cx)
         for u, pw, role, nv, name in USERS:
             cx.execute(
                 """
-                INSERT OR IGNORE INTO users(username, password_sha, role, nv_id, display_name, store_id)
+                INSERT INTO users(username, password_sha, role, nv_id, display_name, store_id)
                 VALUES (?,?,?,?,?,?)
+                ON CONFLICT(username) DO NOTHING
                 """,
                 (u, hash_password(pw), role, nv, name, DEFAULT_STORE_ID),
             )
@@ -319,6 +387,8 @@ def _migrate_schema(cx: sqlite3.Connection) -> None:
     review_cols = {r[1] for r in cx.execute("PRAGMA table_info(fb_review_queue)")}
     if "ai_generation_id" not in review_cols:
         cx.execute("ALTER TABLE fb_review_queue ADD COLUMN ai_generation_id TEXT")
+    if "event_at" not in review_cols:
+        cx.execute("ALTER TABLE fb_review_queue ADD COLUMN event_at TEXT")
 
 
 _MENU_MAC_DINH = (
@@ -591,12 +661,19 @@ def kv_set(key: str, value: Any) -> None:
 
 
 def kv_mutate(key: str, fn: Callable[[Any], Any], default: Any) -> Any:
-    """Atomic read-modify-write under BEGIN IMMEDIATE."""
+    """Atomically read, mutate, and write one key across connections."""
     init_db()
     with _conn() as cx:
         cx.isolation_level = None
         cx.execute("BEGIN IMMEDIATE")
         try:
+            if _database_url():
+                lock_id = int.from_bytes(
+                    hashlib.sha256(key.encode()).digest()[:8],
+                    byteorder="big",
+                    signed=True,
+                )
+                cx.execute("SELECT pg_advisory_xact_lock(?)", (lock_id,))
             row = cx.execute("SELECT v FROM kv WHERE k=?", (key,)).fetchone()
             cur = json.loads(row[0]) if row else default
             if isinstance(default, dict) and isinstance(cur, dict):
@@ -1252,8 +1329,16 @@ def fb_try_claim_event(event_id: str) -> bool:
                 (event_id, _iso_now()),
             )
             return True
-        except sqlite3.IntegrityError:
-            return False
+        except Exception as exc:
+            if _database_url():
+                import psycopg
+
+                if isinstance(exc, psycopg.IntegrityError):
+                    cx.execute("ROLLBACK")
+                    return False
+            elif isinstance(exc, sqlite3.IntegrityError):
+                return False
+            raise
 
 
 def fb_try_claim_scoped_event(*, store_id: str, page_id: str, event_type: str, external_event_id: str) -> bool:
@@ -1476,15 +1561,16 @@ def fb_review_insert(item: dict[str, Any]) -> int:
     """Ghi 1 hàng vào fb_review_queue, trả về id."""
     init_db()
     with _conn() as cx:
+        returning = " RETURNING id" if _database_url() else ""
         cur = cx.execute(
             """
             INSERT INTO fb_review_queue(
                 source, external_thread_id, external_psid, external_user_name,
                 post_id, post_is_sensitive, message_text, detected_intent,
                 confidence, policy_action, assigned_role, proposed_response,
-                flagged_reasons, status, trace_id, created_at, expires_at
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-            """,
+                flagged_reasons, status, trace_id, created_at, event_at, expires_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """ + returning,
             (
                 item["source"],
                 item["external_thread_id"],
@@ -1502,9 +1588,13 @@ def fb_review_insert(item: dict[str, Any]) -> int:
                 item.get("status", "pending"),
                 item.get("trace_id", ""),
                 item["created_at"],
+                item.get("event_at"),
                 item.get("expires_at"),
             ),
         )
+        if _database_url():
+            row = cur.fetchone()
+            return int(row[0])
         return int(cur.lastrowid or 0)
 
 
@@ -1551,6 +1641,52 @@ def fb_review_link_generation(item_id: int, *, generation_id: str) -> None:
         )
 
 
+def fb_review_transition_pending(item_id: int, *, status: str) -> bool:
+    """Atomically claim a pending review item for one terminal workflow."""
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            "UPDATE fb_review_queue SET status=? WHERE id=? AND status='pending'",
+            (status, item_id),
+        )
+        return cur.rowcount == 1
+
+
+def fb_review_release_claim(item_id: int) -> bool:
+    """Return a delivery claim to the review queue after a provider failure."""
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            "UPDATE fb_review_queue SET status='pending', "
+            "assigned_role=COALESCE(assigned_role, 'quan_ly') "
+            "WHERE id=? AND status='approved'",
+            (item_id,),
+        )
+        return cur.rowcount == 1
+
+
+def fb_review_finalize_claim(
+    item_id: int,
+    *,
+    status: str,
+    decided_by: str,
+    final_response: str,
+) -> dict[str, Any] | None:
+    """Finalize an item previously claimed by pending -> approved."""
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        cx.execute(
+            "UPDATE fb_review_queue SET status=?, decided_by=?, decided_at=?, final_response=? "
+            "WHERE id=? AND status='approved'",
+            (status, decided_by, _iso_now(), final_response, item_id),
+        )
+        row = cx.execute(
+            "SELECT * FROM fb_review_queue WHERE id=?", (item_id,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
 def fb_review_decide(
     item_id: int,
     *,
@@ -1569,11 +1705,13 @@ def fb_review_decide(
             return None
         if str(row["status"]) != "pending":
             return dict(row)
-        cx.execute(
+        cur = cx.execute(
             "UPDATE fb_review_queue SET status=?, decided_by=?, decided_at=?, final_response=? "
             "WHERE id=? AND status='pending'",
             (status, decided_by, _iso_now(), final_response, item_id),
         )
+        if cur.rowcount != 1:
+            return None
         row2 = cx.execute(
             "SELECT * FROM fb_review_queue WHERE id=?", (item_id,)
         ).fetchone()
@@ -1618,10 +1756,13 @@ def fb_blacklist_check(psid: str) -> bool:
     init_db()
     now = _iso_now()
     with _conn() as cx:
+        # So sánh bên SQL: SQLite so TEXT cùng format, Postgres tự ép chuỗi
+        # ISO sang TIMESTAMPTZ — so chuỗi Python sẽ sai ký tự ở vị trí 10.
         row = cx.execute(
-            "SELECT blocked_until FROM fb_psid_blacklist WHERE psid=?", (psid,)
+            "SELECT 1 FROM fb_psid_blacklist WHERE psid=? AND blocked_until > ?",
+            (psid, now),
         ).fetchone()
-    return bool(row and str(row[0]) > now)
+    return row is not None
 
 
 def fb_blacklist_bump(psid: str, *, strikes: int, blocked_until: str, reason: str) -> None:

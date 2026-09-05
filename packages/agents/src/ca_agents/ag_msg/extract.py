@@ -6,6 +6,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from ca_agents.llm import complete, parse_json_object
+
 INTENTS = (
     "doi_ca",
     "nhan_ca",
@@ -149,7 +151,6 @@ def classify(
     staff: list[dict[str, str]] | None = None,
     base_iso_week: str | None = None,
 ) -> MsgResult:
-    _ = mode
     t = _norm(text)
     matched_intent: str | None = None
     for intent, keys in _TIER1:
@@ -158,6 +159,27 @@ def classify(
             break
 
     if not matched_intent:
+        if mode.strip().lower() == "live":
+            result = complete(
+                system=(
+                    "Phan loai tin nhan nhan vien quan. Tra JSON gom intent la mot trong "
+                    f"{list(INTENTS)} va confidence tu 0 den 1. Khong suy dien rang buoc."
+                ),
+                user=text,
+                task="text:ag_msg",
+                json_mode=True,
+            )
+            parsed = parse_json_object(result.text) if result.ok else None
+            intent = str((parsed or {}).get("intent") or "")
+            confidence = (parsed or {}).get("confidence")
+            if intent in INTENTS and intent != "khac" and isinstance(confidence, (int, float)):
+                bounded_confidence = max(0.0, min(float(confidence), 1.0))
+                return MsgResult(
+                    intent=intent,
+                    tier=2,
+                    do_tin_cay=bounded_confidence,
+                    rang_buoc={"nguon": "llm", "can_xac_minh": True},
+                )
         return MsgResult(
             intent="khac",
             tier=2,

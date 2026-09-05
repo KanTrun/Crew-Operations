@@ -15,6 +15,7 @@ import {
   PageHeader,
 } from "../../ui/kit";
 import { PersonSelect, ShiftSelect } from "../../ui/ops-pickers";
+import { CopilotPane } from "../../ui/copilot/CopilotPane";
 
 export default function QrPage() {
   const [token, setToken] = useState("");
@@ -26,6 +27,7 @@ export default function QrPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
 
   useEffect(() => {
     setToken(getToken());
@@ -93,6 +95,9 @@ export default function QrPage() {
         title="Điểm danh QR"
         meta="Quản lý chọn người và ca rồi phát mã; nhân viên dán mã để vào ca."
       />
+      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+        Hỏi trợ lý vận hành
+      </Btn>
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
 
@@ -129,6 +134,7 @@ export default function QrPage() {
           </Btn>
         </form>
       </OpsCard>
+      <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }

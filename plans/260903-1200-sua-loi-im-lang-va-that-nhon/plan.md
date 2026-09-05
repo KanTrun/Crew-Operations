@@ -26,10 +26,10 @@ Ba chỗ hệ thống "hứa mà không làm" được biến thành hành vi th
 
 ## Acceptance (quan sát được)
 
-- [ ] `POST /api/v1/meeting/apply` với `de_xuat_sop`/`de_xuat_phe_duyet` đã duyệt → `sop_proposals >= 1`, entry nằm trong `GET /api/v1/sop/de-xuat`, apply lặp không nhân đôi.
-- [ ] `worker._chay_vong(clock, port, kv)` với FakeClock: phiếu quá hạn gửi `nhac_nhan_vien` đúng 1 lần/lần/cấp; quá hạn x2 gửi `bao_chu_quan`; phiếu closed → im lặng; không import time trong vòng lặp lõi.
-- [ ] `python scripts/export_contracts.py` → `contracts.ts` chứa `export interface CuocHop {` và các kiểu literal/union thật; không còn `Record<string, unknown>`.
-- [ ] `pytest -q` toàn bộ xanh; `ruff check` sạch; `docker_stack.py up` healthy + `smoke` pass.
+- [x] `POST /api/v1/meeting/apply` với `de_xuat_sop`/`de_xuat_phe_duyet` đã duyệt → `sop_proposals >= 1`, entry nằm trong `GET /api/v1/sop/de-xuat`, apply lặp không nhân đôi.
+- [x] `worker._quet(clock, port)` với FakeClock: phiếu quá hạn gửi `nhac_nhan_vien` đúng 1 lần/lần/cấp; quá hạn x2 gửi `bao_chu_quan`; phiếu closed → im lặng; không đọc thời gian thật trong vòng lặp lõi.
+- [x] `python scripts/export_contracts.py` → `contracts.ts` chứa `export interface CuocHop {` và các kiểu literal/union thật; không còn `Record<string, unknown>`.
+- [x] `pytest -q` toàn bộ xanh; `ruff check` sạch; Docker healthy + `smoke` pass.
 
 ## Phase 1 — meeting SOP proposals thật
 

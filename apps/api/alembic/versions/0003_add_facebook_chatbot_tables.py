@@ -3,9 +3,15 @@
 Alembic migration to add Facebook conversation tracking and chatbot tables.
 """
 
-from alembic import op
+from __future__ import annotations
+
 import sqlalchemy as sa
-from sqlalchemy import Index
+from alembic import op
+
+revision = "0003"
+down_revision = "0002"
+branch_labels = None
+depends_on = None
 
 
 def upgrade():

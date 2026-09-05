@@ -30,6 +30,8 @@ os.environ.setdefault("NHIPQUAN_FB_AUTO_SEND", "0")
 from ca_api.services.fb_moderation import moderate_fb_message  # noqa: E402
 
 GOLDEN = ROOT / "data" / "fixtures" / "fb_moderation_golden.jsonl"
+MIN_CASES = 60
+MIN_PASS_RATE = 0.95
 
 PUBLIC_CTX = {
     "profile": {
@@ -58,6 +60,9 @@ def main() -> int:
     if not cases:
         print("ERR: golden empty")
         return 2
+    if len(cases) < MIN_CASES:
+        print(f"RED: golden has {len(cases)} cases; requires at least {MIN_CASES}")
+        return 1
 
     matrix: dict[tuple[str, str], int] = Counter()
     by_action: dict[str, int] = Counter()
@@ -108,8 +113,8 @@ def main() -> int:
     if hard_fail > 0:
         print("RED: hard fail (escalate/block sai) > 0")
         return 1
-    if rate < 0.90:
-        print(f"RED: pass rate {rate:.2%} < 0.90")
+    if rate < MIN_PASS_RATE:
+        print(f"RED: pass rate {rate:.2%} < {MIN_PASS_RATE:.2%}")
         return 1
     print("GREEN")
     return 0

@@ -34,6 +34,7 @@ from ca_agents.facebook_page import (
     is_within_24h_window,
     page_health,
     publish_page_post,
+    reply_to_comment,
     send_messenger_text,
     upsert_thread_from_messaging,
     verify_fb_webhook_signature,
@@ -63,10 +64,14 @@ from ca_api.persist import (
     audit_add,
     fb_escalation_add,
     fb_review_decide,
+    fb_review_finalize_claim,
     fb_review_get,
     fb_review_link_generation,
     fb_review_list,
+    fb_review_release_claim,
+    fb_review_transition_pending,
     fb_stats,
+    fb_try_claim_event,
     fb_try_claim_scoped_event,
     kenh_bind_code_consume,
     kenh_bind_code_issue,
@@ -78,7 +83,7 @@ from ca_api.persist import (
     kv_set,
 )
 from ca_api.persist import session as auth_session
-from ca_api.services.fb_moderation import moderate_fb_message
+from ca_api.services.fb_moderation import moderate_fb_message, queue_fb_non_text
 from ca_api.services.store_public_context import (
     get_active_promotions,
     get_public_menu,
@@ -557,9 +562,30 @@ async def facebook_webhook(request: Request) -> Any:
             # L0b — lọc echo: tin do chính Page/bot gửi → tránh vòng lặp (§6.2a)
             if msg.get("is_echo"):
                 continue
-            # postback / read / delivery (không có message) → nhánh riêng, không classify
             text = (msg.get("text") or "").strip()
-            if not sender or not text:
+            postback = ev.get("postback") or {}
+            attachments = msg.get("attachments") or []
+            if not sender:
+                continue
+
+            if not text and (attachments or postback):
+                if postback:
+                    title = str(postback.get("title") or "lựa chọn nhanh").strip()
+                    text = f"[Khách chọn: {title}]"
+                    event_id = str(postback.get("mid") or f"postback:{sender}:{ev.get('timestamp')}:{postback.get('payload')}")
+                else:
+                    attachment_type = str((attachments[0] or {}).get("type") or "tệp")
+                    attachment_labels = {"image": "ảnh", "audio": "âm thanh", "video": "video", "file": "tệp"}
+                    text = f"[Khách gửi {attachment_labels.get(attachment_type, 'tệp đính kèm')}]"
+                    event_id = str(msg.get("mid") or f"attachment:{sender}:{ev.get('timestamp')}")
+                if not fb_try_claim_event(event_id):
+                    continue
+                queue_fb_non_text(psid=sender, event_id=event_id, description=text)
+                n += 1
+                continue
+
+            # read / delivery và message không có nội dung → bỏ qua, không classify
+            if not text:
                 continue
 
             mid = str(msg.get("mid") or "").strip()
@@ -718,12 +744,26 @@ async def facebook_webhook(request: Request) -> Any:
                     "at": _now(),
                     "mock": False,
                 }
-                th.setdefault("replies", []).append(bot_reply)
+                delivered = _page_mode() != "live"
                 if _page_mode() == "live":
                     try:
                         send_messenger_text(sender, out.response)
+                        delivered = True
                     except Exception:
-                        pass
+                        delivered = False
+                review_id = moderation.get("review_id")
+                if review_id is not None:
+                    if delivered:
+                        fb_review_finalize_claim(
+                            int(review_id),
+                            status="auto_sent",
+                            decided_by="fb_auto",
+                            final_response=out.response,
+                        )
+                    else:
+                        fb_review_release_claim(int(review_id))
+                if delivered:
+                    th.setdefault("replies", []).append(bot_reply)
 
             def mut(doc: dict[str, Any], thread: dict[str, Any] = th) -> dict[str, Any]:
                 threads = doc.setdefault("threads", [])
@@ -747,6 +787,34 @@ async def facebook_webhook(request: Request) -> Any:
 
             kv_mutate("page_quan", mut, _page_store())
             n += 1
+
+        for change in entry.get("changes") or []:
+            value = change.get("value") or {}
+            if change.get("field") != "feed" or value.get("item") != "comment":
+                continue
+            if value.get("verb") != "add" or value.get("is_hidden"):
+                continue
+            author = value.get("from") or {}
+            sender = str(author.get("id") or "")
+            comment_id = str(value.get("comment_id") or "")
+            text = str(value.get("message") or "").strip()
+            if not sender or sender == page_id_cfg or not comment_id or not text:
+                continue
+            if not fb_try_claim_event(comment_id):
+                continue
+
+            moderation = moderate_fb_message(
+                psid=sender,
+                text=text,
+                message_id=comment_id,
+                timestamp=float(value.get("created_time") or 0),
+                public_context=public_ctx,
+                source="comment",
+                post_id=str(value.get("post_id") or "") or None,
+                external_user_name=str(author.get("name") or "") or None,
+            )
+            if moderation.get("action") not in {"block_silent", "block_polite"}:
+                n += 1
     return {"ok": True, "n": n}
 
 
@@ -967,7 +1035,8 @@ def fb_inbox_list(
     role = _require_manager(authorization)
     if role == "quan_ly" and assigned_role == "chu_quan":
         raise HTTPException(status_code=403, detail="forbidden")
-    items = fb_review_list(status=status, assigned_role=assigned_role, limit=limit)
+    visible_role = "quan_ly" if role == "quan_ly" else assigned_role
+    items = fb_review_list(status=status, assigned_role=visible_role, limit=limit)
     for it in items:
         it["flagged_reasons"] = json.loads(it.get("flagged_reasons") or "[]")
     return {"items": items, "role": role}
@@ -1014,8 +1083,15 @@ def fb_inbox_decide(
     if str(item.get("assigned_role")) == "chu_quan" and role != "chu_quan":
         raise HTTPException(status_code=403, detail="cho_chu_quan_duyet")
 
+    customer_event_at = item.get("event_at") or item.get("created_at")
+    if customer_event_at and not is_within_24h_window(str(customer_event_at)):
+        fb_review_transition_pending(item_id, status="expired")
+        raise HTTPException(status_code=409, detail="qua_cua_so_24h")
+
     if body.quyet_dinh == "tu_choi":
         updated = fb_review_decide(item_id, status="rejected", decided_by=s["nv_id"])
+        if not updated:
+            raise HTTPException(status_code=409, detail="da_quyet_truoc_do")
         _record_fb_feedback(
             store_id="quan_01", conversation_id=str(item.get("external_psid") or item_id),
             feedback_type="manager_reject", original=str(item.get("proposed_response") or ""),
@@ -1034,22 +1110,33 @@ def fb_inbox_decide(
         )
         return {"ok": True, "item": fb_review_get(item_id), "sent": False}
 
-    # duyet / sua_gui — gửi qua Messenger
+    # duyet / sua_gui — gửi đúng transport theo nguồn đã lưu
     final_text = (body.noi_dung or str(item.get("proposed_response") or "")).strip()
     if not final_text:
         raise HTTPException(status_code=400, detail="thieu_noi_dung")
     psid = str(item.get("external_psid") or "")
+    if not fb_review_transition_pending(item_id, status="approved"):
+        raise HTTPException(status_code=409, detail="da_quyet_truoc_do")
     graph_sent = False
     if _page_mode() == "live" and psid:
         try:
-            send_messenger_text(psid, final_text)
+            if str(item.get("source")) == "comment":
+                reply_to_comment(str(item.get("external_thread_id") or ""), final_text)
+            else:
+                send_messenger_text(psid, final_text)
             graph_sent = True
         except Exception:
             graph_sent = False
-    new_status = "sent" if graph_sent else "approved"
-    updated = fb_review_decide(
-        item_id, status=new_status, decided_by=s["nv_id"], final_response=final_text
-    )
+    if graph_sent:
+        updated = fb_review_finalize_claim(
+            item_id,
+            status="sent",
+            decided_by=s["nv_id"],
+            final_response=final_text,
+        )
+    else:
+        fb_review_release_claim(item_id)
+        updated = fb_review_get(item_id)
     proposed = str(item.get("proposed_response") or "")
     _record_fb_feedback(
         store_id="quan_01", conversation_id=str(item.get("external_psid") or item_id),

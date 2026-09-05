@@ -50,6 +50,30 @@ def test_extract_live_parses_llm_json(monkeypatch: object) -> None:
     assert result["escalate"] is False
 
 
+def test_extract_live_sends_binary_image_to_vision_provider(
+    monkeypatch: object, tmp_path: object
+) -> None:
+    image = tmp_path / "schedule.png"  # type: ignore[operator]
+    image.write_bytes(b"\x89PNG\r\n\x1a\n\x00binary")
+    captured: dict[str, object] = {}
+
+    def fake_complete(**kwargs: object) -> LlmResult:
+        captured.update(kwargs)
+        return LlmResult(
+            ok=True,
+            text='{"khoang_ban":[{"thu":"T3","start":"08:00","end":"12:00"}],"doc_duoc":true}',
+            provider="gemini",
+            reason="ok",
+        )
+
+    monkeypatch.setattr("ca_agents.ag_tkb.extract.complete", fake_complete)  # type: ignore[attr-defined]
+    result = extract_tkb(str(image), mode="live")
+
+    assert captured["image_bytes"] == image.read_bytes()
+    assert captured["image_mime"] == "image/png"
+    assert result["spans"] == [{"day": "T3", "start": "08:00", "end": "12:00"}]
+
+
 def test_extract_live_fail_closed(monkeypatch: object) -> None:
     def fake_complete(**_k: object) -> LlmResult:
         return LlmResult(ok=False, text="", provider="tu_choi", reason="all_down")

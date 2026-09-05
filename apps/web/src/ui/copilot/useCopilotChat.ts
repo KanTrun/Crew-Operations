@@ -204,7 +204,7 @@ export function useCopilotChat(mode: Mode = "pane") {
 
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.detail || "Không thể kết nối với AG-COPILOT");
+          throw new Error(data.detail || "Không thể kết nối với trợ lý vận hành");
         }
 
         const replyText: string =
@@ -240,7 +240,7 @@ export function useCopilotChat(mode: Mode = "pane") {
 
   const clearHistory = useCallback(() => {
     if (typeof window === "undefined") return;
-    const ok = window.confirm("Xoá toàn bộ lịch sử hội thoại với AG-COPILOT?");
+    const ok = window.confirm("Xoá toàn bộ lịch sử hội thoại với trợ lý vận hành?");
     if (!ok) return;
     setMessages([
       {

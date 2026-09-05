@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 try:
     from datetime import UTC, datetime
@@ -61,13 +62,19 @@ from ca_api.persist import register as persist_register
 from ca_api.persist import session as auth_session
 
 app = FastAPI(title="NHIP QUAN API", version="0.2.0")
+
+# CORS: mặc định 3 origin dev local. Khi deploy (Postgres, domain thật) đặt
+# NHIPQUAN_CORS_ORIGINS — danh sách origin cách nhau bởi dấu phẩy — để thay
+# toàn bộ danh sách này; bỏ trống thì giữ mặc định bên dưới.
+_cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("NHIPQUAN_CORS_ORIGINS", "").split(",")
+    if origin.strip()
+] or ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

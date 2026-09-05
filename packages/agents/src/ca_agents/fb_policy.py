@@ -53,7 +53,7 @@ OWNER_ESCALATION_KEYWORDS = (
     "ngo doc", "dau bung", "di ung", "thai san", "tre em", "con toi",
     "chau toi", "hoa don do", "hop dong", "hoan tien", "boi thuong",
     "chuyen khoan", "bao chi", "co quan chuc nang", "cong an", "so y te",
-    "luat su", "gap chu", "gap quan ly",
+    "luat su", "gap chu", "gap quan ly", "noi chuyen voi quan ly",
 )
 
 # Từ khóa khiếu nại nặng — QL xử lý trong 5 phút, chưa tới mức Chủ quán
