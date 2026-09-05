@@ -129,6 +129,11 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                       : "border-[var(--nq-dim)] bg-[var(--nq-surface)] text-[var(--nq-fg)]"
                   }`}
                 >
+                  {msg.sender === "copilot" && msg.id !== "welcome" && (
+                    <span className="mb-1.5 inline-flex items-center gap-1 rounded bg-zinc-800/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300">
+                      🤖 AI{msg.agent_mode === "live" ? " · live" : msg.agent_mode === "replay" ? " · mẫu replay" : ""}
+                    </span>
+                  )}
                   <p className="whitespace-pre-wrap leading-relaxed">
                     <ChatText text={msg.text} />
                     {streamingId === msg.id && (

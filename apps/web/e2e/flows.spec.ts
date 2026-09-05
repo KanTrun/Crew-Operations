@@ -111,7 +111,7 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
     for (const [route, heading] of [
       ["/page-quan", /Page quán|Radar|Xu Hướng/i],
       ["/cam-nang", /Cẩm nang/i],
-      ["/tkb", /Thời khoá biểu/i],
+      ["/tkb", /Lịch bận|Tải ảnh lịch bận/i],
       ["/tieu-thu", /Tiêu thụ/i],
       ["/hao-phi", /Hao phí/i],
       ["/cong-bang", /Công bằng/i],
