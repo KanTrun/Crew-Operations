@@ -32,28 +32,28 @@ function tourId(href: string): string {
 
 const STAFF_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/cuoc-hop", label: "Họp & gửi nhóm", short: "Họp" },
-  { href: "/quay", label: "Quầy", short: "Quầy" },
-  { href: "/pha", label: "Pha chế", short: "Pha" },
-  { href: "/tkb", label: "Lịch bận", short: "Lịch bận" },
+  { href: "/toi", label: "Lịch của tôi", short: "Lịch" },
+  { href: "/phieu", label: "Phiếu", short: "Phiếu" },
+  { href: "/doi-ca", label: "Trao đổi ca", short: "Ca" },
+  { href: "/copilot", label: "Trợ lý", short: "Trợ lý" },
 ];
 
 const MANAGER_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/cuoc-hop", label: "Họp & gửi nhóm", short: "Họp" },
   { href: "/roster", label: "Lịch tuần", short: "Lịch" },
-  { href: "/inbox", label: "Hộp thư", short: "Hộp thư" },
-  { href: "/quay", label: "Quầy", short: "Quầy" },
-  { href: "/tkb", label: "Lịch bận", short: "Lịch bận" },
+  { href: "/phieu", label: "Phiếu", short: "Phiếu" },
+  { href: "/inbox", label: "Trao đổi", short: "Duyệt" },
+  { href: "/cam-nang", label: "Cẩm nang", short: "Luật" },
+  { href: "/copilot", label: "Trợ lý", short: "Trợ lý" },
 ];
 
 const ADMIN_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/cuoc-hop", label: "Họp & gửi nhóm", short: "Họp" },
-  { href: "/nguoi", label: "Người dùng", short: "Người" },
-  { href: "/menu", label: "Menu & giá", short: "Menu" },
   { href: "/roster", label: "Lịch tuần", short: "Lịch" },
-  { href: "/tkb", label: "Lịch bận", short: "Lịch bận" },
+  { href: "/phieu", label: "Phiếu", short: "Phiếu" },
+  { href: "/inbox", label: "Trao đổi", short: "Duyệt" },
+  { href: "/cam-nang", label: "Cẩm nang", short: "Luật" },
+  { href: "/copilot", label: "Trợ lý", short: "Trợ lý" },
 ];
 
 const MORE: LinkItem[] = [

@@ -19,7 +19,9 @@ export type IconName =
   | "inbox"
   | "cam-nang"
   | "them"
-  | "cong-bang";
+  | "cong-bang"
+  | "copilot"
+  | "doi-ca";
 
 const PATHS: Record<IconName, ReactNode> = {
   // Mặt trời trên đường chân trời — bảng "hôm nay"
@@ -92,6 +94,20 @@ const PATHS: Record<IconName, ReactNode> = {
       <circle cx="6" cy="12" r="1.4" />
       <circle cx="12" cy="12" r="1.4" />
       <circle cx="18" cy="12" r="1.4" />
+    </>
+  ),
+  // Tia lọc trong bong bóng — trợ lý AI
+  copilot: (
+    <>
+      <path d="M4 5h16v10H13l-4 4v-4H4z" />
+      <path d="M12 8l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" />
+    </>
+  ),
+  // Hai mũi tên đổi chiều — đổi ca
+  "doi-ca": (
+    <>
+      <path d="M7 8h10l-3-3" />
+      <path d="M17 16H7l3 3" />
     </>
   ),
 };
