@@ -169,7 +169,7 @@ jobs:
       - run: docker compose -f infra/docker/compose.yml build
       - name: Stack lên và smoke toàn tuyến
         run: |
-          docker compose -f infra/docker/compose.yml up -d
+          docker compose -f infra/docker/compose.yml up -d --wait || docker compose -f infra/docker/compose.yml up -d
           docker compose -f infra/docker/compose.yml exec -T api python /app/scripts/smoke_docker.py
       - name: Log khi đỏ
         if: failure()
