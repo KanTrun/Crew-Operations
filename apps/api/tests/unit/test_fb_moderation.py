@@ -6,8 +6,11 @@ Mỗi test dùng SQLite temp riêng qua NHIPQUAN_DB để không nhiễm data/qu
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import sqlite3
 import uuid
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -22,7 +25,7 @@ def api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "live")
     monkeypatch.setenv("NHIPQUAN_FB_PAGE_TOKEN", "tok_test")
     monkeypatch.setenv("NHIPQUAN_FB_PAGE_ID", "page_1")
-    monkeypatch.delenv("NHIPQUAN_FB_APP_SECRET", raising=False)
+    monkeypatch.setenv("NHIPQUAN_FB_APP_SECRET", "secret_test")
     monkeypatch.setenv("NHIPQUAN_DB", str(tmp_path / f"t_{uuid.uuid4().hex[:8]}.db"))
 
     # init_db() gate bằng cờ toàn cục — DB temp mới cần reset để tạo bảng
@@ -43,7 +46,17 @@ def api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     from ca_api.interfaces.http.main import app as fastapi_app
 
     monkeypatch.setattr(ch, "send_messenger_text", lambda *a, **k: {"ok": True})
-    return TestClient(fastapi_app)
+    client = TestClient(fastapi_app)
+    original_send = client.send
+
+    def signed_send(request, *args, **kwargs):
+        if request.method == "POST" and request.url.path.endswith("/facebook/webhook"):
+            digest = hmac.new(b"secret_test", request.content, hashlib.sha256).hexdigest()
+            request.headers["x-hub-signature-256"] = f"sha256={digest}"
+        return original_send(request, *args, **kwargs)
+
+    client.send = signed_send  # type: ignore[method-assign]
+    return client
 
 
 def _post(client: TestClient, mid: str, text: str, psid: str = "psid_mod") -> object:
@@ -139,6 +152,83 @@ def test_entry_wrong_page_id_skipped(api: TestClient) -> None:
     assert r.json().get("n", 0) == 0
 
 
+@pytest.mark.parametrize(
+    ("event", "expected_text"),
+    [
+        (
+            {
+                "sender": {"id": "psid_attachment"},
+                "message": {
+                    "mid": "attachment_1",
+                    "attachments": [{"type": "image", "payload": {"url": "https://example.test/a.jpg"}}],
+                },
+            },
+            "[Khách gửi ảnh]",
+        ),
+        (
+            {
+                "sender": {"id": "psid_postback"},
+                "timestamp": 1_700_000_000_000,
+                "postback": {"mid": "postback_1", "title": "Xem menu", "payload": "VIEW_MENU"},
+            },
+            "[Khách chọn: Xem menu]",
+        ),
+    ],
+)
+def test_non_text_event_queues_once(
+    api: TestClient, event: dict[str, object], expected_text: str
+) -> None:
+    payload = {"entry": [{"id": "page_1", "messaging": [event]}]}
+
+    first = api.post("/api/v1/channels/facebook/webhook", json=payload)
+    duplicate = api.post("/api/v1/channels/facebook/webhook", json=payload)
+
+    assert first.status_code == 200
+    assert first.json().get("n") == 1
+    assert duplicate.json().get("n") == 0
+    item = next(i for i in _pending(api) if i["message_text"] == expected_text)
+    assert item["detected_intent"] == "khac"
+    assert item["policy_action"] == "queue_review"
+    assert item["assigned_role"] == "quan_ly"
+
+
+def test_feed_comment_queues_once_with_post_context(api: TestClient) -> None:
+    payload = {
+        "entry": [
+            {
+                "id": "page_1",
+                "changes": [
+                    {
+                        "field": "feed",
+                        "value": {
+                            "item": "comment",
+                            "verb": "add",
+                            "comment_id": "comment_1",
+                            "post_id": "page_1_42",
+                            "from": {"id": "fb_user_1", "name": "Lan"},
+                            "message": "quán mở cửa mấy giờ",
+                            "created_time": 1_700_000_000,
+                        },
+                    }
+                ],
+            }
+        ]
+    }
+
+    first = api.post("/api/v1/channels/facebook/webhook", json=payload)
+    duplicate = api.post("/api/v1/channels/facebook/webhook", json=payload)
+
+    assert first.status_code == 200
+    assert first.json().get("n") == 1
+    assert duplicate.json().get("n") == 0
+    item = next(i for i in _pending(api) if i["message_text"] == "quán mở cửa mấy giờ")
+    assert item["source"] == "comment"
+    assert item["external_thread_id"] == "comment_1"
+    assert item["external_psid"] == "fb_user_1"
+    assert item["external_user_name"] == "Lan"
+    assert item["post_id"] == "page_1_42"
+
+
 # ── L4: policy qua webhook ──────────────────────────────────────────────────
 
 
@@ -194,6 +284,7 @@ def test_inbox_decide_sua_gui_and_idempotent(api: TestClient, monkeypatch) -> No
     )
     assert r.status_code == 200, r.text
     assert r.json()["sent"] is True
+    assert r.json()["item"]["status"] == "sent"
     assert len(sent) == 1
     assert sent[0][0] == hit["external_psid"]
     # decide lần 2 → 409 (idempotent, không gửi trùng)
@@ -314,6 +405,45 @@ def test_webhook_audits_selected_facebook_canary_rule(api: TestClient) -> None:
     assert generation["rollout_bucket"] == "canary_50"
 
 
+def test_inbox_decide_provider_failure_can_retry(api: TestClient, monkeypatch) -> None:
+    from ca_api.interfaces.http import channels as ch
+
+    attempts: list[tuple[str, str]] = []
+
+    def flaky_send(psid: str, text: str, **kwargs: object) -> dict[str, object]:
+        attempts.append((psid, text))
+        if len(attempts) == 1:
+            raise RuntimeError("graph_unavailable")
+        return {"ok": True}
+
+    monkeypatch.setattr(ch, "send_messenger_text", flaky_send)
+    _post(api, "dec_retry_1", "đặt bàn 2 người 18h")
+    hit = next(i for i in _pending(api) if "đặt bàn 2" in str(i["message_text"]))
+    request = {
+        "quyet_dinh": "sua_gui",
+        "noi_dung": "Dạ quán nhận giữ bàn 2 người 18h ạ!",
+    }
+
+    failed = api.post(
+        f"/api/v1/page/fb-inbox/{hit['id']}/decide",
+        json=request,
+        headers=headers(api, "lan"),
+    )
+    retried = api.post(
+        f"/api/v1/page/fb-inbox/{hit['id']}/decide",
+        json=request,
+        headers=headers(api, "lan"),
+    )
+
+    assert failed.status_code == 200
+    assert failed.json()["sent"] is False
+    assert failed.json()["item"]["status"] == "pending"
+    assert retried.status_code == 200
+    assert retried.json()["sent"] is True
+    assert retried.json()["item"]["status"] == "sent"
+    assert len(attempts) == 2
+
+
 def test_inbox_reject(api: TestClient) -> None:
     _post(api, "rej_1", "cho xin voucher đi ạ")
     hit = next(i for i in _pending(api) if "voucher" in str(i["message_text"]))
@@ -324,6 +454,158 @@ def test_inbox_reject(api: TestClient) -> None:
     )
     assert r.status_code == 200
     assert r.json()["item"]["status"] == "rejected"
+
+
+def test_inbox_reject_reports_lost_transition(api: TestClient, monkeypatch) -> None:
+    from ca_api.interfaces.http import channels as ch
+
+    _post(api, "rej_race_1", "cho xin voucher đi ạ", psid="psid_rej_race")
+    hit = next(i for i in _pending(api) if i["external_psid"] == "psid_rej_race")
+    monkeypatch.setattr(ch, "fb_review_decide", lambda *args, **kwargs: None)
+
+    response = api.post(
+        f"/api/v1/page/fb-inbox/{hit['id']}/decide",
+        json={"quyet_dinh": "tu_choi", "ly_do": "sai thông tin"},
+        headers=headers(api, "lan"),
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "da_quyet_truoc_do"
+
+
+def test_inbox_expired_after_24h_is_not_sent(api: TestClient, monkeypatch) -> None:
+    from ca_api.interfaces.http import channels as ch
+    from ca_api.persist import fb_review_insert
+
+    sent: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        ch, "send_messenger_text", lambda psid, text, **k: sent.append((psid, text))
+    )
+    created_at = (datetime.now(UTC) - timedelta(hours=25)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    item_id = fb_review_insert(
+        {
+            "source": "messenger",
+            "external_thread_id": "fb_psid_expired",
+            "external_psid": "psid_expired",
+            "message_text": "đặt bàn giúp mình",
+            "detected_intent": "dat_ban",
+            "confidence": 0.99,
+            "policy_action": "queue_review",
+            "assigned_role": "quan_ly",
+            "proposed_response": "Dạ quán đã nhận yêu cầu ạ.",
+            "created_at": created_at,
+        }
+    )
+
+    result = api.post(
+        f"/api/v1/page/fb-inbox/{item_id}/decide",
+        json={"quyet_dinh": "duyet"},
+        headers=headers(api, "lan"),
+    )
+
+    assert result.status_code == 409
+    assert result.json()["detail"] == "qua_cua_so_24h"
+    assert sent == []
+    detail = api.get(
+        f"/api/v1/page/fb-inbox/{item_id}", headers=headers(api, "lan")
+    )
+    assert detail.json()["status"] == "expired"
+
+
+def test_inbox_uses_customer_event_time_for_24h_window(
+    api: TestClient, monkeypatch
+) -> None:
+    from ca_api.interfaces.http import channels as ch
+
+    sent: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        ch, "send_messenger_text", lambda psid, text, **kwargs: sent.append((psid, text))
+    )
+    old_event_ms = int((datetime.now(UTC) - timedelta(hours=25)).timestamp() * 1000)
+    payload = {
+        "entry": [
+            {
+                "id": "page_1",
+                "messaging": [
+                    {
+                        "sender": {"id": "psid_old_event"},
+                        "timestamp": old_event_ms,
+                        "message": {"mid": "old_event_1", "text": "cho xin voucher đi ạ"},
+                    }
+                ],
+            }
+        ]
+    }
+    assert api.post("/api/v1/channels/facebook/webhook", json=payload).status_code == 200
+    hit = next(i for i in _pending(api) if i["external_psid"] == "psid_old_event")
+
+    result = api.post(
+        f"/api/v1/page/fb-inbox/{hit['id']}/decide",
+        json={"quyet_dinh": "duyet"},
+        headers=headers(api, "lan"),
+    )
+
+    assert result.status_code == 409
+    assert result.json()["detail"] == "qua_cua_so_24h"
+    assert sent == []
+    detail = api.get(
+        f"/api/v1/page/fb-inbox/{hit['id']}", headers=headers(api, "lan")
+    )
+    assert detail.json()["status"] == "expired"
+
+
+def test_comment_approval_uses_comment_reply_transport(
+    api: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from ca_api.interfaces.http import channels as ch
+
+    comment_replies: list[tuple[str, str]] = []
+    messenger_replies: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        ch,
+        "reply_to_comment",
+        lambda comment_id, text: comment_replies.append((comment_id, text)),
+    )
+    monkeypatch.setattr(
+        ch,
+        "send_messenger_text",
+        lambda psid, text, **kwargs: messenger_replies.append((psid, text)),
+    )
+    payload = {
+        "entry": [
+            {
+                "id": "page_1",
+                "changes": [
+                    {
+                        "field": "feed",
+                        "value": {
+                            "item": "comment",
+                            "verb": "add",
+                            "comment_id": "comment_send_1",
+                            "post_id": "page_1_42",
+                            "from": {"id": "fb_user_send", "name": "Lan"},
+                            "message": "đặt bàn tối nay",
+                        },
+                    }
+                ],
+            }
+        ]
+    }
+    api.post("/api/v1/channels/facebook/webhook", json=payload)
+    item = next(i for i in _pending(api) if i["external_thread_id"] == "comment_send_1")
+
+    result = api.post(
+        f"/api/v1/page/fb-inbox/{item['id']}/decide",
+        json={"quyet_dinh": "sua_gui", "noi_dung": "Quán đã nhận yêu cầu ạ."},
+        headers=headers(api, "lan"),
+    )
+
+    assert result.status_code == 200
+    assert result.json()["sent"] is True
+    assert comment_replies == [("comment_send_1", "Quán đã nhận yêu cầu ạ.")]
+    assert messenger_replies == []
 
 
 # ── RBAC ────────────────────────────────────────────────────────────────────
@@ -356,6 +638,16 @@ def test_quan_ly_cannot_list_owner_assigned(api: TestClient) -> None:
         "/api/v1/page/fb-inbox?assigned_role=chu_quan", headers=headers(api, "lan")
     )
     assert r.status_code == 403
+
+
+def test_quan_ly_default_list_hides_owner_assigned(api: TestClient) -> None:
+    _post(api, "esc_hidden", "muốn gặp chủ quán trực tiếp")
+
+    manager_items = api.get(
+        "/api/v1/page/fb-inbox?status=pending", headers=headers(api, "lan")
+    ).json()["items"]
+
+    assert not any(item["assigned_role"] == "chu_quan" for item in manager_items)
 
 
 def test_stats_endpoint(api: TestClient) -> None:

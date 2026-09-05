@@ -18,6 +18,7 @@ import {
 } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 import { PersonSelect, ShiftSelect } from "../../ui/ops-pickers";
+import { CopilotPane } from "../../ui/copilot/CopilotPane";
 
 type Swap = {
   id: string;
@@ -47,6 +48,7 @@ export default function DoiCaPage() {
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("all");
   const [personF, setPersonF] = useState("all");
+  const [copilotOpen, setCopilotOpen] = useState(false);
   const { data: pickers } = useOpsPickers(!!token);
   const meNv = pickers?.me_nv_id ?? null;
 
@@ -175,6 +177,9 @@ export default function DoiCaPage() {
         title="Chợ đổi ca"
         meta="Chọn người nhả, người nhận, người xác nhận và ca — mỗi nhánh bấm đồng ý trên lệnh."
       />
+      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+        Hỏi trợ lý vận hành
+      </Btn>
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
 
@@ -249,6 +254,7 @@ export default function DoiCaPage() {
           })}
         </div>
       </OpsCard>
+      <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }

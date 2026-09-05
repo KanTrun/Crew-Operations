@@ -13,6 +13,7 @@ import {
   StepDone,
   Textarea,
 } from "../../ui/kit";
+import { CopilotPane } from "../../ui/copilot/CopilotPane";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -53,6 +54,7 @@ export default function PhieuPage() {
   const [showTreo, setShowTreo] = useState(false);
   const [inputVal, setInputVal] = useState("");
   const [done, setDone] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -196,9 +198,13 @@ export default function PhieuPage() {
     return (
       <div className="nq-page nq-page--center">
         <PageHeader kicker="Xong phiếu" title="Hoàn thành" meta={`Phiếu ${phieu?.id ?? ""} đã xong.`} />
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          Hỏi trợ lý vận hành
+        </Btn>
         <Btn variant="primary" onClick={() => { setPhieu(null); setDone(false); }}>
           Tạo phiếu mới
         </Btn>
+        <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
       </div>
     );
   }
@@ -210,6 +216,9 @@ export default function PhieuPage() {
         title={phieu ? `Phiếu ${phieu.mau}` : "Mở phiếu"}
         meta={phieu ? `Bước ${completed + 1} / ${total}` : "Chọn mẫu phiếu. Hệ thống điểm danh trước khi mở."}
       />
+      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+        Hỏi trợ lý vận hành
+      </Btn>
 
       {error ? <Alert>{error}</Alert> : null}
 
@@ -313,6 +322,7 @@ export default function PhieuPage() {
           </Btn>
         </FixedBottomBar>
       ) : null}
+      <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }

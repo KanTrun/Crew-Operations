@@ -768,6 +768,36 @@ def test_copilot_message_stream_sse() -> None:
         assert meta.get("intent") == "SCHEDULE_SOLVE"
 
 
+def test_copilot_message_stream_persists_proposal_and_audit() -> None:
+    """A streamed proposal must be saved before the UI can present approval controls."""
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/message/stream",
+        json={"message": "Xếp lịch tuần sau giúp chị", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+
+    import json as _json
+
+    meta_line = next(
+        line
+        for line in res.text.split("\n")
+        if line.startswith("data:") and "action_proposal" in line
+    )
+    meta = _json.loads(meta_line[len("data:"):].strip())
+    proposal = meta["action_proposal"]
+    assert proposal is not None
+    action_id = proposal["action_id"]
+
+    draft = copilot_draft_get(action_id)
+    assert draft is not None
+    assert draft["status"] == "ready_for_approval"
+
+    audits = copilot_audit_list("quan_01")
+    assert any(a["action_id"] == action_id and a["decision"] == "propose" for a in audits)
+
+
 def test_copilot_send_mail_proposal_and_execute() -> None:
     token = _login_manager()
     set_user_email("minh", "minh@example.com")

@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
+
+import pytest
+from ca_agents.ag_msg import MsgResult
 from ca_agents.messaging import InboundMessage
 from ca_api.interfaces.http.channels import process_inbound
 from ca_api.interfaces.http.main import app
@@ -74,6 +80,78 @@ def test_bind_issue_and_inbound_enqueue(monkeypatch) -> None:
     assert found.get("noi_dung_goc")
 
 
+def test_live_inbound_llm_result_requires_manager_approval(monkeypatch) -> None:
+    from ca_api.interfaces.http import channels as ch
+    from ca_api.interfaces.http.sprint3 import _phan_cong
+
+    monkeypatch.setenv("CA_AGENT_MODE", "live")
+    monkeypatch.setattr(
+        ch,
+        "classify",
+        lambda *args, **kwargs: MsgResult(
+            intent="xin_nghi",
+            tier=2,
+            do_tin_cay=0.78,
+            rang_buoc={"nguon": "llm", "can_xac_minh": True},
+        ),
+    )
+    before = _phan_cong()
+    nv = headers(client, "minh")
+    code = client.post("/api/v1/channels/bind/issue", headers=nv).json()["code"]
+    process_inbound(
+        InboundMessage(text=f"/bind {code}", channel="telegram", external_user_id="tg_live"),
+        reply_backend="replay",
+    )
+
+    result = process_inbound(
+        InboundMessage(
+            text="mai em có việc gia đình nên không đến được",
+            channel="telegram",
+            external_user_id="tg_live",
+        ),
+        reply_backend="replay",
+    )
+
+    assert result["hanh"] == "enqueue"
+    assert result["item"]["trang_thai"] == "cho_duyet"
+    assert result["item"]["rang_buoc"] == {"nguon": "llm", "can_xac_minh": True}
+    assert _phan_cong() == before
+
+
+def test_live_inbound_invalid_llm_result_does_not_enqueue(monkeypatch) -> None:
+    from ca_api.interfaces.http import channels as ch
+
+    monkeypatch.setenv("CA_AGENT_MODE", "live")
+    monkeypatch.setattr(
+        ch,
+        "classify",
+        lambda *args, **kwargs: MsgResult(
+            intent="khac",
+            tier=2,
+            do_tin_cay=0.55,
+            rang_buoc={"nguon": "tier2_fallback", "can_xac_minh": True},
+        ),
+    )
+    nv = headers(client, "minh")
+    code = client.post("/api/v1/channels/bind/issue", headers=nv).json()["code"]
+    process_inbound(
+        InboundMessage(text=f"/bind {code}", channel="telegram", external_user_id="tg_invalid"),
+        reply_backend="replay",
+    )
+
+    result = process_inbound(
+        InboundMessage(
+            text="mai em có việc gia đình nên không đến được",
+            channel="telegram",
+            external_user_id="tg_invalid",
+        ),
+        reply_backend="replay",
+    )
+
+    assert result["hanh"] == "bo_qua"
+    assert result["intent"] == "khac"
+
+
 def test_xem_lich_after_bind(monkeypatch) -> None:
     monkeypatch.setenv("CA_AGENT_MODE", "replay")
     nv = headers(client, "minh")
@@ -134,7 +212,10 @@ def test_inbox_duyet_doi_ca_opens_swap(monkeypatch) -> None:
     assert hit.get("b") == "nv_01"
 
 
-def test_page_empty_without_fixture_seed() -> None:
+def test_page_empty_without_fixture_seed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "disconnected")
+    monkeypatch.delenv("NHIPQUAN_FB_PAGE_TOKEN", raising=False)
+    monkeypatch.delenv("FACEBOOK_PAGE_ACCESS_TOKEN", raising=False)
     ql = headers(client, "lan")
     st = client.get("/api/v1/page/status", headers=ql)
     assert st.status_code == 200
@@ -142,6 +223,38 @@ def test_page_empty_without_fixture_seed() -> None:
     th = client.get("/api/v1/page/threads", headers=ql)
     assert th.status_code == 200
     assert th.json()["items"] == []
+
+
+def test_page_status_requires_successful_graph_health(monkeypatch) -> None:
+    from ca_api.interfaces.http import channels as ch
+
+    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "live")
+    monkeypatch.setenv("NHIPQUAN_FB_PAGE_TOKEN", "invalid_test_token")
+    monkeypatch.setenv("NHIPQUAN_FB_PAGE_ID", "page_1")
+    monkeypatch.setattr(ch, "page_health", lambda: {"ok": False, "detail": "graph_http_401"})
+
+    result = client.get("/api/v1/page/status", headers=headers(client, "lan"))
+
+    assert result.status_code == 200
+    assert result.json()["mode"] == "live"
+    assert result.json()["connected"] is False
+    assert result.json()["graph_ok"] is False
+    assert result.json()["graph_detail"] == "graph_http_401"
+
+
+def test_page_replay_remains_available_without_token(monkeypatch) -> None:
+    from ca_api.persist import kv_set
+
+    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "disconnected")
+    monkeypatch.delenv("NHIPQUAN_FB_PAGE_TOKEN", raising=False)
+    monkeypatch.setenv("NHIPQUAN_PAGE_SEED_FIXTURE", "1")
+    kv_set("page_quan", None)
+
+    result = client.get("/api/v1/page/threads", headers=headers(client, "lan"))
+
+    assert result.status_code == 200
+    assert result.json()["mode"] == "disconnected"
+    assert isinstance(result.json()["items"], list)
 
 
 def test_facebook_webhook_verify(monkeypatch) -> None:
@@ -171,12 +284,11 @@ def test_facebook_webhook_inbound_live(monkeypatch) -> None:
     monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "live")
     monkeypatch.setenv("NHIPQUAN_FB_PAGE_TOKEN", "tok_test")
     monkeypatch.setenv("NHIPQUAN_FB_PAGE_ID", "page_1")
+    monkeypatch.setenv("NHIPQUAN_FB_APP_SECRET", "secret_test")
     from ca_api.persist import kv_set
 
     kv_set("page_quan", {"threads": [], "drafts": [], "mode": "live"})
-    r = client.post(
-        "/api/v1/channels/facebook/webhook",
-        json={
+    payload = {
             "entry": [
                 {
                     "messaging": [
@@ -187,7 +299,13 @@ def test_facebook_webhook_inbound_live(monkeypatch) -> None:
                     ]
                 }
             ]
-        },
+        }
+    body = json.dumps(payload).encode("utf-8")
+    signature = hmac.new(b"secret_test", body, hashlib.sha256).hexdigest()
+    r = client.post(
+        "/api/v1/channels/facebook/webhook",
+        content=body,
+        headers={"content-type": "application/json", "x-hub-signature-256": f"sha256={signature}"},
     )
     assert r.status_code == 200, r.text
     assert r.json().get("n") == 1

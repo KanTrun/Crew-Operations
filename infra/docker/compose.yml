@@ -53,6 +53,7 @@ services:
       NHIPQUAN_ZALO_OA_ACCESS_TOKEN: ${NHIPQUAN_ZALO_OA_ACCESS_TOKEN:-}
       NHIPQUAN_FB_PAGE_TOKEN: ${NHIPQUAN_FB_PAGE_TOKEN:-}
       NHIPQUAN_FB_PAGE_ID: ${NHIPQUAN_FB_PAGE_ID:-}
+    command: ["sh", "-c", "cd /app/apps/api && alembic -c alembic/alembic.ini upgrade head && uvicorn ca_api.interfaces.http.main:app --host 0.0.0.0 --port 8000"]
     ports:
       - "8000:8000"
     volumes:
@@ -103,6 +104,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      api:
         condition: service_healthy
 
   web:

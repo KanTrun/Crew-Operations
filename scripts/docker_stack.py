@@ -119,6 +119,8 @@ def main() -> int:
     if lenh == "logs":
         return _compose("logs", "-f", "--tail=100")
     if lenh == "smoke":
+        if rc := _compose("exec", "-T", "worker", "python", "-c", "print('worker: running')"):
+            return rc
         return _compose("exec", "-T", "api", "python", "/app/scripts/smoke_docker.py")
     if lenh == "seed-ops":
         # Store ghi được của container nằm trong volume `nhipquan_var`, không

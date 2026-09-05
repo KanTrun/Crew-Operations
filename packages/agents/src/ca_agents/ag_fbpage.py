@@ -11,6 +11,7 @@ Orchestrates the Specialized Agent Squad:
 from __future__ import annotations
 
 import asyncio
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -59,6 +60,14 @@ _COMPLAINT_WORDS = (
     "bực",
     "buc",
     "tẩy chay",
+    "khó chịu",
+    "kho chiu",
+    "đợi",
+    "doi ",
+    "tính nhầm",
+    "tinh nham",
+    "sai đơn",
+    "sai don",
 )
 
 _BOOKING_WORDS = (
@@ -220,6 +229,16 @@ def _missing_verified_context(
     return None
 
 
+def _has_keyword(text: str, keyword: str) -> bool:
+    if len(keyword.strip()) <= 3:
+        return re.search(rf"(?<!\w){re.escape(keyword)}(?!\w)", text) is not None
+    return keyword in text
+
+
+def _has_any_keyword(text: str, keywords: tuple[str, ...]) -> bool:
+    return any(_has_keyword(text, keyword) for keyword in keywords)
+
+
 def detect_customer_psychology(text: str) -> tuple[str, str, float]:
     """
     Analyze customer emotion and intent.
@@ -228,31 +247,31 @@ def detect_customer_psychology(text: str) -> tuple[str, str, float]:
     t = _norm(text)
 
     # 1. Complaint (AG-CONCIERGE)
-    if any(k in t for k in _COMPLAINT_WORDS):
+    if _has_any_keyword(t, _COMPLAINT_WORDS):
         return "complaining", "khieu_nai_gop_y", 0.95
 
     # 2. Table Booking (AG-CONCIERGE)
-    if any(k in t for k in _BOOKING_WORDS):
+    if _has_any_keyword(t, _BOOKING_WORDS):
         return "booking", "dat_ban", 0.92
 
     # 3. Beverage Consultation (AG-BARISTA)
-    if any(k in t for k in _CONSULT_WORDS):
+    if _has_any_keyword(t, _CONSULT_WORDS):
         return "hesitant", "hoi_menu_gia", 0.90
 
     # 4. Promotions (AG-FRONTDESK)
-    if any(k in t for k in _PROMO_WORDS):
+    if _has_any_keyword(t, _PROMO_WORDS):
         return "inquiring", "hoi_khuyen_mai", 0.88
 
     # 5. Operating Hours & Address (AG-FRONTDESK)
-    if any(k in t for k in _INFO_WORDS):
+    if _has_any_keyword(t, _INFO_WORDS):
         return "rushed" if len(t) < 25 else "inquiring", "hoi_gio_dia_chi", 0.90
 
     # 6. Menu & Pricing (AG-FRONTDESK / BARISTA)
-    if any(k in t for k in _MENU_WORDS):
+    if _has_any_keyword(t, _MENU_WORDS):
         return "inquiring", "hoi_menu_gia", 0.88
 
     # 7. Greeting (AG-FRONTDESK)
-    if any(k in t for k in _GREETING_WORDS):
+    if _has_any_keyword(t, _GREETING_WORDS):
         return "friendly", "chao_hoi", 0.85
 
     return "neutral", "khac", 0.50

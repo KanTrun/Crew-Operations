@@ -8,6 +8,7 @@ import time
 import uuid
 from collections.abc import Callable
 from functools import wraps
+from pathlib import Path
 from typing import Annotated, Any
 
 try:
@@ -45,6 +46,14 @@ from ca_api.persist import (
 from ca_api.persist import session as auth_session
 
 router = APIRouter(prefix="/api/v1/copilot", tags=["copilot"])
+
+_ROOT = Path(__file__).resolve().parents[6]
+
+
+def _life_tuan_hien_tai() -> str:
+    """Tuần ISO hiện tại của lifecycle lịch — dùng khi đề xuất không kèm tuần."""
+    life = kv_get("lich_tuan_lifecycle", {}) or {}
+    return str(life.get("tuan_iso") or "2026-W36")
 
 _RATE_LIMIT_STORE: dict[str, list[float]] = {}
 
@@ -186,6 +195,40 @@ def _validate_correction_diff(intent: str, correction_diff: dict[str, Any] | Non
         return model.model_validate(correction_diff).model_dump(exclude_none=True)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail="invalid_correction_diff") from exc
+def _record_copilot_response(
+    response: CopilotResponse,
+    *,
+    user: dict[str, str],
+    message: str,
+    channel: str,
+    latency_ms: int,
+) -> None:
+    """Persist every proposal before exposing it to an approval-capable client."""
+    if response.intent == CopilotIntent.OUT_OF_SCOPE and "vượt phạm vi vai trò" in response.reply_text:
+        copilot_audit_add(
+            action_id="n/a",
+            actor_user_id=user["user_id"],
+            store_id=user["store_id"],
+            intent="role_blocked",
+            decision="role_blocked",
+            payload_diff={"message": message[:200]},
+            channel=channel,
+            latency_ms=latency_ms,
+        )
+
+    if response.action_proposal:
+        prop_dict = response.action_proposal.model_dump()
+        copilot_draft_save(prop_dict)
+        copilot_audit_add(
+            action_id=response.action_proposal.action_id,
+            actor_user_id=user["user_id"],
+            store_id=user["store_id"],
+            intent=response.action_proposal.intent.value,
+            decision="propose",
+            payload_diff=response.action_proposal.payload_diff,
+            channel=channel,
+            latency_ms=latency_ms,
+        )
 
 
 # ── 1. POST /api/v1/copilot/message ──────────────────────────────────────────
@@ -223,33 +266,13 @@ def copilot_message(
     response = run_copilot(body.message, verified_context)
     latency_ms = int((time.time() - t0) * 1000)
 
-    # Minh bạch: log các lượt bị chặn do vượt quyền (role_blocked) để review.
-    if response.intent == CopilotIntent.OUT_OF_SCOPE and "vượt phạm vi vai trò" in response.reply_text:
-        copilot_audit_add(
-            action_id="n/a",
-            actor_user_id=user["user_id"],
-            store_id=user["store_id"],
-            intent="role_blocked",
-            decision="role_blocked",
-            payload_diff={"message": body.message[:200]},
-            channel=body.channel,
-            latency_ms=latency_ms,
-        )
-
-    # If action proposal was generated, save draft and log propose audit
-    if response.action_proposal:
-        prop_dict = response.action_proposal.model_dump()
-        copilot_draft_save(prop_dict)
-        copilot_audit_add(
-            action_id=response.action_proposal.action_id,
-            actor_user_id=user["user_id"],
-            store_id=user["store_id"],
-            intent=response.action_proposal.intent.value,
-            decision="propose",
-            payload_diff=response.action_proposal.payload_diff,
-            channel=body.channel,
-            latency_ms=latency_ms,
-        )
+    _record_copilot_response(
+        response,
+        user=user,
+        message=body.message,
+        channel=body.channel,
+        latency_ms=latency_ms,
+    )
 
     return response
 
@@ -268,6 +291,7 @@ def copilot_message_stream(
     fetch + ReadableStream đọc từng chunk. Fallback auto về /message (JSON)
     nếu LLM stream không khả dụng.
     """
+    t0 = time.time()
     user = _get_verified_user(authorization)
     _check_rate_limit(user["user_id"])
     verified_context = {
@@ -281,6 +305,13 @@ def copilot_message_stream(
 
     # 1. Chạy copilot bình thường (tất định: intent/tool/proposal) — nhanh vì replay.
     response = run_copilot(body.message, verified_context)
+    _record_copilot_response(
+        response,
+        user=user,
+        message=body.message,
+        channel=body.channel,
+        latency_ms=int((time.time() - t0) * 1000),
+    )
 
     # 1b. Lưu draft khi có ActionProposal — /message/stream trước đây bỏ sót bước
     # này nên bấm "Duyệt & Gửi" ở UI bị 404 action_proposal_not_found.
@@ -313,6 +344,7 @@ def copilot_message_stream(
             ),
             "citations": list(getattr(response, "citations", []) or []),
             "direct_answer": getattr(response, "direct_answer", None),
+            "agent_mode": getattr(response, "agent_mode", "replay"),
         }
         yield _sse("meta", meta)
 
@@ -555,9 +587,46 @@ def copilot_execute_action(
                     kv_mutate(store_key, mut_style, {})
 
     if intent == "SCHEDULE_SOLVE":
-        phan_cong = diff.get("phan_cong", {})
-        kv_set("phan_cong", phan_cong)
-        kv_set("lich_tuan", phan_cong)
+        phan_cong_moi = diff.get("phan_cong", {})
+        # Ghi đúng nơi /roster đọc: file lich_tuan.json (nguồn GET /api/v1/lich-tuan)
+        # + kv phan_cong (nguồn /toi, đổi ca, công bằng) + lifecycle trạng thái mới.
+        try:
+            _lich_out = _ROOT / "data" / "out" / "lich_tuan.json"
+            _lich_out.parent.mkdir(parents=True, exist_ok=True)
+            payload_file = {
+                "nguon": "quan",
+                "adr": "ADR-012",
+                "tuan_iso": diff.get("tuan_iso") or _life_tuan_hien_tai(),
+                "status": str(diff.get("status") or "OPTIMAL"),
+                "ok": bool(diff.get("ok", True)),
+                "elapsed_s": diff.get("elapsed_s"),
+                "objective": diff.get("objective"),
+                "violations": diff.get("violations", []),
+                "phan_cong": phan_cong_moi,
+                "debt_after": diff.get("debt_after", {}),
+                "luat_ap_dung": diff.get("luat_ap_dung", []),
+                "danh_sach_xung_dot": [],
+            }
+            _lich_out.write_text(
+                json.dumps(payload_file, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass  # File system read-only (vài môi trường Docker) — kv vẫn là nguồn dự phòng.
+        kv_set("lich_tuan", phan_cong_moi)
+        kv_set("phan_cong", phan_cong_moi)
+        tuan_ap_dung = diff.get("tuan_iso") or _life_tuan_hien_tai()
+
+        def mut_life(cur: dict[str, Any]) -> dict[str, Any]:
+            life = dict(cur or {})
+            life["trang_thai"] = "da_cong_bo"
+            life["tuan_iso"] = tuan_ap_dung
+            life["cap_nhat_luc"] = now_iso
+            life["cap_nhat_boi"] = "copilot_duyet"
+            life["nguon"] = "copilot"
+            return life
+
+        kv_mutate("lich_tuan_lifecycle", mut_life, {})
         kv_set("lich_tuan_status", "da_cong_bo")
     elif intent == "APPROVE_SHIFT_SWAP":
         swap_id = diff.get("swap_id")
@@ -650,11 +719,22 @@ def copilot_execute_action(
         latency_ms=int((time.time() - t0) * 1000),
     )
 
+    _RESULT_LINK: dict[str, str] = {
+        "SCHEDULE_SOLVE": "/roster",
+        "APPROVE_SHIFT_SWAP": "/doi-ca",
+        "CREATE_RULE_PROPOSAL": "/cam-nang",
+        "INVENTORY_RESTOCK_CHECK": "/tieu-thu",
+        "GENERATE_DAILY_BRIEF": "/hom-nay",
+        "QUERY_SOP": "/sop",
+        "ANALYZE_WASTE": "/hao-phi",
+        "SEND_MAIL": "/vet",
+    }
     outcome = {
         "ok": True,
         "action_id": body.action_id,
         "status": "executed",
         "message": "Đã phê duyệt và thực thi hành động thành công!",
+        "result_link": _RESULT_LINK.get(intent),
         "payload_diff": diff,
     }
     copilot_execution_complete(

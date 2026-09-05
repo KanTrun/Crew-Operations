@@ -26,4 +26,8 @@ Hồ sơ §11 (`apps/web` constraints-inbox / run-form / today / playbook / sop-
 
 Trang `/` chỉ đưa vào đăng nhập hoặc chuyển `/hom-nay`. Không dump 10 liên kết.
 
+## AG-COPILOT trong vận hành
+
+Pane AG-COPILOT là lớp đề xuất có duyệt, không phải điểm ghi dữ liệu trực tiếp. Người vận hành mở pane bằng nút `Hỏi AG-COPILOT` tại các route có ngữ cảnh thao tác: `/roster`, `/qr`, `/phieu`, `/treo`, `/cong-bang`, `/tkb`, `/handover`, và `/doi-ca`. Proposal từ cả JSON lẫn SSE phải có draft và audit bền vững trước khi UI hiển thị thao tác duyệt.
+
 Kênh tin: Zalo trước, Telegram phụ; webhook + token trong `.env` — xem `docs/runbooks/zalo-oa-connect.md`. Replay fixture chỉ CI.

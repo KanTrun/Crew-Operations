@@ -39,6 +39,13 @@ def test_detect_customer_psychology_states():
     assert intent == "hoi_gio_dia_chi"
 
 
+def test_short_keywords_require_word_boundaries():
+    for text in ("Quán bàn về tôn giáo nhé", "Quan điểm chính trị của quán"):
+        emotion, intent, _confidence = detect_customer_psychology(text)
+        assert emotion == "neutral"
+        assert intent == "khac"
+
+
 def test_human_persona_anti_robot_rules():
     # Check responses for robotic terms vs natural Vietnamese service tone
     robotic_phrases = [

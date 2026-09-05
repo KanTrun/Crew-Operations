@@ -145,7 +145,7 @@ export default function SopPage() {
   return (
     <div className="nq-page nq-page--run nq-sop-copilot">
       <header className="nq-sop-copilot__head">
-        <p className="nq-sop-copilot__kicker">SOP Copilot</p>
+        <p className="nq-sop-copilot__kicker">Trợ lý quy trình</p>
         <h1 className="nq-sop-copilot__title">Hỏi quy trình quán</h1>
         <p className="nq-sop-copilot__lead">
           Một câu trả lời rõ ràng từ phiếu và luật đã duyệt — lọc theo ca hôm nay, không bịa.

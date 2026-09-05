@@ -110,8 +110,7 @@ def verify_fb_webhook_signature(payload_bytes: bytes, signature_header: str) -> 
     """
     secret = _app_secret()
     if not secret:
-        # If secret is not configured in dev/test, return True if signature header is missing/dev
-        return True
+        return False
     if not signature_header or not signature_header.startswith("sha256="):
         return False
     expected_hash = hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
@@ -244,6 +243,13 @@ def send_messenger_text(psid: str, text: str, *, tag: str | None = None) -> dict
         data["messaging_type"] = "RESPONSE"
 
     return graph_post("me/messages", data)
+
+
+def reply_to_comment(comment_id: str, text: str) -> dict[str, Any]:
+    """Trả lời trực tiếp một comment công khai qua Graph API."""
+    if not comment_id.strip():
+        raise RuntimeError("thieu_comment_id")
+    return graph_post(f"{comment_id}/comments", {"message": text})
 
 
 def publish_page_post(message: str) -> dict[str, Any]:

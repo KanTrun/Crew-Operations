@@ -30,7 +30,7 @@ export interface CopilotProfile {
 
 const STAFF: CopilotProfile = {
   role: "nhan_vien",
-  label: "AG-COPILOT · Ca của bạn",
+  label: "Trợ lý ca làm",
   persona: "nhan_vien",
   accent: "#fbbf24", // amber-400
   quickPrompts: [
@@ -41,7 +41,7 @@ const STAFF: CopilotProfile = {
     "Hướng dẫn vệ sinh máy pha cà phê",
   ],
   greeting:
-    "Em chào anh/chị — em là AG-COPILOT hỗ trợ ca. Em giúp được: xem bản tin, tra cứu quy trình, xem hao hụt. Việc xếp lịch hay duyệt đổi ca anh/chị nhờ quản lý giúp em ạ.",
+    "Em chào anh/chị. Em có thể xem bản tin, tra cứu quy trình và kiểm tra hao hụt trong ca. Việc xếp lịch hay duyệt đổi ca cần quản lý thực hiện.",
   allowActionApproval: false,
   showAudit: false,
   capabilities: [
@@ -55,7 +55,7 @@ const STAFF: CopilotProfile = {
 
 const MANAGER: CopilotProfile = {
   role: "quan_ly",
-  label: "AG-COPILOT · Điều hành quán",
+  label: "Trợ lý vận hành",
   persona: "quan_ly",
   accent: "#22d3ee", // cyan-400
   quickPrompts: [
@@ -66,7 +66,7 @@ const MANAGER: CopilotProfile = {
     "Đề xuất luật mới từ các lần sửa của chị",
   ],
   greeting:
-    "Chào anh/chị — em là AG-COPILOT điều hành. Em giúp được: xếp lịch, duyệt đổi ca, bản tin, quy trình, hao hụt, đề xuất luật, kiểm kê. Mọi thay đổi đều chờ anh/chị duyệt trước khi áp dụng.",
+    "Chào anh/chị. Em hỗ trợ xếp lịch, duyệt đổi ca, bản tin, quy trình, hao hụt, đề xuất quy định và kiểm kê. Mọi thay đổi đều chờ anh/chị duyệt trước khi áp dụng.",
   allowActionApproval: true,
   showAudit: false,
   capabilities: [
@@ -82,7 +82,7 @@ const MANAGER: CopilotProfile = {
 
 const OWNER: CopilotProfile = {
   role: "chu_quan",
-  label: "AG-COPILOT · Chủ quán",
+  label: "Trợ lý chủ quán",
   persona: "chu_quan",
   accent: "#a78bfa", // violet-400
   quickPrompts: [
@@ -93,7 +93,7 @@ const OWNER: CopilotProfile = {
     "Quy trình mở quán gồm các bước nào?",
   ],
   greeting:
-    "Chào anh/chị — em là AG-COPILOT của Chủ quán. Em có toàn bộ quyền điều hành như quản lý: xếp lịch, duyệt đổi ca, kiểm kê, đề xuất luật. Mọi thay đổi vẫn chờ anh/chị duyệt.",
+    "Chào anh/chị. Em hỗ trợ toàn bộ nghiệp vụ điều hành: xếp lịch, duyệt đổi ca, kiểm kê và đề xuất quy định. Mọi thay đổi vẫn chờ anh/chị duyệt.",
   allowActionApproval: true,
   showAudit: true,
   capabilities: [
@@ -106,14 +106,14 @@ const OWNER: CopilotProfile = {
 
 const GUEST: CopilotProfile = {
   role: "",
-  label: "AG-COPILOT",
+  label: "Trợ lý vận hành",
   persona: "nhan_vien",
   accent: "#fbbf24",
   quickPrompts: [],
-  greeting: "Vui lòng đăng nhập để dùng AG-COPILOT.",
+  greeting: "Vui lòng đăng nhập để dùng trợ lý vận hành.",
   allowActionApproval: false,
   showAudit: false,
-  emptyMessage: "Bạn cần đăng nhập để chat với AG-COPILOT.",
+  emptyMessage: "Bạn cần đăng nhập để trò chuyện với trợ lý vận hành.",
   capabilities: [],
 };
 

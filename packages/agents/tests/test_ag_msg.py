@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ca_agents.ag_msg import INTENTS, classify
+from ca_agents.llm import LlmResult
 
 
 def test_six_intents_defined() -> None:
@@ -41,3 +42,40 @@ def test_tier2_fallback() -> None:
     assert res.intent == "khac"
     assert res.tier == 2
     assert res.do_tin_cay == 0.55
+
+
+def test_tier2_live_uses_provider_for_unmatched_message(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "ca_agents.ag_msg.extract.complete",
+        lambda **kwargs: LlmResult(
+            ok=True,
+            text='{"intent":"xin_nghi","confidence":0.78}',
+            provider="mock",
+            reason="",
+        ),
+    )
+
+    result = classify("mai em có việc gia đình nên không đến được", mode="live")
+
+    assert result.intent == "xin_nghi"
+    assert result.tier == 2
+    assert result.do_tin_cay == 0.78
+    assert result.rang_buoc == {"nguon": "llm", "can_xac_minh": True}
+
+
+def test_tier2_live_fails_closed_on_invalid_provider_output(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "ca_agents.ag_msg.extract.complete",
+        lambda **kwargs: LlmResult(
+            ok=True,
+            text='{"intent":"tu_dong_duyet","confidence":1}',
+            provider="mock",
+            reason="",
+        ),
+    )
+
+    result = classify("mai em có việc gia đình nên không đến được", mode="live")
+
+    assert result.intent == "khac"
+    assert result.do_tin_cay == 0.55
+    assert result.rang_buoc["can_xac_minh"] is True

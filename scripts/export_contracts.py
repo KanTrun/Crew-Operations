@@ -38,7 +38,7 @@ def _ts_type(node: Any, defs: dict[str, Any]) -> str:
     if "$ref" in node:
         return str(node["$ref"]).rsplit("/", 1)[-1]
     if "enum" in node:
-        return " | ".join(_ts_literal(v) for v in node["enum"])
+        return " | ".join(dict.fromkeys(_ts_literal(v) for v in node["enum"]))
     if "anyOf" in node:
         parts = [_ts_type(x, defs) for x in node["anyOf"]]
         return " | ".join(dict.fromkeys(parts))
@@ -58,7 +58,7 @@ def _ts_type(node: Any, defs: dict[str, Any]) -> str:
         add = node.get("additionalProperties")
         if isinstance(add, dict):
             return f"Record<string, {_ts_type(add, defs)}>"
-        return "Record<string, unknown>"
+        return "Record<string, JsonValue>"
     if isinstance(t, dict):  # union of primitive types
         return " | ".join(dict.fromkeys(_ts_type({**node, "type": x}, defs) for x in t["type"]))
     return _TS_PRIM.get(str(t), "unknown")
@@ -77,6 +77,8 @@ def ts_types_from_schemas(schemas: dict[str, dict[str, Any]]) -> str:
     lines = [
         "// Sinh tự động từ JSON Schema của pydantic — chạy `make contracts`.",
         "// KHÔNG sửa tay: nguồn sự thật là packages/contracts/src/ca_contracts.",
+        "",
+        "export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };",
         "",
     ]
     emitted: set[str] = set()

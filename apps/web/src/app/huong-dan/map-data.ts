@@ -88,9 +88,9 @@ export const HUBS: MapHub[] = [
       {
         href: "/tkb",
         label: "TKB ảnh",
-        desc: "Upload ảnh thời khoá biểu → AG-TKB đọc khoảng bận.",
+        desc: "Tải ảnh lịch cá nhân để đọc và xác nhận khoảng bận.",
         roles: ["all"],
-        agent: "AG-TKB",
+        agent: "Đọc lịch bận",
       },
     ],
   },

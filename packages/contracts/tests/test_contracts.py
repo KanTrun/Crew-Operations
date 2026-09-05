@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import importlib.util
+import sys
+from pathlib import Path
+
 import pytest
 from ca_contracts import (
     CONTRACTS,
@@ -22,6 +26,18 @@ from ca_contracts import (
     RangBuocTrichXuat,
 )
 from pydantic import ValidationError
+
+ROOT = Path(__file__).resolve().parents[3]
+
+
+def _load_export_contracts():
+    path = ROOT / "scripts" / "export_contracts.py"
+    spec = importlib.util.spec_from_file_location("export_contracts", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_contracts_registered() -> None:
@@ -50,6 +66,18 @@ def test_contracts_registered() -> None:
         "AIEvaluation",
         "AIRuleProposal",
     }
+
+
+def test_typescript_export_has_real_types_without_unknown_stub() -> None:
+    exporter = _load_export_contracts()
+    schemas = {name: model.model_json_schema() for name, model in CONTRACTS.items()}
+
+    output = exporter.ts_types_from_schemas(schemas)
+
+    assert "export interface CuocHop {" in output
+    assert '"giao_ca" | "hop_tuan"' in output
+    assert "Record<string, unknown>" not in output
+    assert output.count('"auto_send"') == 1
 
 
 def test_round_trip_models() -> None:
