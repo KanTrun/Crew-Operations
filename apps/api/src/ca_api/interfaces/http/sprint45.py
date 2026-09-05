@@ -84,6 +84,22 @@ _REASON = {
 }
 
 
+def _la_ban_ghi_mau(row: Any) -> bool:
+    """Một bản ghi là dữ liệu mẫu khi mang nhãn fixture hoặc id fx_."""
+    if not isinstance(row, dict):
+        return False
+    if row.get("nguon") == "mo_phong_fixture":
+        return True
+    return str(row.get("id") or "").startswith("fx_")
+
+
+def _co_du_lieu_mau(rows: Any) -> bool:
+    """True khi danh sách có ít nhất một bản ghi fixture — để UI gắn nhãn mẫu."""
+    if not isinstance(rows, list):
+        return False
+    return any(_la_ban_ghi_mau(r) for r in rows)
+
+
 def _audit(hanh: str, ai: str, payload: dict[str, Any]) -> None:
     audit_add(_clock.now_iso(), ai, hanh, payload)
 
@@ -428,7 +444,7 @@ def inbox_list(authorization: Annotated[str | None, Header()] = None) -> dict[st
             enriched.append(item_copy)
         else:
             enriched.append(it)
-    return {"items": enriched, "nguon": "quan"}
+    return {"items": enriched, "nguon": "quan", "co_du_lieu_mau": _co_du_lieu_mau(enriched)}
 
 
 @router.post("/api/v1/inbox/rang-buoc/{item_id}")
@@ -718,6 +734,7 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
         "treo_theo_trang_thai": treo_theo_trang_thai,
         "sua_gan_day": sua_gan_day,
         "ton_tom_tat": ton_tom_tat,
+        "co_du_lieu_mau": _co_du_lieu_mau([*treo, *inbox, *ton]),
         "nguon": "quan",
     }
 
@@ -725,7 +742,13 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
 @router.get("/api/v1/tieu-thu")
 def tieu_thu_list(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_role(authorization)
-    return {"items": kv_get("tieu_thu", []), "nguon": "quan", "ghi": "số lượng, không kế toán"}
+    ton = kv_get("tieu_thu", [])
+    return {
+        "items": ton,
+        "nguon": "quan",
+        "ghi": "số lượng, không kế toán",
+        "co_du_lieu_mau": _co_du_lieu_mau(ton),
+    }
 
 
 @router.post("/api/v1/tieu-thu")
@@ -824,6 +847,7 @@ def cam_nang_get(authorization: Annotated[str | None, Header()] = None) -> dict[
         "pipeline": snap,
         "nguon": "dung_lai_8_tuan",
         "so_luat_that_quan": snap["so_luat_that_quan"],
+        "co_du_lieu_mau": _co_du_lieu_mau(items),
     }
 
 
@@ -1006,6 +1030,7 @@ def waste(authorization: Annotated[str | None, Header()] = None) -> dict[str, An
         "items": [x.__dict__ for x in cluster_waste(pairs)] if pairs else [],
         "ghi_chu": stored,
         "nguon": "quan",
+        "co_du_lieu_mau": _co_du_lieu_mau(stored),
     }
 
 
