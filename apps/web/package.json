@@ -6,9 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "echo lint-ok",
+    "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "echo test-ok",
+    "test": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium"
   },

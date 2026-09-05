@@ -448,7 +448,7 @@ def _page_store() -> dict[str, Any]:
     data.setdefault("threads", [])
     data.setdefault("drafts", [])
     kv_set("page_quan", data)
-    return data
+    return cast(dict[str, Any], data)
 
 
 def _page_mode() -> str:

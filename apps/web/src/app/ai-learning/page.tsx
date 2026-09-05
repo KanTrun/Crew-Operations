@@ -135,7 +135,7 @@ export default function AiLearningPage() {
 
   if (!token) return <AuthGate />;
   if (!manager) {
-    return <div className="nq-page"><PageHeader kicker="AI vận hành" title="Không có quyền truy cập" /><Notice>Trang này dành cho Quản lý và Chủ quán.</Notice></div>;
+    return <div className="nq-page"><PageHeader kicker="AI vận hành" title="Không đủ quyền truy cập" /><Notice>Trang này dành cho Quản lý và Chủ quán.</Notice></div>;
   }
 
   const feedbackTotal = Object.values(summary?.feedback_by_type ?? {}).reduce((total, value) => total + value, 0);

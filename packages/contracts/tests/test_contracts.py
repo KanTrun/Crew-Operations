@@ -65,6 +65,7 @@ def test_contracts_registered() -> None:
         "AIFeedbackEvent",
         "AIEvaluation",
         "AIRuleProposal",
+        "TableReservation",
     }
 
 

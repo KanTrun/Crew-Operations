@@ -1,4 +1,9 @@
 from ca_playbook.derive import derive_rule_from_edits, sua_rows_for_mau
+from ca_playbook.distiller import (
+    distill_sop_to_dir,
+    generate_skill_content,
+    parse_sop_markdown,
+)
 from ca_playbook.pipeline import (
     count_luat_that_quan,
     enrich_luat_ui,
@@ -38,4 +43,8 @@ __all__ = [
     "theo_doi",
     "list_luat",
     "save_luat",
+    "parse_sop_markdown",
+    "generate_skill_content",
+    "distill_sop_to_dir",
 ]
+

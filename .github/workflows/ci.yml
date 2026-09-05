@@ -169,7 +169,7 @@ jobs:
       - run: docker compose -f infra/docker/compose.yml build
       - name: Stack lên và smoke toàn tuyến
         run: |
-          docker compose -f infra/docker/compose.yml up -d
+          docker compose -f infra/docker/compose.yml up -d --wait || docker compose -f infra/docker/compose.yml up -d
           docker compose -f infra/docker/compose.yml exec -T api python /app/scripts/smoke_docker.py
       - name: Log khi đỏ
         if: failure()
@@ -199,3 +199,21 @@ jobs:
           python-version: "3.12"
       - run: pip install pyyaml
       - run: python scripts/validate_templates.py
+
+  skills-verify:
+    name: "12 skills verify (Repo-To-Skill)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install -e ./packages/contracts -e ./packages/solver \
+            -e ./packages/gates -e ./packages/playbook -e ./packages/agents \
+            -e ./apps/api pyyaml ortools
+      - name: Verify all 13 Repo Skills fail-closed
+        run: |
+          python scripts/distill_project_skills.py --verify-only
+

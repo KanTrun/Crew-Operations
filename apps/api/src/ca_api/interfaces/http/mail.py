@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 try:
     from datetime import UTC, datetime
@@ -21,7 +22,13 @@ from pydantic import BaseModel, Field
 from ca_api.ai_learning.operations import circuit_breaker_open
 from ca_api.ai_learning.repository import AILearningRepository
 from ca_api.interfaces.http.sprint3 import _require_manager
-from ca_api.persist import get_user_emails, session, set_user_email
+from ca_api.persist import (
+    copilot_mail_delivery_complete,
+    copilot_mail_delivery_reserve,
+    get_user_emails,
+    session,
+    set_user_email,
+)
 
 router = APIRouter(tags=["mail"])
 
@@ -55,6 +62,7 @@ def execute_supervised_mail(
     prompt_version: str = "mail-send-v1",
     rule_version: str = "none",
     rollout_bucket: str = "control",
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
     """Run a Gmail send through the shared safety and learning audit pipeline."""
     if circuit_breaker_open(store_id=store_id, channel="gmail"):
@@ -96,14 +104,59 @@ def execute_supervised_mail(
     if gate.action != "send":
         return {"ok": False, "mode": os.environ.get("CA_AGENT_MODE", "replay"), "reason": "quality_gate", "quality_gate": gate.__dict__, "generation_id": generation_id}
 
-    res = send_mail(to_emails=to_emails, subject=subject, body=body, html_body=html_body, attachments=attachments)
-    outcome = "send_success" if res.ok else "send_failure"
+    delivery_key = idempotency_key or f"mail:{fingerprint}"
+    delivery_hash = hashlib.sha256(json.dumps({
+        "to_emails": to_emails,
+        "subject": subject,
+        "body": body,
+        "html_body": html_body,
+        "attachments": attachments,
+    }, ensure_ascii=False, sort_keys=True, default=str).encode()).hexdigest()
+    reservation, replay = copilot_mail_delivery_reserve(store_id, delivery_key, delivery_hash)
+    if reservation == "replay" and replay:
+        return replay
+    if reservation == "pending":
+        raise HTTPException(status_code=409, detail="mail_delivery_in_progress")
+    if reservation == "conflict":
+        raise HTTPException(status_code=409, detail="mail_idempotency_conflict")
+
+    try:
+        res = send_mail(
+            to_emails=to_emails,
+            subject=subject,
+            body=body,
+            html_body=html_body,
+            attachments=cast(list[dict[str, Any] | str] | None, attachments),
+        )
+    except Exception as exc:
+        outcome = {
+            "ok": False, "mode": "smtp", "sent": [], "failed": [],
+            "reason": "delivery_unknown", "error_type": type(exc).__name__,
+            "quality_gate": gate.__dict__, "generation_id": generation_id,
+        }
+        copilot_mail_delivery_complete(store_id, delivery_key, "delivery_unknown", outcome)
+        return outcome
+
+    delivery_status = "sent" if res.ok else "transport_failed"
+    if res.mode == "smtp" and res.failed:
+        delivery_status = "delivery_unknown" if res.sent else "transport_failed"
+    outcome = {
+        "ok": res.ok,
+        "mode": res.mode,
+        "sent": res.sent,
+        "failed": res.failed,
+        "reason": res.reason,
+        "quality_gate": gate.__dict__,
+        "generation_id": generation_id,
+    }
+    copilot_mail_delivery_complete(store_id, delivery_key, delivery_status, outcome)
+    outcome_name = "send_success" if res.ok else "send_failure"
     repository.save(AIFeedbackEvent(
-        id=f"feedback-{fingerprint[:24]}-{outcome}", store_id=store_id, generation_id=generation_id,
-        channel="gmail", type=outcome, actor_role="system", send_status="sent" if res.ok else "failed",
-        failure_code=None if res.ok else res.reason, idempotency_key=f"{outcome}:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
+        id=f"feedback-{fingerprint[:24]}-{outcome_name}", store_id=store_id, generation_id=generation_id,
+        channel="gmail", type=outcome_name, actor_role="system", send_status="sent" if res.ok else "failed",
+        failure_code=None if res.ok else res.reason, idempotency_key=f"{outcome_name}:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
     ))
-    return {"ok": res.ok, "mode": res.mode, "sent": res.sent, "failed": res.failed, "reason": res.reason, "quality_gate": gate.__dict__, "generation_id": generation_id}
+    return outcome
 
 
 @router.get("/api/v1/me/profile")

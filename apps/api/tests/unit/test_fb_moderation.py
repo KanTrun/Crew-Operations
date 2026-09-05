@@ -10,8 +10,13 @@ import hashlib
 import hmac
 import sqlite3
 import uuid
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+try:
+    from datetime import UTC, datetime, timedelta
+except ImportError:
+    from datetime import datetime, timedelta, timezone
+    UTC = timezone.utc
 
 import pytest
 from fastapi.testclient import TestClient

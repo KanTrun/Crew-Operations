@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from ca_agents.llm import agent_mode, complete, ensure_dotenv, parse_json_object
 
@@ -473,7 +473,8 @@ def _normalize_output(
     raw_hl = None if khong_lien_quan else data.get("huan_luyen_quan_ly")
     norm_hl = None
     if isinstance(raw_hl, dict):
-        q_pct = int(raw_hl.get("ty_le_noi_quan_ly_pct", 70))
+        raw_q_pct = cast(object, raw_hl.get("ty_le_noi_quan_ly_pct"))
+        q_pct = int(raw_q_pct) if isinstance(raw_q_pct, (int, float, str)) else 70
         q_pct = max(0, min(100, q_pct))
         s_pct = 100 - q_pct
         norm_hl = {
@@ -494,10 +495,13 @@ def _normalize_output(
         legacy_sop = [] if khong_lien_quan else (data.get("de_xuat_sop") or [])
         for s in legacy_sop:
             if isinstance(s, dict) and s.get("quy_trinh_lien_quan"):
+                raw_step = cast(object, s.get("buoc_so"))
                 norm_sop.append(
                     {
                         "quy_trinh_lien_quan": str(s.get("quy_trinh_lien_quan")),
-                        "buoc_so": int(s.get("buoc_so")) if s.get("buoc_so") is not None else None,
+                        "buoc_so": int(raw_step)
+                        if isinstance(raw_step, (int, float, str))
+                        else None,
                         "noi_dung_thay_doi": str(s.get("noi_dung_thay_doi") or ""),
                         "ly_do": str(s.get("ly_do") or ""),
                     }

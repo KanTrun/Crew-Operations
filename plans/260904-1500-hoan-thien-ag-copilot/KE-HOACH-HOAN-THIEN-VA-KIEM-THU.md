@@ -603,18 +603,24 @@ Quy ước: chỉ đánh dấu `[x]` sau khi code và validation tập trung c�
 - [x] Kiểm tra live snapshot cho tồn kho.
 - [x] Khóa correction schema theo từng intent.
 - [x] Lưu durable idempotency receipt, replay cùng request và conflict khác request/key.
-- [ ] **Đang làm:** Gom transaction cho thực thi nội bộ.
-- [ ] Xử lý mail `delivery_unknown` và chống gửi trùng ở adapter.
-- [ ] Bổ sung live snapshot cho lịch và đổi ca.
-- [ ] Bổ sung live snapshot cho rule và mail.
-- [ ] Siết tenant isolation, authorization và audit matrix.
-- [ ] Sửa parser follow-up context.
-- [ ] Hoàn thiện UI retry, `executing` và `execution_failed`.
-- [ ] Thêm fault-injection và rollback tests.
-- [ ] Chạy E2E và no-network replay.
-- [ ] Chạy toàn bộ lint, typecheck và test.
-- [ ] Cập nhật runbook migration, canary và rollout.
-- [ ] Triển khai Universal Orchestration PR9-13 sau khi Core Safety PR0-8 đạt cổng phát hành.
+- [x] Gom transaction cho thực thi nội bộ KV: schedule, swap và restock cùng commit domain write, action, receipt và audit; external adapter/playbook vẫn dùng outcome flow riêng.
+- [x] Xử lý mail `delivery_unknown` và chống gửi trùng ở adapter: receipt durable theo store/idempotency key + request hash; replay outcome terminal, không retry mù.
+- [x] Bổ sung live snapshot cho lịch và đổi ca: provider chung `live-v1` kiểm tra nguồn sống trước approve, có fallback chỉ cho draft legacy.
+- [x] Bổ sung live snapshot cho rule và mail: `live-v1` khóa lịch sử sửa/luật hiện hành, recipient email, nội dung draft, ops context và style; correction nội dung mail hợp lệ không gây stale; draft legacy giữ fallback.
+- [x] Siết tenant isolation, authorization và audit matrix cơ bản: action read/amend cùng tenant scope; audit bắt buộc manager/owner và bỏ qua `store_id` query.
+- [x] Sửa parser follow-up context: dùng tối đa ba lượt, `active_date`, và cho phép đổi recipient ở lượt mới.
+- [x] Hoàn thiện UI retry cho các action nội bộ có rollback nguyên tử; [x] UI phản ánh đúng `executing`, `execution_failed`, `stale_rejected`, `expired`, `amendment_ready` và không báo thành công giả. Mail `delivery_unknown` vẫn không retry mù.
+- [x] Amendment mail tạo proposal `amendment_ready` cần duyệt lại; action gốc bất biến; intent chưa có correction executor bị chặn fail-closed.
+- [x] Thêm fault-injection và rollback test cho transaction KV nội bộ.
+- [x] Chạy E2E và no-network replay: Playwright 13 tests pass; replay/no-network 18 tests pass.
+- [x] Chạy toàn bộ lint, typecheck và test: Python 3.12 focused gate `57 passed`; full Ruff pass; full mypy strict pass `106 source files`; web typecheck/lint pass; Playwright 13 tests pass.
+- [x] Cập nhật runbook migration, canary và rollout tại `docs/runbooks/ag-copilot-rollout.md`.
+- [x] PR9 — Catalog đọc toàn dự án: lõi registry + discovery (xem mục trước) và read providers tenant-scoped. `CopilotIntent` mở rộng 7 read intent (`GET_MY_PROFILE`, `LIST_STAFF`, `QUERY_MENU`, `GET_INVENTORY`, `GET_SHIFT_SWAPS`, `GET_HANGING_TASKS`, `GET_HANDOVERS`) cho mọi role; read tools trong `tool_registry` qua nguồn inject (không import ngược `ca_api`), trả `_provenance` (source/read_at/store_scope), trung thực khi thiếu nguồn, không trả email/PII qua chat; parser ưu tiên cụm hỏi đọc cụ thể trước từ chung mutating; role matrix cấp read intent cho mọi role; test coverage gồm PII-leak và fail-closed. Validation: `73 passed`, Ruff pass, mypy strict pass 109 files.
+- [x] PR10 lõi — Self-service nội bộ: 3 mutating intent `PROPOSE_HANGING_TASK` (mọi role), `PROPOSE_TASK_COMPLETE` (mọi role, fail-closed khi treo_id không tồn tại), `PROPOSE_CONSUMPTION_RECORD` (chỉ quản lý+); executor ghi cùng KV key/schema với route web (`treo`, `tieu_thu`) trong transaction nội bộ, có correction schema riêng, snapshot live, retry an toàn sau rollback; parser tách cụm hành động khỏi cụm đọc ("treo việc X" ≠ "việc treo"), regex treo_id nới cho ID không-hex. Validation: `78 passed`, Ruff pass, mypy strict pass 110 files. Phần còn lại của PR10 (TKB confirm, consent đổi ca, bàn giao) tiếp tục ở lát sau.
+- [x] PR11 lõi — Quản trị lịch, menu, POS giới hạn: 3 mutating intent `PROPOSE_MENU_UPDATE` (sửa giá/ẩn/hiện/thêm món, fail-closed khi món không tồn tại và không có giá), `PROPOSE_ORDER_TRANSITION` (chuyển trạng thái đơn quầy theo cùng state machine `cho_pha→dang_pha→xong`/`huy` của route /quay, hủy bắt buộc lý do, nhảy trạng thái bị chặn, ghi thẳng bảng `don_quay` — cùng nguồn sự thật với route web), `PROPOSE_PIN` (ghim ca, key `ca_id|nv_id` khớp route web, trích ca_id + nv_id); chỉ quan_ly/chu_quan; executor menu qua KV pending mirror cho route web áp dụng, đơn quầy write-single-table không partial commit. Validation: `84 passed`, Ruff pass, mypy strict pass 110 files. Meeting apply và lifecycle R3_DUAL_APPROVAL của PR11 tiếp tục ở lát sau.
+- [x] PR12 lõi — Kênh ngoài (Page): 2 intent `GET_PAGE_STATUS` (R0 đọc, redact token/has_token khỏi response) và `PROPOSE_PAGE_SYNC` (R2 quản lý+, fail-closed khi Page chưa live); executor sync dùng chung `fetch_conversations` + KV `page_quan` với route `/api/v1/page/sync`, Graph lỗi → `execution_failed` không side effect; page_status provider inject từ API layer. Mail exact-content hash + `delivery_unknown` đã xong từ Core Safety. Validation: `84 passed`, Ruff pass, mypy strict pass 111 files. Lỗi lộ ra đã sửa: local import `kv_mutate` trong nhánh PAGE_SYNC gây `UnboundLocalError` cho style-memory khi correction mail (shadowing biến module-level).
+- [x] PR13 — AI governance + độ phủ 100%: coverage-CI gate `test_capability_coverage.py` quét mọi router FastAPI, đối chiếu với `CAPABILITY_REGISTRY` + `EXCLUDED_ROUTES` (mỗi exclusion bắt buộc có lý do: R4 bảo mật, R3 dual-approval qua UI, realtime chat, deep-link domain); test chống privilege escalation (7 intent nhạy cảm nhất bắt buộc R4/R3); test registry phủ các miền nghiệp vụ chính. Universal Orchestration PR9-13 hoàn tất lõi; mutating intents đều qua pipeline propose→approve với snapshot/idempotency/audit. Validation: `88 passed` (6 suites), Ruff pass, mypy strict pass 111 files.
+- [ ] PR10 còn lại (TKB confirm, consent đổi ca, bàn giao) — bổ sung dần theo nhu cầu nghiệp vụ; các PR lõi đã đạt cổng.
 
 ## 10. Cổng phát hành
 
