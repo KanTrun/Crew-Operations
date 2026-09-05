@@ -158,7 +158,7 @@ export default function DatBanPage() {
   if (!manager) {
     return (
       <div className="nq-page">
-        <PageHeader kicker="Đặt bàn" title="Không có quyền truy cập" />
+        <PageHeader kicker="Đặt bàn" title="Không đủ quyền truy cập" />
         <Notice>Bạn cần là Quản lý hoặc Chủ quán để xem sơ đồ đặt bàn.</Notice>
       </div>
     );

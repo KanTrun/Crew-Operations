@@ -21,5 +21,6 @@
   "AIGenerationRecord": "packages/contracts/schema/AIGenerationRecord.json",
   "AIFeedbackEvent": "packages/contracts/schema/AIFeedbackEvent.json",
   "AIEvaluation": "packages/contracts/schema/AIEvaluation.json",
-  "AIRuleProposal": "packages/contracts/schema/AIRuleProposal.json"
+  "AIRuleProposal": "packages/contracts/schema/AIRuleProposal.json",
+  "TableReservation": "packages/contracts/schema/TableReservation.json"
 }

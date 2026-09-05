@@ -1,25 +1,226 @@
 {
-  "title": "AIGenerationRecord",
-  "type": "object",
-  "required": ["id", "store_id", "channel", "request_kind", "draft", "context_snapshot_hash", "agent_version", "prompt_version", "rule_version", "rollout_bucket", "model", "policy_action", "idempotency_key", "created_at"],
+  "$defs": {
+    "AIGenerationDraft": {
+      "properties": {
+        "subject": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subject"
+        },
+        "body": {
+          "minLength": 1,
+          "title": "Body",
+          "type": "string"
+        }
+      },
+      "required": [
+        "body"
+      ],
+      "title": "AIGenerationDraft",
+      "type": "object"
+    },
+    "AIModelVersion": {
+      "properties": {
+        "provider": {
+          "minLength": 1,
+          "title": "Provider",
+          "type": "string"
+        },
+        "model_id": {
+          "minLength": 1,
+          "title": "Model Id",
+          "type": "string"
+        },
+        "model_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Revision"
+        },
+        "temperature": {
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "title": "Temperature",
+          "type": "number"
+        },
+        "tool_context_hash": {
+          "minLength": 1,
+          "title": "Tool Context Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "model_id",
+        "temperature",
+        "tool_context_hash"
+      ],
+      "title": "AIModelVersion",
+      "type": "object"
+    },
+    "FbPolicyAction": {
+      "description": "Hành động kiểm duyệt FB — ma trận §3.2 của kế hoạch chatbot moderation.",
+      "enum": [
+        "auto_send",
+        "queue_review",
+        "priority_review",
+        "escalate_owner",
+        "block_polite",
+        "block_silent",
+        "auto_send",
+        "queue_review",
+        "priority_review",
+        "escalate_owner",
+        "block_polite",
+        "block_silent"
+      ],
+      "title": "FbPolicyAction",
+      "type": "string"
+    }
+  },
   "properties": {
-    "id": {"type": "string", "minLength": 1},
-    "store_id": {"type": "string", "minLength": 1},
-    "channel": {"enum": ["gmail", "facebook"]},
-    "conversation_id": {"type": ["string", "null"]},
-    "request_kind": {"enum": ["gmail_request", "facebook_message", "facebook_comment"]},
-    "external_event_hash": {"type": ["string", "null"]},
-    "draft": {"type": "object", "required": ["body"], "properties": {"subject": {"type": ["string", "null"]}, "body": {"type": "string", "minLength": 1}}},
-    "context_snapshot_hash": {"type": "string", "minLength": 1},
-    "verified_fact_refs": {"type": "array", "items": {"type": "string"}},
-    "missing_context": {"type": "boolean"},
-    "agent_version": {"type": "string", "minLength": 1},
-    "prompt_version": {"type": "string", "minLength": 1},
-    "rule_version": {"type": "string", "minLength": 1},
-    "rollout_bucket": {"enum": ["control", "canary_10", "canary_50", "active_100"]},
-    "model": {"type": "object", "required": ["provider", "model_id", "temperature", "tool_context_hash"]},
-    "policy_action": {"enum": ["auto_send", "queue_review", "priority_review", "escalate_owner", "block_polite", "block_silent"]},
-    "idempotency_key": {"type": "string", "minLength": 1},
-    "created_at": {"type": "string", "minLength": 1}
-  }
+    "id": {
+      "minLength": 1,
+      "title": "Id",
+      "type": "string"
+    },
+    "store_id": {
+      "minLength": 1,
+      "title": "Store Id",
+      "type": "string"
+    },
+    "channel": {
+      "enum": [
+        "gmail",
+        "facebook"
+      ],
+      "title": "Channel",
+      "type": "string"
+    },
+    "conversation_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Conversation Id"
+    },
+    "request_kind": {
+      "enum": [
+        "gmail_request",
+        "facebook_message",
+        "facebook_comment"
+      ],
+      "title": "Request Kind",
+      "type": "string"
+    },
+    "external_event_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "External Event Hash"
+    },
+    "draft": {
+      "$ref": "#/$defs/AIGenerationDraft"
+    },
+    "context_snapshot_hash": {
+      "minLength": 1,
+      "title": "Context Snapshot Hash",
+      "type": "string"
+    },
+    "verified_fact_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Verified Fact Refs",
+      "type": "array"
+    },
+    "missing_context": {
+      "default": false,
+      "title": "Missing Context",
+      "type": "boolean"
+    },
+    "agent_version": {
+      "minLength": 1,
+      "title": "Agent Version",
+      "type": "string"
+    },
+    "prompt_version": {
+      "minLength": 1,
+      "title": "Prompt Version",
+      "type": "string"
+    },
+    "rule_version": {
+      "minLength": 1,
+      "title": "Rule Version",
+      "type": "string"
+    },
+    "rollout_bucket": {
+      "enum": [
+        "control",
+        "canary_10",
+        "canary_50",
+        "active_100"
+      ],
+      "title": "Rollout Bucket",
+      "type": "string"
+    },
+    "model": {
+      "$ref": "#/$defs/AIModelVersion"
+    },
+    "policy_action": {
+      "$ref": "#/$defs/FbPolicyAction"
+    },
+    "idempotency_key": {
+      "minLength": 1,
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "created_at": {
+      "minLength": 1,
+      "title": "Created At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "store_id",
+    "channel",
+    "request_kind",
+    "draft",
+    "context_snapshot_hash",
+    "agent_version",
+    "prompt_version",
+    "rule_version",
+    "rollout_bucket",
+    "model",
+    "policy_action",
+    "idempotency_key",
+    "created_at"
+  ],
+  "title": "AIGenerationRecord",
+  "type": "object"
 }

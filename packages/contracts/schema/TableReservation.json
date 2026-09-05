@@ -10,7 +10,8 @@
       "type": "string"
     },
     "psid": {
-      "title": "PSID",
+      "default": "",
+      "title": "Psid",
       "type": "string"
     },
     "customer_name": {
@@ -26,6 +27,7 @@
       "type": "string"
     },
     "party_size": {
+      "minimum": 1,
       "title": "Party Size",
       "type": "integer"
     },
@@ -43,11 +45,24 @@
     },
     "status": {
       "default": "confirmed",
+      "enum": [
+        "held",
+        "confirmed",
+        "seated",
+        "completed",
+        "cancelled",
+        "no_show",
+        "needs_review"
+      ],
       "title": "Status",
       "type": "string"
     },
     "source": {
       "default": "ai_auto",
+      "enum": [
+        "ai_auto",
+        "staff_manual"
+      ],
       "title": "Source",
       "type": "string"
     },
@@ -57,30 +72,65 @@
       "type": "string"
     },
     "idempotency_key": {
+      "default": "",
       "title": "Idempotency Key",
       "type": "string"
     },
     "notified_nv_id": {
-      "title": "Notified NV ID",
-      "type": "string"
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Notified Nv Id"
     },
     "notification_acked_at": {
-      "title": "Notification Acked At",
-      "type": "string"
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Notification Acked At"
     },
     "cancelled_by": {
-      "title": "Cancelled By",
-      "type": "string"
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cancelled By"
     },
     "cancelled_reason": {
-      "title": "Cancelled Reason",
-      "type": "string"
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cancelled Reason"
     },
     "created_at": {
+      "default": "",
       "title": "Created At",
       "type": "string"
     },
     "updated_at": {
+      "default": "",
       "title": "Updated At",
       "type": "string"
     }
@@ -90,8 +140,7 @@
     "customer_name",
     "phone",
     "booking_time",
-    "party_size",
-    "table_ids"
+    "party_size"
   ],
   "title": "TableReservation",
   "type": "object"

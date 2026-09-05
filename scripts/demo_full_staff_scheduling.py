@@ -1,4 +1,4 @@
-﻿"""Full Crew Realistic Demo: 14 Coffee Shop Staff register availability in group chat -> AI Agent schedules 21 shifts."""
+"""Full Crew Realistic Demo: 14 Coffee Shop Staff register availability in group chat -> AI Agent schedules 21 shifts."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "apps" / "api" / "src"))
 
-from ca_api.persist import (
+from ca_api.persist import (  # noqa: E402
     _conn,
     chat_conversation_get,
     chat_message_create,
@@ -26,8 +26,7 @@ from ca_api.persist import (
     init_db,
     register,
 )
-from ca_api.services.chat_scheduler_agent import handle_scheduling_request
-
+from ca_api.services.chat_scheduler_agent import handle_scheduling_request  # noqa: E402
 
 # Danh sách 14 nhân viên chính thức của NHỊP QUÁN tham gia phiên chat demo
 STAFF_CREW = [
@@ -118,7 +117,7 @@ async def run_full_crew_demo(do_cleanup: bool = False) -> bool:
             print(f"💬 [{dname}]: \"{text}\"")
             # AI Agent tự động thả cảm xúc like 👍 ghi nhận
             chat_message_react(msg["id"], "ai_scheduler", "👍")
-            print(f"   ↳ 🤖 [Agent Xếp Lịch 📅] đã thả cảm xúc: 👍 (Đã ghi nhận)")
+            print("   ↳ 🤖 [Agent Xếp Lịch 📅] đã thả cảm xúc: 👍 (Đã ghi nhận)")
             time.sleep(0.15)
 
         # 4. Kiểm tra phản hồi reactions
@@ -168,14 +167,14 @@ async def run_full_crew_demo(do_cleanup: bool = False) -> bool:
         # A. Phải phủ đủ 7 ngày x 3 ca = 21 ca
         total_shifts_covered = 0
         unfilled_shifts = 0
-        for day, shifts in schedule.items():
-            for shift_name, assigned_staff in shifts.items():
+        for _day, shifts in schedule.items():
+            for _shift_name, assigned_staff in shifts.items():
                 if assigned_staff:
                     total_shifts_covered += 1
                 else:
                     unfilled_shifts += 1
 
-        print(f"\n📊 KẾT QUẢ KIỂM ĐỊNH:")
+        print("\n📊 KẾT QUẢ KIỂM ĐỊNH:")
         print(f"• Số ca đã có nhân sự phân công: {total_shifts_covered}/21 ca")
         print(f"• Số ca chưa có người: {unfilled_shifts}")
         print(f"• Tổng số lượt phân công ca: {sum(shift_counts.values())} lượt")

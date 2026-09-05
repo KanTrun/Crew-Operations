@@ -150,7 +150,7 @@ export default function FbInboxPage() {
   if (!manager) {
     return (
       <div className="nq-page">
-        <PageHeader kicker="Kiểm duyệt" title="Không có quyền truy cập" />
+        <PageHeader kicker="Kiểm duyệt" title="Không đủ quyền truy cập" />
         <Notice>Bạn cần là Quản lý hoặc Chủ quán để duyệt tin nhắn Fanpage.</Notice>
       </div>
     );

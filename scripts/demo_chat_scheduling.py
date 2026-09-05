@@ -14,16 +14,14 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "apps" / "api" / "src"))
 
-from ca_api.persist import (
+from ca_api.persist import (  # noqa: E402
     chat_conversation_get,
-    chat_conversation_list_for_user,
     chat_message_create,
     chat_message_react,
-    chat_messages_list,
     init_db,
     register,
 )
-from ca_api.services.chat_scheduler_agent import handle_scheduling_request
+from ca_api.services.chat_scheduler_agent import handle_scheduling_request  # noqa: E402
 
 
 async def run_demo() -> None:
@@ -147,7 +145,7 @@ async def run_demo() -> None:
     print("\n[OPS CARD PROPOSAL ĐÍNH KÈM]:")
     print(f"• Tiêu đề: {bot_msg.get('metadata', {}).get('proposal', {}).get('title')}")
     print(f"• Tóm tắt: {bot_msg.get('metadata', {}).get('proposal', {}).get('summary')}")
-    print(f"• Thao tác: Quản lý có thể mở Hộp thư duyệt trực tiếp để đưa vào lịch tuần!")
+    print("• Thao tác: Quản lý có thể mở Hộp thư duyệt trực tiếp để đưa vào lịch tuần!")
     print("=" * 70)
     print("🎉 DEMO HOÀN TẤT THÀNH CÔNG RỰC RỠ!")
     print("Mở giao diện Web tại http://localhost:3000/chat để thấy toàn bộ đoạn chat thực tế!")

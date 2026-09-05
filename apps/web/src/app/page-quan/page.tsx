@@ -12,6 +12,7 @@ import {
   Field,
   Input,
   Loading,
+  Notice,
   PageHeader,
   Textarea,
   useToasts,
@@ -476,6 +477,14 @@ export default function PageQuanPage() {
   }
 
   if (!token) return <AuthGate />;
+  if (!manager) {
+    return (
+      <div className="nq-page">
+        <PageHeader kicker="Page quán" title="Không đủ quyền truy cập" />
+        <Notice>Bạn cần là Quản lý hoặc Chủ quán để truy cập trang này.</Notice>
+      </div>
+    );
+  }
 
   const connected = Boolean(status?.connected);
 

@@ -76,6 +76,7 @@ from ca_api.persist import login as persist_login
 from ca_api.persist import register as persist_register
 from ca_api.persist import session as auth_session
 
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup/shutdown: cấu hình bảo vệ dữ liệu + đóng Redis Pub/Sub sạch sẽ."""
