@@ -65,3 +65,5 @@ data/full_benchmark_report.json
 .claude/
 
 
+.vercel
+.env*
