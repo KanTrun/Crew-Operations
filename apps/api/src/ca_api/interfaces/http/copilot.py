@@ -344,6 +344,7 @@ def copilot_message_stream(
             ),
             "citations": list(getattr(response, "citations", []) or []),
             "direct_answer": getattr(response, "direct_answer", None),
+            "agent_mode": getattr(response, "agent_mode", "replay"),
         }
         yield _sse("meta", meta)
 

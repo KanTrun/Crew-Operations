@@ -68,10 +68,10 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             <Icon name="cam-nang" size={18} />
           </div>
           <div>
-            <h3 className="text-sm font-bold uppercase text-[var(--nq-fg)]">{profile.label}</h3>
+            <h3 className="text-sm font-bold uppercase text-[var(--nq-fg)]">🤖 {profile.label}</h3>
             <p className="flex items-center gap-1 text-[11px] text-[var(--nq-dim)]">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Sẵn sàng hỗ trợ
+              Sẵn sàng hỗ trợ · AI trả lời kèm đề xuất, người duyệt mới áp dụng
             </p>
           </div>
         </div>
