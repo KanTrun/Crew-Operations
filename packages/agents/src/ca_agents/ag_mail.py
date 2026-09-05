@@ -50,7 +50,7 @@ def _build_mime_message(
 
     if not valid_attachments and not html_body:
         msg: MIMEMultipart | MIMEText = MIMEText(body, "plain", "utf-8")
-        msg["Subject"] = Header(subject, "utf-8")
+        msg["Subject"] = str(Header(subject, "utf-8"))
         msg["From"] = sender
         msg["To"] = recipient
         return msg
@@ -62,7 +62,7 @@ def _build_mime_message(
 
     root_type = "related" if (has_inline and html_body) else "mixed"
     msg = MIMEMultipart(root_type)
-    msg["Subject"] = Header(subject, "utf-8")
+    msg["Subject"] = str(Header(subject, "utf-8"))
     msg["From"] = sender
     msg["To"] = recipient
 
@@ -229,7 +229,7 @@ def _log_mail_replay(
         path = Path(os.environ.get("NHIPQUAN_MAIL_LOG", "data/out/mail_log.jsonl"))
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        att_summary = []
+        att_summary: list[dict[str, Any]] = []
         if attachments:
             for a in attachments:
                 if isinstance(a, str):

@@ -157,6 +157,22 @@ def moderate_fb_message(
     _, intent, confidence = detect_customer_psychology(guard.sanitized_text)
 
     # L4 — Policy decide (tất định)
+    res_eligible = False
+    if intent == "dat_ban":
+        try:
+            from ca_api.services.table_reservation_service import (
+                auto_reservation_enabled,
+                check_anti_abuse,
+            )
+
+            if auto_reservation_enabled():
+                allowed, _ = check_anti_abuse(store_id="quan_01", psid=psid)
+                res_eligible = allowed
+            else:
+                res_eligible = False
+        except Exception:
+            res_eligible = False
+
     ctx = PolicyContext(
         source="messenger",
         repeat_ask_count=repeat_ask_count,
@@ -164,6 +180,7 @@ def moderate_fb_message(
         price_above_limit=_menu_price_above_cap(
             (public_context or {}).get("menu") or [], guard.sanitized_text
         ),
+        reservation_auto_eligible=res_eligible,
     )
     decision = decide(intent, confidence, guard.sanitized_text, ctx)
     flagged = list(decision.flagged_reasons)
@@ -172,7 +189,8 @@ def moderate_fb_message(
     response: str | None = None
     if decision.action == FbPolicyAction.AUTO_SEND:
         reply, requires_approval, _agent = build_human_response(
-            intent, "neutral", guard.sanitized_text, public_context
+            intent, "neutral", guard.sanitized_text, public_context,
+            customer_profile={"psid": psid},
         )
         sup = supervise_outgoing_response(guard.sanitized_text, reply)
         if not sup.is_approved or requires_approval:
@@ -188,6 +206,20 @@ def moderate_fb_message(
             flagged = decision.flagged_reasons
         else:
             response = sup.sanitized_response
+
+    # Nếu rơi vào hàng đợi duyệt nhưng chưa có câu gợi ý, sinh bản nháp cho Quản lý
+    if not response and decision.action in (
+        FbPolicyAction.QUEUE_REVIEW,
+        FbPolicyAction.PRIORITY_REVIEW,
+    ):
+        try:
+            suggested_draft, _, _ = build_human_response(
+                intent, "neutral", guard.sanitized_text, public_context,
+                customer_profile={"psid": psid},
+            )
+            response = suggested_draft
+        except Exception:
+            pass
 
     # Ghi review queue cho mọi thứ cần con người nhìn
     review_id: int | None = None

@@ -17,7 +17,7 @@ try:
 except ImportError:
     from datetime import timezone
     UTC = timezone.utc
-from typing import Any
+from typing import Any, cast
 
 GRAPH = "https://graph.facebook.com/v26.0"
 
@@ -149,7 +149,7 @@ def graph_get(path: str, params: dict[str, str] | None = None) -> dict[str, Any]
     req = urllib.request.Request(url, method="GET")
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310
-            return json.loads(resp.read().decode("utf-8"))
+            return cast(dict[str, Any], json.loads(resp.read().decode("utf-8")))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")[:400]
         raise RuntimeError(f"graph_http_{e.code}:{body}") from e
@@ -166,7 +166,7 @@ def graph_post(path: str, data: dict[str, str]) -> dict[str, Any]:
     req = urllib.request.Request(url, data=body, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310
-            return json.loads(resp.read().decode("utf-8"))
+            return cast(dict[str, Any], json.loads(resp.read().decode("utf-8")))
     except urllib.error.HTTPError as e:
         err = e.read().decode("utf-8", errors="replace")[:400]
         raise RuntimeError(f"graph_http_{e.code}:{err}") from e

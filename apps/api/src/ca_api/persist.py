@@ -92,8 +92,14 @@ def _conn() -> sqlite3.Connection:
     return cx
 
 
+_INITIALIZED_PATHS: set[str] = set()
+
+
 def init_db() -> None:
     global _INITIALIZED
+    p_str = str(db_path())
+    if p_str in _INITIALIZED_PATHS:
+        return
     with _conn() as cx:
         # Luôn chạy DDL IF NOT EXISTS — thêm bảng mới (kenh_bind) không bị kẹt
         # vì cờ _INITIALIZED sớm trên DB cũ.
@@ -197,6 +203,16 @@ def init_db() -> None:
             );
             CREATE UNIQUE INDEX IF NOT EXISTS idx_copilot_receipt_action
                 ON copilot_execution_receipts(store_id, action_id);
+            CREATE TABLE IF NOT EXISTS copilot_mail_delivery_receipts (
+                store_id TEXT NOT NULL,
+                idempotency_key TEXT NOT NULL,
+                request_hash TEXT NOT NULL,
+                status TEXT NOT NULL,
+                outcome TEXT,
+                created_at TEXT NOT NULL,
+                completed_at TEXT,
+                PRIMARY KEY (store_id, idempotency_key)
+            );
             CREATE TABLE IF NOT EXISTS fb_review_queue (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 source TEXT NOT NULL CHECK (source IN ('messenger','comment')),
@@ -279,18 +295,137 @@ def init_db() -> None:
                 UNIQUE(store_id, idempotency_key)
             );
             CREATE INDEX IF NOT EXISTS idx_ai_rule_proposal_store_status ON ai_rule_proposals(store_id, status, updated_at DESC);
+
+            CREATE TABLE IF NOT EXISTS chat_conversations (
+                id TEXT PRIMARY KEY,
+                store_id TEXT NOT NULL DEFAULT 'quan_01',
+                type TEXT NOT NULL,
+                display_name TEXT NOT NULL DEFAULT '',
+                avatar_url TEXT,
+                is_locked INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_chat_conv_store ON chat_conversations(store_id, updated_at DESC);
+
+            CREATE TABLE IF NOT EXISTS chat_participants (
+                conversation_id TEXT NOT NULL,
+                nv_id TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'member',
+                status TEXT NOT NULL DEFAULT 'active',
+                muted INTEGER NOT NULL DEFAULT 0,
+                last_read_at TEXT,
+                joined_at TEXT NOT NULL,
+                archived_at TEXT,
+                PRIMARY KEY (conversation_id, nv_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_chat_part_user ON chat_participants(nv_id, status);
+
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT NOT NULL,
+                sender_id TEXT NOT NULL,
+                type TEXT NOT NULL DEFAULT 'text',
+                content TEXT NOT NULL DEFAULT '',
+                reply_to_id TEXT,
+                is_unsent INTEGER NOT NULL DEFAULT 0,
+                edited_at TEXT,
+                metadata TEXT NOT NULL DEFAULT '{}',
+                created_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_chat_msg_conv ON chat_messages(conversation_id, created_at DESC);
+
+            CREATE TABLE IF NOT EXISTS chat_reactions (
+                message_id TEXT NOT NULL,
+                nv_id TEXT NOT NULL,
+                emoji TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (message_id, nv_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS chat_read_receipts (
+                conversation_id TEXT NOT NULL,
+                nv_id TEXT NOT NULL,
+                last_read_message_id TEXT,
+                read_at TEXT,
+                PRIMARY KEY (conversation_id, nv_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS ban_an (
+                id TEXT PRIMARY KEY,
+                store_id TEXT NOT NULL DEFAULT 'quan_01',
+                ten_ban TEXT NOT NULL,
+                suc_chua INTEGER NOT NULL,
+                vi_tri TEXT NOT NULL,
+                can_combine_with TEXT NOT NULL DEFAULT '[]',
+                trang_thai_hoat_dong INTEGER NOT NULL DEFAULT 1
+            );
+            CREATE INDEX IF NOT EXISTS idx_ban_an_store ON ban_an(store_id, trang_thai_hoat_dong);
+
+            CREATE TABLE IF NOT EXISTS dat_ban (
+                id TEXT PRIMARY KEY,
+                store_id TEXT NOT NULL DEFAULT 'quan_01',
+                psid TEXT NOT NULL DEFAULT '',
+                customer_name TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                booking_time TEXT NOT NULL,
+                duration_minutes INTEGER NOT NULL DEFAULT 120,
+                party_size INTEGER NOT NULL,
+                table_ids TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'confirmed',
+                source TEXT NOT NULL DEFAULT 'ai_auto',
+                notes TEXT NOT NULL DEFAULT '',
+                idempotency_key TEXT NOT NULL DEFAULT '',
+                notified_nv_id TEXT,
+                notification_acked_at TEXT,
+                cancelled_by TEXT,
+                cancelled_reason TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_dat_ban_idem ON dat_ban(idempotency_key) WHERE status NOT IN ('cancelled', 'no_show') AND idempotency_key != '';
+            CREATE INDEX IF NOT EXISTS idx_dat_ban_time ON dat_ban(store_id, booking_time, status);
+            CREATE INDEX IF NOT EXISTS idx_dat_ban_psid ON dat_ban(store_id, psid, status);
+
+            CREATE TABLE IF NOT EXISTS dat_ban_lich_su (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                dat_ban_id TEXT NOT NULL,
+                hanh_dong TEXT NOT NULL,
+                trang_thai_cu TEXT,
+                trang_thai_moi TEXT,
+                thuc_hien_boi TEXT NOT NULL,
+                ly_do TEXT NOT NULL DEFAULT '',
+                thoi_gian TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS thong_bao_ca (
+                id TEXT PRIMARY KEY,
+                store_id TEXT NOT NULL DEFAULT 'quan_01',
+                dat_ban_id TEXT NOT NULL,
+                ca_id TEXT NOT NULL DEFAULT '',
+                nv_id TEXT NOT NULL,
+                tieu_de TEXT NOT NULL,
+                noi_dung TEXT NOT NULL,
+                da_xem INTEGER NOT NULL DEFAULT 0,
+                escalated_at TEXT,
+                created_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_thong_bao_ca_user ON thong_bao_ca(store_id, nv_id, da_xem, created_at DESC);
             """
         )
         _migrate_schema(cx)
         for u, pw, role, nv, name in USERS:
             cx.execute(
                 """
-                INSERT OR IGNORE INTO users(username, password_sha, role, nv_id, display_name, store_id)
-                VALUES (?,?,?,?,?,?)
+                INSERT OR IGNORE INTO users(username, password_sha, role, nv_id, display_name, store_id, status)
+                VALUES (?,?,?,?,?,?,'active')
                 """,
                 (u, hash_password(pw), role, nv, name, DEFAULT_STORE_ID),
             )
         _seed_menu_neu_trong(cx)
+        _seed_chat_neu_trong(cx)
+        _seed_tables_neu_trong(cx)
+        _INITIALIZED_PATHS.add(p_str)
     _INITIALIZED = True
 
 
@@ -303,6 +438,8 @@ def _migrate_schema(cx: sqlite3.Connection) -> None:
         cx.execute("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''")
     if "store_id" not in ucols:
         cx.execute("ALTER TABLE users ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
+    if "status" not in ucols:
+        cx.execute("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
     cx.execute("UPDATE users SET store_id=? WHERE TRIM(store_id)=''", (DEFAULT_STORE_ID,))
     scols = {r[1] for r in cx.execute("PRAGMA table_info(sessions)")}
     if "store_id" not in scols:
@@ -319,6 +456,68 @@ def _migrate_schema(cx: sqlite3.Connection) -> None:
     review_cols = {r[1] for r in cx.execute("PRAGMA table_info(fb_review_queue)")}
     if "ai_generation_id" not in review_cols:
         cx.execute("ALTER TABLE fb_review_queue ADD COLUMN ai_generation_id TEXT")
+
+    ccols = {r[1] for r in cx.execute("PRAGMA table_info(chat_conversations)")}
+    if ccols and "display_name" not in ccols:
+        cx.execute("DROP TABLE IF EXISTS chat_read_receipts")
+        cx.execute("DROP TABLE IF EXISTS chat_reactions")
+        cx.execute("DROP TABLE IF EXISTS chat_messages")
+        cx.execute("DROP TABLE IF EXISTS chat_participants")
+        cx.execute("DROP TABLE IF EXISTS chat_conversations")
+        cx.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS chat_conversations (
+                id TEXT PRIMARY KEY,
+                store_id TEXT NOT NULL DEFAULT 'quan_01',
+                type TEXT NOT NULL,
+                display_name TEXT NOT NULL DEFAULT '',
+                avatar_url TEXT,
+                is_locked INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_chat_conv_store ON chat_conversations(store_id, updated_at DESC);
+            CREATE TABLE IF NOT EXISTS chat_participants (
+                conversation_id TEXT NOT NULL,
+                nv_id TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'member',
+                status TEXT NOT NULL DEFAULT 'active',
+                muted INTEGER NOT NULL DEFAULT 0,
+                last_read_at TEXT,
+                joined_at TEXT NOT NULL,
+                archived_at TEXT,
+                PRIMARY KEY (conversation_id, nv_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_chat_part_user ON chat_participants(nv_id, status);
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT NOT NULL,
+                sender_id TEXT NOT NULL,
+                type TEXT NOT NULL DEFAULT 'text',
+                content TEXT NOT NULL DEFAULT '',
+                reply_to_id TEXT,
+                is_unsent INTEGER NOT NULL DEFAULT 0,
+                edited_at TEXT,
+                metadata TEXT NOT NULL DEFAULT '{}',
+                created_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_chat_msg_conv ON chat_messages(conversation_id, created_at DESC);
+            CREATE TABLE IF NOT EXISTS chat_reactions (
+                message_id TEXT NOT NULL,
+                nv_id TEXT NOT NULL,
+                emoji TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (message_id, nv_id)
+            );
+            CREATE TABLE IF NOT EXISTS chat_read_receipts (
+                conversation_id TEXT NOT NULL,
+                nv_id TEXT NOT NULL,
+                last_read_message_id TEXT,
+                read_at TEXT,
+                PRIMARY KEY (conversation_id, nv_id)
+            );
+            """
+        )
 
 
 _MENU_MAC_DINH = (
@@ -539,8 +738,8 @@ def register(username: str, password: str, display_name: str) -> dict[str, str]:
             nv = _nv_id_ke_tiep(cx)
             cx.execute(
                 """
-                INSERT INTO users(username, password_sha, role, nv_id, display_name, store_id)
-                VALUES (?,?,?,?,?,?)
+                INSERT INTO users(username, password_sha, role, nv_id, display_name, store_id, status)
+                VALUES (?,?,?,?,?,?,'active')
                 """,
                 (u, hash_password(password), VAI_TU_DANG_KY, nv, ten, store_id),
             )
@@ -549,6 +748,43 @@ def register(username: str, password: str, display_name: str) -> dict[str, str]:
                 "INSERT INTO sessions(token, username, role, nv_id, store_id) VALUES (?,?,?,?,?)",
                 (token, u, VAI_TU_DANG_KY, nv, store_id),
             )
+
+            # Tự động đưa nhân viên mới vào Nhóm Chung Toàn Quán
+            conv_general_id = f"conv_general_{store_id}"
+            now_iso = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+            cx.execute(
+                """
+                INSERT OR IGNORE INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+                VALUES (?,?,?,?,?,1,?,?)
+                """,
+                (conv_general_id, store_id, "general", "☕ NHỊP QUÁN · Hội Quán Chung", "", now_iso, now_iso),
+            )
+            cx.execute(
+                """
+                INSERT OR IGNORE INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
+                VALUES (?,?,'member','active',?)
+                """,
+                (conv_general_id, nv, now_iso),
+            )
+            # Tin nhắn hệ thống chào đón thành viên mới
+            msg_welcome_id = f"msg_{uuid.uuid4().hex[:12]}"
+            cx.execute(
+                """
+                INSERT INTO chat_messages(id, conversation_id, sender_id, type, content, is_unsent, created_at)
+                VALUES (?,?,'system','system',?,0,?)
+                """,
+                (
+                    msg_welcome_id,
+                    conv_general_id,
+                    f"🎉 Chào mừng {ten} gia nhập đại gia đình NHỊP QUÁN!",
+                    now_iso,
+                ),
+            )
+            cx.execute(
+                "UPDATE chat_conversations SET updated_at = ? WHERE id = ?",
+                (now_iso, conv_general_id),
+            )
+
             cx.execute("COMMIT")
         except Exception:
             cx.execute("ROLLBACK")
@@ -610,6 +846,83 @@ def kv_mutate(key: str, fn: Callable[[Any], Any], default: Any) -> Any:
             )
             cx.execute("COMMIT")
             return new
+        except Exception:
+            cx.execute("ROLLBACK")
+            raise
+
+
+def copilot_commit_internal_execution(
+    *,
+    store_id: str,
+    action_id: str,
+    idempotency_key: str,
+    intent: str,
+    actor_user_id: str,
+    payload_diff: dict[str, Any],
+    outcome: dict[str, Any],
+    kv_mutations: dict[str, tuple[Callable[[Any], Any], Any]],
+    channel: str = "web",
+    latency_ms: int = 0,
+) -> bool:
+    """Commit internal Copilot writes, action and audit in one transaction."""
+    init_db()
+    with _conn() as cx:
+        cx.isolation_level = None
+        cx.execute("BEGIN IMMEDIATE")
+        try:
+            receipt = cx.execute(
+                "SELECT 1 FROM copilot_execution_receipts "
+                "WHERE store_id=? AND action_id=? AND idempotency_key=? AND status='pending'",
+                (store_id, action_id, idempotency_key),
+            ).fetchone()
+            if not receipt:
+                raise RuntimeError("internal_execution_receipt_missing")
+
+            for key, (mutator, default) in kv_mutations.items():
+                row = cx.execute("SELECT v FROM kv WHERE k=?", (key,)).fetchone()
+                current = json.loads(row[0]) if row else default
+                if isinstance(default, dict) and isinstance(current, dict):
+                    current = dict(current)
+                elif isinstance(default, list) and isinstance(current, list):
+                    current = list(current)
+                updated = mutator(current)
+                cx.execute(
+                    "INSERT INTO kv(k,v) VALUES(?,?) "
+                    "ON CONFLICT(k) DO UPDATE SET v=excluded.v",
+                    (key, json.dumps(updated, ensure_ascii=False)),
+                )
+
+            draft_update = cx.execute(
+                "UPDATE copilot_draft_actions SET status='executed', executed_at=? "
+                "WHERE action_id=? AND store_id=? AND status='executing'",
+                (_iso_now(), action_id, store_id),
+            )
+            if draft_update.rowcount != 1:
+                raise RuntimeError("internal_execution_action_claim_missing")
+
+            now_iso = _iso_now()
+            cx.execute(
+                "INSERT INTO copilot_audit_log(" 
+                "action_id, actor_user_id, store_id, intent, decision, payload_diff, "
+                "timestamp, channel, latency_ms) VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    action_id, actor_user_id, store_id, intent, "approve",
+                    json.dumps(payload_diff, ensure_ascii=False), now_iso, channel, latency_ms,
+                ),
+            )
+            receipt_update = cx.execute(
+                "UPDATE copilot_execution_receipts "
+                "SET status='completed', outcome=?, completed_at=? "
+                "WHERE store_id=? AND action_id=? AND idempotency_key=? AND status='pending'",
+                (
+                    json.dumps(outcome, ensure_ascii=False), now_iso,
+                    store_id, action_id, idempotency_key,
+                ),
+            )
+            if receipt_update.rowcount != 1:
+                raise RuntimeError("internal_execution_receipt_update_failed")
+            cx.execute("COMMIT")
+            return True
         except Exception:
             cx.execute("ROLLBACK")
             raise
@@ -1062,6 +1375,49 @@ def copilot_execution_reserve(
             return "pending", None
 
 
+def copilot_execution_rearm_internal(
+    store_id: str,
+    action_id: str,
+    idempotency_key: str,
+    request_hash: str,
+) -> bool:
+    """Re-arm a failed KV-only execution after its transaction rolled back."""
+    init_db()
+    with _conn() as cx:
+        cx.isolation_level = None
+        cx.execute("BEGIN IMMEDIATE")
+        try:
+            row = cx.execute(
+                "SELECT status FROM copilot_execution_receipts "
+                "WHERE store_id=? AND action_id=?",
+                (store_id, action_id),
+            ).fetchone()
+            if not row or str(row[0]) != "failed":
+                cx.execute("ROLLBACK")
+                return False
+            action = cx.execute(
+                "UPDATE copilot_draft_actions SET status='ready_for_approval', executed_at=NULL "
+                "WHERE action_id=? AND store_id=? AND status='execution_failed'",
+                (action_id, store_id),
+            )
+            if action.rowcount != 1:
+                cx.execute("ROLLBACK")
+                return False
+            receipt = cx.execute(
+                "DELETE FROM copilot_execution_receipts "
+                "WHERE store_id=? AND action_id=? AND status='failed'",
+                (store_id, action_id),
+            )
+            if receipt.rowcount != 1:
+                cx.execute("ROLLBACK")
+                return False
+            cx.execute("COMMIT")
+            return True
+        except Exception:
+            cx.execute("ROLLBACK")
+            raise
+
+
 def copilot_execution_complete(
     store_id: str,
     action_id: str,
@@ -1107,6 +1463,56 @@ def copilot_execution_fail(
                 store_id,
                 action_id,
                 idempotency_key,
+            ),
+        )
+        return cur.rowcount == 1
+
+
+def copilot_mail_delivery_reserve(
+    store_id: str,
+    idempotency_key: str,
+    request_hash: str,
+) -> tuple[str, dict[str, Any] | None]:
+    """Reserve one external mail request and replay a known terminal outcome."""
+    init_db()
+    with _conn() as cx:
+        try:
+            cx.execute(
+                "INSERT INTO copilot_mail_delivery_receipts(" 
+                "store_id, idempotency_key, request_hash, status, created_at) "
+                "VALUES (?,?,?,?,?)",
+                (store_id, idempotency_key, request_hash, "pending", _iso_now()),
+            )
+            return "reserved", None
+        except sqlite3.IntegrityError:
+            row = cx.execute(
+                "SELECT request_hash, status, outcome "
+                "FROM copilot_mail_delivery_receipts WHERE store_id=? AND idempotency_key=?",
+                (store_id, idempotency_key),
+            ).fetchone()
+            if not row or str(row[0]) != request_hash:
+                return "conflict", None
+            if str(row[1]) in {"sent", "transport_failed", "delivery_unknown"} and row[2]:
+                return "replay", json.loads(row[2])
+            return "pending", None
+
+
+def copilot_mail_delivery_complete(
+    store_id: str,
+    idempotency_key: str,
+    status: str,
+    outcome: dict[str, Any],
+) -> bool:
+    if status not in {"sent", "transport_failed", "delivery_unknown"}:
+        raise ValueError("invalid_mail_delivery_status")
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            "UPDATE copilot_mail_delivery_receipts SET status=?, outcome=?, completed_at=? "
+            "WHERE store_id=? AND idempotency_key=? AND status='pending'",
+            (
+                status, json.dumps(outcome, ensure_ascii=False), _iso_now(),
+                store_id, idempotency_key,
             ),
         )
         return cur.rowcount == 1
@@ -1464,7 +1870,7 @@ def ai_learning_verify_backup(*, snapshot_path: Path, manifest_path: Path) -> bo
     snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     digest = hashlib.sha256(json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-    return (
+    return bool(
         manifest.get("backup_format_version") == 1
         and manifest.get("schema_version") == snapshot.get("schema_version") == 1
         and manifest.get("store_coverage") == [snapshot.get("store_id")]
@@ -1654,4 +2060,1183 @@ def fb_stats() -> dict[str, Any]:
         "auto_rate": round(auto / total, 4) if total else 0.0,
         "escalation_unacked": len(fb_escalation_unacked()),
     }
+
+
+# ── Chat Nội Bộ Nhân Viên (Messenger-Style) ──────────────────────────────────
+
+def _seed_chat_neu_trong(cx: sqlite3.Connection) -> None:
+    """Tạo phòng chat chung mặc định '☕ NHỊP QUÁN · Hội Quán Chung' (is_locked=1) và mời toàn bộ nhân viên active."""
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    conv_id = f"conv_general_{DEFAULT_STORE_ID}"
+    cx.execute(
+        """
+        INSERT OR IGNORE INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+        VALUES (?,?,?,?,?,1,?,?)
+        """,
+        (conv_id, DEFAULT_STORE_ID, "general", "☕ NHỊP QUÁN · Hội Quán Chung", "", now, now),
+    )
+    users = cx.execute("SELECT nv_id, role, status FROM users WHERE store_id=?", (DEFAULT_STORE_ID,)).fetchall()
+    for nv, role, st in users:
+        if st == "inactive":
+            continue
+        part_role = "admin" if role in ("quan_ly", "chu_quan") else "member"
+        cx.execute(
+            """
+            INSERT OR IGNORE INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
+            VALUES (?,?,?,?,?)
+            """,
+            (conv_id, nv, part_role, "active", now),
+        )
+    has_msg = cx.execute("SELECT 1 FROM chat_messages WHERE conversation_id=? LIMIT 1", (conv_id,)).fetchone()
+    if not has_msg:
+        msg_id = f"msg_{uuid.uuid4().hex[:12]}"
+        cx.execute(
+            """
+            INSERT OR IGNORE INTO chat_messages(id, conversation_id, sender_id, type, content, is_unsent, created_at)
+            VALUES (?,?,'system','system',?,0,?)
+            """,
+            (
+                msg_id,
+                conv_id,
+                "Chào mừng cả nhà đến với kênh Chat Hội Quán NHỊP QUÁN! ☕✨ Trao đổi ca làm việc, hỗ trợ quầy, pha chế và thông báo tại đây nhé.",
+                now,
+            ),
+        )
+
+
+def user_is_active(nv_id: str) -> bool:
+    """Kiểm tra tài khoản nhân viên có đang hoạt động (active) hay không."""
+    init_db()
+    with _conn() as cx:
+        row = cx.execute("SELECT status FROM users WHERE nv_id=?", (nv_id,)).fetchone()
+        if not row:
+            return False
+        return str(row[0]).lower() == "active"
+
+
+def chat_participant_deactivate(nv_id: str) -> None:
+    """Hook Offboarding: Đưa thành viên vào trạng thái 'archived' trên mọi hội thoại."""
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        cx.execute(
+            """
+            UPDATE chat_participants
+            SET status = 'archived', archived_at = ?
+            WHERE nv_id = ? AND status = 'active'
+            """,
+            (now, nv_id),
+        )
+
+
+def user_deactivate(nv_id: str, store_id: str = "quan_01") -> bool:
+    """Vô hiệu hóa tài khoản nhân viên (Offboarding):
+    - Đổi status = 'inactive' trong bảng users
+    - Xóa toàn bộ token trong sessions (force revoke/disconnect)
+    - Set status = 'archived' trong chat_participants
+    - Ghi log audit
+    """
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        user = cx.execute("SELECT username, display_name FROM users WHERE nv_id=?", (nv_id,)).fetchone()
+        if not user:
+            return False
+        u_name, d_name = str(user[0]), str(user[1])
+        cx.execute("UPDATE users SET status = 'inactive' WHERE nv_id = ?", (nv_id,))
+        cx.execute("DELETE FROM sessions WHERE nv_id = ?", (nv_id,))
+        cx.execute(
+            """
+            UPDATE chat_participants
+            SET status = 'archived', archived_at = ?
+            WHERE nv_id = ?
+            """,
+            (now, nv_id),
+        )
+        cx.execute(
+            "INSERT INTO audit(at, ai, hanh, payload) VALUES (?,?,?,?)",
+            (now, "system", "user_deactivate", json.dumps({"nv_id": nv_id, "username": u_name, "name": d_name})),
+        )
+    return True
+
+
+def chat_conversation_create(
+    store_id: str,
+    conv_type: str,
+    display_name: str,
+    created_by: str,
+    participant_nv_ids: list[str],
+    is_locked: bool = False,
+    avatar_url: str = "",
+) -> dict[str, Any]:
+    init_db()
+    conv_id = f"conv_{uuid.uuid4().hex[:12]}"
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        cx.execute(
+            """
+            INSERT INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+            VALUES (?,?,?,?,?,?,?,?)
+            """,
+            (conv_id, store_id, conv_type, display_name, avatar_url, 1 if is_locked else 0, now, now),
+        )
+        all_participants = set(participant_nv_ids)
+        if created_by:
+            all_participants.add(created_by)
+        for nv in all_participants:
+            role = "admin" if nv == created_by else "member"
+            cx.execute(
+                """
+                INSERT OR IGNORE INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
+                VALUES (?,?,?,?,?)
+                """,
+                (conv_id, nv, role, "active", now),
+            )
+    return chat_conversation_get(conv_id, created_by) or {"id": conv_id}
+
+
+def chat_get_or_create_direct(store_id: str, nv1_id: str, nv2_id: str) -> dict[str, Any]:
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            """
+            SELECT c.id FROM chat_conversations c
+            JOIN chat_participants p1 ON c.id = p1.conversation_id AND p1.nv_id = ?
+            JOIN chat_participants p2 ON c.id = p2.conversation_id AND p2.nv_id = ?
+            WHERE c.type = 'direct' AND c.store_id = ?
+            LIMIT 1
+            """,
+            (nv1_id, nv2_id, store_id),
+        ).fetchone()
+        if row:
+            conv_id = str(row[0])
+            return chat_conversation_get(conv_id, nv1_id) or {"id": conv_id}
+
+    return chat_conversation_create(
+        store_id=store_id,
+        conv_type="direct",
+        display_name="",
+        created_by=nv1_id,
+        participant_nv_ids=[nv1_id, nv2_id],
+    )
+
+
+def chat_conversation_get(conv_id: str, current_nv_id: str | None = None) -> dict[str, Any] | None:
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            """
+            SELECT id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at
+            FROM chat_conversations WHERE id = ?
+            """,
+            (conv_id,),
+        ).fetchone()
+        if not row:
+            return None
+        conv: dict[str, Any] = {
+            "id": str(row[0]),
+            "store_id": str(row[1]),
+            "type": str(row[2]),
+            "display_name": str(row[3]),
+            "avatar_url": str(row[4] or ""),
+            "is_locked": bool(row[5]),
+            "created_at": str(row[6]),
+            "updated_at": str(row[7]),
+        }
+        # Lấy thành viên
+        p_rows = cx.execute(
+            """
+            SELECT p.nv_id, p.role, p.status, p.muted, p.last_read_at, p.joined_at, p.archived_at,
+                   COALESCE(u.display_name, p.nv_id) as user_name,
+                   COALESCE(u.role, 'nhan_vien') as user_role,
+                   COALESCE(u.status, 'active') as user_status
+            FROM chat_participants p
+            LEFT JOIN users u ON p.nv_id = u.nv_id
+            WHERE p.conversation_id = ?
+            """,
+            (conv_id,),
+        ).fetchall()
+        conv["participants"] = [
+            {
+                "nv_id": str(r[0]),
+                "role": str(r[1]),
+                "status": str(r[2]),
+                "muted": bool(r[3]),
+                "last_read_at": str(r[4] or ""),
+                "joined_at": str(r[5]),
+                "archived_at": str(r[6] or ""),
+                "display_name": str(r[7]),
+                "user_role": str(r[8]),
+                "user_status": str(r[9]),
+            }
+            for r in p_rows
+        ]
+
+        if conv["type"] == "direct" and current_nv_id:
+            other = next((p for p in conv["participants"] if p["nv_id"] != current_nv_id), None)
+            if other:
+                conv["display_name"] = other["display_name"]
+                conv["other_user"] = other
+
+        # Tin nhắn cuối
+        last_msg_row = cx.execute(
+            """
+            SELECT m.id, m.sender_id, m.type, m.content, m.created_at, m.is_unsent,
+                   COALESCE(u.display_name, m.sender_id) as sender_name
+            FROM chat_messages m
+            LEFT JOIN users u ON m.sender_id = u.nv_id
+            WHERE m.conversation_id = ?
+            ORDER BY m.created_at DESC LIMIT 1
+            """,
+            (conv_id,),
+        ).fetchone()
+        if last_msg_row:
+            conv["last_message"] = {
+                "id": str(last_msg_row[0]),
+                "sender_id": str(last_msg_row[1]),
+                "type": str(last_msg_row[2]),
+                "content": str(last_msg_row[3]),
+                "created_at": str(last_msg_row[4]),
+                "is_unsent": bool(last_msg_row[5]),
+                "sender_name": str(last_msg_row[6]),
+            }
+        else:
+            conv["last_message"] = None
+
+        return conv
+
+
+def chat_conversation_list_for_user(nv_id: str, store_id: str = "quan_01") -> list[dict[str, Any]]:
+    init_db()
+    with _conn() as cx:
+        # Nếu user bị inactive, không trả về hộp thư
+        u_row = cx.execute("SELECT status FROM users WHERE nv_id = ?", (nv_id,)).fetchone()
+        if not u_row or str(u_row[0]) == "inactive":
+            return []
+
+        # Đảm bảo user luôn có mặt trong nhóm chung của quán
+        conv_general_id = f"conv_general_{store_id}"
+        now_iso = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        cx.execute(
+            """
+            INSERT OR IGNORE INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+            VALUES (?,?,?,?,?,1,?,?)
+            """,
+            (conv_general_id, store_id, "general", "☕ NHỊP QUÁN · Hội Quán Chung", "", now_iso, now_iso),
+        )
+        cx.execute(
+            """
+            INSERT OR IGNORE INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
+            VALUES (?,?,'member','active',?)
+            """,
+            (conv_general_id, nv_id, now_iso),
+        )
+        cx.execute(
+            """
+            INSERT OR IGNORE INTO users(username, password_sha, role, nv_id, display_name, store_id, status)
+            VALUES ('ai_scheduler', 'bot_internal', 'ai_assistant', 'ai_scheduler', 'Agent Xếp Lịch 📅', ?, 'active')
+            """,
+            (store_id,),
+        )
+        cx.execute(
+            """
+            INSERT OR IGNORE INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
+            VALUES (?,'ai_scheduler','member','active',?)
+            """,
+            (conv_general_id, now_iso),
+        )
+
+        # Lấy tất cả hội thoại mà nv_id đang tham gia và status = 'active'
+        c_rows = cx.execute(
+            """
+            SELECT c.id, c.store_id, c.type, c.display_name, c.avatar_url, c.is_locked,
+                   c.created_at, c.updated_at, p.muted, p.last_read_at
+            FROM chat_conversations c
+            JOIN chat_participants p ON c.id = p.conversation_id AND p.nv_id = ?
+            WHERE c.store_id = ? AND p.status = 'active'
+            ORDER BY c.updated_at DESC
+            """,
+            (nv_id, store_id),
+        ).fetchall()
+
+        result = []
+        for r in c_rows:
+            conv_id = str(r[0])
+            conv: dict[str, Any] = {
+                "id": conv_id,
+                "store_id": str(r[1]),
+                "type": str(r[2]),
+                "display_name": str(r[3]),
+                "avatar_url": str(r[4] or ""),
+                "is_locked": bool(r[5]),
+                "created_at": str(r[6]),
+                "updated_at": str(r[7]),
+                "muted": bool(r[8]),
+                "last_read_at": str(r[9] or ""),
+            }
+
+            # Thành viên
+            p_rows = cx.execute(
+                """
+                SELECT p.nv_id, p.role, p.status, p.muted,
+                       COALESCE(u.display_name, p.nv_id) as display_name,
+                       COALESCE(u.role, 'nhan_vien') as user_role,
+                       COALESCE(u.status, 'active') as user_status
+                FROM chat_participants p
+                LEFT JOIN users u ON p.nv_id = u.nv_id
+                WHERE p.conversation_id = ? AND p.status = 'active'
+                """,
+                (conv_id,),
+            ).fetchall()
+            conv["participants"] = [
+                {
+                    "nv_id": str(pr[0]),
+                    "role": str(pr[1]),
+                    "status": str(pr[2]),
+                    "muted": bool(pr[3]),
+                    "display_name": str(pr[4]),
+                    "user_role": str(pr[5]),
+                    "user_status": str(pr[6]),
+                }
+                for pr in p_rows
+            ]
+
+            if conv["type"] == "direct":
+                other = next((p for p in conv["participants"] if p["nv_id"] != nv_id), None)
+                if other:
+                    conv["display_name"] = other["display_name"]
+                    conv["other_user"] = other
+
+            # Đếm số tin chưa đọc dựa trên chat_read_receipts
+            receipt = cx.execute(
+                "SELECT last_read_message_id, read_at FROM chat_read_receipts WHERE conversation_id = ? AND nv_id = ?",
+                (conv_id, nv_id),
+            ).fetchone()
+            if receipt and receipt[1]:
+                read_at = str(receipt[1])
+                unread_n = cx.execute(
+                    """
+                    SELECT COUNT(*) FROM chat_messages
+                    WHERE conversation_id = ? AND sender_id != ? AND created_at > ? AND is_unsent = 0
+                    """,
+                    (conv_id, nv_id, read_at),
+                ).fetchone()[0]
+            else:
+                unread_n = cx.execute(
+                    """
+                    SELECT COUNT(*) FROM chat_messages
+                    WHERE conversation_id = ? AND sender_id != ? AND is_unsent = 0
+                    """,
+                    (conv_id, nv_id),
+                ).fetchone()[0]
+            conv["unread_count"] = int(unread_n)
+
+            # Tin nhắn cuối
+            last_msg_row = cx.execute(
+                """
+                SELECT m.id, m.sender_id, m.type, m.content, m.created_at, m.is_unsent,
+                       COALESCE(u.display_name, m.sender_id) as sender_name
+                FROM chat_messages m
+                LEFT JOIN users u ON m.sender_id = u.nv_id
+                WHERE m.conversation_id = ?
+                ORDER BY m.created_at DESC LIMIT 1
+                """,
+                (conv_id,),
+            ).fetchone()
+            if last_msg_row:
+                conv["last_message"] = {
+                    "id": str(last_msg_row[0]),
+                    "sender_id": str(last_msg_row[1]),
+                    "type": str(last_msg_row[2]),
+                    "content": str(last_msg_row[3]),
+                    "created_at": str(last_msg_row[4]),
+                    "is_unsent": bool(last_msg_row[5]),
+                    "sender_name": str(last_msg_row[6]),
+                }
+            else:
+                conv["last_message"] = None
+
+            result.append(conv)
+        return result
+
+
+def chat_conversation_mute(conv_id: str, nv_id: str, muted: bool = True) -> None:
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            "UPDATE chat_participants SET muted = ? WHERE conversation_id = ? AND nv_id = ?",
+            (1 if muted else 0, conv_id, nv_id),
+        )
+
+
+def chat_participants_list(conv_id: str) -> list[dict[str, Any]]:
+    init_db()
+    with _conn() as cx:
+        rows = cx.execute(
+            """
+            SELECT p.nv_id, p.role, p.status, p.muted, p.last_read_at, p.joined_at, p.archived_at,
+                   COALESCE(u.display_name, p.nv_id) as display_name,
+                   COALESCE(u.role, 'nhan_vien') as user_role,
+                   COALESCE(u.status, 'active') as user_status
+            FROM chat_participants p
+            LEFT JOIN users u ON p.nv_id = u.nv_id
+            WHERE p.conversation_id = ?
+            """,
+            (conv_id,),
+        ).fetchall()
+        return [
+            {
+                "nv_id": str(r[0]),
+                "role": str(r[1]),
+                "status": str(r[2]),
+                "muted": bool(r[3]),
+                "last_read_at": str(r[4] or ""),
+                "joined_at": str(r[5]),
+                "archived_at": str(r[6] or ""),
+                "display_name": str(r[7]),
+                "user_role": str(r[8]),
+                "user_status": str(r[9]),
+            }
+            for r in rows
+        ]
+
+
+def chat_participant_add(conv_id: str, nv_id: str, role: str = "member") -> None:
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        cx.execute(
+            """
+            INSERT INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
+            VALUES (?,?,?,?,?)
+            ON CONFLICT(conversation_id, nv_id) DO UPDATE SET status = 'active'
+            """,
+            (conv_id, nv_id, role, "active", now),
+        )
+
+
+def chat_participant_remove(conv_id: str, nv_id: str) -> bool:
+    """Xóa thành viên khỏi nhóm tự do. Nhóm bị khóa (is_locked=1) không được xóa."""
+    init_db()
+    with _conn() as cx:
+        locked = cx.execute("SELECT is_locked FROM chat_conversations WHERE id=?", (conv_id,)).fetchone()
+        if locked and bool(locked[0]):
+            return False
+        cx.execute(
+            "DELETE FROM chat_participants WHERE conversation_id = ? AND nv_id = ?",
+            (conv_id, nv_id),
+        )
+        return True
+
+
+def chat_message_create(
+    conv_id: str,
+    sender_id: str,
+    content: str = "",
+    msg_type: str = "text",
+    metadata: dict[str, Any] | None = None,
+    reply_to_id: str | None = None,
+) -> dict[str, Any]:
+    init_db()
+    # Kiểm tra quyền: nếu không phải system/copilot/ai_scheduler thì tài khoản phải active và participant status phải active
+    if sender_id not in ("system", "copilot", "ai_scheduler"):
+        if not user_is_active(sender_id):
+            raise ValueError("tai_khoan_da_vo_hieu_hoa")
+
+    msg_id = f"msg_{uuid.uuid4().hex[:12]}"
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    meta_json = json.dumps(metadata or {}, ensure_ascii=False)
+
+    with _conn() as cx:
+        # Kiểm tra người gửi có trong phòng và status = 'active' không
+        if sender_id not in ("system", "copilot", "ai_scheduler"):
+            part = cx.execute(
+                "SELECT status FROM chat_participants WHERE conversation_id = ? AND nv_id = ?",
+                (conv_id, sender_id),
+            ).fetchone()
+            if not part or str(part[0]) != "active":
+                raise ValueError("khong_phai_thanh_vien_active")
+
+        cx.execute(
+            """
+            INSERT INTO chat_messages(id, conversation_id, sender_id, type, content, reply_to_id, is_unsent, metadata, created_at)
+            VALUES (?,?,?,?,?,?,0,?,?)
+            """,
+            (msg_id, conv_id, sender_id, msg_type, content, reply_to_id, meta_json, now),
+        )
+        cx.execute(
+            "UPDATE chat_conversations SET updated_at = ? WHERE id = ?",
+            (now, conv_id),
+        )
+        # Đánh dấu đã đọc cho người gửi
+        if sender_id != "system":
+            cx.execute(
+                """
+                INSERT INTO chat_read_receipts(conversation_id, nv_id, last_read_message_id, read_at)
+                VALUES (?,?,?,?)
+                ON CONFLICT(conversation_id, nv_id) DO UPDATE SET last_read_message_id = excluded.last_read_message_id, read_at = excluded.read_at
+                """,
+                (conv_id, sender_id, msg_id, now),
+            )
+            cx.execute(
+                "UPDATE chat_participants SET last_read_at = ? WHERE conversation_id = ? AND nv_id = ?",
+                (now, conv_id, sender_id),
+            )
+    return chat_message_get(msg_id) or {"id": msg_id, "conversation_id": conv_id, "content": content}
+
+
+def chat_message_get(message_id: str) -> dict[str, Any] | None:
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            """
+            SELECT m.id, m.conversation_id, m.sender_id, m.type, m.content,
+                   m.reply_to_id, m.is_unsent, m.edited_at, m.metadata, m.created_at,
+                   COALESCE(u.display_name, CASE WHEN m.sender_id = 'copilot' THEN 'AG-Copilot 🤖' WHEN m.sender_id = 'ai_scheduler' THEN 'Agent Xếp Lịch 📅' ELSE m.sender_id END) as sender_name,
+                   COALESCE(u.role, CASE WHEN m.sender_id IN ('copilot', 'ai_scheduler') THEN 'ai_assistant' ELSE 'nhan_vien' END) as sender_role
+            FROM chat_messages m
+            LEFT JOIN users u ON m.sender_id = u.nv_id
+            WHERE m.id = ?
+            """,
+            (message_id,),
+        ).fetchone()
+        if not row:
+            return None
+
+        # Reactions
+        react_rows = cx.execute(
+            """
+            SELECT r.emoji, r.nv_id, COALESCE(u.display_name, r.nv_id) as display_name
+            FROM chat_reactions r
+            LEFT JOIN users u ON r.nv_id = u.nv_id
+            WHERE r.message_id = ?
+            """,
+            (message_id,),
+        ).fetchall()
+        reactions: dict[str, list[dict[str, str]]] = {}
+        for r_emoji, r_nv, r_name in react_rows:
+            reactions.setdefault(str(r_emoji), []).append({"nv_id": str(r_nv), "name": str(r_name)})
+
+        # Reply snippet
+        reply_snippet = None
+        reply_id = row[5]
+        if reply_id:
+            r_msg = cx.execute(
+                """
+                SELECT m.id, m.sender_id, m.content, m.type,
+                       COALESCE(u.display_name, m.sender_id) as sender_name
+                FROM chat_messages m
+                LEFT JOIN users u ON m.sender_id = u.nv_id
+                WHERE m.id = ?
+                """,
+                (str(reply_id),),
+            ).fetchone()
+            if r_msg:
+                reply_snippet = {
+                    "id": str(r_msg[0]),
+                    "sender_id": str(r_msg[1]),
+                    "content": str(r_msg[2]),
+                    "type": str(r_msg[3]),
+                    "sender_name": str(r_msg[4]),
+                }
+
+        meta: dict[str, Any] = {}
+        try:
+            meta = json.loads(row[8]) if row[8] else {}
+        except Exception:
+            pass
+
+        return {
+            "id": str(row[0]),
+            "conversation_id": str(row[1]),
+            "sender_id": str(row[2]),
+            "type": str(row[3]),
+            "content": str(row[4]),
+            "reply_to_id": str(row[5]) if row[5] else None,
+            "reply_snippet": reply_snippet,
+            "is_unsent": bool(row[6]),
+            "edited_at": str(row[7]) if row[7] else None,
+            "metadata": meta,
+            "created_at": str(row[9]),
+            "sender_name": str(row[10]),
+            "sender_role": str(row[11]),
+            "reactions": reactions,
+        }
+
+
+def chat_message_edit(message_id: str, sender_id: str, new_content: str) -> dict[str, Any] | None:
+    """Sửa tin nhắn (trong vòng 15 phút, chỉ tác giả mới được sửa)."""
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        msg = cx.execute(
+            "SELECT sender_id, created_at, is_unsent FROM chat_messages WHERE id = ?",
+            (message_id,),
+        ).fetchone()
+        if not msg:
+            return None
+        if str(msg[0]) != sender_id or bool(msg[2]):
+            return None
+        # Kiểm tra thời hạn 15 phút (900s)
+        try:
+            created_dt = datetime.fromisoformat(str(msg[1]).replace("Z", "+00:00"))
+            if (datetime.now(UTC) - created_dt).total_seconds() > 900:
+                return None
+        except Exception:
+            pass
+
+        cx.execute(
+            "UPDATE chat_messages SET content = ?, edited_at = ? WHERE id = ?",
+            (new_content.strip(), now, message_id),
+        )
+    return chat_message_get(message_id)
+
+
+def chat_message_delete(message_id: str, sender_id: str) -> dict[str, Any] | None:
+    """Thu hồi tin nhắn (is_unsent = 1)."""
+    init_db()
+    with _conn() as cx:
+        msg = cx.execute(
+            "SELECT sender_id, conversation_id FROM chat_messages WHERE id = ?",
+            (message_id,),
+        ).fetchone()
+        if not msg:
+            return None
+        s_id = str(msg[0])
+        user_role = cx.execute("SELECT role FROM users WHERE nv_id = ?", (sender_id,)).fetchone()
+        role_str = str(user_role[0]) if user_role else "nhan_vien"
+        if s_id != sender_id and role_str not in ("quan_ly", "chu_quan"):
+            return None
+
+        cx.execute(
+            """
+            UPDATE chat_messages
+            SET is_unsent = 1, content = 'Tin nhắn đã được thu hồi'
+            WHERE id = ?
+            """,
+            (message_id,),
+        )
+    return chat_message_get(message_id)
+
+
+def chat_message_react(message_id: str, nv_id: str, emoji: str) -> dict[str, Any]:
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        existing = cx.execute(
+            "SELECT emoji FROM chat_reactions WHERE message_id = ? AND nv_id = ?",
+            (message_id, nv_id),
+        ).fetchone()
+        if existing and str(existing[0]) == emoji:
+            cx.execute(
+                "DELETE FROM chat_reactions WHERE message_id = ? AND nv_id = ?",
+                (message_id, nv_id),
+            )
+        else:
+            cx.execute(
+                """
+                INSERT INTO chat_reactions(message_id, nv_id, emoji, created_at)
+                VALUES (?,?,?,?)
+                ON CONFLICT(message_id, nv_id) DO UPDATE SET emoji = excluded.emoji, created_at = excluded.created_at
+                """,
+                (message_id, nv_id, emoji, now),
+            )
+    return chat_message_get(message_id) or {"id": message_id}
+
+
+def chat_messages_list(conv_id: str, limit: int = 50, before_id: str | None = None) -> list[dict[str, Any]]:
+    init_db()
+    with _conn() as cx:
+        if before_id:
+            b_row = cx.execute("SELECT created_at FROM chat_messages WHERE id = ?", (before_id,)).fetchone()
+            if b_row:
+                before_time = str(b_row[0])
+                rows = cx.execute(
+                    """
+                    SELECT id FROM chat_messages
+                    WHERE conversation_id = ? AND created_at < ?
+                    ORDER BY created_at DESC LIMIT ?
+                    """,
+                    (conv_id, before_time, limit),
+                ).fetchall()
+            else:
+                rows = []
+        else:
+            rows = cx.execute(
+                """
+                SELECT id FROM chat_messages
+                WHERE conversation_id = ?
+                ORDER BY created_at DESC LIMIT ?
+                """,
+                (conv_id, limit),
+            ).fetchall()
+
+    msg_ids = [str(r[0]) for r in reversed(rows)]
+    return [m for mid in msg_ids if (m := chat_message_get(mid)) is not None]
+
+
+def chat_messages_search(
+    query: str, nv_id: str, conv_id: str | None = None, store_id: str = "quan_01"
+) -> list[dict[str, Any]]:
+    """Tìm kiếm nội dung tin nhắn trong các hội thoại mà người dùng có quyền xem."""
+    init_db()
+    q = f"%{query.strip()}%"
+    with _conn() as cx:
+        if conv_id:
+            rows = cx.execute(
+                """
+                SELECT m.id FROM chat_messages m
+                JOIN chat_participants p ON m.conversation_id = p.conversation_id AND p.nv_id = ?
+                WHERE m.conversation_id = ? AND m.content LIKE ? AND m.is_unsent = 0 AND p.status = 'active'
+                ORDER BY m.created_at DESC LIMIT 50
+                """,
+                (nv_id, conv_id, q),
+            ).fetchall()
+        else:
+            rows = cx.execute(
+                """
+                SELECT m.id FROM chat_messages m
+                JOIN chat_conversations c ON m.conversation_id = c.id
+                JOIN chat_participants p ON m.conversation_id = p.conversation_id AND p.nv_id = ?
+                WHERE c.store_id = ? AND m.content LIKE ? AND m.is_unsent = 0 AND p.status = 'active'
+                ORDER BY m.created_at DESC LIMIT 50
+                """,
+                (nv_id, store_id, q),
+            ).fetchall()
+    return [m for r in rows if (m := chat_message_get(str(r[0]))) is not None]
+
+
+def chat_read_receipts_update(conv_id: str, nv_id: str, message_id: str) -> list[dict[str, Any]]:
+    """Cập nhật trạng thái đã xem (Seen receipt)."""
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        cx.execute(
+            """
+            INSERT INTO chat_read_receipts(conversation_id, nv_id, last_read_message_id, read_at)
+            VALUES (?,?,?,?)
+            ON CONFLICT(conversation_id, nv_id) DO UPDATE SET last_read_message_id = excluded.last_read_message_id, read_at = excluded.read_at
+            """,
+            (conv_id, nv_id, message_id, now),
+        )
+        cx.execute(
+            "UPDATE chat_participants SET last_read_at = ? WHERE conversation_id = ? AND nv_id = ?",
+            (now, conv_id, nv_id),
+        )
+    return chat_read_receipts(conv_id)
+
+
+def chat_message_read(conv_id: str, nv_id: str, message_id: str) -> list[dict[str, Any]]:
+    """Compatibility name used by the WebSocket chat service."""
+    return chat_read_receipts_update(conv_id, nv_id, message_id)
+
+
+def chat_message_pin(message_id: str, sender_id: str, pinned: bool = True) -> dict[str, Any] | None:
+    """Pin state is stored in message metadata for the current chat schema."""
+    message = chat_message_get(message_id)
+    if not message:
+        return None
+    init_db()
+    with _conn() as cx:
+        user_role = cx.execute("SELECT role FROM users WHERE nv_id = ?", (sender_id,)).fetchone()
+        role_str = str(user_role[0]) if user_role else "nhan_vien"
+        if message.get("sender_id") != sender_id and role_str not in ("quan_ly", "chu_quan"):
+            return None
+        metadata = dict(message.get("metadata") or {})
+        metadata["pinned"] = pinned
+        now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        cx.execute(
+            "UPDATE chat_messages SET metadata=?, edited_at=? WHERE id=?",
+            (json.dumps(metadata, ensure_ascii=False), now, message_id),
+        )
+    return chat_message_get(message_id)
+
+
+def chat_read_receipts(conv_id: str) -> list[dict[str, Any]]:
+    init_db()
+    with _conn() as cx:
+        rows = cx.execute(
+            """
+            SELECT r.nv_id, COALESCE(u.display_name, r.nv_id) as display_name,
+                   r.last_read_message_id, r.read_at, COALESCE(u.role, 'nhan_vien') as role
+            FROM chat_read_receipts r
+            LEFT JOIN users u ON r.nv_id = u.nv_id
+            WHERE r.conversation_id = ?
+            """,
+            (conv_id,),
+        ).fetchall()
+        return [
+            {
+                "nv_id": str(r[0]),
+                "display_name": str(r[1]),
+                "last_read_message_id": str(r[2]),
+                "read_at": str(r[3]),
+                "role": str(r[4]),
+            }
+            for r in rows
+        ]
+
+
+def chat_unread_count_total(nv_id: str, store_id: str = "quan_01") -> int:
+    init_db()
+    convs = chat_conversation_list_for_user(nv_id, store_id)
+    return sum(c.get("unread_count", 0) for c in convs)
+
+
+# ── Sơ đồ Bàn & Đặt Bàn Tự Động (Auto Reservation) ──────────────────────────
+
+
+def _seed_tables_neu_trong(cx: sqlite3.Connection) -> None:
+    count = cx.execute("SELECT COUNT(*) FROM ban_an").fetchone()[0]
+    if count == 0:
+        default_tables = [
+            ("B101", "quan_01", "Bàn 101", 2, "Tầng 1 - Cửa sổ", json.dumps(["B102"])),
+            ("B102", "quan_01", "Bàn 102", 2, "Tầng 1 - Cửa sổ", json.dumps(["B101"])),
+            ("B103", "quan_01", "Bàn 103", 2, "Tầng 1 - Trong nhà", json.dumps([])),
+            ("B104", "quan_01", "Bàn 104", 2, "Tầng 1 - Trong nhà", json.dumps([])),
+            ("B105", "quan_01", "Bàn 105", 4, "Tầng 1 - Sân vườn", json.dumps([])),
+            ("B106", "quan_01", "Bàn 106", 4, "Tầng 1 - Sân vườn", json.dumps([])),
+            ("B201", "quan_01", "Bàn 201", 4, "Tầng 2 - Yên tĩnh", json.dumps([])),
+            ("B202", "quan_01", "Bàn 202", 4, "Tầng 2 - Yên tĩnh", json.dumps([])),
+            ("B203", "quan_01", "Bàn 203", 4, "Tầng 2 - Nhóm lớn", json.dumps(["B204"])),
+            ("B204", "quan_01", "Bàn 204", 4, "Tầng 2 - Nhóm lớn", json.dumps(["B203"])),
+        ]
+        cx.executemany(
+            """
+            INSERT INTO ban_an(id, store_id, ten_ban, suc_chua, vi_tri, can_combine_with)
+            VALUES (?,?,?,?,?,?)
+            """,
+            default_tables,
+        )
+
+
+def table_list(store_id: str = "quan_01") -> list[dict[str, Any]]:
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        rows = cx.execute(
+            "SELECT * FROM ban_an WHERE store_id=? AND trang_thai_hoat_dong=1 ORDER BY id ASC",
+            (store_id,),
+        ).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["can_combine_with"] = json.loads(d.get("can_combine_with") or "[]")
+            except Exception:
+                d["can_combine_with"] = []
+            result.append(d)
+        return result
+
+
+def table_get(table_id: str, store_id: str = "quan_01") -> dict[str, Any] | None:
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        r = cx.execute(
+            "SELECT * FROM ban_an WHERE id=? AND store_id=?", (table_id, store_id)
+        ).fetchone()
+        if not r:
+            return None
+        d = dict(r)
+        try:
+            d["can_combine_with"] = json.loads(d.get("can_combine_with") or "[]")
+        except Exception:
+            d["can_combine_with"] = []
+        return d
+
+
+def reservation_create(record: dict[str, Any]) -> str:
+    init_db()
+    res_id = record.get("id") or f"res_{uuid.uuid4().hex[:10]}"
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    table_ids = record.get("table_ids") or []
+    if isinstance(table_ids, list):
+        table_ids_str = json.dumps(table_ids)
+    else:
+        table_ids_str = str(table_ids)
+
+    with _conn() as cx:
+        cx.execute(
+            """
+            INSERT INTO dat_ban(
+                id, store_id, psid, customer_name, phone, booking_time, duration_minutes,
+                party_size, table_ids, status, source, notes, idempotency_key, notified_nv_id,
+                notification_acked_at, cancelled_by, cancelled_reason, created_at, updated_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                res_id,
+                record.get("store_id", "quan_01"),
+                record.get("psid", ""),
+                record.get("customer_name", ""),
+                record.get("phone", ""),
+                record.get("booking_time", ""),
+                int(record.get("duration_minutes", 120)),
+                int(record.get("party_size", 2)),
+                table_ids_str,
+                record.get("status", "confirmed"),
+                record.get("source", "ai_auto"),
+                record.get("notes", ""),
+                record.get("idempotency_key", ""),
+                record.get("notified_nv_id"),
+                record.get("notification_acked_at"),
+                record.get("cancelled_by"),
+                record.get("cancelled_reason"),
+                record.get("created_at") or now,
+                record.get("updated_at") or now,
+            ),
+        )
+        cx.execute(
+            """
+            INSERT INTO dat_ban_lich_su(dat_ban_id, hanh_dong, trang_thai_cu, trang_thai_moi, thuc_hien_boi, ly_do, thoi_gian)
+            VALUES (?,?,?,?,?,?,?)
+            """,
+            (
+                res_id,
+                "tao_moi",
+                None,
+                record.get("status", "confirmed"),
+                record.get("source", "ai_auto"),
+                "Khách đặt bàn",
+                now,
+            ),
+        )
+    return res_id
+
+
+def reservation_get(res_id: str) -> dict[str, Any] | None:
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        r = cx.execute("SELECT * FROM dat_ban WHERE id=?", (res_id,)).fetchone()
+        if not r:
+            return None
+        d = dict(r)
+        try:
+            d["table_ids"] = json.loads(d.get("table_ids") or "[]")
+        except Exception:
+            d["table_ids"] = []
+        return d
+
+
+def reservation_get_by_idempotency(idem_key: str, store_id: str = "quan_01") -> dict[str, Any] | None:
+    if not idem_key:
+        return None
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        r = cx.execute(
+            "SELECT * FROM dat_ban WHERE store_id=? AND idempotency_key=? AND status NOT IN ('cancelled', 'no_show')",
+            (store_id, idem_key),
+        ).fetchone()
+        if not r:
+            return None
+        d = dict(r)
+        try:
+            d["table_ids"] = json.loads(d.get("table_ids") or "[]")
+        except Exception:
+            d["table_ids"] = []
+        return d
+
+
+def reservation_list(
+    store_id: str = "quan_01",
+    date: str | None = None,
+    status: str | None = None,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        query = "SELECT * FROM dat_ban WHERE store_id=?"
+        params: list[Any] = [store_id]
+        if date:
+            query += " AND booking_time LIKE ?"
+            params.append(f"{date}%")
+        if status:
+            query += " AND status=?"
+            params.append(status)
+        query += " ORDER BY booking_time ASC LIMIT ?"
+        params.append(limit)
+
+        rows = cx.execute(query, params).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["table_ids"] = json.loads(d.get("table_ids") or "[]")
+            except Exception:
+                d["table_ids"] = []
+            result.append(d)
+        return result
+
+
+def reservation_update_status(
+    res_id: str,
+    new_status: str,
+    actor: str = "system",
+    reason: str = "",
+    cancelled_by: str | None = None,
+) -> bool:
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        cur = cx.execute("SELECT status FROM dat_ban WHERE id=?", (res_id,)).fetchone()
+        if not cur:
+            return False
+        old_status = cur["status"]
+        if old_status == new_status:
+            return True
+
+        if cancelled_by:
+            cx.execute(
+                """
+                UPDATE dat_ban
+                SET status=?, updated_at=?, cancelled_by=?, cancelled_reason=?
+                WHERE id=?
+                """,
+                (new_status, now, cancelled_by, reason, res_id),
+            )
+        else:
+            cx.execute(
+                "UPDATE dat_ban SET status=?, updated_at=? WHERE id=?",
+                (new_status, now, res_id),
+            )
+
+        cx.execute(
+            """
+            INSERT INTO dat_ban_lich_su(dat_ban_id, hanh_dong, trang_thai_cu, trang_thai_moi, thuc_hien_boi, ly_do, thoi_gian)
+            VALUES (?,?,?,?,?,?,?)
+            """,
+            (res_id, f"chuyen_{new_status}", old_status, new_status, actor, reason, now),
+        )
+        return True
+
+
+def reservation_find_active_by_psid(psid: str, store_id: str = "quan_01") -> list[dict[str, Any]]:
+    if not psid:
+        return []
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        rows = cx.execute(
+            """
+            SELECT * FROM dat_ban
+            WHERE store_id=? AND psid=? AND status IN ('held', 'confirmed')
+            ORDER BY booking_time ASC
+            """,
+            (store_id, psid),
+        ).fetchall()
+        res = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["table_ids"] = json.loads(d.get("table_ids") or "[]")
+            except Exception:
+                d["table_ids"] = []
+            res.append(d)
+        return res
+
+
+def reservation_find_active_by_phone(phone: str, store_id: str = "quan_01") -> list[dict[str, Any]]:
+    if not phone:
+        return []
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        rows = cx.execute(
+            """
+            SELECT * FROM dat_ban
+            WHERE store_id=? AND phone=? AND status IN ('held', 'confirmed')
+            ORDER BY booking_time ASC
+            """,
+            (store_id, phone),
+        ).fetchall()
+        res = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["table_ids"] = json.loads(d.get("table_ids") or "[]")
+            except Exception:
+                d["table_ids"] = []
+            res.append(d)
+        return res
+
+
+def reservation_count_no_shows(phone: str = "", psid: str = "", store_id: str = "quan_01") -> int:
+    init_db()
+    with _conn() as cx:
+        conds = []
+        params: list[Any] = [store_id]
+        if phone:
+            conds.append("phone=?")
+            params.append(phone)
+        if psid:
+            conds.append("psid=?")
+            params.append(psid)
+        if not conds:
+            return 0
+        sql = f"SELECT COUNT(*) FROM dat_ban WHERE store_id=? AND status='no_show' AND ({' OR '.join(conds)})"
+        row = cx.execute(sql, params).fetchone()
+        return int(row[0]) if row else 0
+
+
+def thong_bao_ca_create(row: dict[str, Any]) -> str:
+    init_db()
+    tb_id = row.get("id") or f"tb_{uuid.uuid4().hex[:10]}"
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        cx.execute(
+            """
+            INSERT INTO thong_bao_ca(id, store_id, dat_ban_id, ca_id, nv_id, tieu_de, noi_dung, da_xem, created_at)
+            VALUES (?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                tb_id,
+                row.get("store_id", "quan_01"),
+                row.get("dat_ban_id", ""),
+                row.get("ca_id", ""),
+                row.get("nv_id", ""),
+                row.get("tieu_de", "Thông báo đặt bàn"),
+                row.get("noi_dung", ""),
+                int(row.get("da_xem", 0)),
+                row.get("created_at") or now,
+            ),
+        )
+    return tb_id
+
+
+def thong_bao_ca_list(nv_id: str, unread_only: bool = False, store_id: str = "quan_01") -> list[dict[str, Any]]:
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        sql = "SELECT * FROM thong_bao_ca WHERE store_id=? AND nv_id=?"
+        params: list[Any] = [store_id, nv_id]
+        if unread_only:
+            sql += " AND da_xem=0"
+        sql += " ORDER BY created_at DESC LIMIT 50"
+        rows = cx.execute(sql, params).fetchall()
+        return [dict(r) for r in rows]
+
+
+def thong_bao_ca_ack(thong_bao_id: str, nv_id: str) -> bool:
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        res = cx.execute(
+            "UPDATE thong_bao_ca SET da_xem=1 WHERE id=? AND nv_id=?",
+            (thong_bao_id, nv_id),
+        )
+        if res.rowcount > 0:
+            # Also update dat_ban notification_acked_at
+            tb = cx.execute("SELECT dat_ban_id FROM thong_bao_ca WHERE id=?", (thong_bao_id,)).fetchone()
+            if tb and tb[0]:
+                cx.execute(
+                    "UPDATE dat_ban SET notification_acked_at=? WHERE id=? AND notification_acked_at IS NULL",
+                    (now, tb[0]),
+                )
+            return True
+        return False
 

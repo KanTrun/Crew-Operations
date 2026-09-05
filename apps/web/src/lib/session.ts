@@ -67,6 +67,7 @@ const STAFF_ACCESS = new Set([
   "/copilot",
   "/them",
   "/contracts",
+  "/chat",
 ]);
 const MANAGER_ONLY = new Set(["/roster", "/inbox", "/page-quan", "/ai-learning"]);
 const OWNER_ONLY = new Set(["/menu", "/nguoi", "/vet"]);
@@ -74,6 +75,7 @@ const OWNER_ONLY = new Set(["/menu", "/nguoi", "/vet"]);
 /** Client-side gate for navigation and hand-typed URLs. API remains authoritative. */
 export function canAccess(role: Role, path: string): boolean {
   if (OWNER_ONLY.has(path)) return role === "chu_quan";
+  if (path.startsWith("/page-quan")) return isManager(role);
   if (MANAGER_ONLY.has(path)) return isManager(role);
   return STAFF_ACCESS.has(path) && Boolean(role);
 }

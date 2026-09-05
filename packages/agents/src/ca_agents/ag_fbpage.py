@@ -271,9 +271,13 @@ def build_human_response(
     Returns (reply_text, requires_human_approval, agent_name).
     """
     ctx = context or {}
-    profile = ctx.get("profile") if isinstance(ctx.get("profile"), dict) else {}
-    menu = ctx.get("menu") if isinstance(ctx.get("menu"), list) else []
-    promos = ctx.get("promotions") if isinstance(ctx.get("promotions"), list) else []
+    customer = customer_profile if isinstance(customer_profile, dict) else {}
+    profile_raw = ctx.get("profile")
+    profile: dict[str, Any] = profile_raw if isinstance(profile_raw, dict) else {}
+    menu_raw = ctx.get("menu")
+    menu: list[Any] = menu_raw if isinstance(menu_raw, list) else []
+    promos_raw = ctx.get("promotions")
+    promos: list[Any] = promos_raw if isinstance(promos_raw, list) else []
 
     # Ưu tiên áp dụng bài học mẫu Quản lý đã dạy nếu trùng ý định
     if golden_examples and intent in ("hoi_gio_dia_chi", "hoi_khuyen_mai", "hoi_menu_gia"):
@@ -288,8 +292,13 @@ def build_human_response(
 
     # Case B: AG-CONCIERGE (Booking)
     if intent == "dat_ban" or emotion == "booking":
-        ticket = handle_reservation(text, str(profile.get("ten_quan") or "quán"))
-        return ticket.suggested_reply, True, "AG-CONCIERGE"
+        ticket = handle_reservation(
+            text,
+            store_name=str(profile.get("ten_quan") or "quán"),
+            psid=str(customer.get("psid") or ""),
+            session_state=customer.get("reservation_state"),
+        )
+        return ticket.suggested_reply, ticket.requires_human_approval, "AG-CONCIERGE"
 
     # Case C: AG-BARISTA (Taste consultation)
     if emotion == "hesitant" or any(
@@ -300,9 +309,9 @@ def build_human_response(
 
     # Case D: AG-FRONTDESK (Greeting, Info, Menu list, Promo)
     if intent == "chao_hoi":
-        cust_name = (customer_profile or {}).get("ten_khach")
-        favs = (customer_profile or {}).get("favorite_drinks", [])
-        if cust_name and (customer_profile or {}).get("is_vip_or_regular") and favs:
+        cust_name = customer.get("ten_khach")
+        favs = customer.get("favorite_drinks", [])
+        if cust_name and customer.get("is_vip_or_regular") and favs:
             return (
                 f"Dạ Nhịp Quán chào anh/chị {cust_name} ạ! Hôm nay mình vẫn dùng món quen {favs[0]} đúng không ạ?",
                 False,

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import builtins
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias, cast
 
 from ca_contracts import AIEvaluation, AIFeedbackEvent, AIGenerationRecord, AIRuleProposal
 
@@ -22,7 +23,9 @@ from ca_api.persist import (
 )
 
 RecordKind = Literal["generation", "feedback", "evaluation", "rule_proposal"]
-Record = AIGenerationRecord | AIFeedbackEvent | AIEvaluation | AIRuleProposal
+Record: TypeAlias = (  # noqa: UP040 - retain Python 3.10 compatibility
+    AIGenerationRecord | AIFeedbackEvent | AIEvaluation | AIRuleProposal
+)
 
 
 class AILearningRepository:
@@ -38,36 +41,36 @@ class AILearningRepository:
         else:
             kind = "rule_proposal"
         configure_data_protection()
-        return ai_learning_save(kind, redact_record(record.model_dump(mode="json"), minimal_data=minimal_data_mode()))
+        return cast(bool, ai_learning_save(kind, redact_record(record.model_dump(mode="json"), minimal_data=minimal_data_mode())))
 
-    def list(self, kind: RecordKind, *, store_id: str, limit: int = 50) -> list[dict[str, Any]]:
-        return ai_learning_list(kind, store_id=store_id, limit=limit)
+    def list(self, kind: RecordKind, *, store_id: str, limit: int = 50) -> builtins.list[dict[str, Any]]:
+        return cast(builtins.list[dict[str, Any]], ai_learning_list(kind, store_id=store_id, limit=limit))
 
     def get_rule_proposal(self, *, store_id: str, proposal_id: str) -> dict[str, Any] | None:
-        return ai_rule_proposal_get(store_id=store_id, proposal_id=proposal_id)
+        return cast(dict[str, Any] | None, ai_rule_proposal_get(store_id=store_id, proposal_id=proposal_id))
 
     def list_rule_proposals(
         self, *, store_id: str, channel: str | None = None, status: str | None = None, limit: int = 50
-    ) -> list[dict[str, Any]]:
-        return ai_rule_proposal_list(store_id=store_id, channel=channel, status=status, limit=limit)
+    ) -> builtins.list[dict[str, Any]]:
+        return cast(builtins.list[dict[str, Any]], ai_rule_proposal_list(store_id=store_id, channel=channel, status=status, limit=limit))
 
     def transition_rule_proposal(
         self, *, store_id: str, proposal_id: str, target_status: str, actor_id: str, updated_at: str,
         rejection_reason: str | None = None,
     ) -> dict[str, Any] | None:
-        return ai_rule_proposal_transition(
+        return cast(dict[str, Any] | None, ai_rule_proposal_transition(
             store_id=store_id,
             proposal_id=proposal_id,
             target_status=target_status,
             actor_id=actor_id,
             updated_at=updated_at,
             rejection_reason=rejection_reason,
-        )
+        ))
 
-    def active_rules(self, *, store_id: str, channel: str, limit: int = 50) -> list[dict[str, Any]]:
-        return ai_rule_active_list(store_id=store_id, channel=channel, limit=limit)
+    def active_rules(self, *, store_id: str, channel: str, limit: int = 50) -> builtins.list[dict[str, Any]]:
+        return cast(builtins.list[dict[str, Any]], ai_rule_active_list(store_id=store_id, channel=channel, limit=limit))
 
-    def rule_conflicts(self, proposal: dict[str, Any]) -> list[dict[str, Any]]:
+    def rule_conflicts(self, proposal: dict[str, Any]) -> builtins.list[dict[str, Any]]:
         """Find deterministic same-scope conflicts; ambiguous cases stay human-reviewed."""
         rule = proposal.get("rule") or {}
         text = " ".join(str(rule.get("text") or "").lower().split())
@@ -95,10 +98,10 @@ class AILearningRepository:
         return conflicts
 
     def snapshot(self, *, store_id: str) -> dict[str, Any]:
-        return ai_learning_snapshot(store_id=store_id)
+        return cast(dict[str, Any], ai_learning_snapshot(store_id=store_id))
 
     def backup(self, *, store_id: str, directory: Path | None = None) -> dict[str, Any]:
-        return ai_learning_backup(store_id=store_id, directory=directory)
+        return cast(dict[str, Any], ai_learning_backup(store_id=store_id, directory=directory))
 
     def verify_backup(self, *, snapshot_path: Path, manifest_path: Path) -> bool:
-        return ai_learning_verify_backup(snapshot_path=snapshot_path, manifest_path=manifest_path)
+        return cast(bool, ai_learning_verify_backup(snapshot_path=snapshot_path, manifest_path=manifest_path))

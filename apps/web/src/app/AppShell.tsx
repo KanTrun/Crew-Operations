@@ -8,6 +8,7 @@ import { Icon, iconForHref } from "../ui/icons";
 import { Tour } from "../ui/tour";
 import { Logo } from "../ui/Logo";
 import { CopilotPane } from "../ui/copilot/CopilotPane";
+import { FloatingChatHead } from "../ui/chat/FloatingChatHead";
 import { motion, AnimatePresence } from "framer-motion";
 
 /** `short` là nhãn cho thanh dưới dạng pill — chỗ hẹp, chữ dài sẽ gãy dòng. */
@@ -20,6 +21,7 @@ function tourId(href: string): string {
 
 const STAFF_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
+  { href: "/chat", label: "Chat nội bộ", short: "Chat" },
   { href: "/cuoc-hop", label: "Họp & Giao ca", short: "Họp" },
   { href: "/quay", label: "Quầy", short: "Quầy" },
   { href: "/pha", label: "Pha chế", short: "Pha" },
@@ -28,6 +30,7 @@ const STAFF_PRIMARY: LinkItem[] = [
 
 const MANAGER_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
+  { href: "/chat", label: "Chat nội bộ", short: "Chat" },
   { href: "/cuoc-hop", label: "Họp & Giao ca", short: "Họp" },
   { href: "/roster", label: "Lịch tuần", short: "Lịch" },
   { href: "/inbox", label: "Hộp thư", short: "Hộp thư" },
@@ -37,6 +40,7 @@ const MANAGER_PRIMARY: LinkItem[] = [
 
 const ADMIN_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
+  { href: "/chat", label: "Chat nội bộ", short: "Chat" },
   { href: "/cuoc-hop", label: "Họp & Giao ca", short: "Họp" },
   { href: "/nguoi", label: "Người dùng", short: "Người" },
   { href: "/menu", label: "Menu & giá", short: "Menu" },
@@ -45,6 +49,7 @@ const ADMIN_PRIMARY: LinkItem[] = [
 ];
 
 const MORE: LinkItem[] = [
+  { href: "/chat", label: "Chat nội bộ" },
   { href: "/huong-dan", label: "Bản đồ hệ thống" },
   { href: "/quay", label: "Quầy" },
   { href: "/pha", label: "Pha chế" },
@@ -52,7 +57,9 @@ const MORE: LinkItem[] = [
   { href: "/roster", label: "Lịch tuần" },
   { href: "/page-quan", label: "Page quán (FB)" },
   { href: "/page-quan/fb-inbox", label: "Hộp thư Fanpage (duyệt)" },
+  { href: "/page-quan/dat-ban", label: "Sơ đồ & Đặt bàn" },
   { href: "/ai-learning", label: "Học từ phản hồi AI" },
+  { href: "/skills", label: "Bộ Kỹ năng AI (13/13)" },
   { href: "/cong-bang", label: "Công bằng" },
   { href: "/toi", label: "Ca của tôi" },
   { href: "/phieu", label: "Phiếu" },
@@ -98,7 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const primary = isChuQuan(role) ? ADMIN_PRIMARY : isManager(role) ? MANAGER_PRIMARY : STAFF_PRIMARY;
   const more = MORE.filter((x) => !primary.some((p) => p.href === x.href) && canAccess(role, x.href));
-  const wide = path === "/roster" || path === "/cuoc-hop" || path === "/inbox" || path === "/quay";
+  const wide = path === "/roster" || path === "/cuoc-hop" || path === "/inbox" || path === "/quay" || path === "/chat";
 
   function logout() {
     clearSession();
@@ -227,7 +234,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </nav>
       ) : null}
-      {token ? <CopilotPane /> : null}
+      {token ? (
+        <>
+          <CopilotPane />
+          <FloatingChatHead />
+        </>
+      ) : null}
       <Tour active={Boolean(token) && path === "/hom-nay"} />
     </div>
   );

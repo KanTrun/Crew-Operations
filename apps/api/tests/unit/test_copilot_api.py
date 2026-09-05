@@ -12,6 +12,7 @@ from ca_api.persist import (
     copilot_draft_save,
     copilot_execution_complete,
     copilot_execution_reserve,
+    copilot_commit_internal_execution,
     login,
     reset_init_flag,
     set_user_email,
@@ -69,6 +70,43 @@ def test_copilot_execution_receipt_lifecycle_and_isolation() -> None:
         "reserved",
         None,
     )
+
+
+def test_internal_execution_rolls_back_all_kv_mutations_on_failure() -> None:
+    from ca_api.persist import kv_get, kv_set
+
+    kv_set("phan_cong", {"before": ["nv_01"]})
+    kv_set("lich_tuan_status", "dang_soan")
+    payload = {"phan_cong": {"after": ["nv_02"]}}
+    action_id = "act_internal_rollback"
+    copilot_draft_save({
+        "action_id": action_id, "intent": "SCHEDULE_SOLVE", "status": "executing",
+        "store_id": "quan_01", "created_by": "nv_01", "confidence": 1.0,
+        "summary": "rollback", "explanation": "test", "requires_confirmation": True,
+        "data_snapshot_hash": compute_snapshot_hash(payload), "expires_at": "",
+        "created_at": "2026-09-05T00:00:00Z", "payload_diff": payload,
+    })
+    assert copilot_execution_reserve(
+        "quan_01", action_id, "rollback-key", compute_snapshot_hash({"approve": True})
+    ) == ("reserved", None)
+
+    def fail_after_first_write(_current: object) -> object:
+        raise RuntimeError("injected_failure")
+
+    with pytest.raises(RuntimeError, match="injected_failure"):
+        copilot_commit_internal_execution(
+            store_id="quan_01", action_id=action_id, idempotency_key="rollback-key",
+            intent="SCHEDULE_SOLVE", actor_user_id="nv_01", payload_diff=payload,
+            outcome={"status": "executed"},
+            kv_mutations={
+                "phan_cong": (lambda _current: {"after": ["nv_02"]}, {}),
+                "lich_tuan_status": (fail_after_first_write, ""),
+            },
+        )
+
+    assert kv_get("phan_cong", {}) == {"before": ["nv_01"]}
+    assert kv_get("lich_tuan_status", "") == "dang_soan"
+    assert copilot_draft_get(action_id)["status"] == "executing"
 
 
 def test_copilot_message_and_draft_creation() -> None:
@@ -238,6 +276,39 @@ def test_copilot_executor_failure_is_terminal(monkeypatch: pytest.MonkeyPatch) -
     assert response.status_code == 500
     assert response.json()["detail"] == "action_execution_failed"
     assert copilot_draft_get("act_failed_execution")["status"] == "execution_failed"
+
+
+def test_failed_internal_execution_can_retry_after_atomic_rollback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    token = _login_manager()
+    proposal = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Xếp lịch tuần sau giúp chị", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    action_id = proposal.json()["action_proposal"]["action_id"]
+    original_commit = __import__("ca_api.interfaces.http.copilot", fromlist=["copilot_commit_internal_execution"]).copilot_commit_internal_execution
+    monkeypatch.setattr(
+        "ca_api.interfaces.http.copilot.copilot_commit_internal_execution",
+        lambda **_: (_ for _ in ()).throw(RuntimeError("rollback_before_commit")),
+    )
+    failed = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve", "idempotency_key": "retry-1"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert failed.status_code == 500
+    assert copilot_draft_get(action_id)["status"] == "execution_failed"
+
+    monkeypatch.setattr("ca_api.interfaces.http.copilot.copilot_commit_internal_execution", original_commit)
+    retried = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve", "idempotency_key": "retry-2"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert retried.status_code == 200
+    assert retried.json()["status"] == "executed"
 
 
 def test_copilot_mail_unsuccessful_result_is_not_executed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -468,6 +539,28 @@ def test_copilot_vf_scope_insufficient_role() -> None:
     assert "insufficient_role" in staff_exec.json()["detail"]
 
 
+def test_copilot_action_and_audit_reads_require_tenant_scoped_auth() -> None:
+    manager_token = _login_manager()
+    response = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Xếp lịch tuần sau giúp chị", "channel": "web"},
+        headers={"Authorization": f"Bearer {manager_token}"},
+    )
+    action_id = response.json()["action_proposal"]["action_id"]
+
+    anonymous_action = client.get(f"/api/v1/copilot/action/{action_id}")
+    anonymous_audit = client.get("/api/v1/copilot/audit")
+    staff_audit = client.get(
+        "/api/v1/copilot/audit", headers={"Authorization": f"Bearer {_login_staff()}"}
+    )
+    assert anonymous_action.status_code == 401
+    assert anonymous_audit.status_code == 401
+    assert staff_audit.status_code == 403
+
+    cross_store_action = copilot_draft_get(action_id)
+    assert cross_store_action["store_id"] == "quan_01"
+
+
 def test_copilot_vf_stale_detection() -> None:
     token = _login_manager()
     res = client.post(
@@ -519,7 +612,58 @@ def test_inventory_proposal_rejects_live_source_change() -> None:
 
     assert execute_response.status_code == 409
     assert "stale_rejected" in execute_response.json()["detail"]
-    assert copilot_draft_get(action_id)["status"] == "stale_rejected"
+
+
+def test_schedule_proposal_rejects_live_assignment_change() -> None:
+    from ca_api.persist import kv_set
+
+    token = _login_manager()
+    response = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Xếp lịch tuần sau giúp chị", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    action_id = response.json()["action_proposal"]["action_id"]
+    kv_set("phan_cong", {"changed_after_proposal": ["nv_03"]})
+
+    execute = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert execute.status_code == 409
+    assert "stale_rejected" in execute.json()["detail"]
+
+
+def test_swap_proposal_rejects_live_swap_change() -> None:
+    from ca_agents.ag_copilot.tool_registry import build_live_snapshot
+    from ca_api.persist import kv_set
+
+    token = _login_manager()
+    kv_set("swap", [{"id": "swap_live_1", "trang_thai": "cho_duyet"}])
+    payload_diff = {
+        "swap_id": "swap_live_1", "ca_id": "w1_c01", "tu_nv": "nv_01",
+        "nhan_nv": "nv_03", "snapshot_version": "live-v1",
+    }
+    snapshot = build_live_snapshot("APPROVE_SHIFT_SWAP", "quan_01")
+    copilot_draft_save({
+        "action_id": "act_swap_live_snapshot", "intent": "APPROVE_SHIFT_SWAP",
+        "status": "ready_for_approval", "store_id": "quan_01", "created_by": "nv_01",
+        "confidence": 1.0, "summary": "swap", "explanation": "test",
+        "requires_confirmation": True, "data_snapshot_hash": compute_snapshot_hash(snapshot),
+        "expires_at": "", "created_at": "2026-09-05T00:00:00Z", "payload_diff": payload_diff,
+    })
+    kv_set("swap", [{"id": "swap_live_1", "trang_thai": "da_tu_choi"}])
+
+    execute = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": "act_swap_live_snapshot", "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert execute.status_code == 409
+    assert "stale_rejected" in execute.json()["detail"]
 
 
 def test_copilot_rejects_forbidden_correction_before_claim() -> None:
@@ -546,7 +690,7 @@ def test_copilot_rejects_forbidden_correction_before_claim() -> None:
     assert copilot_draft_get(action_id)["status"] == "ready_for_approval"
 
 
-def test_copilot_amend_action() -> None:
+def test_copilot_amend_action_rejects_unsupported_schedule_correction() -> None:
     token = _login_manager()
     # 1. Propose & approve action
     res = client.post(
@@ -561,15 +705,15 @@ def test_copilot_amend_action() -> None:
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    # 2. Amend within 15 min window
+    # Schedule has no correction executor yet; fail closed instead of creating
+    # an audit-only amendment that does not change the schedule.
     amend_res = client.post(
         f"/api/v1/copilot/action/{action_id}/amend",
         json={"reason": "Sửa lại do nhân viên báo bận đột xuất", "correction_diff": {"ca_01": ["nv_02"]}},
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert amend_res.status_code == 200
-    assert amend_res.json()["ok"] is True
-    assert amend_res.json()["amended_from"] == action_id
+    assert amend_res.status_code == 422
+    assert amend_res.json()["detail"] == "amendment_not_supported_for_intent"
 
 
 def test_copilot_prompt_injection_rejection() -> None:
@@ -810,6 +954,406 @@ def test_copilot_send_mail_proposal_and_execute() -> None:
         assert feedback_types == {"manager_reject"}
 
 
+def test_copilot_mail_proposal_rejects_recipient_email_change(monkeypatch: pytest.MonkeyPatch) -> None:
+    token = _login_manager()
+    set_user_email("minh", "minh@example.com")
+    response = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Gửi email cho Minh nhắc mai đi làm đúng 7h sáng", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    action_id = response.json()["action_proposal"]["action_id"]
+    set_user_email("minh", "minh-new@example.com")
+    monkeypatch.setattr(
+        "ca_api.interfaces.http.mail.execute_supervised_mail",
+        lambda **_: pytest.fail("mail adapter must not run after stale recipient change"),
+    )
+
+    execute = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert execute.status_code == 409
+    assert "stale_rejected" in execute.json()["detail"]
+
+
+def _capabilities(token: str) -> list[dict[str, object]]:
+    res = client.get(
+        "/api/v1/copilot/capabilities",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    return res.json()["capabilities"]
+
+
+def test_capability_registry_is_fail_closed_and_role_scoped() -> None:
+    """PR9: catalog theo role; R4 chỉ trả deep-link; role lạ rỗng."""
+    from ca_contracts import CAPABILITY_REGISTRY, capabilities_for_role
+
+    # Role lạ -> rỗng (fail-closed)
+    assert capabilities_for_role("super_admin") == []
+
+    staff_caps = capabilities_for_role("nhan_vien")
+    manager_caps = capabilities_for_role("quan_ly")
+    staff_intents = {c.intent for c in staff_caps}
+    manager_intents = {c.intent for c in manager_caps}
+
+    # R0/R1 mọi role có (đọc sau auth); R2/R3 chỉ quản lý+; R4 không role nào được "thực thi"
+    assert "GET_SCHEDULE" in manager_intents
+    assert "GET_SCHEDULE" in staff_intents  # xem lịch là R0_READ cho mọi role
+    assert "SCHEDULE_SOLVE" in manager_intents
+    assert "SCHEDULE_SOLVE" not in staff_intents  # ghi lịch là R2, staff bị chặn
+    assert "GENERATE_DAILY_BRIEF" in staff_intents
+    r4 = [c for c in CAPABILITY_REGISTRY if c.risk_tier == "R4_MANUAL_ONLY"]
+    assert r4, "phải có ít nhất các R4: login, QR, webhook, payment..."
+    for cap in r4:
+        assert cap.manual_only_reason, f"R4 {cap.intent} phải có lý do manual-only"
+
+    # Registry không có intent trùng
+    intents = [c.intent for c in CAPABILITY_REGISTRY]
+    assert len(intents) == len(set(intents))
+
+
+def test_copilot_capabilities_endpoint_scopes_by_role() -> None:
+    """Endpoint /capabilities trả catalog đúng role, không leak R4 như executable."""
+    staff_caps = _capabilities(_login_staff())
+    manager_caps = _capabilities(_login_manager())
+    staff_intents = {c["intent"] for c in staff_caps}
+    manager_intents = {c["intent"] for c in manager_caps}
+
+    assert staff_intents < manager_intents
+    assert "GENERATE_DAILY_BRIEF" in staff_intents
+    assert "SCHEDULE_SOLVE" in manager_intents
+    assert "SCHEDULE_SOLVE" not in staff_intents
+    # Không capability nào trong response của role này nằm ngoài quyền thật
+    for cap in staff_caps:
+        assert cap["risk_tier"] in ("R0_READ", "R1_DRAFT")
+    for cap in manager_caps:
+        assert cap["risk_tier"] in ("R0_READ", "R1_DRAFT", "R2_CONFIRM", "R3_DUAL_APPROVAL")
+
+
+def test_navigate_returns_registry_deep_link_and_rejects_unknown() -> None:
+    """NAVIGATE_TO_FEATURE: chỉ trả deep-link có trong registry; unknown -> 404."""
+    token = _login_manager()
+
+    ok = client.post(
+        "/api/v1/copilot/navigate",
+        json={"target": "GET_SCHEDULE"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert ok.status_code == 200
+    assert ok.json()["deep_link"] == "/roster"
+    assert ok.json()["risk_tier"] == "R0_READ"
+
+    # Điều hướng theo path web
+    by_path = client.post(
+        "/api/v1/copilot/navigate",
+        json={"target": "/menu"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert by_path.status_code == 200
+    assert by_path.json()["deep_link"] == "/menu"
+
+    # Target ngoài registry -> 404, không trả URL tùy ý
+    missing = client.post(
+        "/api/v1/copilot/navigate",
+        json={"target": "GET_SALARY_OF_EVERYONE"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert missing.status_code == 404
+    assert "detail" in missing.json()
+
+    # Extra field -> 422 (extra=forbid)
+    bad_body = client.post(
+        "/api/v1/copilot/navigate",
+        json={"target": "GET_SCHEDULE", "url": "https://evil.example"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert bad_body.status_code == 422
+
+
+def test_navigate_r4_returns_deep_link_with_reason_not_executor() -> None:
+    """R4_MANUAL_ONLY: trả deep-link + lý do, KHÔNG bao giờ thực thi."""
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/navigate",
+        json={"target": "PAYMENT"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["risk_tier"] == "R4_MANUAL_ONLY"
+    assert body["manual_only_reason"]
+    assert "không thể tự thực hiện" in body["message"]
+    assert body["deep_link"] == "/quay"
+
+
+# ── PR10 self-service ────────────────────────────────────────────────────────
+
+
+def test_pr10_hanging_task_proposal_and_execute() -> None:
+    """Treo việc qua chat: propose -> approve -> KV 'treo' cùng schema route web."""
+    from ca_api.persist import kv_get
+
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Treoviệc: máy xay quầy 2 bị kêu to", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "PROPOSE_HANGING_TASK"
+    assert data["action_proposal"] is not None
+    action_id = data["action_proposal"]["action_id"]
+
+    before = len(kv_get("treo", []))
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+    assert exec_res.json()["status"] == "executed"
+
+    treo = kv_get("treo", [])
+    assert len(treo) == before + 1
+    item = treo[-1]
+    assert item["trang_thai"] == "dang_cho"
+    assert item["noi_dung"] == "máy xay quầy 2 bị kêu to"
+    assert item["copilot_created"] is True
+
+
+def test_pr10_task_complete_proposal_and_execute() -> None:
+    """Đánh dấu xong việc treo qua chat: propose -> approve -> trang_thai='xong'."""
+    from ca_api.persist import kv_set
+
+    token = _login_manager()
+    kv_set("treo", [{
+        "id": "treo_pr10test1", "nv_id": "nv_01", "noi_dung": "Vệ sinh máy",
+        "trang_thai": "dang_cho", "created_at": "2026-09-06T00:00:00Z",
+    }])
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Đánh dấu xong việc treo treo_pr10test1", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "PROPOSE_TASK_COMPLETE"
+    assert data["action_proposal"] is not None
+    action_id = data["action_proposal"]["action_id"]
+
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+    treo = client.get("/api/v1/viec-treo", headers={"Authorization": f"Bearer {token}"}).json()["items"]
+    target = next(t for t in treo if t["id"] == "treo_pr10test1")
+    assert target["trang_thai"] == "xong"
+    assert target["xong_boi"] == "nv_01"
+
+
+def test_pr10_task_complete_rejects_unknown_treo_id() -> None:
+    """treo_id không tồn tại -> không tạo proposal duyệt được (fail-closed)."""
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Đánh dấu xong việc treo treo_khongtontai", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert res.json()["action_proposal"] is None
+
+
+def test_pr10_consumption_record_proposal_and_execute() -> None:
+    """Ghi tiêu thụ qua chat: propose -> approve -> KV 'tieu_thu' cùng schema route web."""
+    from ca_api.persist import kv_get
+
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Ghi tiêu thụ 2 hộp sữa tươi", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "PROPOSE_CONSUMPTION_RECORD"
+    assert data["action_proposal"] is not None
+    action_id = data["action_proposal"]["action_id"]
+
+    before = len(kv_get("tieu_thu", []))
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+    rows = kv_get("tieu_thu", [])
+    assert len(rows) == before + 1
+    item = rows[-1]
+    assert item["hang"] == "sữa tươi"
+    assert item["so_luong"] == 2.0
+    assert item["don_vi"] == "hộp"
+    assert item["copilot_created"] is True
+
+
+def test_pr10_staff_can_propose_hanging_task_but_not_consumption() -> None:
+    """Nhân viên: treo việc/đánh dấu xong được; ghi tiêu thụ bị chặn role."""
+    token = _login_staff()
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Treoviệc: bàn 5 còn dơ", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert res.json()["intent"] == "PROPOSE_HANGING_TASK"
+    assert res.json()["action_proposal"] is not None
+
+    res2 = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Ghi tiêu thụ 2 hộp sữa tươi", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res2.status_code == 200
+    assert res2.json()["intent"] == "OUT_OF_SCOPE"
+    assert res2.json()["action_proposal"] is None
+
+
+# ── PR11 admin ───────────────────────────────────────────────────────────────
+
+
+def test_pr11_menu_price_update_proposal_and_execute() -> None:
+    """Sửa giá món qua chat: propose -> approve -> pending update ghi KV."""
+    from ca_api.persist import kv_get
+
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Sửa giá món Cà phê sữa thành 30000", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "PROPOSE_MENU_UPDATE"
+    assert data["action_proposal"] is not None
+    action_id = data["action_proposal"]["action_id"]
+
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+    pending = kv_get("menu_copilot_pending", {})
+    updates = pending.get("sua") or []
+    assert any(u["hanh_dong"] == "sua_gia" and u["gia"] == 30000 for u in updates)
+
+
+def test_pr11_menu_update_rejects_unknown_item_without_price() -> None:
+    """Ẩn món không tồn tại -> fail-closed, không tạo proposal."""
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Ẩn món Trà đào không có trong menu", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert res.json()["action_proposal"] is None
+
+
+def test_pr11_order_transition_proposal_and_execute() -> None:
+    """Chuyển đơn quầy qua chat: propose -> approve -> trạng thái đổi theo state machine."""
+    from ca_api.persist import don_get, don_insert
+
+    token = _login_manager()
+    don_insert({
+        "id": "dq_pr11test01", "nv_id": "nv_01", "trang_thai": "cho_pha",
+        "thanh_toan": "chua_thu", "dong": [], "ly_do_huy": None,
+        "luc": "2026-09-06T00:00:00Z",
+    })
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Chuyển đơn dq_pr11test01 sang đang pha", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "PROPOSE_ORDER_TRANSITION"
+    assert data["action_proposal"] is not None
+    action_id = data["action_proposal"]["action_id"]
+
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+    assert don_get("dq_pr11test01")["trang_thai"] == "dang_pha"
+
+
+def test_pr11_order_transition_rejects_illegal_state_jump() -> None:
+    """cho_pha -> xong là nhảy trạng thái bất hợp lệ -> fail-closed."""
+    from ca_api.persist import don_insert
+
+    token = _login_manager()
+    don_insert({
+        "id": "dq_pr11test02", "nv_id": "nv_01", "trang_thai": "cho_pha",
+        "thanh_toan": "chua_thu", "dong": [], "ly_do_huy": None,
+        "luc": "2026-09-06T00:00:00Z",
+    })
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Chuyển đơn dq_pr11test02 sang xong", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert res.json()["action_proposal"] is None
+
+
+def test_pr11_pin_proposal_and_execute() -> None:
+    """Ghim ca qua chat: propose -> approve -> KV 'pins' cùng key route web."""
+    from ca_api.persist import kv_get
+
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Ghim ca w1_c01 của nv_01", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "PROPOSE_PIN"
+    assert data["action_proposal"] is not None
+    action_id = data["action_proposal"]["action_id"]
+
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+    assert kv_get("pins", {}).get("w1_c01|nv_01") is True
+
+
+def test_pr11_staff_cannot_use_admin_intents() -> None:
+    """Nhân viên không được dùng intent quản trị PR11."""
+    token = _login_staff()
+    for msg in ("Sửa giá món Cà phê sữa thành 30000", "Ghim ca w1_c01 của nv_01"):
+        res = client.post(
+            "/api/v1/copilot/message",
+            json={"message": msg, "channel": "web"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert res.status_code == 200
+        assert res.json()["intent"] == "OUT_OF_SCOPE"
+        assert res.json()["action_proposal"] is None
+
+
 def test_copilot_mail_tone_memory_feedback_loop(monkeypatch: pytest.MonkeyPatch) -> None:
     token = _login_manager()
     set_user_email("minh", "minh@example.com")
@@ -869,5 +1413,66 @@ def test_copilot_mail_tone_memory_feedback_loop(monkeypatch: pytest.MonkeyPatch)
     body_2 = p2["payload_diff"]["body"]
     assert "Chào em Lan," in body_2
     assert "Anh Hùng - Chủ quán" in body_2
+
+
+def test_amendment_creates_approval_proposal_and_executes_mail_correction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    token = _login_manager()
+    set_user_email("minh", "minh@example.com")
+    original = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Gửi email cho Minh nhắc mai đi làm đúng 7h sáng", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    original_id = original.json()["action_proposal"]["action_id"]
+    approved = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": original_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert approved.status_code == 200
+
+    amendment = client.post(
+        f"/api/v1/copilot/action/{original_id}/amend",
+        json={"reason": "Sửa giờ nhắc", "correction_diff": {"body": "Thân gửi Minh, vui lòng đến lúc 08:00."}},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert amendment.status_code == 200
+    amendment_id = amendment.json()["new_action_id"]
+    assert amendment.json()["status"] == "amendment_ready"
+    assert copilot_draft_get(original_id)["status"] == "executed"
+    assert copilot_draft_get(amendment_id)["status"] == "amendment_ready"
+
+    monkeypatch.setattr(
+        "ca_api.interfaces.http.mail.execute_supervised_mail",
+        lambda **_: {"ok": True, "mode": "replay", "sent": ["minh@example.com"], "failed": []},
+    )
+    executed = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": amendment_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert executed.status_code == 200, executed.text
+    assert executed.json()["status"] == "executed"
+
+
+def test_amendment_fails_closed_for_unsupported_schedule_intent() -> None:
+    token = _login_manager()
+    copilot_draft_save({
+        "action_id": "act_schedule_amend_unsupported", "intent": "SCHEDULE_SOLVE",
+        "status": "executed", "store_id": "quan_01", "created_by": "nv_01",
+        "confidence": 1.0, "summary": "schedule", "explanation": "test",
+        "requires_confirmation": True, "data_snapshot_hash": "legacy",
+        "expires_at": "", "created_at": "2026-09-05T00:00:00Z",
+        "executed_at": "2026-09-05T00:01:00Z", "payload_diff": {"phan_cong": {}},
+    })
+    response = client.post(
+        "/api/v1/copilot/action/act_schedule_amend_unsupported/amend",
+        json={"reason": "Sửa lịch", "correction_diff": {}},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == "amendment_not_supported_for_intent"
 
 

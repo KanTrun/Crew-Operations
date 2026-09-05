@@ -7,7 +7,7 @@ import { ChatText } from "./ChatText";
 export interface ActionProposalData {
   action_id: string;
   intent: string;
-  status: "draft" | "ready_for_approval" | "executing" | "executed" | "execution_failed" | "rejected" | "expired" | "stale_rejected";
+  status: "draft" | "ready_for_approval" | "amendment_ready" | "executing" | "executed" | "execution_failed" | "rejected" | "expired" | "stale_rejected";
   summary: string;
   explanation: string;
   payload_diff: Record<string, any>;
@@ -106,7 +106,19 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.detail || "Không thể thực thi hành động.");
+        const detail = String(data.detail || "");
+        if (detail.includes("stale_rejected")) {
+          setCurrentStatus("stale_rejected");
+        } else if (detail.includes("expired")) {
+          setCurrentStatus("expired");
+        } else if (detail.includes("execution_failed") || res.status >= 500) {
+          setCurrentStatus("execution_failed");
+        } else if (detail.includes("invalid_action_status:executing")) {
+          setCurrentStatus("executing");
+        } else {
+          setCurrentStatus(proposal.status);
+        }
+        throw new Error(detail || "Không thể thực thi hành động.");
       }
 
       setCurrentStatus(data.status);
@@ -114,7 +126,9 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         onExecuted({ ...proposal, status: data.status, executed_at: new Date().toISOString() });
       }
     } catch (err: any) {
-      setCurrentStatus(proposal.status);
+      if (currentStatus === "executing") {
+        setCurrentStatus("execution_failed");
+      }
       setErrorMsg(err.message || "Lỗi kết nối.");
     } finally {
       setLoading(false);
@@ -154,7 +168,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
     }
   }
 
-  const isPending = currentStatus === "draft" || currentStatus === "ready_for_approval";
+  const isPending = currentStatus === "draft" || currentStatus === "ready_for_approval" || currentStatus === "amendment_ready";
 
   return (
     <div className="mt-3 p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 text-xs text-zinc-200">
@@ -190,6 +204,8 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
               ? "⚠️ DỮ LIỆU CŨ"
               : currentStatus === "expired"
               ? "⏳ HẾT HẠN"
+              : currentStatus === "amendment_ready"
+              ? "CHỜ DUYỆT ĐÍNH CHÍNH"
               : "CHỜ DUYỆT"}
           </span>
         </div>
@@ -313,6 +329,9 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
       {errorMsg && (
         <div className="mb-2 p-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[11px]">
           {errorMsg}
+          {currentStatus === "stale_rejected" && " Hãy tạo đề xuất mới từ dữ liệu hiện tại."}
+          {currentStatus === "expired" && " Hãy tạo đề xuất mới để tiếp tục."}
+          {currentStatus === "execution_failed" && " Kiểm tra trạng thái hành động trước khi thử lại."}
         </div>
       )}
 

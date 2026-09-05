@@ -15,7 +15,7 @@ except ImportError:
     from datetime import datetime, timezone
     UTC = timezone.utc
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, cast
 
 from ca_contracts import DongDon, DonQuay, MonNuoc
 from fastapi import APIRouter, File, Header, HTTPException, UploadFile
@@ -320,7 +320,7 @@ def quay_don_tao(
     don = DonQuay.model_validate(raw).model_dump()
     don_insert(don)
     _audit(s["role"], "quay_tao_don", {"id": don["id"], "nv_id": don["nv_id"]})
-    return don
+    return cast(dict[str, Any], don)
 
 
 @router.post("/api/v1/quay/don/{don_id}/chuyen")

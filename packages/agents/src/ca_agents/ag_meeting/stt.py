@@ -8,7 +8,7 @@ import os
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from ca_agents.llm import agent_mode, ensure_dotenv
 
@@ -180,15 +180,17 @@ def _transcribe_with_gemini(
             segs: list[TranscriptSegment] = []
             for s in segments_raw:
                 if isinstance(s, dict) and s.get("noi_dung"):
+                    start_value = cast(int | float | str | None, s.get("bat_dau_s"))
+                    end_value = cast(int | float | str | None, s.get("ket_thuc_s"))
                     segs.append(
                         TranscriptSegment(
                             nguoi_noi=str(s.get("nguoi_noi") or "Người nói"),
                             noi_dung=str(s.get("noi_dung") or ""),
-                            bat_dau_s=float(s.get("bat_dau_s"))
-                            if s.get("bat_dau_s") is not None
+                            bat_dau_s=float(start_value)
+                            if start_value is not None
                             else None,
-                            ket_thuc_s=float(s.get("ket_thuc_s"))
-                            if s.get("ket_thuc_s") is not None
+                            ket_thuc_s=float(end_value)
+                            if end_value is not None
                             else None,
                         )
                     )

@@ -183,15 +183,18 @@ def get_port(name: str | None) -> MessagePort:
 def parse_zalo_webhook(payload: dict[str, Any]) -> InboundMessage | None:
     """Nhận event OA phổ biến (message text). Shape Zalo có thể đổi — giữ parser lỏng."""
     event = str(payload.get("event_name") or payload.get("event") or "")
-    message = payload.get("message") if isinstance(payload.get("message"), dict) else {}
+    message_raw = payload.get("message")
+    message: dict[str, Any] = message_raw if isinstance(message_raw, dict) else {}
     text = message.get("text") or payload.get("text")
+    sender_raw = payload.get("sender")
     sender = (
-        (payload.get("sender") or {}).get("id")
-        if isinstance(payload.get("sender"), dict)
+        sender_raw.get("id")
+        if isinstance(sender_raw, dict)
         else payload.get("user_id_by_app") or payload.get("sender_id")
     )
     if not text or not sender:
-        data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+        data_raw = payload.get("data")
+        data: dict[str, Any] = data_raw if isinstance(data_raw, dict) else {}
         nested = data.get("message")
         if isinstance(nested, dict):
             text = text or nested.get("text")

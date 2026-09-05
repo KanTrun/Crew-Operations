@@ -152,11 +152,33 @@ export default function FbInboxPage() {
 
   return (
     <div className="nq-page">
-      <PageHeader
-        kicker="AG-FBPAGE · Kiểm duyệt chỉn chu"
-        title="Hộp thư Fanpage chờ duyệt"
-        meta="Tin nhắn khách được policy engine phân loại. Mặc định cần người duyệt — auto-send chỉ cho nhóm thông tin an toàn."
-      />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 16 }}>
+        <PageHeader
+          kicker="AG-FBPAGE · Kiểm duyệt chỉn chu"
+          title="Hộp thư Fanpage chờ duyệt"
+          meta="Tin nhắn khách được policy engine phân loại. Mặc định cần người duyệt — auto-send chỉ cho nhóm thông tin an toàn."
+        />
+        <a
+          href="/page-quan/dat-ban"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 16px",
+            borderRadius: 8,
+            background: "#27ae60",
+            color: "#fff",
+            fontWeight: 600,
+            textDecoration: "none",
+            fontSize: "0.9rem",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+            whiteSpace: "nowrap",
+            marginTop: 8,
+          }}
+        >
+          📅 Sơ đồ & Lịch đặt bàn
+        </a>
+      </div>
 
       {error ? <Alert>{error}</Alert> : null}
       {loading ? <Loading skeleton="list">Đang tải hộp thư…</Loading> : null}

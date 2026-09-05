@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ca_api.ai_learning.repository import AILearningRepository
+from ca_api.interfaces.http.mail import execute_supervised_mail
 from ca_api.interfaces.http.main import app
 from fastapi.testclient import TestClient
 
@@ -68,3 +69,59 @@ def test_sent_mail_persists_generation_feedback_and_exact_edit_diff(monkeypatch)
     assert manager_edit["edited_fields"] == ["subject", "body"]
     assert manager_edit["materially_edited"] is True
     assert any(item["type"] == "send_success" for item in feedback)
+
+
+def test_mail_adapter_replays_same_idempotency_key_without_resending(monkeypatch) -> None:
+    calls = 0
+
+    class Result:
+        ok = True
+        mode = "smtp"
+        sent = [{"email": "minh@example.com", "status": "sent"}]
+        failed: list[dict[str, str]] = []
+        reason = ""
+
+    def send_once(**_: object) -> Result:
+        nonlocal calls
+        calls += 1
+        return Result()
+
+    monkeypatch.setattr("ca_api.interfaces.http.mail.send_mail", send_once)
+    kwargs = {
+        "store_id": "quan_01", "actor_user_id": "nv_02", "actor_role": "chu_quan",
+        "to_emails": ["minh@example.com"], "subject": "[Nhịp Quán] Lịch ca",
+        "body": "Thân gửi Minh,\n\nCa sáng 07:00 ngày mai.\n\nTrân trọng,\nBan Quản Lý Nhịp Quán",
+        "idempotency_key": "mail-key-1",
+    }
+
+    first = execute_supervised_mail(**kwargs)
+    second = execute_supervised_mail(**kwargs)
+
+    assert first["ok"] is True
+    assert second == first
+    assert calls == 1
+
+
+def test_mail_adapter_marks_transport_exception_delivery_unknown_and_does_not_retry(monkeypatch) -> None:
+    calls = 0
+
+    def fail_transport(**_: object) -> object:
+        nonlocal calls
+        calls += 1
+        raise TimeoutError("smtp timeout")
+
+    monkeypatch.setattr("ca_api.interfaces.http.mail.send_mail", fail_transport)
+    kwargs = {
+        "store_id": "quan_01", "actor_user_id": "nv_02", "actor_role": "chu_quan",
+        "to_emails": ["minh@example.com"], "subject": "[Nhịp Quán] Lịch ca",
+        "body": "Thân gửi Minh,\n\nCa sáng 07:00 ngày mai.\n\nTrân trọng,\nBan Quản Lý Nhịp Quán",
+        "idempotency_key": "mail-unknown-1",
+    }
+
+    first = execute_supervised_mail(**kwargs)
+    second = execute_supervised_mail(**kwargs)
+
+    assert first["ok"] is False
+    assert first["reason"] == "delivery_unknown"
+    assert second == first
+    assert calls == 1

@@ -1,0 +1,98 @@
+{
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "store_id": {
+      "default": "quan_01",
+      "title": "Store Id",
+      "type": "string"
+    },
+    "psid": {
+      "title": "PSID",
+      "type": "string"
+    },
+    "customer_name": {
+      "title": "Customer Name",
+      "type": "string"
+    },
+    "phone": {
+      "title": "Phone",
+      "type": "string"
+    },
+    "booking_time": {
+      "title": "Booking Time",
+      "type": "string"
+    },
+    "party_size": {
+      "title": "Party Size",
+      "type": "integer"
+    },
+    "duration_minutes": {
+      "default": 120,
+      "title": "Duration Minutes",
+      "type": "integer"
+    },
+    "table_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Table Ids",
+      "type": "array"
+    },
+    "status": {
+      "default": "confirmed",
+      "title": "Status",
+      "type": "string"
+    },
+    "source": {
+      "default": "ai_auto",
+      "title": "Source",
+      "type": "string"
+    },
+    "notes": {
+      "default": "",
+      "title": "Notes",
+      "type": "string"
+    },
+    "idempotency_key": {
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "notified_nv_id": {
+      "title": "Notified NV ID",
+      "type": "string"
+    },
+    "notification_acked_at": {
+      "title": "Notification Acked At",
+      "type": "string"
+    },
+    "cancelled_by": {
+      "title": "Cancelled By",
+      "type": "string"
+    },
+    "cancelled_reason": {
+      "title": "Cancelled Reason",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "updated_at": {
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "customer_name",
+    "phone",
+    "booking_time",
+    "party_size",
+    "table_ids"
+  ],
+  "title": "TableReservation",
+  "type": "object"
+}

@@ -27,6 +27,8 @@ def redact_record(record: dict[str, Any], *, minimal_data: bool) -> dict[str, An
         return redact_text(value) if isinstance(value, str) else value
 
     cleaned = clean(record)
+    if not isinstance(cleaned, dict):
+        return record
     if minimal_data:
         for field in ("draft", "original", "final"):
             value = cleaned.get(field)
