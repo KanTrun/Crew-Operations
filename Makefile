@@ -103,3 +103,11 @@ docker-seed-ops:
 
 docker-reset:
 	python scripts/docker_stack.py reset
+
+# ── Production: Neon Postgres (Render + Vercel deploy — docs/deployment.md) ──
+#
+# DATABASE_URL lấy từ Neon console (vùng Singapore), định dạng:
+#   postgresql+psycopg://user:pass@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+migrate-neon:
+	@test -n "$(DATABASE_URL)" || (echo "usage: make migrate-neon DATABASE_URL=<neon-connection-string>" && exit 1)
+	cd apps/api && DATABASE_URL="$(DATABASE_URL)" python -m alembic -c alembic/alembic.ini upgrade head
