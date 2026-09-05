@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, AuthGate, Loading, Summary } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Loading, Summary } from "../../ui/kit";
 import { canEdit, getNvId, getRole, getToken, isManager, lifeLabel } from "../../lib/session";
 import { apiSend } from "../../lib/api";
 import { matchSearch } from "../../lib/list-filters";
@@ -11,6 +11,7 @@ import { shiftRowLabel } from "../../lib/roster";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 import { KhungConfigPanel } from "./KhungConfigPanel";
 import { RosterGrid } from "./RosterGrid";
+import { CopilotPane } from "../../ui/copilot/CopilotPane";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -148,6 +149,7 @@ export default function RosterPage() {
   const [search, setSearch] = useState("");
   const [filterKhung, setFilterKhung] = useState("all");
   const [filterViTri, setFilterViTri] = useState("all");
+  const [copilotOpen, setCopilotOpen] = useState(false);
 
   useEffect(() => {
     const t = getToken();
@@ -366,6 +368,9 @@ export default function RosterPage() {
             <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-[var(--nq-copper)]">
               {viewMode === "my_shifts" ? "Lịch Đi Làm Của Tôi" : "Lịch Toàn Quán (Full Ca)"}
             </h1>
+            <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+              Hỏi trợ lý vận hành
+            </Btn>
           </div>
 
           {/* Mode Switcher: My Shifts vs Full Roster */}
@@ -819,6 +824,7 @@ export default function RosterPage() {
           </div>
         </div>
       )}
+      <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }

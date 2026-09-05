@@ -29,6 +29,13 @@ from ca_agents.ag_copilot.tool_registry import (
 from ca_agents.ag_supervisor import supervise_outgoing_response
 
 
+def _current_agent_mode() -> str:
+    """Chế độ agent hiện tại — 'live' khi có key LLM, 'replay' mặc định."""
+    import os
+
+    return os.environ.get("CA_AGENT_MODE", "replay").strip().lower() or "replay"
+
+
 def _compute_hash(data: Any) -> str:
     import hashlib
     import json
@@ -70,6 +77,7 @@ def run_copilot(
             confidence=0.99,
             action_proposal=None,
             direct_answer=reply,
+            agent_mode=_current_agent_mode(),
         )
 
     # 1.1 Check Prompt Injection / Bypass Approval attempts
@@ -84,6 +92,7 @@ def run_copilot(
             confidence=0.99,
             action_proposal=None,
             direct_answer=reply,
+            agent_mode=_current_agent_mode(),
         )
 
     # 1.2 Low-confidence clarification
@@ -94,20 +103,30 @@ def run_copilot(
             confidence=parsed.confidence,
             action_proposal=None,
             direct_answer=None,
+            agent_mode=_current_agent_mode(),
         )
 
     # 1.3 Out of scope
     if parsed.intent == OUT_OF_SCOPE:
-        reply = (
-            "Dạ em có thể hỗ trợ anh/chị: xếp lịch tuần, duyệt đổi ca, bản tin sáng, tra cứu quy trình, "
-            "báo cáo hao hụt, đề xuất luật mới và kiểm tra tồn kho. Anh/chị cần em làm gì ạ?"
-        )
+        # Liệt kê đúng năng lực theo vai (fail-closed đã chặn intent vượt quyền
+        # ở bước 1.0 — câu chào phải khớp với cái role đó thật sự làm được).
+        if user_role == "nhan_vien":
+            reply = (
+                "Dạ em có thể hỗ trợ anh/chị: xem bản tin ca, tra cứu quy trình (SOP) "
+                "và báo cáo hao hụt trong ca. Anh/chị cần em làm gì ạ?"
+            )
+        else:
+            reply = (
+                "Dạ em có thể hỗ trợ anh/chị: xếp lịch tuần, duyệt đổi ca, bản tin sáng, tra cứu quy trình, "
+                "báo cáo hao hụt, đề xuất luật mới và kiểm tra tồn kho. Anh/chị cần em làm gì ạ?"
+            )
         return CopilotResponse(
             reply_text=reply,
             intent=CopilotIntent.OUT_OF_SCOPE,
             confidence=parsed.confidence,
             action_proposal=None,
             direct_answer=reply,
+            agent_mode=_current_agent_mode(),
         )
 
     # 2. Execute Whitelisted Tool
@@ -192,4 +211,5 @@ def run_copilot(
         action_proposal=action_prop,
         direct_answer=direct_answer,
         citations=citations,
+        agent_mode=_current_agent_mode(),
     )

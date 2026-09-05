@@ -17,7 +17,7 @@ import { CopilotBody } from "./CopilotBody";
 import { useCopilotChat } from "./useCopilotChat";
 import type { Role } from "../../lib/session";
 
-const POS_KEY = "ag_copilot_pane_pos_v1";
+const POS_KEY = "ag_copilot_pane_pos_v2";
 
 interface PaneState {
   /** 0 = collapsed (chỉ chip), 1 = small, 2 = large */
@@ -158,21 +158,24 @@ export function CopilotPane({ open, onClose }: Props = {}) {
     []
   );
 
-  // Tính position pixel
+  // Tính position pixel. Kẹp pane trong viewport để trạng thái cũ hoặc màn
+  // hình nhỏ không làm pane trôi khỏi vùng thao tác.
   const paneRef = useRef<HTMLDivElement>(null);
   const style: CSSProperties = (() => {
-    const w = state.size === 0 ? 56 : state.w;
-    const h = state.size === 0 ? 56 : state.h;
+    const maxWidth = Math.max(280, window.innerWidth - 32);
+    const maxHeight = Math.max(360, window.innerHeight - 32);
+    const w = state.size === 0 ? 56 : Math.min(state.w, maxWidth);
+    const h = state.size === 0 ? 56 : Math.min(state.h, maxHeight);
     const margin = 16;
     let left: number;
     let top: number;
     if (state.x >= 0 && state.y >= 0 && state.size > 0) {
       // Tự do kéo
-      left = state.x;
-      top = state.y;
+      left = clamp(state.x, 0, Math.max(0, window.innerWidth - w));
+      top = clamp(state.y, 0, Math.max(0, window.innerHeight - h));
     } else {
       // Gắn theo corner
-      const isLeft = state.corner.startsWith("b") ? false : true;
+      const isLeft = state.corner === "bl" || state.corner === "tl";
       const isTop = state.corner === "tr" || state.corner === "tl";
       left = isLeft ? margin : window.innerWidth - w - margin;
       top = isTop ? margin : window.innerHeight - h - margin;
@@ -236,10 +239,10 @@ export function CopilotPane({ open, onClose }: Props = {}) {
           position: "fixed",
           borderRadius: 9999,
         }}
-        className="flex items-center justify-center shadow-2xl border bg-zinc-900 hover:scale-105 active:scale-95 transition cursor-grab"
-        title="Mở rộng AG-COPILOT"
+        className="flex cursor-grab items-center justify-center border-2 border-[var(--nq-copper)] bg-[var(--nq-surface)] text-[var(--nq-copper)] shadow-[5px_5px_0_var(--nq-copper-dim)] transition hover:bg-[var(--nq-copper)] hover:text-[#0e0c0a] active:scale-95"
+        title="Mở trợ lý vận hành"
       >
-        <span className="text-2xl">✨</span>
+        <span className="text-sm font-black uppercase">Trợ lý</span>
       </button>
     );
   }
@@ -248,17 +251,17 @@ export function CopilotPane({ open, onClose }: Props = {}) {
     <div
       ref={paneRef}
       style={{ ...style, position: "fixed" }}
-      className="rounded-2xl shadow-2xl border border-zinc-800 overflow-hidden flex flex-col"
+      className="flex flex-col overflow-hidden border-2 border-[var(--nq-dim)] shadow-[8px_8px_0_var(--nq-copper-dim)]"
     >
       {/* Drag area: dùng header dưới dạng grab — đã có trong CopilotBody rồi,
           nhưng ta thêm 1 div kéo trên cùng để cả thanh tiêu đề kéo được. */}
       {/* Thanh kéo mỏng trên cùng — không chặn click vào chat */}
       <div
         onMouseDown={onDragMouseDown}
-        className="h-3 shrink-0 cursor-grab active:cursor-grabbing bg-zinc-900 border-b border-zinc-800 flex items-center justify-center"
+        className="flex h-3 shrink-0 cursor-grab items-center justify-center border-b border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] active:cursor-grabbing"
         title="Kéo để di chuyển"
       >
-        <div className="w-10 h-1 rounded-full bg-zinc-700" />
+        <div className="h-0.5 w-10 bg-[var(--nq-dim)]" />
       </div>
       <div className="relative flex-1 min-h-0">
         <CopilotBody
@@ -273,7 +276,7 @@ export function CopilotPane({ open, onClose }: Props = {}) {
           <button
             onClick={() => setState((s) => ({ ...s, size: 0 }))}
             title="Thu nhỏ về chip"
-            className="px-2 py-1 text-[10px] rounded bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300"
+            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-2 py-1 text-[10px] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
           >
             –
           </button>
@@ -287,7 +290,7 @@ export function CopilotPane({ open, onClose }: Props = {}) {
               }))
             }
             title={state.size === 2 ? "Thu nhỏ" : "Phóng to"}
-            className="px-2 py-1 text-[10px] rounded bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300"
+            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-2 py-1 text-[10px] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
           >
             {state.size === 2 ? "▢" : "▣"}
           </button>
@@ -302,7 +305,7 @@ export function CopilotPane({ open, onClose }: Props = {}) {
               }))
             }
             title="Gắn vị trí"
-            className="px-1 text-[10px] rounded bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300"
+            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-1 text-[10px] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
           >
             <option value="br">BR</option>
             <option value="bl">BL</option>

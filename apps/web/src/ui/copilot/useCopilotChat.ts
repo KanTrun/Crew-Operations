@@ -12,6 +12,7 @@ export interface ChatMessage {
   text: string;
   action_proposal?: ActionProposalData | null;
   citations?: string[] | null;
+  agent_mode?: string | null;
   timestamp: string;
 }
 
@@ -185,6 +186,7 @@ export function useCopilotChat(mode: Mode = "pane") {
                     ...m,
                     action_proposal: streamed.action_proposal ?? null,
                     citations: streamed.citations,
+                    agent_mode: streamed.agent_mode ?? null,
                   }
                 : m
             )
@@ -204,7 +206,7 @@ export function useCopilotChat(mode: Mode = "pane") {
 
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.detail || "Không thể kết nối với AG-COPILOT");
+          throw new Error(data.detail || "Không thể kết nối với trợ lý vận hành");
         }
 
         const replyText: string =
@@ -220,6 +222,7 @@ export function useCopilotChat(mode: Mode = "pane") {
                   ...m,
                   action_proposal: data.action_proposal ?? null,
                   citations,
+                  agent_mode: data.agent_mode ?? null,
                 }
               : m
           )
@@ -240,7 +243,7 @@ export function useCopilotChat(mode: Mode = "pane") {
 
   const clearHistory = useCallback(() => {
     if (typeof window === "undefined") return;
-    const ok = window.confirm("Xoá toàn bộ lịch sử hội thoại với AG-COPILOT?");
+    const ok = window.confirm("Xoá toàn bộ lịch sử hội thoại với trợ lý vận hành?");
     if (!ok) return;
     setMessages([
       {
@@ -282,6 +285,7 @@ interface StreamResult {
   ok: boolean;
   action_proposal?: ActionProposalData | null;
   citations?: string[] | null;
+  agent_mode?: string | null;
 }
 
 /** Đọc SSE từ /api/v1/copilot/message/stream và gọi onDelta cho từng chunk text. */
@@ -307,7 +311,7 @@ async function streamCopilot(
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
-    let meta: { action_proposal?: ActionProposalData | null; citations?: string[] | null } = {};
+    let meta: { action_proposal?: ActionProposalData | null; citations?: string[] | null; agent_mode?: string | null } = {};
 
     while (true) {
       const { done, value } = await reader.read();
@@ -331,6 +335,7 @@ async function streamCopilot(
                 meta = {
                   action_proposal: data.action_proposal ?? null,
                   citations: Array.isArray(data.citations) ? data.citations : null,
+                  agent_mode: data.agent_mode ?? null,
                 };
               } else if (eventName === "delta") {
                 onDelta(data.text || "");

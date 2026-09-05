@@ -7,6 +7,7 @@ import { getToken } from "../../lib/session";
 import {
   Alert,
   AuthGate,
+  Btn,
   Empty,
   Loading,
   Notice,
@@ -14,6 +15,7 @@ import {
   PageHeader,
   StatusChip,
 } from "../../ui/kit";
+import { CopilotPane } from "../../ui/copilot/CopilotPane";
 
 const AXIS: Record<string, string> = {
   cuoi_tuan: "Ca cuối tuần",
@@ -48,6 +50,7 @@ export default function CongBangPage() {
   const [coNhieuNguoi, setCoNhieuNguoi] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copilotOpen, setCopilotOpen] = useState(false);
 
   const load = useCallback(() => {
     if (!getToken()) {
@@ -86,6 +89,9 @@ export default function CongBangPage() {
         title="Công bằng"
         meta="Bạn thấy số dư của chính mình so với trung bình nhóm. Quán không xếp hạng tên người."
       />
+      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+        Hỏi trợ lý vận hành
+      </Btn>
       {error ? <Alert>{error}</Alert> : null}
       {loading ? <Loading skeleton="list">Đang đọc sổ nợ…</Loading> : null}
 
@@ -132,6 +138,7 @@ export default function CongBangPage() {
           người. Cần cân lại ca thì làm trên Lịch tuần.
         </Notice>
       ) : null}
+      <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }

@@ -209,10 +209,10 @@ export default function CamNangPage() {
           <Notice>Bạn xem được luật quán. Quản lý hoặc chủ quán mới chạy 8 bước xét luật.</Notice>
         )}
         <BtnLink href="/sop" variant="ghost">
-          Hỏi cẩm nang (AG-SOP)
+          Hỏi quy trình
         </BtnLink>
         <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-          ✨ Hỏi AG-COPILOT
+          Hỏi trợ lý vận hành
         </Btn>
       </div>
 
@@ -295,7 +295,6 @@ export default function CamNangPage() {
         })}
       </div>
 
-      {/* AG-COPILOT pane nổi (lệch AppShell) */}
       <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );

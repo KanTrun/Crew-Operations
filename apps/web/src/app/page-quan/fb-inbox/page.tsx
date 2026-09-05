@@ -14,6 +14,7 @@ import {
   Loading,
   Notice,
   PageHeader,
+  Select,
   StatusChip,
   Textarea,
   useToasts,
@@ -44,6 +45,8 @@ type Stats = {
   escalation_unacked: number;
 };
 
+type StatusFilter = "pending" | "approved" | "rejected" | "all";
+
 const INTENT_LABEL: Record<string, string> = {
   chao_hoi: "Chào hỏi",
   hoi_gio_dia_chi: "Giờ / Địa chỉ",
@@ -53,7 +56,7 @@ const INTENT_LABEL: Record<string, string> = {
   khieu_nai_gop_y: "Khiếu nại / Góp ý",
   tu_van_mon: "Tư vấn món",
   yeu_cau_dac_biet: "Yêu cầu đặc biệt",
-  blocked_injection: "Blok bảo mật",
+  blocked_injection: "Chặn bảo mật",
   khac: "Khác",
 };
 
@@ -71,7 +74,8 @@ function actionTone(a: string): "warn" | "danger" | "default" {
 
 function slaLeft(expiresAt?: string | null): { label: string; overdue: boolean } | null {
   if (!expiresAt) return null;
-  const end = new Date(`${expiresAt}Z`).getTime();
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(expiresAt);
+  const end = new Date(hasTimezone ? expiresAt : `${expiresAt}Z`).getTime();
   if (!Number.isFinite(end)) return null;
   const diff = Math.round((end - Date.now()) / 1000);
   if (diff <= 0) return { label: "QUÁ HẠN", overdue: true };
@@ -91,6 +95,7 @@ export default function FbInboxPage() {
   const [busy, setBusy] = useState<number | null>(null);
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const { push } = useToasts();
 
   useEffect(() => {
@@ -102,14 +107,15 @@ export default function FbInboxPage() {
 
   const load = useCallback(() => {
     if (!getToken()) return;
-    apiGet<{ items: FbItem[] }>("/api/v1/page/fb-inbox?status=pending&limit=100")
+    const statusQuery = statusFilter === "all" ? "" : `status=${statusFilter}&`;
+    apiGet<{ items: FbItem[] }>(`/api/v1/page/fb-inbox?${statusQuery}limit=100`)
       .then((d) => setItems(d.items ?? []))
       .catch((e) => setError(viError(e, { doing: "đọc hộp thư Facebook" })))
       .finally(() => setLoading(false));
     apiGet<Stats>("/api/v1/page/fb-inbox/stats")
       .then((s) => setStats(s))
       .catch(() => {});
-  }, []);
+  }, [statusFilter]);
 
   useEffect(() => {
     if (token) load();
@@ -192,15 +198,33 @@ export default function FbInboxPage() {
         </div>
       ) : null}
 
+      <label className="block max-w-xs mb-6">
+        <span className="block text-sm font-bold uppercase tracking-widest text-[var(--nq-dim)] mb-2">
+          Trạng thái
+        </span>
+        <Select
+          value={statusFilter}
+          onChange={(event) => {
+            setLoading(true);
+            setStatusFilter(event.target.value as StatusFilter);
+          }}
+        >
+          <option value="pending">Chờ duyệt</option>
+          <option value="approved">Đã duyệt</option>
+          <option value="rejected">Đã từ chối</option>
+          <option value="all">Tất cả</option>
+        </Select>
+      </label>
+
       {items.length === 0 && !loading ? (
-        <Empty>Không có tin nhắn nào chờ duyệt. Khách nhắn sẽ xuất hiện ở đây.</Empty>
+        <Empty>Không có tin nhắn ở trạng thái đã chọn.</Empty>
       ) : null}
 
       <div className="space-y-6">
         {items.map((it) => {
           const ownerOnly = it.assigned_role === "chu_quan" && !chuQuan;
           const sla = slaLeft(it.expires_at);
-          const canAct = !ownerOnly;
+          const canAct = it.status === "pending" && !ownerOnly;
           return (
             <article
               key={it.id}
@@ -209,6 +233,7 @@ export default function FbInboxPage() {
               }`}
             >
               <div className="flex flex-wrap items-center gap-3 mb-4">
+                {it.status !== "pending" ? <StatusChip>{safeText(it.status)}</StatusChip> : null}
                 <StatusChip tone={actionTone(it.policy_action)}>
                   {ACTION_LABEL[it.policy_action] ?? safeText(it.policy_action)}
                 </StatusChip>

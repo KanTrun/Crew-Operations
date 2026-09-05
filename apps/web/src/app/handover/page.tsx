@@ -15,6 +15,7 @@ import {
   PageHeader,
   Textarea,
 } from "../../ui/kit";
+import { CopilotPane } from "../../ui/copilot/CopilotPane";
 
 type Sbar = {
   id?: string;
@@ -32,6 +33,7 @@ export default function HandoverPage() {
   const [history, setHistory] = useState<Sbar[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
 
   useEffect(() => {
     setToken(getToken());
@@ -75,6 +77,9 @@ export default function HandoverPage() {
         title="Bàn giao"
         meta="Ghi ca vừa rồi theo mẫu Tình hình · Bối cảnh · Đánh giá · Đề nghị — hệ thống tách và lưu cho ca sau."
       />
+      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+        Hỏi trợ lý vận hành
+      </Btn>
       <Field label="Nội dung ca">
         <Textarea
           value={text}
@@ -123,6 +128,7 @@ export default function HandoverPage() {
           </div>
         </OpsCard>
       ) : null}
+      <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }

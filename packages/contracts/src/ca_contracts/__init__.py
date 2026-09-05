@@ -384,6 +384,7 @@ class CopilotResponse(BaseModel):
     action_proposal: ActionProposal | None = None
     direct_answer: str | None = None
     citations: list[str] = Field(default_factory=list)
+    agent_mode: str = "replay"
 
 
 # ── Universal Orchestration (PR9): Capability Registry ───────────────────────

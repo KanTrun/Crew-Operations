@@ -59,12 +59,12 @@ Kết quả: AUTO_SEND (flag ON + supervisor pass) | QUEUE (QL duyệt) |
 ## 6. Eval & CI
 
 ```bash
-# Chạy golden eval (25 case, cần GREEN với 0 hard-fail):
+# Chạy golden eval (ít nhất 60 case, cần GREEN với 0 hard-fail):
 set PYTHONIOENCODING=utf-8 && python scripts/eval_fb_moderation.py
 ```
 
 - Fixtures: `data/fixtures/fb_moderation_golden.jsonl` — **thêm case mới kèm PR** khi gặp tình huống thật.
-- RED build nếu: 1 case escalate/block sai, hoặc pass rate < 90%.
+- RED build nếu: ít hơn 60 case, 1 case escalate/block sai, hoặc pass rate < 95%.
 - Unit tests: `apps/api/tests/unit/test_fb_moderation.py`, `test_fb_policy_api.py`, `packages/agents/tests/test_fb_policy.py`, `test_fb_rate_limiter.py`.
 
 ## 7. Chỉnh chính sách

@@ -56,7 +56,9 @@ def fb_auto_send_enabled() -> bool:
 
 # Ngưỡng giá auto (kế hoạch §6.3.2 — chính sách kinh doanh, đọc env để Chủ quán
 # chỉnh không cần sửa code; default 100_000 đúng số đã thống nhất).
-PRICE_CAP_VND = int(os.environ.get("NHIPQUAN_FB_AUTO_PRICE_CAP_VND", "100000"))
+
+def fb_auto_price_cap_vnd() -> int:
+    return int(os.environ.get("NHIPQUAN_FB_AUTO_PRICE_CAP_VND", "100000"))
 
 
 def _now_iso() -> str:
@@ -71,13 +73,51 @@ def _sla_expiry(sla_minutes: int | None) -> str | None:
     )
 
 
+def _event_time_iso(timestamp: float) -> str | None:
+    if timestamp <= 0:
+        return None
+    seconds = timestamp / 1000 if timestamp > 1e11 else timestamp
+    try:
+        return datetime.fromtimestamp(seconds, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except (OSError, OverflowError, ValueError):
+        return None
+
+
+def queue_fb_non_text(*, psid: str, event_id: str, description: str) -> int:
+    """Đưa attachment/postback vào hàng duyệt mà không suy đoán ý định."""
+    review_id = fb_review_insert(
+        {
+            "source": "messenger",
+            "external_thread_id": f"fb_{psid}",
+            "external_psid": psid,
+            "message_text": description,
+            "detected_intent": "khac",
+            "confidence": 1.0,
+            "policy_action": FbPolicyAction.QUEUE_REVIEW.value,
+            "assigned_role": "quan_ly",
+            "proposed_response": None,
+            "flagged_reasons": ["non_text_event"],
+            "trace_id": event_id or uuid.uuid4().hex[:12],
+            "created_at": _now_iso(),
+            "expires_at": _sla_expiry(10),
+        }
+    )
+    audit_add(
+        _now_iso(),
+        "fb_policy_engine",
+        FbPolicyAction.QUEUE_REVIEW.value,
+        {"psid": psid, "reason": "non_text_event", "review_id": review_id},
+    )
+    return review_id
+
+
 def _menu_price_above_cap(menu: list[dict[str, Any]], text: str) -> bool:
     low = text.lower()
     for m in menu:
         ten = str(m.get("ten") or "").lower()
         if ten and ten in low:
             try:
-                return int(m.get("gia") or 0) > PRICE_CAP_VND
+                return int(m.get("gia") or 0) > fb_auto_price_cap_vnd()
             except (TypeError, ValueError):
                 return False
     return False
@@ -107,6 +147,10 @@ def moderate_fb_message(
     timestamp: float,
     public_context: dict[str, Any] | None = None,
     repeat_ask_count: int = 0,
+    source: str = "messenger",
+    post_id: str | None = None,
+    post_is_sensitive: bool = False,
+    external_user_name: str | None = None,
 ) -> dict[str, Any]:
     """Xử lý 1 tin Messenger qua 5 lớp cổng; ghi queue khi cần con người.
 
@@ -174,7 +218,8 @@ def moderate_fb_message(
             res_eligible = False
 
     ctx = PolicyContext(
-        source="messenger",
+        source=source,
+        sensitive_post=post_is_sensitive,
         repeat_ask_count=repeat_ask_count,
         kb_has_fact=_kb_has_fact(public_context, guard.sanitized_text),
         price_above_limit=_menu_price_above_cap(
@@ -230,9 +275,12 @@ def moderate_fb_message(
     ):
         review_id = fb_review_insert(
             {
-                "source": "messenger",
-                "external_thread_id": f"fb_{psid}",
+                "source": source,
+                "external_thread_id": message_id if source == "comment" else f"fb_{psid}",
                 "external_psid": psid,
+                "external_user_name": external_user_name,
+                "post_id": post_id,
+                "post_is_sensitive": post_is_sensitive,
                 "message_text": guard.sanitized_text,
                 "detected_intent": intent,
                 "confidence": confidence,
@@ -242,6 +290,7 @@ def moderate_fb_message(
                 "flagged_reasons": flagged,
                 "trace_id": uuid.uuid4().hex[:12],
                 "created_at": _now_iso(),
+                "event_at": _event_time_iso(timestamp),
                 "expires_at": _sla_expiry(decision.sla_minutes),
             }
         )
@@ -253,13 +302,16 @@ def moderate_fb_message(
                 notified_channel="in_app",
             )
     elif decision.action == FbPolicyAction.AUTO_SEND:
-        if fb_auto_send_enabled():
-            # Ghi dấu auto_sent để thống kê tỷ lệ (§5.4) — không cần ai duyệt.
+        if fb_auto_send_enabled() and source == "messenger":
+            # Claim giao tin; webhook chỉ đánh dấu auto_sent sau khi Graph xác nhận.
             review_id = fb_review_insert(
                 {
-                    "source": "messenger",
-                    "external_thread_id": f"fb_{psid}",
+                    "source": source,
+                    "external_thread_id": message_id if source == "comment" else f"fb_{psid}",
                     "external_psid": psid,
+                    "external_user_name": external_user_name,
+                    "post_id": post_id,
+                    "post_is_sensitive": post_is_sensitive,
                     "message_text": guard.sanitized_text,
                     "detected_intent": intent,
                     "confidence": confidence,
@@ -267,10 +319,11 @@ def moderate_fb_message(
                     "assigned_role": None,
                     "proposed_response": response,
                     "flagged_reasons": flagged,
-                    "status": "auto_sent",
+                    "status": "approved",
                     "final_response": response,
                     "trace_id": uuid.uuid4().hex[:12],
                     "created_at": _now_iso(),
+                    "event_at": _event_time_iso(timestamp),
                     "expires_at": None,
                 }
             )
@@ -279,9 +332,12 @@ def moderate_fb_message(
             # duyệt tay (ADR-008: người quyết). KHÔNG ghi auto_sent.
             review_id = fb_review_insert(
                 {
-                    "source": "messenger",
-                    "external_thread_id": f"fb_{psid}",
+                    "source": source,
+                    "external_thread_id": message_id if source == "comment" else f"fb_{psid}",
                     "external_psid": psid,
+                    "external_user_name": external_user_name,
+                    "post_id": post_id,
+                    "post_is_sensitive": post_is_sensitive,
                     "message_text": guard.sanitized_text,
                     "detected_intent": intent,
                     "confidence": confidence,
@@ -292,6 +348,7 @@ def moderate_fb_message(
                     "status": "pending",
                     "trace_id": uuid.uuid4().hex[:12],
                     "created_at": _now_iso(),
+                    "event_at": _event_time_iso(timestamp),
                     "expires_at": _sla_expiry(10),
                 }
             )

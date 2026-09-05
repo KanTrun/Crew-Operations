@@ -2,7 +2,25 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+
+from ca_agents.facebook_page import verify_fb_webhook_signature
 from ca_agents.messaging import is_xem_lich, parse_telegram_update, parse_zalo_webhook
+
+
+def test_facebook_webhook_signature_fails_closed_without_secret(monkeypatch) -> None:
+    monkeypatch.delenv("NHIPQUAN_FB_APP_SECRET", raising=False)
+    assert verify_fb_webhook_signature(b"{}", "") is False
+
+
+def test_facebook_webhook_signature_accepts_valid_hmac(monkeypatch) -> None:
+    monkeypatch.setenv("NHIPQUAN_FB_APP_SECRET", "secret_test")
+    payload = b'{"entry":[]}'
+    digest = hmac.new(b"secret_test", payload, hashlib.sha256).hexdigest()
+
+    assert verify_fb_webhook_signature(payload, f"sha256={digest}") is True
+    assert verify_fb_webhook_signature(payload, "sha256=invalid") is False
 
 
 def test_parse_zalo_user_send_text() -> None:

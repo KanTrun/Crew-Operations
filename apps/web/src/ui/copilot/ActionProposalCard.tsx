@@ -31,6 +31,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
   const [currentStatus, setCurrentStatus] = useState(proposal.status);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [resultLink, setResultLink] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [showAmendModal, setShowAmendModal] = useState(false);
   const [amendReason, setAmendReason] = useState("");
@@ -120,8 +121,8 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         }
         throw new Error(detail || "Không thể thực thi hành động.");
       }
-
       setCurrentStatus(data.status);
+      setResultLink(data.result_link ?? null);
       if (onExecuted) {
         onExecuted({ ...proposal, status: data.status, executed_at: new Date().toISOString() });
       }
@@ -357,9 +358,18 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           </button>
         </div>
       )}
-
       {currentStatus === "executed" && (
-        <div className="pt-2 border-t border-zinc-800 flex justify-end">
+        <div className="pt-2 border-t border-zinc-800 flex items-center justify-between gap-2">
+          {resultLink ? (
+            <a
+              href={resultLink}
+              className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 transition"
+            >
+              → Xem kết quả đã áp dụng
+            </a>
+          ) : (
+            <span />
+          )}
           <button
             onClick={() => setShowAmendModal(true)}
             className="text-[11px] text-zinc-400 hover:text-amber-400 underline"

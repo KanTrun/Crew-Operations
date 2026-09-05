@@ -14,6 +14,18 @@ import { motion, AnimatePresence } from "framer-motion";
 /** `short` là nhãn cho thanh dưới dạng pill — chỗ hẹp, chữ dài sẽ gãy dòng. */
 type LinkItem = { href: string; label: string; short?: string };
 
+const COPILOT_LAUNCHER_ROUTES = new Set([
+  "/roster",
+  "/qr",
+  "/phieu",
+  "/treo",
+  "/cong-bang",
+  "/tkb",
+  "/handover",
+  "/doi-ca",
+  "/cam-nang",
+]);
+
 /** `data-tour` để tour hướng dẫn trỏ vào đúng lối vào của từng việc. */
 function tourId(href: string): string {
   return `nav-${href.replace(/^\//, "")}`;
@@ -25,7 +37,7 @@ const STAFF_PRIMARY: LinkItem[] = [
   { href: "/cuoc-hop", label: "Họp & Giao ca", short: "Họp" },
   { href: "/quay", label: "Quầy", short: "Quầy" },
   { href: "/pha", label: "Pha chế", short: "Pha" },
-  { href: "/phieu", label: "Phiếu" },
+  { href: "/tkb", label: "Lịch bận", short: "Lịch bận" },
 ];
 
 const MANAGER_PRIMARY: LinkItem[] = [
@@ -35,7 +47,7 @@ const MANAGER_PRIMARY: LinkItem[] = [
   { href: "/roster", label: "Lịch tuần", short: "Lịch" },
   { href: "/inbox", label: "Hộp thư", short: "Hộp thư" },
   { href: "/quay", label: "Quầy", short: "Quầy" },
-  { href: "/pha", label: "Pha chế", short: "Pha" },
+  { href: "/tkb", label: "Lịch bận", short: "Lịch bận" },
 ];
 
 const ADMIN_PRIMARY: LinkItem[] = [
@@ -45,12 +57,14 @@ const ADMIN_PRIMARY: LinkItem[] = [
   { href: "/nguoi", label: "Người dùng", short: "Người" },
   { href: "/menu", label: "Menu & giá", short: "Menu" },
   { href: "/roster", label: "Lịch tuần", short: "Lịch" },
-  { href: "/cam-nang", label: "Cẩm nang", short: "Cẩm nang" },
+  { href: "/tkb", label: "Lịch bận", short: "Lịch bận" },
 ];
 
 const MORE: LinkItem[] = [
   { href: "/chat", label: "Chat nội bộ" },
   { href: "/huong-dan", label: "Bản đồ hệ thống" },
+  { href: "/cuoc-hop", label: "Họp & gửi nhóm" },
+  { href: "/tkb", label: "Tải ảnh lịch bận" },
   { href: "/quay", label: "Quầy" },
   { href: "/pha", label: "Pha chế" },
   { href: "/inbox", label: "Hộp thư" },
@@ -236,7 +250,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       ) : null}
       {token ? (
         <>
-          <CopilotPane />
+          {!COPILOT_LAUNCHER_ROUTES.has(path) ? <CopilotPane /> : null}
           <FloatingChatHead />
         </>
       ) : null}

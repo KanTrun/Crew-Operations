@@ -50,8 +50,10 @@ Test: 370/370 pass (agents + playbook + gates + api).
 
 - **Giai đoạn 1**: Đã xong toàn bộ 4 mục (conflict check 5 điều kiện thật sự trong commit `db12fac`, users mapping, dọn sạch dữ liệu cứng trong `tool_registry.py`).
 - **Giai đoạn 2**: Đã xong toàn bộ 3 mục apply thật trong commit `8186e6f` (restock orders KV, rule proposal vào `cam_nang.json`, shift swap apply vào phân công thật).
-- **Giai đoạn 3**: Đã xong SSE streaming (`/api/v1/copilot/chat/stream`) trong commit `200c00c` và bổ sung E2E test smoke toàn diện trong commit `d4c57ea`.
-- **Tổng test hiện tại**: 475/475 tests pass xanh (0 lỗi, ruff sạch).
+- **Giai đoạn 3**: Đã xong SSE streaming (`/api/v1/copilot/message/stream`) trong commit `200c00c` và bổ sung E2E test smoke toàn diện trong commit `d4c57ea`.
+- **Bổ sung độ tin cậy (2026-09-04)**: JSON và SSE cùng đi qua `_record_copilot_response()`. Mọi `action_proposal` được lưu draft và ghi audit `propose` trước khi stream `meta` cho UI; test hồi quy xác nhận proposal stream có thể được duyệt qua `action_id` bền vững.
+- **Bổ sung điểm vào vận hành (2026-09-04)**: Pane AG-COPILOT đã có launcher có kiểm soát ở `/roster`, `/qr`, `/phieu`, `/treo`, `/cong-bang`, `/tkb`, `/handover`, và `/doi-ca`.
+- **Tổng test xác nhận gần nhất (2026-09-04)**: 636/636 tests pass xanh ở `CA_AGENT_MODE=replay`; Docker smoke và `npm run typecheck` cũng xanh.
 
 ## Định nghĩa "xong"
 

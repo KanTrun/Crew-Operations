@@ -1,8 +1,31 @@
 // Sinh tự động từ JSON Schema của pydantic — chạy `make contracts`.
 // KHÔNG sửa tay: nguồn sự thật là packages/contracts/src/ca_contracts.
-export interface NhanVien { id: string; ten: string; ky_nang?: string[]; la_sinh_vien?: boolean; so_dien_thoai_hash?: string | null; }
-export interface Ca { id: string; ngay: string; bat_dau: string; ket_thuc: string; vi_tri: string; so_nguoi_toi_thieu?: number; }
-export interface LichTuan { tuan_iso: string; trang_thai?: "nhap" | "dang_giai" | "cho_duyet" | "da_cong_bo" | "da_dong"; phan_cong?: Record<string, string[]>; }
+
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+export interface NhanVien {
+  id: string;
+  ten: string;
+  ky_nang?: string[];
+  la_sinh_vien?: boolean;
+  so_dien_thoai_hash?: string | null;
+}
+
+export interface Ca {
+  id: string;
+  ngay: string;
+  bat_dau: string;
+  ket_thuc: string;
+  vi_tri: string;
+  so_nguoi_toi_thieu?: number;
+}
+
+export interface LichTuan {
+  tuan_iso: string;
+  trang_thai?: "nhap" | "dang_giai" | "cho_duyet" | "da_cong_bo" | "da_dong";
+  phan_cong?: Record<string, string[]>;
+}
+
 export type MinhChungLoai = "khong" | "so" | "anh" | "kiem_ke" | "van_ban" | "danh_sach" | "xac_nhan" | "xac_nhan_doc";
 export interface PhieuBuoc { ma: string; ten: string; minh_chung?: MinhChungLoai; }
 export interface PhieuMau { ma: string; ten: string; gan_voi?: string | null; buoc: PhieuBuoc[]; }
@@ -24,6 +47,34 @@ export interface CopilotContext { store_id?: string; user_id: string; user_role:
 export interface CopilotMessage { message: string; context: CopilotContext; }
 export type ActionProposalStatus = "draft" | "ready_for_approval" | "amendment_ready" | "executing" | "executed" | "execution_failed" | "rejected" | "expired" | "stale_rejected";
 export type CopilotIntent = "SCHEDULE_SOLVE" | "APPROVE_SHIFT_SWAP" | "GENERATE_DAILY_BRIEF" | "QUERY_SOP" | "ANALYZE_WASTE" | "CREATE_RULE_PROPOSAL" | "INVENTORY_RESTOCK_CHECK" | "SEND_MAIL" | "OUT_OF_SCOPE";
-export interface ActionProposal { action_id: string; intent: CopilotIntent; status?: ActionProposalStatus; summary: string; explanation?: string; payload_diff?: Record<string, unknown>; requires_confirmation?: boolean; store_id?: string; created_by: string; confidence?: number; data_snapshot_hash?: string; expires_at: string; created_at?: string; executed_at?: string | null; amended_from?: string | null; }
+
+export interface ActionProposal {
+  action_id: string;
+  intent: CopilotIntent;
+  status?: ActionProposalStatus;
+  summary: string;
+  explanation?: string;
+  payload_diff?: Record<string, JsonValue>;
+  requires_confirmation?: boolean;
+  store_id?: string;
+  created_by: string;
+  confidence?: number;
+  data_snapshot_hash?: string;
+  expires_at: string;
+  created_at?: string;
+  executed_at?: string | null;
+  amended_from?: string | null;
+}
+
 export type FbPolicyAction = "auto_send" | "queue_review" | "priority_review" | "escalate_owner" | "block_polite" | "block_silent";
-export interface PolicyDecision { action: FbPolicyAction; reason: string; intent: string; confidence: number; assigned_role?: "quan_ly" | "chu_quan" | null; sla_minutes?: number | null; flagged_reasons?: string[]; }
+
+export interface PolicyDecision {
+  action: FbPolicyAction;
+  reason: string;
+  intent: string;
+  confidence: number;
+  assigned_role?: "quan_ly" | "chu_quan" | null;
+  sla_minutes?: number | null;
+  flagged_reasons?: string[];
+}
+

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { viError } from "../../lib/present";
 import { getToken, isChuQuan, isManager } from "../../lib/session";
-import { Alert, AuthGate, Btn, Empty, Loading, Notice, PageHeader, StatusChip } from "../../ui/kit";
+import { Alert, AuthGate, Btn, BtnLink, Empty, Loading, Notice, PageHeader, StatusChip } from "../../ui/kit";
 
 type Generation = {
   id: string;
@@ -139,13 +139,22 @@ export default function AiLearningPage() {
   }
 
   const feedbackTotal = Object.values(summary?.feedback_by_type ?? {}).reduce((total, value) => total + value, 0);
+  const noLearningData =
+    !error &&
+    summary !== null &&
+    (summary.evaluation_count ?? 0) === 0 &&
+    (summary.passed_count ?? 0) === 0 &&
+    feedbackTotal === 0 &&
+    generations.length === 0 &&
+    proposals.length === 0;
   return (
     <div className="nq-page">
       <PageHeader
         kicker="Generation -> Feedback -> Rule"
         title="Học từ phản hồi AI"
-        meta="Theo dõi chất lượng, tạo đề xuất từ phản hồi đã kiểm duyệt, và chỉ áp dụng quy tắc sau khi chủ quán duyệt."
+        meta="Theo dõi chất lượng vòng học và tạo đề xuất quy tắc từ phản hồi đã kiểm duyệt."
       />
+      <Notice>AI học chỉ từ các lần quản lý/chủ quán duyệt hoặc SỬA nội dung AI đề xuất — AI không tự kích hoạt quy tắc nào. Mọi quy tắc phải qua chủ quán duyệt.</Notice>
       {error ? <Alert>{error}</Alert> : null}
       {notice ? <Alert kind="ok">{notice}</Alert> : null}
       {loading ? <Loading skeleton="stats">Đang tải dữ liệu học AI...</Loading> : null}
@@ -158,6 +167,20 @@ export default function AiLearningPage() {
             <Metric label="Đạt quality gate" value={String(summary?.passed_count ?? 0)} />
             <Metric label="Phản hồi đã ghi" value={String(feedbackTotal)} />
           </section>
+
+          {noLearningData ? (
+            <section className="mb-8 border-2 border-[var(--nq-copper)] bg-[var(--nq-surface)] p-5 md:p-6">
+              <p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-copper)]">Bắt đầu vòng học</p>
+              <h2 className="mt-1 text-xl font-black">Chưa có dữ liệu học</h2>
+              <p className="mt-3 max-w-3xl text-sm text-[var(--nq-dim)]">
+                Vòng học bắt đầu khi quản lý gửi email qua Trợ lý hoặc duyệt tin khách ở Hộp thư Fanpage. Mỗi lần duyệt/sửa, hệ thống ghi lại bản sinh + phản hồi; lặp đủ 3 lần cùng kiểu, chạy Phản chiếu sẽ sinh đề xuất quy tắc.
+              </p>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <BtnLink href="/copilot">Gửi mail qua Trợ lý (/copilot)</BtnLink>
+                <BtnLink href="/page-quan/fb-inbox" variant="ghost">Duyệt tin Fanpage</BtnLink>
+              </div>
+            </section>
+          ) : null}
 
           <section className="mb-8 border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">

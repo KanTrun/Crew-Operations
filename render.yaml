@@ -1,0 +1,51 @@
+# Render Blueprint — NHỊP QUÁN full-stack deploy một-click
+# Docs: https://render.com/docs/blueprints
+# Sau khi deploy: https://dashboard.render.com/blueprints (New → Blueprint)
+#
+# Kiến trúc: Neon Postgres (ngoài Render, vĩnh viễn free) ← API (Render) ← Web (Vercel)
+# API chạy Docker có sẵn của repo (infra/docker/Dockerfile.api) — đủ ortools solver.
+#
+# Trước khi bấm "Apply": dán connection string Neon vào biến DATABASE_URL
+# (sync=false — Render không hỏi nếu thiếu; tự điền từ Neon console).
+
+services:
+  - type: web
+    name: nhip-quan-api
+    runtime: docker
+    dockerfilePath: ./infra/docker/Dockerfile.api
+    region: singapore
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    branch: main
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+        # Dán connection string Neon (postgresql+psycopg://user:pass@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require)
+        # Lưu ý: giữ nguyên tiền tố postgresql+psycopg:// — psycopg3 tự bỏ qua phần +psycopg khi connect
+      - key: NHIPQUAN_CORS_ORIGINS
+        sync: false
+        # Origin web deploy (vd: https://nhip-quan.vercel.app) — cách nhau bởi dấu phẩy
+      - key: CA_AGENT_MODE
+        value: replay
+        # Đổi thành live khi có key LLM (GROQ_API_KEY / GEMINI_API_KEY / OPENROUTER_API_KEY bên dưới)
+      - key: NHIPQUAN_DEFAULT_STORE_ID
+        value: quan_01
+      # ── Migration chạy 1 lần khi lần đầu deploy, rồi tắt (startCommand override) ──
+      # Render free không có pre-deploy hook riêng; strategy: run migrations
+      # thủ công từ máy local (make migrate-neon) hoặc thêm "alembic upgrade head &&"
+      # vào dockerfilePath command khi cần.
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: NHIPQUAN_FB_PAGE_TOKEN
+        sync: false
+      - key: NHIPQUAN_FB_PAGE_ID
+        sync: false
+      - key: NHIPQUAN_PAGE_MODE
+        sync: false
+      - key: NHIPQUAN_FB_WEBHOOK_VERIFY
+        sync: false

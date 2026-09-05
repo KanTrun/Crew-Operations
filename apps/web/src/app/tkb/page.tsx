@@ -23,6 +23,7 @@ import {
   Toasts,
   useToasts,
 } from "../../ui/kit";
+import { CopilotPane } from "../../ui/copilot/CopilotPane";
 
 type Khoang = { thu: string; start: string; end: string };
 
@@ -59,6 +60,7 @@ export default function TkbPage() {
   const [hint, setHint] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [copilotOpen, setCopilotOpen] = useState(false);
   const { toasts, push, dismiss } = useToasts();
 
   useEffect(() => {
@@ -166,10 +168,13 @@ export default function TkbPage() {
   return (
     <div className="nq-page nq-page--tkb">
       <PageHeader
-        kicker="AG-TKB · ảnh → khoảng bận"
-        title="Thời khoá biểu"
-        meta="Chụp hoặc chọn ảnh lịch học. Máy đọc khung giờ — bạn sửa rồi xác nhận. Xếp ca sẽ tránh giờ bận."
+        kicker="Lịch cá nhân · tránh xếp trùng ca"
+        title="Tải ảnh lịch bận"
+        meta="Chụp hoặc chọn ảnh lịch học, kiểm tra các khung giờ được đọc rồi xác nhận. Lần xếp ca tiếp theo sẽ tránh các giờ này."
       />
+      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+        Hỏi trợ lý vận hành
+      </Btn>
       <Toasts toasts={toasts} onDismiss={dismiss} />
       {error ? <Alert kind="err">{error}</Alert> : null}
       {loading ? <Loading skeleton="list">Đang tải…</Loading> : null}
@@ -301,6 +306,7 @@ export default function TkbPage() {
           <Empty>Chưa có kết quả đọc. Chọn ảnh rồi bấm Đọc ảnh, hoặc thử ảnh mẫu.</Empty>
         )
       )}
+      <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }

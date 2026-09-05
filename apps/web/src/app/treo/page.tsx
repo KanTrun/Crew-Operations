@@ -19,6 +19,7 @@ import {
   TabButton,
 } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
+import { CopilotPane } from "../../ui/copilot/CopilotPane";
 
 type ViecTreo = {
   id: string;
@@ -68,6 +69,7 @@ export default function TreoPage() {
   const [search, setSearch] = useState("");
   const [personF, setPersonF] = useState("all");
   const [timeF, setTimeF] = useState<TimeFilter>("all");
+  const [copilotOpen, setCopilotOpen] = useState(false);
   const manager = isManager();
 
   useEffect(() => {
@@ -156,6 +158,9 @@ export default function TreoPage() {
         title="Việc treo"
         meta={`${treoDangCho} việc đang chờ · ghi nhận sửa lịch tách riêng để không lẫn.`}
       />
+      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+        Hỏi trợ lý vận hành
+      </Btn>
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
 
@@ -246,6 +251,7 @@ export default function TreoPage() {
           </div>
         </OpsCard>
       )}
+      <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }
