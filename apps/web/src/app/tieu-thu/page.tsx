@@ -10,6 +10,7 @@ import {
   Btn,
   Empty,
   Field,
+  FixtureChip,
   inputClassName,
   Loading,
   Notice,
@@ -32,6 +33,7 @@ export default function TieuThuPage() {
   const [so, setSo] = useState("");
   const [donVi, setDonVi] = useState("khay");
   const [error, setError] = useState<string | null>(null);
+  const [coMau, setCoMau] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("all");
@@ -44,8 +46,11 @@ export default function TieuThuPage() {
 
   const load = useCallback(() => {
     if (!getToken()) return;
-    apiGet<{ items: Row[] }>("/api/v1/tieu-thu")
-      .then((d) => setItems(d.items ?? []))
+    apiGet<{ items: Row[]; co_du_lieu_mau?: boolean }>("/api/v1/tieu-thu")
+      .then((d) => {
+        setItems(d.items ?? []);
+        setCoMau(d.co_du_lieu_mau === true);
+      })
       .catch(() => setError("Không đọc được sổ tiêu thụ."))
       .finally(() => setLoading(false));
   }, []);
@@ -160,6 +165,12 @@ export default function TieuThuPage() {
       )}
 
       <OpsCard eyebrow="Khu vực 2" title="Lần ghi" count={filtered.length} countLabel="lần">
+        {coMau ? (
+          <p className="mb-4">
+            <FixtureChip />
+          </p>
+        ) : null}
+
         <ListToolbar
           search={search}
           onSearchChange={setSearch}

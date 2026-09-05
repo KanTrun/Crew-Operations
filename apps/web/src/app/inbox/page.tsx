@@ -22,6 +22,7 @@ import {
   Btn,
   Confidence,
   Empty,
+  FixtureChip,
   Group,
   Loading,
   Notice,
@@ -126,8 +127,8 @@ export default function InboxPage() {
   const [chuQuan, setChuQuan] = useState(false);
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
+  const [coMau, setCoMau] = useState(false);
   const { push } = useToasts();
-
   useEffect(() => {
     setToken(getToken());
     setManager(isManager());
@@ -137,8 +138,11 @@ export default function InboxPage() {
 
   const load = useCallback(() => {
     if (!getToken()) return;
-    apiGet<{ items: Item[] }>("/api/v1/inbox/rang-buoc")
-      .then((d) => setItems(d.items ?? []))
+    apiGet<{ items: Item[]; co_du_lieu_mau?: boolean }>("/api/v1/inbox/rang-buoc")
+      .then((d) => {
+        setItems(d.items ?? []);
+        setCoMau(d.co_du_lieu_mau === true);
+      })
       .catch(() => setError("Không tải được hộp thư."))
       .finally(() => setLoading(false));
     apiGet<Lifecycle>("/api/v1/lich/lifecycle")
@@ -275,9 +279,13 @@ export default function InboxPage() {
         title="Hộp thư ràng buộc"
         meta="Khi hai claim mâu thuẫn, người quyết. Không tự chọn hộ."
       />
+      {coMau ? (
+        <p className="mb-4">
+          <FixtureChip />
+        </p>
+      ) : null}
       {error ? <Alert>{error}</Alert> : null}
       {!manager ? <Notice>Bạn xem được nội dung. Quản lý hoặc chủ quán mới bấm duyệt.</Notice> : null}
-
       {life?.solver && (!life.solver.ok || life.solver.status?.includes("INFEASIBLE")) ? (
         <div className="mb-4 p-4 border-2 border-red-500 bg-red-950/40 text-red-200 rounded">
           <div className="font-bold uppercase tracking-wider mb-1 flex items-center gap-2">

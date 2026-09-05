@@ -829,6 +829,21 @@ export function StatusChip({
   );
 }
 
+/**
+ * Nhãn "Dữ liệu mẫu" — chỉ hiện khi khu vực có bản ghi sinh từ bộ fixture demo.
+ * `title` thành tooltip: nói nguồn và cách dọn (`seed_professional_fixture.py --reset`).
+ */
+export function FixtureChip() {
+  return (
+    <span
+      title="Sinh từ bộ fixture demo — chạy `python scripts/seed_professional_fixture.py --reset` để dọn"
+      className="inline-block"
+    >
+      <StatusChip tone="warn">Dữ liệu mẫu</StatusChip>
+    </span>
+  );
+}
+
 export function Toolbar({ children }: { children: ReactNode }) {
   return <div className="flex flex-wrap gap-4 mb-6">{children}</div>;
 }
