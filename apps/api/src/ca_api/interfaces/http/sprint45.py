@@ -760,7 +760,7 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
                     "muc": 1,
                 }
             )
-        luat_cho = [l for l in luat if isinstance(l, dict) and l.get("trang_thai") == "cho_chot"]
+        luat_cho = [lt for lt in luat if isinstance(lt, dict) and lt.get("trang_thai") == "cho_chot"]
         if luat_cho and role == "chu_quan":
             viec_cho_toi.append(
                 {

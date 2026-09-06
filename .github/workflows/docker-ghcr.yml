@@ -54,7 +54,10 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm64
+          # EC2 t3.small là x86_64 — chỉ build amd64. Bỏ arm64/QEMU: build
+          # nhanh hơn nhiều và hết fail thất thường do Google Fonts rate-limit
+          # ở builder QEMU (đã xảy ra 10:17Z 06-09).
+          platforms: linux/amd64
           push: true
           build-args: |
             ${{ matrix.name == 'nhipquan-web' && format('NEXT_PUBLIC_API_URL={0}', env.WEB_API_URL) || '' }}
