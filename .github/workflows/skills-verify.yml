@@ -1,0 +1,39 @@
+name: skills-verify
+
+on:
+  push:
+    paths:
+      - 'skills/**'
+      - 'scripts/distill_project_skills.py'
+      - 'packages/agents/src/ca_agents/runtime.py'
+      - 'packages/playbook/src/ca_playbook/distiller.py'
+      - '.github/workflows/skills-verify.yml'
+  pull_request:
+    paths:
+      - 'skills/**'
+      - 'scripts/distill_project_skills.py'
+      - 'packages/agents/src/ca_agents/runtime.py'
+      - 'packages/playbook/src/ca_playbook/distiller.py'
+      - '.github/workflows/skills-verify.yml'
+
+concurrency:
+  group: skills-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-skills:
+    name: "Repo-To-Skill Fail-Closed Verification"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install -e ./packages/contracts -e ./packages/solver \
+            -e ./packages/gates -e ./packages/playbook -e ./packages/agents \
+            -e ./apps/api pyyaml ortools
+      - name: Verify 13 Skills SHA-256 and Smoke Tests
+        run: |
+          python scripts/distill_project_skills.py --verify-only

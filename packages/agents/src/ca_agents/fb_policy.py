@@ -42,7 +42,7 @@ SLA_MINUTES_ESCALATE_OWNER = 15
 
 # Intent bắt buộc con người duyệt — không bao giờ auto (§3.2)
 INTENTS_REQUIRING_APPROVAL = frozenset(
-    {"hoi_khuyen_mai", "dat_ban", "tu_van_mon", "yeu_cau_dac_biet"}
+    {"hoi_khuyen_mai", "tu_van_mon", "yeu_cau_dac_biet"}
 )
 INTENT_COMPLAINT = "khieu_nai_gop_y"
 INTENT_OTHER = "khac"
@@ -81,6 +81,7 @@ class PolicyContext:
     kb_has_fact: bool = True        # dữ kiện yêu cầu có trong chatbot_kb/menu_mon?
     price_above_limit: bool = False # món được hỏi có giá vượt trần config?
     recent_messages: tuple[str, ...] = ()  # 2-3 tin gần nhất cùng thread (~5 phút)
+    reservation_auto_eligible: bool = False # Bàn trống & hợp lệ theo logic auto-reservation
 
 
 def _has_any(text: str, keywords: tuple[str, ...]) -> bool:
@@ -171,8 +172,19 @@ def decide(
     ):
         return _queue("fact_not_in_kb_or_price_limit", intent, confidence)
 
-    # 5. Intent bắt buộc duyệt (KM, đặt bàn, tư vấn, yêu cầu đặc biệt)
-    if intent in INTENTS_REQUIRING_APPROVAL:
+    # 5. Intent đặt bàn hoặc intent bắt buộc duyệt
+    if intent == "dat_ban":
+        if not ctx.reservation_auto_eligible:
+            return _queue("intent_requires_approval", intent, confidence)
+        if confidence >= 0.85:
+            return PolicyDecision(
+                action=FbPolicyAction.AUTO_SEND,
+                reason="reservation_auto_confirmed",
+                intent=intent,
+                confidence=confidence,
+            )
+        return _queue("low_confidence", intent, confidence)
+    elif intent in INTENTS_REQUIRING_APPROVAL:
         return _queue("intent_requires_approval", intent, confidence)
 
     # 6. Loop guard: hỏi lại lần 3 → queue

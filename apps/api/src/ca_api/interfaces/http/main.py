@@ -10,6 +10,8 @@ try:
 except ImportError:
     from datetime import datetime, timezone
     UTC = timezone.utc
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Any, cast
 
@@ -49,19 +51,45 @@ from ca_api.context_providers import (
 )
 from ca_api.interfaces.http.ai_learning import router as ai_learning_router
 from ca_api.interfaces.http.channels import router as channels_router
+from ca_api.interfaces.http.chat import router as chat_router
 from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.pos import router as pos_router
+from ca_api.interfaces.http.reservations import router as reservations_router
+from ca_api.interfaces.http.skills import router as skills_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
 from ca_api.interfaces.http.trends import router as trends_router
-from ca_api.persist import DangKyLoi, get_user_emails, kv_get, kv_mutate, kv_set
+from ca_api.persist import (
+    DangKyLoi,
+    don_get,
+    don_list,
+    get_user_emails,
+    kv_get,
+    kv_mutate,
+    kv_set,
+    list_users,
+    menu_list,
+)
 from ca_api.persist import login as persist_login
 from ca_api.persist import register as persist_register
 from ca_api.persist import session as auth_session
 
-app = FastAPI(title="NHIP QUAN API", version="0.2.0")
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Startup/shutdown: cấu hình bảo vệ dữ liệu + đóng Redis Pub/Sub sạch sẽ."""
+    configure_data_protection()
+    yield
+    from ca_api.services.chat_ws import pubsub_backend
+
+    aclose = getattr(pubsub_backend, "aclose", None)
+    if aclose is not None:
+        await aclose()
+
+
+app = FastAPI(title="NHIP QUAN API", version="0.2.0", lifespan=_lifespan)
 
 # CORS: mặc định 3 origin dev local. Khi deploy (Postgres, domain thật) đặt
 # NHIPQUAN_CORS_ORIGINS — danh sách origin cách nhau bởi dấu phẩy — để thay
@@ -71,7 +99,6 @@ _cors_origins = [
     for origin in os.environ.get("NHIPQUAN_CORS_ORIGINS", "").split(",")
     if origin.strip()
 ] or ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
@@ -87,11 +114,10 @@ app.include_router(meeting_router)
 app.include_router(trends_router)
 app.include_router(mail_router)
 app.include_router(ai_learning_router)
+app.include_router(chat_router)
+app.include_router(reservations_router)
+app.include_router(skills_router)
 
-
-@app.on_event("startup")
-def _verify_data_protection() -> None:
-    configure_data_protection()
 
 
 ROOT = Path(__file__).resolve().parents[6]
@@ -174,7 +200,7 @@ def _resolve_role(authorization: str | None) -> str | None:
     return None if s is None else s["role"]
 
 
-def _draft_mail_with_active_rules(**kwargs: Any):
+def _draft_mail_with_active_rules(**kwargs: Any) -> Any:
     """Inject only the deterministic rollout slice of owner-active Gmail rules."""
     store_id = str(kwargs.get("store_id") or "quan_01")
     identities = list(kwargs.get("to_nv_ids") or kwargs.get("direct_emails") or [])
@@ -203,6 +229,20 @@ configure_data_sources(
     get_user_emails=get_user_emails,
     get_ops_context=get_ops_context_for_mail,
     get_mail_style=get_mail_style_for_store,
+    # PR9 read providers — không trả email/PII qua chat
+    list_users=lambda: [
+        {"nv_id": u["nv_id"], "ten": u["display_name"], "role": u["role"]}
+        for u in list_users()
+    ],
+    menu_list=menu_list,
+    # PR11 admin providers — đơn quầy cho snapshot/validate
+    don_list=don_list,
+    don_get=don_get,
+    # PR12 external channel provider — trạng thái Page (đã redact token)
+    page_status=lambda: {
+        "mode": os.environ.get("NHIPQUAN_PAGE_MODE", "replay").strip().lower() or "replay",
+        "connected": False,
+    },
 )
 
 
@@ -473,7 +513,7 @@ def patch_lifecycle(
             detail=f"trang_thai_khong_hop_le — cho phep: {', '.join(_LIFECYCLE_STATES)}",
         )
 
-    def mut(cur: dict) -> dict:
+    def mut(cur: dict[str, Any]) -> dict[str, Any]:
         cur["trang_thai"] = body.trang_thai
         if body.tuan_iso:
             cur["tuan_iso"] = body.tuan_iso

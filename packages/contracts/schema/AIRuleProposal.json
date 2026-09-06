@@ -1,25 +1,249 @@
 {
-  "title": "AIRuleProposal",
-  "type": "object",
-  "required": ["id", "store_id", "channel", "rule_type", "rule", "evidence_count", "evidence_ids", "confidence", "version", "idempotency_key", "created_at", "updated_at"],
+  "$defs": {
+    "AIRuleDefinition": {
+      "properties": {
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "intent_scope": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Intent Scope",
+          "type": "array"
+        },
+        "audience_scope": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Audience Scope",
+          "type": "array"
+        },
+        "priority": {
+          "minimum": 0,
+          "title": "Priority",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "text",
+        "intent_scope",
+        "audience_scope",
+        "priority"
+      ],
+      "title": "AIRuleDefinition",
+      "type": "object"
+    },
+    "AIRuleRollout": {
+      "properties": {
+        "mode": {
+          "default": "none",
+          "enum": [
+            "none",
+            "canary",
+            "full"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "percentage": {
+          "default": 0,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Percentage",
+          "type": "integer"
+        },
+        "min_sample": {
+          "default": 20,
+          "minimum": 1,
+          "title": "Min Sample",
+          "type": "integer"
+        },
+        "start_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start At"
+        },
+        "end_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End At"
+        }
+      },
+      "title": "AIRuleRollout",
+      "type": "object"
+    }
+  },
   "properties": {
-    "id": {"type": "string", "minLength": 1},
-    "store_id": {"type": "string", "minLength": 1},
-    "channel": {"enum": ["gmail", "facebook"]},
-    "rule_type": {"enum": ["style", "prompt", "playbook", "safety"]},
-    "rule": {"type": "object", "required": ["text", "intent_scope", "audience_scope", "priority"]},
-    "evidence_count": {"type": "integer", "minimum": 1},
-    "evidence_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
-    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-    "status": {"enum": ["pending", "conflict_pending", "approved", "active", "paused", "rolled_back", "rejected"]},
-    "version": {"type": "integer", "minimum": 1},
-    "rollback_target_version": {"type": ["integer", "null"], "minimum": 1},
-    "rollout": {"type": "object"},
-    "approved_by": {"type": ["string", "null"]},
-    "approved_at": {"type": ["string", "null"]},
-    "rejection_reason": {"type": ["string", "null"]},
-    "idempotency_key": {"type": "string", "minLength": 1},
-    "created_at": {"type": "string", "minLength": 1},
-    "updated_at": {"type": "string", "minLength": 1}
-  }
+    "id": {
+      "minLength": 1,
+      "title": "Id",
+      "type": "string"
+    },
+    "store_id": {
+      "minLength": 1,
+      "title": "Store Id",
+      "type": "string"
+    },
+    "channel": {
+      "enum": [
+        "gmail",
+        "facebook"
+      ],
+      "title": "Channel",
+      "type": "string"
+    },
+    "rule_type": {
+      "enum": [
+        "style",
+        "prompt",
+        "playbook",
+        "safety"
+      ],
+      "title": "Rule Type",
+      "type": "string"
+    },
+    "rule": {
+      "$ref": "#/$defs/AIRuleDefinition"
+    },
+    "evidence_count": {
+      "minimum": 1,
+      "title": "Evidence Count",
+      "type": "integer"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "status": {
+      "default": "pending",
+      "enum": [
+        "pending",
+        "conflict_pending",
+        "approved",
+        "active",
+        "paused",
+        "rolled_back",
+        "rejected"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "rollback_target_version": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rollback Target Version"
+    },
+    "rollout": {
+      "$ref": "#/$defs/AIRuleRollout"
+    },
+    "approved_by": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Approved By"
+    },
+    "approved_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Approved At"
+    },
+    "rejection_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rejection Reason"
+    },
+    "idempotency_key": {
+      "minLength": 1,
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "created_at": {
+      "minLength": 1,
+      "title": "Created At",
+      "type": "string"
+    },
+    "updated_at": {
+      "minLength": 1,
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "store_id",
+    "channel",
+    "rule_type",
+    "rule",
+    "evidence_count",
+    "evidence_ids",
+    "confidence",
+    "version",
+    "idempotency_key",
+    "created_at",
+    "updated_at"
+  ],
+  "title": "AIRuleProposal",
+  "type": "object"
 }

@@ -158,6 +158,28 @@ def test_intent_parser_uses_dynamic_date() -> None:
     assert p.params["ngay"] == date.today().isoformat()
 
 
+def test_intent_parser_resolves_schedule_follow_up_from_recent_messages() -> None:
+    parsed = parse_intent(
+        "Tuần sau nhé",
+        {"active_date": "2026-09-05", "recent_messages": ["Xếp lịch giúp chị"]},
+    )
+    assert parsed.intent == "SCHEDULE_SOLVE"
+    assert parsed.params["tuan"] == "2026-W37"
+
+
+def test_intent_parser_resolves_mail_follow_up_from_recent_messages() -> None:
+    parsed = parse_intent(
+        "Gửi cho Lan",
+        {
+            "active_date": "2026-09-05",
+            "recent_messages": ["Soạn email nhắc Minh đi làm đúng giờ"],
+        },
+    )
+    assert parsed.intent == "SEND_MAIL"
+    assert parsed.params["to_nv_ids"] == ["nv_01"]
+    assert "Gửi cho Lan" in parsed.params["raw_request"]
+
+
 def test_swap_trung_ca_kiem_tra_khung() -> None:
     """Kiểm tra _swap_khong_trung_ca: trùng khung cùng thứ chặn, khác khung/khác thứ cho phép."""
     from ca_agents.ag_copilot.tool_registry import _swap_khong_trung_ca
@@ -226,6 +248,95 @@ def test_run_copilot_supervisor_blocks_unsafe_proposal(monkeypatch) -> None:
     assert res.action_proposal.status == ActionProposalStatus.draft
     assert "BỊ CHẶN BỞI AG-SUPERVISOR" in res.action_proposal.summary
     assert "unauthorized_financial_promise" in res.action_proposal.explanation
+
+
+# ── PR9 read tools ───────────────────────────────────────────────────────────
+
+
+def test_pr9_read_intent_parsing() -> None:
+    cases = [
+        ("Cho xem menu quán với giá", "QUERY_MENU"),
+        ("Danh sách nhân sự hiện tại?", "LIST_STAFF"),
+        ("Hồ sơ của tôi là gì?", "GET_MY_PROFILE"),
+        ("Việc treo nào đang chờ?", "GET_HANGING_TASKS"),
+        ("Bàn giao gần nhất ở đâu?", "GET_HANDOVERS"),
+        ("Có yêu cầu đổi ca nào không?", "GET_SHIFT_SWAPS"),
+    ]
+    for text, expected in cases:
+        parsed = parse_intent(text)
+        assert parsed.intent == expected, f"{text!r} -> {parsed.intent}"
+        assert parsed.confidence >= 0.75
+
+
+def test_read_intents_allowed_for_every_role() -> None:
+    from ca_contracts import copilot_role_can_use_intent
+
+    for intent in ("QUERY_MENU", "LIST_STAFF", "GET_MY_PROFILE", "GET_INVENTORY", "GET_SHIFT_SWAPS", "GET_HANGING_TASKS", "GET_HANDOVERS"):
+        assert copilot_role_can_use_intent("nhan_vien", intent), intent
+        assert copilot_role_can_use_intent("quan_ly", intent), intent
+
+
+def test_pr9_read_tools_return_live_data_with_provenance(monkeypatch) -> None:
+    from ca_agents.ag_copilot import tool_registry
+    from ca_agents.ag_copilot.tool_registry import (
+        configure_data_sources,
+        execute_whitelisted_tool,
+    )
+
+    # Lưu sources hiện tại (API layer đã inject lúc import) để restore sau test —
+    # configure_data_sources() là global state, không được clear làm hỏng test khác.
+    saved_sources = dict(tool_registry._SOURCES)
+    configure_data_sources(
+        list_users=lambda: [
+            {"nv_id": "nv_01", "ten": "Lan", "role": "quan_ly"},
+            {"nv_id": "nv_03", "ten": "Minh", "role": "nhan_vien"},
+        ],
+        menu_list=lambda: [{"id": "m1", "ten": "Cà phê sữa", "gia": 25000}],
+    )
+    try:
+        staff = execute_whitelisted_tool("LIST_STAFF", {"store_id": "quan_01"})
+        assert staff.success is True
+        assert staff.requires_confirmation is False
+        assert staff.data["so_nguoi"] == 2
+        assert staff.data["_provenance"]["store_scope"] is True
+        # PII không lộ qua chat read tool
+        assert all("email" not in u for u in staff.data["nhan_su"])
+
+        menu = execute_whitelisted_tool("QUERY_MENU", {"store_id": "quan_01"})
+        assert menu.data["so_mon"] == 1
+        assert menu.data["menu"][0]["ten"] == "Cà phê sữa"
+    finally:
+        configure_data_sources(**saved_sources)
+
+
+def test_pr9_read_tools_fail_closed_without_sources(monkeypatch) -> None:
+    from ca_agents.ag_copilot import tool_registry
+    from ca_agents.ag_copilot.tool_registry import execute_whitelisted_tool
+
+    saved_sources = dict(tool_registry._SOURCES)
+    tool_registry._SOURCES.clear()
+    try:
+        staff = execute_whitelisted_tool("LIST_STAFF", {"store_id": "quan_01"})
+        assert staff.success is True  # đọc không lỗi, trả trung thực
+        assert staff.data["so_nguoi"] == 0
+        assert staff.requires_confirmation is False
+    finally:
+        tool_registry._SOURCES.update(saved_sources)
+
+
+def test_run_copilot_read_intent_answers_directly() -> None:
+    """Câu hỏi đọc qua chat trả direct_answer, không tạo proposal."""
+    ctx = {
+        "store_id": "quan_01",
+        "user_id": "minh",
+        "user_role": "nhan_vien",
+        "active_date": "2026-09-06",
+    }
+    res = run_copilot("Cho xem menu quán với giá", context=ctx)
+    assert res.intent == CopilotIntent.QUERY_MENU
+    assert res.action_proposal is None
+    assert res.direct_answer is not None
+    assert "menu" in res.direct_answer.lower() or "món" in res.direct_answer.lower()
 
 
 

@@ -93,4 +93,4 @@ def get_mail_style_for_store(store_id: str = "quan_01") -> dict[str, Any] | None
 
 def get_active_mail_rules_for_store(store_id: str = "quan_01") -> list[dict[str, Any]]:
     """Return only owner-activated Gmail rules for the draft orchestration boundary."""
-    return AILearningRepository().active_rules(store_id=store_id, channel="gmail")
+    return list(AILearningRepository().active_rules(store_id=store_id, channel="gmail"))

@@ -21,9 +21,15 @@ export type IconName =
   | "them"
   | "cong-bang"
   | "copilot"
-  | "doi-ca";
+  | "chat";
 
 const PATHS: Record<IconName, ReactNode> = {
+  // Bong bóng hội thoại — chat nội bộ
+  chat: (
+    <>
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z" />
+    </>
+  ),
   // Mặt trời trên đường chân trời — bảng "hôm nay"
   "hom-nay": (
     <>
@@ -101,13 +107,6 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M4 5h16v10H13l-4 4v-4H4z" />
       <path d="M12 8l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" />
-    </>
-  ),
-  // Hai mũi tên đổi chiều — đổi ca
-  "doi-ca": (
-    <>
-      <path d="M7 8h10l-3-3" />
-      <path d="M17 16H7l3 3" />
     </>
   ),
 };

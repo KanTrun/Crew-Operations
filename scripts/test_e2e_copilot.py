@@ -15,7 +15,13 @@ import os
 import sys
 import tempfile
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 faulthandler.dump_traceback_later(20, exit=True)  # in stack nếu treo >20s
+
 
 # Dùng DB tách biệt để không đụng dữ liệu thật.
 _TMP = tempfile.mkdtemp(prefix="nq_e2e_")

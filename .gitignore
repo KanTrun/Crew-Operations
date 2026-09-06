@@ -61,6 +61,7 @@ data/test_*.json
 data/full_benchmark_report.json
 *.mp3
 !data/out/.gitkeep
+data/uploads/
 
 .claude/
 

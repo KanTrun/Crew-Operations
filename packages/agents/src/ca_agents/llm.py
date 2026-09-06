@@ -485,7 +485,7 @@ def complete_stream(
                 token=os.environ[_KEY_ENV[provider]].strip(),
                 model=_env_model(
                     "GROQ_MODEL" if provider == "groq" else "OPENROUTER_MODEL",
-                    ("llama-3.1-8b-instant",) if provider == "groq" else _OPENROUTER_MODELS,
+                    "llama-3.1-8b-instant" if provider == "groq" else _OPENROUTER_MODELS[0],
                 ),
                 system=system,
                 user=user,

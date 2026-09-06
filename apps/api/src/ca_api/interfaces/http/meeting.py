@@ -12,7 +12,7 @@ except ImportError:
     UTC = timezone.utc
 import uuid
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from ca_agents.ag_meeting import extract_meeting, transcribe_audio
 from ca_contracts import CuocHop
@@ -45,7 +45,7 @@ def _get_staff_list() -> list[dict[str, Any]]:
     if SEED.is_file():
         try:
             data = json.loads(SEED.read_text(encoding="utf-8"))
-            return data.get("nhan_vien", [])
+            return cast(list[dict[str, Any]], data.get("nhan_vien", []))
         except Exception:  # noqa: BLE001
             pass
     return [
@@ -311,7 +311,7 @@ def get_meeting(
     items = kv_get("meetings", [])
     for m in items:
         if m.get("id") == meeting_id:
-            return m
+            return cast(dict[str, Any], m)
     raise HTTPException(status_code=404, detail="Meeting not found")
 
 

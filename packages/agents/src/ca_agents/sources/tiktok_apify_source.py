@@ -107,7 +107,7 @@ def _format_count(n: int) -> str:
     return f"{n:,}"
 
 
-def _format_comments(comments: list[dict]) -> list[str]:
+def _format_comments(comments: list[dict[str, Any]]) -> list[str]:
     """Format comments kiểu `@user: "text" (❤️ N tim)`, top 5."""
     out: list[str] = []
     for c in (comments or [])[:5]:

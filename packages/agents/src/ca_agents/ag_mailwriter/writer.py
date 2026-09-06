@@ -222,7 +222,7 @@ def draft_email(
     prompt = "\n".join(prompt_parts)
 
     try:
-        res = complete(prompt, system=system_prompt, temperature=0.3)
+        res = complete(system=system_prompt, user=prompt, task="text")
         if res.ok and res.text:
             data = parse_json_object(res.text)
             if data and data.get("subject") and data.get("body"):

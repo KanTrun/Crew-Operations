@@ -38,7 +38,7 @@ def _get_token() -> str:
     return token
 
 
-def _http_json(url: str, body: dict | None = None, timeout: int = 10) -> Any:
+def _http_json(url: str, body: dict[str, Any] | None = None, timeout: int = 10) -> Any:
     """HTTP wrapper trả về parsed JSON."""
     data = json.dumps(body).encode("utf-8") if body is not None else None
     req = urllib.request.Request(

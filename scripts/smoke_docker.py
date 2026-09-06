@@ -46,7 +46,17 @@ def main() -> int:
     failures: list[str] = []
 
     print("== 1. health ==")
-    show("health", call(base, "/health"))
+    t0 = time.time()
+    health_res = None
+    while time.time() - t0 < 60:
+        try:
+            health_res = call(base, "/health")
+            break
+        except (urllib.error.URLError, ConnectionError, OSError):
+            time.sleep(1)
+    if health_res is None:
+        health_res = call(base, "/health")
+    show("health", health_res)
 
     print("== 2. đăng nhập (lan / quản lý) ==")
     login = call(base, "/api/v1/auth/login", body={"username": "lan", "password": "nhipquan"})

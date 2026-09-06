@@ -19,11 +19,11 @@ from ca_contracts import (
 # Intent permissions — derived from the single-source matrix in contracts.
 # Kept as module-level names for backward compatibility with existing imports.
 _PRIVILEGED_INTENTS: dict[str, frozenset[str]] = {
-    intent: {
+    intent: frozenset({
         role
         for role, intents in COPILOT_ROLE_INTENT_MATRIX.items()
         if intent in intents
-    }
+    })
     for intent in (
         "SCHEDULE_SOLVE",
         "APPROVE_SHIFT_SWAP",
@@ -33,11 +33,11 @@ _PRIVILEGED_INTENTS: dict[str, frozenset[str]] = {
 }
 
 _PUBLIC_INTENTS: dict[str, frozenset[str]] = {
-    intent: {
+    intent: frozenset({
         role
         for role, intents in COPILOT_ROLE_INTENT_MATRIX.items()
         if intent in intents
-    }
+    })
     for intent in (
         "GENERATE_DAILY_BRIEF",
         "QUERY_SOP",

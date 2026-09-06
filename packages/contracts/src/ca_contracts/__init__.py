@@ -230,14 +230,44 @@ class CopilotIntent(StrEnum):
     CREATE_RULE_PROPOSAL = "CREATE_RULE_PROPOSAL"
     INVENTORY_RESTOCK_CHECK = "INVENTORY_RESTOCK_CHECK"
     SEND_MAIL = "SEND_MAIL"
+    # PR9 read intents — chỉ đọc, không side effect
+    GET_MY_PROFILE = "GET_MY_PROFILE"
+    LIST_STAFF = "LIST_STAFF"
+    QUERY_MENU = "QUERY_MENU"
+    GET_INVENTORY = "GET_INVENTORY"
+    GET_SHIFT_SWAPS = "GET_SHIFT_SWAPS"
+    GET_HANGING_TASKS = "GET_HANGING_TASKS"
+    GET_HANDOVERS = "GET_HANDOVERS"
+    # PR10 self-service mutating intents
+    PROPOSE_HANGING_TASK = "PROPOSE_HANGING_TASK"
+    PROPOSE_TASK_COMPLETE = "PROPOSE_TASK_COMPLETE"
+    PROPOSE_CONSUMPTION_RECORD = "PROPOSE_CONSUMPTION_RECORD"
+    # PR11 admin mutating intents
+    PROPOSE_MENU_UPDATE = "PROPOSE_MENU_UPDATE"
+    PROPOSE_ORDER_TRANSITION = "PROPOSE_ORDER_TRANSITION"
+    PROPOSE_PIN = "PROPOSE_PIN"
+    # PR12 external channel intents
+    GET_PAGE_STATUS = "GET_PAGE_STATUS"
+    PROPOSE_PAGE_SYNC = "PROPOSE_PAGE_SYNC"
     OUT_OF_SCOPE = "OUT_OF_SCOPE"
 
 
 # ── Ma trận quyền Role → Intent (single source of truth) ─────────────────────
 # Nguyên tắc: fail-closed — intent không liệt kê = không ai được gọi.
-# - nhan_vien: chỉ tra cứu/đọc (daily brief, SOP, hao hụt của chính mình).
-# - quan_ly: + xếp lịch, duyệt đổi ca, đề xuất luật, kiểm kê tồn kho.
+# - nhan_vien: đọc (R0) + draft (R1): brief, SOP, hao hụt, menu, việc treo...
+# - quan_ly: + xếp lịch, duyệt đổi ca, đề xuất luật, kiểm kê tồn kho, gửi mail.
 # - chu_quan: toàn bộ quyền quan_ly (không có intent riêng vượt quan_ly).
+_READ_INTENTS = frozenset(
+    {
+        "GET_MY_PROFILE",
+        "LIST_STAFF",
+        "QUERY_MENU",
+        "GET_INVENTORY",
+        "GET_SHIFT_SWAPS",
+        "GET_HANGING_TASKS",
+        "GET_HANDOVERS",
+    }
+)
 COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
     "nhan_vien": frozenset(
         {
@@ -245,6 +275,10 @@ COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
             "QUERY_SOP",
             "ANALYZE_WASTE",
             "OUT_OF_SCOPE",
+            *_READ_INTENTS,
+            # PR10 self-service: nhân viên tạo việc treo/đánh dấu xong của mình
+            "PROPOSE_HANGING_TASK",
+            "PROPOSE_TASK_COMPLETE",
         }
     ),
     "quan_ly": frozenset(
@@ -253,11 +287,23 @@ COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
             "QUERY_SOP",
             "ANALYZE_WASTE",
             "OUT_OF_SCOPE",
+            *_READ_INTENTS,
             "SCHEDULE_SOLVE",
             "APPROVE_SHIFT_SWAP",
             "CREATE_RULE_PROPOSAL",
             "INVENTORY_RESTOCK_CHECK",
             "SEND_MAIL",
+            # PR10 self-service (R2_CONFIRM)
+            "PROPOSE_HANGING_TASK",
+            "PROPOSE_TASK_COMPLETE",
+            "PROPOSE_CONSUMPTION_RECORD",
+            # PR11 admin (R2_CONFIRM)
+            "PROPOSE_MENU_UPDATE",
+            "PROPOSE_ORDER_TRANSITION",
+            "PROPOSE_PIN",
+            # PR12 external channels (R0/R2)
+            "GET_PAGE_STATUS",
+            "PROPOSE_PAGE_SYNC",
         }
     ),
     "chu_quan": frozenset(
@@ -266,6 +312,7 @@ COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
             "QUERY_SOP",
             "ANALYZE_WASTE",
             "OUT_OF_SCOPE",
+            *_READ_INTENTS,
             "SCHEDULE_SOLVE",
             "APPROVE_SHIFT_SWAP",
             "CREATE_RULE_PROPOSAL",
@@ -289,6 +336,7 @@ def copilot_role_can_use_intent(role: str, intent: str) -> bool:
 class ActionProposalStatus(StrEnum):
     draft = "draft"
     ready_for_approval = "ready_for_approval"
+    amendment_ready = "amendment_ready"
     executing = "executing"
     executed = "executed"
     execution_failed = "execution_failed"
@@ -337,6 +385,187 @@ class CopilotResponse(BaseModel):
     direct_answer: str | None = None
     citations: list[str] = Field(default_factory=list)
     agent_mode: str = "replay"
+
+
+# ── Universal Orchestration (PR9): Capability Registry ───────────────────────
+
+CapabilityRiskTier = Literal["R0_READ", "R1_DRAFT", "R2_CONFIRM", "R3_DUAL_APPROVAL", "R4_MANUAL_ONLY"]
+
+
+class CapabilityDefinition(BaseModel):
+    """Một capability trong catalog điều phối toàn dự án (kế hoạch §1.2/§1.3).
+
+    - `intent`: tên intent duy nhất (GET_*, QUERY_*, PROPOSE_*, NAVIGATE_*...).
+    - `risk_tier`: mức quyền theo mô hình 5 cấp R0-R4.
+    - `deep_link`: màn hình web tương ứng (R4 hoặc dữ liệu trực quan).
+    - `manual_only_reason`: bắt buộc khi risk_tier = R4_MANUAL_ONLY.
+    """
+
+    intent: str
+    label: str
+    domain: str
+    risk_tier: CapabilityRiskTier
+    deep_link: str = ""
+    manual_only_reason: str = ""
+
+
+def _cap(
+    intent: str, label: str, domain: str, risk_tier: CapabilityRiskTier,
+    deep_link: str = "", manual_only_reason: str = "",
+) -> CapabilityDefinition:
+    return CapabilityDefinition(
+        intent=intent, label=label, domain=domain, risk_tier=risk_tier,
+        deep_link=deep_link, manual_only_reason=manual_only_reason,
+    )
+
+
+CAPABILITY_REGISTRY: tuple[CapabilityDefinition, ...] = (
+    # ── Tài khoản / cá nhân ──
+    _cap("GET_MY_PROFILE", "Xem hồ sơ của tôi", "account", "R0_READ", "/toi"),
+    _cap("PROPOSE_MY_EMAIL_UPDATE", "Cập nhật email cá nhân", "account", "R2_CONFIRM", "/toi"),
+    _cap("LOGIN", "Đăng nhập", "account", "R4_MANUAL_ONLY", "/login", "Thao tác bảo mật bắt buộc — agent không nhận mật khẩu/token"),
+    _cap("REGISTER", "Đăng ký tài khoản", "account", "R4_MANUAL_ONLY", "/dang-ky", "Thao tác bảo mật bắt buộc"),
+    # ── Nhân sự & vai trò ──
+    _cap("LIST_STAFF", "Danh sách nhân sự", "staff", "R0_READ", "/nguoi"),
+    _cap("CHANGE_ROLE", "Nâng/hạ vai trò", "staff", "R4_MANUAL_ONLY", "/nguoi", "Chỉ chủ quán thao tác trực tiếp — không qua chat"),
+    # ── Lịch tuần ──
+    _cap("GET_SCHEDULE", "Xem lịch tuần", "schedule", "R0_READ", "/roster"),
+    _cap("DRAFT_SCHEDULE", "Xếp lịch nháp", "schedule", "R1_DRAFT"),
+    _cap("SCHEDULE_SOLVE", "Xếp lịch tuần", "schedule", "R2_CONFIRM"),
+    _cap("PROPOSE_SHIFT_FRAME_CHANGE", "Đổi khung giờ ca", "schedule", "R3_DUAL_APPROVAL"),
+    _cap("PROPOSE_PIN", "Ghim ca", "schedule", "R2_CONFIRM"),
+    _cap("PROPOSE_SCHEDULE_TRANSITION", "Công bố/đóng lịch", "schedule", "R3_DUAL_APPROVAL"),
+    _cap("EXPORT_SCHEDULE", "Xuất lịch ICS", "schedule", "R0_READ", "/roster"),
+    # ── Hôm nay / công bằng ──
+    _cap("GET_TODAY_OPERATIONS", "Dashboard hôm nay", "today", "R0_READ", "/hom-nay"),
+    _cap("GENERATE_DAILY_BRIEF", "Bản tin sáng", "today", "R0_READ"),
+    _cap("GET_FAIRNESS_SUMMARY", "Báo cáo công bằng", "today", "R0_READ", "/cong-bang"),
+    _cap("EXPLAIN_ASSIGNMENT", "Giải thích phân công", "today", "R0_READ"),
+    # ── Điểm danh / QR ──
+    _cap("GET_ATTENDANCE_STATUS", "Trạng thái điểm danh", "attendance", "R0_READ", "/qr"),
+    _cap("ISSUE_QR", "Phát mã QR", "attendance", "R4_MANUAL_ONLY", "/qr", "Mã QR là thông tin xác thực vật lý — không qua chat"),
+    _cap("CHECK_IN", "Check-in tại quán", "attendance", "R4_MANUAL_ONLY", "/qr", "Check-in phải xác thực vật lý tại quán"),
+    # ── Phiếu / checklist ──
+    _cap("GET_MY_CHECKLIST", "Checklist của tôi", "checklist", "R0_READ", "/phieu"),
+    _cap("DRAFT_CHECKLIST_UPDATE", "Cập nhật phiếu nháp", "checklist", "R1_DRAFT"),
+    _cap("PROPOSE_EVIDENCE", "Đính kèm minh chứng", "checklist", "R2_CONFIRM", "/phieu"),
+    _cap("PROPOSE_HANGING_TASK", "Tạo việc treo", "checklist", "R2_CONFIRM", "/treo"),
+    # ── Việc treo ──
+    _cap("GET_HANGING_TASKS", "Xem việc treo", "hanging", "R0_READ", "/treo"),
+    _cap("PROPOSE_TASK_DISPATCH", "Giao việc treo", "hanging", "R2_CONFIRM", "/treo"),
+    _cap("PROPOSE_TASK_COMPLETE", "Đánh dấu việc treo xong", "hanging", "R2_CONFIRM", "/treo"),
+    # ── TKB & ràng buộc ──
+    _cap("EXTRACT_TKB", "Trích TKB từ ảnh", "tkb", "R1_DRAFT"),
+    _cap("CONFIRM_TKB", "Xác nhận TKB", "tkb", "R2_CONFIRM", "/inbox"),
+    _cap("CLASSIFY_CONSTRAINT", "Phân loại ràng buộc", "tkb", "R1_DRAFT"),
+    _cap("GET_CONSTRAINT_CANDIDATES", "Xem ràng buộc chờ duyệt", "tkb", "R0_READ", "/inbox"),
+    _cap("PROPOSE_CONSTRAINT_DECISION", "Duyệt ràng buộc", "tkb", "R2_CONFIRM", "/inbox"),
+    # ── Ca cá nhân & đổi ca ──
+    _cap("GET_MY_SHIFTS", "Lịch của tôi", "shift", "R0_READ", "/toi"),
+    _cap("PROPOSE_RELEASE_SHIFT", "Nhả ca", "shift", "R2_CONFIRM", "/doi-ca"),
+    _cap("PROPOSE_TAKE_SHIFT", "Nhận ca", "shift", "R2_CONFIRM", "/doi-ca"),
+    _cap("GET_SHIFT_SWAPS", "Xem chợ đổi ca", "shift", "R0_READ", "/doi-ca"),
+    _cap("APPROVE_SHIFT_SWAP", "Duyệt đổi ca", "shift", "R2_CONFIRM"),
+    _cap("CONSENT_SHIFT_SWAP", "Đồng ý đổi ca", "shift", "R2_CONFIRM", "/doi-ca"),
+    _cap("REJECT_SHIFT_SWAP", "Từ chối đổi ca", "shift", "R2_CONFIRM", "/doi-ca"),
+    _cap("FINALIZE_SHIFT_SWAP", "Chốt đổi ca", "shift", "R3_DUAL_APPROVAL", "/doi-ca"),
+    # ── Menu ──
+    _cap("QUERY_MENU", "Tra cứu menu", "menu", "R0_READ", "/menu"),
+    _cap("DRAFT_MENU_ITEM", "Soạn món nháp", "menu", "R1_DRAFT"),
+    _cap("PROPOSE_MENU_UPDATE", "Cập nhật món/giá", "menu", "R2_CONFIRM", "/menu"),
+    _cap("PROPOSE_MENU_IMAGE", "Cập nhật ảnh món", "menu", "R2_CONFIRM", "/menu"),
+    # ── Quầy / POS ──
+    _cap("GET_COUNTER_STATUS", "Trạng thái quầy", "pos", "R0_READ", "/quay"),
+    _cap("DRAFT_COUNTER_ORDER", "Soạn đơn quầy nháp", "pos", "R1_DRAFT"),
+    _cap("PROPOSE_ORDER_TRANSITION", "Đổi trạng thái đơn", "pos", "R2_CONFIRM", "/quay"),
+    _cap("PAYMENT", "Thanh toán đơn", "pos", "R4_MANUAL_ONLY", "/quay", "Thanh toán cần policy riêng — giữ manual"),
+    _cap("CANCEL_ORDER", "Hủy đơn", "pos", "R4_MANUAL_ONLY", "/quay", "Hủy đơn là thao tác phá hủy — giữ manual"),
+    # ── Tiêu thụ / tồn kho ──
+    _cap("GET_INVENTORY", "Xem tồn kho", "inventory", "R0_READ", "/tieu-thu"),
+    _cap("INVENTORY_RESTOCK_CHECK", "Kiểm kê & cảnh báo", "inventory", "R2_CONFIRM"),
+    _cap("PROPOSE_CONSUMPTION_RECORD", "Ghi tiêu thụ", "inventory", "R2_CONFIRM", "/tieu-thu"),
+    _cap("PROPOSE_STOCK_ADJUSTMENT", "Chỉnh tồn kho", "inventory", "R2_CONFIRM", "/tieu-thu"),
+    # ── Hao hụt ──
+    _cap("ANALYZE_WASTE", "Phân tích hao hụt", "waste", "R0_READ", "/hao-phi"),
+    _cap("PROPOSE_WASTE_RECORD", "Ghi hao hụt", "waste", "R2_CONFIRM", "/hao-phi"),
+    # ── Bàn giao ──
+    _cap("GET_HANDOVERS", "Xem bàn giao", "handover", "R0_READ", "/handover"),
+    _cap("DRAFT_HANDOVER", "Soạn bàn giao nháp", "handover", "R1_DRAFT"),
+    _cap("APPLY_HANDOVER", "Áp dụng bàn giao", "handover", "R2_CONFIRM", "/handover"),
+    # ── SOP / cẩm nang ──
+    _cap("QUERY_SOP", "Hỏi quy trình", "sop", "R0_READ", "/sop"),
+    _cap("GET_PLAYBOOK", "Xem cẩm nang", "sop", "R0_READ", "/cam-nang"),
+    _cap("CREATE_RULE_PROPOSAL", "Đề xuất luật mới", "sop", "R2_CONFIRM"),
+    _cap("RUN_RULE_PIPELINE", "Chạy pipeline 8 bước", "sop", "R1_DRAFT", "/cam-nang"),
+    _cap("ACTIVATE_PAUSE_ROLLBACK_RULE", "Kích hoạt/tạm dừng luật", "sop", "R3_DUAL_APPROVAL", "/cam-nang"),
+    # ── Cuộc họp ──
+    _cap("TRANSCRIBE_MEETING", "Phiên âm cuộc họp", "meeting", "R1_DRAFT", "/cuoc-hop"),
+    _cap("DRAFT_MEETING_MINUTES", "Soạn biên bản nháp", "meeting", "R1_DRAFT", "/cuoc-hop"),
+    _cap("APPLY_MEETING_ACTIONS", "Áp dụng action họp", "meeting", "R2_CONFIRM", "/cuoc-hop"),
+    _cap("DELETE_MEETING", "Xóa cuộc họp", "meeting", "R4_MANUAL_ONLY", "/cuoc-hop", "Xóa là thao tác phá hủy — giữ manual"),
+    # ── Email ──
+    _cap("DRAFT_EMAIL", "Soạn email nháp", "email", "R1_DRAFT"),
+    _cap("SEND_MAIL", "Gửi email đã duyệt", "email", "R2_CONFIRM"),
+    _cap("GET_MAIL_DELIVERY_STATUS", "Trạng thái gửi mail", "email", "R0_READ"),
+    # ── Liên kết kênh ──
+    _cap("GET_CHANNEL_STATUS", "Trạng thái kênh liên kết", "channel", "R0_READ"),
+    _cap("ISSUE_MY_BIND_CODE", "Cấp mã liên kết kênh", "channel", "R2_CONFIRM"),
+    _cap("BIND_OTHER_CHANNEL", "Liên kết kênh giúp người khác", "channel", "R4_MANUAL_ONLY", "/nguoi", "Chỉ chủ quán cấu hình mapping người khác"),
+    # ── Facebook inbox / Page ──
+    _cap("GET_FB_INBOX", "Xem hộp thư Fanpage", "fbpage", "R0_READ", "/page-quan/fb-inbox"),
+    _cap("DRAFT_FB_REPLY", "Soạn trả lời Fanpage", "fbpage", "R1_DRAFT"),
+    _cap("SEND_APPROVED_FB_REPLY", "Gửi trả lời đã duyệt", "fbpage", "R2_CONFIRM", "/page-quan/fb-inbox"),
+    _cap("DECIDE_FB_MODERATION", "Duyệt kiểm duyệt FB", "fbpage", "R3_DUAL_APPROVAL", "/page-quan/fb-inbox"),
+    _cap("GET_PAGE_STATUS", "Trạng thái Page", "fbpage", "R0_READ", "/page-quan"),
+    _cap("SYNC_PAGE", "Đồng bộ Page", "fbpage", "R2_CONFIRM", "/page-quan"),
+    _cap("PROPOSE_STORE_PROFILE", "Cập nhật hồ sơ quán", "fbpage", "R3_DUAL_APPROVAL", "/page-quan"),
+    _cap("PROPOSE_PROMOTION_UPDATE", "Cập nhật khuyến mãi", "fbpage", "R3_DUAL_APPROVAL", "/page-quan"),
+    _cap("DRAFT_FB_POST", "Soạn bài đăng nháp", "fbpage", "R1_DRAFT"),
+    _cap("PUBLISH_APPROVED_FB_POST", "Đăng bài đã duyệt", "fbpage", "R3_DUAL_APPROVAL", "/page-quan"),
+    # ── Xu hướng ──
+    _cap("SEARCH_TRENDS", "Tra cứu xu hướng", "trend", "R0_READ"),
+    _cap("GET_TREND_DETAIL", "Chi tiết xu hướng", "trend", "R0_READ"),
+    _cap("GET_SCRAPER_USAGE", "Mức dùng Apify", "trend", "R0_READ"),
+    # ── AI learning / governance ──
+    _cap("GET_AI_QUALITY", "Chất lượng AI", "ai", "R0_READ", "/ai-learning"),
+    _cap("SUBMIT_AI_FEEDBACK", "Gửi phản hồi AI", "ai", "R2_CONFIRM", "/ai-learning"),
+    _cap("RUN_REFLECTION", "Chạy reflection", "ai", "R1_DRAFT", "/ai-learning"),
+    _cap("REVIEW_LEARNED_RULE", "Xem luật AI học được", "ai", "R0_READ", "/ai-learning"),
+    _cap("PROPOSE_AI_CIRCUIT_CHANGE", "Thay đổi circuit breaker", "ai", "R3_DUAL_APPROVAL"),
+    _cap("PROPOSE_LEARNED_RULE_TRANSITION", "Duyệt luật AI học được", "ai", "R3_DUAL_APPROVAL", "/ai-learning"),
+    # ── Audit / chẩn đoán ──
+    _cap("QUERY_AUDIT", "Tra cứu audit", "audit", "R0_READ", "/vet"),
+    _cap("GET_ACTION_STATUS", "Trạng thái action", "audit", "R0_READ"),
+    _cap("GET_MY_PERMISSIONS", "Quyền của tôi", "audit", "R0_READ"),
+    _cap("EXPLAIN_CONFLICT", "Giải thích xung đột", "audit", "R0_READ"),
+    # ── Điều hướng ──
+    _cap("NAVIGATE_TO_FEATURE", "Mở màn hình chức năng", "nav", "R0_READ"),
+    # ── Webhook / ingestion (không bao giờ qua chat) ──
+    _cap("CONFIGURE_WEBHOOK", "Cấu hình webhook", "channel", "R4_MANUAL_ONLY", "/page-quan", "Webhook là cấu hình bảo mật — chỉ chủ quán thao tác trực tiếp"),
+    _cap("REPLAY_INGESTION", "Replay dữ liệu kênh", "channel", "R4_MANUAL_ONLY", "", "Replay ingestion chỉ chạy từ công cụ vận hành, không qua chat"),
+)
+
+
+def capabilities_for_role(role: str) -> list[CapabilityDefinition]:
+    """Trả về danh sách capability user với role này được dùng.
+
+    Quy tắc fail-closed (kế hoạch §1.1):
+    - R0_READ: mọi role đã xác thực đều được (đọc có tenant scope).
+    - R1_DRAFT: mọi role đã xác thực (draft chưa ghi domain).
+    - R2_CONFIRM: chỉ quan_ly/chu_quan (khớp ma trận intent ghi hiện có).
+    - R3_DUAL_APPROVAL: chỉ quan_ly/chu_quan.
+    - R4_MANUAL_ONLY: không role nào được agent thực thi — chỉ deep-link.
+    """
+    if role not in COPILOT_ROLE_INTENT_MATRIX:
+        return []
+    privileged = role in ("quan_ly", "chu_quan")
+    out: list[CapabilityDefinition] = []
+    for cap in CAPABILITY_REGISTRY:
+        if cap.risk_tier in ("R0_READ", "R1_DRAFT"):
+            out.append(cap)
+        elif cap.risk_tier in ("R2_CONFIRM", "R3_DUAL_APPROVAL") and privileged:
+            out.append(cap)
+    return out
 
 
 class FbPolicyAction(StrEnum):
@@ -519,6 +748,30 @@ class AIRuleProposal(BaseModel):
     updated_at: str = Field(min_length=1)
 
 
+class TableReservation(BaseModel):
+    id: str
+    store_id: str = "quan_01"
+    psid: str = ""
+    customer_name: str
+    phone: str
+    booking_time: str
+    party_size: int = Field(ge=1)
+    duration_minutes: int = 120
+    table_ids: list[str] = Field(default_factory=list)
+    status: Literal[
+        "held", "confirmed", "seated", "completed", "cancelled", "no_show", "needs_review"
+    ] = "confirmed"
+    source: Literal["ai_auto", "staff_manual"] = "ai_auto"
+    notes: str = ""
+    idempotency_key: str = ""
+    notified_nv_id: str | None = None
+    notification_acked_at: str | None = None
+    cancelled_by: str | None = None
+    cancelled_reason: str | None = None
+    created_at: str = ""
+    updated_at: str = ""
+
+
 CONTRACTS = {
     "NhanVien": NhanVien,
     "Ca": Ca,
@@ -543,5 +796,6 @@ CONTRACTS = {
     "AIFeedbackEvent": AIFeedbackEvent,
     "AIEvaluation": AIEvaluation,
     "AIRuleProposal": AIRuleProposal,
+    "TableReservation": TableReservation,
 }
 

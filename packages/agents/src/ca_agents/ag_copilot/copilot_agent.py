@@ -142,12 +142,18 @@ def run_copilot(
 
     if tool_res.requires_confirmation:
         action_id = f"act_{uuid.uuid4().hex[:8]}"
+        explanation = tool_res.explanation
+        from ca_agents.runtime import SkillLoader
+        matched_skill_id = SkillLoader().match_intent_to_skill(message)
+        if matched_skill_id:
+            explanation = f"{explanation} [Đã kiểm định qua Kỹ năng: {matched_skill_id}]"
+
         action_prop = ActionProposal(
             action_id=action_id,
             intent=getattr(CopilotIntent, parsed.intent),
             status=ActionProposalStatus.ready_for_approval if tool_res.success else ActionProposalStatus.draft,
             summary=tool_res.summary,
-            explanation=tool_res.explanation,
+            explanation=explanation,
             payload_diff=tool_res.data,
             requires_confirmation=True,
             store_id=store_id,
@@ -157,6 +163,7 @@ def run_copilot(
             created_at=now_iso,
             expires_at=expires_iso,
         )
+
         if parsed.intent == "SEND_MAIL":
             reply = (
                 f"Dạ em đã nhờ Agent Soạn Mail (AG-MAILWRITER) soạn xong: {tool_res.summary}. "

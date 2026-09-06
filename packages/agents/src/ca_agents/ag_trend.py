@@ -15,6 +15,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any, cast
 
 from ca_agents.clients.apify_client import ApifyError  # noqa: F401  (re-exported)
 
@@ -141,7 +142,7 @@ def _scrape_tiktok_smart(
                 nguon_goc=nguon_goc,
             )
             if items:
-                return items
+                return cast(list[TrendItem], items)
         except Exception as e:
             logger.warning("tiktok_apify_force_failed_trying_tikwm: %s", e)
 
@@ -158,7 +159,7 @@ def _scrape_tiktok_smart(
                     "duration_ms": int((time.monotonic() - start) * 1000),
                 },
             )
-            return items
+            return cast(list[TrendItem], items)
     except Exception as e:  # noqa: BLE001
         logger.warning(
             "tiktok_primary_failed_trying_apify",
@@ -177,14 +178,14 @@ def _scrape_tiktok_smart(
                 nguon_goc=nguon_goc,
             )
             if items:
-                return items
+                return cast(list[TrendItem], items)
         except Exception as e:  # noqa: BLE001
             logger.warning("tiktok_apify_backup_also_failed: %s", e)
 
     return []
 
 
-_TIKTOKWM_CACHE: list[dict] = []
+_TIKTOKWM_CACHE: list[dict[str, Any]] = []
 _TIKTOKWM_CACHE_TIME: float = 0.0
 
 
@@ -198,7 +199,7 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
     now_str = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
     kw_clean = keyword.strip()
 
-    videos: list[dict] = []
+    videos: list[dict[str, Any]] = []
     now_ts = time.time()
     if _TIKTOKWM_CACHE and (now_ts - _TIKTOKWM_CACHE_TIME < 300):
         videos = _TIKTOKWM_CACHE
@@ -394,16 +395,16 @@ def _scrape_google_trends_vn(keyword: str = "") -> list[TrendItem]:
             items = root.findall(".//item")
             for idx, it in enumerate(items):
                 title_elem = it.find("title")
-                title = title_elem.text if title_elem is not None else "Xu hướng tìm kiếm"
+                title = (title_elem.text or "Xu hướng tìm kiếm") if title_elem is not None else "Xu hướng tìm kiếm"
 
                 if keyword.strip() and keyword.lower() not in title.lower():
                     continue
 
                 link_elem = it.find("link")
-                link_goc = link_elem.text if link_elem is not None else "https://trends.google.com"
+                link_goc = (link_elem.text or "https://trends.google.com") if link_elem is not None else "https://trends.google.com"
 
                 traffic_elem = it.find("{https://trends.google.com/trending/rss}approx_traffic")
-                traffic = traffic_elem.text if traffic_elem is not None else "1,000+"
+                traffic = (traffic_elem.text or "1,000+") if traffic_elem is not None else "1,000+"
 
                 news_items = it.findall("{https://trends.google.com/trending/rss}news_item")
                 news_snippet = ""
@@ -479,10 +480,10 @@ def _scrape_genz_media_vn(keyword: str = "") -> list[TrendItem]:
             items = root.findall(".//item")
             for idx, it in enumerate(items):
                 title_elem = it.find("title")
-                title = title_elem.text if title_elem is not None else ""
+                title = title_elem.text or "" if title_elem is not None else ""
 
                 desc_elem = it.find("description")
-                desc_raw = desc_elem.text if desc_elem is not None else ""
+                desc_raw = desc_elem.text or "" if desc_elem is not None else ""
                 desc_clean = re.sub(r"<[^>]+>", "", desc_raw).strip()
 
                 if keyword.strip():
@@ -491,7 +492,7 @@ def _scrape_genz_media_vn(keyword: str = "") -> list[TrendItem]:
                         continue
 
                 link_elem = it.find("link")
-                link_goc = link_elem.text if link_elem is not None else "https://kenh14.vn"
+                link_goc = link_elem.text or "https://kenh14.vn" if link_elem is not None else "https://kenh14.vn"
 
                 trend_id = f"live_genz_vn_{idx}_{re.sub(r'[^a-zA-Z0-9]', '_', title.lower())[:25]}"
                 short_kw = extract_core_tiktok_keyword(title)
@@ -548,10 +549,10 @@ def _scrape_showbiz_kols_vn(keyword: str = "") -> list[TrendItem]:
             items = root.findall(".//item")
             for idx, it in enumerate(items):
                 title_elem = it.find("title")
-                title = title_elem.text if title_elem is not None else ""
+                title = title_elem.text or "" if title_elem is not None else ""
 
                 desc_elem = it.find("description")
-                desc_raw = desc_elem.text if desc_elem is not None else ""
+                desc_raw = desc_elem.text or "" if desc_elem is not None else ""
                 desc_clean = re.sub(r"<[^>]+>", "", desc_raw).strip()
 
                 if keyword.strip():
@@ -560,7 +561,7 @@ def _scrape_showbiz_kols_vn(keyword: str = "") -> list[TrendItem]:
                         continue
 
                 link_elem = it.find("link")
-                link_goc = link_elem.text if link_elem is not None else "https://kenh14.vn"
+                link_goc = link_elem.text or "https://kenh14.vn" if link_elem is not None else "https://kenh14.vn"
 
                 trend_id = f"live_star_vn_{idx}_{re.sub(r'[^a-zA-Z0-9]', '_', title.lower())[:25]}"
                 short_kw = extract_core_tiktok_keyword(title)
@@ -615,16 +616,16 @@ def _scrape_google_trends_global(keyword: str = "") -> list[TrendItem]:
             items = root.findall(".//item")
             for idx, it in enumerate(items):
                 title_elem = it.find("title")
-                title = title_elem.text if title_elem is not None else ""
+                title = title_elem.text or "" if title_elem is not None else ""
 
                 if keyword.strip() and keyword.lower() not in title.lower():
                     continue
 
                 link_elem = it.find("link")
-                link_goc = link_elem.text if link_elem is not None else "https://trends.google.com"
+                link_goc = link_elem.text or "https://trends.google.com" if link_elem is not None else "https://trends.google.com"
 
                 traffic_elem = it.find("{https://trends.google.com/trending/rss}approx_traffic")
-                traffic = traffic_elem.text if traffic_elem is not None else "10,000+"
+                traffic = traffic_elem.text or "10,000+" if traffic_elem is not None else "10,000+"
 
                 news_items = it.findall("{https://trends.google.com/trending/rss}news_item")
                 news_snippet = ""
@@ -705,7 +706,7 @@ def _scrape_threads_smart(
                 nguon_goc=nguon_goc,
             )
             if items:
-                return items
+                return cast(list[TrendItem], items)
         except Exception as e:
             logger.warning("threads_apify_force_failed_trying_bridge: %s", e)
 
@@ -769,7 +770,7 @@ def _scrape_threads_smart(
                         "duration_ms": int((time.monotonic() - start) * 1000),
                     },
                 )
-                return items
+                return cast(list[TrendItem], items)
         except Exception as e:  # noqa: BLE001
             logger.warning("threads_apify_backup_also_failed: %s", e)
 

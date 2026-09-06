@@ -20,7 +20,12 @@ ignore = ["E501", "UP042", "B008", "UP017"]
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
+disable_error_code = ["redundant-cast"]
 
 [tool.pytest.ini_options]
 testpaths = ["apps", "packages"]
 pythonpath = ["apps/api/src", "apps/api/tests", "packages/contracts/src", "packages/agents/src", "packages/gates/src", "packages/solver/src", "packages/opsengine/src", "packages/playbook/src"]
+filterwarnings = [
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated",
+]

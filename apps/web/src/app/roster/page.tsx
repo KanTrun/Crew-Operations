@@ -198,7 +198,7 @@ export default function RosterPage() {
       const res = await fetch(`${API}/api/v1/lich-tuan/pin`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify({ ca_id: caId, nv_id: nvId, ghim }),
+        body: JSON.stringify({ ca_id: caId, nv_id: nvId, pinned: ghim }),
       });
       if (!res.ok) throw new Error("pin_failed");
       await loadLich(baseWeek, soTuan);

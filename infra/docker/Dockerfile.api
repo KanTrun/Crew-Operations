@@ -28,6 +28,7 @@ COPY config ./config
 COPY data ./data
 COPY infra/templates ./infra/templates
 COPY scripts ./scripts
+COPY skills ./skills
 
 # Trạng thái ghi được tách khỏi seed để mount volume không che dữ liệu gốc
 ENV PYTHONPATH=/app/apps/api/src \
