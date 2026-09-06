@@ -792,9 +792,13 @@ class DangKyLoi(ValueError):
 
 
 def _nv_id_ke_tiep(cx: sqlite3.Connection) -> str:
-    """Cấp mã nhân viên chưa dùng, dạng nv_XX."""
+    """Cấp mã nhân viên chưa dùng, dạng nv_XX.
+
+    Bắt đầu từ 26: dải nv_01–nv_25 dành cho seed lịch sử (ADR-012), tránh
+    id user thật đụng NV seed trong pool xếp lịch (`ca_api.nhan_vien`).
+    """
     dung = {r[0] for r in cx.execute("SELECT nv_id FROM users").fetchall() if isinstance(r[0], str)}
-    i = 1
+    i = 26
     while f"nv_{i:02d}" in dung:
         i += 1
     return f"nv_{i:02d}"
