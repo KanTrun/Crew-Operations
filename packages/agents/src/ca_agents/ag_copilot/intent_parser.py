@@ -37,6 +37,10 @@ PROPOSE_PIN = "PROPOSE_PIN"
 # PR12 external channel intents
 GET_PAGE_STATUS = "GET_PAGE_STATUS"
 PROPOSE_PAGE_SYNC = "PROPOSE_PAGE_SYNC"
+# PR13 read intents bổ sung — lịch tuần / ca cá nhân / ràng buộc chờ duyệt
+GET_SCHEDULE = "GET_SCHEDULE"
+GET_MY_SHIFTS = "GET_MY_SHIFTS"
+GET_CONSTRAINT_CANDIDATES = "GET_CONSTRAINT_CANDIDATES"
 # PR10 còn lại (R2_CONFIRM): xác nhận TKB, đồng ý đổi ca, ghi bàn giao ca
 PROPOSE_TKB_CONFIRM = "PROPOSE_TKB_CONFIRM"
 PROPOSE_SWAP_CONSENT = "PROPOSE_SWAP_CONSENT"
@@ -149,10 +153,28 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
         ["bàn giao", "ban giao", "lịch sử sửa", "lich su sua", "bản ghi sửa", "ban ghi sua"],
         0.9,
     ),
+    # PR13 read — ràng buộc chờ duyệt / lịch cá nhân phải thắng từ chung của
+    # mutating intents ("đổi ca"), nhưng SCHEDULE_SOLVE ("xếp lịch") phải thắng
+    # GET_SCHEDULE nên GET_SCHEDULE được đặt SAU SCHEDULE_SOLVE.
+    (
+        GET_MY_SHIFTS,
+        ["lịch của tôi", "lich cua toi", "ca của tôi", "ca cua toi", "lịch làm việc của tôi", "lich lam viec cua toi", "ca của mình", "ca cua minh", "lịch tôi", "lich toi", "lịch của em", "lich cua em", "ca tôi làm", "ca toi lam"],
+        0.9,
+    ),
+    (
+        GET_CONSTRAINT_CANDIDATES,
+        ["ràng buộc chờ duyệt", "rang buoc cho duyet", "ràng buộc nào", "rang buoc nao", "xin nghỉ chờ", "xin nghi cho", "inbox ràng buộc", "inbox rang buoc", "danh sách ràng buộc", "danh sach rang buoc", "ràng buộc chưa duyệt", "rang buoc chua duyet"],
+        0.9,
+    ),
     (
         SCHEDULE_SOLVE,
         ["xếp lịch", "xep lich", "chia ca", "xếp ca", "lên lịch", "chạy solver", "phân công ca", "tạo lịch"],
         0.92,
+    ),
+    (
+        GET_SCHEDULE,
+        ["xem lịch tuần", "xem lich tuan", "lịch tuần này", "lich tuan nay", "lịch làm việc", "lich lam viec", "xem lịch", "xem lich", "lịch ca", "lich ca", "roster"],
+        0.9,
     ),
     (
         APPROVE_SHIFT_SWAP,

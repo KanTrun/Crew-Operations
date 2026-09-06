@@ -253,6 +253,10 @@ class CopilotIntent(StrEnum):
     PROPOSE_TKB_CONFIRM = "PROPOSE_TKB_CONFIRM"
     PROPOSE_SWAP_CONSENT = "PROPOSE_SWAP_CONSENT"
     PROPOSE_HANDOVER = "PROPOSE_HANDOVER"
+    # PR13 read intents bổ sung — lịch tuần / ca cá nhân / ràng buộc chờ duyệt
+    GET_SCHEDULE = "GET_SCHEDULE"
+    GET_MY_SHIFTS = "GET_MY_SHIFTS"
+    GET_CONSTRAINT_CANDIDATES = "GET_CONSTRAINT_CANDIDATES"
     OUT_OF_SCOPE = "OUT_OF_SCOPE"
 
 
@@ -270,6 +274,10 @@ _READ_INTENTS = frozenset(
         "GET_SHIFT_SWAPS",
         "GET_HANGING_TASKS",
         "GET_HANDOVERS",
+        # PR13: lịch tuần, ca cá nhân, ràng buộc chờ duyệt — R0_READ mọi role
+        "GET_SCHEDULE",
+        "GET_MY_SHIFTS",
+        "GET_CONSTRAINT_CANDIDATES",
     }
 )
 COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {

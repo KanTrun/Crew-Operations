@@ -18,10 +18,17 @@ def _reset_tool_sources() -> None:
     (nvs=None, dùng seed). Reset về rỗng giúp solver test reproduce kết quả
     standalone. Test khác (vd test_pr9_read_tools_*) chủ động set _SOURCES
     nên vẫn hoạt động bình thường.
+
+    QUAN TRỌNG: sau yield phải RESTORE trạng thái ban đầu (không clear lần 2).
+    Clear lần 2 sẽ xóa sources mà API layer inject lúc import-time — mọi test
+    API chạy sau module này trong cùng session pytest sẽ mất get_user_emails/
+    draft_mail... → tool_send_mail trả no_recipient_email → 12 test fail.
     """
+    saved_sources = dict(tool_registry._SOURCES)
     tool_registry._SOURCES.clear()
     yield
     tool_registry._SOURCES.clear()
+    tool_registry._SOURCES.update(saved_sources)
 
 
 def test_intent_parsing_7_intents() -> None:
@@ -496,6 +503,198 @@ def test_pr10_new_intents_in_role_matrix_for_all_roles() -> None:
         allowed = COPILOT_ROLE_INTENT_MATRIX[role]
         for intent in ("PROPOSE_TKB_CONFIRM", "PROPOSE_SWAP_CONSENT", "PROPOSE_HANDOVER"):
             assert intent in allowed, f"{intent} thiếu cho role {role}"
+
+
+# ── PR13 read intents: lịch tuần / ca cá nhân / ràng buộc chờ duyệt ─────────
+
+
+def test_pr13_read_intent_parsing() -> None:
+    """Câu hỏi đọc lịch/ràng buộc phải map đúng intent mới."""
+    cases = [
+        ("Xem lịch tuần này", "GET_SCHEDULE"),
+        ("Lịch làm việc tuần này thế nào?", "GET_SCHEDULE"),
+        ("Lịch của tôi có ca nào?", "GET_MY_SHIFTS"),
+        ("Ca của tôi tuần này", "GET_MY_SHIFTS"),
+        ("Ràng buộc chờ duyệt có gì?", "GET_CONSTRAINT_CANDIDATES"),
+        ("Danh sách ràng buộc nào đang chờ?", "GET_CONSTRAINT_CANDIDATES"),
+    ]
+    for text, expected in cases:
+        parsed = parse_intent(text)
+        assert parsed.intent == expected, f"{text!r} -> {parsed.intent}"
+        assert parsed.confidence >= 0.75
+
+
+def test_pr13_schedule_solve_wins_over_get_schedule() -> None:
+    """'Xếp lịch' (mutating) phải thắng 'xem lịch' (read) — không nhầm intent."""
+    assert parse_intent("Xếp lịch tuần sau giúp chị").intent == "SCHEDULE_SOLVE"
+    assert parse_intent("Xếp lịch tuần này").intent == "SCHEDULE_SOLVE"
+    # Câu hỏi đọc vẫn map GET_SCHEDULE.
+    assert parse_intent("Xem lịch tuần này").intent == "GET_SCHEDULE"
+
+
+def test_pr13_read_intents_allowed_for_every_role() -> None:
+    from ca_contracts import copilot_role_can_use_intent
+
+    for intent in ("GET_SCHEDULE", "GET_MY_SHIFTS", "GET_CONSTRAINT_CANDIDATES"):
+        assert copilot_role_can_use_intent("nhan_vien", intent), intent
+        assert copilot_role_can_use_intent("quan_ly", intent), intent
+        assert copilot_role_can_use_intent("chu_quan", intent), intent
+
+
+def test_pr13_get_schedule_tool_reads_live_phan_cong(monkeypatch) -> None:
+    """GET_SCHEDULE đọc KV phan_cong thật + meta ca, không hardcode."""
+    import ca_agents.ag_copilot.tool_registry as tr
+
+    saved = dict(tr._SOURCES)
+    try:
+        tr.configure_data_sources(
+            kv_get=lambda key, default: (
+                {"w1_c01": ["nv_01", "nv_02"], "w1_c02": ["nv_03"]}
+                if key == "phan_cong"
+                else default
+            ),
+            list_ca_meta=lambda: {
+                "w1_c01": {"thu": "T2", "khung": "sang", "bat_dau": "07:00", "ket_thuc": "12:00"},
+                "w1_c02": {"thu": "T2", "khung": "chieu", "bat_dau": "12:00", "ket_thuc": "17:00"},
+            },
+        )
+        res = tr.execute_whitelisted_tool("GET_SCHEDULE", {"store_id": "quan_01"})
+        assert res.success is True
+        assert res.requires_confirmation is False
+        assert res.data["so_ca"] == 2
+        assert res.data["co_du_lieu"] is True
+        assert res.data["ca"][0]["thu"] == "T2"
+        assert res.data["_provenance"]["store_scope"] is True
+    finally:
+        tr.configure_data_sources(**saved)
+
+
+def test_pr13_get_schedule_tool_honest_when_empty(monkeypatch) -> None:
+    """GET_SCHEDULE không có dữ liệu → trả trung thực, không bịa."""
+    import ca_agents.ag_copilot.tool_registry as tr
+
+    saved = dict(tr._SOURCES)
+    try:
+        tr.configure_data_sources(kv_get=lambda key, default: default)
+        res = tr.execute_whitelisted_tool("GET_SCHEDULE", {"store_id": "quan_01"})
+        assert res.success is True
+        assert res.data["so_ca"] == 0
+        assert res.data["co_du_lieu"] is False
+        assert "Chưa có phân công" in res.summary
+    finally:
+        tr.configure_data_sources(**saved)
+
+
+def test_pr13_get_my_shifts_self_scoped(monkeypatch) -> None:
+    """GET_MY_SHIFTS chỉ trả ca của người hỏi (self-scoped theo user_id)."""
+    import ca_agents.ag_copilot.tool_registry as tr
+
+    saved = dict(tr._SOURCES)
+    try:
+        tr.configure_data_sources(
+            kv_get=lambda key, default: (
+                {"w1_c01": ["nv_01"], "w1_c02": ["nv_03"]} if key == "phan_cong" else default
+            ),
+            list_ca_meta=lambda: {
+                "w1_c01": {"thu": "T2", "khung": "sang", "bat_dau": "07:00", "ket_thuc": "12:00"},
+                "w1_c02": {"thu": "T2", "khung": "chieu", "bat_dau": "12:00", "ket_thuc": "17:00"},
+            },
+        )
+        # nv_01 có 1 ca
+        res = tr.execute_whitelisted_tool(
+            "GET_MY_SHIFTS", {"store_id": "quan_01", "user_id": "nv_01"}
+        )
+        assert res.success is True
+        assert res.data["so_ca"] == 1
+        assert res.data["ca"][0]["ca_id"] == "w1_c01"
+        # nv_03 có 1 ca khác
+        res2 = tr.execute_whitelisted_tool(
+            "GET_MY_SHIFTS", {"store_id": "quan_01", "user_id": "nv_03"}
+        )
+        assert res2.data["ca"][0]["ca_id"] == "w1_c02"
+        # Không có ca → trả trung thực
+        res3 = tr.execute_whitelisted_tool(
+            "GET_MY_SHIFTS", {"store_id": "quan_01", "user_id": "nv_99"}
+        )
+        assert res3.data["so_ca"] == 0
+        assert res3.data["co_du_lieu"] is False
+    finally:
+        tr.configure_data_sources(**saved)
+
+
+def test_pr13_get_my_shifts_fail_closed_without_user_id(monkeypatch) -> None:
+    """GET_MY_SHIFTS thiếu user_id → fail-closed, không trả lịch người khác."""
+    import ca_agents.ag_copilot.tool_registry as tr
+
+    saved = dict(tr._SOURCES)
+    try:
+        tr.configure_data_sources(
+            kv_get=lambda key, default: {"w1_c01": ["nv_01"]} if key == "phan_cong" else default
+        )
+        res = tr.execute_whitelisted_tool("GET_MY_SHIFTS", {"store_id": "quan_01"})
+        assert res.success is True
+        assert res.data["found"] is False
+    finally:
+        tr.configure_data_sources(**saved)
+
+
+def test_pr13_get_constraint_candidates_role_scoped(monkeypatch) -> None:
+    """GET_CONSTRAINT_CANDIDATES: quản lý thấy hết, nhân viên chỉ thấy của mình."""
+    import ca_agents.ag_copilot.tool_registry as tr
+
+    saved = dict(tr._SOURCES)
+    inbox = [
+        {"id": "rb_1", "nv_id": "nv_01", "y_dinh": "xin_nghi", "trang_thai": "cho_duyet"},
+        {"id": "rb_2", "nv_id": "nv_03", "y_dinh": "tkb", "trang_thai": "cho_duyet"},
+        {"id": "rb_3", "nv_id": "nv_01", "y_dinh": "xin_nghi", "trang_thai": "duyet"},
+    ]
+    try:
+        tr.configure_data_sources(
+            kv_get=lambda key, default: inbox if key == "inbox_rang_buoc" else default
+        )
+        # Quản lý: thấy 2 ràng buộc chờ (rb_3 đã duyệt bị loại)
+        res = tr.execute_whitelisted_tool(
+            "GET_CONSTRAINT_CANDIDATES",
+            {"store_id": "quan_01", "user_id": "nv_01", "user_role": "quan_ly"},
+        )
+        assert res.success is True
+        assert res.data["so_cho"] == 2
+        assert res.data["pham_vi"] == "toan_bo"
+        # Nhân viên: chỉ thấy ràng buộc của mình
+        res2 = tr.execute_whitelisted_tool(
+            "GET_CONSTRAINT_CANDIDATES",
+            {"store_id": "quan_01", "user_id": "nv_03", "user_role": "nhan_vien"},
+        )
+        assert res2.data["so_cho"] == 1
+        assert res2.data["items"][0]["id"] == "rb_2"
+        assert res2.data["pham_vi"] == "ca_nhan"
+        # Nhân viên không có ràng buộc → trung thực
+        res3 = tr.execute_whitelisted_tool(
+            "GET_CONSTRAINT_CANDIDATES",
+            {"store_id": "quan_01", "user_id": "nv_99", "user_role": "nhan_vien"},
+        )
+        assert res3.data["so_cho"] == 0
+        assert res3.data["co_du_lieu"] is False
+    finally:
+        tr.configure_data_sources(**saved)
+
+
+def test_pr13_run_copilot_read_intent_answers_directly() -> None:
+    """Lệnh đọc lịch qua chat trả direct_answer, không tạo proposal."""
+    ctx = {
+        "store_id": "quan_01",
+        "user_id": "minh",
+        "user_role": "nhan_vien",
+        "active_date": "2026-09-07",
+    }
+    res = run_copilot("Xem lịch tuần này", context=ctx)
+    assert res.intent == CopilotIntent.GET_SCHEDULE
+    assert res.action_proposal is None
+    assert res.direct_answer is not None
+
+    res2 = run_copilot("Lịch của tôi có ca nào?", context=ctx)
+    assert res2.intent == CopilotIntent.GET_MY_SHIFTS
+    assert res2.action_proposal is None
 
 
 
