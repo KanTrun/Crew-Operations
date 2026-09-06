@@ -123,7 +123,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 }`}
               >
                 <div
-                  className={`max-w-[88%] border p-3 ${
+                  className={`max-w-[85%] rounded-lg border p-3 ${
                     msg.sender === "user"
                       ? "border-[var(--nq-copper)] bg-[var(--nq-copper)] text-[#0e0c0a]"
                       : "border-[var(--nq-dim)] bg-[var(--nq-surface)] text-[var(--nq-fg)]"

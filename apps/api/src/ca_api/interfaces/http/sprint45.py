@@ -107,7 +107,9 @@ def _audit(hanh: str, ai: str, payload: dict[str, Any]) -> None:
 def _run_solver() -> dict[str, Any]:
     from ca_solver import apply_luat, build_lich_input, solve_cpsat
 
-    inp = build_lich_input()
+    from ca_api.nhan_vien import list_nhan_vien_ops
+
+    inp = build_lich_input(nhan_vien_ngoai=list_nhan_vien_ops())
     tuan_hien_tai = _life().get("tuan_iso", "2026-W01")
 
     # TKB đã xác nhận từ ảnh đè lên (hoặc bổ sung) TKB synthetic của fixture.
@@ -722,6 +724,76 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
         st = str(t.get("trang_thai") or "dang_cho")
         treo_counts[st] = treo_counts.get(st, 0) + 1
     treo_theo_trang_thai = [{"trang_thai": k, "so_luong": v} for k, v in sorted(treo_counts.items(), key=lambda x: -x[1])]
+    # Hàng đợi "Việc của bạn hôm nay" — quản lý/chủ quán thấy ngay việc chờ mình.
+    # Mỗi mục: việc gì, vì sao, bấm vào đâu. NV chỉ thấy việc ca của mình.
+    viec_cho_toi: list[dict[str, Any]] = []
+    de_xuat_lich = kv_get("worker_de_xuat_lich", None)
+    if role in {"quan_ly", "chu_quan"}:
+        life_trang_thai = str(life.get("trang_thai") or "nhap")
+        if cho > 0:
+            viec_cho_toi.append(
+                {
+                    "id": "inbox_cho",
+                    "tieu_de": f"Duyệt {cho} mục hộp thư",
+                    "chi_tiet": "Yêu cầu của nhân viên đang chờ quyết.",
+                    "link": "/inbox",
+                    "muc": cho,
+                }
+            )
+        if de_xuat_lich and de_xuat_lich.get("trang_thai") == "cho_duyet":
+            viec_cho_toi.append(
+                {
+                    "id": "lich_tuan_cho",
+                    "tieu_de": "Duyệt lịch tuần sau",
+                    "chi_tiet": f"Worker đã xếp sẵn ({de_xuat_lich.get('tong_so_luot', 0)} lượt) — xem rồi công bố.",
+                    "link": "/roster",
+                    "muc": 1,
+                }
+            )
+        if life_trang_thai in {"may_sinh", "nhap"}:
+            viec_cho_toi.append(
+                {
+                    "id": "xep_lich",
+                    "tieu_de": "Xếp lịch tuần",
+                    "chi_tiet": "Lịch tuần chưa được duyệt — chạy solver để có lịch công bố.",
+                    "link": "/roster",
+                    "muc": 1,
+                }
+            )
+        luat_cho = [l for l in luat if isinstance(l, dict) and l.get("trang_thai") == "cho_chot"]
+        if luat_cho and role == "chu_quan":
+            viec_cho_toi.append(
+                {
+                    "id": "luat_cho",
+                    "tieu_de": f"Chốt {len(luat_cho)} luật cẩm nang",
+                    "chi_tiet": "Luật đã qua tập sự — chốt để có hiệu lực.",
+                    "link": "/cam-nang",
+                    "muc": len(luat_cho),
+                }
+            )
+        qua_han = [t for t in treo if isinstance(t, dict) and t.get("trang_thai") == "qua_han"]
+        if qua_han:
+            viec_cho_toi.append(
+                {
+                    "id": "treo_qua_han",
+                    "tieu_de": f"{len(qua_han)} việc treo quá hạn",
+                    "chi_tiet": "Việc kẹt quá hạn cần xử lý trước cuối ca.",
+                    "link": "/treo",
+                    "muc": len(qua_han),
+                }
+            )
+    else:
+        mo = [t for t in treo if isinstance(t, dict) and t.get("trang_thai") != "xong"]
+        if mo:
+            viec_cho_toi.append(
+                {
+                    "id": "treo_ca",
+                    "tieu_de": f"{len(mo)} việc treo trong ca của bạn",
+                    "chi_tiet": "Đọc việc từ ca trước và xử lý trong ca.",
+                    "link": "/treo",
+                    "muc": len(mo),
+                }
+            )
     return {
         "ngay": datetime.now(UTC).date().isoformat(),
         "lich": life,
@@ -734,6 +806,9 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
         "treo_theo_trang_thai": treo_theo_trang_thai,
         "sua_gan_day": sua_gan_day,
         "ton_tom_tat": ton_tom_tat,
+        "viec_cho_toi": viec_cho_toi,
+        "brief_hom_nay": kv_get("brief_hom_nay", None),
+        "de_xuat_lich": de_xuat_lich,
         "co_du_lieu_mau": _co_du_lieu_mau([*treo, *inbox, *ton]),
         "nguon": "quan",
     }

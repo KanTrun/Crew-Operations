@@ -29,11 +29,23 @@ def build_lich_input(
     *,
     tuan_index: int = 0,
     debt: dict[str, dict[str, float]] | None = None,
+    nhan_vien_ngoai: list[dict[str, Any]] | None = None,
 ) -> LichInput:
-    """Build empty assignment input for CP-SAT (phan_cong starts empty)."""
+    """Build empty assignment input for CP-SAT (phan_cong starts empty).
+
+    `nhan_vien_ngoai`: danh sách NV thật từ bảng users (SSOT `ca_api.nhan_vien`).
+    Khi có, hợp nhất với seed (users thắng trùng id) để quán thật xếp được
+    lịch cho nhân viên tự đăng ký — không đổi hành vi khi None (solver độc lập).
+    """
     seed = seed or load_seed()
     params = load_labor_params()
-    nvs = seed["nhan_vien"]
+    if nhan_vien_ngoai:
+        seen = {str(x.get("id")) for x in nhan_vien_ngoai}
+        nvs = list(nhan_vien_ngoai) + [
+            x for x in seed["nhan_vien"] if str(x.get("id")) not in seen
+        ]
+    else:
+        nvs = seed["nhan_vien"]
     cas = seed["ca_mau_21"]
     nv_ids = [x["id"] for x in nvs]
     ca_ids = [x["id"] for x in cas]

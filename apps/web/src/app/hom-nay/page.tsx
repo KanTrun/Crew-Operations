@@ -45,6 +45,8 @@ type Today = {
   sua_gan_day?: SuaPreview[];
   ton_tom_tat?: TonRow[];
   co_du_lieu_mau?: boolean;
+  viec_cho_toi?: { id: string; tieu_de: string; chi_tiet: string; link: string; muc?: number }[];
+  brief_hom_nay?: { ngay: string; so_ca: number; so_treo_mo: number; ton_canh_bao?: string[]; treo_dau?: string[] } | null;
 };
 
 function soAnToan(v: unknown): number {
@@ -147,6 +149,36 @@ export default function HomNayPage() {
           {data.co_du_lieu_mau ? (
             <p className="mb-4">
               <FixtureChip />
+            </p>
+          ) : null}
+          {data.viec_cho_toi && data.viec_cho_toi.length > 0 ? (
+            <section className="mb-6 border-2 border-[var(--nq-copper)] bg-[var(--nq-surface)] p-4 md:p-5">
+              <p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-copper)]">Hàng đợi hôm nay</p>
+              <h2 className="mt-1 text-lg font-black text-[var(--nq-fg)]">Việc của bạn</h2>
+              <ul className="mt-3 space-y-2">
+                {data.viec_cho_toi.map((v) => (
+                  <li key={v.id}>
+                    <a
+                      href={v.link}
+                      className="flex items-center justify-between gap-3 border-2 border-[var(--nq-dim)] bg-[var(--nq-bg)] px-4 py-3 transition-colors hover:border-[var(--nq-copper)]"
+                    >
+                      <span>
+                        <span className="block text-sm font-bold text-[var(--nq-fg)]">{v.tieu_de}</span>
+                        <span className="block text-xs text-[var(--nq-dim)]">{v.chi_tiet}</span>
+                      </span>
+                      <span className="font-mono text-xs text-[var(--nq-copper)]">→</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+          {data.brief_hom_nay ? (
+            <p className="mb-4 font-mono text-xs text-[var(--nq-dim)]">
+              Brief sáng {data.brief_hom_nay.ngay}: {data.brief_hom_nay.so_ca} ca · {data.brief_hom_nay.so_treo_mo} việc treo đang mở
+              {data.brief_hom_nay.ton_canh_bao && data.brief_hom_nay.ton_canh_bao.length > 0
+                ? ` · tồn cảnh báo: ${data.brief_hom_nay.ton_canh_bao.join(", ")}`
+                : ""}
             </p>
           ) : null}
           <div className="nq-dash-kpis nq-bento">
