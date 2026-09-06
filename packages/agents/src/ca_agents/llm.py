@@ -24,24 +24,36 @@ _KEY_ENV = {
     "openrouter": "OPENROUTER_API_KEY",
 }
 _GROQ_MODELS = (
+    "qwen/qwen3.8-27b",
+    "qwen/qwen3.6-27b",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "groq/compound",
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
-    "qwen-2.5-32b",
 )
 _GEMINI_MODELS = (
-    "gemini-2.0-flash",
     "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.6-flash",
+    "gemini-3.8-flash",
+    "gemini-2.0-flash",
     "gemini-flash-latest",
 )
 
 
 _OPENROUTER_MODELS = (
-    "deepseek/deepseek-r1:free",
+    "minimax/minimax-m3:free",
+    "minimax/minimax-m2.7:free",
+    "google/gemma-4-31b-it:free",
+    "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "cohere/north-mini-code:free",
+    "dots-studio/dots-3-note-preview:free",
+    "openai/gpt-oss-20b:free",
     "deepseek/deepseek-chat:free",
     "meta-llama/llama-3.3-70b-instruct:free",
-    "google/gemini-2.0-flash-exp:free",
-    "qwen/qwen-2.5-72b-instruct:free",
-    "openai/gpt-oss-20b:free",
 )
 _UA = "nhip-quan/0.1 (https://github.com/KanTrun/Crew-Operations)"
 _DOTENV_LOADED = False
@@ -210,22 +222,60 @@ class _ProviderError(RuntimeError):
     pass
 
 
+_MODEL_ALIASES: dict[str, str] = {
+    "minimax-m3": "minimax/minimax-m3:free",
+    "minimax/minimax-m3": "minimax/minimax-m3:free",
+    "minimax-m2.7": "minimax/minimax-m2.7:free",
+    "minimax/minimax-m2.7": "minimax/minimax-m2.7:free",
+    "qwen-3.8-27b": "qwen/qwen3.8-27b",
+    "qwen-3.6-27b": "qwen/qwen3.6-27b",
+    "gpt-oss-120b": "openai/gpt-oss-120b",
+    "gpt-oss-20b": "openai/gpt-oss-20b",
+    "nemotron-3.5-lightning": "nvidia/nemotron-3.5-lightning:free",
+    "gemma-4-31b": "google/gemma-4-31b-it:free",
+    "gemma-4-26b": "google/gemma-4-26b-a4b-it:free",
+}
+
+
 def _env_model(name: str, default: str) -> str:
     return os.environ.get(name, default).strip() or default
 
 
 def _model_list(env_name: str, defaults: tuple[str, ...]) -> list[str]:
-    preferred = _env_model(env_name, defaults[0])
+    raw_preferred = _env_model(env_name, defaults[0])
+    preferred = _MODEL_ALIASES.get(raw_preferred, raw_preferred)
     out: list[str] = []
-    for name in (preferred, *defaults):
+    for name in (preferred, raw_preferred, *defaults):
+        canonical = _MODEL_ALIASES.get(name, name)
+        if canonical not in out:
+            out.append(canonical)
         if name not in out:
             out.append(name)
     return out
 
 
 def _is_model_missing(exc: _ProviderError) -> bool:
-    msg = str(exc)
-    return msg.startswith("http_404") or "no longer available" in msg or "is unavailable" in msg
+    """True nếu model thiếu (404), không hợp lệ (400 not a valid model), bị quá tải (429/503), timeout hoặc bị lỗi/treo."""
+    msg = str(exc).lower()
+    return (
+        msg.startswith("http_404")
+        or (msg.startswith("http_400") and ("not a valid model" in msg or "invalid model" in msg))
+        or msg.startswith("http_429")
+        or msg.startswith("http_500")
+        or msg.startswith("http_502")
+        or msg.startswith("http_503")
+        or msg.startswith("http_504")
+        or "timeout" in msg
+        or "rate limit" in msg
+        or "overloaded" in msg
+        or "capacity" in msg
+        or "no longer available" in msg
+        or "is unavailable" in msg
+        or "missing_choices" in msg
+        or "missing_candidates" in msg
+        or "empty" in msg
+        or "bad_json_response" in msg
+    )
 
 
 def _call_provider(
@@ -250,7 +300,7 @@ def _call_provider(
                     model=model,
                     system=system,
                     user=user,
-                    timeout_s=timeout_s,
+                    timeout_s=min(timeout_s, 10.0),
                     json_mode=json_mode,
                 )
             except _ProviderError as exc:
@@ -268,7 +318,7 @@ def _call_provider(
                     model=model,
                     system=system,
                     user=user,
-                    timeout_s=timeout_s,
+                    timeout_s=min(timeout_s, 12.0),
                     json_mode=json_mode,
                     image_bytes=image_bytes,
                     image_mime=image_mime,
@@ -291,7 +341,7 @@ def _call_provider(
                     model=model,
                     system=system,
                     user=user,
-                    timeout_s=timeout_s,
+                    timeout_s=min(timeout_s, 20.0),
                     json_mode=json_mode,
                     image_bytes=image_bytes,
                     image_mime=image_mime,
