@@ -1,27 +1,37 @@
 # Deployment — NHỊP QUÁN
 
-> Cập nhật: 2026-09-05. Kết quả nghiên cứu nền tảng: [`research-oracle-cloud.md`](./research-oracle-cloud.md) · [`research-google-cloud.md`](./research-google-cloud.md).
+> Cập nhật: 2026-09-06. Stack 0đ **đang chạy công khai** (verified end-to-end 05/09).
+> Nghiên cứu nền tảng: [`research-oracle-cloud.md`](./research-oracle-cloud.md) · [`research-google-cloud.md`](./research-google-cloud.md).
+> Phương án VM thật: [AWS EC2](./runbook-aws.md) (Free Plan $200/6 tháng) · [Oracle A1](./runbook-oracle.md) (0đ vĩnh viễn, signup VN bị chặn).
 
-## Platform
+## Platform — stack 0đ đang chạy
 
 | Thành phần | Nền tảng | Plan | URL |
 |---|---|---|---|
-| Web (Next.js 15) | **Vercel** | Hobby (free vĩnh viễn, 100GB b/w) | `nhip-quan.vercel.app` |
-| API (FastAPI + ortools) | **Render** | Free (512MB RAM, 750h/tháng, Singapore) | `nhip-quan-api.onrender.com` |
-| Database (PostgreSQL) | **Neon** | Free vĩnh viễn (0.5GB, Singapore) | `ep-*.ap-southeast-1.aws.neon.tech` |
+| Web (Next.js 15) | **Vercel** | Hobby (free vĩnh viễn, 100GB b/w) | **https://nhip-quan.vercel.app** |
+| API (FastAPI + ortools) | **Render** | Free (512MB RAM, 750h/tháng, Singapore) | **https://nhip-quan-api.onrender.com** |
+| Database (PostgreSQL) | **Neon** | Free vĩnh viễn (0.5GB, Singapore) | 29 bảng, alembic 0007 |
 
-**Lý do chọn** (so sánh đầy đủ trong 2 file research):
+**Phương án VM full-stack** (Postgres+Redis+API+worker+web trên 1 máy + HTTPS + domain riêng —
+khi cần worker chạy 24/7 hoặc kiểm soát hoàn toàn):
+- **AWS EC2 t3.small Singapore** — [`runbook-aws.md`](./runbook-aws.md): Free Plan $200/6 tháng.
+- **Oracle A1 Singapore** — [`runbook-oracle.md`](./runbook-oracle.md): 0đ vĩnh viễn (signup từ VN hiện bị chặn).
+- Cả hai dùng chung hạ tầng: `infra/oracle/compose.prod.yml` + `Caddyfile` + CI image GHCR
+  (`.github/workflows/docker-ghcr.yml`, multi-arch amd64+arm64).
+
+**Lý do chọn stack 0đ** (so sánh đầy đủ trong 2 file research):
 - Vercel: CDN edge Singapore/HK — web tải ~50-80ms từ VN; Next.js native.
-- Render Singapore: Docker native (dùng sẵn `infra/docker/Dockerfile.api`), vùng Singapore ~60ms từ VN, 512MB đủ ortools solve 60s.
+- Render Singapore: Docker native, vùng Singapore ~60ms từ VN, 512MB đủ ortools solve 60s.
 - Neon: Postgres vĩnh viễn free không cần thẻ — disk Render free là **ephemeral** nên DB phải ngoài Render.
 - Loại: Fly.io (bỏ free 2024), Railway ($5/30 ngày), Koyeb (chỉ Frankfurt), Oracle/GCP (rủi ro đăng ký VN + chính sách — chi tiết research).
 
-## URL
+## URL (đang chạy)
 
-- **Web:** https://nhip-quan.vercel.app (sau khi deploy)
-- **API:** https://nhip-quan-api.onrender.com (sau khi deploy)
-- **Health:** `GET /api/health` — trả `{"status": "ok"}`
+- **Web:** https://nhip-quan.vercel.app
+- **API:** https://nhip-quan-api.onrender.com
+- **Health:** `GET /health` — trả `{"status": "ok", "service": "ca-api"}`
 - **OpenAPI:** `GET /docs`
+- Tài khoản demo: `lan` / `hung` / `minh` · mật khẩu `nhipquan`
 
 ## Deploy Command
 
