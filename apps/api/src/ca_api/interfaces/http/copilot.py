@@ -185,6 +185,28 @@ class _PinCorrections(BaseModel):
     pinned: bool | None = None
 
 
+class _TkbConfirmCorrections(BaseModel):
+    """PROPOSE_TKB_CONFIRM — chỉ cho sửa nv_id (khoảng bận phải qua đề xuất mới)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    nv_id: str | None = Field(default=None, min_length=3, max_length=40)
+
+
+class _SwapConsentCorrections(BaseModel):
+    """PROPOSE_SWAP_CONSENT — swap_id/người đồng ý không sửa được sau đề xuất."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class _HandoverCorrections(BaseModel):
+    """PROPOSE_HANDOVER — cho sửa nội dung bàn giao trước khi duyệt."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str | None = Field(default=None, min_length=3, max_length=2000)
+
+
 _CORRECTION_MODELS: dict[str, type[BaseModel]] = {
     "SEND_MAIL": _MailCorrections,
     "PROPOSE_HANGING_TASK": _HangingTaskCorrections,
@@ -194,6 +216,10 @@ _CORRECTION_MODELS: dict[str, type[BaseModel]] = {
     "PROPOSE_ORDER_TRANSITION": _OrderTransitionCorrections,
     "PROPOSE_PIN": _PinCorrections,
     "PROPOSE_PAGE_SYNC": _NoCorrections,
+    # PR10 còn lại (R2_CONFIRM)
+    "PROPOSE_TKB_CONFIRM": _TkbConfirmCorrections,
+    "PROPOSE_SWAP_CONSENT": _SwapConsentCorrections,
+    "PROPOSE_HANDOVER": _HandoverCorrections,
 }
 
 
@@ -509,6 +535,7 @@ def copilot_execute_action(
         "SCHEDULE_SOLVE", "APPROVE_SHIFT_SWAP", "INVENTORY_RESTOCK_CHECK",
         "PROPOSE_HANGING_TASK", "PROPOSE_TASK_COMPLETE", "PROPOSE_CONSUMPTION_RECORD",
         "PROPOSE_MENU_UPDATE", "PROPOSE_ORDER_TRANSITION", "PROPOSE_PIN",
+        "PROPOSE_TKB_CONFIRM", "PROPOSE_SWAP_CONSENT", "PROPOSE_HANDOVER",
     } and body.decision == "approve":
         if not copilot_execution_rearm_internal(
             user["store_id"], body.action_id, body.idempotency_key, request_hash
@@ -853,6 +880,103 @@ def copilot_execute_action(
             pins[f"{ca_id}|{nv_pin}"] = pinned
             return pins
         internal_mutations["pins"] = (mut_pins, {})
+    elif intent == "PROPOSE_TKB_CONFIRM":
+        # Cùng key/schema với route web POST /api/v1/tkb/confirm (sprint3.py):
+        # tkb_nv[nv] = {khoang_ban, source_id, upload_id, xac_nhan_boi, vai}.
+        nv_tkb = str(diff.get("nv_id") or user["user_id"])
+        khoang = [
+            {"thu": str(k.get("thu") or ""), "start": str(k.get("start") or ""), "end": str(k.get("end") or "")}
+            for k in (diff.get("khoang_ban") or []) if isinstance(k, dict)
+        ]
+        if not khoang:
+            raise RuntimeError("khoang_rong")
+        # Ownership gate giống route web: non-manager chỉ xác nhận TKB của mình.
+        if user["role"] not in {"quan_ly", "chu_quan"} and nv_tkb != user["user_id"]:
+            raise RuntimeError("chi_gan_tkb_cua_minh")
+
+        def mut_tkb_nv(tkb_nv: dict[str, Any]) -> dict[str, Any]:
+            tkb_nv[nv_tkb] = {
+                "khoang_ban": khoang,
+                "source_id": str(diff.get("source_id") or "copilot"),
+                "upload_id": str(diff.get("upload_id") or ""),
+                "xac_nhan_boi": user["user_id"],
+                "vai": user["role"],
+            }
+            return tkb_nv
+
+        internal_mutations["tkb_nv"] = (mut_tkb_nv, {})
+        # Ghi nhận lần sửa giống route web (record_sua loai="tkb_xac_nhan").
+        try:
+            from ca_playbook.sua import record_sua
+
+            record_sua(
+                loai="tkb_xac_nhan",
+                truoc={},
+                sau={"nv_id": nv_tkb, "khoang_ban": khoang},
+                ai=user["user_id"],
+                now_iso=now_iso,
+            )
+        except Exception:
+            pass  # Playbook file có thể read-only (Docker) — KV vẫn là nguồn thật.
+    elif intent == "PROPOSE_SWAP_CONSENT":
+        # Mirror route web POST /api/v1/cho-doi-ca/{swap_id}/dong-y (sprint45.py):
+        # chỉ append nv của người duyệt; trang_thai "dong_y" khi {a, b} đều đồng ý.
+        swap_id = str(diff.get("swap_id") or "")
+        nv_dong_y = str(diff.get("nv_id") or user["user_id"])
+
+        def mut_swap_consent(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            target = next(
+                (s for s in items if isinstance(s, dict) and (
+                    str(s.get("id") or "") == swap_id or str(s.get("swap_id") or "") == swap_id
+                )),
+                None,
+            )
+            if not target:
+                raise RuntimeError("swap_khong_tim_thay")
+            parties = {
+                str(target.get("a") or ""),
+                str(target.get("b") or ""),
+                str(target.get("c") or ""),
+            } - {""}
+            if nv_dong_y not in parties and user["role"] not in {"quan_ly", "chu_quan"}:
+                raise RuntimeError("khong_phai_nguoi_tham_gia")
+            agreed = set(target.get("dong_y") or [])
+            agreed.add(nv_dong_y)
+            target["dong_y"] = sorted(agreed)
+            if {str(target.get("a") or ""), str(target.get("b") or "")} <= agreed:
+                target["trang_thai"] = "dong_y"
+            return items
+
+        internal_mutations["swap"] = (mut_swap_consent, [])
+    elif intent == "PROPOSE_HANDOVER":
+        # Mirror route web POST /api/v1/handover (sprint45.py): trích SBAR qua
+        # ag_handover (chỉ API layer được import cross-agent) + append history.
+        ho_text = str(diff.get("text") or "")
+        if not ho_text.strip():
+            raise RuntimeError("missing_handover_text")
+        from ca_agents.ag_handover import extract as extract_handover
+
+        h = extract_handover(ho_text)
+        ho_fields = h.__dict__
+        try:
+            from ca_gates.vf_num import validate_num
+
+            nums = validate_num(ho_text, {"2", "3", "8", "15"})
+            ho_fields["vf_num"] = nums.__dict__
+        except Exception:
+            pass  # VF số chỉ là kiểm định thêm — không chặn bàn giao.
+        ho_entry = {
+            "id": f"ho_{uuid.uuid4().hex[:8]}",
+            "luc": now_iso,
+            "ai": user["user_id"],
+            **ho_fields,
+        }
+
+        def mut_handover(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            rows.append(ho_entry)
+            return rows[-50:]
+
+        internal_mutations["handover_history"] = (mut_handover, [])
     elif intent == "PROPOSE_PAGE_SYNC":
         # Cùng logic Graph fetch với route /api/v1/page/sync (PR12). Nếu Graph
         # lỗi, action rơi vào execution_failed với reason — không side effect.
@@ -902,6 +1026,10 @@ def copilot_execute_action(
         "QUERY_SOP": "/sop",
         "ANALYZE_WASTE": "/hao-phi",
         "SEND_MAIL": "/vet",
+        # PR10 còn lại (R2_CONFIRM)
+        "PROPOSE_TKB_CONFIRM": "/inbox",
+        "PROPOSE_SWAP_CONSENT": "/doi-ca",
+        "PROPOSE_HANDOVER": "/handover",
     }
     outcome = {
         "ok": True,

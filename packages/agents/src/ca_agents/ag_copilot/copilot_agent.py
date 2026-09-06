@@ -130,7 +130,12 @@ def run_copilot(
         )
 
     # 2. Execute Whitelisted Tool
-    tool_res = execute_whitelisted_tool(parsed.intent, {**parsed.params, "store_id": store_id})
+    # PR10 còn lại: tool cần biết người gọi (ownership TKB, participant consent)
+    # nên truyền user_id/user_role — các tool cũ nhận qua **kwargs, không ảnh hưởng.
+    tool_res = execute_whitelisted_tool(
+        parsed.intent,
+        {**parsed.params, "store_id": store_id, "user_id": user_id, "user_role": user_role},
+    )
 
     now_iso = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     expires_iso = (datetime.now(UTC) + timedelta(minutes=ttl_minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")

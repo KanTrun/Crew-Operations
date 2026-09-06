@@ -1,7 +1,27 @@
 from __future__ import annotations
 
+import pytest
+
 from ca_agents.ag_copilot import parse_intent, run_copilot
+from ca_agents.ag_copilot import tool_registry
 from ca_contracts import ActionProposalStatus, CopilotIntent
+
+
+@pytest.fixture(autouse=True)
+def _reset_tool_sources() -> None:
+    """Đảm bảo _SOURCES rỗng khi test bắt đầu để solver dùng seed default.
+
+    Vì `ca_api.interfaces.http.main.configure_data_sources(...)` chạy ở
+    import-time và bind `list_nhan_vien_ops` từ users DB thật, các test trong
+    apps/api/tests/unit/ khi chạy trước sẽ để lại _SOURCES có data thật
+    (nvs=25 NV từ DB) → solver trả INFEASIBLE_DOMAIN khác với standalone
+    (nvs=None, dùng seed). Reset về rỗng giúp solver test reproduce kết quả
+    standalone. Test khác (vd test_pr9_read_tools_*) chủ động set _SOURCES
+    nên vẫn hoạt động bình thường.
+    """
+    tool_registry._SOURCES.clear()
+    yield
+    tool_registry._SOURCES.clear()
 
 
 def test_intent_parsing_7_intents() -> None:
@@ -337,6 +357,145 @@ def test_run_copilot_read_intent_answers_directly() -> None:
     assert res.action_proposal is None
     assert res.direct_answer is not None
     assert "menu" in res.direct_answer.lower() or "món" in res.direct_answer.lower()
+
+
+# ── PR10 còn lại: TKB confirm, swap consent, handover ────────────────────────
+
+
+def test_pr10_tkb_confirm_intent_parsing() -> None:
+    """'Xác nhận TKB T2 07:00-12:00' -> PROPOSE_TKB_CONFIRM với khoảng bận."""
+    parsed = parse_intent("Xác nhận TKB T2 07:00-12:00, T4 18:00-22:00")
+    assert parsed.intent == "PROPOSE_TKB_CONFIRM"
+    assert parsed.confidence >= 0.75
+    assert parsed.params["khoang_ban"] == [
+        ("T2", "07:00", "12:00"),
+        ("T4", "18:00", "22:00"),
+    ]
+
+
+def test_pr10_swap_consent_intent_wins_over_read_and_approve() -> None:
+    """'Đồng ý đổi ca sw_xxx' -> PROPOSE_SWAP_CONSENT, không nhầm GET/APPROVE."""
+    parsed = parse_intent("Đồng ý đổi ca sw_ab12cd")
+    assert parsed.intent == "PROPOSE_SWAP_CONSENT"
+    assert parsed.params["swap_id"] == "sw_ab12cd"
+
+    # Câu hỏi đọc vẫn thắng: "đổi ca nào" -> GET_SHIFT_SWAPS.
+    parsed_read = parse_intent("Có yêu cầu đổi ca nào đang chờ?")
+    assert parsed_read.intent == "GET_SHIFT_SWAPS"
+
+
+def test_pr10_handover_intent_wins_over_read() -> None:
+    """'Bàn giao ca ...' -> PROPOSE_HANDOVER, không nhầm GET_HANDOVERS."""
+    parsed = parse_intent("Ghi bàn giao ca: cuối ca ổn, nhớ kiểm kho đá")
+    assert parsed.intent == "PROPOSE_HANDOVER"
+    assert parsed.params["text"]
+
+    # Câu hỏi đọc vẫn thắng: "bàn giao" -> GET_HANDOVERS.
+    parsed_read = parse_intent("Bàn giao gần nhất ở đâu?")
+    assert parsed_read.intent == "GET_HANDOVERS"
+
+
+def test_pr10_tkb_confirm_tool_fail_closed_on_empty_khoang(monkeypatch) -> None:
+    """Tool TKB: không có khoảng bận hợp lệ -> error khoang_rong."""
+    import ca_agents.ag_copilot.tool_registry as tr
+
+    saved = dict(tr._SOURCES)
+    try:
+        tr.configure_data_sources(kv_get=lambda key, default: default)
+        res = tr.execute_whitelisted_tool(
+            "PROPOSE_TKB_CONFIRM",
+            {"store_id": "quan_01", "user_id": "nv_01", "user_role": "quan_ly",
+             "khoang_ban": [], "thieu_khoang_ban": True},
+        )
+        assert res.success is False
+        assert res.error == "khoang_rong"
+    finally:
+        tr.configure_data_sources(**saved)
+
+
+def test_pr10_tkb_confirm_tool_ownership_gate() -> None:
+    """Tool TKB: nhân viên xác nhận TKB người khác -> chi_gan_tkb_cua_minh."""
+    import ca_agents.ag_copilot.tool_registry as tr
+
+    saved = dict(tr._SOURCES)
+    try:
+        tr.configure_data_sources(kv_get=lambda key, default: default)
+        res = tr.execute_whitelisted_tool(
+            "PROPOSE_TKB_CONFIRM",
+            {"store_id": "quan_01", "user_id": "nv_03", "user_role": "nhan_vien",
+             "nv_id": "nv_01", "khoang_ban": [("T2", "07:00", "12:00")]},
+        )
+        assert res.success is False
+        assert res.error == "chi_gan_tkb_cua_minh"
+    finally:
+        tr.configure_data_sources(**saved)
+
+
+def test_pr10_swap_consent_tool_fail_closed(monkeypatch) -> None:
+    """Tool consent: swap không tồn tại / không phải người tham gia -> fail-closed."""
+    import ca_agents.ag_copilot.tool_registry as tr
+
+    saved = dict(tr._SOURCES)
+    try:
+        swaps = [{"id": "sw_live01", "a": "nv_01", "b": "nv_02", "dong_y": []}]
+        tr.configure_data_sources(kv_get=lambda key, default: swaps if key == "swap" else default)
+        # swap không tồn tại
+        res = tr.execute_whitelisted_tool(
+            "PROPOSE_SWAP_CONSENT",
+            {"store_id": "quan_01", "user_id": "nv_01", "user_role": "nhan_vien",
+             "swap_id": "sw_khongco"},
+        )
+        assert res.success is False
+        assert res.error == "swap_not_found"
+        # không phải người tham gia
+        res2 = tr.execute_whitelisted_tool(
+            "PROPOSE_SWAP_CONSENT",
+            {"store_id": "quan_01", "user_id": "nv_03", "user_role": "nhan_vien",
+             "swap_id": "sw_live01"},
+        )
+        assert res2.success is False
+        assert res2.error == "khong_phai_nguoi_tham_gia"
+    finally:
+        tr.configure_data_sources(**saved)
+
+
+def test_pr10_handover_tool_fail_closed_on_empty_text() -> None:
+    """Tool handover: text rỗng -> missing_handover_text."""
+    import ca_agents.ag_copilot.tool_registry as tr
+
+    res = tr.execute_whitelisted_tool(
+        "PROPOSE_HANDOVER",
+        {"store_id": "quan_01", "user_id": "nv_01", "text": "  ", "thieu_noi_dung": True},
+    )
+    assert res.success is False
+    assert res.error == "missing_handover_text"
+
+
+def test_pr10_staff_can_use_new_self_service_intents() -> None:
+    """Nhân viên được dùng cả 3 intent PR10 còn lại (R2_CONFIRM self-service)."""
+    ctx = {
+        "store_id": "quan_01",
+        "user_id": "minh",
+        "user_role": "nhan_vien",
+        "active_date": "2026-09-06",
+    }
+    res = run_copilot("Xác nhận TKB T2 07:00-12:00", context=ctx)
+    assert res.intent == CopilotIntent.PROPOSE_TKB_CONFIRM
+    assert res.action_proposal is not None
+
+    res2 = run_copilot("Ghi bàn giao ca: cuối ca ổn", context=ctx)
+    assert res2.intent == CopilotIntent.PROPOSE_HANDOVER
+    assert res2.action_proposal is not None
+
+
+def test_pr10_new_intents_in_role_matrix_for_all_roles() -> None:
+    """Cả 3 intent mới phải có trong ma trận quyền của cả 3 role."""
+    from ca_contracts import COPILOT_ROLE_INTENT_MATRIX
+
+    for role in ("nhan_vien", "quan_ly", "chu_quan"):
+        allowed = COPILOT_ROLE_INTENT_MATRIX[role]
+        for intent in ("PROPOSE_TKB_CONFIRM", "PROPOSE_SWAP_CONSENT", "PROPOSE_HANDOVER"):
+            assert intent in allowed, f"{intent} thiếu cho role {role}"
 
 
 

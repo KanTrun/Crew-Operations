@@ -37,6 +37,10 @@ PROPOSE_PIN = "PROPOSE_PIN"
 # PR12 external channel intents
 GET_PAGE_STATUS = "GET_PAGE_STATUS"
 PROPOSE_PAGE_SYNC = "PROPOSE_PAGE_SYNC"
+# PR10 còn lại (R2_CONFIRM): xác nhận TKB, đồng ý đổi ca, ghi bàn giao ca
+PROPOSE_TKB_CONFIRM = "PROPOSE_TKB_CONFIRM"
+PROPOSE_SWAP_CONSENT = "PROPOSE_SWAP_CONSENT"
+PROPOSE_HANDOVER = "PROPOSE_HANDOVER"
 OUT_OF_SCOPE = "OUT_OF_SCOPE"
 # Patterns detecting attempts to bypass two-phase approval
 _BYPASS_PATTERNS = [
@@ -54,6 +58,24 @@ _BYPASS_REGEX = re.compile("|".join(_BYPASS_PATTERNS), re.IGNORECASE)
 # PR9 read intents đặt ĐẦU danh sách: cụm hỏi đọc cụ thể ("đổi ca nào",
 # "việc treo") phải thắng từ chung của mutating intents ("đổi ca").
 _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
+    # PR10 còn lại — đặt ĐẦU danh sách: cụm hành động cụ thể ("đồng ý đổi ca
+    # sw_xxx") phải thắng từ chung của GET_SHIFT_SWAPS/APPROVE_SHIFT_SWAP
+    # ("đổi ca"), và "bàn giao ca" phải thắng GET_HANDOVERS ("bàn giao").
+    (
+        PROPOSE_SWAP_CONSENT,
+        ["đồng ý đổi ca", "dong y doi ca", "đồng ý nhận ca", "dong y nhan ca", "xác nhận nhận ca", "xac nhan nhan ca", "em đồng ý", "em dong y", "tôi đồng ý", "toi dong y"],
+        0.9,
+    ),
+    (
+        PROPOSE_TKB_CONFIRM,
+        ["xác nhận tkb", "xac nhan tkb", "xác nhận lịch bận", "xac nhan lich ban", "tkb bận", "tkb ban", "gán tkb", "gan tkb", "chốt tkb", "chot tkb"],
+        0.9,
+    ),
+    (
+        PROPOSE_HANDOVER,
+        ["bàn giao ca", "ban giao ca", "ghi bàn giao", "ghi ban giao", "soạn bàn giao", "soan ban giao", "gửi bàn giao", "gui ban giao"],
+        0.9,
+    ),
     (
         GET_SHIFT_SWAPS,
         ["đổi ca nào", "doi ca nao", "yêu cầu đổi ca nào", "yeu cau doi ca nao", "chợ đổi ca", "cho doi ca", "danh sách đổi ca", "danh sach doi ca"],
@@ -468,6 +490,41 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
         params["nv_id"] = nv_id
         params["pinned"] = pinned
         params["thieu_thong_tin"] = not params["ca_id"] or not nv_id
+
+    elif matched_intent == PROPOSE_TKB_CONFIRM:
+        # Trích khoảng bận: "T2 07:00-12:00, T4 18:00-22:00" (thứ T2..T8/CN).
+        khoang_ban: list[tuple[str, str, str]] = []
+        for m in re.finditer(
+            r"\b(T[2-8]|CN)\s+(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})",
+            text,
+            re.IGNORECASE,
+        ):
+            thu = m.group(1).upper()
+            khoang_ban.append((thu, m.group(2), m.group(3)))
+        # nv_id: mặc định người nói (executor sẽ chốt ownership); cho phép
+        # nv_XX hoặc tên nhân viên nếu quản lý xác nhận hộ.
+        m_nv = re.search(r"\b(nv_\d+)\b", text, re.IGNORECASE)
+        nv_id = m_nv.group(1).lower() if m_nv else ""
+        if not nv_id:
+            staff_map = {"minh": "nv_03", "lan": "nv_01", "hùng": "nv_02", "hung": "nv_02"}
+            for name, nv in staff_map.items():
+                if re.search(r"\b" + re.escape(name) + r"\b", lower):
+                    nv_id = nv
+                    break
+        params["khoang_ban"] = khoang_ban
+        params["nv_id"] = nv_id
+        params["thieu_khoang_ban"] = not khoang_ban
+
+    elif matched_intent == PROPOSE_SWAP_CONSENT:
+        # Trích swap_id (sw_xxx) — thiếu ID thì tool fail-closed.
+        m = re.search(r"\b(sw_[a-z0-9]{4,24})\b", text, re.IGNORECASE)
+        params["swap_id"] = m.group(1).lower() if m else ""
+        params["thieu_swap_id"] = not params["swap_id"]
+
+    elif matched_intent == PROPOSE_HANDOVER:
+        # Toàn bộ text là nội dung bàn giao (SBAR) — tool yêu cầu không rỗng.
+        params["text"] = text[:2000]
+        params["thieu_noi_dung"] = not text.strip()
 
     # 4. Confidence thresholds:
     # >= 0.75: regular
