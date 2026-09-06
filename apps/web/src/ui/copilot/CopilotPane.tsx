@@ -251,7 +251,7 @@ export function CopilotPane({ open, onClose }: Props = {}) {
     <div
       ref={paneRef}
       style={{ ...style, position: "fixed" }}
-      className="flex flex-col overflow-hidden border-2 border-[var(--nq-dim)] shadow-[8px_8px_0_var(--nq-copper-dim)]"
+      className="flex flex-col overflow-hidden border-2 border-[var(--nq-copper)] bg-[var(--nq-bg)] shadow-[8px_8px_0_var(--nq-copper-dim)]"
     >
       {/* Drag area: dùng header dưới dạng grab — đã có trong CopilotBody rồi,
           nhưng ta thêm 1 div kéo trên cùng để cả thanh tiêu đề kéo được. */}
