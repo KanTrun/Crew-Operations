@@ -59,7 +59,7 @@ jobs:
           build-args: |
             ${{ matrix.name == 'nhipquan-web' && format('NEXT_PUBLIC_API_URL={0}', env.WEB_API_URL) || '' }}
           tags: |
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/crew-operations/${{ matrix.name }}:latest
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/crew-operations/${{ matrix.name }}:${{ github.sha }}
+            ghcr.io/kantrun/crew-operations/${{ matrix.name }}:latest
+            ghcr.io/kantrun/crew-operations/${{ matrix.name }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
