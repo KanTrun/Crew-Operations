@@ -1,0 +1,55 @@
+#cloud-config
+# Oracle Cloud A1 — bootstrap NHỊP QUÁN lần đầu tạo VM.
+# Dán toàn bộ file này vào ô "Custom cloud-init script" (VM creation step 3).
+# Sau khi VM lên: mọi thứ tự cài; chỉ còn điền /opt/nhipquan/.env rồi up.
+
+package_update: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - git
+  - curl
+  - ufw
+
+write_files:
+  - path: /opt/nhipquan/bootstrap.sh
+    permissions: "0755"
+    content: |
+      #!/bin/sh
+      set -e
+      mkdir -p /opt/nhipquan
+      cd /opt/nhipquan
+
+      # Clone repo (nhánh main luôn xanh theo quy tắc repo)
+      git clone --depth 1 https://github.com/KanTrun/Crew-Operations.git repo || true
+      cp repo/infra/oracle/compose.prod.yml compose.yml 2>/dev/null || true
+      cp repo/infra/oracle/Caddyfile Caddyfile 2>/dev/null || true
+
+      # Chống idle-reclaim của Oracle: VM A1 phải có tải CPU/mem đều đặn
+      # (docs Oracle: idle 7 ngày p95 <20% có thể bị thu hồi). Cron nhẹ,
+      # chỉ đủ đẩy 2 chỉ số trên ngưỡng.
+      cat > /etc/cron.d/nhipquan-anti-idle <<'EOF'
+      */30 * * * * root /usr/bin/stress-ng --cpu 1 --timeout 120s 2>/dev/null || /usr/bin/dd if=/dev/urandom of=/dev/null bs=1M count=2048 2>/dev/null
+      EOF
+
+      # Swap 2GB — ortools solve 60s có thể đỉnh RAM, swap chống OOM-kill
+      if [ ! -f /swapfile ]; then
+        fallocate -l 2G /swapfile
+        chmod 600 /swapfile
+        mkswap /swapfile
+        swapon /swapfile
+        echo '/swapfile none swap sw 0 0' >> /etc/fstab
+      fi
+
+      # Firewall: chỉ mở SSH + HTTP + HTTPS (Oracle Security List cũng phải mở)
+      ufw allow 22/tcp
+      ufw allow 80/tcp
+      ufw allow 443/tcp
+      ufw --force enable
+
+      echo "bootstrap done — điền /opt/nhipquan/.env rồi chạy: docker compose up -d"
+      touch /var/lib/nhipquan-bootstrapped
+
+runcmd:
+  - [ bash, /opt/nhipquan/bootstrap.sh ]
+  - [ systemctl, enable, --now, docker ]
