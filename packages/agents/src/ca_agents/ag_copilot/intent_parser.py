@@ -26,6 +26,8 @@ GET_INVENTORY = "GET_INVENTORY"
 GET_SHIFT_SWAPS = "GET_SHIFT_SWAPS"
 GET_HANGING_TASKS = "GET_HANGING_TASKS"
 GET_HANDOVERS = "GET_HANDOVERS"
+# Xin nghỉ / báo bận — NV nói tự nhiên "tôi bận thứ 5", "không đi được ca tối"
+PROPOSE_TIME_OFF = "PROPOSE_TIME_OFF"
 # PR10 self-service mutating intents — R2_CONFIRM
 PROPOSE_HANGING_TASK = "PROPOSE_HANGING_TASK"
 PROPOSE_TASK_COMPLETE = "PROPOSE_TASK_COMPLETE"
@@ -90,18 +92,46 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
         ["hồ sơ của tôi", "ho so cua toi", "tôi là ai", "toi la ai", "thông tin của tôi", "thong tin cua toi"],
         0.9,
     ),
+    # Xin nghỉ/bận đặt TRƯỚC các intent đọc: "tôi bận thứ 5" là HÀNH ĐỘNG
+    # xin nghỉ, không phải câu hỏi — phải thắng từ khóa đọc nếu trùng.
+    (
+        PROPOSE_TIME_OFF,
+        [
+            "tôi bận",
+            "toi ban",
+            "tôi không rảnh",
+            "toi khong ranh",
+            "không rảnh",
+            "khong ranh",
+            "bận học",
+            "ban hoc",
+            "xin nghỉ",
+            "xin nghi",
+            "nghỉ ca",
+            "nghi ca",
+            "không đi làm",
+            "khong di lam",
+            "không đi được",
+            "khong di duoc",
+            "bận việc",
+            "ban viec",
+            "có việc bận",
+            "co viec ban",
+        ],
+        0.92,
+    ),
     (
         LIST_STAFF,
         ["danh sách nhân", "danh sach nhan", "nhân sự", "nhan su", "ai làm", "ai lam", "ai đang làm", "ai dang lam"],
         0.9,
     ),
-    # PR11 admin mutating — đặt TRƯỚC QUERY_MENU: "sửa giá món X" (hành động)
-    # phải thắng "menu"/"giá món" (đọc).
     (
         PROPOSE_MENU_UPDATE,
         ["sửa giá", "sua gia", "đổi giá", "doi gia", "cập nhật giá", "cap nhat gia", "ẩn món", "an mon", "bỏ món", "bo mon", "thêm món", "them mon", "thêm món mới", "them mon moi"],
         0.9,
     ),
+    # PR11 admin mutating — đặt TRƯỚC QUERY_MENU: "sửa giá món X" (hành động)
+    # phải thắng "menu"/"giá món" (đọc).
     (
         PROPOSE_ORDER_TRANSITION,
         ["chuyển đơn", "chuyen don", "đơn đang pha", "don dang pha", "hủy đơn", "huy don", "xác nhận đơn", "xac nhan don", "đơn xong", "don xong"],
@@ -264,6 +294,25 @@ def _add_week(d: Any, n: int = 1) -> Any:
     if not isinstance(d, date):
         d = date.today()
     return d + timedelta(weeks=n)
+def _parse_thu(text_lower: str) -> str:
+    """Trích thứ trong tuần (T2..CN) từ câu tiếng Việt thường."""
+    t = " ".join(str(text_lower or "").split())
+    for cu, thu in _THU_CAN.items():
+        if cu in t:
+            return thu
+    return ""
+
+
+_THU_CAN = {
+    "thứ 2": "T2", "thứ hai": "T2", " t2": "T2",
+    "thứ 3": "T3", "thứ ba": "T3", " t3": "T3",
+    "thứ 4": "T4", "thứ tư": "T4", " t4": "T4",
+    "thứ 5": "T5", "thứ năm": "T5", " t5": "T5",
+    "thứ 6": "T6", "thứ sáu": "T6", " t6": "T6",
+    "thứ 7": "T7", "thứ bảy": "T7", " t7": "T7",
+    "chủ nhật": "CN", "chu nhat": "CN", "cn": "CN",
+}
+
 
 
 def _active_date(context: dict[str, Any]) -> Any:
@@ -361,9 +410,18 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
     elif matched_intent == QUERY_SOP:
         params["cau_hoi"] = text
 
+    elif matched_intent == PROPOSE_TIME_OFF:
+        # Trích thứ + lý do từ chính câu nói ("tôi bận thứ 5, có thi").
+        thu = _parse_thu(lower)
+        if thu:
+            params["thu"] = thu
+        ly_do = text.strip()
+        # bỏ phần mở đầu dạng "tôi bận/xin nghỉ <thứ>" để lấy phần lý do thật
+        ly_do = re.sub(r"^[^,]{0,40}?[,:]?", "", ly_do, count=1).strip() or "bận"
+        params["ly_do"] = ly_do[:200]
+
     elif matched_intent == GENERATE_DAILY_BRIEF:
         params["ngay"] = _active_date(context).isoformat()
-
     elif matched_intent == ANALYZE_WASTE:
         params["khoang_ngay"] = "hom_nay"
 

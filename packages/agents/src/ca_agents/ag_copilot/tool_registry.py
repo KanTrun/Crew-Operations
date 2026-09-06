@@ -1657,6 +1657,68 @@ def tool_propose_page_sync(
         requires_confirmation=True,
         source_snapshot=build_live_snapshot("PROPOSE_PAGE_SYNC", store_id),
     )
+# (PROPOSE_TIME_OFF đăng ký sau khi hàm định nghĩa bên dưới — Python cần
+# name tồn tại lúc update; các proposal khác cũng theo mẫu đó ở khối cuối.)
+
+
+# ── PROPOSE_TIME_OFF: NV báo bận/xin nghỉ cho chính mình ────────────────────
+
+_THU_MAP_TIMEOFF = {
+    "thứ 2": "T2", "thứ hai": "T2", "t2": "T2",
+    "thứ 3": "T3", "thứ ba": "T3", "t3": "T3",
+    "thứ 4": "T4", "thứ tư": "T4", "t4": "T4",
+    "thứ 5": "T5", "thứ năm": "T5", "t5": "T5",
+    "thứ 6": "T6", "thứ sáu": "T6", "t6": "T6",
+    "thứ 7": "T7", "thứ bảy": "T7", "t7": "T7",
+    "chủ nhật": "CN", "chu nhat": "CN", "cn": "CN",
+}
+
+
+def _parse_thu_tu_tin(text: str) -> str:
+    """Trích ngày trong tuần từ tin nhắn tự do (deterministic, tier-1)."""
+    t = " ".join(str(text or "").lower().split())
+    for cu, thu in _THU_MAP_TIMEOFF.items():
+        if cu in t:
+            return thu
+    return ""
+
+
+def tool_propose_time_off(
+    store_id: str = "quan_01",
+    user_id: str = "",
+    ly_do: str = "",
+    thu: str = "",
+    **kwargs: Any,
+) -> ToolExecutionResult:
+    """PROPOSE_TIME_OFF: đề xuất xin nghỉ/bận cho chính người nói (cần duyệt)."""
+    thu = _parse_thu_tu_tin(thu or kwargs.get("raw_message") or ly_do) or thu
+    if not thu:
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_time_off",
+            intent="PROPOSE_TIME_OFF",
+            data={},
+            summary="Anh/chị cho em biết cụ thể ngày nào bận ạ (vd: «tôi bận thứ 5»)?",
+            explanation="Cần biết thứ/ngày để tạo ràng buộc nghỉ cho lần xếp lịch tới.",
+            requires_confirmation=False,
+            error="missing_thu",
+        )
+    payload = {
+        "snapshot_version": "live-v1",
+        "nv_id": user_id,
+        "thu": thu,
+        "ly_do": (ly_do or "").strip()[:200] or "bận",
+    }
+    return ToolExecutionResult(
+        success=True,
+        tool_name="tool_propose_time_off",
+        intent="PROPOSE_TIME_OFF",
+        data=payload,
+        summary=f"Đề xuất ghi nhận: {user_id} xin không xếp ca vào {thu} (lý do: {payload['ly_do']}).",
+        explanation="Sau khi quản lý duyệt, ràng buộc áp vào lượt xếp lịch tới — AI không tự sửa lịch.",
+        requires_confirmation=True,
+        source_snapshot=build_live_snapshot("PROPOSE_TIME_OFF", store_id),
+    )
 
 
 # ── PR10 còn lại: TKB confirm, swap consent, handover (R2_CONFIRM) ──────────
@@ -1866,6 +1928,7 @@ _TOOLS.update({
     "PROPOSE_TKB_CONFIRM": tool_propose_tkb_confirm,
     "PROPOSE_SWAP_CONSENT": tool_propose_swap_consent,
     "PROPOSE_HANDOVER": tool_propose_handover,
+    "PROPOSE_TIME_OFF": tool_propose_time_off,
 })
 
 

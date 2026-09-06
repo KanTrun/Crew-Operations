@@ -14,6 +14,9 @@ apps/web/e2e
 data/quan.db
 data/quan.db-wal
 data/quan.db-shm
+# Runtime state của máy dev — không bake vào image. Prod ghi vào /app/var.
+data/out
+data/backups
 plans
 agent-transcripts
 *.md

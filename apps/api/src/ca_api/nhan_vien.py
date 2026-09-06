@@ -40,10 +40,12 @@ def list_nhan_vien_ops(include_seed: bool | None = None) -> list[dict[str, Any]]
     """Danh sách nhân viên dùng được cho xếp lịch, ưu tiên users thật.
 
     Trả list bản ghi dạng `{id, ten, vai, ky_nang, la_sinh_vien}`.
-    `include_seed` mặc định đọc env `NHIPQUAN_LOI_GIAI_SEED` (bật khi demo).
+    `include_seed` mặc định đọc env `NHIPQUAN_LOI_GIAI_SEED`. Mặc định TẮT:
+    quán vận hành thật chỉ dùng nhân viên thật (users) — seed ADR-012 chỉ
+    dành cho dev/test/demo (set =1 trong .env khi cần lịch sử công bằng).
     """
     if include_seed is None:
-        include_seed = os.environ.get("NHIPQUAN_LOI_GIAI_SEED", "1").strip().lower() not in {"0", "false", "no"}
+        include_seed = os.environ.get("NHIPQUAN_LOI_GIAI_SEED", "0").strip().lower() in {"1", "true", "yes", "on"}
 
     out: list[dict[str, Any]] = []
     seen: set[str] = set()

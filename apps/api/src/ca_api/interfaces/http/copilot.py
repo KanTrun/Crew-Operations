@@ -798,6 +798,25 @@ def copilot_execute_action(
             orders.append({"order_id": f"ord_{uuid.uuid4().hex[:6]}", "items": items, "created_at": now_iso})
             return orders
         internal_mutations["restock_orders"] = (mut_orders, [])
+    elif intent == "PROPOSE_TIME_OFF":
+        # Cùng key/schema với inbox duyệt của AG-MSG (xin_nghi) — quản lý duyệt
+        # ở /inbox, hiệu lực nạp vào lượt xếp lịch tới qua _run_solver.
+        def mut_inbox(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            items.append({
+                "id": f"in_to_{uuid.uuid4().hex[:6]}",
+                "agent": "ag_copilot",
+                "nv_id": str(diff.get("nv_id") or user["user_id"]),
+                "y_dinh": "xin_nghi",
+                "tom_tat": f"Copilot ghi nhận: bận {diff.get('thu')} ({diff.get('ly_do')})",
+                "trang_thai": "cho_duyet",
+                "do_tin_cay": 0.92,
+                "nguon": "copilot",
+                "rang_buoc": {"thu": str(diff.get("thu") or ""), "start": "07:00", "end": "22:00"},
+                "hieu_luc": None,
+                "created_at": now_iso,
+            })
+            return items
+        internal_mutations["inbox_rang_buoc"] = (mut_inbox, [])
     elif intent == "PROPOSE_HANGING_TASK":
         # Cùng key/schema với route web /api/v1/phieu/{id}/treo (PR10 self-service).
         def mut_treo(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1030,6 +1049,8 @@ def copilot_execute_action(
         "PROPOSE_TKB_CONFIRM": "/inbox",
         "PROPOSE_SWAP_CONSENT": "/doi-ca",
         "PROPOSE_HANDOVER": "/handover",
+        "PROPOSE_TIME_OFF": "/inbox",
+        "PROPOSE_HANGING_TASK": "/treo",
     }
     outcome = {
         "ok": True,

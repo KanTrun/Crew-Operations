@@ -242,6 +242,8 @@ class CopilotIntent(StrEnum):
     PROPOSE_HANGING_TASK = "PROPOSE_HANGING_TASK"
     PROPOSE_TASK_COMPLETE = "PROPOSE_TASK_COMPLETE"
     PROPOSE_CONSUMPTION_RECORD = "PROPOSE_CONSUMPTION_RECORD"
+    # NV báo bận/xin nghỉ cho chính mình — đề xuất vào inbox chờ duyệt
+    PROPOSE_TIME_OFF = "PROPOSE_TIME_OFF"
     # PR11 admin mutating intents
     PROPOSE_MENU_UPDATE = "PROPOSE_MENU_UPDATE"
     PROPOSE_ORDER_TRANSITION = "PROPOSE_ORDER_TRANSITION"
@@ -295,6 +297,8 @@ COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
             "PROPOSE_TKB_CONFIRM",
             "PROPOSE_SWAP_CONSENT",
             "PROPOSE_HANDOVER",
+            # NV báo bận/xin nghỉ cho mình — cơ bản như phiếu
+            "PROPOSE_TIME_OFF",
         }
     ),
     "quan_ly": frozenset(
@@ -313,6 +317,7 @@ COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
             "PROPOSE_HANGING_TASK",
             "PROPOSE_TASK_COMPLETE",
             "PROPOSE_CONSUMPTION_RECORD",
+            "PROPOSE_TIME_OFF",
             # PR11 admin (R2_CONFIRM)
             "PROPOSE_MENU_UPDATE",
             "PROPOSE_ORDER_TRANSITION",
@@ -342,6 +347,9 @@ COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
             "PROPOSE_TKB_CONFIRM",
             "PROPOSE_SWAP_CONSENT",
             "PROPOSE_HANDOVER",
+            "PROPOSE_HANGING_TASK",
+            "PROPOSE_TASK_COMPLETE",
+            "PROPOSE_TIME_OFF",
         }
     ),
 }

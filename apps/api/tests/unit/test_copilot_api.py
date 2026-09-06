@@ -1160,6 +1160,34 @@ def test_pr10_hanging_task_proposal_and_execute() -> None:
     assert item["copilot_created"] is True
 
 
+def test_time_off_bao_ban_tao_de_xuat_cho_duyet() -> None:
+    """«Tôi bận thứ 5» → PROPOSE_TIME_OFF → duyệt → inbox xin_nghi chờ QL."""
+    from ca_api.persist import kv_get
+
+    token = _login_staff()  # minh — nhân viên báo bận cho mình
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Tôi bận thứ 5, có thi học kỳ", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "PROPOSE_TIME_OFF", "AI phải hiểu câu báo bận"
+    assert data["action_proposal"] is not None
+    action_id = data["action_proposal"]["action_id"]
+
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+    inbox = kv_get("inbox_rang_buoc", [])
+    item = next(t for t in inbox if t.get("agent") == "ag_copilot")
+    assert item["y_dinh"] == "xin_nghi"
+    assert item["trang_thai"] == "cho_duyet"
+    assert item["rang_buoc"]["thu"] == "T5"
+
 def test_pr10_task_complete_proposal_and_execute() -> None:
     """Đánh dấu xong việc treo qua chat: propose -> approve -> trang_thai='xong'."""
     from ca_api.persist import kv_set

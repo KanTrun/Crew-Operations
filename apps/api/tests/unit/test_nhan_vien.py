@@ -1,18 +1,38 @@
-"""Nguồn nhân viên hợp nhất (users thật + seed) cho solver và API."""
+"""Nguồn nhân viên hợp nhất (users thật + seed tùy chọn) cho solver và API.
+
+Mặc định production: `NHIPQUAN_LOI_GIAI_SEED` TẮT — pool chỉ chứa users thật.
+Dev/test/demo bật env để có lịch sử công bằng từ seed ADR-012.
+"""
 
 from __future__ import annotations
 
+import pytest
 from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import register
 from ca_solver.load_fixture import build_lich_input
 
 
-def test_users_that_win_duplicates_seed() -> None:
-    """NV thật (users) thắng trùng id; seed chỉ bổ sung id còn thiếu."""
+@pytest.fixture(autouse=True)
+def _seed_bat(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hầu hết test ở đây cần seed bật — test chế độ mặc định tự override."""
+    monkeypatch.setenv("NHIPQUAN_LOI_GIAI_SEED", "1")
+
+
+def test_mac_dinh_chi_users_that(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Env tắt (mặc định production): pool chỉ có users, không seed."""
+    monkeypatch.delenv("NHIPQUAN_LOI_GIAI_SEED", raising=False)
+    nvs = list_nhan_vien_ops()
+    nguon = {x["nguon"] for x in nvs}
+    assert nguon == {"users"}, "mặc định phải chỉ dùng users thật"
+    ids = {x["id"] for x in nvs}
+    assert "nv_12" not in ids
+
+
+def test_users_win_trung_seed() -> None:
+    """Bật seed: users thắng trùng id; seed chỉ bổ sung id còn thiếu."""
     nvs = list_nhan_vien_ops()
     ids = [x["id"] for x in nvs]
     assert len(ids) == len(set(ids)), "id nhân viên bị lặp"
-    # mọi user thật có mặt
     assert "nv_01" in ids and "nv_02" in ids and "nv_03" in ids
     # NV seed (không trùng) vẫn đủ cho lịch sử công bằng
     assert "nv_12" in ids and "nv_25" in ids
@@ -36,8 +56,6 @@ def test_solver_nhan_nv_that() -> None:
     inp = build_lich_input(nhan_vien_ngoai=[nv_moi])
     assert "nv_99" in inp.nhan_vien_ids
     assert "nv_99" in inp.ky_nang
-    # seed không bị mất khi có NV ngoài
     assert "nv_12" in inp.nhan_vien_ids
-    # mặc định (None) giữ hành vi cũ: chỉ seed
     inp2 = build_lich_input()
     assert "nv_99" not in inp2.nhan_vien_ids
