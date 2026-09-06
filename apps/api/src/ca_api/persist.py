@@ -112,8 +112,6 @@ class _PostgresCursor:
     def _row(self, row: Any) -> Any:
         if row is None or not self._mapping:
             return row
-        if not self._cursor.description:
-            return row
         columns = [column.name for column in self._cursor.description]
         return _PostgresRow(zip(columns, row, strict=True))
 
@@ -139,28 +137,8 @@ class _PostgresConnection:
 
     def execute(self, query: str, params: Any = None) -> _PostgresCursor:
         sql = query.replace("BEGIN IMMEDIATE", "BEGIN").replace("?", "%s")
-        if "INSERT OR IGNORE INTO" in sql:
-            sql = sql.replace("INSERT OR IGNORE INTO", "INSERT INTO")
-            if "ON CONFLICT" not in sql:
-                stripped = sql.rstrip()
-                if stripped.endswith(";"):
-                    sql = stripped[:-1] + " ON CONFLICT DO NOTHING;"
-                else:
-                    sql = stripped + " ON CONFLICT DO NOTHING"
         cursor = self._connection.execute(sql, params)
         return _PostgresCursor(cursor, mapping=self.row_factory is not None)
-
-    def executemany(self, query: str, params_seq: Any) -> None:
-        for params in params_seq:
-            self.execute(query, params)
-
-    def commit(self) -> None:
-        if hasattr(self._connection, "commit"):
-            self._connection.commit()
-
-    def rollback(self) -> None:
-        if hasattr(self._connection, "rollback"):
-            self._connection.rollback()
 
 
 def _conn() -> Any:
@@ -850,17 +828,15 @@ def register(username: str, password: str, display_name: str) -> dict[str, str]:
             now_iso = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
             cx.execute(
                 """
-                INSERT INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
-                VALUES (?,?,?,?,?,TRUE,?,?)
-                ON CONFLICT(id) DO NOTHING
+                INSERT OR IGNORE INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+                VALUES (?,?,?,?,?,1,?,?)
                 """,
                 (conv_general_id, store_id, "general", "☕ NHỊP QUÁN · Hội Quán Chung", "", now_iso, now_iso),
             )
             cx.execute(
                 """
-                INSERT INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
+                INSERT OR IGNORE INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
                 VALUES (?,?,'member','active',?)
-                ON CONFLICT(conversation_id, nv_id) DO NOTHING
                 """,
                 (conv_general_id, nv, now_iso),
             )
@@ -869,7 +845,7 @@ def register(username: str, password: str, display_name: str) -> dict[str, str]:
             cx.execute(
                 """
                 INSERT INTO chat_messages(id, conversation_id, sender_id, type, content, is_unsent, created_at)
-                VALUES (?,?,'system','system',?,FALSE,?)
+                VALUES (?,?,'system','system',?,0,?)
                 """,
                 (
                     msg_welcome_id,
@@ -2239,9 +2215,8 @@ def _seed_chat_neu_trong(cx: sqlite3.Connection) -> None:
     conv_id = f"conv_general_{DEFAULT_STORE_ID}"
     cx.execute(
         """
-        INSERT INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
-        VALUES (?,?,?,?,?,TRUE,?,?)
-        ON CONFLICT(id) DO NOTHING
+        INSERT OR IGNORE INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+        VALUES (?,?,?,?,?,1,?,?)
         """,
         (conv_id, DEFAULT_STORE_ID, "general", "☕ NHỊP QUÁN · Hội Quán Chung", "", now, now),
     )
@@ -2252,9 +2227,8 @@ def _seed_chat_neu_trong(cx: sqlite3.Connection) -> None:
         part_role = "admin" if role in ("quan_ly", "chu_quan") else "member"
         cx.execute(
             """
-            INSERT INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
+            INSERT OR IGNORE INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
             VALUES (?,?,?,?,?)
-            ON CONFLICT(conversation_id, nv_id) DO NOTHING
             """,
             (conv_id, nv, part_role, "active", now),
         )
@@ -2263,9 +2237,8 @@ def _seed_chat_neu_trong(cx: sqlite3.Connection) -> None:
         msg_id = f"msg_{uuid.uuid4().hex[:12]}"
         cx.execute(
             """
-            INSERT INTO chat_messages(id, conversation_id, sender_id, type, content, is_unsent, created_at)
-            VALUES (?,?,'system','system',?,FALSE,?)
-            ON CONFLICT(id) DO NOTHING
+            INSERT OR IGNORE INTO chat_messages(id, conversation_id, sender_id, type, content, is_unsent, created_at)
+            VALUES (?,?,'system','system',?,0,?)
             """,
             (
                 msg_id,
@@ -2350,7 +2323,7 @@ def chat_conversation_create(
             INSERT INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
             VALUES (?,?,?,?,?,?,?,?)
             """,
-            (conv_id, store_id, conv_type, display_name, avatar_url, bool(is_locked), now, now),
+            (conv_id, store_id, conv_type, display_name, avatar_url, 1 if is_locked else 0, now, now),
         )
         all_participants = set(participant_nv_ids)
         if created_by:
@@ -2359,9 +2332,8 @@ def chat_conversation_create(
             role = "admin" if nv == created_by else "member"
             cx.execute(
                 """
-                INSERT INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
+                INSERT OR IGNORE INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
                 VALUES (?,?,?,?,?)
-                ON CONFLICT(conversation_id, nv_id) DO NOTHING
                 """,
                 (conv_id, nv, role, "active", now),
             )
@@ -2492,33 +2464,29 @@ def chat_conversation_list_for_user(nv_id: str, store_id: str = "quan_01") -> li
         now_iso = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         cx.execute(
             """
-            INSERT INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
-            VALUES (?,?,?,?,?,TRUE,?,?)
-            ON CONFLICT(id) DO NOTHING
+            INSERT OR IGNORE INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+            VALUES (?,?,?,?,?,1,?,?)
             """,
             (conv_general_id, store_id, "general", "☕ NHỊP QUÁN · Hội Quán Chung", "", now_iso, now_iso),
         )
         cx.execute(
             """
-            INSERT INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
+            INSERT OR IGNORE INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
             VALUES (?,?,'member','active',?)
-            ON CONFLICT(conversation_id, nv_id) DO NOTHING
             """,
             (conv_general_id, nv_id, now_iso),
         )
         cx.execute(
             """
-            INSERT INTO users(username, password_sha, role, nv_id, display_name, store_id, status)
+            INSERT OR IGNORE INTO users(username, password_sha, role, nv_id, display_name, store_id, status)
             VALUES ('ai_scheduler', 'bot_internal', 'ai_assistant', 'ai_scheduler', 'Agent Xếp Lịch 📅', ?, 'active')
-            ON CONFLICT(username) DO NOTHING
             """,
             (store_id,),
         )
         cx.execute(
             """
-            INSERT INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
+            INSERT OR IGNORE INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
             VALUES (?,'ai_scheduler','member','active',?)
-            ON CONFLICT(conversation_id, nv_id) DO NOTHING
             """,
             (conv_general_id, now_iso),
         )
@@ -2594,7 +2562,7 @@ def chat_conversation_list_for_user(nv_id: str, store_id: str = "quan_01") -> li
                 unread_n = cx.execute(
                     """
                     SELECT COUNT(*) FROM chat_messages
-                    WHERE conversation_id = ? AND sender_id != ? AND created_at > ? AND is_unsent = FALSE
+                    WHERE conversation_id = ? AND sender_id != ? AND created_at > ? AND is_unsent = 0
                     """,
                     (conv_id, nv_id, read_at),
                 ).fetchone()[0]
@@ -2602,7 +2570,7 @@ def chat_conversation_list_for_user(nv_id: str, store_id: str = "quan_01") -> li
                 unread_n = cx.execute(
                     """
                     SELECT COUNT(*) FROM chat_messages
-                    WHERE conversation_id = ? AND sender_id != ? AND is_unsent = FALSE
+                    WHERE conversation_id = ? AND sender_id != ? AND is_unsent = 0
                     """,
                     (conv_id, nv_id),
                 ).fetchone()[0]
@@ -2737,7 +2705,7 @@ def chat_message_create(
         cx.execute(
             """
             INSERT INTO chat_messages(id, conversation_id, sender_id, type, content, reply_to_id, is_unsent, metadata, created_at)
-            VALUES (?,?,?,?,?,?,FALSE,?,?)
+            VALUES (?,?,?,?,?,?,0,?,?)
             """,
             (msg_id, conv_id, sender_id, msg_type, content, reply_to_id, meta_json, now),
         )
@@ -2888,7 +2856,7 @@ def chat_message_delete(message_id: str, sender_id: str) -> dict[str, Any] | Non
         cx.execute(
             """
             UPDATE chat_messages
-            SET is_unsent = TRUE, content = 'Tin nhắn đã được thu hồi'
+            SET is_unsent = 1, content = 'Tin nhắn đã được thu hồi'
             WHERE id = ?
             """,
             (message_id,),
@@ -2964,7 +2932,7 @@ def chat_messages_search(
                 """
                 SELECT m.id FROM chat_messages m
                 JOIN chat_participants p ON m.conversation_id = p.conversation_id AND p.nv_id = ?
-                WHERE m.conversation_id = ? AND m.content LIKE ? AND m.is_unsent = FALSE AND p.status = 'active'
+                WHERE m.conversation_id = ? AND m.content LIKE ? AND m.is_unsent = 0 AND p.status = 'active'
                 ORDER BY m.created_at DESC LIMIT 50
                 """,
                 (nv_id, conv_id, q),
@@ -2975,7 +2943,7 @@ def chat_messages_search(
                 SELECT m.id FROM chat_messages m
                 JOIN chat_conversations c ON m.conversation_id = c.id
                 JOIN chat_participants p ON m.conversation_id = p.conversation_id AND p.nv_id = ?
-                WHERE c.store_id = ? AND m.content LIKE ? AND m.is_unsent = FALSE AND p.status = 'active'
+                WHERE c.store_id = ? AND m.content LIKE ? AND m.is_unsent = 0 AND p.status = 'active'
                 ORDER BY m.created_at DESC LIMIT 50
                 """,
                 (nv_id, store_id, q),
@@ -3082,7 +3050,6 @@ def _seed_tables_neu_trong(cx: sqlite3.Connection) -> None:
             """
             INSERT INTO ban_an(id, store_id, ten_ban, suc_chua, vi_tri, can_combine_with)
             VALUES (?,?,?,?,?,?)
-            ON CONFLICT(id) DO NOTHING
             """,
             default_tables,
         )
