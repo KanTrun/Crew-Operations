@@ -1,0 +1,41 @@
+#cloud-config
+# AWS EC2 user-data — bootstrap NHỊP QUÁN lần đầu tạo instance (t3.small Singapore).
+# AWS console dán vào ô "Advanced details → User data" khi tạo EC2.
+# Tương đương infra/oracle/cloud-init.yaml — cùng chuẩn #cloud-config.
+
+package_update: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - git
+  - curl
+
+write_files:
+  - path: /opt/nhipquan/bootstrap.sh
+    permissions: "0755"
+    content: |
+      #!/bin/sh
+      set -e
+      mkdir -p /opt/nhipquan
+      cd /opt/nhipquan
+
+      git clone --depth 1 https://github.com/KanTrun/Crew-Operations.git repo || true
+      # Dùng compose prod Oracle/AWS dùng chung — hạ tầng 2 nhà giống nhau
+      cp repo/infra/oracle/compose.prod.yml compose.yml 2>/dev/null || true
+      cp repo/infra/oracle/Caddyfile Caddyfile 2>/dev/null || true
+
+      # Swap 4GB — t3.small 2GB RAM, ortools solve 60s có thể đỉnh; swap chống OOM-kill
+      if [ ! -f /swapfile ]; then
+        fallocate -l 4G /swapfile
+        chmod 600 /swapfile
+        mkswap /swapfile
+        swapon /swapfile
+        echo '/swapfile none swap sw 0 0' >> /etc/fstab
+      fi
+
+      echo "bootstrap done — điền /opt/nhipquan/.env rồi chạy: docker compose up -d"
+      touch /var/lib/nhipquan-bootstrapped
+
+runcmd:
+  - [ systemctl, enable, --now, docker ]
+  - [ bash, /opt/nhipquan/bootstrap.sh ]

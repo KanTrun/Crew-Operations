@@ -21,6 +21,7 @@ export type IconName =
   | "them"
   | "cong-bang"
   | "copilot"
+  | "doi-ca"
   | "chat";
 
 const PATHS: Record<IconName, ReactNode> = {
@@ -107,6 +108,13 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M4 5h16v10H13l-4 4v-4H4z" />
       <path d="M12 8l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" />
+    </>
+  ),
+  // Hai mũi tên đổi chiều — đổi ca
+  "doi-ca": (
+    <>
+      <path d="M7 8h10l-3-3" />
+      <path d="M17 16H7l3 3" />
     </>
   ),
 };
