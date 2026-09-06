@@ -41,7 +41,9 @@ from ca_api.persist import (
     chat_message_react,
     chat_messages_list,
     chat_messages_search,
+    chat_message_get,
     chat_read_receipts_update,
+    kv_mutate,
     user_is_active,
 )
 from ca_api.persist import (
@@ -392,6 +394,64 @@ async def delete_message(
     return msg
 
 
+
+
+class TreoFromChatBody(BaseModel):
+    ghi_chu: str | None = None
+
+
+@router.post("/api/v1/chat/messages/{message_id}/treo")
+async def treo_from_chat(
+    message_id: str,
+    body: TreoFromChatBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Biến tin nhắn chat thành việc treo — dùng đúng pipeline kv `treo`.
+
+    Ai cũng treo được từ tin trong hội thoại mình tham gia; quản lý xem ở
+    /treo như mọi việc treo khác. Trả bản ghi treo + link về tin gốc.
+    """
+    import uuid
+
+    sess = _require_user(authorization)
+    msg = chat_message_get(message_id)
+    if not msg:
+        raise HTTPException(status_code=404, detail="khong_tim_thay_tin_nhan")
+    conv = chat_conversation_get(str(msg.get("conversation_id") or ""))
+    members = [str(p.get("nv_id")) for p in (conv or {}).get("participants", [])] if conv else []
+    if sess["nv_id"] not in members:
+        raise HTTPException(status_code=403, detail="khong_trong_hoi_thoai")
+
+    treo_id = f"treo_{uuid.uuid4().hex[:8]}"
+
+    def mut(hung: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        hung.append(
+            {
+                "id": treo_id,
+                "nguon": "chat",
+                "chat_message_id": message_id,
+                "conversation_id": msg.get("conversation_id"),
+                "nv_id": sess["nv_id"],
+                "nhan_vien": sess["nv_id"],
+                "noi_dung": (body.ghi_chu or str(msg.get("content") or ""))[:200],
+                "trang_thai": "dang_cho",
+                "created_at": datetime.now(UTC).isoformat(),
+            }
+        )
+        return hung
+
+    kv_mutate("treo", mut, [])
+    treo_item = {
+        "id": treo_id,
+        "ok": True,
+        "noi_dung": (body.ghi_chu or str(msg.get("content") or ""))[:200],
+        "link": "/treo",
+    }
+    await chat_ws_manager.broadcast_to_conversation(
+        str(msg.get("conversation_id")),
+        {"event": "message:treo", "data": {"message_id": message_id, "treo": treo_item}},
+    )
+    return treo_item
 @router.post("/api/v1/chat/messages/{message_id}/reactions")
 async def react_message(
     message_id: str,

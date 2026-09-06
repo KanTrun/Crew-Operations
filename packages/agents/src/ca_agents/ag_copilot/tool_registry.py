@@ -191,7 +191,11 @@ def tool_solve_weekly_schedule(
     """Run CP-SAT solver for week schedule and produce grounded draft proposal."""
     from ca_solver import build_lich_input, solve_cpsat
 
-    inp = build_lich_input()
+    # NV thật do API inject (hexagonal — agents không import ca_api trực tiếp);
+    # standalone/test không có source thì solver dùng seed như cũ.
+    _list_nv = _src("list_nhan_vien_ops")
+    nvs = _list_nv() if callable(_list_nv) else None
+    inp = build_lich_input(nhan_vien_ngoai=nvs)
     res = solve_cpsat(inp)
 
     status = res.status if res.status else ("OPTIMAL" if res.ok else "INFEASIBLE")

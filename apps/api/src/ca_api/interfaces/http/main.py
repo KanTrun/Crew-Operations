@@ -54,8 +54,10 @@ from ca_api.interfaces.http.channels import router as channels_router
 from ca_api.interfaces.http.chat import router as chat_router
 from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.mail import router as mail_router
+from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.pos import router as pos_router
+from ca_api.persist import session as auth_session
 from ca_api.interfaces.http.reservations import router as reservations_router
 from ca_api.interfaces.http.skills import router as skills_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
@@ -234,6 +236,7 @@ configure_data_sources(
         {"nv_id": u["nv_id"], "ten": u["display_name"], "role": u["role"]}
         for u in list_users()
     ],
+    list_nhan_vien_ops=list_nhan_vien_ops,
     menu_list=menu_list,
     # PR11 admin providers — đơn quầy cho snapshot/validate
     don_list=don_list,
@@ -342,7 +345,7 @@ def _build_lich_tuan_from_seed(
     seed: dict[str, Any], tuan: str | None, so_tuan: int = 1
 ) -> dict[str, Any]:
     """Build a schedule response from seed data for the requested ISO week."""
-    nhan_vien = seed.get("nhan_vien", [])
+    nhan_vien = list_nhan_vien_ops()
     ca_raw = seed.get("ca_mau_21", [])
     ca_list = _format_ca_list(ca_raw)
     tuan_iso = tuan or "2026-W36"
@@ -397,7 +400,7 @@ def get_lich_tuan(
             "so_tuan": so_tuan,
             "danh_sach_tuan": _tuan_list(tuan_iso, so_tuan),
             "trang_thai": lifecycle.get("trang_thai", "may_sinh"),
-            "nhan_vien": seed.get("nhan_vien", []),
+            "nhan_vien": list_nhan_vien_ops(),
             "ca": ca_list,
             "phan_cong": phan_cong,
             "khung_gio": _khung_template(),
