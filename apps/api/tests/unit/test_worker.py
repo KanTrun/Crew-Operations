@@ -102,3 +102,58 @@ def test_quet_bo_qua_phieu_dong(_reset_worker_state: None) -> None:
     port = RecordingPort()
     assert worker._quet(FakeClock(ms=999 * PHUT), port, han_phut=30) == 0
     assert port.sent == []
+
+
+# ── Việc định kỳ: brief sáng / solver tuần / tổng kết ngày ───────────────────
+
+
+@pytest.fixture
+def _reset_dinh_ky(monkeypatch: pytest.MonkeyPatch) -> None:
+    kv_set("worker_viec", {})
+    kv_set("phan_cong", {"w1_c01": ["nv_01"]})
+    kv_set("treo", [{"id": "t1", "noi_dung": "hết ống hút", "trang_thai": "dang_cho"}])
+    kv_set("tieu_thu", [{"hang": "sua_tuoi", "so_luong": 1, "duoi_nguong": True, "ngay": "2026-09-06"}])
+    monkeypatch.setattr(worker, "_da_chay", lambda k, m: False)
+
+
+def test_sinh_brief_sang(_reset_dinh_ky: None) -> None:
+    res = worker._sinh_brief_sang()
+    brief = kv_get("brief_hom_nay", None)
+    assert brief is not None
+    assert brief["so_ca"] == 1
+    assert brief["so_treo_mo"] == 1
+    assert "sua_tuoi" in brief["ton_canh_bao"]
+    assert "ca=1" in res
+
+
+def test_solver_tuan_tao_de_xuat_cho_duyet(_reset_dinh_ky: None) -> None:
+    """Worker xếp lịch nhưng KHÔNG công bố — đề xuất chờ quản lý."""
+    worker._chay_solver_tuan()
+    de = kv_get("worker_de_xuat_lich", None)
+    assert de is not None
+    assert de["trang_thai"] == "cho_duyet"
+    assert de["tong_so_luot"] > 0
+    lifecycle = kv_get("lich_tuan_lifecycle", {})
+    # chưa duyệt → lifecycle không đổi thành công bố
+    assert lifecycle.get("trang_thai") != "da_cong_bo"
+
+
+def test_quet_dinh_ky_chay_dung_mot_lan(_reset_dinh_ky: None) -> None:
+    lan1 = worker._quet_dinh_ky()
+    # giờ thật ≥ 6h sáng nên brief phải chạy ngay (nếu máy chạy ban ngày)
+    # — nhưng để tất định, kiểm tra logic mốc: gọi lần 2 với _da_chay thật
+    monkey = worker._da_chay
+    worker._da_chay = lambda k, m: True  # giả đã chạy
+    lan2 = worker._quet_dinh_ky()
+    worker._da_chay = monkey
+    assert isinstance(lan1, list)
+    assert lan2 == []
+
+
+def test_tong_ket_ngay(_reset_dinh_ky: None) -> None:
+    kv_set("waste_notes", [{"id": "hp1", "noi_dung": "đổ 2 ly", "ngay": "2026-09-06"}])
+    res = worker._tong_ket_ngay()
+    tong = kv_get("tong_ket_ngay", None)
+    assert tong is not None
+    assert "kiem_ke=1" in res
+    assert tong["so_ghi_hao_phi"] == 1
