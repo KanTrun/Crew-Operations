@@ -1,0 +1,27 @@
+# Caddy reverse-proxy — tự xin + gia hạn Let's Encrypt certificate.
+# {$DOMAIN} đọc từ biến môi trường container (đặt trong .env trên VM).
+
+{$DOMAIN} {
+	encode gzip
+
+	# Web Next.js — mọi path mặc định
+	handle {
+		reverse_proxy web:3000
+	}
+
+	# API — tách path /api/* và /docs, /health, /openapi.json
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle /health {
+		reverse_proxy api:8000
+	}
+	handle /docs* {
+		reverse_proxy api:8000
+	}
+	handle /openapi.json {
+		reverse_proxy api:8000
+	}
+}
+
+# Port 80 chỉ phục vụ ACME challenge + redirect sang HTTPS (Caddy tự làm).

@@ -12,6 +12,7 @@ import {
   BtnLink,
   Empty,
   Field,
+  FixtureChip,
   Input,
   Loading,
   Notice,
@@ -69,6 +70,7 @@ export default function CamNangPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
+  const [coMau, setCoMau] = useState(false);
 
   useEffect(() => {
     setToken(getToken());
@@ -80,10 +82,11 @@ export default function CamNangPage() {
   const load = useCallback(() => {
     if (!getToken()) return;
     setLoading(true);
-    apiGet<{ items: Luat[]; pipeline?: Pipeline; so_luat_that_quan?: number }>("/api/v1/cam-nang")
+    apiGet<{ items: Luat[]; pipeline?: Pipeline; so_luat_that_quan?: number; co_du_lieu_mau?: boolean }>("/api/v1/cam-nang")
       .then((d) => {
         setItems((d.items ?? []).filter((x) => x && typeof x.id === "string"));
         if (d.pipeline) setPipeline(d.pipeline);
+        setCoMau(d.co_du_lieu_mau === true);
         setError(null);
       })
       .catch((e) => setError(viError(e, { doing: "mở được cẩm nang quán" })))
@@ -177,6 +180,11 @@ export default function CamNangPage() {
         title="Cẩm nang quán"
         meta={`Luật học từ lần sửa thật trong ca. Luật sinh từ quán: ${soThat > 0 ? soThat : "chưa có"}.`}
       />
+      {coMau ? (
+        <p className="mb-4">
+          <FixtureChip />
+        </p>
+      ) : null}
 
       {!loading && pipeline ? (
         <Summary

@@ -1,0 +1,112 @@
+# Oracle Cloud Always Free — NHỊP QUÁN production stack
+#
+# Chạy TRỌN 5 dịch vụ trên 1 VM A1 (2 OCPU / 12 GB RAM / 200 GB ổ):
+#   postgres · redis · api · worker · web — đúng compose local,
+# nhưng trỏ tên miền thật + HTTPS qua Caddy + Postgres data trong volume bền.
+#
+# Điểm khác compose local (docs/runbook-oracle.md §2):
+# - Không build trên VM (A1 chậm build) — CI GitHub Actions build & push
+#   image lên GHCR, VM chỉ pull (nhanh, không hao OCPU quota).
+# - Caddy reverse-proxy term TLS cho domain thật (DuckDNS/subdomain).
+# - `restart: always` — sống sót qua reboot VM (Oracle thỉnh thoảng bảo trì).
+# - NHIPQUAN_CORS_ORIGINS phải khớp origin web public.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: nhipquan
+      POSTGRES_PASSWORD: nhipquan
+      POSTGRES_DB: nhipquan
+    volumes:
+      - nhipquan_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nhipquan"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: always
+
+  api:
+    image: ghcr.io/kantrun/crew-operations/nhipquan-api:latest
+    env_file:
+      - path: /opt/nhipquan/.env
+        required: true
+    environment:
+      DATABASE_URL: postgresql+psycopg://nhipquan:nhipquan@postgres:5432/nhipquan
+      REDIS_URL: redis://redis:6379/0
+    command: ["sh", "-c", "cd /app/apps/api && alembic -c alembic/alembic.ini upgrade head && uvicorn ca_api.interfaces.http.main:app --host 0.0.0.0 --port 8000 --workers 2"]
+    expose:
+      - "8000"
+    volumes:
+      - nhipquan_var:/app/var
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  worker:
+    image: ghcr.io/kantrun/crew-operations/nhipquan-api:latest
+    command: ["python", "-m", "ca_api.worker"]
+    env_file:
+      - path: /opt/nhipquan/.env
+        required: true
+    environment:
+      DATABASE_URL: postgresql+psycopg://nhipquan:nhipquan@postgres:5432/nhipquan
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - nhipquan_var:/app/var
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    restart: always
+
+  web:
+    image: ghcr.io/kantrun/crew-operations/nhipquan-web:latest
+    expose:
+      - "3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: always
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+    restart: always
+
+volumes:
+  nhipquan_pg:
+  nhipquan_var:
+  caddy_data:
+  caddy_config:

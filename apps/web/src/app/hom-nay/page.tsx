@@ -20,7 +20,7 @@ import { todayHeroLine, todayMetaLine, todayTechnicalDetail } from "../../lib/st
 import { SuaTimeline, TonBarChart, TreoDonutChart } from "../../ui/hom-nay/dashboard-charts";
 import { KpiCard, StatusStrip } from "../../ui/hom-nay/kpi-card";
 import { OpsPulseLite } from "../../ui/hom-nay/ops-pulse-lite";
-import { Alert, AuthGate, Btn, BtnLink, Loading, PageActions, StatusChip, TechnicalDrawer } from "../../ui/kit";
+import { Alert, AuthGate, Btn, BtnLink, FixtureChip, Loading, PageActions, StatusChip, TechnicalDrawer } from "../../ui/kit";
 
 const OpsPulse3d = dynamic(() => import("../../ui/hom-nay/ops-pulse").then((m) => m.OpsPulse), {
   ssr: false,
@@ -44,6 +44,7 @@ type Today = {
   treo_theo_trang_thai?: TreoBreakdown[];
   sua_gan_day?: SuaPreview[];
   ton_tom_tat?: TonRow[];
+  co_du_lieu_mau?: boolean;
 };
 
 function soAnToan(v: unknown): number {
@@ -143,6 +144,11 @@ export default function HomNayPage() {
 
       {data ? (
         <>
+          {data.co_du_lieu_mau ? (
+            <p className="mb-4">
+              <FixtureChip />
+            </p>
+          ) : null}
           <div className="nq-dash-kpis nq-bento">
             <KpiCard
               value={treo}

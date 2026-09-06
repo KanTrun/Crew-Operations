@@ -20,6 +20,7 @@ export type IconName =
   | "cam-nang"
   | "them"
   | "cong-bang"
+  | "copilot"
   | "chat";
 
 const PATHS: Record<IconName, ReactNode> = {
@@ -99,6 +100,13 @@ const PATHS: Record<IconName, ReactNode> = {
       <circle cx="6" cy="12" r="1.4" />
       <circle cx="12" cy="12" r="1.4" />
       <circle cx="18" cy="12" r="1.4" />
+    </>
+  ),
+  // Tia lọc trong bong bóng — trợ lý AI
+  copilot: (
+    <>
+      <path d="M4 5h16v10H13l-4 4v-4H4z" />
+      <path d="M12 8l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" />
     </>
   ),
 };

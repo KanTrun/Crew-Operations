@@ -1,0 +1,5 @@
+{
+  "framework": "nextjs",
+  "rootDirectory": "apps/web",
+  "protection": "disabled"
+}

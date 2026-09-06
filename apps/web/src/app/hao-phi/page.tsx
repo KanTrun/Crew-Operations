@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { matchSearch, matchTime, TIME_FILTER_OPTIONS, uniqueSorted, type TimeFilter } from "../../lib/list-filters";
 import { getToken } from "../../lib/session";
-import { Alert, AuthGate, Btn, Empty, Field, inputClassName, Loading, OpsCard, PageHeader } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Empty, Field, FixtureChip, inputClassName, Loading, OpsCard, PageHeader } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 import { DayOfWeekSelect } from "../../ui/ops-pickers";
 
@@ -24,6 +24,7 @@ export default function HaoPhiPage() {
   const [search, setSearch] = useState("");
   const [thuF, setThuF] = useState("all");
   const [timeF, setTimeF] = useState<TimeFilter>("all");
+  const [coMau, setCoMau] = useState(false);
 
   useEffect(() => {
     setToken(getToken());
@@ -32,8 +33,11 @@ export default function HaoPhiPage() {
 
   const load = useCallback(() => {
     if (!getToken()) return;
-    apiGet<{ items: Cluster[] }>("/api/v1/waste")
-      .then((d) => setItems(d.items ?? []))
+    apiGet<{ items: Cluster[]; co_du_lieu_mau?: boolean }>("/api/v1/waste")
+      .then((d) => {
+        setItems(d.items ?? []);
+        setCoMau(d.co_du_lieu_mau === true);
+      })
       .catch(() => setError("Không đọc được hao phí."))
       .finally(() => setLoading(false));
   }, []);
@@ -128,6 +132,11 @@ export default function HaoPhiPage() {
       </OpsCard>
 
       <OpsCard eyebrow="Khu vực 2" title="Cụm đã gom" count={filtered.length} countLabel="cụm">
+        {coMau ? (
+          <p className="mb-4">
+            <FixtureChip />
+          </p>
+        ) : null}
         <ListToolbar
           search={search}
           onSearchChange={setSearch}
