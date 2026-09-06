@@ -112,8 +112,9 @@ def _sinh_brief_sang() -> str:
 
 def _chay_solver_tuan() -> str:
     """Chạy solver cho tuần sau → đề xuất chờ duyệt. KHÔNG tự công bố."""
-    from ca_api.nhan_vien import list_nhan_vien_ops
     from ca_solver import build_lich_input, solve_cpsat
+
+    from ca_api.nhan_vien import list_nhan_vien_ops
 
     inp = build_lich_input(nhan_vien_ngoai=list_nhan_vien_ops())
     res = solve_cpsat(inp)

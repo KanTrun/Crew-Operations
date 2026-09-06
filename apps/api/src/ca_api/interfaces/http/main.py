@@ -54,15 +54,14 @@ from ca_api.interfaces.http.channels import router as channels_router
 from ca_api.interfaces.http.chat import router as chat_router
 from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.mail import router as mail_router
-from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.pos import router as pos_router
-from ca_api.persist import session as auth_session
 from ca_api.interfaces.http.reservations import router as reservations_router
 from ca_api.interfaces.http.skills import router as skills_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
 from ca_api.interfaces.http.trends import router as trends_router
+from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import (
     DangKyLoi,
     don_get,
