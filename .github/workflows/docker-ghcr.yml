@@ -1,8 +1,5 @@
 name: Build & push images to GHCR
 
-# Build 2 image (api + web) mỗi push main; VM Oracle pull về chạy.
-# Không build trên VM A1 (chậm, hao quota) — CI build sẵn.
-
 on:
   push:
     branches: [main]
@@ -10,6 +7,9 @@ on:
       - "apps/**"
       - "packages/**"
       - "infra/docker/**"
+      - ".github/workflows/docker-ghcr.yml"
+
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -17,37 +17,45 @@ env:
 jobs:
   build-push:
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       packages: write
+
     strategy:
       matrix:
         include:
           - name: nhipquan-api
             dockerfile: infra/docker/Dockerfile.api
+
           - name: nhipquan-web
             dockerfile: infra/docker/Dockerfile.web
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Web build arg — API URL public
         if: matrix.name == 'nhipquan-web'
-        run: echo "WEB_API_URL=${{ vars.PUBLIC_API_URL || 'https://nhipquan.duckdns.org' }}" >> $GITHUB_ENV
+        run: echo "WEB_API_URL=https://nhipquan.duckdns.org" >> $GITHUB_ENV
 
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Build & push ${{ matrix.name }}
+      - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm64
+          push: true
           build-args: |
             ${{ matrix.name == 'nhipquan-web' && format('NEXT_PUBLIC_API_URL={0}', env.WEB_API_URL) || '' }}
           tags: |
