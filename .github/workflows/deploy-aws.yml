@@ -1,0 +1,38 @@
+name: Deploy production to AWS
+
+on:
+  workflow_run:
+    workflows:
+      - "Build & push images to GHCR"
+    branches:
+      - main
+    types:
+      - completed
+
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to AWS
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            cd /opt/nhipquan
+
+            docker compose pull
+
+            docker compose up -d --remove-orphans
+
+            docker image prune -f
+
+            docker compose ps
