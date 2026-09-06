@@ -136,6 +136,14 @@ def build_live_snapshot(
             snapshot["page"] = page_status() if page_status else None
         except Exception:
             snapshot["page"] = None
+    elif intent == "PROPOSE_TKB_CONFIRM":
+        snapshot["tkb_nv"] = _kv_get("tkb_nv", {})
+    elif intent == "PROPOSE_SWAP_CONSENT":
+        snapshot["swap"] = [s for s in (_kv_get("swap", []) or []) if isinstance(s, dict)]
+    elif intent == "PROPOSE_HANDOVER":
+        snapshot["handover_history"] = [
+            h for h in (_kv_get("handover_history", []) or []) if isinstance(h, dict)
+        ]
     list_ca_meta = _src("list_ca_meta")
     if list_ca_meta is not None:
         try:
@@ -1072,6 +1080,159 @@ def tool_get_handovers(
     )
 
 
+def _tuan_hien_tai() -> str:
+    """ISO week 'YYYY-Wnn' của hôm nay — không hardcode."""
+    iso = datetime.now(UTC).isocalendar()
+    return f"{iso[0]}-W{iso[1]:02d}"
+
+
+def tool_get_schedule(
+    store_id: str = "quan_01",
+    **kwargs: Any,
+) -> ToolExecutionResult:
+    """GET_SCHEDULE: lịch tuần hiệu lực — phân công ca + meta ca (R0_READ)."""
+    phan_cong = _kv_get("phan_cong", {}) or {}
+    ca_meta_fn = _src("list_ca_meta")
+    ca_meta: dict[str, Any] = {}
+    if ca_meta_fn is not None:
+        try:
+            ca_meta = dict(ca_meta_fn() or {})
+        except Exception:
+            ca_meta = {}
+    tuan = _tuan_hien_tai()
+    so_ca = len(phan_cong)
+    if not phan_cong:
+        return _read_result(
+            "GET_SCHEDULE", "tool_get_schedule",
+            {"tuan": tuan, "so_ca": 0, "phan_cong": {}, "co_du_lieu": False},
+            f"Chưa có phân công nào cho tuần {tuan}.",
+            "Đọc KV phan_cong; lịch sẽ xuất hiện sau khi quản lý xếp lịch (solver) và duyệt.",
+        )
+    # Tóm tắt gọn: mỗi ca hiển thị thứ + khung + số người, không tràn payload.
+    ca_tom_tat = [
+        {
+            "ca_id": ca_id,
+            "thu": (ca_meta.get(ca_id) or {}).get("thu", ""),
+            "khung": (ca_meta.get(ca_id) or {}).get("khung", ""),
+            "bat_dau": (ca_meta.get(ca_id) or {}).get("bat_dau", ""),
+            "ket_thuc": (ca_meta.get(ca_id) or {}).get("ket_thuc", ""),
+            "so_nguoi": len(nvs) if isinstance(nvs, list) else 0,
+            "nv_ids": nvs if isinstance(nvs, list) else [],
+        }
+        for ca_id, nvs in list(phan_cong.items())[:21]
+    ]
+    return _read_result(
+        "GET_SCHEDULE", "tool_get_schedule",
+        {"tuan": tuan, "so_ca": so_ca, "phan_cong": phan_cong, "ca": ca_tom_tat, "co_du_lieu": True},
+        f"Lịch tuần {tuan}: {so_ca} ca đã phân công.",
+        "Đọc KV phan_cong (tenant-scoped) + meta ca từ seed ca_mau_21.",
+    )
+
+
+def tool_get_my_shifts(
+    store_id: str = "quan_01",
+    user_id: str = "",
+    **kwargs: Any,
+) -> ToolExecutionResult:
+    """GET_MY_SHIFTS: ca của chính người hỏi trong tuần (R0_READ, self-scoped)."""
+    if not user_id:
+        return _read_result(
+            "GET_MY_SHIFTS", "tool_get_my_shifts", {"found": False},
+            "Không xác định được tài khoản của anh/chị.",
+            "Thiếu user_id từ session — fail-closed.",
+        )
+    phan_cong = _kv_get("phan_cong", {}) or {}
+    ca_meta_fn = _src("list_ca_meta")
+    ca_meta: dict[str, Any] = {}
+    if ca_meta_fn is not None:
+        try:
+            ca_meta = dict(ca_meta_fn() or {})
+        except Exception:
+            ca_meta = {}
+    ca_cua_toi = []
+    for ca_id, nvs in phan_cong.items():
+        if isinstance(nvs, list) and user_id in nvs:
+            m = ca_meta.get(ca_id) or {}
+            ca_cua_toi.append({
+                "ca_id": ca_id,
+                "thu": m.get("thu", ""),
+                "khung": m.get("khung", ""),
+                "bat_dau": m.get("bat_dau", ""),
+                "ket_thuc": m.get("ket_thuc", ""),
+            })
+    # Sắp theo thứ trong tuần (T2..CN) rồi giờ bắt đầu cho dễ đọc.
+    thu_order = {"T2": 2, "T3": 3, "T4": 4, "T5": 5, "T6": 6, "T7": 7, "CN": 8}
+    ca_cua_toi.sort(key=lambda c: (thu_order.get(str(c.get("thu")), 9), str(c.get("bat_dau") or "")))
+    tuan = _tuan_hien_tai()
+    if not ca_cua_toi:
+        return _read_result(
+            "GET_MY_SHIFTS", "tool_get_my_shifts",
+            {"nv_id": user_id, "tuan": tuan, "so_ca": 0, "ca": [], "co_du_lieu": False},
+            f"Tuần {tuan} anh/chị chưa có ca nào trong lịch.",
+            "Đọc KV phan_cong lọc theo nv_id của session (self-scoped).",
+        )
+    mo_ta = ", ".join(
+        f"{c.get('thu') or c.get('ca_id')} {c.get('bat_dau') or ''}-{c.get('ket_thuc') or ''}".strip()
+        for c in ca_cua_toi[:5]
+    )
+    them = f" và {len(ca_cua_toi) - 5} ca khác" if len(ca_cua_toi) > 5 else ""
+    return _read_result(
+        "GET_MY_SHIFTS", "tool_get_my_shifts",
+        {"nv_id": user_id, "tuan": tuan, "so_ca": len(ca_cua_toi), "ca": ca_cua_toi, "co_du_lieu": True},
+        f"Tuần {tuan} anh/chị có {len(ca_cua_toi)} ca: {mo_ta}{them}.",
+        "Đọc KV phan_cong lọc theo nv_id của session (self-scoped).",
+    )
+
+
+def tool_get_constraint_candidates(
+    store_id: str = "quan_01",
+    user_id: str = "",
+    user_role: str = "",
+    **kwargs: Any,
+) -> ToolExecutionResult:
+    """GET_CONSTRAINT_CANDIDATES: ràng buộc chờ duyệt trong inbox (R0_READ).
+
+    - quan_ly/chu_quan: thấy toàn bộ ràng buộc chờ (cho duyệt) — khớp
+      GET /api/v1/inbox/rang-buoc.
+    - nhan_vien: chỉ thấy ràng buộc của chính mình (self-scoped).
+    """
+    items = [it for it in (_kv_get("inbox_rang_buoc", []) or []) if isinstance(it, dict)]
+    la_quan_ly = user_role in ("quan_ly", "chu_quan")
+    if la_quan_ly:
+        cho = [it for it in items if str(it.get("trang_thai") or "") in ("", "cho_duyet", "cho_xu_ly")]
+        pham_vi = "toan_bo"
+    else:
+        cho = [
+            it for it in items
+            if str(it.get("trang_thai") or "") in ("", "cho_duyet", "cho_xu_ly")
+            and str(it.get("nv_id") or "") == user_id
+        ]
+        pham_vi = "ca_nhan"
+    tom_tat = [
+        {
+            "id": it.get("id"),
+            "nv_id": it.get("nv_id"),
+            "y_dinh": it.get("y_dinh"),
+            "nguon": it.get("nguon"),
+            "trang_thai": it.get("trang_thai") or "cho_duyet",
+        }
+        for it in cho[:20]
+    ]
+    if not cho:
+        return _read_result(
+            "GET_CONSTRAINT_CANDIDATES", "tool_get_constraint_candidates",
+            {"so_cho": 0, "items": [], "pham_vi": pham_vi, "co_du_lieu": False},
+            "Hiện không có ràng buộc nào chờ duyệt.",
+            "Đọc KV inbox_rang_buoc (lọc trạng thái chờ).",
+        )
+    return _read_result(
+        "GET_CONSTRAINT_CANDIDATES", "tool_get_constraint_candidates",
+        {"so_cho": len(cho), "items": tom_tat, "pham_vi": pham_vi, "co_du_lieu": True},
+        f"{len(cho)} ràng buộc chờ duyệt — xem chi tiết tại /inbox.",
+        "Đọc KV inbox_rang_buoc (lọc trạng thái chờ; scope theo vai trò).",
+    )
+
+
 _READ_TOOLS: dict[str, Callable[..., ToolExecutionResult]] = {
     "GET_MY_PROFILE": tool_get_my_profile,
     "LIST_STAFF": tool_list_staff,
@@ -1080,6 +1241,10 @@ _READ_TOOLS: dict[str, Callable[..., ToolExecutionResult]] = {
     "GET_SHIFT_SWAPS": tool_get_shift_swaps,
     "GET_HANGING_TASKS": tool_get_hanging_tasks,
     "GET_HANDOVERS": tool_get_handovers,
+    # PR13: lịch tuần / ca cá nhân / ràng buộc chờ duyệt
+    "GET_SCHEDULE": tool_get_schedule,
+    "GET_MY_SHIFTS": tool_get_my_shifts,
+    "GET_CONSTRAINT_CANDIDATES": tool_get_constraint_candidates,
 }
 
 _TOOLS.update(_READ_TOOLS)
@@ -1494,6 +1659,200 @@ def tool_propose_page_sync(
     )
 
 
+# ── PR10 còn lại: TKB confirm, swap consent, handover (R2_CONFIRM) ──────────
+
+
+def _clean_khoang_tool(khoang_ban: list[Any]) -> list[dict[str, str]]:
+    """Chuẩn hóa khoảng bận giống route web `_clean_khoang_api` (sprint3.py).
+
+    - Thứ hợp lệ: T2..T7, CN (T8 → CN).
+    - Giờ dạng HH:MM (đủ 5 ký tự) — sai định dạng thì bỏ mục đó.
+    """
+    thu_ok = {"T2", "T3", "T4", "T5", "T6", "T7", "CN"}
+    out: list[dict[str, str]] = []
+    for item in khoang_ban or []:
+        if isinstance(item, dict):
+            thu = str(item.get("thu") or "").strip().upper()
+            start = str(item.get("start") or "").strip()
+            end = str(item.get("end") or "").strip()
+        elif isinstance(item, (tuple, list)) and len(item) == 3:
+            thu = str(item[0]).strip().upper()
+            start = str(item[1]).strip()
+            end = str(item[2]).strip()
+        else:
+            continue
+        if thu == "T8":
+            thu = "CN"
+        if thu not in thu_ok or len(start) != 5 or len(end) != 5:
+            continue
+        out.append({"thu": thu, "start": start, "end": end})
+    return out
+
+
+def tool_propose_tkb_confirm(
+    store_id: str = "quan_01",
+    user_id: str = "",
+    user_role: str = "",
+    nv_id: str = "",
+    khoang_ban: list[Any] | None = None,
+    thieu_khoang_ban: bool = False,
+    **kwargs: Any,
+) -> ToolExecutionResult:
+    """PROPOSE_TKB_CONFIRM: xác nhận TKB khoảng bận (cần duyệt — mirror route /tkb/confirm)."""
+    cleaned = _clean_khoang_tool(khoang_ban or [])
+    if thieu_khoang_ban or not cleaned:
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_tkb_confirm",
+            intent="PROPOSE_TKB_CONFIRM",
+            data={},
+            summary=(
+                "Anh/chị cho em khoảng bận theo dạng 'T2 07:00-12:00, T4 18:00-22:00' ạ."
+            ),
+            explanation="Cần ít nhất một khoảng bận hợp lệ (thứ T2..T8/CN + giờ HH:MM).",
+            requires_confirmation=False,
+            error="khoang_rong",
+        )
+    # Ownership: nhân viên chỉ xác nhận TKB của chính mình; quản lý được xác
+    # nhận hộ (mirror route web: non-manager nv != mình → 403 chi_gan_tkb_cua_minh).
+    target_nv = nv_id or user_id
+    if user_role not in {"quan_ly", "chu_quan"} and target_nv != user_id:
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_tkb_confirm",
+            intent="PROPOSE_TKB_CONFIRM",
+            data={"nv_id": target_nv},
+            summary="Nhân viên chỉ xác nhận được TKB của chính mình ạ.",
+            explanation="Ownership gate giống route web (chi_gan_tkb_cua_minh).",
+            requires_confirmation=False,
+            error="chi_gan_tkb_cua_minh",
+        )
+    payload = {
+        "snapshot_version": "live-v1",
+        "nv_id": target_nv,
+        "khoang_ban": cleaned,
+        "source_id": "copilot",
+        "upload_id": "",
+    }
+    return ToolExecutionResult(
+        success=True,
+        tool_name="tool_propose_tkb_confirm",
+        intent="PROPOSE_TKB_CONFIRM",
+        data=payload,
+        summary=f"Đề xuất xác nhận TKB {target_nv}: {len(cleaned)} khoảng bận.",
+        explanation="TKB sẽ cập nhật trong /inbox sau khi duyệt (cùng schema route web).",
+        requires_confirmation=True,
+        source_snapshot=build_live_snapshot("PROPOSE_TKB_CONFIRM", store_id),
+    )
+
+
+def tool_propose_swap_consent(
+    store_id: str = "quan_01",
+    user_id: str = "",
+    user_role: str = "",
+    swap_id: str = "",
+    thieu_swap_id: bool = False,
+    **kwargs: Any,
+) -> ToolExecutionResult:
+    """PROPOSE_SWAP_CONSENT: đồng ý tham gia một lượt đổi ca (mirror route /cho-doi-ca/{id}/dong-y)."""
+    if thieu_swap_id or not swap_id:
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_swap_consent",
+            intent="PROPOSE_SWAP_CONSENT",
+            data={},
+            summary="Anh/chị cho em mã lượt đổi ca (dạng sw_xxx) cần đồng ý ạ.",
+            explanation="Cần swap_id cụ thể.",
+            requires_confirmation=False,
+            error="missing_swap_id",
+        )
+    swaps = [s for s in (_kv_get("swap", []) or []) if isinstance(s, dict)]
+    target = next(
+        (s for s in swaps if str(s.get("id") or "") == swap_id or str(s.get("swap_id") or "") == swap_id),
+        None,
+    )
+    if not target:
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_swap_consent",
+            intent="PROPOSE_SWAP_CONSENT",
+            data={"swap_id": swap_id},
+            summary=f"Không tìm thấy lượt đổi ca {swap_id}.",
+            explanation="swap_id không tồn tại trong chợ đổi ca sống.",
+            requires_confirmation=False,
+            error="swap_not_found",
+        )
+    # Chỉ người tham gia (a/b/c) hoặc quản lý được đồng ý (mirror route web).
+    parties = {
+        str(target.get("a") or ""),
+        str(target.get("b") or ""),
+        str(target.get("c") or ""),
+    } - {""}
+    if user_id not in parties and user_role not in {"quan_ly", "chu_quan"}:
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_swap_consent",
+            intent="PROPOSE_SWAP_CONSENT",
+            data={"swap_id": swap_id},
+            summary="Anh/chị không nằm trong lượt đổi ca này nên không thể đồng ý ạ.",
+            explanation="Chỉ người tham gia hoặc quản lý được đồng ý (mirror route web).",
+            requires_confirmation=False,
+            error="khong_phai_nguoi_tham_gia",
+        )
+    payload = {
+        "snapshot_version": "live-v1",
+        "swap_id": swap_id,
+        "nv_id": user_id,
+        "hanh_dong": "dong_y",
+    }
+    return ToolExecutionResult(
+        success=True,
+        tool_name="tool_propose_swap_consent",
+        intent="PROPOSE_SWAP_CONSENT",
+        data=payload,
+        summary=f"Đề xuất đồng ý lượt đổi ca {swap_id}.",
+        explanation="Lượt đổi ca chuyển 'dong_y' khi cả hai bên chính đều đồng ý (mirror route web).",
+        requires_confirmation=True,
+        source_snapshot=build_live_snapshot("PROPOSE_SWAP_CONSENT", store_id),
+    )
+
+
+def tool_propose_handover(
+    store_id: str = "quan_01",
+    user_id: str = "",
+    text: str = "",
+    thieu_noi_dung: bool = False,
+    **kwargs: Any,
+) -> ToolExecutionResult:
+    """PROPOSE_HANDOVER: ghi bàn giao ca theo SBAR (mirror route POST /handover)."""
+    if thieu_noi_dung or not text.strip():
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_handover",
+            intent="PROPOSE_HANDOVER",
+            data={},
+            summary="Anh/chị muốn bàn giao gì cho ca tiếp theo ạ?",
+            explanation="Cần nội dung bàn giao (khuyến khích SBAR: tình hình, bối cảnh, đánh giá, đề nghị).",
+            requires_confirmation=False,
+            error="missing_handover_text",
+        )
+    payload = {
+        "snapshot_version": "live-v1",
+        "text": text.strip()[:2000],
+        "nv_id": user_id,
+    }
+    return ToolExecutionResult(
+        success=True,
+        tool_name="tool_propose_handover",
+        intent="PROPOSE_HANDOVER",
+        data=payload,
+        summary=f"Đề xuất ghi bàn giao ca: {payload['text'][:80]}...",
+        explanation="Bàn giao sẽ xuất hiện trong /handover sau khi duyệt (trích SBAR như route web).",
+        requires_confirmation=True,
+        source_snapshot=build_live_snapshot("PROPOSE_HANDOVER", store_id),
+    )
+
+
 _TOOLS.update({
     "PROPOSE_HANGING_TASK": tool_propose_hanging_task,
     "PROPOSE_TASK_COMPLETE": tool_propose_task_complete,
@@ -1503,16 +1862,10 @@ _TOOLS.update({
     "PROPOSE_PIN": tool_propose_pin,
     "GET_PAGE_STATUS": tool_get_page_status,
     "PROPOSE_PAGE_SYNC": tool_propose_page_sync,
-})
-
-
-_TOOLS.update({
-    "PROPOSE_HANGING_TASK": tool_propose_hanging_task,
-    "PROPOSE_TASK_COMPLETE": tool_propose_task_complete,
-    "PROPOSE_CONSUMPTION_RECORD": tool_propose_consumption_record,
-    "PROPOSE_MENU_UPDATE": tool_propose_menu_update,
-    "PROPOSE_ORDER_TRANSITION": tool_propose_order_transition,
-    "PROPOSE_PIN": tool_propose_pin,
+    # PR10 còn lại (R2_CONFIRM)
+    "PROPOSE_TKB_CONFIRM": tool_propose_tkb_confirm,
+    "PROPOSE_SWAP_CONSENT": tool_propose_swap_consent,
+    "PROPOSE_HANDOVER": tool_propose_handover,
 })
 
 

@@ -870,6 +870,7 @@ def register(username: str, password: str, display_name: str) -> dict[str, str]:
                 """
                 INSERT INTO chat_messages(id, conversation_id, sender_id, type, content, is_unsent, created_at)
                 VALUES (?,?,'system','system',?,FALSE,?)
+                ON CONFLICT(id) DO NOTHING
                 """,
                 (
                     msg_welcome_id,
@@ -3082,7 +3083,6 @@ def _seed_tables_neu_trong(cx: sqlite3.Connection) -> None:
             """
             INSERT INTO ban_an(id, store_id, ten_ban, suc_chua, vi_tri, can_combine_with)
             VALUES (?,?,?,?,?,?)
-            ON CONFLICT(id) DO NOTHING
             """,
             default_tables,
         )

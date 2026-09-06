@@ -249,6 +249,14 @@ class CopilotIntent(StrEnum):
     # PR12 external channel intents
     GET_PAGE_STATUS = "GET_PAGE_STATUS"
     PROPOSE_PAGE_SYNC = "PROPOSE_PAGE_SYNC"
+    # PR10 còn lại (R2_CONFIRM): xác nhận TKB, đồng ý đổi ca, ghi bàn giao ca
+    PROPOSE_TKB_CONFIRM = "PROPOSE_TKB_CONFIRM"
+    PROPOSE_SWAP_CONSENT = "PROPOSE_SWAP_CONSENT"
+    PROPOSE_HANDOVER = "PROPOSE_HANDOVER"
+    # PR13 read intents bổ sung — lịch tuần / ca cá nhân / ràng buộc chờ duyệt
+    GET_SCHEDULE = "GET_SCHEDULE"
+    GET_MY_SHIFTS = "GET_MY_SHIFTS"
+    GET_CONSTRAINT_CANDIDATES = "GET_CONSTRAINT_CANDIDATES"
     OUT_OF_SCOPE = "OUT_OF_SCOPE"
 
 
@@ -266,6 +274,10 @@ _READ_INTENTS = frozenset(
         "GET_SHIFT_SWAPS",
         "GET_HANGING_TASKS",
         "GET_HANDOVERS",
+        # PR13: lịch tuần, ca cá nhân, ràng buộc chờ duyệt — R0_READ mọi role
+        "GET_SCHEDULE",
+        "GET_MY_SHIFTS",
+        "GET_CONSTRAINT_CANDIDATES",
     }
 )
 COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
@@ -279,6 +291,10 @@ COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
             # PR10 self-service: nhân viên tạo việc treo/đánh dấu xong của mình
             "PROPOSE_HANGING_TASK",
             "PROPOSE_TASK_COMPLETE",
+            # PR10 còn lại (R2_CONFIRM): tự xác nhận TKB, đồng ý đổi ca, bàn giao ca
+            "PROPOSE_TKB_CONFIRM",
+            "PROPOSE_SWAP_CONSENT",
+            "PROPOSE_HANDOVER",
         }
     ),
     "quan_ly": frozenset(
@@ -304,6 +320,10 @@ COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
             # PR12 external channels (R0/R2)
             "GET_PAGE_STATUS",
             "PROPOSE_PAGE_SYNC",
+            # PR10 còn lại (R2_CONFIRM)
+            "PROPOSE_TKB_CONFIRM",
+            "PROPOSE_SWAP_CONSENT",
+            "PROPOSE_HANDOVER",
         }
     ),
     "chu_quan": frozenset(
@@ -318,6 +338,10 @@ COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
             "CREATE_RULE_PROPOSAL",
             "INVENTORY_RESTOCK_CHECK",
             "SEND_MAIL",
+            # PR10 còn lại (R2_CONFIRM)
+            "PROPOSE_TKB_CONFIRM",
+            "PROPOSE_SWAP_CONSENT",
+            "PROPOSE_HANDOVER",
         }
     ),
 }
@@ -457,6 +481,7 @@ CAPABILITY_REGISTRY: tuple[CapabilityDefinition, ...] = (
     # ── TKB & ràng buộc ──
     _cap("EXTRACT_TKB", "Trích TKB từ ảnh", "tkb", "R1_DRAFT"),
     _cap("CONFIRM_TKB", "Xác nhận TKB", "tkb", "R2_CONFIRM", "/inbox"),
+    _cap("PROPOSE_TKB_CONFIRM", "Xác nhận TKB qua chat", "tkb", "R2_CONFIRM", "/inbox"),
     _cap("CLASSIFY_CONSTRAINT", "Phân loại ràng buộc", "tkb", "R1_DRAFT"),
     _cap("GET_CONSTRAINT_CANDIDATES", "Xem ràng buộc chờ duyệt", "tkb", "R0_READ", "/inbox"),
     _cap("PROPOSE_CONSTRAINT_DECISION", "Duyệt ràng buộc", "tkb", "R2_CONFIRM", "/inbox"),
@@ -467,6 +492,7 @@ CAPABILITY_REGISTRY: tuple[CapabilityDefinition, ...] = (
     _cap("GET_SHIFT_SWAPS", "Xem chợ đổi ca", "shift", "R0_READ", "/doi-ca"),
     _cap("APPROVE_SHIFT_SWAP", "Duyệt đổi ca", "shift", "R2_CONFIRM"),
     _cap("CONSENT_SHIFT_SWAP", "Đồng ý đổi ca", "shift", "R2_CONFIRM", "/doi-ca"),
+    _cap("PROPOSE_SWAP_CONSENT", "Đồng ý đổi ca qua chat", "shift", "R2_CONFIRM", "/doi-ca"),
     _cap("REJECT_SHIFT_SWAP", "Từ chối đổi ca", "shift", "R2_CONFIRM", "/doi-ca"),
     _cap("FINALIZE_SHIFT_SWAP", "Chốt đổi ca", "shift", "R3_DUAL_APPROVAL", "/doi-ca"),
     # ── Menu ──
@@ -492,6 +518,7 @@ CAPABILITY_REGISTRY: tuple[CapabilityDefinition, ...] = (
     _cap("GET_HANDOVERS", "Xem bàn giao", "handover", "R0_READ", "/handover"),
     _cap("DRAFT_HANDOVER", "Soạn bàn giao nháp", "handover", "R1_DRAFT"),
     _cap("APPLY_HANDOVER", "Áp dụng bàn giao", "handover", "R2_CONFIRM", "/handover"),
+    _cap("PROPOSE_HANDOVER", "Ghi bàn giao ca qua chat", "handover", "R2_CONFIRM", "/handover"),
     # ── SOP / cẩm nang ──
     _cap("QUERY_SOP", "Hỏi quy trình", "sop", "R0_READ", "/sop"),
     _cap("GET_PLAYBOOK", "Xem cẩm nang", "sop", "R0_READ", "/cam-nang"),

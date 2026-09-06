@@ -115,7 +115,7 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/tkb/{nv_id}": "R0: TKB theo nhân viên qua UI",
     "/api/v1/tkb/extract": "R1: trích TKB qua UI /inbox",
     "/api/v1/tkb/upload": "R1: upload TKB qua UI /inbox",
-    "/api/v1/tkb/confirm": "R2: confirm TKB qua UI /inbox",
+    "/api/v1/tkb/confirm": "PR10: PROPOSE_TKB_CONFIRM đã phủ qua chat",
     "/api/v1/diem-danh": "R4: check-in vật lý tại quán",
     "/api/v1/qr": "R4: phát QR là thao tác bảo mật",
     "/api/v1/qr/{token}": "R4: dùng QR là thao tác bảo mật",
@@ -135,9 +135,9 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/users/emails": "R0: danh sách email qua UI /nguoi",
     # ── Đổi ca chi tiết — deep-link /doi-ca ──
     "/api/v1/cho-doi-ca": "R2: chợ đổi ca qua UI /doi-ca",
-    "/api/v1/cho-doi-ca/{swap_id}/dong-y": "R2: consent qua UI /doi-ca",
+    "/api/v1/cho-doi-ca/{swap_id}/dong-y": "PR10: PROPOSE_SWAP_CONSENT đã phủ qua chat",
     "/api/v1/cho-doi-ca/{swap_id}/tu-choi": "R2: consent qua UI /doi-ca",
-    "/api/v1/doi-ca/{swap_id}/xac-nhan": "R2: consent qua UI /doi-ca",
+    "/api/v1/doi-ca/{swap_id}/xac-nhan": "PR10: PROPOSE_SWAP_CONSENT đã phủ qua chat",
     "/api/v1/doi-ca/{swap_id}/tu-choi": "R2: consent qua UI /doi-ca",
     # ── Đặt bàn — deep-link /page-quan/dat-ban ──
     "/api/v1/reservations": "reservation — deep-link /page-quan/dat-ban",

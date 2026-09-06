@@ -27,6 +27,10 @@ def _setup_db(monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPathFactory)
     db = str(tmp_path / "test_copilot.db")
     monkeypatch.setenv("NHIPQUAN_DB", db)
     reset_init_flag()
+    # Reset rate-limit store giữa các test để test mới không bị 429 (pollution).
+    import ca_api.interfaces.http.copilot as copilot_mod
+
+    copilot_mod._RATE_LIMIT_STORE.clear()
 
 
 def _login_manager() -> str:
@@ -1382,6 +1386,233 @@ def test_pr11_staff_cannot_use_admin_intents() -> None:
         assert res.status_code == 200
         assert res.json()["intent"] == "OUT_OF_SCOPE"
         assert res.json()["action_proposal"] is None
+
+
+# ── PR10 còn lại: TKB confirm, swap consent, handover ───────────────────────
+
+
+def test_pr10_tkb_confirm_proposal_and_execute() -> None:
+    """Xác nhận TKB qua chat: propose -> approve -> KV 'tkb_nv' cùng schema route web."""
+    from ca_api.persist import kv_get
+
+    token = _login_manager()  # lan -> nv_01, quan_ly
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Xác nhận TKB T2 07:00-12:00, T4 18:00-22:00", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "PROPOSE_TKB_CONFIRM"
+    assert data["action_proposal"] is not None
+    action_id = data["action_proposal"]["action_id"]
+
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+    assert exec_res.json()["status"] == "executed"
+    assert exec_res.json()["result_link"] == "/inbox"
+
+    tkb = kv_get("tkb_nv", {})
+    entry = tkb["nv_01"]
+    assert entry["khoang_ban"] == [
+        {"thu": "T2", "start": "07:00", "end": "12:00"},
+        {"thu": "T4", "start": "18:00", "end": "22:00"},
+    ]
+    assert entry["xac_nhan_boi"] == "nv_01"
+    assert entry["vai"] == "quan_ly"
+    assert entry["source_id"] == "copilot"
+
+
+def test_pr10_tkb_confirm_rejects_empty_or_invalid_khoang() -> None:
+    """TKB không có khoảng bận hợp lệ -> fail-closed, không tạo proposal."""
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Xác nhận TKB giúp em", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert res.json()["action_proposal"] is None
+
+
+def test_pr10_tkb_confirm_staff_cannot_confirm_others() -> None:
+    """Nhân viên xác nhận TKB của người khác -> bị chặn ownership (mirror route web)."""
+    token = _login_staff()  # minh -> nv_03, nhan_vien
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Xác nhận TKB của Lan T2 07:00-12:00", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert res.json()["action_proposal"] is None
+
+
+def test_pr10_tkb_confirm_staff_can_confirm_own() -> None:
+    """Nhân viên xác nhận TKB của chính mình -> được tạo proposal (R2_CONFIRM)."""
+    token = _login_staff()  # minh -> nv_03
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Xác nhận TKB T3 08:00-11:00", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "PROPOSE_TKB_CONFIRM"
+    assert data["action_proposal"] is not None
+    assert data["action_proposal"]["payload_diff"]["nv_id"] == "nv_03"
+
+
+def test_pr10_swap_consent_proposal_and_execute() -> None:
+    """Đồng ý đổi ca qua chat: propose -> approve -> 'dong_y' chứa người duyệt."""
+    from ca_api.persist import kv_get, kv_set
+
+    token = _login_manager()  # lan -> nv_01
+    kv_set("swap", [{
+        "id": "sw_pr10cons01", "a": "nv_01", "b": "nv_02",
+        "trang_thai": "cho_dong_y", "dong_y": [],
+    }])
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Đồng ý đổi ca sw_pr10cons01", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "PROPOSE_SWAP_CONSENT"
+    assert data["action_proposal"] is not None
+    action_id = data["action_proposal"]["action_id"]
+
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+    assert exec_res.json()["result_link"] == "/doi-ca"
+
+    swaps = kv_get("swap", [])
+    target = next(s for s in swaps if s["id"] == "sw_pr10cons01")
+    assert "nv_01" in target["dong_y"]
+    # Chỉ a đồng ý — chưa đủ để chốt "dong_y" (cần cả b).
+    assert target["trang_thai"] != "dong_y" or "nv_02" in target["dong_y"]
+
+
+def test_pr10_swap_consent_completes_when_both_parties_agree() -> None:
+    """Cả a và b đều đồng ý qua chat -> trang_thai chuyển 'dong_y' (mirror route web)."""
+    from ca_api.persist import kv_get, kv_set
+
+    token = _login_manager()  # lan -> nv_01 (bên a)
+    kv_set("swap", [{
+        "id": "sw_pr10cons02", "a": "nv_01", "b": "nv_02",
+        "trang_thai": "cho_dong_y", "dong_y": ["nv_02"],
+    }])
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Đồng ý đổi ca sw_pr10cons02", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    action_id = res.json()["action_proposal"]["action_id"]
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+    target = next(s for s in kv_get("swap", []) if s["id"] == "sw_pr10cons02")
+    assert set(target["dong_y"]) == {"nv_01", "nv_02"}
+    assert target["trang_thai"] == "dong_y"
+
+
+def test_pr10_swap_consent_rejects_unknown_swap() -> None:
+    """sw không tồn tại -> fail-closed, không tạo proposal."""
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Đồng ý đổi ca sw_khongtontai", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert res.json()["action_proposal"] is None
+
+
+def test_pr10_swap_consent_rejects_non_participant() -> None:
+    """Người không tham gia lượt đổi ca -> bị chặn (mirror route web)."""
+    from ca_api.persist import kv_set
+
+    token = _login_staff()  # minh -> nv_03, không nằm trong {a,b,c}
+    kv_set("swap", [{
+        "id": "sw_pr10cons03", "a": "nv_01", "b": "nv_02",
+        "trang_thai": "cho_dong_y", "dong_y": [],
+    }])
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Đồng ý đổi ca sw_pr10cons03", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert res.json()["action_proposal"] is None
+
+
+def test_pr10_handover_proposal_and_execute() -> None:
+    """Ghi bàn giao ca qua chat: propose -> approve -> 'handover_history' có SBAR."""
+    from ca_api.persist import kv_get
+
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={
+            "message": "Ghi bàn giao ca: Tình hình quầy 1 ổn định. Bối cảnh cuối ca vắng khách. "
+            "Đánh giá cần chú ý máy lạnh. Đề nghị ca sau kiểm tra kho đá.",
+            "channel": "web",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "PROPOSE_HANDOVER"
+    assert data["action_proposal"] is not None
+    action_id = data["action_proposal"]["action_id"]
+
+    before = len(kv_get("handover_history", []))
+    exec_res = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert exec_res.status_code == 200
+    assert exec_res.json()["result_link"] == "/handover"
+
+    rows = kv_get("handover_history", [])
+    assert len(rows) == before + 1
+    entry = rows[-1]
+    assert entry["id"].startswith("ho_")
+    assert entry["ai"] == "nv_01"
+    # SBAR fields trích được như route web POST /handover.
+    assert entry["tinh_hinh"]
+    assert entry["de_nghi"]
+
+
+def test_pr10_handover_rejects_empty_text() -> None:
+    """Bàn giao rỗng -> fail-closed, không tạo proposal.
+
+    Parser lấy toàn bộ text làm nội dung — nếu text rỗng/không có từ khoá thì
+    không match intent HANDOVER, nếu chỉ có từ khoá thì tool thấy text không
+    rỗng và tạo proposal. Trường hợp fail-closed đúng là khi từ khoá xuất hiện
+    kèm placeholder trống.
+    """
+    import ca_agents.ag_copilot.tool_registry as tr
+
+    res = tr.execute_whitelisted_tool(
+        "PROPOSE_HANDOVER",
+        {"store_id": "quan_01", "user_id": "nv_01", "text": "", "thieu_noi_dung": True},
+    )
+    assert res.success is False
+    assert res.error == "missing_handover_text"
 
 
 def test_copilot_mail_tone_memory_feedback_loop(monkeypatch: pytest.MonkeyPatch) -> None:
