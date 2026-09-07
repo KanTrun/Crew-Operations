@@ -76,6 +76,7 @@ from ca_api.persist import (
 from ca_api.persist import login as persist_login
 from ca_api.persist import register as persist_register
 from ca_api.persist import session as auth_session
+from ca_api.services.chat_ws import notify_ops_changed
 
 
 @asynccontextmanager
@@ -471,7 +472,7 @@ def patch_khung_gio(
 
 
 @app.post("/api/v1/lich-tuan/pin")
-def pin_assignment(
+async def pin_assignment(
     body: PinBody,
     _role: Annotated[str, Depends(_require_write_role)],
 ) -> dict[str, Any]:
@@ -490,6 +491,7 @@ def pin_assignment(
         ai=_role,
         now_iso=datetime.now(UTC).isoformat(),
     )
+    await notify_ops_changed("roster:pin")
     return {"ok": True, "ca_id": body.ca_id, "nv_id": body.nv_id, "pinned": body.pinned}
 
 
@@ -502,7 +504,7 @@ class LifecycleBody(BaseModel):
 
 
 @app.patch("/api/v1/lich-tuan/lifecycle")
-def patch_lifecycle(
+async def patch_lifecycle(
     body: LifecycleBody,
     _role: Annotated[str, Depends(_require_write_role)],
 ) -> dict[str, Any]:
@@ -552,6 +554,7 @@ def patch_lifecycle(
             now_iso=datetime.now(UTC).isoformat(),
         )
 
+    await notify_ops_changed("roster:lifecycle", body.tuan_iso)
     return {"ok": True, **new_state, "solver": solver_ket_qua}
 
 

@@ -77,6 +77,12 @@ export function CopilotPane({ open, onClose }: Props = {}) {
     if (hydrated) saveState(state);
   }, [state, hydrated]);
 
+  useEffect(() => {
+    if (isControlled && open) {
+      setState((current) => current.size === 0 ? { ...current, size: 1 } : current);
+    }
+  }, [isControlled, open]);
+
   const closePane = useCallback(() => {
     if (isControlled) onClose?.();
     else setInternalOpen(false);
@@ -88,10 +94,10 @@ export function CopilotPane({ open, onClose }: Props = {}) {
       const isToggle = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k";
       if (isToggle) {
         e.preventDefault();
-        if (isControlled) {
-          if (!isOpen) onClose?.();
-        } else {
+        if (!isControlled) {
           setInternalOpen((v) => !v);
+        } else if (isOpen) {
+          onClose?.();
         }
         return;
       }
@@ -106,8 +112,10 @@ export function CopilotPane({ open, onClose }: Props = {}) {
 
   // Neo pane ở một vị trí duy nhất; kích thước cũ vẫn được kẹp trong viewport.
   const style: CSSProperties = (() => {
-    const maxWidth = Math.max(280, window.innerWidth - 32);
-    const maxHeight = Math.max(360, window.innerHeight - 32);
+    const viewportWidth = typeof window === "undefined" ? DEFAULT_STATE.w + 32 : window.innerWidth;
+    const viewportHeight = typeof window === "undefined" ? DEFAULT_STATE.h + 32 : window.innerHeight;
+    const maxWidth = Math.max(280, viewportWidth - 32);
+    const maxHeight = Math.max(360, viewportHeight - 32);
     const w = state.size === 0 ? 56 : Math.min(state.w, maxWidth);
     const h = state.size === 0 ? 56 : Math.min(state.h, maxHeight);
     const margin = 16;

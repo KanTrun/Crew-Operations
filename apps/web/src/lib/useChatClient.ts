@@ -85,7 +85,9 @@ export function useChatClient(activeConvId?: string) {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const backoffRef = useRef(1000);
   const activeConvIdRef = useRef(activeConvId);
+  const conversationsRef = useRef(conversations);
   activeConvIdRef.current = activeConvId;
+  conversationsRef.current = conversations;
 
   const currentNvId = getNvId();
 
@@ -150,6 +152,13 @@ export function useChatClient(activeConvId?: string) {
           return;
         }
 
+        if (event === "ops:changed") {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("nq:ops-changed", { detail: data }));
+          }
+          return;
+        }
+
         if (event == "message:new") {
           const msg = data as ChatMessage;
           const cid = msg.conversation_id;
@@ -161,14 +170,22 @@ export function useChatClient(activeConvId?: string) {
           });
 
           // Cập nhật last_message và unread trong danh sách hội thoại
-          setConversations((prev) =>
-            prev.map((c) => {
+          const conversation = conversationsRef.current.find((item) => item.id === cid);
+          const isCurrentActive = activeConvIdRef.current === cid;
+          const isFromMe = msg.sender_id === currentNvId;
+          if (!conversation) {
+            void loadConversations();
+          } else if (!isFromMe && !conversation.muted) {
+            chatSounds.playMessageTing();
+            if (!isCurrentActive && typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("nq:chat-notification", { detail: msg }));
+              if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+                new Notification(msg.sender_name || "Tin nhắn mới", { body: msg.content });
+              }
+            }
+          }
+          setConversations((prev) => prev.map((c) => {
               if (c.id === cid) {
-                const isCurrentActive = activeConvIdRef.current === cid;
-                const isFromMe = msg.sender_id === currentNvId;
-                if (!isFromMe && !c.muted) {
-                  chatSounds.playMessageTing();
-                }
                 return {
                   ...c,
                   updated_at: msg.created_at,
@@ -184,8 +201,7 @@ export function useChatClient(activeConvId?: string) {
                 };
               }
               return c;
-            })
-          );
+            }));
           return;
         }
 

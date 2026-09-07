@@ -9,7 +9,8 @@
 
 | Câu hỏi của bạn | Trả lời ngắn |
 |---|---|
-| Lịch tuần tương tác thế nào, ai có quyền? | **Chỉ quản lý (lan) và chủ quán (hung)** được xem/xếp/sửa. Nhân viên chỉ xem "Lịch của tôi" ở trang **/toi**. Bấm ô ngày → panel chi tiết → nút "＋ Thêm người" hoặc "×" gỡ người → nút "Xếp lịch tự động" chạy AI xếp ca (CP-SAT) |
+| Lịch tuần tương tác thế nào, ai có quyền? | **Chỉ quản lý (lan) và chủ quán (hung)** được xem/xếp/sửa. Nhân viên chỉ xem "Lịch của tôi" ở trang **/toi**. Bấm ô ngày → panel chi tiết → nút "＋ Thêm người" hoặc "×" gỡ người → nút "Xếp lịch tự động" chạy AI xếp ca (CP-SAT). Khi có người khác pin, sửa hoặc đổi trạng thái, màn hình tự cập nhật qua realtime |
+| Lịch đã đóng thì điều chỉnh ở đâu? | Trong **/roster**, chủ quán bấm **"Mở lại để điều chỉnh"**, nhập lý do bắt buộc rồi mới sửa lịch. Việc mở lại được giới hạn cho chủ quán và ghi audit; xong việc có thể xếp, duyệt, công bố và đóng lại theo chu trình |
 | Up ảnh ở trang nào? | Trang **/tkb** (Tải ảnh lịch bận) — nhân viên chụp ảnh thời khóa biểu → AI đọc khung giờ → xác nhận → lần xếp lịch sau sẽ tránh giờ học |
 | Phiếu làm cái gì? | **Đây là "checklist ca"** — giống danh mục mở quán dán tường: vào ca (đã điểm danh) → mở phiếu "Mở quán" → đi 20 bước (nhiệt độ tủ, chụp ảnh quầy, kiểm kê sữa...) → bước nào kẹt thì bấm "Để lại việc khó" (treo) → quản lý nhận việc đó. **Không có phiếu nào "tự sinh"** — phiếu cũ được lưu, reload không mất |
 | AI Agent ở đâu, làm sao thấy? | Bấm nút **"Hỏi trợ lý vận hành"** trên mọi trang (hoặc Ctrl+K) — hoặc trang **/copilot**. Mỗi câu trả lời có nhãn "🤖 AI · live/replay". AI chỉ **đề xuất** — bạn bấm "Duyệt" nó mới ghi |

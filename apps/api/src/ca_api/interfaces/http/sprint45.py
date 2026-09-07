@@ -55,6 +55,7 @@ from ca_api.orchestration import Clock
 from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import audit_add, audit_list, kv_get, kv_mutate, kv_set, list_users
 from ca_api.persist import session as auth_session
+from ca_api.services.chat_ws import notify_ops_changed
 
 router = APIRouter()
 ROOT = Path(__file__).resolve().parents[6]
@@ -338,7 +339,7 @@ def lich_life(authorization: Annotated[str | None, Header()] = None) -> dict[str
 
 
 @router.post("/api/v1/lich/lifecycle")
-def lich_transition(
+async def lich_transition(
     body: LifeBody,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
@@ -360,6 +361,7 @@ def lich_transition(
         doc["solver"] = _run_solver()
     _save_life(doc)
     _audit("lifecycle", role, {"from": cur, "to": body.to})
+    await notify_ops_changed("roster:lifecycle", doc.get("tuan_iso"))
     return doc
 
 

@@ -459,3 +459,11 @@ class ChatConnectionManager:
 
 
 chat_ws_manager = ChatConnectionManager(pubsub_backend)
+
+
+async def notify_ops_changed(kind: str, week_iso: str | None = None) -> None:
+    """Fan out a persisted operational mutation to connected clients."""
+    data: dict[str, Any] = {"kind": kind}
+    if week_iso:
+        data["week_iso"] = week_iso
+    await chat_ws_manager.broadcast_all({"event": "ops:changed", "data": data})

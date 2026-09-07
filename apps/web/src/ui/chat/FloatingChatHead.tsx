@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useChatClient } from "../../lib/useChatClient";
 import { getNvId, getToken } from "../../lib/session";
 
@@ -12,6 +12,8 @@ export function FloatingChatHead() {
   const currentNvId = getNvId();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedConvId, setSelectedConvId] = useState<string>("");
+  const [notification, setNotification] = useState<string | null>(null);
+  const notificationTimerRef = React.useRef<number | null>(null);
 
   const {
     conversations,
@@ -21,6 +23,20 @@ export function FloatingChatHead() {
   } = useChatClient(selectedConvId);
 
   const [input, setInput] = useState("");
+
+  useEffect(() => {
+    function onNotification(event: Event) {
+      const message = (event as CustomEvent<{ sender_name?: string; content?: string }>).detail;
+      setNotification(`${message.sender_name || "Tin nhắn mới"}: ${message.content || ""}`);
+      if (notificationTimerRef.current !== null) window.clearTimeout(notificationTimerRef.current);
+      notificationTimerRef.current = window.setTimeout(() => setNotification(null), 5000);
+    }
+    window.addEventListener("nq:chat-notification", onNotification);
+    return () => {
+      window.removeEventListener("nq:chat-notification", onNotification);
+      if (notificationTimerRef.current !== null) window.clearTimeout(notificationTimerRef.current);
+    };
+  }, []);
 
   // Không hiển thị widget nếu chưa đăng nhập hoặc đang ở chính trang /chat
   if (!token || pathname === "/chat" || pathname === "/login") {
@@ -38,6 +54,11 @@ export function FloatingChatHead() {
 
   return (
     <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-40 flex flex-col items-end">
+      {notification ? (
+        <div role="status" className="mb-2 max-w-[min(360px,calc(100vw-2rem))] rounded-lg border border-[var(--nq-copper)] bg-[var(--nq-bg-elevated)] px-3 py-2 text-xs text-[var(--nq-fg)] shadow-xl">
+          {notification}
+        </div>
+      ) : null}
       {/* Cửa sổ Chat Head Popup */}
       {isOpen && (
         <div className="mb-3 flex h-[min(500px,calc(100vh-7rem))] w-[calc(100vw-2rem)] max-w-[380px] flex-col overflow-hidden rounded-2xl border border-[var(--nq-dim)] bg-[var(--nq-bg-elevated)] shadow-2xl animate-fade-in">

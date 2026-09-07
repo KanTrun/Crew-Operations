@@ -66,7 +66,7 @@ const TRANG_THAI_NEXT: Record<string, { label: string; next: string }> = {
   cho_duyet: { label: "Duyệt lịch", next: "da_duyet" },
   da_duyet: { label: "Công bố cho nhân viên", next: "da_cong_bo" },
   da_cong_bo: { label: "Đóng tuần", next: "da_dong" },
-  da_dong: { label: "", next: "" },
+  da_dong: { label: "Mở lại để điều chỉnh", next: "nhap" },
 };
 
 const TRANG_THAI_COLOR: Record<string, string> = {
@@ -202,6 +202,25 @@ export default function RosterPage() {
     if (token) void loadLich(baseWeek, soTuan);
   }, [token, loadLich, baseWeek, soTuan]);
 
+  useEffect(() => {
+    if (!token || typeof window === "undefined") return;
+    const onOpsChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ week_iso?: string }>).detail;
+      if (!detail?.week_iso || detail.week_iso === baseWeek) void loadLich(baseWeek, soTuan);
+    };
+    window.addEventListener("nq:ops-changed", onOpsChanged);
+    return () => window.removeEventListener("nq:ops-changed", onOpsChanged);
+  }, [token, baseWeek, soTuan, loadLich]);
+
+  useEffect(() => {
+    if (!selectedDay) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [selectedDay]);
+
   async function handlePin(caId: string, nvId: string, ghim: boolean) {
     setPinBusy(true);
     try {
@@ -221,14 +240,22 @@ export default function RosterPage() {
 
   async function handleLifecycle(nextState: string, weekIso: string) {
     if (!nextState) return;
+    const reopenReason = trangThai === "da_dong" && nextState === "nhap"
+      ? window.prompt("Lý do mở lại lịch để điều chỉnh:")?.trim()
+      : null;
+    if (trangThai === "da_dong" && !reopenReason) return;
     setLifecycleBusy(true);
     setLifecycleMsg(null);
     try {
-      await apiSend(
-        "/api/v1/lich-tuan/lifecycle",
-        { trang_thai: nextState, tuan_iso: weekIso },
-        "PATCH",
-      );
+      if (reopenReason) {
+        await apiSend("/api/v1/lich/lifecycle", { to: nextState, ly_do: reopenReason }, "POST");
+      } else {
+        await apiSend(
+          "/api/v1/lich-tuan/lifecycle",
+          { trang_thai: nextState, tuan_iso: weekIso },
+          "PATCH",
+        );
+      }
       setLifecycleMsg("Đã cập nhật trạng thái lịch.");
       await loadLich(baseWeek, soTuan);
     } catch (e) {
@@ -650,7 +677,7 @@ export default function RosterPage() {
       )}
 
       {selectedDay && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:p-6">
           <div role="dialog" aria-modal="true" aria-labelledby="roster-day-title" className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-neutral-700 bg-neutral-900 shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
             {/* Header — ngày dễ đọc + trạng thái lịch bằng lời */}
             <div className="flex shrink-0 items-start justify-between gap-3 border-b border-neutral-800 bg-neutral-900 p-4 sm:p-6 sm:pb-4">
