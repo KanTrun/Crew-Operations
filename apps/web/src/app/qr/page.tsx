@@ -8,6 +8,7 @@ import {
   Alert,
   AuthGate,
   Btn,
+  BtnLink,
   Hint,
   MaskedCode,
   Notice,
@@ -133,6 +134,15 @@ export default function QrPage() {
             {busy ? "Đang điểm danh…" : "Điểm danh vào ca"}
           </Btn>
         </form>
+      </OpsCard>
+      <OpsCard eyebrow="Sau khi có mặt" title="Điểm danh xong thì làm gì tiếp?">
+        <p className="mb-3 text-sm text-[var(--nq-dim)]">
+          Có mặt rồi thì vào <strong>Phiếu</strong> chạy mở quán — phiếu mới mở được khi bạn đã điểm danh.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <BtnLink href="/phieu">Mở phiếu ca →</BtnLink>
+          <BtnLink href="/toi" variant="ghost">Xem lịch của tôi</BtnLink>
+        </div>
       </OpsCard>
       <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>

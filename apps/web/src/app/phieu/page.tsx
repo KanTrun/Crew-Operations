@@ -505,7 +505,10 @@ export default function PhieuPage() {
                   {t.noi_dung}
                 </p>
               ))}
-              <Hint>Quản lý xem và xử lý những việc này trong mục Việc treo.</Hint>
+              <Hint>
+                Quản lý xem và xử lý những việc này trong mục Việc treo.{" "}
+                <a href="/treo" className="underline text-[var(--nq-copper)]">Mở Việc treo →</a>
+              </Hint>
             </OpsCard>
           ) : null}
 

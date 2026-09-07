@@ -8,6 +8,7 @@ import {
   Alert,
   AuthGate,
   Btn,
+  BtnLink,
   Empty,
   Loading,
   Notice,
@@ -138,6 +139,17 @@ export default function CongBangPage() {
           người. Cần cân lại ca thì làm trên Lịch tuần.
         </Notice>
       ) : null}
+
+      <OpsCard eyebrow="Công bằng ảnh hưởng gì" title="Số dư này được dùng ở đâu?">
+        <p className="mb-3 text-sm text-[var(--nq-dim)]">
+          Bộ xếp lịch (CP-SAT) đọc số dư bốn trục này mỗi lần xếp ca — người gánh nhiều hơn sẽ được ưu
+          tiên bù. Chỉnh ca trực tiếp ở Lịch tuần, còn xin nghỉ hoặc đổi ca thì vào Hộp thư.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <BtnLink href="/roster">Sắp lại lịch tuần →</BtnLink>
+          <BtnLink href="/inbox" variant="ghost">Hộp thư duyệt</BtnLink>
+        </div>
+      </OpsCard>
       <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );

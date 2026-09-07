@@ -10,6 +10,7 @@ import {
   Alert,
   AuthGate,
   Btn,
+  BtnLink,
   Empty,
   Loading,
   OpsCard,
@@ -252,6 +253,19 @@ export default function DoiCaPage() {
               </article>
             );
           })}
+        </div>
+      </OpsCard>
+
+      <OpsCard eyebrow="Ba nhánh là gì" title="Vì sao cần đủ 3 người đồng ý?">
+        <p className="mb-3 text-sm text-[var(--nq-dim)]">
+          Người <strong>nhả</strong> và người <strong>nhận</strong> đổi trực tiếp với nhau, còn người
+          <strong> xác nhận</strong> (thường là quản lý ca) chốt cho đủ trách nhiệm. Sau khi chốt, lịch
+          tuần cập nhật và sổ công bằng ghi lại. Nếu đổi ca qua tin nhắn Zalo/Telegram thì AI tách thành
+          yêu cầu nằm trong Hộp thư chờ quản lý duyệt.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <BtnLink href="/inbox">Hộp thư duyệt →</BtnLink>
+          <BtnLink href="/cong-bang" variant="ghost">Xem công bằng</BtnLink>
         </div>
       </OpsCard>
       <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />

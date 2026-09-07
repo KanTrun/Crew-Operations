@@ -232,7 +232,10 @@ export default function MapGuide() {
       </section>
 
       <footer className="nq-map-footer" data-reveal>
-        <p>Đã hiểu luồng? Bắt đầu từ ca hôm nay hoặc đăng nhập demo.</p>
+        <p>
+          Đã hiểu luồng? Tải <strong>Hướng dẫn demo thi</strong> (docs/huong-dan-demo-thi.md) hoặc bắt
+          đầu từ ca hôm nay.
+        </p>
         <div className="nq-map-hero-actions">
           <BtnLink href="/hom-nay" variant="primary">
             Mở Hôm nay
