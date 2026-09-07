@@ -251,32 +251,21 @@ export function CopilotPane({ open, onClose }: Props = {}) {
     <div
       ref={paneRef}
       style={{ ...style, position: "fixed" }}
-      className="flex flex-col overflow-hidden border-2 border-[var(--nq-copper)] bg-[var(--nq-bg)] shadow-[8px_8px_0_var(--nq-copper-dim)]"
+      className="flex flex-col overflow-hidden rounded-xl border-2 border-[var(--nq-copper)] bg-[var(--nq-bg-elevated)] shadow-[0_8px_32px_rgba(0,0,0,0.55),8px_8px_0_var(--nq-copper-dim)]"
     >
-      {/* Drag area: dùng header dưới dạng grab — đã có trong CopilotBody rồi,
-          nhưng ta thêm 1 div kéo trên cùng để cả thanh tiêu đề kéo được. */}
-      {/* Thanh kéo mỏng trên cùng — không chặn click vào chat */}
+      {/* Thanh kéo trên cùng — chứa nút thu nhỏ/phóng to/gắn góc,
+          không đè lên tiêu đề CopilotBody bên dưới. */}
       <div
         onMouseDown={onDragMouseDown}
-        className="flex h-3 shrink-0 cursor-grab items-center justify-center border-b border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] active:cursor-grabbing"
+        className="flex h-8 shrink-0 cursor-grab items-center justify-between border-b border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-2 active:cursor-grabbing"
         title="Kéo để di chuyển"
       >
         <div className="h-0.5 w-10 bg-[var(--nq-dim)]" />
-      </div>
-      <div className="relative flex-1 min-h-0">
-        <CopilotBody
-          chat={chat}
-          mode="pane"
-          onClose={closePane}
-          onOpenFullPage={() => window.open("/copilot", "_blank", "noopener")}
-          onClearHistory={() => chat.clearHistory()}
-        />
-        {/* Controls góc trên-trái pane */}
-        <div className="absolute top-2 left-2 z-20 flex gap-1">
+        <div className="flex gap-1" onMouseDown={(e) => e.stopPropagation()}>
           <button
             onClick={() => setState((s) => ({ ...s, size: 0 }))}
             title="Thu nhỏ về chip"
-            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-2 py-1 text-[10px] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
+            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-2 py-0.5 text-[10px] leading-none text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
           >
             –
           </button>
@@ -290,7 +279,7 @@ export function CopilotPane({ open, onClose }: Props = {}) {
               }))
             }
             title={state.size === 2 ? "Thu nhỏ" : "Phóng to"}
-            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-2 py-1 text-[10px] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
+            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-2 py-0.5 text-[10px] leading-none text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
           >
             {state.size === 2 ? "▢" : "▣"}
           </button>
@@ -305,14 +294,24 @@ export function CopilotPane({ open, onClose }: Props = {}) {
               }))
             }
             title="Gắn vị trí"
-            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-1 text-[10px] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
+            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-1 text-[10px] leading-none text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
           >
-            <option value="br">BR</option>
-            <option value="bl">BL</option>
-            <option value="tr">TR</option>
-            <option value="tl">TL</option>
+            <option value="br">Góc phải-dưới</option>
+            <option value="bl">Trái-dưới</option>
+            <option value="tr">Phải-trên</option>
+            <option value="tl">Trái-trên</option>
           </select>
         </div>
+      </div>
+      <div className="relative flex-1 min-h-0">
+        <CopilotBody
+          chat={chat}
+          mode="pane"
+          onClose={closePane}
+          onOpenFullPage={() => window.open("/copilot", "_blank", "noopener")}
+          onClearHistory={() => chat.clearHistory()}
+        />
+        {/* Nút điều khiển đã chuyển lên thanh kéo trên cùng — không đè header nữa. */}
         {/* Resize handle */}
         <div
           onMouseDown={onResizeMouseDown}

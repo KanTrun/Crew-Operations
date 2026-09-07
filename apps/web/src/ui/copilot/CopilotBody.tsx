@@ -123,14 +123,14 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 }`}
               >
                 <div
-                  className={`max-w-[85%] rounded-lg border p-3 ${
+                  className={`max-w-[85%] sm:max-w-[72%] rounded-lg border p-3 ${
                     msg.sender === "user"
                       ? "border-[var(--nq-copper)] bg-[var(--nq-copper)] text-[#0e0c0a]"
                       : "border-[var(--nq-dim)] bg-[var(--nq-surface)] text-[var(--nq-fg)]"
                   }`}
                 >
                   {msg.sender === "copilot" && msg.id !== "welcome" && (
-                    <span className="mb-1.5 inline-flex items-center gap-1 rounded bg-zinc-800/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300">
+                    <span className="mb-1.5 inline-flex items-center gap-1 rounded bg-[var(--nq-bg-elevated)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--nq-copper)]">
                       🤖 AI{msg.agent_mode === "live" ? " · live" : msg.agent_mode === "replay" ? " · mẫu replay" : ""}
                     </span>
                   )}
