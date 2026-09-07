@@ -166,10 +166,10 @@ export default function TreoPage() {
 
       <TabBar>
         <TabButton active={tab === "treo"} onClick={() => setTab("treo")}>
-          Việc treo ({treo.length})
+          Việc cần xử lý ({treoDangCho})
         </TabButton>
         <TabButton active={tab === "sua"} onClick={() => setTab("sua")}>
-          Ghi nhận sửa ({sua.length})
+          Lần sửa lịch ({sua.length})
         </TabButton>
       </TabBar>
 

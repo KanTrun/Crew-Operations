@@ -95,15 +95,19 @@ def test_pin_unknown_ids_404() -> None:
 
 
 def test_pin_reflected_in_lich_tuan() -> None:
+    """Pin NV thật rồi đọc lại — hành vi sau khi pool = users (seed tắt mặc định)."""
+    from ca_api.persist import list_users
+
+    nv_that = next(u["nv_id"] for u in list_users() if u["role"] == "nhan_vien")
     client.post(
         "/api/v1/lich-tuan/pin",
-        json={"ca_id": "w1_c02", "nv_id": "nv_05", "pinned": True},
+        json={"ca_id": "w1_c02", "nv_id": nv_that, "pinned": True},
         headers=headers(client, "lan"),
     )
     r = client.get("/api/v1/lich-tuan", headers=headers(client, "lan"))
     body = r.json()
     phan_cong = body["phan_cong"]
-    assert "nv_05" in phan_cong.get("w1_c02", [])
+    assert nv_that in phan_cong.get("w1_c02", []), f"pin {nv_that} phải hiện trong w1_c02"
 
 
 def test_lifecycle_quanly_can_set() -> None:

@@ -51,11 +51,15 @@ def test_nhan_vien_dang_ky_xuat_hien_ngay() -> None:
 
 
 def test_solver_nhan_nv_that() -> None:
-    """build_lich_input hợp nhất: NV ngoài + seed, không trùng, kỹ năng đủ."""
+    """build_lich_input: pool ngoài là TOÀN BỘ — seed không tự thêm người."""
     nv_moi = {"id": "nv_99", "ten": "T", "ky_nang": ["da_nang"], "la_sinh_vien": False}
     inp = build_lich_input(nhan_vien_ngoai=[nv_moi])
     assert "nv_99" in inp.nhan_vien_ids
     assert "nv_99" in inp.ky_nang
-    assert "nv_12" in inp.nhan_vien_ids
+    # Pool ngoài là toàn bộ: seed KHÔNG được thêm vào
+    assert "nv_12" not in inp.nhan_vien_ids
+    assert len(inp.nhan_vien_ids) == 1
+    # Không truyền ngoài → hành vi cũ: seed ADR-012
     inp2 = build_lich_input()
     assert "nv_99" not in inp2.nhan_vien_ids
+    assert "nv_12" in inp2.nhan_vien_ids

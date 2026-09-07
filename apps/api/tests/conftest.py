@@ -19,3 +19,19 @@ def _isolated_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("NHIPQUAN_CAMNANG", str(tmp_path / "cam_nang.json"))
     monkeypatch.setenv("NHIPQUAN_PBKDF2_VONG", "1000")
     reset_init_flag()
+
+
+@pytest.fixture
+def _du_nhan_vien_xep_lich() -> None:
+    """Tạo đủ 12 NV cho solver có nghiệm (pool users thay seed).
+
+    Sau khi build_lich_input lấy pool ngoài làm TOÀN BỘ (2026-09-07), DB test
+    chỉ có 3-4 user mặc định → 21 ca cần tới 49 lượt là INFEASIBLE. Mọi test
+    đụng solver (copilot SCHEDULE_SOLVE, inbox wiring, worker đề xuất) dùng
+    fixture này để được nghiệm OPTIMAL như production có đủ người.
+    """
+    from ca_api.persist import init_db, register
+
+    init_db()
+    for i in range(9):
+        register(f"nv_xep{i}", f"matkhautot{i}9x", f"NV Xếp {i}")

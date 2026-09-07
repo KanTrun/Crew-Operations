@@ -23,7 +23,7 @@ def test_inbound_xin_nghi_classification_and_extraction() -> None:
     assert r.rang_buoc.get("can_xac_minh") is False
 
 
-def test_duyet_xin_nghi_wires_into_solver_nghi_phep(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_duyet_xin_nghi_wires_into_solver_nghi_phep(monkeypatch: pytest.MonkeyPatch, _du_nhan_vien_xep_lich: None) -> None:
     """Test 2: Duyệt xin nghỉ nạp vào inp.nghi_phep và solver không xếp nhân viên đó vào thứ 5."""
     monkeypatch.setenv("CA_AGENT_MODE", "replay")
     ql = headers(client, "lan")
@@ -64,7 +64,7 @@ def test_duyet_xin_nghi_wires_into_solver_nghi_phep(monkeypatch: pytest.MonkeyPa
             assert "nv_01" not in nvs, f"nv_01 bị xếp vào ca {ca_id} ngày T5 dù đã duyệt nghỉ!"
 
 
-def test_duyet_cap_nhat_tkb_wires_into_solver_tkb(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_duyet_cap_nhat_tkb_wires_into_solver_tkb(monkeypatch: pytest.MonkeyPatch, _du_nhan_vien_xep_lich: None) -> None:
     """Test 3: Duyệt TKB bận sáng T3 nạp vào inp.tkb, solver không xếp ca sáng T3."""
     monkeypatch.setenv("CA_AGENT_MODE", "replay")
     ql = headers(client, "lan")
@@ -186,7 +186,7 @@ def test_lifecycle_da_dong_to_nhap_with_audit() -> None:
     assert reopen_log.get("ly_do") == "Điều chỉnh do nhân viên xin nghỉ gấp"
 
 
-def test_solver_ignores_constraints_from_other_weeks(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_solver_ignores_constraints_from_other_weeks(monkeypatch: pytest.MonkeyPatch, _du_nhan_vien_xep_lich: None) -> None:
     """Test 6: Ràng buộc của tuần sau (2026-W02) không được nạp vào solver khi đang giải tuần hiện tại (2026-W01)."""
     monkeypatch.setenv("CA_AGENT_MODE", "replay")
     ql = headers(client, "lan")
@@ -220,7 +220,7 @@ def test_low_confidence_marked_can_xac_minh() -> None:
     assert r.rang_buoc.get("can_xac_minh") is True
 
 
-def test_deduplicate_identical_inbox_constraints(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_deduplicate_identical_inbox_constraints(monkeypatch: pytest.MonkeyPatch, _du_nhan_vien_xep_lich: None) -> None:
     """Test 8: Duyệt 2 tin nhắn trùng lặp cùng xin nghỉ không gây trùng lặp hay lỗi solver."""
     monkeypatch.setenv("CA_AGENT_MODE", "replay")
     ql = headers(client, "lan")

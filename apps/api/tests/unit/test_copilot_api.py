@@ -113,7 +113,7 @@ def test_internal_execution_rolls_back_all_kv_mutations_on_failure() -> None:
     assert copilot_draft_get(action_id)["status"] == "executing"
 
 
-def test_copilot_message_and_draft_creation() -> None:
+def test_copilot_message_and_draft_creation(_du_nhan_vien_xep_lich: None) -> None:  # noqa: ANN001
     token = _login_manager()
     res = client.post(
         "/api/v1/copilot/message",
@@ -136,7 +136,7 @@ def test_copilot_message_and_draft_creation() -> None:
     assert any(a["action_id"] == action_id and a["decision"] == "propose" for a in audits)
 
 
-def test_copilot_execute_action_approve_and_idempotency() -> None:
+def test_copilot_execute_action_approve_and_idempotency(_du_nhan_vien_xep_lich: None) -> None:  # noqa: ANN001
     token = _login_manager()
     # 1. Send message to create draft
     res = client.post(
@@ -181,7 +181,7 @@ def test_copilot_execute_action_approve_and_idempotency() -> None:
     assert conflict.json()["detail"] == "idempotency_conflict"
 
 
-def test_copilot_execute_action_reject() -> None:
+def test_copilot_execute_action_reject(_du_nhan_vien_xep_lich: None) -> None:  # noqa: ANN001
     token = _login_manager()
     res = client.post(
         "/api/v1/copilot/message",
@@ -284,6 +284,7 @@ def test_copilot_executor_failure_is_terminal(monkeypatch: pytest.MonkeyPatch) -
 
 def test_failed_internal_execution_can_retry_after_atomic_rollback(
     monkeypatch: pytest.MonkeyPatch,
+    _du_nhan_vien_xep_lich: None,
 ) -> None:
     token = _login_manager()
     proposal = client.post(
@@ -521,7 +522,7 @@ def test_copilot_execute_action_fails_closed_on_expiry(
     assert copilot_draft_get(action_id)["status"] == expected_status
 
 
-def test_copilot_vf_scope_insufficient_role() -> None:
+def test_copilot_vf_scope_insufficient_role(_du_nhan_vien_xep_lich: None) -> None:  # noqa: ANN001
     manager_token = _login_manager()
     staff_token = _login_staff()
 
@@ -543,7 +544,7 @@ def test_copilot_vf_scope_insufficient_role() -> None:
     assert "insufficient_role" in staff_exec.json()["detail"]
 
 
-def test_copilot_action_and_audit_reads_require_tenant_scoped_auth() -> None:
+def test_copilot_action_and_audit_reads_require_tenant_scoped_auth(_du_nhan_vien_xep_lich: None) -> None:  # noqa: ANN001
     manager_token = _login_manager()
     response = client.post(
         "/api/v1/copilot/message",
@@ -565,7 +566,7 @@ def test_copilot_action_and_audit_reads_require_tenant_scoped_auth() -> None:
     assert cross_store_action["store_id"] == "quan_01"
 
 
-def test_copilot_vf_stale_detection() -> None:
+def test_copilot_vf_stale_detection(_du_nhan_vien_xep_lich: None) -> None:  # noqa: ANN001
     token = _login_manager()
     res = client.post(
         "/api/v1/copilot/message",
@@ -618,7 +619,7 @@ def test_inventory_proposal_rejects_live_source_change() -> None:
     assert "stale_rejected" in execute_response.json()["detail"]
 
 
-def test_schedule_proposal_rejects_live_assignment_change() -> None:
+def test_schedule_proposal_rejects_live_assignment_change(_du_nhan_vien_xep_lich: None) -> None:  # noqa: ANN001
     from ca_api.persist import kv_set
 
     token = _login_manager()
@@ -670,7 +671,7 @@ def test_swap_proposal_rejects_live_swap_change() -> None:
     assert "stale_rejected" in execute.json()["detail"]
 
 
-def test_copilot_rejects_forbidden_correction_before_claim() -> None:
+def test_copilot_rejects_forbidden_correction_before_claim(_du_nhan_vien_xep_lich: None) -> None:  # noqa: ANN001
     token = _login_manager()
     proposal_response = client.post(
         "/api/v1/copilot/message",
@@ -694,7 +695,7 @@ def test_copilot_rejects_forbidden_correction_before_claim() -> None:
     assert copilot_draft_get(action_id)["status"] == "ready_for_approval"
 
 
-def test_copilot_amend_action_rejects_unsupported_schedule_correction() -> None:
+def test_copilot_amend_action_rejects_unsupported_schedule_correction(_du_nhan_vien_xep_lich: None) -> None:  # noqa: ANN001
     token = _login_manager()
     # 1. Propose & approve action
     res = client.post(
@@ -916,7 +917,7 @@ def test_copilot_message_stream_sse() -> None:
         assert meta.get("intent") == "SCHEDULE_SOLVE"
 
 
-def test_copilot_message_stream_persists_proposal_and_audit() -> None:
+def test_copilot_message_stream_persists_proposal_and_audit(_du_nhan_vien_xep_lich: None) -> None:
     """A streamed proposal must be saved before the UI can present approval controls."""
     token = _login_manager()
     res = client.post(

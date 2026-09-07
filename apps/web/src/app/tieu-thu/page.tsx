@@ -111,8 +111,8 @@ export default function TieuThuPage() {
     <div className="nq-page">
       <PageHeader
         kicker="Số lượng · không kế toán"
-        title="Sổ tiêu thụ"
-        meta="Hệ thống ghi số, không tính tiền. Dưới 2 khay thì cảnh báo trên Hôm nay."
+        title="Sổ kiểm kê nguyên liệu"
+        meta="Đếm hàng đầu ca và cuối ca — hệ thống tự suy ra tiêu thụ trong ca. Dưới ngưỡng sẽ cảnh báo."
       />
       {error ? <Alert>{error}</Alert> : null}
 
@@ -124,6 +124,9 @@ export default function TieuThuPage() {
 
       {isManager() ? (
         <OpsCard eyebrow="Khu vực 1" title="Ghi kiểm kê mới">
+          <p className="mb-3 text-sm text-[var(--nq-dim)]">
+            Đếm số lượng nguyên liệu đang có rồi ghi vào đây — đầu ca và cuối ca mỗi ngày.
+          </p>
           <form onSubmit={onSubmit}>
             <Field label="Hàng">
               <input
@@ -131,7 +134,7 @@ export default function TieuThuPage() {
                 value={hang}
                 onChange={(e) => setHang(e.target.value)}
                 list="hang-goi-y"
-                placeholder="Tên hàng kiểm kê…"
+                placeholder="Ví dụ: Sữa tươi"
               />
               <datalist id="hang-goi-y">
                 {hangGoiY.map((h) => (
@@ -139,13 +142,13 @@ export default function TieuThuPage() {
                 ))}
               </datalist>
             </Field>
-            <Field label="Số lượng">
+            <Field label="Số lượng còn lại">
               <input
                 className={inputClassName}
                 value={so}
                 onChange={(e) => setSo(e.target.value)}
                 inputMode="decimal"
-                placeholder="Ví dụ: 3"
+                placeholder="Ví dụ: 8"
               />
             </Field>
             <Field label="Đơn vị">
@@ -163,8 +166,7 @@ export default function TieuThuPage() {
       ) : (
         <Notice>Chỉ quản lý mới ghi số lượng. Bạn vẫn xem được lịch sử kiểm kê bên dưới.</Notice>
       )}
-
-      <OpsCard eyebrow="Khu vực 2" title="Lần ghi" count={filtered.length} countLabel="lần">
+      <OpsCard eyebrow="Khu vực 2" title="Lần kiểm kê đã ghi" count={filtered.length} countLabel="lần">
         {coMau ? (
           <p className="mb-4">
             <FixtureChip />

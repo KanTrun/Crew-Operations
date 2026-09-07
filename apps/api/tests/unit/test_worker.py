@@ -127,7 +127,15 @@ def test_sinh_brief_sang(_reset_dinh_ky: None) -> None:
 
 
 def test_solver_tuan_tao_de_xuat_cho_duyet(_reset_dinh_ky: None) -> None:
-    """Worker xếp lịch nhưng KHÔNG công bố — đề xuất chờ quản lý."""
+    """Worker xếp lịch nhưng KHÔNG công bố — đề xuất chờ quản lý.
+
+    Tạo đủ 12 NV thật trước khi xếp: 3 user mặc định không thể phủ 21 ca
+    (một số ca cần 3 người) — solver INFEASIBLE là đúng, không phải bug.
+    """
+    from ca_api.persist import register
+
+    for i in range(9):
+        register(f"nv_pool_{i}", f"matkhautot{i}9x", f"NV Pool {i}")
     worker._chay_solver_tuan()
     de = kv_get("worker_de_xuat_lich", None)
     assert de is not None
@@ -151,7 +159,11 @@ def test_quet_dinh_ky_chay_dung_mot_lan(_reset_dinh_ky: None) -> None:
 
 
 def test_tong_ket_ngay(_reset_dinh_ky: None) -> None:
-    kv_set("waste_notes", [{"id": "hp1", "noi_dung": "đổ 2 ly", "ngay": "2026-09-06"}])
+    from datetime import datetime, timezone
+
+    hom_nay = datetime.now(timezone.utc).date().isoformat()
+    kv_set("tieu_thu", [{"hang": "sua_tuoi", "so_luong": 8, "duoi_nguong": False, "ngay": hom_nay}])
+    kv_set("waste_notes", [{"id": "hp1", "noi_dung": "đổ 2 ly", "ngay": hom_nay}])
     res = worker._tong_ket_ngay()
     tong = kv_get("tong_ket_ngay", None)
     assert tong is not None
