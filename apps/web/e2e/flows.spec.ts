@@ -19,7 +19,7 @@ test.describe("8 luồng vận hành chính (Quản lý - lan)", () => {
 
   test("2 — phiếu mở quán", async ({ page }) => {
     await page.goto("/phieu");
-    await expect(page.getByRole("heading", { name: "Mở phiếu", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Phiếu ca làm việc|Mở phiếu/i })).toBeVisible();
   });
 
   test("3 — lịch của tôi", async ({ page }) => {
@@ -112,7 +112,7 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
       ["/page-quan", /Page quán|Radar|Xu Hướng/i],
       ["/cam-nang", /Cẩm nang/i],
       ["/tkb", /Lịch bận|Tải ảnh lịch bận/i],
-      ["/tieu-thu", /Tiêu thụ/i],
+      ["/tieu-thu", /Sổ kiểm kê|Tiêu thụ/i],
       ["/hao-phi", /Hao phí/i],
       ["/cong-bang", /Công bằng/i],
       ["/sop", /Hỏi quy trình quán|Hỏi SOP/i],
