@@ -15,11 +15,21 @@ test.describe("Phiếu demo — latency mở form (#7 nhóm A)", () => {
     await login(page);
     const t0 = Date.now();
     await page.goto("/phieu");
-    await expect(page.getByRole("heading", { name: "Mở phiếu", exact: true })).toBeVisible();
-    const startBtn = page.getByRole("button", { name: /Mở quán|Phiếu/i }).first();
+    await expect(
+      page.getByRole("heading", { name: /Phiếu ca làm việc|Mở phiếu/i }),
+    ).toBeVisible();
+    // Luồng mới: xác nhận có mặt → chọn phiếu "Mở quán" → thấy bước đầu.
+    const coMatBtn = page.getByRole("button", { name: /Tôi đã có mặt/i });
+    if (await coMatBtn.isVisible()) {
+      await coMatBtn.click();
+      await expect(
+        page.getByRole("button", { name: /Mở quán/i }).first(),
+      ).toBeVisible({ timeout: 10_000 });
+    }
+    const startBtn = page.getByRole("button", { name: /Mở quán/i }).first();
     if (await startBtn.isVisible()) {
       await startBtn.click();
-      await expect(page.getByText(/bước/i).first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText(/Bước \d+ \//).first()).toBeVisible({ timeout: 15_000 });
     }
     const elapsed_ms = Date.now() - t0;
     console.log(`PHIEU_DEMO_MS=${elapsed_ms}`);
