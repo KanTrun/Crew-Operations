@@ -230,7 +230,8 @@ def test_ops_pickers_for_staff() -> None:
     r = client.get("/api/v1/ops/pickers", headers=nv)
     assert r.status_code == 200
     body = r.json()
-    assert len(body["nhan_vien"]) >= 3
+    assert {person["id"] for person in body["nhan_vien"]} >= {"nv_01", "nv_02", "nv_03"}
+    assert "nv_04" not in {person["id"] for person in body["nhan_vien"]}
     assert len(body["ca"]) >= 3
     assert body["me_nv_id"] == "nv_03"
 

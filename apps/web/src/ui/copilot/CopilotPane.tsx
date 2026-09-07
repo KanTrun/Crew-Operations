@@ -1,6 +1,4 @@
-// CopilotPane: pane nổi, KHÔNG overlay main content. Có thể kéo, thu nhỏ về
-// chip, phóng to / đính vị trí 4 góc. Lưu vị trí + size vào localStorage đ
-// giữa các lần mở.
+// CopilotPane: pane nổi, neo ổn định ở góc phải dưới và có thể thu nhỏ.
 //
 // Dùng được ở AppShell và các page riêng (controlled mode như trước).
 
@@ -9,7 +7,6 @@
 import React, {
   useCallback,
   useEffect,
-  useRef,
   useState,
   type CSSProperties,
 } from "react";
@@ -22,11 +19,6 @@ const POS_KEY = "ag_copilot_pane_pos_v2";
 interface PaneState {
   /** 0 = collapsed (chỉ chip), 1 = small, 2 = large */
   size: 0 | 1 | 2;
-  /** Gắn vị trí: br | bl | tr | tl. */
-  corner: "br" | "bl" | "tr" | "tl";
-  /** Khi user kéo tự do, vị trí pixel (top, left). */
-  x: number;
-  y: number;
   /** Size của pane khi size>0. */
   w: number;
   h: number;
@@ -34,9 +26,6 @@ interface PaneState {
 
 const DEFAULT_STATE: PaneState = {
   size: 1,
-  corner: "br",
-  x: -1,
-  y: -1,
   w: 380,
   h: 540,
 };
@@ -115,114 +104,21 @@ export function CopilotPane({ open, onClose }: Props = {}) {
     return () => window.removeEventListener("keydown", onKey);
   }, [isControlled, isOpen, onClose]);
 
-  // Kéo pane
-  const dragRef = useRef<{
-    startX: number;
-    startY: number;
-    startPaneX: number;
-    startPaneY: number;
-  } | null>(null);
-
-  const onDragMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      // Click phải / click vào nút → không kéo
-      if (e.button !== 0) return;
-      const target = e.target as HTMLElement;
-      if (target.closest("button, input, a, textarea, select")) return;
-      e.preventDefault();
-      const r = paneRef.current?.getBoundingClientRect();
-      if (!r) return;
-      dragRef.current = {
-        startX: e.clientX,
-        startY: e.clientY,
-        startPaneX: r.left,
-        startPaneY: r.top,
-      };
-      const onMove = (ev: MouseEvent) => {
-        const d = dragRef.current;
-        if (!d) return;
-        const maxX = window.innerWidth - 120;
-        const maxY = window.innerHeight - 60;
-        const nx = clamp(ev.clientX - d.startX + d.startPaneX, 0, maxX);
-        const ny = clamp(ev.clientY - d.startY + d.startPaneY, 0, maxY);
-        setState((s) => ({ ...s, x: nx, y: ny, corner: "br" }));
-      };
-      const onUp = () => {
-        dragRef.current = null;
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
-      };
-      window.addEventListener("mousemove", onMove);
-      window.addEventListener("mouseup", onUp);
-    },
-    []
-  );
-
-  // Tính position pixel. Kẹp pane trong viewport để trạng thái cũ hoặc màn
-  // hình nhỏ không làm pane trôi khỏi vùng thao tác.
-  const paneRef = useRef<HTMLDivElement>(null);
+  // Neo pane ở một vị trí duy nhất; kích thước cũ vẫn được kẹp trong viewport.
   const style: CSSProperties = (() => {
     const maxWidth = Math.max(280, window.innerWidth - 32);
     const maxHeight = Math.max(360, window.innerHeight - 32);
     const w = state.size === 0 ? 56 : Math.min(state.w, maxWidth);
     const h = state.size === 0 ? 56 : Math.min(state.h, maxHeight);
     const margin = 16;
-    let left: number;
-    let top: number;
-    if (state.x >= 0 && state.y >= 0 && state.size > 0) {
-      // Tự do kéo
-      left = clamp(state.x, 0, Math.max(0, window.innerWidth - w));
-      top = clamp(state.y, 0, Math.max(0, window.innerHeight - h));
-    } else {
-      // Gắn theo corner
-      const isLeft = state.corner === "bl" || state.corner === "tl";
-      const isTop = state.corner === "tr" || state.corner === "tl";
-      left = isLeft ? margin : window.innerWidth - w - margin;
-      top = isTop ? margin : window.innerHeight - h - margin;
-    }
     return {
-      left,
-      top,
+      right: margin,
+      bottom: margin,
       width: w,
       height: h,
       zIndex: 50,
     };
   })();
-
-  // Resize khi kéo góc dưới-phải
-  const resizeRef = useRef<{
-    startX: number;
-    startY: number;
-    startW: number;
-    startH: number;
-  } | null>(null);
-
-  const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const r = paneRef.current?.getBoundingClientRect();
-    if (!r) return;
-    resizeRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      startW: r.width,
-      startH: r.height,
-    };
-    const onMove = (ev: MouseEvent) => {
-      const d = resizeRef.current;
-      if (!d) return;
-      const nw = Math.max(280, ev.clientX + d.startW - d.startX);
-      const nh = Math.max(360, ev.clientY + d.startH - d.startY);
-      setState((s) => ({ ...s, w: nw, h: nh }));
-    };
-    const onUp = () => {
-      resizeRef.current = null;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }, []);
 
   const chat = useCopilotChat("pane");
 
@@ -249,17 +145,10 @@ export function CopilotPane({ open, onClose }: Props = {}) {
 
   return (
     <div
-      ref={paneRef}
       style={{ ...style, position: "fixed" }}
       className="flex flex-col overflow-hidden rounded-xl border-2 border-[var(--nq-copper)] bg-[var(--nq-bg-elevated)] shadow-[0_8px_32px_rgba(0,0,0,0.55),8px_8px_0_var(--nq-copper-dim)]"
     >
-      {/* Thanh kéo trên cùng — chứa nút thu nhỏ/phóng to/gắn góc,
-          không đè lên tiêu đề CopilotBody bên dưới. */}
-      <div
-        onMouseDown={onDragMouseDown}
-        className="flex h-8 shrink-0 cursor-grab items-center justify-between border-b border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-2 active:cursor-grabbing"
-        title="Kéo để di chuyển"
-      >
+      <div className="flex h-8 shrink-0 items-center justify-between border-b border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-2">
         <div className="h-0.5 w-10 bg-[var(--nq-dim)]" />
         <div className="flex gap-1" onMouseDown={(e) => e.stopPropagation()}>
           <button
@@ -283,24 +172,6 @@ export function CopilotPane({ open, onClose }: Props = {}) {
           >
             {state.size === 2 ? "▢" : "▣"}
           </button>
-          <select
-            value={state.corner}
-            onChange={(e) =>
-              setState((s) => ({
-                ...s,
-                corner: e.target.value as PaneState["corner"],
-                x: -1,
-                y: -1,
-              }))
-            }
-            title="Gắn vị trí"
-            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-1 text-[10px] leading-none text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
-          >
-            <option value="br">Góc phải-dưới</option>
-            <option value="bl">Trái-dưới</option>
-            <option value="tr">Phải-trên</option>
-            <option value="tl">Trái-trên</option>
-          </select>
         </div>
       </div>
       <div className="relative flex-1 min-h-0">
@@ -310,17 +181,6 @@ export function CopilotPane({ open, onClose }: Props = {}) {
           onClose={closePane}
           onOpenFullPage={() => window.open("/copilot", "_blank", "noopener")}
           onClearHistory={() => chat.clearHistory()}
-        />
-        {/* Nút điều khiển đã chuyển lên thanh kéo trên cùng — không đè header nữa. */}
-        {/* Resize handle */}
-        <div
-          onMouseDown={onResizeMouseDown}
-          className="absolute bottom-0 right-0 w-4 h-4 z-20 cursor-se-resize"
-          style={{
-            background:
-              "linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.25) 50%)",
-          }}
-          title="Kéo để đổi kích thước"
         />
       </div>
     </div>

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken } from "../lib/session";
 import { Logo } from "../ui/Logo";
+import { Icon } from "../ui/icons";
 
 export default function HomePage() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function HomePage() {
           <div className="flex w-full max-w-md flex-col gap-3 sm:flex-row sm:gap-4">
             <Link
               href="/login"
-              className="nq-ink-on-solid flex-1 border-2 border-[var(--nq-copper)] bg-[var(--nq-copper)] px-6 py-4 text-center font-black tracking-widest uppercase transition-all duration-300 hover:bg-transparent hover:text-[var(--nq-copper)]"
+              className="nq-ink-on-solid flex min-h-14 flex-1 items-center justify-center border-2 border-[var(--nq-copper)] bg-[var(--nq-copper)] px-6 py-4 text-center text-base font-black leading-none tracking-widest uppercase transition-all duration-300 hover:bg-transparent hover:text-[var(--nq-copper)] sm:text-lg"
             >
               Vào Ca
             </Link>
@@ -126,8 +127,8 @@ export default function HomePage() {
 
             {/* Feature 2 */}
             <div className="p-5 rounded-xl bg-neutral-900/60 border border-neutral-800/80 space-y-2.5">
-              <div className="w-9 h-9 rounded-lg bg-emerald-950/60 border border-emerald-700/50 flex items-center justify-center text-lg">
-                🗓️
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--nq-copper)]/50 bg-[var(--nq-copper-dim)] text-[var(--nq-copper)]">
+                <Icon name="roster" size={20} />
               </div>
               <h3 className="font-bold text-sm text-neutral-100">Roster (Lịch Tuần 3 Khung)</h3>
               <p className="text-xs text-neutral-400 leading-relaxed">

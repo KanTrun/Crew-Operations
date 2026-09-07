@@ -1845,9 +1845,11 @@ a:focus-visible {
 
 .nq-dash-strip-kicker {
   margin: 0 0 var(--nq-s2);
-  font-family: var(--nq-font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
+  font-family: var(--nq-font-display);
+  font-size: clamp(1rem, 1.8vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--nq-copper);
 }

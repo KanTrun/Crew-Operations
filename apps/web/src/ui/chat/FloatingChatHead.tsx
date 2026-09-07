@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useState } from "react";
 import { useChatClient } from "../../lib/useChatClient";
-import { getToken } from "../../lib/session";
+import { getNvId, getToken } from "../../lib/session";
 
 export function FloatingChatHead() {
   const pathname = usePathname();
   const token = getToken();
+  const currentNvId = getNvId();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedConvId, setSelectedConvId] = useState<string>("");
 
@@ -39,7 +40,7 @@ export function FloatingChatHead() {
     <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-40 flex flex-col items-end">
       {/* Cửa sổ Chat Head Popup */}
       {isOpen && (
-        <div className="mb-3 w-[360px] sm:w-[380px] h-[500px] bg-[var(--nq-card)] border border-[var(--nq-dim)] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in">
+        <div className="mb-3 flex h-[min(500px,calc(100vh-7rem))] w-[calc(100vw-2rem)] max-w-[380px] flex-col overflow-hidden rounded-2xl border border-[var(--nq-dim)] bg-[var(--nq-bg-elevated)] shadow-2xl animate-fade-in">
           {/* Header */}
           <div className="p-3 bg-[var(--nq-copper)] text-white flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -88,9 +89,10 @@ export function FloatingChatHead() {
           </div>
 
           {/* Vùng tin nhắn thu nhỏ */}
-          <div className="flex-1 p-3 overflow-y-auto space-y-2 bg-[var(--nq-bg)]/50 text-xs">
+          <div className="flex-1 space-y-2 overflow-y-auto bg-[var(--nq-bg)] p-3 text-xs">
             {messages.slice(-20).map((msg) => {
               const isSystem = msg.sender_id === "system";
+              const isMine = msg.sender_id === currentNvId;
               if (isSystem) {
                 return (
                   <div key={msg.id} className="text-center text-[10px] text-[var(--nq-muted)] italic my-1">
@@ -99,12 +101,14 @@ export function FloatingChatHead() {
                 );
               }
               return (
-                <div key={msg.id} className="p-2 rounded-xl bg-[var(--nq-card)] border border-[var(--nq-dim)]">
-                  <div className="flex justify-between text-[10px] text-[var(--nq-muted)] mb-0.5">
-                    <span className="font-bold text-[var(--nq-copper)]">{msg.sender_name || msg.sender_id}</span>
-                    <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+                  <div className={`w-fit max-w-[82%] rounded-xl border p-2 ${isMine ? "border-[var(--nq-copper)] bg-[var(--nq-copper)] text-[#0e0c0a]" : "border-[var(--nq-dim)] bg-[var(--nq-card)] text-[var(--nq-fg)]"}`}>
+                    <div className={`mb-0.5 flex gap-3 text-[10px] ${isMine ? "justify-end text-[#0e0c0a]/70" : "justify-between text-[var(--nq-muted)]"}`}>
+                      {!isMine ? <span className="font-bold text-[var(--nq-copper)]">{msg.sender_name || msg.sender_id}</span> : null}
+                      <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                    <p className="break-words text-[11px] leading-relaxed">{msg.content}</p>
                   </div>
-                  <p className="text-[11px] text-[var(--nq-fg)] break-words">{msg.content}</p>
                 </div>
               );
             })}

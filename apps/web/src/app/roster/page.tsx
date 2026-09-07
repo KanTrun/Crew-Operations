@@ -650,12 +650,12 @@ export default function RosterPage() {
       )}
 
       {selectedDay && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-neutral-900 border border-neutral-700 rounded-xl max-w-2xl w-full p-6 space-y-4 shadow-2xl overflow-y-auto max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+          <div role="dialog" aria-modal="true" aria-labelledby="roster-day-title" className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-neutral-700 bg-neutral-900 shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
             {/* Header — ngày dễ đọc + trạng thái lịch bằng lời */}
-            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-neutral-800 bg-neutral-900 p-4 sm:p-6 sm:pb-4">
               <div>
-                <h3 className="text-lg font-bold text-amber-400">
+                <h3 id="roster-day-title" className="text-lg font-bold text-amber-400">
                   {dayTitle(selectedDay)} · {dayDate(monday, dayOffsets[days.indexOf(selectedDay)])}
                 </h3>
                 <p className="text-xs text-neutral-400">
@@ -675,6 +675,8 @@ export default function RosterPage() {
                 Đóng ✕
               </button>
             </div>
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
 
             {/* Kết quả thao tác hiện NGAY trong modal — không bao giờ bị che */}
             {error ? (
@@ -786,8 +788,10 @@ export default function RosterPage() {
               })}
             </div>
 
+            </div>
+
             {/* Footer: điều hướng ngày + 1 hành động lifecycle duy nhất */}
-            <div className="flex items-center justify-between pt-3 border-t border-neutral-800">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-t border-neutral-800 bg-neutral-900 p-4 sm:px-6">
               <button
                 type="button"
                 onClick={() => {

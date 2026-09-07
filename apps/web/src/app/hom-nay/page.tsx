@@ -16,7 +16,7 @@ import {
   viError,
 } from "../../lib/present";
 import { getRole, getToken, isChuQuan, isManager } from "../../lib/session";
-import { todayHeroLine, todayMetaLine, todayTechnicalDetail } from "../../lib/status";
+import { todayHeroLine, todayTechnicalDetail } from "../../lib/status";
 import { SuaTimeline, TonBarChart, TreoDonutChart } from "../../ui/hom-nay/dashboard-charts";
 import { KpiCard, StatusStrip } from "../../ui/hom-nay/kpi-card";
 import { OpsPulseLite } from "../../ui/hom-nay/ops-pulse-lite";
@@ -111,7 +111,6 @@ export default function HomNayPage() {
 
   const ngay = safeText(data?.ngay, "");
   const hero = data ? todayHeroLine(treo, data.lich?.trang_thai) : "Đang đọc nhịp quán…";
-  const meta = data && ngay ? todayMetaLine(ngay, data.lich?.nguon) : undefined;
   const canhBao = (data?.canh_bao_ton ?? []).map((x) => matHangLabel(x)).filter(Boolean);
   const preview = data?.treo_preview ?? [];
   const treoBreakdown = data?.treo_theo_trang_thai ?? [];
@@ -127,7 +126,7 @@ export default function HomNayPage() {
   return (
     <div className="nq-page nq-page--dashboard">
       <div className="nq-dash-hero">
-        <StatusStrip status={hero} meta={meta} />
+        <StatusStrip status={hero} />
         {pulseModel ? use3d ? <OpsPulse3d model={pulseModel} /> : <OpsPulseLite model={pulseModel} /> : null}
       </div>
 

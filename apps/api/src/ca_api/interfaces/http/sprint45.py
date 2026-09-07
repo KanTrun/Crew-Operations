@@ -52,6 +52,7 @@ from ca_api.interfaces.http.sprint3 import (
     _require_role,
 )
 from ca_api.orchestration import Clock
+from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import audit_add, audit_list, kv_get, kv_mutate, kv_set, list_users
 from ca_api.persist import session as auth_session
 
@@ -1272,7 +1273,7 @@ def ops_pickers(authorization: Annotated[str | None, Header()] = None) -> dict[s
     seed = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
     staff = [
         {"id": n["id"], "ten": n.get("ten") or n["id"]}
-        for n in seed.get("nhan_vien", [])
+        for n in list_nhan_vien_ops()
         if isinstance(n, dict) and n.get("id")
     ]
     shifts = []
