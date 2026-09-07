@@ -140,12 +140,13 @@ def _run_solver() -> dict[str, Any]:
         for it in inbox_items:
             if not isinstance(it, dict) or it.get("trang_thai") != "duyet":
                 continue
-            hl = it.get("hieu_luc") or {}
-            if hl.get("loai") != "rang_buoc_cho_solver":
+            hl = it.get("hieu_luc")
+            if not isinstance(hl, dict) or hl.get("loai") != "rang_buoc_cho_solver":
                 continue
 
             # Ngữ cảnh tuần: chỉ nạp item khớp tuần đang giải
-            it_tuan = it.get("rang_buoc", {}).get("tuan_id") or hl.get("tuan_id")
+            rb = it.get("rang_buoc") if isinstance(it.get("rang_buoc"), dict) else {}
+            it_tuan = rb.get("tuan_id") or hl.get("tuan_id")
             if it_tuan and it_tuan != tuan_hien_tai:
                 continue
 
@@ -154,7 +155,7 @@ def _run_solver() -> dict[str, Any]:
                 continue
 
             y = str(it.get("y_dinh") or "")
-            rb = it.get("rang_buoc") or {}
+            # rb đã chuẩn hóa dict ở trên (dòng 148) — không gán lại.
             thu = str(rb.get("thu") or hl.get("thu") or "")
 
             if y == "xin_nghi" and thu:
@@ -236,16 +237,22 @@ def _run_solver() -> dict[str, Any]:
 
 
 def _life() -> dict[str, Any]:
-    return cast(
-        dict[str, Any],
-        kv_get(
-            "lifecycle",
-            {"tuan_iso": "2026-W01", "trang_thai": "nhap", "nguon": "quan"},
-        ),
-    )
+    """Trạng thái lịch tuần — SSOT là kv `lich_tuan_lifecycle` (giờ main.py,
+    copilot và sprint45 cùng một nguồn). Fallback đọc kv `lifecycle` cũ cho
+    data trước khi nhất hóa; thiếu hẳn thì về nháp tuần mặc định."""
+    moi = kv_get("lich_tuan_lifecycle", None)
+    if isinstance(moi, dict) and moi.get("trang_thai"):
+        return cast(dict[str, Any], moi)
+    cu = kv_get("lifecycle", None)
+    if isinstance(cu, dict) and cu.get("trang_thai"):
+        return cast(dict[str, Any], cu)
+    return {"tuan_iso": "2026-W01", "trang_thai": "nhap", "nguon": "quan"}
 
 
 def _save_life(doc: dict[str, Any]) -> None:
+    # Ghi CẢ HAI khóa: mới là nguồn sự thật, cũ giữ đồng bộ cho tiến trình
+    # còn đọc chưa nâng cấp (đọc soft ở trên tự bỏ qua khi mới tồn tại).
+    kv_set("lich_tuan_lifecycle", doc)
     kv_set("lifecycle", doc)
 
 

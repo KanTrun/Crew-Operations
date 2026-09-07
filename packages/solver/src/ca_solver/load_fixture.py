@@ -34,16 +34,14 @@ def build_lich_input(
     """Build empty assignment input for CP-SAT (phan_cong starts empty).
 
     `nhan_vien_ngoai`: danh sách NV thật từ bảng users (SSOT `ca_api.nhan_vien`).
-    Khi có, hợp nhất với seed (users thắng trùng id) để quán thật xếp được
-    lịch cho nhân viên tự đăng ký — không đổi hành vi khi None (solver độc lập).
+    Khi có, đây là TOÀN BỘ pool xếp lịch — seed chỉ dùng cho ca mẫu/TKB lịch
+    sử, KHÔNG thêm người (nếu thêm, lịch sẽ đầy NV seed dù prod tắt seed).
+    Khi None: giữ hành vi cũ (solver độc lập chạy trên seed ADR-012).
     """
     seed = seed or load_seed()
     params = load_labor_params()
     if nhan_vien_ngoai:
-        seen = {str(x.get("id")) for x in nhan_vien_ngoai}
-        nvs = list(nhan_vien_ngoai) + [
-            x for x in seed["nhan_vien"] if str(x.get("id")) not in seen
-        ]
+        nvs = list(nhan_vien_ngoai)
     else:
         nvs = seed["nhan_vien"]
     cas = seed["ca_mau_21"]

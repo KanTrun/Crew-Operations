@@ -343,23 +343,24 @@ def _tuan_list(base_tuan: str, so_tuan: int) -> list[str]:
 def _build_lich_tuan_from_seed(
     seed: dict[str, Any], tuan: str | None, so_tuan: int = 1
 ) -> dict[str, Any]:
-    """Build a schedule response from seed data for the requested ISO week."""
+    """Khung lịch khi máy xếp CHƯA chạy: ca mẫu thật, phân công TRỐNG.
+
+    Trước đây nhánh này sinh phan_cong giả từ pattern seed (mỗi ô 1-2 người
+    nhìn như thật) — đó là nguồn "mock trong lịch tuần". Giờ chỉ trả khung
+    trống + nguon_lich='chua_xep' để UI hiện "Chưa xếp — chạy máy xếp".
+    Pins vẫn áp vào để cấu hình ghim sẵn không mất.
+    """
     nhan_vien = list_nhan_vien_ops()
     ca_raw = seed.get("ca_mau_21", [])
     ca_list = _format_ca_list(ca_raw)
     tuan_iso = tuan or "2026-W36"
     phan_cong: dict[str, list[str]] = {}
-    for i, ca in enumerate(ca_list):
-        ca_id = ca["id"]
-        assigned = [nhan_vien[j]["id"] for j in range(min(2, len(nhan_vien))) if (i + j) % 3 != 2]
-        phan_cong[ca_id] = assigned
     for (ca_id, nv_id), pinned in _pin_map().items():
-        if pinned and nv_id not in phan_cong.get(ca_id, []):
+        if pinned:
             phan_cong.setdefault(ca_id, []).append(nv_id)
-        elif not pinned and nv_id in phan_cong.get(ca_id, []):
-            phan_cong[ca_id].remove(nv_id)
     return {
         "nguon": "quan",
+        "nguon_lich": "chua_xep",
         "tuan_iso": tuan_iso,
         "so_tuan": so_tuan,
         "danh_sach_tuan": _tuan_list(tuan_iso, so_tuan),
@@ -394,7 +395,7 @@ def get_lich_tuan(
         lifecycle = kv_get("lich_tuan_lifecycle", {})
         return {
             "nguon": "quan",
-            "adr": data.get("adr", "ADR-012"),
+            "nguon_lich": "solver",
             "tuan_iso": tuan_iso,
             "so_tuan": so_tuan,
             "danh_sach_tuan": _tuan_list(tuan_iso, so_tuan),
@@ -475,9 +476,10 @@ def pin_assignment(
     _role: Annotated[str, Depends(_require_write_role)],
 ) -> dict[str, Any]:
     """Pin or unpin a nhan_vien to a ca. Requires quan_ly or chu_quan token."""
-    seed = _seed()
-    ca_ids = {c["id"] for c in seed.get("ca_mau_21", [])}
-    nv_ids = {n["id"] for n in seed.get("nhan_vien", [])}
+    # NV hợp lệ = pool xếp lịch (users thật + seed nếu bật) — không chỉ seed:
+    # pin từ chối users thật sẽ ẩn lỗi sau modal roster (đã sửa 2026-09-07).
+    ca_ids = {c["id"] for c in _seed().get("ca_mau_21", [])}
+    nv_ids = {n["id"] for n in list_nhan_vien_ops()}
     if body.ca_id not in ca_ids or body.nv_id not in nv_ids:
         raise HTTPException(status_code=404, detail="ca_or_nv_not_found")
     prev = _set_pin(body.ca_id, body.nv_id, body.pinned)
@@ -491,7 +493,7 @@ def pin_assignment(
     return {"ok": True, "ca_id": body.ca_id, "nv_id": body.nv_id, "pinned": body.pinned}
 
 
-_LIFECYCLE_STATES = ("nhap", "cho_duyet", "da_duyet", "da_cong_bo", "da_dong")
+_LIFECYCLE_STATES = ("nhap", "dang_giai", "cho_duyet", "da_duyet", "da_cong_bo", "da_dong")
 
 
 class LifecycleBody(BaseModel):
@@ -506,7 +508,8 @@ def patch_lifecycle(
 ) -> dict[str, Any]:
     """Quản lý/Chủ quán cập nhật trạng thái và mốc tuần lịch.
 
-    Chuyển trạng thái hợp lệ: nhap → cho_duyet → da_duyet → da_cong_bo → da_dong.
+    Chuyển trạng thái hợp lệ: nhap → dang_giai → cho_duyet → da_duyet → da_cong_bo → da_dong.
+    `dang_giai` chạy solver CP-SAT ngay (như POST /lich/lifecycle) — UI một nút.
     Chỉ chu_quan mới có thể cập nhật tuan_iso (chuyển sang tuần khác).
     """
     if body.trang_thai not in _LIFECYCLE_STATES:
@@ -515,15 +518,17 @@ def patch_lifecycle(
             detail=f"trang_thai_khong_hop_le — cho phep: {', '.join(_LIFECYCLE_STATES)}",
         )
 
-    def mut(cur: dict[str, Any]) -> dict[str, Any]:
-        cur["trang_thai"] = body.trang_thai
-        if body.tuan_iso:
-            cur["tuan_iso"] = body.tuan_iso
-        cur["cap_nhat_luc"] = datetime.now(UTC).isoformat()
-        cur["cap_nhat_boi"] = _role
-        return cur
+    def chuyen(trang_thai: str) -> dict[str, Any]:
+        def m(cur: dict[str, Any]) -> dict[str, Any]:
+            cur["trang_thai"] = trang_thai
+            if body.tuan_iso:
+                cur["tuan_iso"] = body.tuan_iso
+            cur["cap_nhat_luc"] = datetime.now(UTC).isoformat()
+            cur["cap_nhat_boi"] = _role
+            return cur
+        return kv_mutate("lich_tuan_lifecycle", m, {})
 
-    new_state = kv_mutate("lich_tuan_lifecycle", mut, {})
+    new_state = chuyen(body.trang_thai)
     record_sua(
         loai="lifecycle",
         truoc={},
@@ -531,7 +536,23 @@ def patch_lifecycle(
         ai=_role,
         now_iso=datetime.now(UTC).isoformat(),
     )
-    return {"ok": True, **new_state}
+
+    solver_ket_qua: dict[str, Any] | None = None
+    if body.trang_thai == "dang_giai":
+        from ca_api.interfaces.http.sprint45 import _run_solver
+
+        solver_ket_qua = _run_solver()
+        # Solver đã ghi phan_cong — sau giải là chờ duyệt, đúng chuỗi demo.
+        new_state = chuyen("cho_duyet")
+        record_sua(
+            loai="lifecycle",
+            truoc={"trang_thai": "dang_giai"},
+            sau={"trang_thai": "cho_duyet", "tu_solver": True},
+            ai=_role,
+            now_iso=datetime.now(UTC).isoformat(),
+        )
+
+    return {"ok": True, **new_state, "solver": solver_ket_qua}
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

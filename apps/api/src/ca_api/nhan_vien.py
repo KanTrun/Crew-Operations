@@ -24,7 +24,10 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[4]
 SEED = ROOT / "data" / "seed" / "sample.json"
 
-KY_NANG_MAC_DINH = ["da_nang"]
+# Kỹ năng mặc định cho NV chưa khai báo hồ sơ: phủ mọi vị trí ca mẫu
+# (solver C02 so khớp ky_nang với vi_tri — "da_nang" một mình bị chặn).
+# Chủ quán có thể thu hẹp sau khi có hồ sơ kỹ năng thật.
+KY_NANG_MAC_DINH = ["da_nang", "thu_ngan", "pha_che", "phuc_vu", "kho"]
 
 
 def _seed_nhan_vien() -> list[dict[str, Any]]:
