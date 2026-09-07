@@ -48,6 +48,7 @@ export function canEdit(role = getRole()): boolean {
 }
 
 const STAFF_ACCESS = new Set([
+  "/",
   "/hom-nay",
   "/cuoc-hop",
   "/quay",

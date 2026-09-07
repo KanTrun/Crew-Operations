@@ -3,64 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { API } from "../lib/api";
-import { getToken, setSession } from "../lib/session";
+import { getToken } from "../lib/session";
 import { Logo } from "../ui/Logo";
-
-type StaffProfile = {
-  username: string;
-  name: string;
-  role: "chu_quan" | "quan_ly" | "nhan_vien";
-  roleName: string;
-  icon: string;
-  desc: string;
-  badgeColor: string;
-};
-
-const MAIN_ROLES: StaffProfile[] = [
-  {
-    username: "hung",
-    name: "Hùng Trần",
-    role: "chu_quan",
-    roleName: "Chủ quán",
-    icon: "👑",
-    desc: "Toàn quyền quản trị · Cấu hình menu & công thức · Báo cáo chi phí · Giám sát tuân thủ SOP chuỗi",
-    badgeColor: "border-emerald-700/60 bg-emerald-950/40 text-emerald-300",
-  },
-  {
-    username: "lan",
-    name: "Lan Nguyễn",
-    role: "quan_ly",
-    roleName: "Quản lý ca",
-    icon: "👔",
-    desc: "Xếp lịch tuần · Điều hành họp ca AI · Kiểm soát SOP · Huấn luyện nhân viên · Duyệt việc treo",
-    badgeColor: "border-amber-700/60 bg-amber-950/40 text-amber-300",
-  },
-  {
-    username: "minh",
-    name: "Minh Phạm",
-    role: "nhan_vien",
-    roleName: "Nhân viên ca",
-    icon: "☕",
-    desc: "Màn hình POS & KDS quầy bar · Xem lịch đi làm cá nhân · Chợ đổi ca · Phiếu mở/đóng ca",
-    badgeColor: "border-neutral-700/60 bg-neutral-900/60 text-neutral-200",
-  },
-];
-
-const OTHER_STAFF = [
-  { username: "an", name: "An Lê", roleName: "Thu ngân & Barista", icon: "☕" },
-  { username: "bao", name: "Bảo Hoàng", roleName: "Barista & Kho", icon: "☕" },
-  { username: "chi", name: "Chi Vũ", roleName: "Thu ngân & Phục vụ", icon: "☕" },
-  { username: "thao", name: "Thảo Dương", roleName: "Thu ngân & Pha chế", icon: "☕" },
-  { username: "dung", name: "Dũng Đặng", roleName: "Kho & Phục vụ", icon: "☕" },
-  { username: "quan", name: "Quân Lương", roleName: "Pha chế & Đơn QR", icon: "☕" },
-  { username: "yen", name: "Yến Kiều", roleName: "Thu ngân & Kho", icon: "☕" },
-];
 
 export default function HomePage() {
   const router = useRouter();
-  const [loadingUser, setLoadingUser] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
@@ -69,34 +16,6 @@ export default function HomePage() {
     }
   }, []);
 
-  async function handleQuickLogin(user: string) {
-    setLoadingUser(user);
-    setError(null);
-    try {
-      const res = await fetch(`${API}/api/v1/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: user, password: "nhipquan" }),
-      });
-      if (!res.ok) {
-        setError("Không thể đăng nhập. Kiểm tra backend API.");
-        return;
-      }
-      const data = (await res.json()) as {
-        token: string;
-        role: string;
-        display_name: string;
-        nv_id: string;
-      };
-      setSession(data.token, data.role, data.display_name, data.nv_id);
-
-      router.push("/hom-nay");
-    } catch {
-      setError("Lỗi kết nối máy chủ API http://localhost:8000. Vui lòng kiểm tra Docker stack.");
-    } finally {
-      setLoadingUser(null);
-    }
-  }
 
   return (
     <main className="relative min-h-screen bg-[var(--nq-bg)] text-[var(--nq-fg)] selection:bg-[var(--nq-copper)] selection:text-black">
@@ -137,11 +56,6 @@ export default function HomePage() {
               Tiếp tục phiên làm việc →
             </button>
           )}
-          {error && (
-            <div className="p-3 bg-rose-950/60 border border-rose-700 text-rose-200 text-xs rounded-lg max-w-md">
-              {error}
-            </div>
-          )}
         </section>
 
         {/* Editorial block (UI local) */}
@@ -174,97 +88,20 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 3 ROLE HERO CARDS — từ đồng đội */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-mono font-bold uppercase tracking-widest text-neutral-400">
-              Chọn vai trò để vào ca (Đăng nhập 1 chạm)
-            </h2>
-            <span className="text-xs text-neutral-500 font-mono">Mật khẩu mặc định: nhipquan</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {MAIN_ROLES.map((roleItem) => {
-              const isBusy = loadingUser === roleItem.username;
-              return (
-                <div
-                  key={roleItem.username}
-                  onClick={() => !isBusy && handleQuickLogin(roleItem.username)}
-                  className={`group cursor-pointer relative p-6 rounded-2xl bg-neutral-900/80 border border-neutral-800 hover:border-amber-600/70 hover:bg-neutral-900 transition-all duration-300 shadow-xl flex flex-col justify-between space-y-6 ${
-                    isBusy ? "opacity-60 pointer-events-none" : ""
-                  }`}
-                >
-                  <div className="space-y-4">
-                    {/* Header */}
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-neutral-800 border border-neutral-700 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                          {roleItem.icon}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-lg text-neutral-100 group-hover:text-amber-300 transition-colors">
-                            {roleItem.name}
-                          </h3>
-                          <span className="text-xs font-mono text-neutral-400">
-                            @{roleItem.username}
-                          </span>
-                        </div>
-                      </div>
-
-                      <span
-                        className={`text-[11px] font-mono font-bold px-2.5 py-1 rounded-full border ${roleItem.badgeColor}`}
-                      >
-                        {roleItem.roleName}
-                      </span>
-                    </div>
-
-                    {/* Description */}
-                    <p className="text-xs text-neutral-400 leading-relaxed min-h-[48px]">
-                      {roleItem.desc}
-                    </p>
-                  </div>
-
-                  {/* Button Action */}
-                  <div className="pt-4 border-t border-neutral-800/80 flex items-center justify-between">
-                    <span className="text-xs font-bold text-neutral-300 group-hover:text-amber-400 transition-colors flex items-center gap-1.5">
-                      {isBusy ? "Đang vào ca…" : `Vào vai ${roleItem.roleName}`}
-                    </span>
-                    <span className="text-neutral-500 group-hover:text-amber-400 group-hover:translate-x-1 transition-all">
-                      →
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ========================================================================= */}
-        {/* OTHER STAFF (QUICK SELECTION FOR TESTING)                                 */}
-        {/* ========================================================================= */}
-        <section className="p-5 rounded-2xl bg-neutral-950/60 border border-neutral-800/80 space-y-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <span className="text-xs font-mono font-bold text-neutral-400 uppercase tracking-wider">
-              👥 Nhân sự ca khác (Chọn nhanh):
-            </span>
-            <span className="text-xs text-neutral-500">Bấm vào bất kỳ bạn nào để vào ca</span>
-          </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            {OTHER_STAFF.map((staff) => (
-              <button
-                key={staff.username}
-                type="button"
-                onClick={() => handleQuickLogin(staff.username)}
-                disabled={loadingUser === staff.username}
-                className="shrink-0 px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-amber-700 text-xs text-neutral-200 transition-all flex items-center gap-2"
-              >
-                <span>{staff.icon}</span>
-                <span className="font-bold">{staff.name}</span>
-                <span className="text-[10px] text-neutral-400 font-mono">({staff.roleName})</span>
-              </button>
-            ))}
-          </div>
+        {/* CTA đăng nhập — bỏ quick-login 1-chạm (phi logic trên domain công khai) */}
+        <section className="flex flex-col sm:flex-row items-center justify-center gap-4 py-4">
+          <Link
+            href="/login"
+            className="w-full sm:w-auto text-center px-10 py-4 rounded-xl border-2 border-[var(--nq-copper)] bg-[var(--nq-copper)] text-sm font-black uppercase tracking-widest text-[#0e0c0a] hover:bg-transparent hover:text-[var(--nq-copper)] transition-all shadow-[8px_8px_0px_0px_var(--nq-copper-dim)]"
+          >
+            Đăng nhập
+          </Link>
+          <Link
+            href="/dang-ky"
+            className="w-full sm:w-auto text-center px-10 py-4 rounded-xl border-2 border-[var(--nq-dim)] text-sm font-black uppercase tracking-widest text-[var(--nq-fg)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] transition-all"
+          >
+            Tạo tài khoản
+          </Link>
         </section>
 
         {/* ========================================================================= */}
