@@ -5,13 +5,31 @@ import { apiGet } from "../../lib/api";
 import { actorLabel, formatLuc, hanhViLabel, viError } from "../../lib/present";
 import { matchExact, matchSearch, matchTime, TIME_FILTER_OPTIONS, uniqueSorted, type TimeFilter } from "../../lib/list-filters";
 import { getToken } from "../../lib/session";
+import { subscribeRealtime } from "../../lib/realtime";
 import { Alert, AuthGate, Empty, Loading, OpsCard, PageHeader } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 
-type Row = { at?: string; ai?: string; hanh?: string };
+type Row = {
+  id?: number;
+  at?: string;
+  ai?: string;
+  hanh?: string;
+  payload?: Record<string, unknown> | unknown;
+  [key: string]: unknown;
+};
 
 function rowHaystack(it: Row): string {
-  return [hanhViLabel(it.hanh), actorLabel(it.ai), it.at].filter(Boolean).join(" ");
+  return [hanhViLabel(it.hanh), actorLabel(it.ai), it.at, JSON.stringify(it.payload ?? it)].filter(Boolean).join(" ");
+}
+
+function payloadEntries(row: Row): [string, string][] {
+  const payload = row.payload ?? Object.fromEntries(
+    Object.entries(row).filter(([key]) => !["id", "at", "ai", "hanh"].includes(key)),
+  );
+  if (payload && typeof payload === "object") {
+    return Object.entries(payload as Record<string, unknown>).map(([key, value]) => [key, typeof value === "string" ? value : JSON.stringify(value)]);
+  }
+  return [["chi_tiet", String(payload)]];
 }
 
 export default function VetPage() {
@@ -49,6 +67,13 @@ export default function VetPage() {
 
   useEffect(() => {
     if (token) load();
+  }, [token, load]);
+
+  useEffect(() => {
+    if (!token) return;
+    return subscribeRealtime((packet) => {
+      if (packet.event === "ops:changed") load();
+    });
   }, [token, load]);
 
   const personOptions = useMemo(
@@ -109,11 +134,24 @@ export default function VetPage() {
 
         <div className="nq-list">
           {filtered.map((it, i) => (
-            <article key={`${i}-${it.at ?? ""}`} className="nq-item">
-              <p className="nq-item-title">{hanhViLabel(it.hanh)}</p>
-              <p className="nq-item-sub">
-                {actorLabel(it.ai)} · <span className="font-mono">{formatLuc(it.at)}</span>
-              </p>
+            <article key={it.id ?? `${i}-${it.at ?? ""}`} className="nq-item">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="nq-item-title">{hanhViLabel(it.hanh)}</p>
+                  <p className="nq-item-sub">
+                    {actorLabel(it.ai)} · <span className="font-mono">{formatLuc(it.at)}</span>
+                  </p>
+                </div>
+                {it.id ? <span className="font-mono text-[10px] text-[var(--nq-muted)]">#{it.id}</span> : null}
+              </div>
+              <dl className="mt-3 grid gap-x-4 gap-y-1 border-t border-[var(--nq-dim)]/50 pt-2 text-xs sm:grid-cols-2">
+                {payloadEntries(it).map(([key, value]) => (
+                  <div key={key} className="min-w-0">
+                    <dt className="text-[10px] uppercase tracking-wide text-[var(--nq-muted)]">{key}</dt>
+                    <dd className="break-words text-[var(--nq-fg)]">{value}</dd>
+                  </div>
+                ))}
+              </dl>
             </article>
           ))}
         </div>

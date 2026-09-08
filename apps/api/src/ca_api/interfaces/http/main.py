@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 
 try:
@@ -38,7 +39,7 @@ from ca_playbook.sua import list_sua as _list_sua
 from ca_playbook.vong_doi import de_xuat as _de_xuat
 from ca_playbook.vong_doi import list_luat as _list_luat
 from ca_playbook.vong_doi import tim_mau as _tim_mau
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -107,6 +108,42 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+_LOG = logging.getLogger(__name__)
+_REALTIME_SKIP_PREFIXES = (
+    "/api/v1/auth/",
+    "/api/v1/chat/",
+    "/api/v1/channels/telegram/webhook",
+    "/api/v1/channels/zalo/webhook",
+)
+_REALTIME_SKIP_PATHS = {
+    "/api/v1/lich-tuan/pin",
+    "/api/v1/lich-tuan/lifecycle",
+    "/api/v1/lich/lifecycle",
+}
+
+
+@app.middleware("http")
+async def broadcast_successful_mutation(request: Request, call_next: Any) -> Any:
+    response = await call_next(request)
+    path = request.url.path
+    should_broadcast = (
+        request.method in {"POST", "PUT", "PATCH", "DELETE"}
+        and response.status_code < 400
+        and path not in _REALTIME_SKIP_PATHS
+        and not path.startswith(_REALTIME_SKIP_PREFIXES)
+    )
+    if should_broadcast:
+        try:
+            await notify_ops_changed(
+                "http:mutation",
+                details={"path": path, "status": response.status_code},
+            )
+        except Exception:
+            _LOG.exception("Operational realtime notification failed for %s", path)
+    return response
+
+
 app.include_router(sprint3_router)
 app.include_router(sprint45_router)
 app.include_router(channels_router)

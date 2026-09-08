@@ -50,6 +50,9 @@ def test_lifecycle_and_audit() -> None:
     assert client.get("/api/v1/audit", headers=ql).status_code == 403
     log = client.get("/api/v1/audit", headers=chu).json()["items"]
     assert log
+    assert log[0]["id"] >= log[-1]["id"]
+    assert isinstance(log[0]["payload"], dict)
+    assert log[0]["payload"]["to"] in {"dang_giai", "cho_duyet", "da_cong_bo"}
 
 
 def test_inbox_ten_decisions() -> None:

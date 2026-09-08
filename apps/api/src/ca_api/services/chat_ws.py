@@ -11,6 +11,7 @@ import re
 import time
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import uuid4
 
@@ -461,9 +462,20 @@ class ChatConnectionManager:
 chat_ws_manager = ChatConnectionManager(pubsub_backend)
 
 
-async def notify_ops_changed(kind: str, week_iso: str | None = None) -> None:
+async def notify_ops_changed(
+    kind: str,
+    week_iso: str | None = None,
+    details: dict[str, Any] | None = None,
+) -> None:
     """Fan out a persisted operational mutation to connected clients."""
-    data: dict[str, Any] = {"kind": kind}
+    data: dict[str, Any] = {
+        "event_id": uuid4().hex,
+        "at": datetime.now(UTC).isoformat(),
+        "kind": kind,
+        "domain": kind.split(":", 1)[0],
+    }
     if week_iso:
         data["week_iso"] = week_iso
+    if details:
+        data.update(details)
     await chat_ws_manager.broadcast_all({"event": "ops:changed", "data": data})

@@ -1319,11 +1319,12 @@ def da_diem_danh(nv_id: str) -> bool:
 def audit_list() -> list[dict[str, Any]]:
     init_db()
     with _conn() as cx:
-        rows = cx.execute("SELECT at, ai, hanh, payload FROM audit ORDER BY id").fetchall()
+        rows = cx.execute("SELECT id, at, ai, hanh, payload FROM audit ORDER BY id DESC").fetchall()
     out = []
-    for at, ai, hanh, payload in rows:
-        item = json.loads(payload)
-        item.update({"at": at, "ai": ai, "hanh": hanh})
+    for row_id, at, ai, hanh, payload in rows:
+        details = json.loads(payload)
+        item = dict(details) if isinstance(details, dict) else {"value": details}
+        item.update({"id": row_id, "at": at, "ai": ai, "hanh": hanh, "payload": details})
         out.append(item)
     return out
 

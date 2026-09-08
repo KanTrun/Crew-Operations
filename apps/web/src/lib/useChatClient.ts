@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API, apiGet, apiSend } from "./api";
 import { chatSounds } from "./chat-sound";
+import { sendRealtime, subscribeRealtime } from "./realtime";
 import { getName, getNvId, getToken } from "./session";
 
 export type ChatMessage = {
@@ -81,9 +82,7 @@ export function useChatClient(activeConvId?: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [loadingConv, setLoadingConv] = useState(true);
 
-  const socketRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const backoffRef = useRef(1000);
+  const unsubscribeRealtimeRef = useRef<(() => void) | null>(null);
   const activeConvIdRef = useRef(activeConvId);
   const conversationsRef = useRef(conversations);
   activeConvIdRef.current = activeConvId;
@@ -127,35 +126,17 @@ export function useChatClient(activeConvId?: string) {
     const token = getToken();
     if (!token) return;
 
-    if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
-      return;
-    }
-
-    const wsUrl = `${API.replace(/^http/, "ws")}/ws/chat`;
-    const ws = new WebSocket(wsUrl);
-    socketRef.current = ws;
-
-    ws.onopen = () => {
-      // Gửi ngay message xác thực đầu tiên
-      ws.send(JSON.stringify({ event: "auth", token }));
-    };
-
-    ws.onmessage = (e) => {
+    unsubscribeRealtimeRef.current = subscribeRealtime((packet) => {
       try {
-        const packet = JSON.parse(e.data);
         const event = packet.event;
         const data = packet.data;
 
         if (event === "auth:ack") {
           setIsConnected(true);
-          backoffRef.current = 1000;
           return;
         }
 
         if (event === "ops:changed") {
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("nq:ops-changed", { detail: data }));
-          }
           return;
         }
 
@@ -254,28 +235,13 @@ export function useChatClient(activeConvId?: string) {
           return;
         }
       } catch {}
-    };
-
-    ws.onclose = () => {
-      setIsConnected(false);
-      socketRef.current = null;
-      // Exponential backoff reconnect
-      const delay = Math.min(backoffRef.current, 10000);
-      backoffRef.current *= 1.5;
-      reconnectTimeoutRef.current = setTimeout(connectWebSocket, delay);
-    };
-
-    ws.onerror = () => {
-      ws.close();
-    };
+    }, setIsConnected);
   }, [currentNvId, loadConversations]);
 
   // Ping interval giữ kết nối
   useEffect(() => {
     const timer = setInterval(() => {
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({ event: "ping" }));
-      }
+      sendRealtime({ event: "ping" });
     }, 15000);
     return () => clearInterval(timer);
   }, []);
@@ -286,8 +252,8 @@ export function useChatClient(activeConvId?: string) {
     connectWebSocket();
 
     return () => {
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-      if (socketRef.current) socketRef.current.close();
+      unsubscribeRealtimeRef.current?.();
+      unsubscribeRealtimeRef.current = null;
     };
   }, [loadConversations, loadOnline, connectWebSocket]);
 
@@ -324,9 +290,7 @@ export function useChatClient(activeConvId?: string) {
       }));
 
       // Thử gửi qua WebSocket trước
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(
-          JSON.stringify({
+      if (sendRealtime({
             event: "message:send",
             data: {
               conversation_id: convId,
@@ -335,8 +299,7 @@ export function useChatClient(activeConvId?: string) {
               metadata,
               reply_to_id: replyToId,
             },
-          })
-        );
+          })) {
       } else {
         // Fallback REST
         try {
@@ -362,63 +325,48 @@ export function useChatClient(activeConvId?: string) {
   );
 
   const editMessage = useCallback(async (messageId: string, newContent: string) => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(
-        JSON.stringify({
+    if (sendRealtime({
           event: "message:edit",
           data: { message_id: messageId, content: newContent },
-        })
-      );
+        })) {
     } else {
       await apiSend(`/api/v1/chat/messages/${messageId}`, { content: newContent }, "PATCH");
     }
   }, []);
 
   const deleteMessage = useCallback(async (messageId: string, convId?: string) => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(
-        JSON.stringify({
+    if (sendRealtime({
           event: "message:delete",
           data: { message_id: messageId, conversation_id: convId },
-        })
-      );
+        })) {
     } else {
       await apiSend(`/api/v1/chat/messages/${messageId}`, {}, "DELETE");
     }
   }, []);
 
   const reactMessage = useCallback(async (messageId: string, convId: string, emoji: string) => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(
-        JSON.stringify({
+    if (sendRealtime({
           event: "message:react",
           data: { message_id: messageId, conversation_id: convId, emoji },
-        })
-      );
+        })) {
     } else {
       await apiSend(`/api/v1/chat/messages/${messageId}/reactions`, { emoji });
     }
   }, []);
 
   const sendTyping = useCallback((convId: string, isTyping: boolean) => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(
-        JSON.stringify({
+    if (sendRealtime({
           event: "message:typing",
           data: { conversation_id: convId, is_typing: isTyping },
-        })
-      );
+        })) {
     }
   }, []);
 
   const markRead = useCallback(async (convId: string, messageId: string) => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(
-        JSON.stringify({
+    if (sendRealtime({
           event: "message:read",
           data: { conversation_id: convId, message_id: messageId },
-        })
-      );
+        })) {
     } else {
       await apiSend(`/api/v1/chat/conversations/${convId}/read?message_id=${messageId}`);
     }
