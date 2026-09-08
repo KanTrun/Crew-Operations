@@ -6,6 +6,8 @@ import json
 import os
 import uuid
 from dataclasses import asdict
+from pathlib import Path
+from typing import Annotated, Any, cast
 
 try:
     from datetime import UTC, datetime
@@ -13,9 +15,6 @@ except ImportError:
     from datetime import datetime, timezone
 
     UTC = timezone.utc
-
-from pathlib import Path
-from typing import Annotated, Any, cast
 
 from ca_agents.ag_handover import extract as extract_handover
 from ca_agents.ag_rule import propose as propose_rule
@@ -51,8 +50,8 @@ from ca_api.interfaces.http.sprint3 import (
     _require_manager,
     _require_role,
 )
-from ca_api.orchestration import Clock
 from ca_api.nhan_vien import list_nhan_vien_ops
+from ca_api.orchestration import Clock
 from ca_api.persist import audit_add, audit_list, kv_get, kv_mutate, kv_set, list_users
 from ca_api.persist import session as auth_session
 from ca_api.services.chat_ws import notify_ops_changed
