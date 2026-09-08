@@ -3,19 +3,48 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getToken } from "../lib/session";
+import { ApiError, apiSend } from "../lib/api";
+import { getToken, setSession } from "../lib/session";
 import { Logo } from "../ui/Logo";
 import { Icon } from "../ui/icons";
+
+type LoginOut = { token: string; role: string; display_name: string; nv_id: string };
+type DemoAccount = { username: string; label: string; role: string };
+
+const DEMO_ACCOUNTS: DemoAccount[] = [
+  { username: "lan", label: "Lan", role: "Quản lý" },
+  { username: "minh", label: "Minh", role: "Nhân viên" },
+  { username: "hung", label: "Hùng", role: "Chủ quán" },
+];
 
 export default function HomePage() {
   const router = useRouter();
   const [hasSession, setHasSession] = useState(false);
+  const [quickLogin, setQuickLogin] = useState<string | null>(null);
+  const [quickLoginError, setQuickLoginError] = useState<string | null>(null);
 
   useEffect(() => {
     if (getToken()) {
       setHasSession(true);
     }
   }, []);
+
+  async function loginAs(account: DemoAccount) {
+    setQuickLogin(account.username);
+    setQuickLoginError(null);
+    try {
+      const data = await apiSend<LoginOut>("/api/v1/auth/login", {
+        username: account.username,
+        password: "nhipquan",
+      });
+      setSession(data.token, data.role, data.display_name, data.nv_id);
+      router.push("/hom-nay");
+    } catch (error) {
+      setQuickLoginError(error instanceof ApiError && error.status === 401 ? "Tài khoản demo chưa sẵn sàng." : "Không thể vào hệ thống lúc này.");
+    } finally {
+      setQuickLogin(null);
+    }
+  }
 
 
   return (
@@ -89,7 +118,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* CTA đăng nhập — bỏ quick-login 1-chạm (phi logic trên domain công khai) */}
+        {/* Lối vào nhanh cho bộ tài khoản demo của môi trường trình diễn. */}
         <section className="flex flex-col sm:flex-row items-center justify-center gap-4 py-4">
           <Link
             href="/login"
@@ -103,6 +132,34 @@ export default function HomePage() {
           >
             Tạo tài khoản
           </Link>
+        </section>
+
+        <section className="mx-auto w-full max-w-3xl border-t border-[var(--nq-dim)] pt-6">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xs font-black uppercase tracking-widest text-[var(--nq-fg)]">Vào nhanh tài khoản demo</h2>
+              <p className="mt-1 text-xs text-[var(--nq-dim)]">Chọn vai trò để bắt đầu phiên trình diễn.</p>
+            </div>
+            <Icon name="users" size={20} />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {DEMO_ACCOUNTS.map((account) => (
+              <button
+                key={account.username}
+                type="button"
+                onClick={() => loginAs(account)}
+                disabled={quickLogin !== null}
+                className="flex min-h-16 items-center justify-between border border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 text-left transition hover:border-[var(--nq-copper)] disabled:cursor-wait disabled:opacity-60"
+              >
+                <span>
+                  <span className="block text-sm font-black text-[var(--nq-fg)]">{quickLogin === account.username ? "Đang vào…" : account.label}</span>
+                  <span className="block text-[10px] uppercase tracking-wider text-[var(--nq-dim)]">{account.role}</span>
+                </span>
+                <Icon name="send" size={16} />
+              </button>
+            ))}
+          </div>
+          {quickLoginError && <p role="alert" className="mt-3 text-center text-xs text-[var(--nq-red)]">{quickLoginError}</p>}
         </section>
 
         {/* ========================================================================= */}

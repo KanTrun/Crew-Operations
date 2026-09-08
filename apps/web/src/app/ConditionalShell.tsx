@@ -6,6 +6,6 @@ import { AppShell } from "./AppShell";
 
 export function ConditionalShell({ children }: { children: ReactNode }) {
   const path = usePathname();
-  if (path === "/login" || path === "/huong-dan") return <>{children}</>;
+  if (path === "/" || path === "/login" || path === "/huong-dan") return <>{children}</>;
   return <AppShell>{children}</AppShell>;
 }

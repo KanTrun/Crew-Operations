@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { Icon } from "../icons";
 
 interface VoiceRecorderProps {
   onSendVoice: (audioBlob: Blob, durationSec: number) => Promise<void>;
@@ -17,6 +18,7 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const mimeTypeRef = useRef("audio/webm");
 
   const startRecording = async () => {
     if (disabled || isRecording) return;
@@ -24,7 +26,14 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      const mediaRecorder = new MediaRecorder(stream);
+      const supportedMimeType = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4", "audio/webm"]
+        .find((mimeType) => MediaRecorder.isTypeSupported(mimeType));
+      if (!supportedMimeType) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw new Error("Trình duyệt không hỗ trợ ghi âm.");
+      }
+      mimeTypeRef.current = supportedMimeType;
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: supportedMimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -49,7 +58,7 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
         });
       }, 1000);
     } catch {
-      alert("Không thể truy cập microphone. Vui lòng cấp quyền trong trình duyệt.");
+      alert("Không thể ghi âm trên trình duyệt này. Vui lòng cấp quyền microphone hoặc dùng trình duyệt khác.");
     }
   };
 
@@ -75,7 +84,7 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
     if (!mediaRecorderRef.current || !isRecording) return;
 
     mediaRecorderRef.current.onstop = async () => {
-      const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+      const audioBlob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current });
       setIsSending(true);
       try {
         await onSendVoice(audioBlob, duration);
@@ -110,7 +119,7 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
           className="text-xs text-[var(--nq-muted)] hover:text-red-500 px-2 py-0.5 rounded transition"
           title="Hủy ghi âm"
         >
-          ✕ Hủy
+          <Icon name="close" size={14} /> Hủy
         </button>
         <button
           type="button"
@@ -118,7 +127,7 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
           disabled={isSending}
           className="text-xs bg-[var(--nq-copper)] text-white px-3 py-1 rounded-full font-bold shadow hover:opacity-90 transition"
         >
-          {isSending ? "Đang gửi…" : "Gửi ➤"}
+          {isSending ? "Đang gửi…" : <><Icon name="send" size={14} /> Gửi</>}
         </button>
       </div>
     );
@@ -132,14 +141,7 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
       title="Ghi âm tin nhắn thoại"
       className="p-2 text-[var(--nq-muted)] hover:text-[var(--nq-copper)] hover:bg-[var(--nq-card)] rounded-full transition"
     >
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-        />
-      </svg>
+      <Icon name="microphone" size={20} />
     </button>
   );
 }
@@ -153,10 +155,10 @@ export function VoicePlayer({ url, durationSec }: { url: string; durationSec?: n
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
-    } else {
-      audioRef.current.play();
+      setIsPlaying(false);
+      return;
     }
-    setIsPlaying(!isPlaying);
+    void audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
   };
 
   const handleTimeUpdate = () => {
@@ -185,15 +187,7 @@ export function VoicePlayer({ url, durationSec }: { url: string; durationSec?: n
         onClick={togglePlay}
         className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--nq-copper)] text-white hover:opacity-90 transition shrink-0"
       >
-        {isPlaying ? (
-          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-          </svg>
-        ) : (
-          <svg className="w-4 h-4 fill-current translate-x-0.5" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z" />
-          </svg>
-        )}
+        <Icon name={isPlaying ? "pause" : "play"} size={16} />
       </button>
       <div className="flex-1 flex flex-col justify-center gap-1">
         <div className="w-full bg-black/20 dark:bg-white/20 h-1.5 rounded-full overflow-hidden">

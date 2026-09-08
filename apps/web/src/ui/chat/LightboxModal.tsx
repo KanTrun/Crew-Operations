@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Icon } from "../icons";
 
 interface LightboxModalProps {
   url: string | null;
@@ -25,9 +26,7 @@ export function LightboxModal({ url, onClose }: LightboxModalProps) {
             className="p-2 rounded-full bg-black/60 text-white hover:bg-black/90 transition shadow"
             title="Tải ảnh về"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
+            <Icon name="download" size={20} />
           </a>
           <button
             type="button"
@@ -35,9 +34,7 @@ export function LightboxModal({ url, onClose }: LightboxModalProps) {
             className="p-2 rounded-full bg-black/60 text-white hover:bg-black/90 transition shadow"
             title="Đóng"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <Icon name="close" size={20} />
           </button>
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}

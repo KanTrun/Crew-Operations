@@ -9,6 +9,7 @@ import { VoicePlayer, VoiceRecorder } from "../../ui/chat/VoiceRecorder";
 import { LightboxModal } from "../../ui/chat/LightboxModal";
 import { NewGroupModal } from "../../ui/chat/NewGroupModal";
 import { Loading, PageHeader } from "../../ui/kit";
+import { Icon } from "../../ui/icons";
 
 const QUICK_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "😡"];
 
@@ -156,7 +157,8 @@ export default function ChatPage() {
 
   const handleVoiceSend = async (blob: Blob, durationSec: number) => {
     if (!activeConvId) return;
-    const file = new File([blob], `voice_${Date.now()}.webm`, { type: "audio/webm" });
+    const extension = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "mp4" : "webm";
+    const file = new File([blob], `voice_${Date.now()}.${extension}`, { type: blob.type });
     const res = await uploadMedia(file);
     const fullUrl = `${API}${res.url}`;
     await sendMessage(activeConvId, "", "voice", {
@@ -285,11 +287,11 @@ export default function ChatPage() {
                     <div className="relative shrink-0">
                       {isGeneral ? (
                         <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-500 font-bold flex items-center justify-center text-lg border border-amber-500/30">
-                          ☕
+                          <Icon name="coffee" size={20} />
                         </div>
                       ) : conv.type === "group" ? (
                         <div className="w-11 h-11 rounded-2xl bg-[var(--nq-dim)] text-[var(--nq-copper)] font-bold flex items-center justify-center text-base">
-                          👥
+                          <Icon name="users" size={20} />
                         </div>
                       ) : (
                         <div className="w-11 h-11 rounded-full bg-[var(--nq-dim)] text-[var(--nq-fg)] font-bold flex items-center justify-center text-sm">
@@ -328,9 +330,9 @@ export default function ChatPage() {
                             conv.last_message.is_unsent ? (
                               <span className="italic">Tin nhắn đã thu hồi</span>
                             ) : conv.last_message.type === "image" ? (
-                              "📷 Đã gửi một ảnh"
+                              "Đã gửi một ảnh"
                             ) : conv.last_message.type === "voice" ? (
-                              "🎤 Tin nhắn thoại"
+                              "Tin nhắn thoại"
                             ) : (
                               `${conv.last_message.sender_name ? `${conv.last_message.sender_name}: ` : ""}${conv.last_message.content}`
                             )
@@ -367,10 +369,10 @@ export default function ChatPage() {
                   onClick={() => setActiveConvId("")}
                   className="md:hidden p-1.5 text-[var(--nq-muted)] hover:text-[var(--nq-fg)]"
                 >
-                  ◀
+                  <Icon name="arrow-left" size={18} />
                 </button>
                 <div className="w-9 h-9 rounded-full bg-[var(--nq-dim)] flex items-center justify-center font-bold text-sm text-[var(--nq-copper)]">
-                  {activeConv.type === "general" ? "☕" : activeConv.type === "group" ? "👥" : activeConv.display_name.charAt(0)}
+                  {activeConv.type === "general" ? <Icon name="coffee" size={18} /> : activeConv.type === "group" ? <Icon name="users" size={18} /> : activeConv.display_name.charAt(0)}
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-[var(--nq-fg)] flex items-center gap-2">
@@ -405,7 +407,7 @@ export default function ChatPage() {
                   }`}
                   title={activeConv.muted ? "Bật thông báo" : "Tắt thông báo"}
                 >
-                  {activeConv.muted ? "🔕" : "🔔"}
+                  <Icon name={activeConv.muted ? "bell-off" : "bell"} size={18} />
                 </button>
                 <button
                   type="button"
@@ -413,7 +415,7 @@ export default function ChatPage() {
                   className="p-2 rounded-xl text-[var(--nq-muted)] hover:text-[var(--nq-fg)] transition"
                   title="Danh sách thành viên"
                 >
-                  ℹ️
+                  <Icon name="info" size={18} />
                 </button>
               </div>
             </div>
@@ -500,10 +502,23 @@ export default function ChatPage() {
                               <VoicePlayer url={msg.metadata.url} durationSec={msg.metadata.duration} />
                             )}
 
+                            {msg.type === "file" && msg.metadata?.url && (
+                              <a
+                                href={msg.metadata.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 text-[var(--nq-copper)] underline underline-offset-2"
+                              >
+                                <Icon name="attachment" size={18} />
+                                <span className="max-w-56 truncate">{msg.metadata.filename || msg.content || "Mở tệp"}</span>
+                                <Icon name="download" size={15} />
+                              </a>
+                            )}
+
                             {msg.type === "ops_card" && (
                               <div className="my-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2 max-w-sm text-left">
                                 <div className="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase tracking-wider">
-                                  <span>⚡</span>
+                                  <Icon name="zap" size={15} />
                                   <span>{msg.metadata?.proposal?.title || "Đề xuất tác vụ vận hành"}</span>
                                 </div>
                                 <p className="text-xs opacity-90">{msg.metadata?.proposal?.summary || msg.content}</p>
@@ -676,7 +691,7 @@ export default function ChatPage() {
                   }}
                   className="text-[var(--nq-muted)] hover:text-[var(--nq-fg)] ml-2"
                 >
-                  ✕
+                  <Icon name="close" size={16} />
                 </button>
               </div>
             )}
@@ -694,7 +709,7 @@ export default function ChatPage() {
                   }}
                   className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 text-[11px] font-semibold shrink-0 transition"
                 >
-                  🤖 @copilot
+                  <Icon name="bot" size={14} /> @copilot
                 </button>
                 <button
                   type="button"
@@ -705,7 +720,7 @@ export default function ChatPage() {
                   }}
                   className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30 text-[11px] font-semibold shrink-0 transition"
                 >
-                  📅 @agent_lich
+                  <Icon name="calendar" size={14} /> @agent_lich
                 </button>
                 {activeConv?.participants.slice(0, 6).map((p) => (
                   <button
@@ -739,9 +754,7 @@ export default function ChatPage() {
                 className="p-2 text-[var(--nq-muted)] hover:text-[var(--nq-copper)] rounded-full transition shrink-0"
                 title="Đính kèm ảnh hoặc tài liệu"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                </svg>
+                <Icon name="attachment" size={20} />
               </button>
 
               <VoiceRecorder onSendVoice={handleVoiceSend} />
@@ -765,9 +778,7 @@ export default function ChatPage() {
                 className="p-2.5 rounded-full bg-[var(--nq-copper)] text-white hover:opacity-90 disabled:opacity-40 transition shrink-0 shadow-md"
                 title="Gửi tin nhắn"
               >
-                <svg className="w-4 h-4 translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
+                <Icon name="send" size={16} />
               </button>
             </div>
           </div>
@@ -782,7 +793,7 @@ export default function ChatPage() {
           <div className="w-64 border-l border-[var(--nq-dim)] bg-[var(--nq-card)] p-4 flex flex-col gap-4">
             <div className="flex items-center justify-between border-b border-[var(--nq-dim)] pb-3">
               <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--nq-fg)]">Thành viên ({activeConv.participants.length})</h4>
-              <button type="button" onClick={() => setShowMemberDrawer(false)} className="text-[var(--nq-muted)] hover:text-[var(--nq-fg)]">✕</button>
+              <button type="button" onClick={() => setShowMemberDrawer(false)} className="text-[var(--nq-muted)] hover:text-[var(--nq-fg)]" title="Đóng danh sách thành viên"><Icon name="close" size={16} /></button>
             </div>
             <div className="flex-1 overflow-y-auto space-y-2">
               {activeConv.participants.map((p) => (

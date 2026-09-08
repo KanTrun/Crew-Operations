@@ -147,6 +147,14 @@ export function useChatClient(activeConvId?: string) {
           setMessagesByConv((prev) => {
             const list = prev[cid] || [];
             if (list.some((m) => m.id === msg.id)) return prev;
+            const optimisticIndex = list.findIndex(
+              (item) => item.status === "sending" && item.sender_id === currentNvId && item.type === msg.type && item.content === msg.content,
+            );
+            if (optimisticIndex >= 0) {
+              const next = [...list];
+              next[optimisticIndex] = msg;
+              return { ...prev, [cid]: next };
+            }
             return { ...prev, [cid]: [...list, msg] };
           });
 

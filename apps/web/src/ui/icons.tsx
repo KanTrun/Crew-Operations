@@ -22,9 +22,51 @@ export type IconName =
   | "cong-bang"
   | "copilot"
   | "doi-ca"
-  | "chat";
+  | "chat"
+  | "attachment"
+  | "microphone"
+  | "send"
+  | "close"
+  | "arrow-left"
+  | "bell"
+  | "bell-off"
+  | "info"
+  | "pin"
+  | "reply"
+  | "edit"
+  | "trash"
+  | "image"
+  | "users"
+  | "coffee"
+  | "bot"
+  | "calendar"
+  | "zap"
+  | "download"
+  | "play"
+  | "pause";
 
 const PATHS: Record<IconName, ReactNode> = {
+  attachment: <path d="m20.5 11.5-8.9 8.9a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 0 1-2.8-2.8l8.8-8.8" />,
+  microphone: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8" /></>,
+  send: <path d="m22 2-7 20-4-9-9-4Z M22 2 11 13" />,
+  close: <path d="m6 6 12 12M18 6 6 18" />,
+  "arrow-left": <path d="m15 18-6-6 6-6M9 12h10" />,
+  bell: <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />,
+  "bell-off": <><path d="M13.7 5.1A6 6 0 0 0 6 8c0 7-3 7-3 9h12M18 8c0 3.2.7 5 1.7 6.2M10 21h4M3 3l18 18" /></>,
+  info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>,
+  pin: <path d="m15 4 5 5-3 1-3 5 1 3-2 2-2-4-5-5-4-2 2-2 3 1 5-3 1-3Z" />,
+  reply: <path d="M9 14 4 9l5-5M4 9h9a7 7 0 0 1 7 7v2" />,
+  edit: <path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10Z M13.5 7.5l3 3" />,
+  trash: <><path d="M4 7h16M10 11v5M14 11v5M6 7l1 14h10l1-14M9 7V4h6v3" /></>,
+  image: <><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9" r="1.5" /><path d="m21 15-5-5L5 20" /></>,
+  users: <><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0M16 11a3 3 0 1 0 0-6M18 14a5 5 0 0 1 3 6" /></>,
+  coffee: <><path d="M5 8h12v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5Z M17 10h2a3 3 0 0 1 0 6h-2M8 4v2M12 3v3" /></>,
+  bot: <><rect x="4" y="7" width="16" height="12" rx="3" /><path d="M12 3v4M8 12h.01M16 12h.01M8 16h8" /></>,
+  calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></>,
+  zap: <path d="m13 2-9 12h7l-1 8 9-12h-7Z" />,
+  download: <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" />,
+  play: <path d="m8 5 11 7-11 7Z" />,
+  pause: <path d="M8 5v14M16 5v14" />,
   // Bong bóng hội thoại — chat nội bộ
   chat: (
     <>
