@@ -186,10 +186,10 @@ DEFAULT_DOI_CA = [
     },
 ]
 
-# Phân công 19 nhân viên vào 21 ca mẫu để demo lịch tuần đầy đủ (>= 2 người/ca)
+# Phân công toàn bộ 19 tài khoản vào 21 ca mẫu để demo lịch tuần đầy đủ (>= 2 người/ca)
 DEMO_PHAN_CONG = {
     "fx_ca_01": ["nv_03", "nv_09"],
-    "fx_ca_02": ["nv_01", "nv_06"],
+    "fx_ca_02": ["nv_01", "nv_02", "nv_06"],
     "fx_ca_03": ["nv_08", "nv_19"],
     "fx_ca_04": ["nv_04", "nv_13"],
     "fx_ca_05": ["nv_05", "nv_12"],

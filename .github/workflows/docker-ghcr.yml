@@ -6,6 +6,9 @@ on:
     paths:
       - "apps/**"
       - "packages/**"
+      - "scripts/**"
+      - "data/fixtures/professional/**"
+      - "data/seed/**"
       - "infra/docker/**"
       - ".github/workflows/docker-ghcr.yml"
 

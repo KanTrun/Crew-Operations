@@ -44,7 +44,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://nhipquan:nhipquan@postgres:5432/nhipquan
       REDIS_URL: redis://redis:6379/0
-    command: ["sh", "-c", "cd /app/apps/api && alembic -c alembic/alembic.ini upgrade head && uvicorn ca_api.interfaces.http.main:app --host 0.0.0.0 --port 8000 --workers 2"]
+    command: ["sh", "-c", "cd /app/apps/api && alembic -c alembic/alembic.ini upgrade head && if [ \"$${NHIPQUAN_SEED_DEMO:-false}\" = \"true\" ]; then cd /app && python scripts/seed_demo_data.py; fi && cd /app/apps/api && uvicorn ca_api.interfaces.http.main:app --host 0.0.0.0 --port 8000 --workers 2"]
     expose:
       - "8000"
     volumes:
