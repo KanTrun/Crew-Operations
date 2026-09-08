@@ -32,8 +32,16 @@ function connect() {
   if (typeof window === "undefined" || !getToken()) return;
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
 
-  socket = new WebSocket(`${API.replace(/^http/, "ws")}/ws/chat`);
-  socket.onopen = () => socket?.send(JSON.stringify({ event: "auth", token: getToken() }));
+  const websocketApi = API.replace(/\/$/, "").replace(/^https:/, "wss:").replace(/^http:/, "ws:");
+  socket = new WebSocket(`${websocketApi}/ws/chat`);
+  socket.onopen = () => {
+    const token = getToken();
+    if (!token) {
+      socket?.close();
+      return;
+    }
+    socket?.send(JSON.stringify({ event: "auth", token }));
+  };
   socket.onmessage = (event) => {
     try {
       const packet = JSON.parse(event.data) as Packet;
@@ -78,7 +86,7 @@ export function subscribeRealtime(listener: Listener, onStatus?: (value: boolean
 }
 
 export function sendRealtime(packet: Packet): boolean {
-  if (socket?.readyState !== WebSocket.OPEN) return false;
+  if (!connected || socket?.readyState !== WebSocket.OPEN) return false;
   socket.send(JSON.stringify(packet));
   return true;
 }

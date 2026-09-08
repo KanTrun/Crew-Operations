@@ -12,9 +12,25 @@ type LoginOut = { token: string; role: string; display_name: string; nv_id: stri
 type DemoAccount = { username: string; label: string; role: string };
 
 const DEMO_ACCOUNTS: DemoAccount[] = [
-  { username: "lan", label: "Lan", role: "Quản lý" },
-  { username: "minh", label: "Minh", role: "Nhân viên" },
-  { username: "hung", label: "Hùng", role: "Chủ quán" },
+  { username: "lan", label: "Lan Nguyễn", role: "Cửa hàng trưởng" },
+  { username: "hung", label: "Hùng Trần", role: "Chủ quán" },
+  { username: "nam", label: "Nam Lý", role: "Cửa hàng phó" },
+  { username: "minh", label: "Minh Phạm", role: "Trưởng pha chế" },
+  { username: "chi", label: "Chi Vũ", role: "Tổ trưởng thu ngân" },
+  { username: "dung", label: "Dũng Đặng", role: "Trưởng kho" },
+  { username: "an", label: "An Lê", role: "Nhân viên đa năng" },
+  { username: "bao", label: "Bảo Hoàng", role: "Barista chính" },
+  { username: "yen", label: "Yến Kiều", role: "Thu ngân ca chiều" },
+  { username: "thao", label: "Thảo Dương", role: "Thu ngân ca tối" },
+  { username: "quan", label: "Quân Lương", role: "Barista part-time" },
+  { username: "linh", label: "Linh Ngô", role: "Phục vụ chính" },
+  { username: "my", label: "Mỹ Tạ", role: "Phụ kho & sảnh" },
+  { username: "khoa", label: "Khoa Đỗ", role: "Kho ca cuối tuần" },
+  { username: "oanh", label: "Oanh Phan", role: "Phục vụ ca tối" },
+  { username: "phuc", label: "Phúc Trịnh", role: "Barista cuối tuần" },
+  { username: "son", label: "Sơn Hà", role: "Barista sáng CN" },
+  { username: "rosa", label: "Rosa Võ", role: "Thử việc" },
+  { username: "uyen", label: "Uyên Cao", role: "Học việc" },
 ];
 
 export default function HomePage() {
@@ -142,7 +158,7 @@ export default function HomePage() {
             </div>
             <Icon name="users" size={20} />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {DEMO_ACCOUNTS.map((account) => (
               <button
                 key={account.username}
