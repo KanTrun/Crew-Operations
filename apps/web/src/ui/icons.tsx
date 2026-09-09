@@ -43,7 +43,14 @@ export type IconName =
   | "zap"
   | "download"
   | "play"
-  | "pause";
+  | "pause"
+  | "table-map"
+  | "location"
+  | "link"
+  | "clipboard"
+  | "refresh"
+  | "phone"
+  | "clock";
 
 const PATHS: Record<IconName, ReactNode> = {
   attachment: <path d="m20.5 11.5-8.9 8.9a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 0 1-2.8-2.8l8.8-8.8" />,
@@ -67,6 +74,13 @@ const PATHS: Record<IconName, ReactNode> = {
   download: <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" />,
   play: <path d="m8 5 11 7-11 7Z" />,
   pause: <path d="M8 5v14M16 5v14" />,
+  "table-map": <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18M9 4v16M15 4v16" /></>,
+  location: <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
+  link: <path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1" />,
+  clipboard: <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4.5V3h6v1.5M9 10h6M9 14h6M9 18h3" /></>,
+  refresh: <path d="M20 11a8 8 0 0 0-14.8-3.8L4 9M4 5v4h4M4 13a8 8 0 0 0 14.8 3.8L20 15M20 19v-4h-4" />,
+  phone: <path d="M6.5 3.5h3l1.5 4-2 1.5a14 14 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2C11.6 19.5 4.5 12.4 4.5 5.5a2 2 0 0 1 2-2Z" />,
+  clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   // Bong bóng hội thoại — chat nội bộ
   chat: (
     <>
