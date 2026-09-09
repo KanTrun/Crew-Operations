@@ -1594,6 +1594,187 @@ a:focus-visible {
   font-size: 0.8rem;
 }
 
+/* Chi tiết lịch luôn thuộc viewport, không phụ thuộc scroll position của trang.
+   Đây là lớp riêng thay vì utility rải trong JSX để tránh ancestor transform/overflow
+   làm panel bị neo vào vị trí cũ khi người dùng mở từ giữa bảng. */
+.nq-roster-dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: var(--nq-s3);
+  background: color-mix(in srgb, var(--nq-bg) 72%, rgba(0, 0, 0, 0.82));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.nq-roster-dialog-panel {
+  display: flex;
+  width: min(100%, 42rem);
+  max-height: calc(100dvh - var(--nq-s6));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--nq-line-strong);
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-bg-elevated);
+  box-shadow: var(--nq-shadow-float), var(--nq-inner-hi);
+  animation: nq-rise var(--nq-dur-t1) var(--nq-ease-out) both;
+}
+
+.nq-roster-dialog-panel:focus {
+  outline: none;
+}
+
+@media (max-width: 639px) {
+  .nq-roster-dialog-layer {
+    align-items: end;
+    padding: var(--nq-s2);
+  }
+
+  .nq-roster-dialog-panel {
+    max-height: calc(100dvh - var(--nq-s4));
+    border-radius: var(--nq-radius-bubble) var(--nq-radius-bubble) 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nq-roster-dialog-panel {
+    animation: none;
+  }
+}
+
+/* ── Sơ đồ & đặt bàn: reservation cockpit ──
+   Một bề mặt tối duy nhất, champagne chỉ dành cho hành động và lựa chọn.
+   Các style inline cũ được trung hòa trong namespace này để không ảnh hưởng
+   đến các màn vận hành khác. */
+.nq-booking-page {
+  max-width: min(1180px, 100%);
+}
+
+.nq-booking-page > div[style] {
+  margin-bottom: var(--nq-s7) !important;
+}
+
+.nq-booking-page h3 {
+  color: var(--nq-fg);
+  font-family: var(--nq-font-display);
+  font-size: 1.35rem !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.02em;
+}
+
+.nq-booking-page [style*="gridTemplateColumns"] {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)) !important;
+  gap: var(--nq-s3) !important;
+}
+
+.nq-booking-page [style*="background: #fff"] {
+  background: var(--nq-bg-elevated) !important;
+  border: 1px solid var(--nq-line) !important;
+  border-top: 0 !important;
+  border-radius: var(--nq-radius-bubble) !important;
+  box-shadow: var(--nq-shadow-bubble) !important;
+  padding: var(--nq-s4) !important;
+  transition: border-color var(--nq-dur-t0), transform var(--nq-dur-press) var(--nq-ease-out);
+}
+
+.nq-booking-page [style*="background: #fff"]:hover {
+  border-color: var(--nq-line-strong) !important;
+  transform: translateY(-2px);
+}
+
+.nq-booking-page [style*="background: #fff"] strong {
+  color: var(--nq-fg);
+}
+
+.nq-booking-page [style*="background: #fff"] [style*="background: #eee"] {
+  background: var(--nq-surface) !important;
+  border: 1px solid var(--nq-line) !important;
+  color: var(--nq-dim) !important;
+}
+
+.nq-booking-page [style*="background: #fff"] [style*="color: #666"],
+.nq-booking-page [style*="background: #fff"] [style*="color: #555"],
+.nq-booking-page [style*="background: #fff"] [style*="color: #888"] {
+  color: var(--nq-dim) !important;
+}
+
+.nq-booking-page [style*="borderTop"] {
+  position: relative;
+  border-top: 0 !important;
+}
+
+.nq-booking-page [style*="borderTop"]::before {
+  content: "";
+  display: block;
+  height: 3px;
+  margin: calc(-1 * var(--nq-s4)) calc(-1 * var(--nq-s4)) var(--nq-s4);
+  background: var(--table-tone, var(--nq-copper));
+  border-radius: var(--nq-radius-bubble) var(--nq-radius-bubble) 0 0;
+}
+
+.nq-booking-page [style*="display: flex"][style*="justifyContent: space-between"] {
+  gap: var(--nq-s4) !important;
+}
+
+.nq-booking-page [style*="display: flex"][style*="justifyContent: space-between"] > div:first-child {
+  min-width: 0;
+}
+
+.nq-booking-page > div > div[style*="display: flex"] > button,
+.nq-booking-page > div > div[style*="display: flex"] > .nq-btn {
+  min-height: 44px;
+}
+
+.nq-booking-page button[style*="border: 1px solid #ddd"] {
+  min-height: 40px;
+  border-color: var(--nq-line) !important;
+  border-radius: var(--nq-radius-pill) !important;
+  background: transparent !important;
+  color: var(--nq-dim) !important;
+  transition: border-color var(--nq-dur-t0), color var(--nq-dur-t0), background var(--nq-dur-t0);
+}
+
+.nq-booking-page button[style*="border: 1px solid #ddd"]:hover,
+.nq-booking-page button[style*="background: #2c3e50"] {
+  border-color: var(--nq-copper) !important;
+  background: var(--nq-accent-soft) !important;
+  color: var(--nq-copper) !important;
+}
+
+.nq-booking-page > div > div[style*="flexDirection: column"] {
+  gap: var(--nq-s3) !important;
+}
+
+.nq-booking-page > div > div[style*="flexDirection: column"] > div {
+  align-items: flex-start !important;
+  border-color: var(--nq-line) !important;
+  background: var(--nq-bg-elevated) !important;
+  color: var(--nq-fg) !important;
+  border-radius: var(--nq-radius-bubble) !important;
+  box-shadow: var(--nq-shadow-bubble) !important;
+}
+
+.nq-booking-page > div > div[style*="flexDirection: column"] > div > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nq-s2) !important;
+}
+
+@media (max-width: 720px) {
+  .nq-booking-page [style*="justifyContent: space-between"] {
+    align-items: flex-start !important;
+    flex-direction: column;
+  }
+
+  .nq-booking-page [style*="justifyContent: space-between"] > div:last-child {
+    width: 100%;
+  }
+}
+
 .nq-roster-table thead th button {
   font-size: inherit;
   padding: 0;

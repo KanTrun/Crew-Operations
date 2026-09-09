@@ -165,7 +165,7 @@ export default function DatBanPage() {
   }
 
   return (
-    <div className="nq-page">
+    <div className="nq-page nq-booking-page">
       <PageHeader
         kicker="Vận hành ca trực · Tự động & Thông minh"
         title="Sơ đồ bàn & Lịch đặt bàn"
