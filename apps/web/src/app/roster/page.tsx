@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Alert, AuthGate, Btn, Loading, Summary } from "../../ui/kit";
-import { canEdit, getNvId, getRole, getToken, isManager, lifeLabel } from "../../lib/session";
-import { apiSend } from "../../lib/api";
+import { canEdit, clearSession, getNvId, getRole, getToken, isManager, lifeLabel } from "../../lib/session";
+import { ApiError, apiSend } from "../../lib/api";
 import { matchSearch } from "../../lib/list-filters";
 import { viError } from "../../lib/present";
 import type { KhungGio } from "../../lib/roster";
@@ -160,6 +161,7 @@ export default function RosterPage() {
   const [filterKhung, setFilterKhung] = useState("all");
   const [filterViTri, setFilterViTri] = useState("all");
   const [copilotOpen, setCopilotOpen] = useState(false);
+  const rosterDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const t = getToken();
@@ -187,9 +189,21 @@ export default function RosterPage() {
         const res = await fetch(`${API}/api/v1/lich-tuan?tuan=${week}&so_tuan=${weeksCount}`, {
           headers: authHeader(),
         });
-        if (!res.ok) throw new Error("fetch_failed");
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            clearSession();
+            setToken("");
+            return;
+          }
+          throw new Error("fetch_failed");
+        }
         setData((await res.json()) as LichData);
-      } catch {
+      } catch (error) {
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          clearSession();
+          setToken("");
+          return;
+        }
         setError("Không tải được lịch tuần.");
       } finally {
         setLoading(false);
@@ -215,9 +229,15 @@ export default function RosterPage() {
   useEffect(() => {
     if (!selectedDay) return;
     const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedDay(null);
+    };
     document.body.style.overflow = "hidden";
+    rosterDialogRef.current?.focus();
+    window.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
     };
   }, [selectedDay]);
 
@@ -676,9 +696,20 @@ export default function RosterPage() {
         </div>
       )}
 
-      {selectedDay && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:p-6">
-          <div role="dialog" aria-modal="true" aria-labelledby="roster-day-title" className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-neutral-700 bg-neutral-900 shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
+      {selectedDay && typeof document !== "undefined" && createPortal(
+        <div
+          className="nq-roster-dialog-layer"
+          onClick={() => setSelectedDay(null)}
+        >
+          <div
+            ref={rosterDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="roster-day-title"
+            tabIndex={-1}
+            className="nq-roster-dialog-panel"
+            onClick={(event) => event.stopPropagation()}
+          >
             {/* Header — ngày dễ đọc + trạng thái lịch bằng lời */}
             <div className="flex shrink-0 items-start justify-between gap-3 border-b border-neutral-800 bg-neutral-900 p-4 sm:p-6 sm:pb-4">
               <div>
@@ -720,47 +751,42 @@ export default function RosterPage() {
             {/* Mỗi ca đúng 1 hàng: giờ → trạng thái lời → người (kèm ×) → nút thêm */}
             <div className="space-y-3">
               {(["sang", "chieu", "toi"] as const).map((khung) => {
-                const shift = (byDay[selectedDay] ?? []).find((c) => c.khung === khung);
-                const assigned = shift ? data?.phan_cong?.[shift.id] ?? [] : [];
-                const can = shift?.so_nguoi_toi_thieu ?? 2;
-                const soNguoi = assigned.length;
-                const khacCa = data?.nhan_vien?.filter((nv) => !assigned.includes(nv.id)) ?? [];
+                const shifts = (byDay[selectedDay] ?? []).filter((c) => c.khung === khung);
                 return (
-                  <div
-                    key={khung}
-                    className="p-4 rounded-lg bg-neutral-950 border border-neutral-800 space-y-3"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-bold text-sm text-neutral-200 truncate">
-                          {shift ? shiftRowLabel(shift, khung, khungGio) : KHUNG_TEN[khung]}
-                        </span>
-                        {shift && (
-                          <span className="shrink-0 text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 uppercase">
-                            {viTriLabel(shift.vi_tri)}
-                          </span>
-                        )}
-                      </div>
-                      {!shift ? (
+                  <div key={khung} className="space-y-3">
+                    {shifts.length === 0 ? (
+                      <div className="p-4 rounded-lg bg-neutral-950 border border-neutral-800">
+                        <span className="font-bold text-sm text-neutral-200">{KHUNG_TEN[khung]}</span>
                         <span className="shrink-0 text-xs text-neutral-500 italic">
                           Không có ca này trong mẫu tuần
                         </span>
-                      ) : soNguoi >= can ? (
-                        <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-300 border border-emerald-700">
-                          Đủ {soNguoi}/{can} người
-                        </span>
-                      ) : soNguoi > 0 ? (
-                        <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700">
-                          Thiếu {can - soNguoi} (cần {can})
-                        </span>
-                      ) : (
-                        <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-rose-900/60 text-rose-300 border border-rose-700">
-                          Chưa có ai (cần {can})
-                        </span>
-                      )}
-                    </div>
+                      </div>
+                    ) : shifts.map((shift) => {
+                      const assigned = data?.phan_cong?.[shift.id] ?? [];
+                      const can = shift.so_nguoi_toi_thieu ?? 2;
+                      const soNguoi = assigned.length;
+                      const khacCa = data?.nhan_vien?.filter((nv) => !assigned.includes(nv.id)) ?? [];
+                      return (
+                        <div key={shift.id} className="p-4 rounded-lg bg-neutral-950 border border-neutral-800 space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-bold text-sm text-neutral-200 truncate">
+                                {shiftRowLabel(shift, khung, khungGio)}
+                              </span>
+                              <span className="shrink-0 text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 uppercase">
+                                {viTriLabel(shift.vi_tri)}
+                              </span>
+                            </div>
+                            {soNguoi >= can ? (
+                              <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-300 border border-emerald-700">Đủ {soNguoi}/{can} người</span>
+                            ) : soNguoi > 0 ? (
+                              <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700">Thiếu {can - soNguoi} (cần {can})</span>
+                            ) : (
+                              <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-rose-900/60 text-rose-300 border border-rose-700">Chưa có ai (cần {can})</span>
+                            )}
+                          </div>
 
-                    {shift && assigned.length > 0 ? (
+                          {assigned.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {assigned.map((nv_id) => (
                           <span
@@ -784,7 +810,7 @@ export default function RosterPage() {
                       </div>
                     ) : null}
 
-                    {shift && canWrite && trangThai !== "da_dong" ? (
+                        {canWrite && trangThai !== "da_dong" ? (
                       <div className="pt-2 border-t border-neutral-900">
                         <details className="group">
                           <summary className="cursor-pointer text-xs font-bold text-amber-400 hover:text-amber-300 list-none">
@@ -809,7 +835,10 @@ export default function RosterPage() {
                           </div>
                         </details>
                       </div>
-                    ) : null}
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
@@ -861,7 +890,8 @@ export default function RosterPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
       <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
