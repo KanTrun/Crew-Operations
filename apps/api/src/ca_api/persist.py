@@ -2820,10 +2820,13 @@ def chat_message_get(message_id: str) -> dict[str, Any] | None:
                 }
 
         meta: dict[str, Any] = {}
-        try:
-            meta = json.loads(row[8]) if row[8] else {}
-        except Exception:
-            pass
+        if isinstance(row[8], dict):
+            meta = row[8]
+        elif row[8]:
+            try:
+                meta = json.loads(row[8])
+            except (TypeError, ValueError):
+                pass
 
         return {
             "id": str(row[0]),
