@@ -43,7 +43,8 @@ khi cần worker chạy 24/7 hoặc kiểm soát hoàn toàn):
 make migrate-neon          # alembic upgrade head 0001→0007 lên Neon
 
 # 2. Render: dashboard.render.com/blueprints → New Blueprint → chọn repo
-#    (render.yaml tự cấu hình: Docker, Singapore, free, healthcheck /health)
+#    (render.yaml tự cấu hình: Docker, Singapore, persistent disk cho media,
+#     healthcheck /health; disk cần gói Render Starter trở lên)
 #    Điền DATABASE_URL (Neon) + NHIPQUAN_CORS_ORIGINS (URL web Vercel)
 
 # 3. Vercel: vercel login → từ repo root:
@@ -70,6 +71,10 @@ git push origin main        # Render autoDeploy + Vercel auto-deploy từ Git
 | `NHIPQUAN_FB_PAGE_TOKEN` / `NHIPQUAN_FB_PAGE_ID` | token Graph API v26 | Page quán |
 | `NHIPQUAN_PAGE_MODE` | `live` | bật webhook Messenger |
 | `NHIPQUAN_FB_WEBHOOK_VERIFY` | secret | verify token webhook |
+
+Chat media được lưu tại `/app/data/uploads` trên persistent disk của Render.
+Không đổi API về gói Free hoặc bỏ disk mount, vì database vẫn giữ metadata của
+tin nhắn nhưng file nhị phân sẽ mất sau khi Render thay container.
 
 ### Web (Vercel)
 

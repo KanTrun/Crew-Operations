@@ -2,6 +2,15 @@ import { getToken } from "./session";
 
 export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export function mediaUrl(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "";
+  try {
+    return new URL(value, API).toString();
+  } catch {
+    return value;
+  }
+}
+
 export function authHeaders(extra?: HeadersInit): HeadersInit {
   const token = getToken();
   return {

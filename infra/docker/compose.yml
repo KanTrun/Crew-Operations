@@ -58,6 +58,7 @@ services:
       - "8000:8000"
     volumes:
       - nhipquan_var:/app/var
+      - nhipquan_uploads:/app/data/uploads
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
       interval: 10s
@@ -123,3 +124,4 @@ services:
 volumes:
   nhipquan_pg:
   nhipquan_var:
+  nhipquan_uploads:

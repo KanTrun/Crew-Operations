@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { API, apiSend } from "../../lib/api";
+import { API, apiSend, mediaUrl } from "../../lib/api";
 import { ChatConversation, ChatMessage, useChatClient } from "../../lib/useChatClient";
 import { getName, getNvId, getRole } from "../../lib/session";
 import { VoicePlayer, VoiceRecorder } from "../../ui/chat/VoiceRecorder";
@@ -146,7 +146,7 @@ export default function ChatPage() {
       const isImg = file.type.startsWith("image/");
       const isAudio = file.type.startsWith("audio/");
       const msgType = isImg ? "image" : isAudio ? "voice" : "file";
-      const fullUrl = new URL(res.url, API).toString();
+      const fullUrl = mediaUrl(res.url);
       await sendMessage(activeConvId, isImg || isAudio ? "" : res.filename, msgType, {
         url: fullUrl,
         size: res.size,
@@ -171,9 +171,11 @@ export default function ChatPage() {
   const mentionToken = lastAtIndex >= 0 ? inputText.slice(lastAtIndex) : "";
   const isMentionActive = lastAtIndex >= 0 && !/\s/.test(mentionToken);
   const mentionQuery = isMentionActive ? mentionToken.slice(1).toLowerCase() : "";
+  const normalizeNvId = (value: string) => value.trim().toLowerCase().replace(/^nv_/, "");
+  const normalizedCurrentNvId = normalizeNvId(currentNvId);
   const mentionParticipants = activeConv?.participants
     .filter((p) => {
-      if (p.nv_id === currentNvId) return false;
+      if (normalizeNvId(p.nv_id) === normalizedCurrentNvId) return false;
       const name = p.display_name || p.nv_id;
       return !mentionQuery || name.toLowerCase().includes(mentionQuery);
     })
@@ -187,7 +189,7 @@ export default function ChatPage() {
     const file = new File([blob], `voice_${Date.now()}.${extension}`, { type: blob.type });
     try {
       const res = await uploadMedia(file);
-      const fullUrl = new URL(res.url, API).toString();
+      const fullUrl = mediaUrl(res.url);
       await sendMessage(activeConvId, "", "voice", { url: fullUrl, duration: durationSec, mime: res.mime_type });
     } catch (err: any) {
       setMediaError(err?.message || "Lỗi gửi tin nhắn thoại");

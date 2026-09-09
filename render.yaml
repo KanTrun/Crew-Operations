@@ -14,7 +14,11 @@ services:
     runtime: docker
     dockerfilePath: ./infra/docker/Dockerfile.api
     region: singapore
-    plan: free
+    plan: starter
+    disk:
+      name: nhip-quan-data
+      mountPath: /app/data
+      sizeGB: 1
     healthCheckPath: /health
     autoDeploy: true
     branch: main
