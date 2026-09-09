@@ -4,9 +4,9 @@
 > tên miền riêng + HTTPS, vùng Singapore (~60ms từ VN).
 > **Chi phí:** $200 credit + 6 tháng Free Plan (tài khoản tạo sau 15/07/2025) —
 > t3.small ~$14/tháng → credit phủ trọn 6 tháng. Hết 6 tháng: ~$14/tháng,
-> hoặc chuyển về stack Vercel+Render+Neon 0đ (vẫn đang chạy song song).
+> hoặc đóng gói dữ liệu và chuyển sang hạ tầng khác.
 > So sánh nền tảng: [`research-oracle-cloud.md`](./research-oracle-cloud.md) ·
-> [`research-google-cloud.md`](./research-google-cloud.md) · stack 0đ: [`deployment.md`](./deployment.md).
+> [`research-google-cloud.md`](./research-google-cloud.md). Tổng quan production: [`deployment.md`](./deployment.md).
 
 ## 0. Điều kiện
 
@@ -89,6 +89,7 @@ DOMAIN=nhipquan.duckdns.org
 CA_AGENT_MODE=live            # AI thật (điền GROQ_API_KEY bên dưới) hoặc replay
 GROQ_API_KEY=sk-...
 NHIPQUAN_CORS_ORIGINS=https://nhipquan.duckdns.org
+NHIPQUAN_SEED_DEMO=true       # chỉ bật khi nạp nền dữ liệu lần đầu
 # kênh tin FB/Telegram/Zalo/SMTP nếu dùng — copy từ .env máy dev
 ```
 
@@ -99,6 +100,31 @@ cd /opt/nhipquan
 sudo docker compose up -d
 sudo docker compose ps                  # chờ 5 services healthy
 curl -fsS https://nhipquan.duckdns.org/health   # HTTPS đã có cert Let's Encrypt
+```
+
+### Nạp nền dữ liệu demo trên AWS
+
+Nếu stack đã chạy rồi, thực hiện trên EC2 để nạp 19 tài khoản, lịch tuần,
+menu/BOM, nguyên liệu, tồn kho, đơn mẫu, Cẩm nang và SOP:
+
+```bash
+sudo sed -i 's/^NHIPQUAN_SEED_DEMO=.*/NHIPQUAN_SEED_DEMO=true/' /opt/nhipquan/.env
+grep -q '^NHIPQUAN_SEED_DEMO=' /opt/nhipquan/.env || echo 'NHIPQUAN_SEED_DEMO=true' | sudo tee -a /opt/nhipquan/.env
+cd /opt/nhipquan
+sudo docker compose pull api
+sudo docker compose up -d --force-recreate api
+sudo docker compose logs --tail=100 api
+```
+
+Log thành công có dòng `NHIP QUAN demo foundation loaded (idempotent)` và các
+chỉ số `users=19`, `shifts=21`, `menu=8`, `inventory_items=8`. Sau khi kiểm tra
+xong, tắt cờ để những lần restart sau không chạy lại seed:
+
+```bash
+sudo sed -i 's/^NHIPQUAN_SEED_DEMO=.*/NHIPQUAN_SEED_DEMO=false/' /opt/nhipquan/.env
+sudo docker compose up -d --force-recreate api
+sudo docker compose ps
+curl -fsS https://nhipquan.duckdns.org/health
 ```
 
 ## 7. Deploy lại khi code đổi
@@ -113,8 +139,8 @@ ssh ubuntu@<EC2_IP> "cd /opt/nhipquan && sudo docker compose pull && sudo docker
 1. **Tiếp tục trả** ~$14/tháng (t3.small + 20GB gp3, region Singapore) — không cần đổi gì.
 2. **Đóng gói:** `sudo docker compose down` → snapshot EBS → terminate instance
    (giữ snapshot ~$2/tháng nếu muốn hồi sinh sau).
-3. **Chuyển về stack 0đ** Vercel+Render+Neon (đang chạy song song — chỉ cần trỏ domain
-   về Vercel): Neon giữ nguyên DB, không mất dữ liệu.
+3. **Chuyển hạ tầng:** backup PostgreSQL và thư mục upload, triển khai Compose
+   trên VM mới, rồi cập nhật DuckDNS sang IP mới.
 
 ## 9. Sự cố thường gặp
 
@@ -126,13 +152,8 @@ ssh ubuntu@<EC2_IP> "cd /opt/nhipquan && sudo docker compose pull && sudo docker
 | Let's Encrypt fail | Chờ 1-2 phút sau lần request đầu; kiểm DuckDNS trỏ đúng IP; port 80/443 mở SG |
 | Không SSH được | SG rule SSH source = IP nhà bạn (đổi IP thì update rule); đúng key file, `chmod 400` trên Linux |
 
-## 10. Khác biệt với stack Vercel+Render+Neon (0đ)
+## 10. Pham vi AWS production
 
-| | AWS EC2 (runbook này) | Vercel+Render+Neon |
-|---|---|---|
-| Phí | 0đ × 6 tháng → $14/th | 0đ vĩnh viễn |
-| VM thật full stack | ✅ 1 máy trọn compose | ❌ 3 dịch vụ rời |
-| Worker nền (nhắc phiếu) | ✅ chạy 24/7 | ❌ Render free 750h chỉ đủ API |
-| Vùng | Singapore ~60ms | Singapore ~60ms |
-| Tên miền + HTTPS | ✅ Caddy + DuckDNS | ✅ vercel.app |
-| Rủi ro | Hết credit phải quyết định | Cold start 15' idle (giải quyết bằng UptimeRobot) |
+AWS EC2 chay tron stack tren mot VM: Caddy, web, API, worker, PostgreSQL va
+Redis. Du lieu can duoc backup dinh ky; khi het credit, quyet dinh tiep tuc tra
+phi hoac chuyen Compose sang VM khac truoc khi terminate instance.

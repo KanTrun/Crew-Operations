@@ -3,7 +3,7 @@
 > Mục tiêu: toàn bộ stack (Postgres + Redis + API + worker + web) trên **1 VM thật**,
 > tên miền riêng, HTTPS, dữ liệu bền vững — **0đ/tháng**.
 > Nghiên cứu nền tảng: [`research-oracle-cloud.md`](./research-oracle-cloud.md) (A1 2 OCPU/12GB, ping VN→SG 36ms).
-> So sánh với stack Vercel+Render+Neon hiện tại: [`deployment.md`](./deployment.md).
+> Day la phuong an du phong; production hien tai duoc mo ta tai [`deployment.md`](./deployment.md).
 
 ## 0. Điều kiện tiên quyết
 
@@ -131,5 +131,5 @@ ssh ubuntu@<PUBLIC_IP> "cd /opt/nhipquan && sudo docker compose pull && sudo doc
 - 1.500 OCPU-giờ + 9.000 GB-giờ/tháng = đủ chạy 24/7 không nghỉ.
 - Quy tắc idle-reclaim: p95 CPU/mem/network <20% trong 7 ngày → có thể thu hồi
   (cron anti-idle trong cloud-init đã xử).
-- Thay đổi chính sách: Oracle từng cắt quota không báo trước (06/2026) — luôn có
-  backup: `make migrate-neon` + Neon vẫn còn nguyên DB của stack Vercel+Render cũ.
+- Thay đổi chính sách: Oracle từng cắt quota không báo trước (06/2026) — luôn
+   backup PostgreSQL va thu muc upload truoc khi chuyen ha tang.

@@ -109,7 +109,7 @@ docker-seed-ops:
 docker-reset:
 	python scripts/docker_stack.py reset
 
-# ── Production: Neon Postgres (Render + Vercel deploy — docs/deployment.md) ──
+# ── Database migration utility ──
 #
 # DATABASE_URL lấy từ Neon console (vùng Singapore), định dạng:
 #   postgresql+psycopg://user:pass@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require

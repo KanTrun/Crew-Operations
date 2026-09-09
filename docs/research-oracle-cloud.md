@@ -2,7 +2,7 @@
 
 > Ngày nghiên cứu: **05/09/2026**. Nguồn chính là tài liệu chính thức của Oracle (đã ghi ngày cập nhật từng trang) + đo latency thực tế từ máy ở VN (Viettel) ngày 05/09/2026.
 > Ngữ cảnh: user gửi screenshot ChatGPT so sánh "free VM mãi mãi" và hỏi "cái này sử dụng được không" — bài này xác minh từng con số đó.
-> Đối chiếu: phương án đã nghiên cứu = Vercel Hobby + Render Free (Singapore) + Neon Free.
+> Day la tai lieu nghien cuu lich su; production hien tai chay tren AWS EC2.
 
 ## 0. Screenshot user gửi nói gì?
 
@@ -82,7 +82,7 @@ Docs chính thức (cập nhật 12/06/2026): Oracle coi instance là **idle n�
 
 ## 8. Có dùng được cho NHỊP QUÁN không?
 
-**Kết luận: KHÔNG dùng làm phương án chính. Chỉ dùng khi đã có sẵn account Oracle hợp lệ (đăng ký được từ trước) — và khi đó là phương án k68 rất mạnh về phần cứng. Ưu tiên giữ phương án đã nghiên cứu: Vercel Hobby + Render Free Singapore + Neon Free.**
+**Ket luan: KHONG dung lam phuong an chinh. Chi dung khi da co san account Oracle hop le; production hien tai tiep tuc tren AWS EC2.**
 
 Lý do — rủi ro nằm ở "cửa vào", không phải ở phần cứng:
 

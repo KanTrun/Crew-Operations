@@ -1,114 +1,73 @@
-# Deployment — NHỊP QUÁN
+# Deployment - NHIP QUAN
 
-> Cập nhật: 2026-09-06. Stack 0đ **đang chạy công khai** (verified end-to-end 05/09).
-> Nghiên cứu nền tảng: [`research-oracle-cloud.md`](./research-oracle-cloud.md) · [`research-google-cloud.md`](./research-google-cloud.md).
-> Phương án VM thật: [AWS EC2](./runbook-aws.md) (Free Plan $200/6 tháng) · [Oracle A1](./runbook-oracle.md) (0đ vĩnh viễn, signup VN bị chặn).
+> Production chay tren AWS EC2 tai `https://nhipquan.duckdns.org`.
+> Runbook van hanh day du: [AWS EC2](./runbook-aws.md).
 
-## Platform — stack 0đ đang chạy
+## Kien truc production
 
-| Thành phần | Nền tảng | Plan | URL |
-|---|---|---|---|
-| Web (Next.js 15) | **Vercel** | Hobby (free vĩnh viễn, 100GB b/w) | **https://nhip-quan.vercel.app** |
-| API (FastAPI + ortools) | **Render** | Free (512MB RAM, 750h/tháng, Singapore) | **https://nhip-quan-api.onrender.com** |
-| Database (PostgreSQL) | **Neon** | Free vĩnh viễn (0.5GB, Singapore) | 29 bảng, alembic 0007 |
-
-**Phương án VM full-stack** (Postgres+Redis+API+worker+web trên 1 máy + HTTPS + domain riêng —
-khi cần worker chạy 24/7 hoặc kiểm soát hoàn toàn):
-- **AWS EC2 t3.small Singapore** — [`runbook-aws.md`](./runbook-aws.md): Free Plan $200/6 tháng.
-- **Oracle A1 Singapore** — [`runbook-oracle.md`](./runbook-oracle.md): 0đ vĩnh viễn (signup từ VN hiện bị chặn).
-- Cả hai dùng chung hạ tầng: `infra/oracle/compose.prod.yml` + `Caddyfile` + CI image GHCR
-  (`.github/workflows/docker-ghcr.yml`, multi-arch amd64+arm64).
-
-**Lý do chọn stack 0đ** (so sánh đầy đủ trong 2 file research):
-- Vercel: CDN edge Singapore/HK — web tải ~50-80ms từ VN; Next.js native.
-- Render Singapore: Docker native, vùng Singapore ~60ms từ VN, 512MB đủ ortools solve 60s.
-- Neon: Postgres vĩnh viễn free không cần thẻ — disk Render free là **ephemeral** nên DB phải ngoài Render.
-- Loại: Fly.io (bỏ free 2024), Railway ($5/30 ngày), Koyeb (chỉ Frankfurt), Oracle/GCP (rủi ro đăng ký VN + chính sách — chi tiết research).
-
-## URL (đang chạy)
-
-- **Web:** https://nhip-quan.vercel.app
-- **API:** https://nhip-quan-api.onrender.com
-- **Health:** `GET /health` — trả `{"status": "ok", "service": "ca-api"}`
-- **OpenAPI:** `GET /docs`
-- Tài khoản demo: `lan` / `hung` / `minh` · mật khẩu `nhipquan`
-
-## Deploy Command
-
-### Lần đầu (3 dịch vụ)
-
-```bash
-# 1. Neon: đăng ký console.neon.tech (GitHub) → project vùng Singapore
-#    Copy connection string (chọn "python" → psycopg) → dán vào .env.production
-make migrate-neon          # alembic upgrade head 0001→0007 lên Neon
-
-# 2. Render: dashboard.render.com/blueprints → New Blueprint → chọn repo
-#    (render.yaml tự cấu hình: Docker, Singapore, persistent disk cho media,
-#     healthcheck /health; disk cần gói Render Starter trở lên)
-#    Điền DATABASE_URL (Neon) + NHIPQUAN_CORS_ORIGINS (URL web Vercel)
-
-# 3. Vercel: vercel login → từ repo root:
-cd apps/web && vercel --prod
-#    Đặt NEXT_PUBLIC_API_URL = https://nhip-quan-api.onrender.com
-```
-
-### Deploy lại
-
-```bash
-git push origin main        # Render autoDeploy + Vercel auto-deploy từ Git
-```
-
-## Environment Variables
-
-### API (Render — render.yaml)
-
-| Biến | Giá trị | Ghi chú |
+| Thanh phan | Noi chay | Du lieu |
 |---|---|---|
-| `DATABASE_URL` | `postgresql+psycopg://…neon.tech/neondb?sslmode=require` | từ Neon console |
-| `NHIPQUAN_CORS_ORIGINS` | `https://nhip-quan.vercel.app` | origin web, phẩy nếu nhiều |
-| `CA_AGENT_MODE` | `live` hoặc `replay` | replay an toàn quota; live dùng LLM thật |
-| `GROQ_API_KEY` / `GEMINI_API_KEY` / `OPENROUTER_API_KEY` | key thật | chỉ cần khi `live` |
-| `NHIPQUAN_FB_PAGE_TOKEN` / `NHIPQUAN_FB_PAGE_ID` | token Graph API v26 | Page quán |
-| `NHIPQUAN_PAGE_MODE` | `live` | bật webhook Messenger |
-| `NHIPQUAN_FB_WEBHOOK_VERIFY` | secret | verify token webhook |
+| Caddy + HTTPS | AWS EC2 | Chung VM |
+| Web Next.js | Docker tren AWS EC2 | Image GHCR `nhipquan-web` |
+| API FastAPI | Docker tren AWS EC2 | Image GHCR `nhipquan-api` |
+| Worker | Docker tren AWS EC2 | Chung source voi API |
+| PostgreSQL | Docker volume tren AWS EC2 | Du lieu ben vung |
+| Redis | Docker volume tren AWS EC2 | Du lieu ben vung |
 
-Chat media được lưu tại `/app/data/uploads` trên persistent disk của Render.
-Không đổi API về gói Free hoặc bỏ disk mount, vì database vẫn giữ metadata của
-tin nhắn nhưng file nhị phân sẽ mất sau khi Render thay container.
+Docker Compose production nam tai `infra/oracle/compose.prod.yml`. Workflow
+`.github/workflows/docker-ghcr.yml` build image `linux/amd64` va day len GHCR
+khi code production thay doi.
 
-### Web (Vercel)
+## URL
 
-| Biến | Giá trị |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | `https://nhip-quan-api.onrender.com` |
+- Web: `https://nhipquan.duckdns.org`
+- API health: `GET https://nhipquan.duckdns.org/health`
+- OpenAPI: `https://nhipquan.duckdns.org/docs`
 
-**Lưu ý build-time:** `NEXT_PUBLIC_API_URL` được nhúng khi build — đổi URL API thì phải redeploy web.
+## Deploy
 
-## Custom Domain
+```bash
+git push origin main
+ssh ubuntu@<EC2_IP> "cd /opt/nhipquan && sudo docker compose pull && sudo docker compose up -d"
+```
 
-- Vercel: Project → Domains → Add → tự config CNAME `cname.vercel-dns.com` (miễn phí SSL).
-- Render: Settings → Custom Domain (chỉ khi có domain riêng; subdomain `.onrender.com` đã có SSL).
+Tren EC2, file `/opt/nhipquan/.env` can toi thieu:
+
+```bash
+DOMAIN=nhipquan.duckdns.org
+CA_AGENT_MODE=live
+NHIPQUAN_CORS_ORIGINS=https://nhipquan.duckdns.org
+```
+
+Them cac API key va cau hinh kenh tin theo nhu cau. Khong commit `.env`, token,
+mat khau, hay khoa truy cap vao repository.
+
+## Chat media
+
+File chat duoc ghi vao `/app/data/uploads/chat` trong container API. Compose
+production phai mount volume ben vung vao `/app/data/uploads`; neu bo volume,
+metadata tin nhan van con trong database nhung file dinh kem se mat sau khi
+container bi thay the.
 
 ## Rollback
 
-- Render: service → Events → deploy cũ → *Rollback* (hoặc `render deploys rollback <id>`).
-- Vercel: Deployments → deploy cũ → *Promote to Production*.
-- Neon: **Point-in-time restore** 7 ngày (free) — console → Restore branch.
-- Database schema rollback: `alembic -c apps/api/alembic/alembic.ini downgrade <rev>`.
+Moi image GHCR co ca tag `latest` va tag commit SHA. De rollback, dat image API
+va web trong Compose ve SHA da xac minh, sau do chay:
 
-## Cold-start & giới hạn free (quan trọng khi demo)
+```bash
+cd /opt/nhipquan
+sudo docker compose pull
+sudo docker compose up -d
+sudo docker compose ps
+curl -fsS https://nhipquan.duckdns.org/health
+```
 
-- **Render free ngủ sau 15 phút idle** — request đầu sau ngủ mất 30-60s (khởi động lại container).
-- **Neon scale-to-zero** sau inactive — kết nối đầu tiên +~500ms đánh thức.
-- Giữ ấm khi demo: ping `/health` mỗi 5 phút (vd UptimeRobot free cron).
-- Nếu vượt 750h/tháng: nâng Render Starter $7/tháng — không cần đổi code.
+## Xu ly su co
 
-## Troubleshooting
-
-| Triệu chứng | Nguyên nhân | Xử lý |
-|---|---|---|
-| Web gọi API lỗi `api_0` | API đang ngủ/cold start | chờ 60s hoặc ping giữ ấm; web hiện "mất kết nối" là đúng thiết kế |
-| Lỗi CORS khi deploy | thiếu `NHIPQUAN_CORS_ORIGINS` | set trên Render → redeploy |
-| `relation "ai_rule_proposals" does not exist` | migration chưa chạy | `make migrate-neon` (chain 0001→0007) |
-| 500 khi solve CP-SAT | RAM 512MB sát ortools | kiểm log Render; solve 60s ~400MB bình ổn |
-| Web trắng, API OK | `NEXT_PUBLIC_API_URL` sai hoặc là build-time cũ | redeploy web sau khi đổi |
+| Trieu chung | Kiem tra |
+|---|---|
+| Web trang hoac goi API loi | `NEXT_PUBLIC_API_URL` phai la `https://nhipquan.duckdns.org` luc build image web |
+| CORS | `NHIPQUAN_CORS_ORIGINS` phai khop domain, khong co dau `/` cuoi |
+| File chat khong kha dung | Kiem tra volume `/app/data/uploads` va quyen ghi cua container API |
+| Container khong healthy | `sudo docker compose ps` va `sudo docker compose logs --tail=200` |
+| HTTPS loi | Kiem tra DuckDNS, security group port 80/443 va log Caddy |

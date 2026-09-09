@@ -1,7 +1,7 @@
 # Nghiên cứu Google Cloud Free Tier (2026) cho NHỊP QUÁN
 
 > Ngày nghiên cứu: **05/09/2026**. Nguồn chính là tài liệu chính thức của Google (đã ghi ngày cập nhật từng trang) + đo latency thực tế từ máy ở VN (Viettel) ngày 05/09/2026.
-> Đối chiếu: phương án thay thế đã nghiên cứu trước đó = Vercel Hobby + Render Free (Singapore) + Neon Free.
+> Day la tai lieu nghien cuu lich su; production hien tai chay tren AWS EC2.
 
 ## 1. Hai loại "free" của GCP — phải phân biệt
 
@@ -76,7 +76,7 @@ Khối lượng free quy đổi cho NHỊP QUÁN: 180k vCPU-s ≈ **3.000 lần 
 
 **Vùng:** không bị giới hạn như e2-micro — bảng giá liệt kê free tier áp dụng cho **mọi vùng, gồm cả `asia-southeast1` (Singapore)** (nguồn: trang run/pricing, đọc 05/09/2026; mức free tính theo giá Tier 1/us-central1). → Cloud Run Singapore ~60 ms từ VN là khả thi về latency.
 
-Kiến trúc nếu đi Cloud Run: API (FastAPI+ortools) = 1 Cloud Run service; worker = Cloud Run **Jobs** (free tier riêng 240k vCPU-s + 450k GiB-s) hoặc **worker pools** (free ~384k vCPU-s + ~729k GiB-s ≈ 0.15 vCPU + 0.28 GiB chạy 24/7 — đủ cho worker rảnh); web Next.js = Cloud Run service thứ hai (hoặc Vercel); Postgres = Neon; Redis = Upstash. Nhiều mảnh ghép hơn phương án Render.
+Kien truc neu di Cloud Run: API (FastAPI+ortools) = 1 Cloud Run service; worker = Cloud Run **Jobs** (free tier rieng 240k vCPU-s + 450k GiB-s) hoac **worker pools** (free ~384k vCPU-s + ~729k GiB-s, du cho worker ranh); web Next.js = Cloud Run service thu hai; Postgres va Redis dung dich vu quan ly rieng. Nhieu manh ghep hon phuong an mot VM AWS.
 
 ## 4. Đăng ký từ Việt Nam & rủi ro trừ tiền
 
@@ -96,7 +96,7 @@ Kiến trúc nếu đi Cloud Run: API (FastAPI+ortools) = 1 Cloud Run service; w
 
 ## 6. Có dùng được cho NHỊP QUÁN không?
 
-**Kết luận: KHÔNG khuyến nghị GCP always-free làm phương án chính. Giữ phương án đã nghiên cứu (Vercel Hobby + Render Free Singapore + Neon Free) — tốt hơn ở mọi tiêu chí quan trọng.**
+**Ket luan: KHONG khuyen nghi GCP always-free lam phuong an chinh. Production tiep tuc dung AWS EC2 cho den khi co quyet dinh chuyen ha tang.**
 
 Lý do:
 

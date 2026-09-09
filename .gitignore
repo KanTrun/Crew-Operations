@@ -66,5 +66,4 @@ data/uploads/
 .claude/
 
 
-.vercel
 .env*
