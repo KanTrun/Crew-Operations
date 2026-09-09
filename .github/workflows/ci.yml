@@ -154,7 +154,7 @@ jobs:
       - name: Install API + Playwright
         run: |
           pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api httpx pyyaml ortools uvicorn
-          cd apps/web && npm install && npx playwright install --with-deps chromium
+          cd apps/web && npm ci && for attempt in 1 2 3; do npx playwright install --with-deps chromium && exit 0; rm -rf "$HOME/.cache/ms-playwright"; done; exit 1
       - name: Playwright 8 flows
         working-directory: apps/web
         run: npm run build && npm run test:e2e
