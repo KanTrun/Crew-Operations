@@ -144,9 +144,10 @@ export default function ChatPage() {
     try {
       const res = await uploadMedia(file);
       const isImg = file.type.startsWith("image/");
-      const msgType = isImg ? "image" : "file";
+      const isAudio = file.type.startsWith("audio/");
+      const msgType = isImg ? "image" : isAudio ? "voice" : "file";
       const fullUrl = new URL(res.url, API).toString();
-      await sendMessage(activeConvId, isImg ? "" : res.filename, msgType, {
+      await sendMessage(activeConvId, isImg || isAudio ? "" : res.filename, msgType, {
         url: fullUrl,
         size: res.size,
         mime: res.mime_type,
@@ -159,6 +160,20 @@ export default function ChatPage() {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
+
+  const insertMention = (mention: string) => {
+    const lastAtIndex = inputText.lastIndexOf("@");
+    setInputText(inputText.substring(0, lastAtIndex) + `${mention} `);
+    textareaRef.current?.focus();
+  };
+
+  const mentionQuery = inputText.slice(inputText.lastIndexOf("@") + 1).toLowerCase();
+  const mentionParticipants = activeConv?.participants
+    .filter((p) => {
+      const name = p.display_name || p.nv_id;
+      return !mentionQuery || name.toLowerCase().includes(mentionQuery);
+    })
+    .slice(0, 6) || [];
 
   const handleVoiceSend = async (blob: Blob, durationSec: number) => {
     if (!activeConvId) return;
@@ -508,16 +523,32 @@ export default function ChatPage() {
                             )}
 
                             {msg.type === "file" && msg.metadata?.url && (
-                              <a
-                                href={msg.metadata.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center gap-2 text-[var(--nq-copper)] underline underline-offset-2"
-                              >
-                                <Icon name="attachment" size={18} />
-                                <span className="max-w-56 truncate">{msg.metadata.filename || msg.content || "Mở tệp"}</span>
-                                <Icon name="download" size={15} />
-                              </a>
+                              <div className="space-y-2">
+                                {msg.metadata.mime === "application/pdf" && (
+                                  <iframe
+                                    src={msg.metadata.url}
+                                    title={msg.metadata.filename || "Xem tài liệu PDF"}
+                                    className="h-64 w-full min-w-[260px] rounded-lg border border-[var(--nq-dim)] bg-white"
+                                  />
+                                )}
+                                {msg.metadata.mime?.startsWith("audio/") && (
+                                  <audio controls preload="metadata" src={msg.metadata.url} className="max-w-full" />
+                                )}
+                                <a
+                                  href={msg.metadata.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-2 rounded-lg bg-black/10 px-2.5 py-2 text-[var(--nq-copper)] transition hover:bg-black/20"
+                                >
+                                  <Icon name="attachment" size={18} />
+                                  <span className="min-w-0 max-w-56 truncate font-medium">{msg.metadata.filename || msg.content || "Mở tệp"}</span>
+                                  <Icon name="download" size={15} />
+                                </a>
+                              </div>
+                            )}
+
+                            {(msg.type === "image" || msg.type === "voice" || msg.type === "file") && !msg.metadata?.url && (
+                              <span className="text-[var(--nq-muted)] italic">Tệp đính kèm không khả dụng</span>
                             )}
 
                             {msg.type === "ops_card" && (
@@ -704,44 +735,40 @@ export default function ChatPage() {
 
             {/* Mention Suggestions Bar */}
             {inputText.includes("@") && (
-              <div className="px-3 py-1.5 bg-[var(--nq-surface-hi)] border-t border-[var(--nq-dim)] flex items-center gap-1.5 overflow-x-auto text-xs shrink-0">
-                <span className="text-[10px] text-[var(--nq-muted)] font-medium shrink-0">Gợi ý tag:</span>
+              <div className="px-3 py-2 bg-[var(--nq-surface-hi)] border-t border-[var(--nq-dim)] shrink-0">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--nq-muted)]">Gắn thẻ thành viên</span>
+                  <span className="text-[10px] text-[var(--nq-muted)]">Chọn người nhận</span>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-0.5">
                 <button
                   type="button"
-                  onClick={() => {
-                    const lastAtIndex = inputText.lastIndexOf("@");
-                    setInputText(inputText.substring(0, lastAtIndex) + "@copilot ");
-                    textareaRef.current?.focus();
-                  }}
-                  className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 text-[11px] font-semibold shrink-0 transition"
+                  onClick={() => insertMention("@copilot")}
+                  className="flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 text-left transition hover:-translate-y-px hover:border-amber-500/60 hover:bg-amber-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
                 >
-                  <Icon name="bot" size={14} /> @copilot
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400"><Icon name="bot" size={14} /></span>
+                  <span><strong className="block text-[11px] text-amber-400">copilot</strong><small className="block text-[10px] text-[var(--nq-muted)]">Trợ lý vận hành</small></span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    const lastAtIndex = inputText.lastIndexOf("@");
-                    setInputText(inputText.substring(0, lastAtIndex) + "@agent_lich ");
-                    textareaRef.current?.focus();
-                  }}
-                  className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30 text-[11px] font-semibold shrink-0 transition"
+                  onClick={() => insertMention("@agent_lich")}
+                  className="flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 text-left transition hover:-translate-y-px hover:border-emerald-500/60 hover:bg-emerald-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
                 >
-                  <Icon name="calendar" size={14} /> @agent_lich
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400"><Icon name="calendar" size={14} /></span>
+                  <span><strong className="block text-[11px] text-emerald-400">agent_lich</strong><small className="block text-[10px] text-[var(--nq-muted)]">Trợ lý lịch</small></span>
                 </button>
-                {activeConv?.participants.slice(0, 6).map((p) => (
+                {mentionParticipants.map((p) => (
                   <button
                     key={p.nv_id}
                     type="button"
-                    onClick={() => {
-                      const lastAtIndex = inputText.lastIndexOf("@");
-                      setInputText(inputText.substring(0, lastAtIndex) + `@${p.display_name || p.nv_id} `);
-                      textareaRef.current?.focus();
-                    }}
-                    className="px-2 py-0.5 rounded-full bg-[var(--nq-dim)] text-[var(--nq-fg)] hover:bg-[var(--nq-copper)]/20 hover:text-[var(--nq-copper)] text-[11px] shrink-0 transition"
+                    onClick={() => insertMention(`@${p.display_name || p.nv_id}`)}
+                    className="flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-[var(--nq-dim)] bg-[var(--nq-bg)] px-2.5 text-left transition hover:-translate-y-px hover:border-[var(--nq-copper)] hover:bg-[var(--nq-copper)]/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nq-focus)]"
                   >
-                    @{p.display_name || p.nv_id}
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--nq-copper)] text-[11px] font-bold text-[var(--nq-accent-ink)]">{(p.display_name || p.nv_id).charAt(0).toUpperCase()}</span>
+                    <span><strong className="block max-w-28 truncate text-[11px] text-[var(--nq-fg)]">{p.display_name || p.nv_id}</strong><small className="block text-[10px] text-[var(--nq-muted)]">{p.role === "admin" ? "Quản trị viên" : "Thành viên"}</small></span>
                   </button>
                 ))}
+                </div>
               </div>
             )}
 
