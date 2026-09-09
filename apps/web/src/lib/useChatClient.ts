@@ -310,8 +310,9 @@ export function useChatClient(activeConvId?: string) {
         [convId]: [...(prev[convId] || []), optimisticMsg],
       }));
 
-      // Thử gửi qua WebSocket trước
-      if (sendRealtime({
+      // Media must use REST so the client receives the persisted metadata/url.
+      const shouldUseRest = Boolean(metadata.url);
+      if (!shouldUseRest && sendRealtime({
             event: "message:send",
             data: {
               conversation_id: convId,

@@ -167,9 +167,13 @@ export default function ChatPage() {
     textareaRef.current?.focus();
   };
 
-  const mentionQuery = inputText.slice(inputText.lastIndexOf("@") + 1).toLowerCase();
+  const lastAtIndex = inputText.lastIndexOf("@");
+  const mentionToken = lastAtIndex >= 0 ? inputText.slice(lastAtIndex) : "";
+  const isMentionActive = lastAtIndex >= 0 && !/\s/.test(mentionToken);
+  const mentionQuery = isMentionActive ? mentionToken.slice(1).toLowerCase() : "";
   const mentionParticipants = activeConv?.participants
     .filter((p) => {
+      if (p.nv_id === currentNvId) return false;
       const name = p.display_name || p.nv_id;
       return !mentionQuery || name.toLowerCase().includes(mentionQuery);
     })
@@ -734,7 +738,7 @@ export default function ChatPage() {
             )}
 
             {/* Mention Suggestions Bar */}
-            {inputText.includes("@") && (
+            {isMentionActive && (
               <div className="px-3 py-2 bg-[var(--nq-surface-hi)] border-t border-[var(--nq-dim)] shrink-0">
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--nq-muted)]">Gắn thẻ thành viên</span>
