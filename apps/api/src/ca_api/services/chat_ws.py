@@ -224,8 +224,8 @@ class ChatConnectionManager:
         """Đăng ký callback nhận broadcast từ instance khác (idempotent)."""
         if self._subscribed:
             return
-        self._subscribed = True
         await self._backend.subscribe(self._BROADCAST_CHANNEL, self._on_remote_message)
+        self._subscribed = True
 
     async def _on_remote_message(self, payload: dict[str, Any]) -> None:
         """Forward broadcast từ instance khác vào local sockets; bỏ echo của chính mình."""
@@ -289,10 +289,6 @@ class ChatConnectionManager:
 
     async def broadcast_all(self, payload: dict[str, Any]) -> None:
         """Fan-out qua PubSubBackend: local sockets + cross-instance qua Redis."""
-        await self._ensure_subscribed()
-        await self._backend.publish(
-            self._BROADCAST_CHANNEL, {**payload, "_origin": self._origin}
-        )
         async with self._lock:
             all_sockets = [ws for s in self._connections.values() for ws in s]
         text = json.dumps(payload, ensure_ascii=False)
@@ -301,6 +297,13 @@ class ChatConnectionManager:
                 await ws.send_text(text)
             except Exception:
                 pass
+        try:
+            await self._ensure_subscribed()
+            await self._backend.publish(
+                self._BROADCAST_CHANNEL, {**payload, "_origin": self._origin}
+            )
+        except Exception as exc:
+            logger.error("Chat Pub/Sub broadcast failed; local delivery completed: %s", exc)
 
     async def broadcast_to_conversation(
         self, conv_id: str, payload: dict[str, Any], exclude_socket: WebSocket | None = None
@@ -315,10 +318,6 @@ class ChatConnectionManager:
                 if nv_id in self._connections:
                     sockets.extend(self._connections[nv_id])
 
-        await self._ensure_subscribed()
-        await self._backend.publish(
-            self._BROADCAST_CHANNEL, {**payload, "_origin": self._origin}
-        )
         text = json.dumps(payload, ensure_ascii=False)
         for ws in sockets:
             if exclude_socket is not None and ws is exclude_socket:
@@ -327,6 +326,16 @@ class ChatConnectionManager:
                 await ws.send_text(text)
             except Exception:
                 pass
+
+        # Local delivery keeps a persisted message usable when Redis is down.
+        # Pub/Sub is only needed to fan the event out to other API instances.
+        try:
+            await self._ensure_subscribed()
+            await self._backend.publish(
+                self._BROADCAST_CHANNEL, {**payload, "_origin": self._origin}
+            )
+        except Exception as exc:
+            logger.error("Chat Pub/Sub broadcast failed; local delivery completed: %s", exc)
 
     async def handle_client_message(
         self, sender_nv_id: str, websocket: WebSocket, raw_data: str
@@ -353,7 +362,7 @@ class ChatConnectionManager:
             if not await msg_rate_limiter.check_and_record(sender_nv_id):
                 await websocket.send_text(json.dumps({
                     "event": "error",
-                    "data": {"code": "rate_limited", "detail": "Bạn đang gửi tin quá nhanh (tối đa 30 tin/phút)"}
+                    "data": {"code": "rate_limited", "detail": "Bạn đang gửi tin quá nhanh (tối đa 30 tin/phút)", "conversation_id": data.get("conversation_id")}
                 }))
                 return
 
@@ -377,7 +386,10 @@ class ChatConnectionManager:
                     reply_to_id=reply_to_id,
                 )
             except ValueError as val_err:
-                await websocket.send_text(json.dumps({"event": "error", "data": {"detail": str(val_err)}}))
+                await websocket.send_text(json.dumps({
+                    "event": "error",
+                    "data": {"detail": str(val_err), "conversation_id": conv_id},
+                }))
                 return
 
             await self.broadcast_to_conversation(conv_id, {"event": "message:new", "data": new_msg})

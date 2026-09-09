@@ -152,6 +152,41 @@ def test_chat_upload_media_magic_bytes(client: TestClient, auth_lan: dict[str, s
     assert res_bad.status_code == 415
 
 
+@pytest.mark.parametrize(
+    ("filename", "content_type", "payload", "expected_mime", "expected_suffix"),
+    [
+        ("voice.webm", "audio/webm;codecs=opus", b"\x1a\x45\xdf\xa3" + b"A" * 40, "audio/webm", ".webm"),
+        ("voice.ogg", "audio/ogg;codecs=opus", b"OggS" + b"A" * 40, "audio/ogg", ".ogg"),
+        ("voice.wav", "audio/wav", b"RIFF" + b"A" * 4 + b"WAVE" + b"A" * 32, "audio/wav", ".wav"),
+        ("voice.mp4", "audio/mp4", b"\x00\x00\x00\x18ftypM4A " + b"A" * 32, "audio/mp4", ".m4a"),
+    ],
+)
+def test_chat_upload_accepts_browser_voice_formats(
+    client: TestClient,
+    auth_lan: dict[str, str],
+    filename: str,
+    content_type: str,
+    payload: bytes,
+    expected_mime: str,
+    expected_suffix: str,
+) -> None:
+    res = client.post(
+        "/api/v1/chat/upload",
+        files={"file": (filename, io.BytesIO(payload), content_type)},
+        headers={"Authorization": auth_lan["Authorization"]},
+    )
+
+    assert res.status_code == 200
+    body = res.json()
+    assert body["mime_type"] == expected_mime
+    assert body["url"].endswith(expected_suffix)
+
+    media_res = client.get(body["url"])
+    assert media_res.status_code == 200
+    assert media_res.headers["content-type"] == expected_mime
+    assert media_res.content == payload
+
+
 def test_chat_websocket_first_message_auth(
     client: TestClient, auth_lan: dict[str, str], auth_minh: dict[str, str]
 ) -> None:
@@ -242,6 +277,37 @@ def test_chat_manager_broadcasts_through_backend_and_suppresses_echo() -> None:
     received, sent = asyncio.run(scenario())
     assert any(p.get("event") == "user:test" for p in received)
     assert any("remote" in msg for msg in sent)
+
+
+def test_chat_manager_delivers_locally_when_pubsub_fails() -> None:
+    """Redis failure must not block delivery to sockets on this API instance."""
+    import asyncio
+
+    from ca_api.services.chat_ws import ChatConnectionManager
+
+    class FakeWs:
+        def __init__(self) -> None:
+            self.sent: list[str] = []
+
+        async def send_text(self, text: str) -> None:
+            self.sent.append(text)
+
+    class BrokenBackend:
+        async def subscribe(self, channel: str, callback: object) -> None:
+            raise ConnectionError("redis down")
+
+        async def publish(self, channel: str, message: dict[str, object]) -> None:
+            raise ConnectionError("redis down")
+
+    async def scenario() -> list[str]:
+        manager = ChatConnectionManager(BrokenBackend())  # type: ignore[arg-type]
+        fake_ws = FakeWs()
+        await manager.connect("nv_01", fake_ws)  # type: ignore[arg-type]
+        await manager.broadcast_to_conversation("conv_general_quan_01", {"event": "message:new"})
+        return fake_ws.sent
+
+    sent = asyncio.run(scenario())
+    assert any('"message:new"' in message for message in sent)
 
 
 def test_redis_backend_retries_without_silent_fallback(monkeypatch: pytest.MonkeyPatch) -> None:

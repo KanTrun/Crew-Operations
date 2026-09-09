@@ -19,6 +19,7 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const mimeTypeRef = useRef("audio/webm");
+  const durationRef = useRef(0);
 
   const startRecording = async () => {
     if (disabled || isRecording) return;
@@ -46,15 +47,17 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
       mediaRecorder.start(100);
       setIsRecording(true);
       setDuration(0);
+      durationRef.current = 0;
 
       timerRef.current = setInterval(() => {
         setDuration((prev) => {
-          // Giới hạn tối đa 3 phút (180s)
-          if (prev >= 180) {
+          const nextDuration = prev + 1;
+          durationRef.current = nextDuration;
+          if (nextDuration >= 180) {
             stopAndSend();
-            return prev;
+            return 180;
           }
-          return prev + 1;
+          return nextDuration;
         });
       }, 1000);
     } catch {
@@ -70,6 +73,9 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
     }
     setIsRecording(false);
     setDuration(0);
+    durationRef.current = 0;
+    mediaRecorderRef.current = null;
+    audioChunksRef.current = [];
   };
 
   const cancelRecording = () => {
@@ -81,20 +87,28 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
   };
 
   const stopAndSend = () => {
-    if (!mediaRecorderRef.current || !isRecording) return;
+    const mediaRecorder = mediaRecorderRef.current;
+    if (!mediaRecorder || mediaRecorder.state !== "recording") return;
 
-    mediaRecorderRef.current.onstop = async () => {
+    mediaRecorder.onstop = async () => {
       const audioBlob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current });
       setIsSending(true);
       try {
-        await onSendVoice(audioBlob, duration);
+        await onSendVoice(audioBlob, durationRef.current);
       } finally {
         setIsSending(false);
         cleanup();
       }
     };
-    mediaRecorderRef.current.stop();
+    mediaRecorder.stop();
   };
+
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+      cleanup();
+    };
+  }, []);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
