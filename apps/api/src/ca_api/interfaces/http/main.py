@@ -381,21 +381,21 @@ def _tuan_list(base_tuan: str, so_tuan: int) -> list[str]:
 def _build_lich_tuan_from_seed(
     seed: dict[str, Any], tuan: str | None, so_tuan: int = 1
 ) -> dict[str, Any]:
-    """Khung lịch khi máy xếp CHƯA chạy: ca mẫu thật, phân công TRỐNG.
-
-    Trước đây nhánh này sinh phan_cong giả từ pattern seed (mỗi ô 1-2 người
-    nhìn như thật) — đó là nguồn "mock trong lịch tuần". Giờ chỉ trả khung
-    trống + nguon_lich='chua_xep' để UI hiện "Chưa xếp — chạy máy xếp".
-    Pins vẫn áp vào để cấu hình ghim sẵn không mất.
-    """
+    """Build the roster from seeded assignments when solver output is absent."""
     nhan_vien = list_nhan_vien_ops()
     ca_raw = seed.get("ca_mau_21", [])
     ca_list = _format_ca_list(ca_raw)
     tuan_iso = tuan or "2026-W36"
-    phan_cong: dict[str, list[str]] = {}
+    phan_cong: dict[str, list[str]] = {
+        str(ca_id): list(nv_ids)
+        for ca_id, nv_ids in (kv_get("phan_cong", {}) or {}).items()
+    }
     for (ca_id, nv_id), pinned in _pin_map().items():
         if pinned:
-            phan_cong.setdefault(ca_id, []).append(nv_id)
+            if nv_id not in phan_cong.setdefault(ca_id, []):
+                phan_cong[ca_id].append(nv_id)
+        elif nv_id in phan_cong.get(ca_id, []):
+            phan_cong[ca_id].remove(nv_id)
     return {
         "nguon": "quan",
         "nguon_lich": "chua_xep",
@@ -406,6 +406,19 @@ def _build_lich_tuan_from_seed(
         "nhan_vien": nhan_vien,
         "ca": ca_list,
         "phan_cong": phan_cong,
+    }
+
+
+def _seeded_history_assignments(seed: dict[str, Any], tuan_iso: str) -> dict[str, list[str]]:
+    histories = seed.get("lich_su_8_tuan", [])
+    matching = next((item for item in histories if item.get("tuan_iso") == tuan_iso), None)
+    source = matching or next((item for item in histories if item.get("phan_cong")), None)
+    if not source:
+        return {}
+    return {
+        str(ca_id): list(nv_ids)
+        for ca_id, nv_ids in (source.get("phan_cong", {}) or {}).items()
+        if isinstance(nv_ids, list)
     }
 
 
@@ -424,7 +437,19 @@ def get_lich_tuan(
         data = json.loads(LICH_TUAN_OUT.read_text(encoding="utf-8"))
         seed = _seed()
         ca_list = _format_ca_list(seed.get("ca_mau_21", []))
-        phan_cong = dict(data.get("phan_cong", {}))
+        solver_assignments = data.get("phan_cong", {})
+        seeded_assignments = dict(kv_get("phan_cong", {}) or {})
+        valid_ca_ids = {str(shift.get("id")) for shift in ca_list}
+        phan_cong = {
+            str(ca_id): list(nv_ids)
+            for ca_id, nv_ids in solver_assignments.items()
+            if str(ca_id) in valid_ca_ids
+        }
+        for ca_id, nv_ids in seeded_assignments.items():
+            if str(ca_id) not in phan_cong:
+                phan_cong[str(ca_id)] = list(nv_ids)
+        if not phan_cong:
+            phan_cong = _seeded_history_assignments(seed, tuan_iso)
         for (ca_id, nv_id), pinned in _pin_map().items():
             if pinned and nv_id not in phan_cong.get(ca_id, []):
                 phan_cong.setdefault(ca_id, []).append(nv_id)

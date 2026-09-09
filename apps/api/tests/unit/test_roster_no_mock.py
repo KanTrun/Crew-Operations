@@ -49,7 +49,7 @@ def test_pin_tu_choi_id_la() -> None:
 
 
 def test_lich_chua_xep_tra_khung_trong(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    """Chưa chạy solver: phan_cong trống + nguon_lich='chua_xep' — hết mock."""
+    """Chưa chạy solver và chưa seed phân công: roster vẫn chỉ có khung ca."""
     import ca_api.interfaces.http.main as m
 
     monkeypatch.setattr(m, "LICH_TUAN_OUT", tmp_path / "khong_co_lich.json")
@@ -63,3 +63,58 @@ def test_lich_chua_xep_tra_khung_trong(monkeypatch: pytest.MonkeyPatch, tmp_path
     assert data["phan_cong"] == {}
     # Ca mẫu vẫn đủ để UI vẽ lưới
     assert len(data["ca"]) >= 20
+
+
+def test_lich_tra_phan_cong_da_seed_khi_chua_co_solver(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """Seed demo phải hiện trên roster ngay cả trước khi solver tạo output file."""
+    import ca_api.interfaces.http.main as m
+
+    monkeypatch.setattr(m, "LICH_TUAN_OUT", tmp_path / "khong_co_lich.json")
+    kv_set("phan_cong", {"w1_c01": ["nv_01", "nv_02"]})
+    token = _login_manager()
+    res = client.get("/api/v1/lich-tuan", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 200
+    assert res.json()["phan_cong"]["w1_c01"] == ["nv_01", "nv_02"]
+
+
+def test_lich_solver_partial_khong_lam_mat_phan_cong_seed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """Solver output thiếu ca không được xóa phân công seed còn lại."""
+    import ca_api.interfaces.http.main as m
+
+    output = tmp_path / "lich_tuan.json"
+    output.write_text(
+        '{"ok": true, "status": "optimal", "phan_cong": {"w1_c01": ["nv_03"]}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(m, "LICH_TUAN_OUT", output)
+    kv_set("phan_cong", {"w1_c01": ["nv_01"], "w1_c02": ["nv_02", "nv_03"]})
+    token = _login_manager()
+    res = client.get("/api/v1/lich-tuan", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 200
+    assignments = res.json()["phan_cong"]
+    assert assignments["w1_c01"] == ["nv_03"]
+    assert assignments["w1_c02"] == ["nv_02", "nv_03"]
+
+
+def test_lich_output_rong_fallback_phan_cong_seed_history(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """Output solver rỗng không được che mất lịch seed đã có trong fixture."""
+    import ca_api.interfaces.http.main as m
+
+    output = tmp_path / "lich_tuan.json"
+    output.write_text('{"ok": true, "status": "optimal", "phan_cong": {}}', encoding="utf-8")
+    monkeypatch.setattr(m, "LICH_TUAN_OUT", output)
+    kv_set("phan_cong", {})
+    token = _login_manager()
+    res = client.get(
+        "/api/v1/lich-tuan?tuan=2026-W01",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assignments = res.json()["phan_cong"]
+    assert assignments["w1_c01"] == ["nv_13", "nv_21"]
