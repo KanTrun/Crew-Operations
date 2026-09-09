@@ -520,28 +520,38 @@ def get_online_users(
 
 # ── File Upload với Magic Bytes Validation ───────────────────────────────────
 
-# Magic bytes signature cho các định dạng an toàn
-MAGIC_SIGNATURES: list[tuple[bytes, str]] = [
-    (b"\xff\xd8\xff", "image/jpeg"),
-    (b"\x89PNG\r\n\x1a\n", "image/png"),
-    (b"GIF87a", "image/gif"),
-    (b"GIF89a", "image/gif"),
-    (b"RIFF", "image/webp"),       # Sẽ check thêm WEBP ở offset 8
-    (b"%PDF-", "application/pdf"),
-    (b"\x1a\x45\xdf\xa3", "video/webm"),  # WebM / Matroska (Audio/Voice)
-    (b"OggS", "audio/ogg"),
-    (b"ID3", "audio/mpeg"),
+# Magic bytes và phần mở rộng lưu trữ chuẩn cho các định dạng chat hỗ trợ.
+MAGIC_SIGNATURES: list[tuple[bytes, str, str]] = [
+    (b"\xff\xd8\xff", "image/jpeg", ".jpg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png", ".png"),
+    (b"GIF87a", "image/gif", ".gif"),
+    (b"GIF89a", "image/gif", ".gif"),
+    (b"%PDF-", "application/pdf", ".pdf"),
+    (b"\x1a\x45\xdf\xa3", "audio/webm", ".webm"),
+    (b"OggS", "audio/ogg", ".ogg"),
+    (b"ID3", "audio/mpeg", ".mp3"),
 ]
+
+
+def detect_media_type(header: bytes) -> tuple[str, str] | None:
+    """Nhận dạng MIME và phần mở rộng từ nội dung thay vì tên file phía client."""
+    if header.startswith(b"RIFF"):
+        if header[8:12] == b"WEBP":
+            return "image/webp", ".webp"
+        if header[8:12] == b"WAVE":
+            return "audio/wav", ".wav"
+        return None
+    if len(header) >= 12 and header[4:8] == b"ftyp":
+        return "audio/mp4", ".m4a"
+    for signature, mime_type, extension in MAGIC_SIGNATURES:
+        if header.startswith(signature):
+            return mime_type, extension
+    return None
+
 
 def validate_magic_bytes(header: bytes) -> bool:
     """Xác thực định dạng thực tế của file thông qua header bytes."""
-    for sig, _mime in MAGIC_SIGNATURES:
-        if header.startswith(sig):
-            if sig == b"RIFF":
-                # Check WEBP hoặc WAVE
-                return b"WEBP" in header[:16] or b"WAVE" in header[:16]
-            return True
-    return False
+    return detect_media_type(header) is not None
 
 
 @router.post("/api/v1/chat/upload")
@@ -555,21 +565,14 @@ async def upload_chat_media(
     if len(content) > 15 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="tep_qua_lon_toi_da_15mb")
 
-    # Kiểm tra magic bytes
-    if not validate_magic_bytes(content[:32]):
+    detected = detect_media_type(content[:32])
+    if detected is None:
         raise HTTPException(status_code=415, detail="dinh_dang_tep_khong_hop_le_hoac_nguy_hiem")
 
     original_filename = file.filename or "media"
-    ext = os.path.splitext(original_filename)[1].lower()
-    if not ext:
-        if file.content_type and "audio" in file.content_type:
-            ext = ".webm"
-        elif file.content_type and "image" in file.content_type:
-            ext = ".jpg"
-        else:
-            ext = ".bin"
+    mime_type, extension = detected
 
-    safe_filename = f"{uuid.uuid4().hex}{ext}"
+    safe_filename = f"{uuid.uuid4().hex}{extension}"
     dest_path = UPLOAD_DIR / safe_filename
     with open(dest_path, "wb") as f:
         f.write(content)
@@ -578,7 +581,7 @@ async def upload_chat_media(
         "url": f"/api/v1/chat/uploads/{safe_filename}",
         "filename": sanitize_text(original_filename),
         "size": len(content),
-        "mime_type": file.content_type or "application/octet-stream",
+        "mime_type": mime_type,
     }
 
 
@@ -588,4 +591,8 @@ def serve_chat_media(filename: str) -> FileResponse:
     path = UPLOAD_DIR / safe_name
     if not path.is_file():
         raise HTTPException(status_code=404, detail="khong_tim_thay_tep")
-    return FileResponse(path)
+    with path.open("rb") as media_file:
+        detected = detect_media_type(media_file.read(32))
+    if detected is None:
+        raise HTTPException(status_code=415, detail="dinh_dang_tep_khong_hop_le_hoac_nguy_hiem")
+    return FileResponse(path, media_type=detected[0])

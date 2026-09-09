@@ -26,6 +26,8 @@ export default function ChatPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isNewGroupOpen, setIsNewGroupOpen] = useState(false);
   const [showMemberDrawer, setShowMemberDrawer] = useState(false);
+  const [mediaBusy, setMediaBusy] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -137,11 +139,13 @@ export default function ChatPage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeConvId) return;
+    setMediaBusy(true);
+    setMediaError(null);
     try {
       const res = await uploadMedia(file);
       const isImg = file.type.startsWith("image/");
       const msgType = isImg ? "image" : "file";
-      const fullUrl = `${API}${res.url}`;
+      const fullUrl = new URL(res.url, API).toString();
       await sendMessage(activeConvId, isImg ? "" : res.filename, msgType, {
         url: fullUrl,
         size: res.size,
@@ -149,26 +153,33 @@ export default function ChatPage() {
         filename: res.filename,
       });
     } catch (err: any) {
-      alert(err?.message || "Lỗi tải tệp lên");
+      setMediaError(err?.message || "Lỗi tải tệp lên");
     } finally {
+      setMediaBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const handleVoiceSend = async (blob: Blob, durationSec: number) => {
     if (!activeConvId) return;
-    const extension = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "mp4" : "webm";
+    setMediaBusy(true);
+    setMediaError(null);
+    const extension = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "m4a" : blob.type.includes("wav") ? "wav" : "webm";
     const file = new File([blob], `voice_${Date.now()}.${extension}`, { type: blob.type });
-    const res = await uploadMedia(file);
-    const fullUrl = `${API}${res.url}`;
-    await sendMessage(activeConvId, "", "voice", {
-      url: fullUrl,
-      duration: durationSec,
-    });
+    try {
+      const res = await uploadMedia(file);
+      const fullUrl = new URL(res.url, API).toString();
+      await sendMessage(activeConvId, "", "voice", { url: fullUrl, duration: durationSec, mime: res.mime_type });
+    } catch (err: any) {
+      setMediaError(err?.message || "Lỗi gửi tin nhắn thoại");
+      throw err;
+    } finally {
+      setMediaBusy(false);
+    }
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-[var(--nq-bg)]">
+    <div className="nq-chat flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-[var(--nq-bg)]">
       {/* Container chính: 2 cột (Sidebar & Chat Area) */}
       <div className="flex flex-1 overflow-hidden">
         {/* CỘT TRÁI: DANH SÁCH HỘI THOẠI */}
@@ -439,7 +450,7 @@ export default function ChatPage() {
             )}
 
             {/* Dòng thời gian tin nhắn (Message Stream) */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="nq-chat-stream flex-1 overflow-y-auto p-4 space-y-3">
               {messages.map((msg, index) => {
                 const isMe = msg.sender_id === currentNvId;
                 const isSystem = msg.sender_id === "system" || msg.type === "system";
@@ -465,11 +476,7 @@ export default function ChatPage() {
                     <div className="relative group max-w-[80%] sm:max-w-[70%]">
                       {/* Trích dẫn trả lời (Reply quote) */}
                       {msg.reply_snippet && (
-                        <div
-                          className={`text-[11px] p-2 rounded-t-xl border-b opacity-80 mb-[-4px] ${
-                            isMe ? "bg-[var(--nq-copper)]/80 text-white border-white/20" : "bg-[var(--nq-dim)] text-[var(--nq-fg)] border-black/10"
-                          }`}
-                        >
+                        <div className={`nq-chat-reply text-[11px] p-2 rounded-t-xl border-b mb-[-4px] ${isMe ? "nq-chat-reply--outgoing" : "nq-chat-reply--incoming"}`}>
                           <span className="font-bold block text-[10px]">{msg.reply_snippet.sender_name}</span>
                           <span className="truncate block">{msg.reply_snippet.content}</span>
                         </div>
@@ -477,10 +484,8 @@ export default function ChatPage() {
 
                       {/* Bong bóng chat chính */}
                       <div
-                        className={`p-3 rounded-2xl text-xs break-words shadow-sm ${
-                          isMe
-                            ? "bg-[var(--nq-copper)] text-white rounded-br-none"
-                            : "bg-[var(--nq-card)] text-[var(--nq-fg)] border border-[var(--nq-dim)] rounded-bl-none"
+                        className={`nq-chat-bubble p-3 rounded-2xl text-xs break-words shadow-sm ${
+                          isMe ? "nq-chat-bubble--outgoing rounded-br-none" : "nq-chat-bubble--incoming rounded-bl-none"
                         } ${msg.is_unsent ? "italic opacity-60" : ""}`}
                       >
                         {msg.is_unsent ? (
@@ -534,7 +539,7 @@ export default function ChatPage() {
                             )}
 
                             {msg.content && (
-                              <p className="leading-relaxed whitespace-pre-wrap">
+                              <p className="nq-chat-message__content leading-relaxed whitespace-pre-wrap">
                                 {msg.content.split(/(@\S+)/g).map((part, i) =>
                                   part.startsWith("@") ? (
                                     <span key={i} className="font-semibold text-amber-500 bg-amber-500/15 px-1 py-0.5 rounded">
@@ -632,6 +637,7 @@ export default function ChatPage() {
                     <div className="flex items-center gap-1 mt-0.5 text-[10px] text-[var(--nq-muted)]">
                       <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                       {isMe && msg.status === "sending" && <span>• Đang gửi…</span>}
+                      {isMe && msg.status === "error" && <span className="text-rose-700">• Gửi thất bại</span>}
                     </div>
 
                     {/* Avatars người đã xem (Seen avatars) dưới tin nhắn */}
@@ -740,12 +746,13 @@ export default function ChatPage() {
             )}
 
             {/* Action Input Bar */}
-            <div className="p-3 border-t border-[var(--nq-dim)] bg-[var(--nq-card)] flex items-end gap-2">
+            <div className="nq-chat-composer relative p-3 border-t border-[var(--nq-dim)] bg-[var(--nq-card)] flex items-end gap-2">
+              {mediaError && <p className="absolute bottom-20 left-3 right-3 z-10 rounded-lg border border-rose-500/40 bg-rose-950/90 px-3 py-2 text-xs text-rose-200">{mediaError}</p>}
               <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileUpload}
-                accept="image/*,application/pdf"
+                accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,audio/webm,audio/ogg,audio/mpeg,audio/wav,audio/mp4"
                 className="hidden"
               />
               <button
@@ -753,11 +760,12 @@ export default function ChatPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="p-2 text-[var(--nq-muted)] hover:text-[var(--nq-copper)] rounded-full transition shrink-0"
                 title="Đính kèm ảnh hoặc tài liệu"
+                disabled={mediaBusy}
               >
                 <Icon name="attachment" size={20} />
               </button>
 
-              <VoiceRecorder onSendVoice={handleVoiceSend} />
+              <VoiceRecorder onSendVoice={handleVoiceSend} disabled={mediaBusy} />
 
               <div className="flex-1 bg-[var(--nq-bg)] border border-[var(--nq-dim)] focus-within:border-[var(--nq-copper)] rounded-2xl px-3 py-1.5 flex items-center">
                 <textarea

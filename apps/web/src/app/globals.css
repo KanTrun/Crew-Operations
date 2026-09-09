@@ -1594,6 +1594,74 @@ a:focus-visible {
   font-size: 0.8rem;
 }
 
+/* Chat surfaces keep long messages readable without putting the accent color behind text. */
+.nq-chat {
+  --nq-chat-stream: #141311;
+  --nq-chat-composer: #1b1815;
+  --nq-chat-incoming: #242321;
+  --nq-chat-outgoing: #40372d;
+  --nq-chat-reply: #302a23;
+  --nq-chat-text: #eee5d8;
+  --nq-chat-muted: #b7aa9a;
+  --nq-chat-line: rgba(238, 229, 216, 0.14);
+  background: var(--nq-chat-stream);
+}
+
+.nq-chat-stream {
+  background: var(--nq-chat-stream);
+  scrollbar-color: var(--nq-line-strong) transparent;
+}
+
+.nq-chat-bubble {
+  color: var(--nq-chat-text);
+  border: 1px solid var(--nq-chat-line);
+  box-shadow: none;
+}
+
+.nq-chat-bubble--incoming {
+  background: var(--nq-chat-incoming);
+  border-color: rgba(238, 229, 216, 0.12);
+}
+
+.nq-chat-bubble--outgoing {
+  background: var(--nq-chat-outgoing);
+  border-color: rgba(196, 165, 116, 0.28);
+}
+
+.nq-chat-message__content {
+  color: var(--nq-chat-text);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.nq-chat-reply {
+  color: var(--nq-chat-muted);
+  border-color: var(--nq-chat-line);
+}
+
+.nq-chat-reply--incoming {
+  background: var(--nq-chat-reply);
+}
+
+.nq-chat-reply--outgoing {
+  background: color-mix(in srgb, var(--nq-chat-outgoing) 78%, var(--nq-chat-stream));
+}
+
+.nq-chat-composer {
+  background: var(--nq-chat-composer);
+  border-color: var(--nq-chat-line);
+}
+
+.nq-chat-composer textarea {
+  color: var(--nq-chat-text);
+  line-height: 1.5;
+}
+
+.nq-chat-composer textarea::placeholder {
+  color: var(--nq-chat-muted);
+  opacity: 1;
+}
+
 /* Chi tiết lịch luôn thuộc viewport, không phụ thuộc scroll position của trang.
    Đây là lớp riêng thay vì utility rải trong JSX để tránh ancestor transform/overflow
    làm panel bị neo vào vị trí cũ khi người dùng mở từ giữa bảng. */

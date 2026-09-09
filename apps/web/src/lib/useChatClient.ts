@@ -140,6 +140,19 @@ export function useChatClient(activeConvId?: string) {
           return;
         }
 
+        if (event === "error") {
+          const errorData = data as { conversation_id?: string; detail?: string };
+          if (errorData.conversation_id) {
+            setMessagesByConv((prev) => ({
+              ...prev,
+              [errorData.conversation_id!]: (prev[errorData.conversation_id!] || []).map((message) =>
+                message.status === "sending" ? { ...message, status: "error" } : message,
+              ),
+            }));
+          }
+          return;
+        }
+
         if (event == "message:new") {
           const msg = data as ChatMessage;
           const cid = msg.conversation_id;
