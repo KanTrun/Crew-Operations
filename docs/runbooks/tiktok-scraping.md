@@ -2,7 +2,7 @@
 
 ## Tổng quan
 
-Hệ thống cào TikTok có **2 nguồn**, hoạt động theo thứ tự ưu tiên:
+Hệ thống cào TikTok có **3 nguồn**, hoạt động theo thứ tự ưu tiên:
 
 ```
 ┌─────────────────┐
@@ -14,13 +14,18 @@ Hệ thống cào TikTok có **2 nguồn**, hoạt động theo thứ tự ưu t
 │  PRIMARY: Apify actor       │
 │  clockworks/tiktok-scraper  │ ─── fail / quota / rỗng ───┐
 │  (~$X/tháng, free $5)       │                              │
-└────────┬────────────────────┘                              │
-         │ OK                                                │
-         ▼                                                   ▼
-   ┌──────────┐                                  ┌──────────────────────┐
-   │  Return  │                                  │  FALLBACK: TikWM     │
-   │  items   │                                  │  (proxy miễn phí,    │
-   └──────────┘                                  │   không có SLA)      │
+└────────┬────────────────────┘                              ▼
+         │ OK                                   ┌──────────────────────────┐
+         ▼                                      │  TIER 2: Camoufox        │
+   ┌──────────┐                                 │  (browser thật, 0đ,      │
+   │  Return  │                                 │   khó bị chặn, ~3-10s)   │
+   │  items   │                                 └──────────┬───────────────┘
+   └──────────┘                                            │ OK / fail / chưa cài
+                                                           ▼
+                                                 ┌──────────────────────┐
+                                                 │  FALLBACK: TikWM     │
+                                                 │  (proxy miễn phí,    │
+                                                 │   không có SLA)      │
                                                  └──────────┬───────────┘
                                                             │ OK / fail
                                                             ▼
@@ -31,8 +36,9 @@ Hệ thống cào TikTok có **2 nguồn**, hoạt động theo thứ tự ưu t
 
 **Nguyên tắc:**
 - Apify = primary, chạy cho **mọi** request TikTok
-- TikWM = fallback **duy nhất**, chỉ chạy khi Apify lỗi
-- Không có chain dài nhiều tầng
+- Camoufox = tier trung gian (browser thật chống-detect, 0đ) — chỉ chạy khi Apify fail và server đã cài (`camoufox fetch`). Chi tiết: `docs/runbooks/camoufox-scraping.md`
+- TikWM = fallback **cuối cùng**, chỉ chạy khi cả Apify lẫn Camoufox lỗi
+- Mode `direct_only` khóa Apify; mode `browser` đảo ngược thứ tự (Camoufox first)
 
 ## Setup ban đầu
 
@@ -185,4 +191,5 @@ Nếu vượt → check log `tiktok_source_apify` để tối ưu (cache, batch)
 
 | Ngày | Tác giả | Thay đổi |
 |---|---|---|
-| 2026-08-30 | AI assistant | Tạo runbook ban đầu (kèm plan refactor Apify primary) |
+| 2026-08-30 | AI assistant | Tạo runbook ban đầu (kèm plan refactor Apify primary + TikWM fallback) |
+| 2026-09-10 | AI assistant | Thêm tier Camoufox vào chuỗi (giữa Apify và TikWM), kèm plan tích hợp AG-TREND |
