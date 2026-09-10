@@ -153,44 +153,11 @@ def scrape_threads_google_bridge(
 
     # Fallback dữ liệu chuyên sâu tuyển chọn nếu Google RSS tạm thời rỗng
     if not raw_posts:
-        raw_posts = [
-            {
-                "title": "Matcha nguyên bản đậm vị và sữa yến mạch đang là xu hướng đồ uống được yêu thích",
-                "link": "https://www.threads.net/@saigon_coffee_guide",
-                "date": now_str,
-                "snippet": "Cơn sốt Matcha nguyên bản đậm vị đang áp đảo hoàn toàn các loại trà ngọt gắt. Khách Gen Z giờ vào quán toàn hỏi độ đậm của bột matcha ceremonial và sữa hạt.",
-                "author": "saigon_coffee_guide",
-            },
-            {
-                "title": "Tâm sự làm việc ca tối ở quán cà phê và những câu chuyện khách quen",
-                "link": "https://www.threads.net/@genz_overthinking",
-                "date": now_str,
-                "snippet": "Đi làm quán cafe ca tối đúng là bài test sức bền tâm lý. Nhưng tự nhiên nghe khách khen ly cà phê ngon là có động lực đứng quầy tiếp.",
-                "author": "genz_overthinking",
-            },
-            {
-                "title": "Trào lưu quán cà phê decor tone gỗ mộc và nhạc lofi thu hút dân làm việc tự do",
-                "link": "https://www.threads.net/@hanoi_checkin_food",
-                "date": now_str,
-                "snippet": "Trào lưu decor quán tone gỗ mộc và mở nhạc lofi nhẹ nhàng đang kéo khách ngồi làm việc nhiều hơn hẳn các quán nhạc ồn.",
-                "author": "hanoi_checkin_food",
-            },
-            {
-                "title": "Cold brew ủ trái cây nhiệt đới giải nhiệt mùa hè cho dân văn phòng",
-                "link": "https://www.threads.net/@vietnam_specialty",
-                "date": now_str,
-                "snippet": "Cold brew ủ trái cây nhiệt đới (cam vàng, dứa, vải) đang là lựa chọn số 1 giải nhiệt trưa hè cho dân văn phòng.",
-                "author": "vietnam_specialty",
-            },
-        ]
-        if kw_clean:
-            raw_posts.insert(0, {
-                "title": f"Chủ đề #{kw_clean} trên Threads đang thu hút nhiều thảo luận từ cộng đồng F&B",
-                "link": f"https://www.threads.net/search?q={urllib.parse.quote(kw_clean)}",
-                "date": now_str,
-                "snippet": f"Cộng đồng mạng đang thảo luận sôi nổi về trào lưu #{kw_clean} và cách ứng dụng vào kinh doanh quán nước.",
-                "author": "fnb_trend_spotter",
-            })
+        # KHÔNG trả curated hardcode giả mạo dữ liệu thật (plan §3.4 — cùng lỗi
+        # tier-blocking đã fix cho TikTok): trả [] để chuỗi smart rớt tầng
+        # Direct Jina → Camoufox → Apify lấy dữ liệu thật.
+        logger.warning("google_threads_rss_empty_no_hardcoded_fallback")
+        return []
 
     # Chuyển đổi thành TrendItem chuẩn
     items_out: list[TrendItem] = []

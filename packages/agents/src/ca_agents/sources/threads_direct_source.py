@@ -134,71 +134,12 @@ def scrape_threads_direct(
     except Exception as e:
         logger.warning("Lỗi cào Threads direct qua Jina engine: %s", e)
 
-    # 2. Fallback danh mục Trend Threads F&B nóng nếu search engine tạm thời trống
+    # 2. KHÔNG fallback hardcode giả mạo dữ liệu thật (plan §3.4 — cùng lỗi
+    # tier-blocking đã fix cho TikTok): Jina fail → trả [] để chuỗi smart
+    # rớt tầng Camoufox → Apify lấy dữ liệu thật.
     if not posts_raw:
-        curated_hot_threads = [
-            {
-                "id": "th_hot_01_matcha",
-                "username": "saigon_coffee_guide",
-                "text": "Cơn sốt Matcha nguyên bản đậm vị đang áp đảo hoàn toàn các loại trà ngọt gắt. Khách Gen Z giờ vào quán toàn hỏi độ đậm của bột matcha và sữa yến mạch.",
-                "url": "https://www.threads.net/search?q=matcha",
-                "likes": 2450,
-                "replies": 185,
-                "sample_cmts": [
-                    '@ngan.barista: "Chuẩn luôn quán mình đổi sang dòng matcha ceremonial là khách khen nức nở (❤️ 45)"',
-                    '@minh_coffee: "Matcha kem cheese béo ngậy đang cháy hàng mỗi sáng (❤️ 28)"',
-                ]
-            },
-            {
-                "id": "th_hot_02_working",
-                "username": "genz_overthinking",
-                "text": "Đi làm quán cafe ca tối đúng là bài test sức bền tâm lý. Nhưng tự nhiên nghe khách khen ly cà phê ngon là có động lực đứng quầy tiếp.",
-                "url": "https://www.threads.net/search?q=cafe%20working",
-                "likes": 1820,
-                "replies": 94,
-                "sample_cmts": [
-                    '@lan_lan: "Cơ địa khó thất nghiệp đi làm từ sáng đến khuya (❤️ 62)"',
-                    '@hoang_pha: "Team ca tối điểm danh cái nào (❤️ 31)"',
-                ]
-            },
-            {
-                "id": "th_hot_03_checkin",
-                "username": "hanoi_checkin_food",
-                "text": "Trào lưu decor quán tone gỗ mộc và mở nhạc lofi nhẹ nhàng đang kéo khách ngồi làm việc nhiều hơn hẳn các quán nhạc ồn.",
-                "url": "https://www.threads.net/search?q=quan%20cafe%20dep",
-                "likes": 3100,
-                "replies": 210,
-                "sample_cmts": [
-                    '@coffee_addict: "Quán nào có ổ điện từng bàn là auto 10 điểm (❤️ 89)"',
-                ]
-            },
-            {
-                "id": "th_hot_04_coldbrew",
-                "username": "vietnam_specialty",
-                "text": "Cold brew ủ trái cây nhiệt đới (cam vàng, dứa, vải) đang là lựa chọn số 1 giải nhiệt trưa hè cho dân văn phòng.",
-                "url": "https://www.threads.net/search?q=cold%20brew",
-                "likes": 1250,
-                "replies": 62,
-                "sample_cmts": [
-                    '@tuan_anh: "Vị chua thanh mát cực kỳ dễ uống (❤️ 19)"',
-                ]
-            },
-        ]
-        
-        # Nếu có từ khóa cụ thể từ người dùng
-        if kw_clean:
-            curated_hot_threads.insert(0, {
-                "id": f"th_kw_{re.sub(r'[^a-zA-Z0-9]', '', kw_clean.lower())}",
-                "username": "fnb_trend_spotter",
-                "text": f"Chủ đề #{kw_clean} đang là tâm điểm bàn luận của cộng đồng F&B và giới trẻ trên Threads hôm nay.",
-                "url": f"https://www.threads.net/search?q={encoded_query}",
-                "likes": 1950,
-                "replies": 120,
-                "sample_cmts": [
-                    f'@foodie_vn: "Mọi người đang bàn tán rất nhiều về #{kw_clean} (❤️ 35)"',
-                ]
-            })
-        posts_raw = curated_hot_threads
+        logger.warning("threads_direct_jina_empty_no_hardcoded_fallback")
+        return []
 
     # 3. Format sang TrendItem chuẩn
     items_out: list[TrendItem] = []
