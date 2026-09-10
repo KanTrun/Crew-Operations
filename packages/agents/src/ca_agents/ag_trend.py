@@ -728,9 +728,10 @@ def _scrape_threads_smart(
     """Threads Google Index Bridge as PRIMARY → Apify as SECONDARY → RSS Fallback.
 
     Modes:
-        - auto: Google Bridge first -> Direct Jina -> Apify backup -> RSS fallback
-        - direct_only: Google Bridge -> Direct Jina -> RSS fallback (never uses Apify)
+        - auto: Google Bridge first -> Direct Jina -> Camoufox browser -> Apify backup -> RSS fallback
+        - direct_only: Google Bridge -> Direct Jina -> RSS fallback (never uses Apify/Camoufox)
         - apify_force: Apify first -> Google Bridge backup
+        - browser: Camoufox first -> Google Bridge -> Direct Jina -> Apify -> RSS (plan §3.5)
     """
     start = time.monotonic()
 
@@ -749,6 +750,24 @@ def _scrape_threads_smart(
                 return cast(list[TrendItem], items)
         except Exception as e:
             logger.warning("threads_apify_force_failed_trying_bridge: %s", e)
+
+    # BROWSER mode: Camoufox first (plan §3.5) — rớt tầng về chuỗi cũ nếu fail.
+    if scrape_mode == "browser":
+        try:
+            from ca_agents.sources.threads_camoufox_source import scrape_threads_camoufox
+
+            items = scrape_threads_camoufox(
+                keyword=keyword,
+                count=count,
+                nguon_goc=nguon_goc,
+            )
+            if items:
+                return cast(list[TrendItem], items)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                "threads_browser_mode_failed_falling_back",
+                extra={"error": str(e)[:200]},
+            )
 
     # 1. PRIMARY (Zero-Infra): Google Index Real-Time Bridge for Threads
     try:
@@ -787,7 +806,37 @@ def _scrape_threads_smart(
         if items:
             return items
     except Exception as e:  # noqa: BLE001
-        logger.warning("threads_direct_failed_trying_apify: %s", str(e)[:200])
+        logger.warning("threads_direct_failed_trying_camoufox: %s", str(e)[:200])
+
+    # 2.5 CAMOUFOX TIER: browser-thật miễn phí (giữa Jina direct và Apify, plan §3.5)
+    if scrape_mode not in {"direct_only", "apify_force"}:
+        try:
+            from ca_agents.clients.camoufox_client import is_available
+
+            if is_available():
+                from ca_agents.sources.threads_camoufox_source import scrape_threads_camoufox
+
+                items = scrape_threads_camoufox(
+                    keyword=keyword,
+                    count=count,
+                    nguon_goc=nguon_goc,
+                )
+                if items:
+                    logger.info(
+                        "threads_source_camoufox",
+                        extra={
+                            "source": "camoufox_threads",
+                            "nguon_goc": nguon_goc,
+                            "items_count": len(items),
+                            "duration_ms": int((time.monotonic() - start) * 1000),
+                        },
+                    )
+                    return cast(list[TrendItem], items)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                "threads_camoufox_tier_failed_trying_apify",
+                extra={"error": str(e)[:200]},
+            )
 
     # 3. SECONDARY / BACKUP: Apify Threads Scraper (only if mode != direct_only)
     if scrape_mode != "direct_only":
