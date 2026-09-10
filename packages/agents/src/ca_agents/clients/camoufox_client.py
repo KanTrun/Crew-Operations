@@ -125,8 +125,10 @@ def _try_launch() -> None:
         ) from e
 
     try:
-        with Camoufox(headless=True):
-            pass  # launch + close rỗng để verify binary + system deps
+        cm = Camoufox(headless=True)  # type: ignore[no-untyped-call]
+        browser = cm.__enter__()
+        browser.new_page()  # verify binary + system deps thật sự chạy
+        cm.__exit__(None, None, None)
     except Exception as e:  # noqa: BLE001
         raise CamoufoxUnavailable(_classify_launch_error(e)) from e
 
@@ -166,17 +168,22 @@ def _attempt_once(
     extractor: Callable[[Any], Any],
     timeout_ms: int,
 ) -> Any:
-    """1 lần launch → goto → extract → close (đóng browser trong finally).
+    """1 lần launch → goto → extract → close.
 
-    Raise:
-        CamoufoxUnavailable -- launch fail (binary/system deps/launch lỗi khác).
-        _GotoError           -- goto fail (timeout/network) — caller quyết định retry.
-        (lỗi extractor       -- propagate thẳng, KHÔNG retry — lỗi logic selector.)
+    Launch (constructor + __enter__) và body tách riêng để phân loại lỗi:
+        - Lỗi launch (binary/system deps) → CamoufoxUnavailable (kèm hướng dẫn cài).
+        - Lỗi goto (timeout/network)      → _GotoError (caller retry 1 lần).
+        - Lỗi extractor (selector/parse)   → propagate thẳng, KHÔNG retry.
+
+    Gọi __enter__/__exit__ thủ công thay vì `with` để lỗi extractor không
+    rơi vào nhánh classify launch — browser vẫn luôn đóng trong finally.
     """
     try:
-        browser = camoufox_cls(headless=_is_headless(), geoip=True, humanize=True)
+        cm = camoufox_cls(headless=_is_headless(), geoip=True, humanize=True)
+        browser = cm.__enter__()
     except Exception as e:  # noqa: BLE001
         raise CamoufoxUnavailable(_classify_launch_error(e)) from e
+
     try:
         page = browser.new_page()
         try:
@@ -185,7 +192,10 @@ def _attempt_once(
             raise _GotoError(f"{type(e).__name__}: {e}") from e
         return extractor(page)
     finally:
-        browser.close()
+        try:
+            cm.__exit__(None, None, None)
+        except Exception:  # noqa: BLE001 — cleanup lỗi không được nuốt lỗi gốc
+            pass
 
 
 def scrape_page(

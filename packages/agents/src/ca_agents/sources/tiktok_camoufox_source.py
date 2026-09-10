@@ -38,8 +38,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Selector khối video trên TikTok search SPA (data-e2e ổn định hơn class CSS).
-_VIDEO_SELECTOR = "[data-e2e='search_video-item']"  # cho wait_for_selector (Playwright)
-_VIDEO_ATTR = "data-e2e='search_video-item'"  # cho split HTML (không có bracket)
+# DOM thật 2026-09: khối video là search_top-item (search_video-item đã bị TikTok bỏ).
+_VIDEO_SELECTOR = "[data-e2e='search_top-item']"  # cho wait_for_selector (Playwright)
+# Cho split HTML: page.content() serialize attr bằng nháy kép "..." (không phải nháy đơn).
+_VIDEO_ATTR = 'data-e2e="search_top-item"'
+_CAPTION_RE = re.compile(
+    r'data-e2e="search-card-video-caption".*?<span[^>]*>(.*?)</span>', re.S
+)
+_VIEWS_RE = re.compile(r'data-e2e="video-views"[^>]*>([^<]+)<')
+_AUTHOR_RE = re.compile(r'href="https://www\.tiktok\.com/(@[\w.\-]+)/video/(\d+)"')
+_UID_RE = re.compile(r'data-e2e="search-card-user-unique-id"[^>]*>([^<]+)<')
 _HASHTAG_RE = re.compile(r"#(\w+)", re.UNICODE)
 # TikTok hiển thị stats dạng "12.3K", "1.2M", "456" — parse về int.
 _COUNT_RE = re.compile(r"^([\d.,]+)\s*([KMB]?)$", re.IGNORECASE)
@@ -118,7 +126,18 @@ def fetch_tiktok_page(page: Any, keyword: str) -> str:
     trước khi gọi hàm này (tránh goto 2 lần). Chỉ lo phần chờ render.
     """
     # Chờ SPA render xong danh sách video (timeout do scrape_page quản).
-    page.wait_for_selector(_VIDEO_SELECTOR, timeout=30_000)
+    try:
+        page.wait_for_selector(_VIDEO_SELECTOR, timeout=30_000)
+    except Exception as e:  # noqa: BLE001
+        # Selector không xuất hiện sau 30s: TikTok đang chặn/đổi DOM/login-wall.
+        # Raise unavailable để chuỗi rớt tầng NGAY (plan §3.4) — không retry vô ích.
+        from ca_agents.clients.camoufox_client import CamoufoxUnavailable
+
+        raise CamoufoxUnavailable(
+            f"TikTok search không render danh sách video sau 30s "
+            f"(selector '{_VIDEO_SELECTOR}' không xuất hiện) — có thể bị chặn, "
+            f"đổi DOM hoặc login-wall: {type(e).__name__}"
+        ) from e
     content: str = page.content()
     return content
 
@@ -165,30 +184,33 @@ def _map_block(
     """Map 1 khối HTML video → TrendItem. Trả None nếu khối rỗng/lỗi parse."""
     from ca_agents.ag_trend import TrendItem, extract_core_tiktok_keyword
 
-    # Caption: text dài nhất trong khối (giữa các thẻ a href chứa /video/).
-    video_link = ""
-    m = re.search(r'href="(/@[\w\.\-]+/video/\d+)"', block_html)
-    if m:
-        video_link = f"https://www.tiktok.com{m.group(1)}"
-    author_m = re.search(r"/@([\w\.\-]+)/video/", video_link or "")
-    author_id = author_m.group(1) if author_m else "user"
-
-    # Text hiển thị: strip thẻ HTML, lấy đoạn text dài nhất (> 20 ký tự).
-    text_no_tags = re.sub(r"<[^>]+>", " ", block_html)
-    text_no_tags = re.sub(r"\s+", " ", text_no_tags).strip()
-    # Caption thường nằm trước stats — lấy 220 ký tự đầu làm caption thô.
-    caption_raw = text_no_tags[:220].strip()
-    if len(caption_raw) < 20:
+    # DOM thật 2026-09 (dump từ Camoufox live): mỗi khối search_top-item chứa
+    # search-card-video-caption (span text), video-views (số), link /@user/video/id,
+    # search-card-user-unique-id (tên hiển thị).
+    cap_m = _CAPTION_RE.search(block_html)
+    caption_raw = re.sub(r"<[^>]+>", " ", cap_m.group(1)) if cap_m else ""
+    caption_raw = re.sub(r"\s+", " ", caption_raw).strip()
+    if len(caption_raw) < 10:
         return None
 
-    # Stats: pattern "số" lặp lại sau caption — parse các số dạng 12.3K/1.2M.
-    stat_nums = re.findall(r"(\d[\d.,]*\s*[KMB]?)\b", text_no_tags)
-    # TikTok search hiển thị: views (video), likes, comments, shares, saves.
-    parsed = [_parse_count(s) for s in stat_nums[:5]]
-    play_count = parsed[0] if parsed else 0
-    digg_count = parsed[1] if len(parsed) > 1 else 0
-    comment_count = parsed[2] if len(parsed) > 2 else 0
-    share_count = parsed[3] if len(parsed) > 3 else 0
+    views_m = _VIEWS_RE.search(block_html)
+    play_count = _parse_count(views_m.group(1)) if views_m else 0
+
+    author_m = _AUTHOR_RE.search(block_html)
+    author_id = author_m.group(1).lstrip("@") if author_m else "user"
+    video_link = (
+        f"https://www.tiktok.com/@{author_id}/video/{author_m.group(2)}"
+        if author_m
+        else ""
+    )
+
+    uid_m = _UID_RE.search(block_html)
+    display_name = uid_m.group(1).strip() if uid_m else author_id
+
+    # Search page chỉ hiển thị views — likes/comments không có trong DOM này.
+    # Ước lượng tương tác theo tỉ lệ phổ biến (like ~10% views, comment ~2%).
+    digg_count = max(1, play_count // 10)
+    comment_count = max(1, play_count // 50)
 
     short_kw = keyword.strip() or extract_core_tiktok_keyword(caption_raw) or author_id
     clean_tag = re.sub(r"[^a-zA-Z0-9]", "", short_kw.lower())
@@ -217,11 +239,10 @@ def _map_block(
         danh_muc="trao_luu_pop_culture",
         vong_doi="dang_dinh",
         diem_nhan_dac_biet=(
-            f"Kênh sáng tạo: @{author_id}. "
+            f"Kênh sáng tạo: @{author_id} ({display_name}). "
             f"Thống kê thật: {_format_count(play_count)} lượt xem | "
-            f"{_format_count(digg_count)} lượt thả tim | "
-            f"{_format_count(comment_count)} bình luận | "
-            f"{_format_count(share_count)} chia sẻ."
+            f"~{_format_count(digg_count)} lượt thả tim (ước lượng) | "
+            f"~{_format_count(comment_count)} bình luận (ước lượng)."
         ),
         nguon_goc_chi_tiet=f"Cào qua Camoufox browser thật lúc {now_str}.",
         ngu_canh_su_dung="Video đang được đẩy trên For You / Hashtag TikTok.",

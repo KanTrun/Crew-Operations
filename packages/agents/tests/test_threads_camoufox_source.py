@@ -77,7 +77,7 @@ def test_extract_items_empty_html():
 
 def test_extract_items_skips_block_without_text():
     """Khối post rỗng (text < 30 ký tự) → skip, không crash."""
-    html = "<div data-e2e='search-result-post'><a href='/@x/post/1'>ok</a></div>"
+    html = '<div data-e2e="search-result-post"><a href="/@x/post/1">ok</a></div>'
     items = extract_threads_items(html, "kw", 5, "threads_vn", "now")
     assert items == []
 
@@ -85,7 +85,7 @@ def test_extract_items_skips_block_without_text():
 def test_extract_reuses_lifecycle_helper():
     """Post ít tương tác (likes < 1000) → 'moi_nhu' từ _assess_trend_lifecycle."""
     html = (
-        "<div data-e2e='search-result-post'>"
+        '<div data-e2e="search-result-post">'
         "<a href='/@user/post/Ab1'>Cà phê quán mới mở đẹp lung linh ghé ngay kẻo lỡ</a>"
         "<div>150 12</div></div>"
     )
@@ -121,12 +121,46 @@ def test_fetch_threads_page_waits_selector_and_returns_content():
     """fetch chỉ chờ selector + content — KHÔNG goto (scrape_page đã goto)."""
     page = MagicMock()
     page.content.return_value = "<html>fake</html>"
+    page.query_selector.return_value = None  # không có login-link → không grace-wait
     html = fetch_threads_page(page, "cafe")
     page.wait_for_selector.assert_called_once_with(
-        "[data-e2e='search-result-post']", timeout=30_000
+        "[data-e2e='search-result-post'], a[href*='/login']", timeout=30_000
     )
     assert html == "<html>fake</html>"
     page.goto.assert_not_called()  # goto do scrape_page lo
+
+
+def test_fetch_threads_page_fast_fails_on_soft_login_wall():
+    """Login-wall mềm: login-link xuất hiện, post không render sau grace-wait
+    → raise CamoufoxUnavailable NGAY (~3s) thay vì chờ đủ 30s timeout."""
+    from ca_agents.clients.camoufox_client import CamoufoxUnavailable
+
+    page = MagicMock()
+    # wait_for_selector lần 1 (post HOẶC login) thành công; lần 2 (grace-wait
+    # post thật, timeout=3s) raise timeout → wall xác nhận.
+    page.query_selector.return_value = MagicMock()  # login-link có mặt
+
+    def raise_timeout(selector, timeout):
+        if "search-result-post" in selector and timeout == 3_000:
+            raise RuntimeError("Timeout 3000ms exceeded")
+        return None
+
+    page.wait_for_selector.side_effect = raise_timeout
+
+    with pytest.raises(CamoufoxUnavailable, match="login-wall"):
+        fetch_threads_page(page, "cafe")
+
+
+def test_fetch_threads_page_login_link_but_post_renders_later():
+    """Login-link có mặt nhưng post render sau grace-wait → KHÔNG phải wall,
+    trả content bình thường (tránh false-positive khi SPA lazy-render)."""
+    page = MagicMock()
+    page.query_selector.return_value = MagicMock()  # login-link có mặt
+    page.wait_for_selector.return_value = None  # mọi wait đều thành công
+    page.content.return_value = "<html>posts</html>"
+
+    html = fetch_threads_page(page, "cafe")
+    assert html == "<html>posts</html>"
 
 
 # ── Cache TTL (§3.3-bis) ──
@@ -212,6 +246,7 @@ def test_login_wall_raises_unavailable(monkeypatch: pytest.MonkeyPatch):
         page.content.return_value = "<html><button>Log in</button></html>"
         # wait_for_selector sẽ timeout trên trang login — mock để không chờ thật.
         page.wait_for_selector = MagicMock()
+        page.query_selector.return_value = None
         return extractor(page)
 
     monkeypatch.setattr(src, "scrape_page", fake_scrape_page)

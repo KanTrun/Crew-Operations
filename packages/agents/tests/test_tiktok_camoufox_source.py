@@ -69,9 +69,9 @@ def test_extract_items_from_fixture():
     first = items[0]
     assert isinstance(first, TrendItem)
     assert first.is_live_scraped is True
-    # Video đầu: 2.3M views, 145.2K likes
+    # Video đầu: 2.3M views, likes ước lượng ~10% views = 230,000
     assert "2,300,000 lượt xem" in first.diem_nhan_dac_biet
-    assert "145,200 lượt thả tim" in first.diem_nhan_dac_biet
+    assert "230,000 lượt thả tim" in first.diem_nhan_dac_biet
     # Link video từ href
     assert first.link_goc == "https://www.tiktok.com/@barista.lan/video/7300000000000000001"
     # Hashtag từ caption
@@ -94,8 +94,8 @@ def test_extract_items_empty_html():
 
 
 def test_extract_items_skips_block_without_caption():
-    """Khối video rỗng (không caption ≥20 ký tự) → skip, không crash."""
-    html = "<div data-e2e='search_video-item'><a href='/@x/video/1'>ok</a></div>"
+    """Khối video rỗng (không caption ≥10 ký tự) → skip, không crash."""
+    html = "<div data-e2e='search_top-item'><a href='https://www.tiktok.com/@x/video/1'>ok</a></div>"
     items = extract_tiktok_items(html, "kw", 5, "tiktok_vn", "now")
     assert items == []
 
@@ -108,7 +108,7 @@ def test_fetch_tiktok_page_waits_selector_and_returns_content():
     page = MagicMock()
     page.content.return_value = "<html>fake</html>"
     html = fetch_tiktok_page(page, "matcha")
-    page.wait_for_selector.assert_called_once_with("[data-e2e='search_video-item']", timeout=30_000)
+    page.wait_for_selector.assert_called_once_with("[data-e2e='search_top-item']", timeout=30_000)
     assert html == "<html>fake</html>"
     page.goto.assert_not_called()  # goto do scrape_page lo
 

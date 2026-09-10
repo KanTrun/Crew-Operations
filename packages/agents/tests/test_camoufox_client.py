@@ -62,8 +62,16 @@ def _reset_caches(monkeypatch: pytest.MonkeyPatch):
 
 
 def _make_fake_camoufox(launch_error: Exception | None = None) -> MagicMock:
-    """Fake camoufox.sync_api.Camoufox — context manager launch/close."""
+    """Fake camoufox.sync_api.Camoufox — context manager launch/close.
+
+    Camoufox sync API là context manager: constructor + __enter__ = launch,
+    __exit__ = close + teardown Playwright. Mock __enter__ trả về browser
+    mock, __exit__ trả False (không nuốt exception).
+    """
     fake = MagicMock()
+    browser = MagicMock()
+    fake.return_value.__enter__.return_value = browser
+    fake.return_value.__exit__.return_value = False
     if launch_error is not None:
         fake.side_effect = launch_error
     return fake
@@ -149,11 +157,11 @@ def test_scrape_page_calls_extractor_and_closes_browser(monkeypatch: pytest.Monk
 
     result = scrape_page("https://www.tiktok.com/search?q=test", lambda p: {"page": p})
     assert result["page"] is not None
-    browser = fake.return_value
+    browser = fake.return_value.__enter__.return_value
     assert browser.new_page.call_count == 1
     page = browser.new_page.return_value
     page.goto.assert_called_once_with("https://www.tiktok.com/search?q=test", timeout=45 * 1000)
-    browser.close.assert_called_once()
+    fake.return_value.__exit__.assert_called_once()
 
 
 def test_scrape_page_browser_closed_even_when_extractor_raises(monkeypatch: pytest.MonkeyPatch):
@@ -166,7 +174,7 @@ def test_scrape_page_browser_closed_even_when_extractor_raises(monkeypatch: pyte
 
     with pytest.raises(ValueError, match="selector không match"):
         scrape_page("https://example.com", bad_extractor)
-    fake.return_value.close.assert_called_once()
+    fake.return_value.__exit__.assert_called_once()
 
 
 # ── Timeout + retry path ──
@@ -178,7 +186,7 @@ def test_scrape_page_retries_once_on_goto_timeout(monkeypatch: pytest.MonkeyPatc
     _install_camoufox(monkeypatch, fake)
     monkeypatch.setattr(camoufox_client, "_RETRY_BACKOFF_S", 0.01)
 
-    page = fake.return_value.new_page.return_value
+    page = fake.return_value.__enter__.return_value.new_page.return_value
     page.goto.side_effect = [
         TimeoutError("net::ERR_TIMED_OUT"),  # lần 1 fail
         None,  # lần 2 ok
@@ -186,7 +194,8 @@ def test_scrape_page_retries_once_on_goto_timeout(monkeypatch: pytest.MonkeyPatc
     result = scrape_page("https://example.com", lambda p: "ok")
     assert result == "ok"
     assert page.goto.call_count == 2
-    assert fake.return_value.close.call_count == 2  # mỗi attempt đóng browser riêng
+    # mỗi attempt đóng browser riêng (2 lần __exit__)
+    assert fake.return_value.__exit__.call_count == 2
 
 
 def test_scrape_page_raises_original_after_retry_exhausted(monkeypatch: pytest.MonkeyPatch):
@@ -195,7 +204,7 @@ def test_scrape_page_raises_original_after_retry_exhausted(monkeypatch: pytest.M
     _install_camoufox(monkeypatch, fake)
     monkeypatch.setattr(camoufox_client, "_RETRY_BACKOFF_S", 0.01)
 
-    page = fake.return_value.new_page.return_value
+    page = fake.return_value.__enter__.return_value.new_page.return_value
     page.goto.side_effect = TimeoutError("net::ERR_TIMED_OUT")
     with pytest.raises(TimeoutError):
         scrape_page("https://example.com", lambda p: "ok")
@@ -239,7 +248,7 @@ def test_scrape_page_timeout_env_override(monkeypatch: pytest.MonkeyPatch):
     _install_camoufox(monkeypatch, fake)
     monkeypatch.setenv("CA_CAMOUFOX_TIMEOUT_S", "30")
     scrape_page("https://example.com", lambda p: None)
-    page = fake.return_value.new_page.return_value
+    page = fake.return_value.__enter__.return_value.new_page.return_value
     page.goto.assert_called_once_with("https://example.com", timeout=30 * 1000)
 
 

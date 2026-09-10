@@ -43,7 +43,11 @@ logger = logging.getLogger(__name__)
 
 # Selector khối post trên Threads search SPA (data-e2e ổn định hơn class CSS).
 _POST_SELECTOR = "[data-e2e='search-result-post']"
-_POST_ATTR = "data-e2e='search-result-post'"
+# Cho split HTML: page.content() serialize attr bằng nháy kép "..." (không phải nháy đơn).
+_POST_ATTR = 'data-e2e="search-result-post"'
+# Threads login-wall (live 2026-09): URL search vẫn giữ nguyên nhưng trang chỉ hiển thị
+# link "Log in with username instead" — không render post nào cho khách chưa đăng nhập.
+_LOGIN_LINK_SELECTOR = "a[href*='/login']"
 # Threads login-wall: URL sau redirect chứa /login hoặc text nút "Log in".
 _LOGIN_URL_RE = re.compile(r"threads\.net/login|accounts\.instagram\.com|facebook\.com/login", re.I)
 _LOGIN_TEXT_RE = re.compile(r"\b(log\s?in|sign\s?up)\b", re.I)
@@ -106,9 +110,43 @@ def fetch_threads_page(page: Any, keyword: str) -> str:
 
     KHÔNG goto ở đây — `scrape_page(url, extractor)` đã goto tới search URL
     trước khi gọi hàm này (tránh goto 2 lần). Chỉ lo phần chờ render.
+
+    Fast-fail login-wall (live 2026-09): Threads search hiện wall mềm — URL
+    vẫn ở /search nhưng trang chỉ có link "Log in with username instead",
+    không render post nào. Chờ đủ 30s timeout là lãng phí → chờ post HOẶC
+    login-link, nếu login-link thắng thì grace-wait ngắn xác nhận (SPA có
+    thể đang lazy-render) rồi raise unavailable để chuỗi rớt tầng NGAY.
     """
-    # Chờ SPA render xong danh sách post (timeout do scrape_page quản).
-    page.wait_for_selector(_POST_SELECTOR, timeout=30_000)
+    from ca_agents.clients.camoufox_client import CamoufoxUnavailable
+
+    try:
+        page.wait_for_selector(
+            f"{_POST_SELECTOR}, {_LOGIN_LINK_SELECTOR}", timeout=30_000
+        )
+    except Exception as e:  # noqa: BLE001
+        # Selector nào cũng không xuất hiện sau 30s: Threads đang chặn/đổi DOM.
+        # Raise unavailable để chuỗi rớt tầng NGAY (plan §3.4) — không retry vô ích.
+        raise CamoufoxUnavailable(
+            f"Threads search không render danh sách post sau 30s "
+            f"(selector '{_POST_SELECTOR}' không xuất hiện) — có thể bị chặn, "
+            f"đổi DOM hoặc login-wall: {type(e).__name__}"
+        ) from e
+
+    # Login-link xuất hiện trước post → khả năng cao là wall. Grace-wait 3s
+    # xem post có lazy-render không; nếu vẫn không có post → xác nhận wall.
+    try:
+        has_login_link = page.query_selector(_LOGIN_LINK_SELECTOR) is not None
+    except Exception:  # noqa: BLE001
+        has_login_link = False
+    if has_login_link:
+        try:
+            page.wait_for_selector(_POST_SELECTOR, timeout=3_000)
+        except Exception as e:  # noqa: BLE001
+            raise CamoufoxUnavailable(
+                "Threads yêu cầu đăng nhập (login-wall mềm: trang search chỉ hiển thị "
+                "link Log in, không render post) — rớt tầng NGAY, không cố vượt (plan §2.3)"
+            ) from e
+
     content: str = page.content()
     return content
 

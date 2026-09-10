@@ -1,21 +1,36 @@
-<!-- Fixture HTML mô phỏng TikTok search SPA — mỗi video là 1 div có attr data-e2e
-     giá trị search_video-item. Dùng cho test extract_tiktok_items (hàm thuần,
-     không cần Playwright thật). Khi TikTok đổi DOM: cập nhật file này + extractor. -->
-<div data-e2e='search_video-item'>
-  <a href="/@barista.lan/video/7300000000000000001">
-    <div>Cơn sốt matcha latte kem béo đang cháy hàng mỗi sáng #matcha #fnbvietnam #xuhuong</div>
+<!-- Fixture HTML mô phỏng TikTok search SPA — DOM thật 2026-09 (dump từ Camoufox
+     live). page.content() serialize attr bằng nháy kép. Mỗi video là 1 div
+     data-e2e="search_top-item" chứa:
+     - search-card-video-caption (span text caption)
+     - video-views (số views)
+     - link https://www.tiktok.com/@user/video/id
+     - search-card-user-unique-id (tên hiển thị)
+     Dùng cho test extract_tiktok_items (hàm thuần, không cần Playwright thật).
+     Khi TikTok đổi DOM: dump lại bằng Camoufox rồi cập nhật file này + extractor. -->
+<div data-e2e="search_top-item">
+  <a href="https://www.tiktok.com/@barista.lan/video/7300000000000000001">
+    <div data-e2e="search-card-video-caption">
+      <span>Cơn sốt matcha latte kem béo đang cháy hàng mỗi sáng #matcha #fnbvietnam #xuhuong</span>
+    </div>
   </a>
-  <div>2.3M 145.2K 3.1K 890 220</div>
+  <div data-e2e="search-card-user-unique-id">Barista Lan</div>
+  <div data-e2e="video-views">2.3M</div>
 </div>
-<div data-e2e='search_video-item'>
-  <a href="/@cafe.sai.gon/video/7300000000000000002">
-    <div>Review cà phê muối kem đậm đà quán mới mở quận 3 #caphe #review #checkin</div>
+<div data-e2e="search_top-item">
+  <a href="https://www.tiktok.com/@cafe.sai.gon/video/7300000000000000002">
+    <div data-e2e="search-card-video-caption">
+      <span>Review cà phê muối kem đậm đà quán mới mở quận 3 #caphe #review #checkin</span>
+    </div>
   </a>
-  <div>856.4K 62.1K 1.8K 430 95</div>
+  <div data-e2e="search-card-user-unique-id">Cafe Sài Gòn</div>
+  <div data-e2e="video-views">856.4K</div>
 </div>
-<div data-e2e='search_video-item'>
-  <a href="/@genz.coffee/video/7300000000000000003">
-    <div>Team ca tối điểm danh làm quán cafe #calate #teamcalate</div>
+<div data-e2e="search_top-item">
+  <a href="https://www.tiktok.com/@genz.coffee/video/7300000000000000003">
+    <div data-e2e="search-card-video-caption">
+      <span>Team ca tối điểm danh làm quán cafe #calate #teamcalate</span>
+    </div>
   </a>
-  <div>12.3K 4.5K 210 45 12</div>
+  <div data-e2e="search-card-user-unique-id">GenZ Coffee</div>
+  <div data-e2e="video-views">12.3K</div>
 </div>

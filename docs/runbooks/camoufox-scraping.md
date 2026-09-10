@@ -128,6 +128,13 @@ print('camoufox:', 'OK' if is_available() else 'NOT INSTALLED')
 3. Nếu dày đặc (>10 lần/giờ) → nguồn siết chặn thật, dựa vào Apify tạm thời
 4. Theo dõi issue Camoufox: https://github.com/daijro/camoufox/issues
 
+> **Lưu ý Threads (live-test 2026-09-10):** Threads search hiện **login-wall mềm** —
+> URL vẫn ở `/search` nhưng trang chỉ hiển thị link "Log in with username instead",
+> không render post nào cho khách chưa đăng nhập. Code đã có fast-fail: chờ post
+> HOẶC login-link, nếu login-link thắng → grace-wait 3s xác nhận → raise
+> `CamoufoxUnavailable` ngay (~10s thay vì 30s). Đây là hành vi **đúng thiết kế** —
+> tier Threads rớt xuống Apify, không phải bug.
+
 ### 🟡 Log: `camoufox timeout` / scrape > 45s
 
 **Nguyên nhân:** Máy chủ yếu (Camoufox nặng hơn HTTP client ~10x) hoặc mạng chậm
@@ -163,9 +170,22 @@ print('camoufox:', 'OK' if is_available() else 'NOT INSTALLED')
 **Cách xử lý:**
 1. Mở URL search bằng tay, inspect DOM mới
 2. Update selector trong:
-   - `packages/agents/src/ca_agents/sources/tiktok_camoufox_source.py` (`_POST_SELECTOR`)
+   - `packages/agents/src/ca_agents/sources/tiktok_camoufox_source.py` (`_VIDEO_SELECTOR`)
    - `packages/agents/src/ca_agents/sources/threads_camoufox_source.py` (`_POST_SELECTOR`)
 3. Chạy test fixture: `pytest packages/agents/tests/test_tiktok_camoufox_source.py -q`
+
+> **⚠️ Bẫy serialization attr (phát hiện live-test 2026-09-10):** `page.content()`
+> của Playwright serialize attribute bằng **nháy kép** `data-e2e="..."`. Mọi
+> regex/split HTML trong source PHẢI dùng nháy kép — nháy đơn sẽ không match
+> dù DOM đúng. Selector cho `wait_for_selector` (CSS) thì vẫn dùng nháy đơn
+> như bình thường.
+
+> **DOM TikTok search live 2026-09-10 (đã verify hoạt động):** khối video là
+> `data-e2e="search_top-item"` (không còn `search_video-item`); caption trong
+> `data-e2e="search-card-video-caption"`; views trong `data-e2e="video-views"`;
+> display name trong `data-e2e="search-card-user-unique-id"`. Search page
+> CHỈ hiển thị views — likes/comments được ước lượng (~10%/~2% views) và đánh
+> dấu "ước lượng" trong `diem_nhan_dac_biet`.
 
 ### 🔴 CPU/RAM server nghẽn khi bật browser mode
 
@@ -211,3 +231,4 @@ print('camoufox:', 'OK' if is_available() else 'NOT INSTALLED')
 | Ngày | Tác giả | Thay đổi |
 |---|---|---|
 | 2026-09-10 | AI assistant | Tạo runbook (kèm plan tích hợp Camoufox vào AG-TREND) |
+| 2026-09-10 | AI assistant | Live-test: TikTok DOM mới `search_top-item` (đã hoạt động, 5 items thật); Threads login-wall mềm → fast-fail ~10s; ghi chú bẫy serialization nháy kép |
