@@ -361,3 +361,80 @@ def test_smart_chain_direct_only_never_uses_camoufox(monkeypatch: pytest.MonkeyP
     items = _scrape_threads_smart(keyword="matcha", count=5, scrape_mode="direct_only")
     assert items == direct_items
     camoufox_spy.assert_not_called()
+
+
+# ── No-hardcoded-fallback (plan §3.4 — fix fake-data tier-blocking) ──
+
+
+def test_google_bridge_returns_empty_when_rss_empty(monkeypatch: pytest.MonkeyPatch):
+    """Google News RSS rỗng → trả [] (KHÔNG curated hardcode giả mạo data thật)."""
+    from ca_agents.sources import threads_google_bridge_source as bridge_src
+
+    monkeypatch.setattr(
+        bridge_src,
+        "parse_google_rss_xml",
+        MagicMock(return_value=[]),
+    )
+    items = bridge_src.scrape_threads_google_bridge(keyword="cà phê", count=5)
+    assert items == []
+    # Không item nào được gắn is_live_scraped=True từ data giả
+    assert all(not getattr(it, "is_live_scraped", False) for it in items)
+
+
+def test_direct_jina_returns_empty_when_fetch_fails(monkeypatch: pytest.MonkeyPatch):
+    """Jina 403/fail → trả [] để chuỗi rớt tầng Camoufox/Apify (KHÔNG curated_hot_threads)."""
+    from ca_agents.sources import threads_direct_source as direct_src
+
+    monkeypatch.setattr(
+        "urllib.request.urlopen",
+        MagicMock(side_effect=RuntimeError("HTTP Error 403: Forbidden")),
+    )
+    items = direct_src.scrape_threads_direct(keyword="cà phê", count=5)
+    assert items == []
+
+
+def test_smart_chain_all_tiers_empty_falls_to_rss(monkeypatch: pytest.MonkeyPatch):
+    """Bridge + Direct + Camoufox + Apify đều rỗng → tầng cuối RSS Kênh14 (data thật)."""
+    monkeypatch.setattr(
+        "ca_agents.sources.threads_google_bridge_source.scrape_threads_google_bridge",
+        MagicMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "ca_agents.sources.threads_direct_source.scrape_threads_direct",
+        MagicMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "ca_agents.clients.camoufox_client.is_available",
+        lambda: False,
+    )
+    rss_items = [MagicMock(spec=TrendItem)]
+    monkeypatch.setattr(
+        "ca_agents.ag_trend._scrape_genz_media_vn",
+        MagicMock(return_value=rss_items),
+    )
+
+    items = _scrape_threads_smart(keyword="cà phê", count=5, scrape_mode="auto")
+    assert items == rss_items  # rớt tầng tới RSS thật, không phải []
+
+
+def test_smart_chain_returns_empty_when_all_real_sources_fail(monkeypatch: pytest.MonkeyPatch):
+    """Mọi tầng thật fail (kể cả RSS) → trả [] trung thực, KHÔNG giả mạo data."""
+    monkeypatch.setattr(
+        "ca_agents.sources.threads_google_bridge_source.scrape_threads_google_bridge",
+        MagicMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "ca_agents.sources.threads_direct_source.scrape_threads_direct",
+        MagicMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "ca_agents.clients.camoufox_client.is_available",
+        lambda: False,
+    )
+    monkeypatch.setattr(
+        "ca_agents.ag_trend._scrape_genz_media_vn",
+        MagicMock(return_value=[]),
+    )
+
+    items = _scrape_threads_smart(keyword="xyz-khong-ton-tai", count=5, scrape_mode="auto")
+    assert items == []  # trung thực: không data giả lấp đầy
