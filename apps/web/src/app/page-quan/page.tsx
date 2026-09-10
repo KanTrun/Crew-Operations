@@ -143,7 +143,7 @@ export default function PageQuanPage() {
 
   // Apify Usage & Scraping Mode State
   const [apifyUsage, setApifyUsage] = useState<ApifyUsage | null>(null);
-  const [scrapeMode, setScrapeMode] = useState<"auto" | "direct_only" | "apify_force">("auto");
+  const [scrapeMode, setScrapeMode] = useState<"auto" | "direct_only" | "apify_force" | "browser">("auto");
 
   // Keyword / Topic Filter State (Chức năng 1)
   const [keywordInput, setKeywordInput] = useState("");
@@ -204,7 +204,7 @@ export default function PageQuanPage() {
 
   // Fetch Trends function (Quét xong 100% mới cập nhật 1 lượt)
   const fetchTrendsData = useCallback(
-    async (region: string, category: string, kw: string, mode?: "auto" | "direct_only" | "apify_force", showToast = false) => {
+    async (region: string, category: string, kw: string, mode?: "auto" | "direct_only" | "apify_force" | "browser", showToast = false) => {
       setIsScanning(true);
       const effectiveMode = mode || scrapeMode;
       const sourceName =
@@ -219,10 +219,18 @@ export default function PageQuanPage() {
           : region === "tiktok_global"
           ? "Quốc tế (Global)"
           : "Tất cả nguồn";
+      const modeLabel =
+        effectiveMode === "direct_only"
+          ? "100% Miễn phí"
+          : effectiveMode === "apify_force"
+          ? "Ép dùng Apify"
+          : effectiveMode === "browser"
+          ? "Camoufox Browser"
+          : "Tự động";
 
       setScanStatusText(
         kw.trim()
-          ? `⏳ Đang quét chuyên sâu chủ đề "${kw.trim()}" từ ${sourceName} (${effectiveMode === "direct_only" ? "100% Miễn phí" : effectiveMode === "apify_force" ? "Ép dùng Apify" : "Tự động"})...`
+          ? `⏳ Đang quét chuyên sâu chủ đề "${kw.trim()}" từ ${sourceName} (${modeLabel})...`
           : `⏳ Đang cào dữ liệu độc quyền thời gian thực từ ${sourceName}...`
       );
 
@@ -247,7 +255,15 @@ export default function PageQuanPage() {
           setSelectedTrend(null);
         }
         setError(null);
-        setScanStatusText(`✅ Quét hoàn tất: Đã nạp ${freshTrends.length} xu hướng thật!`);
+        if (freshTrends.length > 0) {
+          setScanStatusText(`✅ Quét hoàn tất: Đã nạp ${freshTrends.length} xu hướng thật!`);
+        } else if (effectiveMode === "browser") {
+          setScanStatusText(
+            "⚠️ Browser thật không trả kết quả — kiểm tra server đã cài Camoufox (camoufox fetch) chưa, hoặc nguồn đang chặn."
+          );
+        } else {
+          setScanStatusText("✅ Quét hoàn tất: Đã nạp 0 xu hướng — thử nguồn hoặc từ khóa khác.");
+        }
         if (showToast) {
           push(`⚡ Đã cào thành công ${freshTrends.length} xu hướng từ ${sourceName}!`);
         }
@@ -665,12 +681,17 @@ export default function PageQuanPage() {
                   {
                     id: "auto",
                     title: "⚡ Tự động (Khuyên dùng)",
-                    desc: "Google & TikWM chính (0đ) · Apify làm dự phòng khi lỗi",
+                    desc: "Google & TikWM chính (0đ) · Camoufox browser · Apify dự phòng khi lỗi",
                   },
                   {
                     id: "direct_only",
                     title: "🆓 100% Miễn phí (0đ Quota)",
                     desc: "Chỉ dùng Google Bridge & TikWM, khóa hoàn toàn Apify",
+                  },
+                  {
+                    id: "browser",
+                    title: "🦊 Camoufox (Browser thật)",
+                    desc: "Cào bằng Firefox chống-detect, miễn phí, khó bị chặn — chậm hơn (~3-10s/lượt)",
                   },
                   {
                     id: "apify_force",
@@ -681,7 +702,7 @@ export default function PageQuanPage() {
                   <button
                     key={m.id}
                     onClick={() => {
-                      const newMode = m.id as "auto" | "direct_only" | "apify_force";
+                      const newMode = m.id as "auto" | "direct_only" | "apify_force" | "browser";
                       setScrapeMode(newMode);
                       push(`Đã kích hoạt: ${m.title}`);
                       fetchTrendsData(regionFilter, categoryFilter, activeKeyword, newMode, true);
