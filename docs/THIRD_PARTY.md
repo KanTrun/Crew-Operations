@@ -16,6 +16,7 @@
 | Telegram Bot API | Telegram ToS | Free cho bot thông thường | 2026-08-27 | Kênh phụ cùng MessagePort; runbook `telegram-bot-connect.md` |
 | Facebook Page / Graph | Meta Platform ToS | App Review + quyền Page | 2026-08-27 | Surface `/page-quan` riêng; trống tới khi có token — `facebook-page-connect.md` |
 | Thu thập Google Maps / ShopeeFood / Grab | ToS từng nền tảng | Thu thập tự động **không** giả định được phép | 2026-08-21 | AG-VOC chỉ nhận phản hồi quán tự chuyển |
+| Camoufox (Firefox chống-detect) | MPL-2.0 | Binary ~300MB sau `camoufox fetch`; không có API hạn mức | 2026-09-10 | Optional — tier cào browser-thật AG-TREND; Linux cần system deps (libgtk-3-0, libasound2, libdbus-glib-1-2, libx11-xcb1, fonts) — runbook `docs/runbooks/camoufox-scraping.md` |
 
 ## Kết luận vận hành (không phải lời hứa marketing)
 
