@@ -275,3 +275,61 @@ def test_smart_chain_direct_only_never_uses_camoufox(monkeypatch: pytest.MonkeyP
     items = _scrape_tiktok_smart(keyword="matcha", count=5, scrape_mode="direct_only")
     assert items == tikwm_items
     camoufox_spy.assert_not_called()
+
+
+# ── LAST RESORT: static topics chỉ đứng CUỐI chuỗi (plan §3.4) ──
+
+
+def test_smart_chain_all_tiers_fail_returns_static_last_resort(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """TikWM rỗng + Camoufox rỗng + Apify rỗng → static topics, is_live_scraped=False."""
+    monkeypatch.setattr("ca_agents.clients.camoufox_client.is_available", lambda: True)
+    monkeypatch.setattr(
+        "ca_agents.ag_trend._scrape_tiktokwm_fallback",
+        MagicMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "ca_agents.sources.tiktok_camoufox_source.scrape_page",
+        MagicMock(return_value="<html>login-wall</html>"),
+    )
+    monkeypatch.setattr(
+        "ca_agents.sources.tiktok_apify_source.scrape_tiktok_apify",
+        MagicMock(return_value=[]),
+    )
+
+    items = _scrape_tiktok_smart(keyword="cà phê muối", count=5, scrape_mode="auto")
+    assert len(items) >= 1
+    assert all(not i.is_live_scraped for i in items)  # tĩnh → không phải live
+    assert items[0].cum_tu_khoa_viral == "cà phê muối"  # đúng keyword user gõ
+
+
+def test_smart_chain_direct_only_all_fail_also_static_last_resort(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """direct_only + TikWM rỗng → static topics (không gọi Camoufox/Apify)."""
+    monkeypatch.setattr("ca_agents.clients.camoufox_client.is_available", lambda: True)
+    monkeypatch.setattr(
+        "ca_agents.ag_trend._scrape_tiktokwm_fallback",
+        MagicMock(return_value=[]),
+    )
+    camoufox_spy = MagicMock()
+    monkeypatch.setattr(
+        "ca_agents.sources.tiktok_camoufox_source.scrape_tiktok_camoufox",
+        camoufox_spy,
+    )
+
+    items = _scrape_tiktok_smart(keyword="", count=5, scrape_mode="direct_only")
+    assert len(items) >= 1
+    assert all(not i.is_live_scraped for i in items)
+    camoufox_spy.assert_not_called()  # direct_only → tier browser bị skip
+
+
+def test_static_topics_no_keyword_uses_default_list():
+    """Không có keyword → dùng default topics (matcha, trà sữa...)."""
+    from ca_agents.ag_trend import _static_tiktok_topics
+
+    items = _static_tiktok_topics(keyword="", count=6)
+    assert len(items) == 6
+    assert all(not i.is_live_scraped for i in items)
+    assert {i.cum_tu_khoa_viral for i in items} >= {"matcha", "trà sữa"}

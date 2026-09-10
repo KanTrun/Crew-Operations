@@ -222,17 +222,122 @@ def _scrape_tiktok_smart(
         except Exception as e:  # noqa: BLE001
             logger.warning("tiktok_apify_backup_also_failed: %s", e)
 
-    return []
+    # LAST RESORT: static topics tĩnh — CHỈ khi mọi tầng thật (TikWM/Camoufox/Apify)
+    # đều fail, để UI không bao giờ rỗng (plan §3.4: tĩnh phải đứng CUỐI chuỗi).
+    return _static_tiktok_topics(keyword=keyword, count=count)
 
 
 _TIKTOKWM_CACHE: list[dict[str, Any]] = []
 _TIKTOKWM_CACHE_TIME: float = 0.0
 
 
+def _static_tiktok_topics(keyword: str = "", count: int = 12) -> list[TrendItem]:
+    """LAST RESORT — danh sách topic TikTok hot tĩnh khi MỌI tầng thật đều fail.
+
+    Dữ liệu KHÔNG phải live-scrape → is_live_scraped=False để downstream
+    phân biệt được (plan §3.4).
+    """
+    items_out: list[TrendItem] = []
+    now_str = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
+    kw_clean = keyword.strip()
+
+    default_topics = [
+        (
+            "matcha",
+            "🍵 Sốt Cơn Sốt Matcha Latte & Kem Matcha Nguyên Chất",
+            "am_thuc_fnb",
+            "9.5M views",
+        ),
+        ("cà phê muối", "☕ Trào Lưu Cà Phê Muối Kem Béo Đậm Đà", "am_thuc_fnb", "14.2M views"),
+        (
+            "trà sữa",
+            "🧋 Khám Phá Trà Sữa Đậm Vị Trà Truyền Thống",
+            "am_thuc_fnb",
+            "22.8M views",
+        ),
+        (
+            "check-in",
+            "📸 Địa Điểm Check-in Sống Ảo Hot Nhất Giới Trẻ",
+            "tam_ly_lifestyle",
+            "18.3M views",
+        ),
+        (
+            "ẩm thực đường phố",
+            "🥪 Tour Ăn Vặt Ẩm Thực Đường Phố Sài Gòn & Hà Nội",
+            "am_thuc_fnb",
+            "31.0M views",
+        ),
+        (
+            "drama",
+            "🔥 Điểm Tin Xu Hướng & Cảm Hứng Thịnh Hành",
+            "trao_luu_pop_culture",
+            "15.7M views",
+        ),
+    ]
+
+    target_topics = (
+        [
+            (
+                kw_clean,
+                f"🔥 [TIKTOK TOPIC] Xu Hướng Thịnh Hành: #{kw_clean}",
+                "am_thuc_fnb"
+                if any(
+                    w in kw_clean.lower()
+                    for w in ["cà phê", "trà", "matcha", "ăn", "uống", "quán"]
+                )
+                else "trao_luu_pop_culture",
+                "Hàng triệu views",
+            )
+        ]
+        if kw_clean
+        else default_topics
+    )
+
+    for idx, (t_kw, t_title, t_cat, t_views) in enumerate(target_topics[:count]):
+        clean_tag = re.sub(r"[^a-zA-Z0-9_]", "", t_kw.lower())
+        search_url = f"https://www.tiktok.com/search?q={urllib.parse.quote(t_kw)}"
+        tag_url = f"https://www.tiktok.com/tag/{clean_tag}" if clean_tag else search_url
+        items_out.append(
+            TrendItem(
+                id=f"live_tiktok_search_{idx}_{clean_tag}",
+                tieu_de=t_title,
+                cum_tu_khoa_viral=t_kw,
+                nguon_goc="tiktok_vn",
+                loai_xu_huong="breaking_vn_24h",
+                danh_muc=t_cat,
+                vong_doi="dang_dinh",
+                diem_nhan_dac_biet=f"Chủ đề '{t_kw}' đang thu hút lượng tương tác cực khủng từ cộng đồng sáng tạo nội dung TikTok.",
+                nguon_goc_chi_tiet=f"Truy vấn dữ liệu thời gian thực theo chủ đề #{t_kw} lúc {now_str}.",
+                ngu_canh_su_dung=f"Ý tưởng làm video ngắn, minigame, hoặc đổi mới menu theo trend #{t_kw}.",
+                tam_ly_gioi_tre="Tò mò, thích trải nghiệm cái mới và bắt kịp làn sóng xu hướng của bạn bè.",
+                toc_do_tang_truong_24h=max(350.0, 950.0 - (idx * 60)),
+                diem_tiem_nang_viral=max(80, 98 - idx),
+                du_bao_thoi_gian="Đang duy trì độ nóng trong 7-14 ngày tới",
+                link_goc=search_url,
+                tiktok_url=search_url,
+                tiktok_tag_url=tag_url,
+                thoi_gian_cao=now_str,
+                luot_tiep_can=t_views,
+                trich_doan_noi_dung_that=f"Khám phá hàng ngàn video và bình luận triệu view về #{t_kw} trên TikTok.",
+                binh_luan_that_tiktok=[
+                    f'Cộng đồng TikTok đang thảo luận sôi nổi về "#{t_kw}"',
+                    f"Bấm để xem video trending #{t_kw} trực tiếp trên TikTok",
+                ],
+                nen_tang_lan_toa=["TikTok Việt Nam"],
+                tu_khoa_hashtag=[f"#{clean_tag}", f"#{clean_tag}vietnam", "#xuhuongtiktok"],
+                is_live_scraped=False,
+            )
+        )
+    return items_out
+
+
 def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendItem]:
     """FALLBACK ONLY — gọi khi Apify fail hoặc không có API key.
 
     Cào dữ liệu thật từ TikWM feed với in-memory cache 5 phút và timeout bảo vệ.
+    KHÔNG trả default topics tĩnh khi feed fail — trả [] để chuỗi smart
+    (`_scrape_tiktok_smart`) rớt tầng Camoufox/Apify lấy dữ liệu thật
+    (plan §3.4: fallback tĩnh chặn tầng browser thật phía sau).
     """
     global _TIKTOKWM_CACHE, _TIKTOKWM_CACHE_TIME
     items_out: list[TrendItem] = []
@@ -266,94 +371,9 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
             videos = filtered
 
     if not videos:
-        # Fallback danh sách topic TikTok hot khi feed tạm thời bị giới hạn rate limit
-        default_topics = [
-            (
-                "matcha",
-                "🍵 Sốt Cơn Sốt Matcha Latte & Kem Matcha Nguyên Chất",
-                "am_thuc_fnb",
-                "9.5M views",
-            ),
-            ("cà phê muối", "☕ Trào Lưu Cà Phê Muối Kem Béo Đậm Đà", "am_thuc_fnb", "14.2M views"),
-            (
-                "trà sữa",
-                "🧋 Khám Phá Trà Sữa Đậm Vị Trà Truyền Thống",
-                "am_thuc_fnb",
-                "22.8M views",
-            ),
-            (
-                "check-in",
-                "📸 Địa Điểm Check-in Sống Ảo Hot Nhất Giới Trẻ",
-                "tam_ly_lifestyle",
-                "18.3M views",
-            ),
-            (
-                "ẩm thực đường phố",
-                "🥪 Tour Ăn Vặt Ẩm Thực Đường Phố Sài Gòn & Hà Nội",
-                "am_thuc_fnb",
-                "31.0M views",
-            ),
-            (
-                "drama",
-                "🔥 Điểm Tin Xu Hướng & Cảm Hứng Thịnh Hành",
-                "trao_luu_pop_culture",
-                "15.7M views",
-            ),
-        ]
-
-        target_topics = (
-            [
-                (
-                    kw_clean,
-                    f"🔥 [TIKTOK TOPIC] Xu Hướng Thịnh Hành: #{kw_clean}",
-                    "am_thuc_fnb"
-                    if any(
-                        w in kw_clean.lower()
-                        for w in ["cà phê", "trà", "matcha", "ăn", "uống", "quán"]
-                    )
-                    else "trao_luu_pop_culture",
-                    "Hàng triệu views",
-                )
-            ]
-            if kw_clean
-            else default_topics
-        )
-
-        for idx, (t_kw, t_title, t_cat, t_views) in enumerate(target_topics):
-            clean_tag = re.sub(r"[^a-zA-Z0-9_]", "", t_kw.lower())
-            search_url = f"https://www.tiktok.com/search?q={urllib.parse.quote(t_kw)}"
-            tag_url = f"https://www.tiktok.com/tag/{clean_tag}" if clean_tag else search_url
-            items_out.append(
-                TrendItem(
-                    id=f"live_tiktok_search_{idx}_{clean_tag}",
-                    tieu_de=t_title,
-                    cum_tu_khoa_viral=t_kw,
-                    nguon_goc="tiktok_vn",
-                    loai_xu_huong="breaking_vn_24h",
-                    danh_muc=t_cat,
-                    vong_doi="dang_dinh",
-                    diem_nhan_dac_biet=f"Chủ đề '{t_kw}' đang thu hút lượng tương tác cực khủng từ cộng đồng sáng tạo nội dung TikTok.",
-                    nguon_goc_chi_tiet=f"Truy vấn dữ liệu thời gian thực theo chủ đề #{t_kw} lúc {now_str}.",
-                    ngu_canh_su_dung=f"Ý tưởng làm video ngắn, minigame, hoặc đổi mới menu theo trend #{t_kw}.",
-                    tam_ly_gioi_tre="Tò mò, thích trải nghiệm cái mới và bắt kịp làn sóng xu hướng của bạn bè.",
-                    toc_do_tang_truong_24h=max(350.0, 950.0 - (idx * 60)),
-                    diem_tiem_nang_viral=max(80, 98 - idx),
-                    du_bao_thoi_gian="Đang duy trì độ nóng trong 7-14 ngày tới",
-                    link_goc=search_url,
-                    tiktok_url=search_url,
-                    tiktok_tag_url=tag_url,
-                    thoi_gian_cao=now_str,
-                    luot_tiep_can=t_views,
-                    trich_doan_noi_dung_that=f"Khám phá hàng ngàn video và bình luận triệu view về #{t_kw} trên TikTok.",
-                    binh_luan_that_tiktok=[
-                        f'Cộng đồng TikTok đang thảo luận sôi nổi về "#{t_kw}"',
-                        f"Bấm để xem video trending #{t_kw} trực tiếp trên TikTok",
-                    ],
-                    nen_tang_lan_toa=["TikTok Việt Nam"],
-                    tu_khoa_hashtag=[f"#{clean_tag}", f"#{clean_tag}vietnam", "#xuhuongtiktok"],
-                    is_live_scraped=True,
-                )
-            )
+        # Feed fail + cache rỗng: trả [] để chuỗi smart rớt tầng Camoufox/Apify
+        # lấy dữ liệu thật, thay vì trả default topics tĩnh (plan §3.4).
+        return items_out
 
     for idx, v in enumerate(videos[:count]):
         author = v.get("author", {}).get("unique_id", "user")
