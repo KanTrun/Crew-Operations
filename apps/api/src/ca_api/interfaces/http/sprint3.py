@@ -106,6 +106,13 @@ def _known_ca(ca_id: str) -> bool:
     return ca_id in ids
 
 
+def _known_nv(nv_id: str) -> bool:
+    from ca_api.nhan_vien import list_nhan_vien_ops
+
+    ids = {n["id"] for n in list_nhan_vien_ops(include_seed=True)}
+    return nv_id in ids
+
+
 def _phan_cong() -> dict[str, list[str]]:
     stored = kv_get("phan_cong", None)
     if stored:
@@ -663,6 +670,7 @@ def toi_lich(
         "nv_id": nv,
         "ca": ca,
         "ca_ids": mine_ids,
+        "items": ca,
         "rang_buoc_da_duyet": inbox_duyet,
     }
 

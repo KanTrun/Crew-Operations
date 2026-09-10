@@ -85,7 +85,18 @@ type CuocHop = {
     phong_cach_dieu_hanh?: string;
     loi_khuyen_ai_coaching?: string[];
   };
-  de_xuat_sop?: { quy_trinh_lien_quan: string; buoc_so?: number | null; noi_dung_thay_doi: string; ly_do?: string }[];
+  dieu_chinh_lich?: {
+    id: string;
+    nhan_vien_id?: string | null;
+    ten_nhan_vien?: string;
+    loai: string;
+    thu?: string;
+    khung?: string;
+    ca_id?: string;
+    tuan_iso?: string;
+    ly_do?: string;
+    trang_thai?: string;
+  }[];
   do_tin_cay_tong_the?: number;
   khong_lien_quan?: boolean;
   trang_thai?: string;
@@ -112,6 +123,7 @@ function loaiDeXuatLabel(loai: string): string {
   if (loai === "quy_trinh_sop") return "Quy trình SOP";
   if (loai === "mua_sam_vat_tu") return "Mua sắm / vật tư";
   if (loai === "chinh_sach_nhan_su") return "Nhân sự";
+  if (loai === "dieu_chinh_lich") return "Điều chỉnh lịch ca";
   return "Khác";
 }
 
@@ -652,17 +664,27 @@ export function MeetingResults({
             </p>
           ) : (
             <p className="nq-meeting-footer__note m-0">
-              Sau khi duyệt, việc được chọn sẽ đẩy vào OpsEngine (việc treo ca); đề xuất cẩm nang ghi vào Playbook.
+              Sau khi duyệt, việc được chọn sẽ đẩy vào OpsEngine (việc treo ca); đề xuất cẩm nang ghi vào Playbook; điều chỉnh lịch ca được nạp thẳng vào Solver.
             </p>
           )}
         </div>
-        <Btn variant="primary" onClick={onApply} disabled={busy || !manager}>
-          {manager
-            ? meeting.trang_thai === "da_duyet"
-              ? "Cập nhật lại vào ca"
-              : "Duyệt & phân công vào ca"
-            : "Cần quyền quản lý để duyệt"}
-        </Btn>
+        <div className="flex items-center gap-2">
+          {meeting.trang_thai === "da_duyet" && (
+            <a
+              href="/roster"
+              className="px-3 py-1.5 text-xs rounded font-medium bg-neutral-800 hover:bg-neutral-700 text-amber-300 border border-amber-500/40 transition-colors inline-flex items-center gap-1.5 no-underline"
+            >
+              📅 Sang Lịch tuần xếp ca (Solver)
+            </a>
+          )}
+          <Btn variant="primary" onClick={onApply} disabled={busy || !manager}>
+            {manager
+              ? meeting.trang_thai === "da_duyet"
+                ? "Cập nhật lại vào ca"
+                : "Duyệt & phân công vào ca"
+              : "Cần quyền quản lý để duyệt"}
+          </Btn>
+        </div>
       </div>
     </div>
   );

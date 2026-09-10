@@ -32,7 +32,13 @@ def _now() -> str:
 
 
 def _get_staff_list() -> list[dict[str, Any]]:
-    """Retrieve staff list from users table or sample seed."""
+    """Retrieve staff list from users table merged with seed."""
+    try:
+        from ca_api.nhan_vien import list_nhan_vien_ops
+
+        return list_nhan_vien_ops(include_seed=True)
+    except Exception:
+        pass
     users = list_users()
     if users:
         return [
@@ -42,16 +48,10 @@ def _get_staff_list() -> list[dict[str, Any]]:
             }
             for u in users
         ]
-    if SEED.is_file():
-        try:
-            data = json.loads(SEED.read_text(encoding="utf-8"))
-            return cast(list[dict[str, Any]], data.get("nhan_vien", []))
-        except Exception:  # noqa: BLE001
-            pass
     return [
-        {"id": "nv_01", "ten": "Nguyễn Văn Tuấn"},
-        {"id": "nv_02", "ten": "Trà My"},
-        {"id": "nv_03", "ten": "Lê Hoàng Long"},
+        {"id": "nv_01", "ten": "Lan"},
+        {"id": "nv_02", "ten": "Hùng"},
+        {"id": "nv_03", "ten": "Minh"},
     ]
 
 
@@ -256,6 +256,104 @@ def apply_meeting_decisions(
 
         kv_mutate("sop_de_xuat", mut_sop, [])
 
+    # 2b. Persist approved schedule adjustments (dieu_chinh_lich) to inbox_rang_buoc & pins
+    sched_items: list[dict[str, Any]] = []
+    for prop in body.de_xuat_phe_duyet:
+        if prop.trang_thai in ("da_duyet", "cho_duyet") and prop.loai_de_xuat == "dieu_chinh_lich":
+            if prop.chi_tiet_lich:
+                sched_items.append(prop.chi_tiet_lich.model_dump())
+            else:
+                sched_items.append({
+                    "id": prop.id,
+                    "nhan_vien_id": None,
+                    "ten_nhan_vien": prop.nguoi_de_xuat,
+                    "loai": "xin_nghi" if any(k in prop.noi_dung.lower() for k in ["nghỉ", "bận"]) else "ghim_ca",
+                    "thu": "",
+                    "khung": "",
+                    "ca_id": "",
+                    "ly_do": prop.noi_dung,
+                    "trang_thai": "da_duyet",
+                })
+    for d in body.dieu_chinh_lich:
+        d_dict = d.model_dump()
+        if d_dict.get("id") not in [x.get("id") for x in sched_items]:
+            sched_items.append(d_dict)
+
+    sched_applied_count = 0
+    inbox_leave_count = 0
+    pins_count = 0
+
+    if sched_items:
+        life = kv_get("lich_tuan_lifecycle", {}) or kv_get("lifecycle", {}) or {}
+        current_week = life.get("tuan_iso") or "2026-W36"
+
+        # Apply leaves to inbox_rang_buoc
+        leaves_to_apply = [s for s in sched_items if s.get("loai") == "xin_nghi"]
+        if leaves_to_apply:
+            def mut_inbox(cur: list[Any]) -> list[Any]:
+                nonlocal inbox_leave_count
+                res = list(cur)
+                da_co = {
+                    (x.get("meeting_id"), x.get("nv_id"), (x.get("rang_buoc") or {}).get("thu"))
+                    for x in res
+                    if isinstance(x, dict)
+                }
+                for it in leaves_to_apply:
+                    nv_id = str(it.get("nhan_vien_id") or it.get("ten_nhan_vien") or "unknown")
+                    thu = str(it.get("thu") or "")
+                    tuan = str(it.get("tuan_iso") or current_week)
+                    if (body.id, nv_id, thu) in da_co:
+                        continue
+                    inbox_item = {
+                        "id": f"rb_meet_{uuid.uuid4().hex[:8]}",
+                        "nv_id": nv_id,
+                        "nhan_vien": it.get("ten_nhan_vien") or nv_id,
+                        "y_dinh": "xin_nghi",
+                        "trang_thai": "duyet",
+                        "ly_do": f"Từ cuộc họp [{body.tieu_de}]: {it.get('ly_do') or 'Xin nghỉ phép'}",
+                        "hieu_luc": {
+                            "loai": "rang_buoc_cho_solver",
+                            "nv_id": nv_id,
+                            "thu": thu,
+                            "tuan_id": tuan,
+                        },
+                        "rang_buoc": {
+                            "thu": thu,
+                            "tuan_id": tuan,
+                        },
+                        "created_at": now_iso,
+                        "nguon": "cuoc_hop",
+                        "meeting_id": body.id,
+                    }
+                    res.insert(0, inbox_item)
+                    da_co.add((body.id, nv_id, thu))
+                    inbox_leave_count += 1
+                return res
+
+            kv_mutate("inbox_rang_buoc", mut_inbox, [])
+
+        # Apply pins to KV "pins"
+        pins_to_apply = [s for s in sched_items if s.get("loai") == "ghim_ca"]
+        if pins_to_apply:
+            def mut_pins(cur: dict[str, Any]) -> dict[str, Any]:
+                nonlocal pins_count
+                res = dict(cur)
+                for it in pins_to_apply:
+                    nv_id = it.get("nhan_vien_id") or it.get("ten_nhan_vien")
+                    ca_id = it.get("ca_id")
+                    if not ca_id and it.get("thu"):
+                        thu_ord = {"T2": 1, "T3": 2, "T4": 3, "T5": 4, "T6": 5, "T7": 6, "CN": 7}.get(it["thu"], 1)
+                        khung_idx = {"sang": 1, "chieu": 2, "toi": 3}.get(it.get("khung", "sang"), 1)
+                        ca_id = f"w1_c{(thu_ord - 1) * 3 + khung_idx:02d}"
+                    if ca_id and nv_id:
+                        res[f"{ca_id}|{nv_id}"] = True
+                        pins_count += 1
+                return res
+
+            kv_mutate("pins", mut_pins, {})
+
+        sched_applied_count = inbox_leave_count + pins_count
+
     # 3. Persist meeting to store
     meeting_dict = body.model_dump()
     meeting_dict["trang_thai"] = "da_duyet"
@@ -279,6 +377,9 @@ def apply_meeting_decisions(
             "tieu_de": body.tieu_de,
             "tasks_created": created_tasks,
             "sop_proposals": sop_count,
+            "schedule_adjustments": sched_applied_count,
+            "inbox_leaves": inbox_leave_count,
+            "pins_created": pins_count,
         },
     )
 
@@ -287,6 +388,9 @@ def apply_meeting_decisions(
         "meeting_id": body.id,
         "tasks_created": created_tasks,
         "sop_proposals": sop_count,
+        "schedule_adjustments": sched_applied_count,
+        "inbox_leaves": inbox_leave_count,
+        "pins_created": pins_count,
         "applied_at": now_iso,
     }
 

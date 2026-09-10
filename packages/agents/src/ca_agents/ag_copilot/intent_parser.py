@@ -198,7 +198,20 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
     ),
     (
         SCHEDULE_SOLVE,
-        ["xếp lịch", "xep lich", "chia ca", "xếp ca", "lên lịch", "chạy solver", "phân công ca", "tạo lịch"],
+        [
+            "xếp lịch", "xep lich", "chia ca", "xếp ca", "xep ca", "lên lịch", "len lich",
+            "chạy solver", "chay solver", "phân công ca", "phan cong ca", "tạo lịch", "tao lich",
+            "lên kế hoạch", "len ke hoach", "lập kế hoạch", "lap ke hoach",
+            "lập lịch", "lap lich", "kế hoạch lịch", "ke hoach lich",
+            "kế hoạch ca", "ke hoach ca", "kế hoạch xếp ca", "ke hoach xep ca",
+            "kế hoạch tuần", "ke hoach tuan",
+            "xếp lịch từ cuộc họp", "xep lich tu cuoc hop",
+            "lập lịch từ cuộc họp", "lap lich tu cuoc hop",
+            "lên kế hoạch từ cuộc họp", "len ke hoach tu cuoc hop",
+            "kế hoạch từ cuộc họp", "ke hoach tu cuoc hop",
+            "lấy thông tin cuộc họp để lên kế hoạch", "lay thong tin cuoc hop de len ke hoach",
+            "lấy thông tin cuộc họp để xếp lịch", "lay thong tin cuoc hop de xep lich",
+        ],
         0.92,
     ),
     (
@@ -294,24 +307,41 @@ def _add_week(d: Any, n: int = 1) -> Any:
     if not isinstance(d, date):
         d = date.today()
     return d + timedelta(weeks=n)
+_THU_CAN = {
+    # Dạng dài — match bằng substring an toàn (không bị ambiguity)
+    "thứ 2": "T2", "thứ hai": "T2",
+    "thứ 3": "T3", "thứ ba": "T3",
+    "thứ 4": "T4", "thứ tư": "T4",
+    "thứ 5": "T5", "thứ năm": "T5",
+    "thứ 6": "T6", "thứ sáu": "T6",
+    "thứ 7": "T7", "thứ bảy": "T7",
+    "chủ nhật": "CN", "chu nhat": "CN",
+}
+
+# Viết tắt ngắn (t2..t7, cn) dùng regex word-boundary để tránh false positive.
+# BUG2 fix: pattern này match cả đầu câu lẫn giữa câu.
+# BUG3 fix: cn chỉ match khi là từ riêng, không phải prefix/suffix của từ khác.
+_THU_ABBREV: list[tuple[str, str]] = [
+    (r"\bt2\b", "T2"), (r"\bt3\b", "T3"), (r"\bt4\b", "T4"),
+    (r"\bt5\b", "T5"), (r"\bt6\b", "T6"), (r"\bt7\b", "T7"),
+    # Không có 'cn': quá mơ hồ (viết tắt 'công nhân', 'chi nhánh'...).
+    # 'chu nhat' / 'chủ nhật' trong _THU_CAN đã bao phủ đủ.
+]
+_THU_ABBREV_COMPILED = [(re.compile(pat, re.IGNORECASE), val) for pat, val in _THU_ABBREV]
+
+
 def _parse_thu(text_lower: str) -> str:
     """Trích thứ trong tuần (T2..CN) từ câu tiếng Việt thường."""
     t = " ".join(str(text_lower or "").split())
+    # Ưu tiên dạng dài (không bị ambiguity) — dùng substring match
     for cu, thu in _THU_CAN.items():
         if cu in t:
             return thu
+    # Dạng viết tắt — dùng regex word-boundary để tránh false positive
+    for pat, thu in _THU_ABBREV_COMPILED:
+        if pat.search(t):
+            return thu
     return ""
-
-
-_THU_CAN = {
-    "thứ 2": "T2", "thứ hai": "T2", " t2": "T2",
-    "thứ 3": "T3", "thứ ba": "T3", " t3": "T3",
-    "thứ 4": "T4", "thứ tư": "T4", " t4": "T4",
-    "thứ 5": "T5", "thứ năm": "T5", " t5": "T5",
-    "thứ 6": "T6", "thứ sáu": "T6", " t6": "T6",
-    "thứ 7": "T7", "thứ bảy": "T7", " t7": "T7",
-    "chủ nhật": "CN", "chu nhat": "CN", "cn": "CN",
-}
 
 
 
@@ -389,6 +419,18 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
                 matched_conf = base_conf
                 break
 
+    # Nếu có đính kèm ảnh và người dùng hỏi về lịch/TKB hoặc chỉ gửi ảnh
+    attachments = list(context.get("attachments") or [])
+    has_image_att = any(
+        "image" in str(a.get("mime_type", "")) or str(a.get("url", "")).lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".gif"))
+        for a in attachments
+    )
+    if matched_intent == OUT_OF_SCOPE and has_image_att:
+        has_tkb_cue = any(k in lower for k in ["tkb", "lịch", "lich", "thời khóa biểu", "thoi khoa bieu", "lịch học", "lich hoc", "bận", "ban", "rảnh", "ranh", "đính kèm", "dinh kem"])
+        if has_tkb_cue or lower in ("đã gửi tệp đính kèm", "da gui tep dinh kem", "gửi ảnh", "gui anh", ""):
+            matched_intent = PROPOSE_TKB_CONFIRM
+            matched_conf = 0.92
+
     # Extract common parameters
     if matched_intent == SCHEDULE_SOLVE:
         # Week detection (ISO week thực tế — không hardcode).
@@ -407,6 +449,10 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
         if lan_match:
             params["uu_tien_nhan_su"] = {lan_match.group(1).title(): f"ca_{lan_match.group(2)}"}
 
+        # Meeting context detection
+        if any(w in combined_lower for w in ["cuộc họp", "cuoc hop", "họp", "hop", "biên bản", "bien ban", "giao ca"]):
+            params["nguon_cuoc_hop"] = True
+
     elif matched_intent == QUERY_SOP:
         params["cau_hoi"] = text
 
@@ -415,10 +461,32 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
         thu = _parse_thu(lower)
         if thu:
             params["thu"] = thu
-        ly_do = text.strip()
-        # bỏ phần mở đầu dạng "tôi bận/xin nghỉ <thứ>" để lấy phần lý do thật
-        ly_do = re.sub(r"^[^,]{0,40}?[,:]?", "", ly_do, count=1).strip() or "bận"
-        params["ly_do"] = ly_do[:200]
+        ly_do_raw = text.strip()
+        # BUG7 fix: trích phần lý do sau dấu ',' hoặc ':' đầu tiên nếu có.
+        # Regex cũ dùng lazy {0,40}? → match 0 ký tự → không strip được gì.
+        m_comma = re.search(r"[,:](.+)$", ly_do_raw)
+        if m_comma:
+            ly_do = m_comma.group(1).strip()
+        else:
+            # Không có dấu phẩy → bỏ cụm mở đầu "tôi bận/xin nghỉ <thứ>" (greedy)
+            ly_do = re.sub(
+                r"(?:tôi bận|toi ban|xin nghỉ|xin nghi|nghỉ ca|nghi ca|không đi làm|khong di lam"
+                r"|không đi được|khong di duoc|không rảnh|khong ranh|bận học|ban hoc"
+                r"|bận việc|ban viec|có việc bận|co viec ban)"
+                r"(?:\s+(?:thứ\s*\d|t[2-7]|chủ nhật|chu nhat))?",
+                "",
+                ly_do_raw,
+                flags=re.IGNORECASE,
+            ).strip()
+            # Pass 2: nếu còn sót "thu X" / "t2" ở đầu sau khi bỏ cụm mở đầu
+            # → câu chỉ có thứ, không có lý do thật → bỏ nốt
+            ly_do = re.sub(
+                r"^(?:thứ\s*\d|thu\s*\d|t[2-7]|chủ nhật|chu nhat)\s*",
+                "",
+                ly_do,
+                flags=re.IGNORECASE,
+            ).strip()
+        params["ly_do"] = (ly_do[:200] or "bận")
 
     elif matched_intent == GENERATE_DAILY_BRIEF:
         params["ngay"] = _active_date(context).isoformat()
@@ -593,7 +661,21 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
                     break
         params["khoang_ban"] = khoang_ban
         params["nv_id"] = nv_id
-        params["thieu_khoang_ban"] = not khoang_ban
+        # Hỗ trợ ảnh đính kèm (upload_id hoặc image_path)
+        first_img = next(
+            (
+                a for a in attachments
+                if "image" in str(a.get("mime_type", ""))
+                or str(a.get("url", "")).lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".gif"))
+            ),
+            None,
+        )
+        if first_img:
+            params["upload_id"] = str(first_img.get("upload_id") or "")
+            params["image_path"] = str(first_img.get("local_path") or first_img.get("url") or "")
+            params["attachment_url"] = str(first_img.get("url") or "")
+            params["attachment_filename"] = str(first_img.get("filename") or "")
+        params["thieu_khoang_ban"] = not khoang_ban and not params.get("image_path") and not params.get("upload_id")
 
     elif matched_intent == PROPOSE_SWAP_CONSENT:
         # Trích swap_id (sw_xxx) — thiếu ID thì tool fail-closed.

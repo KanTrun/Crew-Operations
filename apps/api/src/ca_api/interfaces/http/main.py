@@ -22,6 +22,7 @@ from typing import Annotated, Any, cast
 from ca_agents.ag_copilot.tool_registry import configure_data_sources
 from ca_agents.ag_mailwriter import draft_email as _draft_email
 from ca_agents.ag_sop import answer as _sop_answer
+from ca_agents.ag_tkb.extract import extract_tkb as _extract_tkb
 from ca_agents.ag_waste import cluster as _waste_cluster
 from ca_contracts import (
     Ca,
@@ -283,6 +284,7 @@ configure_data_sources(
         "mode": os.environ.get("NHIPQUAN_PAGE_MODE", "replay").strip().lower() or "replay",
         "connected": False,
     },
+    extract_tkb=_extract_tkb,
 )
 
 

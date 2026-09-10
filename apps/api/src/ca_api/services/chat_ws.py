@@ -11,8 +11,13 @@ import re
 import time
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
 from typing import Any, Protocol
+
+try:
+    from datetime import UTC, datetime
+except ImportError:
+    from datetime import datetime, timezone
+    UTC = timezone.utc
 from uuid import uuid4
 
 from fastapi import WebSocket

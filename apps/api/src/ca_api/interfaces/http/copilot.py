@@ -28,8 +28,8 @@ from ca_contracts import (
     copilot_intents_allowed_for_role,
 )
 from ca_gates import compute_snapshot_hash, validate_scope, validate_stale
-from fastapi import APIRouter, Header, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, File, Header, HTTPException, Query, Request, UploadFile
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ca_api.persist import (
@@ -52,6 +52,27 @@ from ca_api.persist import session as auth_session
 router = APIRouter(prefix="/api/v1/copilot", tags=["copilot"])
 
 _ROOT = Path(__file__).resolve().parents[6]
+UPLOAD_DIR = _ROOT / "data" / "uploads" / "copilot"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+# Magic bytes và phần mở rộng cho các định dạng tệp đính kèm Copilot hỗ trợ
+MAGIC_SIGNATURES: list[tuple[bytes, str, str]] = [
+    (b"\xff\xd8\xff", "image/jpeg", ".jpg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png", ".png"),
+    (b"GIF87a", "image/gif", ".gif"),
+    (b"GIF89a", "image/gif", ".gif"),
+    (b"%PDF-", "application/pdf", ".pdf"),
+]
+
+
+def detect_media_type(header: bytes) -> tuple[str, str] | None:
+    """Nhận dạng MIME và phần mở rộng từ header bytes."""
+    if header.startswith(b"RIFF") and len(header) >= 12 and header[8:12] == b"WEBP":
+        return "image/webp", ".webp"
+    for signature, mime_type, extension in MAGIC_SIGNATURES:
+        if header.startswith(signature):
+            return mime_type, extension
+    return None
 
 
 def _life_tuan_hien_tai() -> str:
@@ -110,10 +131,11 @@ def _check_rate_limit(user_id: str, max_per_min: int = 30) -> None:
 # ── Request / Response Models ────────────────────────────────────────────────
 
 class MessageRequestBody(BaseModel):
-    message: str = Field(min_length=1, max_length=2000)
+    message: str = Field(default="", max_length=2000)
     store_id: str = "quan_01"
     channel: str = "web"
     recent_messages: list[str] = Field(default_factory=list, max_length=3)
+    attachments: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ExecuteActionBody(BaseModel):
@@ -324,6 +346,57 @@ def _record_copilot_response(
         )
 
 
+# ── 0. File Upload & Serve ───────────────────────────────────────────────────
+
+@router.post("/upload")
+async def copilot_upload(
+    file: UploadFile = File(...),
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Upload tệp đính kèm (ảnh TKB, phiếu, tài liệu) cho AG-COPILOT."""
+    user = _get_verified_user(authorization)
+    _check_rate_limit(user["user_id"])
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="tep_qua_lon_toi_da_10mb")
+
+    detected = detect_media_type(content[:32])
+    if detected is None:
+        raise HTTPException(status_code=415, detail="dinh_dang_tep_khong_hop_le_hoac_nguy_hiem")
+
+    original_filename = file.filename or "attachment"
+    mime_type, extension = detected
+
+    upload_id = f"up_{uuid.uuid4().hex[:12]}"
+    safe_filename = f"{upload_id}{extension}"
+    dest_path = UPLOAD_DIR / safe_filename
+    dest_path.write_bytes(content)
+
+    return {
+        "url": f"/api/v1/copilot/uploads/{safe_filename}",
+        "filename": original_filename[:120],
+        "size": len(content),
+        "mime_type": mime_type,
+        "upload_id": upload_id,
+        "local_path": str(dest_path),
+    }
+
+
+@router.get("/uploads/{filename}")
+def serve_copilot_media(filename: str) -> FileResponse:
+    """Serve tệp đính kèm đã tải lên cho AG-COPILOT."""
+    safe_name = os.path.basename(filename)
+    path = UPLOAD_DIR / safe_name
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="khong_tim_thay_tep")
+    with path.open("rb") as media_file:
+        detected = detect_media_type(media_file.read(32))
+    if detected is None:
+        raise HTTPException(status_code=415, detail="dinh_dang_tep_khong_hop_le_hoac_nguy_hiem")
+    return FileResponse(path, media_type=detected[0])
+
+
 # ── 1. POST /api/v1/copilot/message ──────────────────────────────────────────
 
 @router.post("/message", response_model=CopilotResponse)
@@ -336,6 +409,9 @@ def copilot_message(
     """Send natural language instruction to AG-COPILOT."""
     t0 = time.time()
 
+    if not body.message.strip() and not body.attachments:
+        raise HTTPException(status_code=422, detail="tin_nhan_hoac_tep_dinh_kem_khong_duoc_de_trong")
+
     # Webhook signature verification for Telegram if channel is telegram
     if body.channel == "telegram":
         expected_secret = os.environ.get("TELEGRAM_WEBHOOK_SECRET")
@@ -345,6 +421,10 @@ def copilot_message(
     user = _get_verified_user(authorization)
     _check_rate_limit(user["user_id"])
 
+    effective_message = body.message.strip()
+    if not effective_message and body.attachments:
+        effective_message = "Đã gửi tệp đính kèm"
+
     # Enforce verified identity from server session
     verified_context = {
         "store_id": user["store_id"],
@@ -353,16 +433,17 @@ def copilot_message(
         "active_date": datetime.now(UTC).strftime("%Y-%m-%d"),
         "channel": body.channel,
         "recent_messages": body.recent_messages,
+        "attachments": body.attachments,
     }
 
     # Run AG-COPILOT
-    response = run_copilot(body.message, verified_context)
+    response = run_copilot(effective_message, verified_context)
     latency_ms = int((time.time() - t0) * 1000)
 
     _record_copilot_response(
         response,
         user=user,
-        message=body.message,
+        message=effective_message,
         channel=body.channel,
         latency_ms=latency_ms,
     )
@@ -387,6 +468,13 @@ def copilot_message_stream(
     t0 = time.time()
     user = _get_verified_user(authorization)
     _check_rate_limit(user["user_id"])
+    if not body.message.strip() and not body.attachments:
+        raise HTTPException(status_code=422, detail="tin_nhan_hoac_tep_dinh_kem_khong_duoc_de_trong")
+
+    effective_message = body.message.strip()
+    if not effective_message and body.attachments:
+        effective_message = "Đã gửi tệp đính kèm"
+
     verified_context = {
         "store_id": user["store_id"],
         "user_id": user["user_id"],
@@ -394,14 +482,15 @@ def copilot_message_stream(
         "active_date": datetime.now(UTC).strftime("%Y-%m-%d"),
         "channel": body.channel,
         "recent_messages": body.recent_messages,
+        "attachments": body.attachments,
     }
 
     # 1. Chạy copilot bình thường (tất định: intent/tool/proposal) — nhanh vì replay.
-    response = run_copilot(body.message, verified_context)
+    response = run_copilot(effective_message, verified_context)
     _record_copilot_response(
         response,
         user=user,
-        message=body.message,
+        message=effective_message,
         channel=body.channel,
         latency_ms=int((time.time() - t0) * 1000),
     )

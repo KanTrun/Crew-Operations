@@ -37,7 +37,7 @@ interface ActionItem {
 
 interface DeXuatPheDuyet {
   id: string;
-  loai_de_xuat: "quy_trinh_sop" | "mua_sam_vat_tu" | "chinh_sach_nhan_su" | "khac";
+  loai_de_xuat: "quy_trinh_sop" | "mua_sam_vat_tu" | "chinh_sach_nhan_su" | "dieu_chinh_lich" | "khac";
   tieu_de: string;
   nguoi_de_xuat?: string;
   nguoi_phe_duyet?: string;
@@ -46,6 +46,17 @@ interface DeXuatPheDuyet {
   trang_thai: "da_duyet" | "cho_duyet" | "tu_choi";
   quy_trinh_lien_quan?: string | null;
   buoc_so?: number | null;
+  chi_tiet_lich?: {
+    id?: string;
+    nhan_vien_id?: string | null;
+    ten_nhan_vien?: string;
+    loai?: "xin_nghi" | "ghim_ca" | "doi_ca" | "uu_tien";
+    thu?: string;
+    khung?: string;
+    ca_id?: string;
+    tuan_iso?: string;
+    ly_do?: string;
+  };
 }
 
 interface DeXuatSop {
@@ -128,6 +139,18 @@ interface CuocHop {
   ban_tin_ca?: BanTinCaKhan;
   huan_luyen_quan_ly?: HuanLuyenQuanLy;
   de_xuat_sop?: DeXuatSop[];
+  dieu_chinh_lich?: {
+    id: string;
+    nhan_vien_id?: string | null;
+    ten_nhan_vien?: string;
+    loai: "xin_nghi" | "ghim_ca" | "doi_ca" | "uu_tien";
+    thu?: string;
+    khung?: string;
+    ca_id?: string;
+    tuan_iso?: string;
+    ly_do?: string;
+    trang_thai?: string;
+  }[];
   do_tin_cay_tong_the?: number;
   trang_thai?: "cho_duyet" | "da_duyet" | "tu_choi";
   duyet_boi?: string;
@@ -558,12 +581,13 @@ export default function MeetingPage() {
     setBusy(true);
     setStatusMsg("Đang đẩy việc treo vào ca & cập nhật Cẩm nang...");
     try {
-      const res = await apiSend<{ ok: boolean; tasks_created: number; sop_proposals: number }>(
+      const res = await apiSend<{ ok: boolean; tasks_created: number; sop_proposals: number; schedule_adjustments?: number }>(
         "/api/v1/meeting/apply",
         meeting,
       );
       if (res.ok) {
-        setSuccess(`Đã duyệt! Tạo thành công ${res.tasks_created} việc treo vào ca và ${res.sop_proposals} đề xuất Cẩm nang.`);
+        const schedMsg = res.schedule_adjustments ? `, và ${res.schedule_adjustments} điều chỉnh lịch ca vào Solver` : "";
+        setSuccess(`Đã duyệt! Tạo thành công ${res.tasks_created} việc treo vào ca, ${res.sop_proposals} đề xuất Cẩm nang${schedMsg}.`);
         setMeeting({
           ...meeting,
           trang_thai: "da_duyet",

@@ -47,8 +47,10 @@ def list_nhan_vien_ops(include_seed: bool | None = None) -> list[dict[str, Any]]
     quán vận hành thật chỉ dùng nhân viên thật (users) — seed ADR-012 chỉ
     dành cho dev/test/demo (set =1 trong .env khi cần lịch sử công bằng).
     """
-    if include_seed is None:
-        include_seed = os.environ.get("NHIPQUAN_LOI_GIAI_SEED", "0").strip().lower() in {"1", "true", "yes", "on"}
+    env_flag = os.environ.get("NHIPQUAN_LOI_GIAI_SEED")
+    explicit_seed = None
+    if env_flag is not None and env_flag.strip():
+        explicit_seed = env_flag.strip().lower() in {"1", "true", "yes", "on"}
 
     out: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -76,8 +78,13 @@ def list_nhan_vien_ops(include_seed: bool | None = None) -> list[dict[str, Any]]
         # persist chưa sẵn sàng (chạy solver độc lập) — bỏ qua, còn seed
         pass
 
-    # 2. NV seed (lịch sử / demo) — chỉ thêm id chưa có
-    if include_seed:
+    # 2. NV seed (lịch sử / demo) — chỉ thêm id chưa có nếu được yêu cầu hoặc chưa đủ 15 người
+    should_include = (
+        include_seed
+        if include_seed is not None
+        else (explicit_seed if explicit_seed is not None else len(out) < 15)
+    )
+    if should_include:
         for x in _seed_nhan_vien():
             nv_id = str(x.get("id") or "")
             if not nv_id or nv_id in seen:

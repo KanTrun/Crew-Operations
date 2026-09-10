@@ -129,9 +129,22 @@ class ActionItem(BaseModel):
     da_chon: bool = True
 
 
+class DieuChinhLichHop(BaseModel):
+    id: str = ""
+    nhan_vien_id: str | None = None
+    ten_nhan_vien: str = ""
+    loai: Literal["xin_nghi", "ghim_ca", "doi_ca", "uu_tien"] = "xin_nghi"
+    thu: str = ""  # T2, T3, T4, T5, T6, T7, CN
+    khung: str = ""  # sang, chieu, toi
+    ca_id: str = ""  # e.g. w1_c01, ca_01
+    tuan_iso: str = ""
+    ly_do: str = ""
+    trang_thai: Literal["cho_duyet", "da_duyet", "tu_choi"] = "cho_duyet"
+
+
 class DeXuatPheDuyet(BaseModel):
     id: str
-    loai_de_xuat: Literal["quy_trinh_sop", "mua_sam_vat_tu", "chinh_sach_nhan_su", "khac"] = (
+    loai_de_xuat: Literal["quy_trinh_sop", "mua_sam_vat_tu", "chinh_sach_nhan_su", "dieu_chinh_lich", "khac"] = (
         "quy_trinh_sop"
     )
     tieu_de: str
@@ -142,6 +155,7 @@ class DeXuatPheDuyet(BaseModel):
     trang_thai: Literal["da_duyet", "cho_duyet", "tu_choi"] = "cho_duyet"
     quy_trinh_lien_quan: str | None = None
     buoc_so: int | None = None
+    chi_tiet_lich: DieuChinhLichHop | None = None
 
 
 class GopYLuuY(BaseModel):
@@ -213,6 +227,7 @@ class CuocHop(BaseModel):
     de_xuat_phe_duyet: list[DeXuatPheDuyet] = Field(default_factory=list)
     action_items: list[ActionItem] = Field(default_factory=list)
     gop_y_luu_y: list[GopYLuuY] = Field(default_factory=list)
+    dieu_chinh_lich: list[DieuChinhLichHop] = Field(default_factory=list)
     audit_sop: AuditTuanThuSop | None = None
     ban_tin_ca: BanTinCaKhan | None = None
     huan_luyen_quan_ly: HuanLuyenQuanLy | None = None
@@ -282,6 +297,36 @@ _READ_INTENTS = frozenset(
         "GET_CONSTRAINT_CANDIDATES",
     }
 )
+_QUAN_LY_INTENTS: frozenset[str] = frozenset(
+    {
+        "GENERATE_DAILY_BRIEF",
+        "QUERY_SOP",
+        "ANALYZE_WASTE",
+        "OUT_OF_SCOPE",
+        *_READ_INTENTS,
+        "SCHEDULE_SOLVE",
+        "APPROVE_SHIFT_SWAP",
+        "CREATE_RULE_PROPOSAL",
+        "INVENTORY_RESTOCK_CHECK",
+        "SEND_MAIL",
+        # PR10 self-service (R2_CONFIRM)
+        "PROPOSE_HANGING_TASK",
+        "PROPOSE_TASK_COMPLETE",
+        "PROPOSE_CONSUMPTION_RECORD",
+        "PROPOSE_TIME_OFF",
+        # PR11 admin (R2_CONFIRM)
+        "PROPOSE_MENU_UPDATE",
+        "PROPOSE_ORDER_TRANSITION",
+        "PROPOSE_PIN",
+        # PR12 external channels (R0/R2)
+        "GET_PAGE_STATUS",
+        "PROPOSE_PAGE_SYNC",
+        # PR10 còn lại (R2_CONFIRM)
+        "PROPOSE_TKB_CONFIRM",
+        "PROPOSE_SWAP_CONSENT",
+        "PROPOSE_HANDOVER",
+    }
+)
 COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
     "nhan_vien": frozenset(
         {
@@ -301,57 +346,9 @@ COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
             "PROPOSE_TIME_OFF",
         }
     ),
-    "quan_ly": frozenset(
-        {
-            "GENERATE_DAILY_BRIEF",
-            "QUERY_SOP",
-            "ANALYZE_WASTE",
-            "OUT_OF_SCOPE",
-            *_READ_INTENTS,
-            "SCHEDULE_SOLVE",
-            "APPROVE_SHIFT_SWAP",
-            "CREATE_RULE_PROPOSAL",
-            "INVENTORY_RESTOCK_CHECK",
-            "SEND_MAIL",
-            # PR10 self-service (R2_CONFIRM)
-            "PROPOSE_HANGING_TASK",
-            "PROPOSE_TASK_COMPLETE",
-            "PROPOSE_CONSUMPTION_RECORD",
-            "PROPOSE_TIME_OFF",
-            # PR11 admin (R2_CONFIRM)
-            "PROPOSE_MENU_UPDATE",
-            "PROPOSE_ORDER_TRANSITION",
-            "PROPOSE_PIN",
-            # PR12 external channels (R0/R2)
-            "GET_PAGE_STATUS",
-            "PROPOSE_PAGE_SYNC",
-            # PR10 còn lại (R2_CONFIRM)
-            "PROPOSE_TKB_CONFIRM",
-            "PROPOSE_SWAP_CONSENT",
-            "PROPOSE_HANDOVER",
-        }
-    ),
-    "chu_quan": frozenset(
-        {
-            "GENERATE_DAILY_BRIEF",
-            "QUERY_SOP",
-            "ANALYZE_WASTE",
-            "OUT_OF_SCOPE",
-            *_READ_INTENTS,
-            "SCHEDULE_SOLVE",
-            "APPROVE_SHIFT_SWAP",
-            "CREATE_RULE_PROPOSAL",
-            "INVENTORY_RESTOCK_CHECK",
-            "SEND_MAIL",
-            # PR10 còn lại (R2_CONFIRM)
-            "PROPOSE_TKB_CONFIRM",
-            "PROPOSE_SWAP_CONSENT",
-            "PROPOSE_HANDOVER",
-            "PROPOSE_HANGING_TASK",
-            "PROPOSE_TASK_COMPLETE",
-            "PROPOSE_TIME_OFF",
-        }
-    ),
+    "quan_ly": _QUAN_LY_INTENTS,
+    # Chủ quán có đầy đủ toàn bộ quyền quản trị của Quản lý
+    "chu_quan": _QUAN_LY_INTENTS,
 }
 
 

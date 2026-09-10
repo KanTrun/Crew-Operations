@@ -4,6 +4,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { getToken } from "../../lib/session";
 import { ChatText } from "./ChatText";
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
 export interface ActionProposalData {
   action_id: string;
   intent: string;
@@ -91,7 +94,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         };
       }
 
-      const res = await fetch("http://localhost:8000/api/v1/copilot/execute-action", {
+      const res = await fetch(`${API_BASE}/api/v1/copilot/execute-action`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -141,7 +144,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/copilot/action/${proposal.action_id}/amend`, {
+      const res = await fetch(`${API_BASE}/api/v1/copilot/action/${proposal.action_id}/amend`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

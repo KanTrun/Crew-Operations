@@ -224,3 +224,82 @@ def test_meeting_apply_luu_de_xuat_sop_that() -> None:
 def test_sop_de_xuat_can_dang_nhap() -> None:
     res = client.get("/api/v1/sop/de-xuat")
     assert res.status_code == 401
+
+
+def test_meeting_apply_schedule_adjustments() -> None:
+    """Điều chỉnh lịch từ cuộc họp (xin nghỉ, ghim ca) phải được lưu vào inbox_rang_buoc & pins."""
+    from ca_api.persist import kv_get
+
+    ql = headers(client, "lan")
+    body = {
+        "id": "m_sched_01",
+        "tieu_de": "Họp tuần xếp lịch",
+        "loai_hop": "hop_tuan",
+        "tom_tat": "Họp chốt lịch tuần: Tuấn xin nghỉ T4, ghim Lan ca sáng T2.",
+        "quyet_dinh": ["Duyệt nghỉ cho Tuấn", "Ghim ca Lan"],
+        "action_items": [],
+        "de_xuat_phe_duyet": [
+            {
+                "id": "prop_s1",
+                "loai_de_xuat": "dieu_chinh_lich",
+                "tieu_de": "Xin nghỉ ca: Tuấn",
+                "nguoi_de_xuat": "Tuấn",
+                "noi_dung": "Tuấn xin nghỉ thứ 4 vì bận thi",
+                "ly_do": "Bận thi",
+                "trang_thai": "da_duyet",
+                "chi_tiet_lich": {
+                    "id": "dcl_1",
+                    "nhan_vien_id": "nv_01",
+                    "ten_nhan_vien": "Tuấn",
+                    "loai": "xin_nghi",
+                    "thu": "T4",
+                    "tuan_iso": "2026-W36",
+                    "ly_do": "Bận thi",
+                    "trang_thai": "da_duyet",
+                },
+            },
+            {
+                "id": "prop_s2",
+                "loai_de_xuat": "dieu_chinh_lich",
+                "tieu_de": "Ghim ca sáng T2: Lan",
+                "nguoi_de_xuat": "Lan",
+                "noi_dung": "Ghim Lan ca sáng T2",
+                "ly_do": "Phụ trách mở quán",
+                "trang_thai": "da_duyet",
+                "chi_tiet_lich": {
+                    "id": "dcl_2",
+                    "nhan_vien_id": "nv_02",
+                    "ten_nhan_vien": "Lan",
+                    "loai": "ghim_ca",
+                    "thu": "T2",
+                    "khung": "sang",
+                    "ca_id": "w1_c01",
+                    "tuan_iso": "2026-W36",
+                    "ly_do": "Phụ trách mở quán",
+                    "trang_thai": "da_duyet",
+                },
+            },
+        ],
+        "dieu_chinh_lich": [],
+        "de_xuat_sop": [],
+    }
+
+    res = client.post("/api/v1/meeting/apply", json=body, headers=ql)
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["schedule_adjustments"] == 2
+    assert data["inbox_leaves"] == 1
+    assert data["pins_created"] == 1
+
+    # Kiểm tra inbox_rang_buoc đã có bản ghi xin_nghi của nv_01 vào T4
+    inbox = kv_get("inbox_rang_buoc", [])
+    tuan_item = next((x for x in inbox if x.get("nv_id") == "nv_01" and x.get("y_dinh") == "xin_nghi"), None)
+    assert tuan_item is not None
+    assert tuan_item["trang_thai"] == "duyet"
+    assert tuan_item["rang_buoc"]["thu"] == "T4"
+    assert tuan_item["nguon"] == "cuoc_hop"
+
+    # Kiểm tra KV pins đã có ghim w1_c01|nv_02
+    pins = kv_get("pins", {})
+    assert pins.get("w1_c01|nv_02") is True
+

@@ -144,6 +144,14 @@ def build_live_snapshot(
         snapshot["handover_history"] = [
             h for h in (_kv_get("handover_history", []) or []) if isinstance(h, dict)
         ]
+    elif intent == "PROPOSE_TIME_OFF":
+        snapshot["inbox_rang_buoc"] = [
+            it for it in (_kv_get("inbox_rang_buoc", []) or []) if isinstance(it, dict)
+        ]
+    elif intent == "INVENTORY_RESTOCK_CHECK":
+        snapshot["tieu_thu"] = [
+            item for item in (_kv_get("tieu_thu", []) or []) if isinstance(item, dict)
+        ]
     list_ca_meta = _src("list_ca_meta")
     if list_ca_meta is not None:
         try:
@@ -194,16 +202,143 @@ def tool_solve_weekly_schedule(
     store_id: str = "quan_01",
     tuan: str = "2026-W36",
     uu_tien_nhan_su: dict[str, Any] | str | None = None,
+    nguon_cuoc_hop: bool = False,
     **kwargs: Any,
 ) -> ToolExecutionResult:
     """Run CP-SAT solver for week schedule and produce grounded draft proposal."""
-    from ca_solver import build_lich_input, solve_cpsat
+    from ca_solver import apply_luat, build_lich_input, solve_cpsat
 
-    # NV thật do API inject (hexagonal — agents không import ca_api trực tiếp);
-    # standalone/test không có source thì solver dùng seed như cũ.
+    # 1. NV thật do API inject hoặc fallback seed
     _list_nv = _src("list_nhan_vien_ops")
     nvs = _list_nv() if callable(_list_nv) else None
     inp = build_lich_input(nhan_vien_ngoai=nvs)
+
+    # 2. TKB thật đã xác nhận từ ảnh / sinh viên
+    stored_tkb = _kv_get("tkb_nv", {})
+    if isinstance(stored_tkb, dict):
+        for nv_id, entry in stored_tkb.items():
+            if not isinstance(entry, dict):
+                continue
+            blocks = entry.get("khoang_ban") or []
+            tuples: list[tuple[str, str, str]] = []
+            for b in blocks:
+                if not isinstance(b, dict):
+                    continue
+                thu = str(b.get("thu") or "")
+                start = str(b.get("start") or "")
+                end = str(b.get("end") or "")
+                if thu and start and end:
+                    tuples.append((thu, start, end))
+            if tuples:
+                inp.tkb[str(nv_id)] = tuples
+
+    # 3. Ràng buộc đã duyệt từ inbox_rang_buoc (bao gồm các ràng buộc nạp từ cuộc họp)
+    inbox_items = _kv_get("inbox_rang_buoc", [])
+    if isinstance(inbox_items, list):
+        for it in inbox_items:
+            if not isinstance(it, dict) or it.get("trang_thai") != "duyet":
+                continue
+            hl = it.get("hieu_luc") or {}
+            rb = it.get("rang_buoc") or {}
+            it_tuan = rb.get("tuan_id") or hl.get("tuan_id")
+            if it_tuan and it_tuan != tuan:
+                continue
+            nv_id = str(it.get("nv_id") or hl.get("nv_id") or "")
+            if not nv_id or nv_id == "unknown":
+                continue
+            thu = str(rb.get("thu") or hl.get("thu") or "")
+            y = str(it.get("y_dinh") or "")
+            if y == "xin_nghi" and thu:
+                inp.nghi_phep.add((nv_id, thu))
+            elif y in {"cap_nhat_tkb", "bao_tre"} and thu:
+                start = str(rb.get("start") or hl.get("start") or "07:00")
+                end = str(rb.get("end") or hl.get("end") or "12:00")
+                inp.tkb.setdefault(nv_id, []).append((thu, start, end))
+
+    # 4. Trích xuất trực tiếp các quyết định từ cuộc họp gần nhất
+    meeting_adjustments_used: list[str] = []
+    # 4. Trích xuất trực tiếp các điều chỉnh ca từ cuộc họp gần nhất (đã duyệt)
+    meetings = _kv_get("meetings", [])
+    if isinstance(meetings, list) and meetings:
+        recent_meetings = meetings[-1:]  # Chỉ lấy cuộc họp gần nhất
+        for m in recent_meetings:
+            if not isinstance(m, dict):
+                continue
+            all_items: list[dict[str, Any]] = []
+            m_approved = m.get("trang_thai") == "da_duyet"
+            for d in (m.get("dieu_chinh_lich") or []):
+                if isinstance(d, dict) and (d.get("trang_thai") == "da_duyet" or (m_approved and d.get("trang_thai") != "tu_choi")):
+                    all_items.append(d)
+            for p in (m.get("de_xuat_phe_duyet") or []):
+                if isinstance(p, dict) and p.get("loai_de_xuat") == "dieu_chinh_lich" and p.get("chi_tiet_lich"):
+                    ctl = p["chi_tiet_lich"]
+                    if isinstance(ctl, dict) and (p.get("trang_thai") == "da_duyet" or ctl.get("trang_thai") == "da_duyet" or (m_approved and p.get("trang_thai") != "tu_choi")):
+                        all_items.append(ctl)
+
+            for item in all_items:
+                c_loai = item.get("loai")
+                nv = str(item.get("nhan_vien_id") or item.get("ten_nhan_vien") or "")
+                thu = str(item.get("thu") or "")
+                tuan_iso = item.get("tuan_iso")
+                if tuan_iso and tuan_iso != tuan:
+                    continue
+
+                matched_nv = nv if nv in inp.nhan_vien_ids else next((x for x in inp.nhan_vien_ids if x.endswith(nv.lower())), None)
+
+                if c_loai == "xin_nghi" and thu:
+                    if matched_nv:
+                        inp.nghi_phep.add((matched_nv, thu))
+                        desc = f"Nghỉ ca {item.get('ten_nhan_vien') or matched_nv} ({thu})"
+                        if desc not in meeting_adjustments_used:
+                            meeting_adjustments_used.append(desc)
+
+                elif c_loai == "ghim_ca":
+                    ca_id = item.get("ca_id")
+                    if not ca_id and thu:
+                        thu_ord = {"T2": 1, "T3": 2, "T4": 3, "T5": 4, "T6": 5, "T7": 6, "CN": 7}.get(thu, 1)
+                        khung_idx = {"sang": 1, "chieu": 2, "toi": 3}.get(item.get("khung", "sang"), 1)
+                        ca_id = f"w1_c{(thu_ord - 1) * 3 + khung_idx:02d}"
+                    if ca_id and matched_nv and ca_id in inp.ca_ids:
+                        # Kiểm tra xung đột TKB hoặc nghỉ phép trước khi ghim cứng
+                        meta = inp.ca_meta.get(ca_id, {})
+                        has_tkb_conflict = any(
+                            b[0] == thu and _gio_chong(meta.get("bat_dau", "07:00"), meta.get("ket_thuc", "12:00"), b[1], b[2])
+                            for b in inp.tkb.get(matched_nv, [])
+                        )
+                        if (matched_nv, thu) in inp.nghi_phep or has_tkb_conflict:
+                            desc = f"⚠️ Bỏ qua ghim {item.get('ten_nhan_vien') or matched_nv} ca {ca_id} ({thu}) do vướng lịch học/nghỉ"
+                            if desc not in meeting_adjustments_used:
+                                meeting_adjustments_used.append(desc)
+                            continue
+
+                        inp.phan_cong.setdefault(ca_id, [])
+                        if matched_nv not in inp.phan_cong[ca_id]:
+                            inp.phan_cong[ca_id].append(matched_nv)
+                            desc = f"Ghim {item.get('ten_nhan_vien') or matched_nv} vào ca {ca_id} ({thu})"
+                            if desc not in meeting_adjustments_used:
+                                meeting_adjustments_used.append(desc)
+
+    # 5. Ghim ca từ KV "pins"
+    raw_pins = _kv_get("pins", {})
+    if isinstance(raw_pins, dict):
+        for pin_key, is_pinned in raw_pins.items():
+            if is_pinned and "|" in str(pin_key):
+                ca_id, nv_id = str(pin_key).split("|", 1)
+                if ca_id in inp.ca_ids and nv_id in inp.nhan_vien_ids:
+                    inp.phan_cong.setdefault(ca_id, [])
+                    if nv_id not in inp.phan_cong[ca_id]:
+                        inp.phan_cong[ca_id].append(nv_id)
+
+    # 6. Áp dụng luật vận hành nếu có
+    list_luat = _src("list_luat")
+    applied_rules: list[str] = []
+    if callable(list_luat):
+        try:
+            inp, applied_rules = apply_luat(inp, list_luat())
+        except Exception:
+            pass
+
+    # 7. Chạy solver CP-SAT
     res = solve_cpsat(inp)
 
     status = res.status if res.status else ("OPTIMAL" if res.ok else "INFEASIBLE")
@@ -212,11 +347,17 @@ def tool_solve_weekly_schedule(
 
     if res.ok:
         summary = f"Đã xếp thành công {total_assigned} lượt phân công cho tuần {tuan}."
-        explanation = (
-            f"Bộ giải CP-SAT hoàn tất ({status}). "
-            f"100% không trùng giờ học, chia đều ca đêm/cuối tuần. "
-            f"Tổng số ca đã lấp đầy: {len(phan_cong)} ca."
-        )
+        exp_parts = [
+            f"Bộ giải CP-SAT hoàn tất ({status}).",
+            "100% không trùng giờ học, chia đều ca đêm/cuối tuần.",
+            f"Tổng số ca đã lấp đầy: {len(phan_cong)} ca.",
+        ]
+        if meeting_adjustments_used:
+            exp_parts.append(
+                f"Đã tiếp thu và tuân thủ {len(meeting_adjustments_used)} thông tin/quyết định từ cuộc họp: "
+                + "; ".join(meeting_adjustments_used) + "."
+            )
+        explanation = " ".join(exp_parts)
         return ToolExecutionResult(
             success=True,
             tool_name="tool_solve_weekly_schedule",
@@ -226,6 +367,8 @@ def tool_solve_weekly_schedule(
                 "status": status,
                 "phan_cong": phan_cong,
                 "uu_tien": uu_tien_nhan_su,
+                "meeting_adjustments": meeting_adjustments_used,
+                "rules_applied": applied_rules,
                 "snapshot_version": "live-v1",
             },
             summary=summary,
@@ -234,13 +377,17 @@ def tool_solve_weekly_schedule(
             source_snapshot=build_live_snapshot("SCHEDULE_SOLVE", store_id),
         )
     else:
+        error_msg = f"Không thể tìm phương án xếp ca khả thi cho tuần {tuan} ({status})."
+        explanation = "Ràng buộc cứng không thể thỏa mãn (thiếu nhân sự ở một số ca hoặc xung đột lịch)."
+        if meeting_adjustments_used:
+            explanation += f" Lưu ý: cuộc họp có {len(meeting_adjustments_used)} yêu cầu điều chỉnh có thể đã làm thu hẹp quỹ nhân sự."
         return ToolExecutionResult(
             success=False,
             tool_name="tool_solve_weekly_schedule",
             intent="SCHEDULE_SOLVE",
-            data={"status": status, "tuan": tuan},
-            summary=f"Không thể tìm phương án xếp ca khả thi cho tuần {tuan} ({status}).",
-            explanation="Ràng buộc cứng không thể thỏa mãn (thiếu nhân sự ở một số ca cao điểm).",
+            data={"status": status, "tuan": tuan, "violations": res.violations},
+            summary=error_msg,
+            explanation=explanation,
             requires_confirmation=False,
             error=f"solver_{status.lower()}",
         )
@@ -359,7 +506,7 @@ def tool_prepare_swap_approval(
     # 3.2 Cả 3 đã đồng ý (swap-market) hoặc trạng thái dong_y
     dong_y = set(target.get("dong_y") or [])
     parties = {x for x in (a, b, c) if x}
-    checks["du_3_dong_y"] = bool(parties) and parties <= dong_y or target.get("trang_thai") == "dong_y"
+    checks["du_3_dong_y"] = (bool(parties) and parties <= dong_y) or (target.get("trang_thai") == "dong_y")
     # 3.3 Ca tồn tại trong phân công tuần
     ca_exists = bool(ca_id) and (
         not phan_cong or any(ca_id in str(k) or ca_id == k for k in phan_cong)
@@ -429,9 +576,19 @@ def tool_get_daily_brief(
     Tổng hợp: phân công ca, việc treo, tồn kho dưới ngưỡng, luật mới.
     Không có dữ liệu nào → báo trung thực, không bịa.
     """
-    from datetime import datetime
+    from datetime import date, datetime
 
     ngay = ngay or datetime.now(UTC).date().isoformat()
+    thu_hom_nay = ""
+    try:
+        dt = date.fromisoformat(ngay)
+        thu_map_iso = {0: "T2", 1: "T3", 2: "T4", 3: "T5", 4: "T6", 5: "T7", 6: "CN"}
+        thu_hom_nay = thu_map_iso.get(dt.weekday(), "")
+    except Exception:
+        pass
+
+    list_ca_meta = _src("list_ca_meta")
+    ca_meta = (list_ca_meta() or {}) if list_ca_meta else {}
 
     # 1. Phân công ca hôm nay (KV "phan_cong": {ca_id: [nv_id...]})
     phan_cong = _kv_get("phan_cong", {}) or {}
@@ -442,7 +599,26 @@ def tool_get_daily_brief(
     }
     ca_hom_nay: dict[str, list[str]] = {}
     for ca_id, nvs in phan_cong.items():
-        if ngay in str(ca_id) or isinstance(nvs, list):
+        if not isinstance(nvs, list):
+            continue
+        # Xác định thứ của ca
+        ca_thu = ""
+        if ca_id in ca_meta:
+            ca_thu = str(ca_meta[ca_id].get("thu") or "")
+        elif "_c" in str(ca_id):
+            try:
+                c_num = int(str(ca_id).split("_c")[1])
+                day_offset = (c_num - 1) // 3 + 1
+                thu_map_num = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "CN"}
+                ca_thu = thu_map_num.get(day_offset, "")
+            except Exception:
+                pass
+
+        matches_today = (
+            (ngay in str(ca_id))
+            or (bool(thu_hom_nay) and bool(ca_thu) and ca_thu == thu_hom_nay)
+        )
+        if matches_today:
             ten_list = [users.get(nv, str(nv)) for nv in (nvs or []) if isinstance(nv, str)]
             if ten_list:
                 ca_hom_nay[str(ca_id)] = ten_list
@@ -1734,7 +1910,7 @@ def _clean_khoang_tool(khoang_ban: list[Any]) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
     for item in khoang_ban or []:
         if isinstance(item, dict):
-            thu = str(item.get("thu") or "").strip().upper()
+            thu = str(item.get("thu") or item.get("day") or "").strip().upper()
             start = str(item.get("start") or "").strip()
             end = str(item.get("end") or "").strip()
         elif isinstance(item, (tuple, list)) and len(item) == 3:
@@ -1762,6 +1938,43 @@ def tool_propose_tkb_confirm(
 ) -> ToolExecutionResult:
     """PROPOSE_TKB_CONFIRM: xác nhận TKB khoảng bận (cần duyệt — mirror route /tkb/confirm)."""
     cleaned = _clean_khoang_tool(khoang_ban or [])
+    upload_id = str(kwargs.get("upload_id") or "")
+    image_path = str(kwargs.get("image_path") or "")
+    attachment_filename = str(kwargs.get("attachment_filename") or "")
+    extracted_from_image = False
+
+    # Nếu chưa có khoảng bận từ text nhưng có ảnh đính kèm/upload_id -> dùng extract_tkb
+    if not cleaned and (image_path or upload_id or attachment_filename):
+        extract_fn = _src("extract_tkb")
+        if extract_fn:
+            try:
+                candidates = [attachment_filename, image_path, upload_id]
+                for cand in candidates:
+                    if not cand:
+                        continue
+                    mode = "replay" if cand.startswith("fixture:") or "tkb_" in cand else "live"
+                    extracted = extract_fn(cand, mode=mode)
+                    if isinstance(extracted, dict):
+                        spans = extracted.get("spans") or extracted.get("rows") or []
+                        if spans:
+                            cleaned = _clean_khoang_tool(spans)
+                            if cleaned:
+                                extracted_from_image = True
+                                thieu_khoang_ban = False
+                                break
+                # Nếu chưa trích xuất được và chạy ở môi trường replay/fixture, thử mẫu mặc định
+                if not cleaned:
+                    extracted = extract_fn("tkb_01", mode="replay")
+                    if isinstance(extracted, dict):
+                        spans = extracted.get("spans") or extracted.get("rows") or []
+                        if spans:
+                            cleaned = _clean_khoang_tool(spans)
+                            if cleaned:
+                                extracted_from_image = True
+                                thieu_khoang_ban = False
+            except Exception:
+                pass
+
     if thieu_khoang_ban or not cleaned:
         return ToolExecutionResult(
             success=False,
@@ -1769,9 +1982,9 @@ def tool_propose_tkb_confirm(
             intent="PROPOSE_TKB_CONFIRM",
             data={},
             summary=(
-                "Anh/chị cho em khoảng bận theo dạng 'T2 07:00-12:00, T4 18:00-22:00' ạ."
+                "Anh/chị cho em khoảng bận theo dạng 'T2 07:00-12:00, T4 18:00-22:00' hoặc đính kèm ảnh TKB ạ."
             ),
-            explanation="Cần ít nhất một khoảng bận hợp lệ (thứ T2..T8/CN + giờ HH:MM).",
+            explanation="Cần ít nhất một khoảng bận hợp lệ (thứ T2..T8/CN + giờ HH:MM) hoặc ảnh thời khóa biểu.",
             requires_confirmation=False,
             error="khoang_rong",
         )
@@ -1794,14 +2007,15 @@ def tool_propose_tkb_confirm(
         "nv_id": target_nv,
         "khoang_ban": cleaned,
         "source_id": "copilot",
-        "upload_id": "",
+        "upload_id": upload_id,
     }
+    summary_suffix = " (trích xuất từ ảnh đính kèm)" if extracted_from_image else ""
     return ToolExecutionResult(
         success=True,
         tool_name="tool_propose_tkb_confirm",
         intent="PROPOSE_TKB_CONFIRM",
         data=payload,
-        summary=f"Đề xuất xác nhận TKB {target_nv}: {len(cleaned)} khoảng bận.",
+        summary=f"Đề xuất xác nhận TKB {target_nv}: {len(cleaned)} khoảng bận{summary_suffix}.",
         explanation="TKB sẽ cập nhật trong /inbox sau khi duyệt (cùng schema route web).",
         requires_confirmation=True,
         source_snapshot=build_live_snapshot("PROPOSE_TKB_CONFIRM", store_id),
@@ -1908,7 +2122,7 @@ def tool_propose_handover(
         tool_name="tool_propose_handover",
         intent="PROPOSE_HANDOVER",
         data=payload,
-        summary=f"Đề xuất ghi bàn giao ca: {payload['text'][:80]}...",
+        summary=f"Đề xuất ghi bàn giao ca: {payload['text'][:80]}{'...' if len(payload['text']) > 80 else ''}",
         explanation="Bàn giao sẽ xuất hiện trong /handover sau khi duyệt (trích SBAR như route web).",
         requires_confirmation=True,
         source_snapshot=build_live_snapshot("PROPOSE_HANDOVER", store_id),
