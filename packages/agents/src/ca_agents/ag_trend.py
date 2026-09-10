@@ -121,12 +121,13 @@ def _scrape_tiktok_smart(
     nguon_goc: str = "tiktok_vn",
     scrape_mode: str = "auto",
 ) -> list[TrendItem]:
-    """TikWM Direct Free API as PRIMARY → Apify as SECONDARY (Backup).
+    """TikWM Direct Free API as PRIMARY → Camoufox browser → Apify as BACKUP.
 
     Modes:
-        - auto: TikWM first -> Apify backup -> dynamic fallback
-        - direct_only: TikWM only -> dynamic fallback (never uses Apify)
+        - auto: TikWM first -> Camoufox browser -> Apify backup -> dynamic fallback
+        - direct_only: TikWM only -> dynamic fallback (never uses Apify/Camoufox)
         - apify_force: Apify first -> TikWM backup
+        - browser: Camoufox first -> TikWM -> Apify backup (plan §3.5)
     """
     start = time.monotonic()
 
@@ -146,6 +147,24 @@ def _scrape_tiktok_smart(
         except Exception as e:
             logger.warning("tiktok_apify_force_failed_trying_tikwm: %s", e)
 
+    # BROWSER mode: Camoufox first (plan §3.5) — rớt tầng về chuỗi cũ nếu fail.
+    if scrape_mode == "browser":
+        try:
+            from ca_agents.sources.tiktok_camoufox_source import scrape_tiktok_camoufox
+
+            items = scrape_tiktok_camoufox(
+                keyword=keyword,
+                count=count,
+                nguon_goc=nguon_goc,
+            )
+            if items:
+                return cast(list[TrendItem], items)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                "tiktok_browser_mode_failed_falling_back",
+                extra={"error": str(e)[:200]},
+            )
+
     # PRIMARY: TikWM Direct Free Scraper
     try:
         items = _scrape_tiktokwm_fallback(keyword=keyword, count=count)
@@ -162,11 +181,32 @@ def _scrape_tiktok_smart(
             return cast(list[TrendItem], items)
     except Exception as e:  # noqa: BLE001
         logger.warning(
-            "tiktok_primary_failed_trying_apify",
+            "tiktok_primary_failed_trying_camoufox",
             extra={"error": str(e)[:200]},
         )
 
-    # SECONDARY / BACKUP: Apify TikTok Scraper (only if mode != direct_only)
+    # SECONDARY: Camoufox browser-thật (chỉ khi available, plan §3.5)
+    if scrape_mode != "direct_only":
+        try:
+            from ca_agents.clients.camoufox_client import is_available
+
+            if is_available():
+                from ca_agents.sources.tiktok_camoufox_source import scrape_tiktok_camoufox
+
+                items = scrape_tiktok_camoufox(
+                    keyword=keyword,
+                    count=count,
+                    nguon_goc=nguon_goc,
+                )
+                if items:
+                    return cast(list[TrendItem], items)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                "tiktok_camoufox_tier_failed_trying_apify",
+                extra={"error": str(e)[:200]},
+            )
+
+    # TERTIARY / BACKUP: Apify TikTok Scraper (only if mode != direct_only)
     if scrape_mode != "direct_only":
         try:
             from ca_agents.sources.tiktok_apify_source import scrape_tiktok_apify
