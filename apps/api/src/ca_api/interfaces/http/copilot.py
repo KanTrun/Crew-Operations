@@ -817,7 +817,10 @@ def copilot_execute_action(
 
         def mut_life(cur: dict[str, Any]) -> dict[str, Any]:
             life = dict(cur or {})
-            life["trang_thai"] = "da_cong_bo"
+            # Giữ chuỗi duyệt chuẩn: đề xuất đã được quản lý duyệt ở bước
+            # execute-action → trạng thái sau ghi là da_duyet (không nhảy
+            # thẳng da_cong_bo bỏ bước công bố cho NV trên /roster).
+            life["trang_thai"] = "da_duyet"
             life["tuan_iso"] = tuan_ap_dung
             life["cap_nhat_luc"] = now_iso
             life["cap_nhat_boi"] = "copilot_duyet"
@@ -827,7 +830,7 @@ def copilot_execute_action(
         internal_mutations = {
             "phan_cong": (lambda _current: phan_cong_moi, {}),
             "lich_tuan": (lambda _current: phan_cong_moi, {}),
-            "lich_tuan_status": (lambda _current: "da_cong_bo", ""),
+            "lich_tuan_status": (lambda _current: "da_duyet", ""),
             "lich_tuan_lifecycle": (mut_life, {}),
         }
     elif intent == "APPROVE_SHIFT_SWAP":

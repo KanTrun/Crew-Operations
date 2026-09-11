@@ -72,9 +72,11 @@ _VI_TRI_VI = {
     "da_nang": "Đa năng",
 }
 _ALLOWED = {
+    "may_sinh": {"nhap"},
     "nhap": {"dang_giai"},
     "dang_giai": {"cho_duyet", "nhap"},
-    "cho_duyet": {"da_cong_bo", "nhap"},
+    "cho_duyet": {"da_duyet", "nhap"},
+    "da_duyet": {"da_cong_bo"},
     "da_cong_bo": {"da_dong"},
     "da_dong": {"nhap"},
 }
@@ -252,14 +254,14 @@ def _run_solver() -> dict[str, Any]:
 def _life() -> dict[str, Any]:
     """Trạng thái lịch tuần — SSOT là kv `lich_tuan_lifecycle` (giờ main.py,
     copilot và sprint45 cùng một nguồn). Fallback đọc kv `lifecycle` cũ cho
-    data trước khi nhất hóa; thiếu hẳn thì về nháp tuần mặc định."""
+    data trước khi nhất hóa; thiếu hẳn thì về máy-sinh tuần mặc định."""
     moi = kv_get("lich_tuan_lifecycle", None)
     if isinstance(moi, dict) and moi.get("trang_thai"):
         return cast(dict[str, Any], moi)
     cu = kv_get("lifecycle", None)
     if isinstance(cu, dict) and cu.get("trang_thai"):
         return cast(dict[str, Any], cu)
-    return {"tuan_iso": "2026-W01", "trang_thai": "nhap", "nguon": "quan"}
+    return {"tuan_iso": "2026-W01", "trang_thai": "may_sinh", "nguon": "quan"}
 
 
 def _save_life(doc: dict[str, Any]) -> None:
@@ -356,7 +358,7 @@ async def lich_transition(
 ) -> dict[str, Any]:
     role = _require_manager(authorization)
     doc = _life()
-    cur = doc.get("trang_thai", "nhap")
+    cur = doc.get("trang_thai", "may_sinh")
     if body.to not in _ALLOWED.get(cur, set()):
         raise HTTPException(status_code=409, detail=f"illegal:{cur}->{body.to}")
     if body.to == "da_dong":
