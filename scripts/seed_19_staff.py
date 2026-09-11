@@ -129,7 +129,11 @@ def seed_schedule(base: dict[str, Any]) -> dict[str, int]:
     from ca_api.persist import kv_set
 
     # Lịch phân công 19 nhân viên (>= 2 người/ca)
-    phan_cong: dict[str, list[str]] = dict(DEMO_PHAN_CONG)
+    ca_ids = [str(shift["id"]) for shift in base.get("shifts", [])]
+    phan_cong: dict[str, list[str]] = {
+        ca_id: list(DEMO_PHAN_CONG.get(f"fx_ca_{index:02d}", []))
+        for index, ca_id in enumerate(ca_ids, start=1)
+    }
     total_assignments = sum(len(nvs) for nvs in phan_cong.values())
 
     # Lịch tuần đầy đủ (shifts + assignments gộp)

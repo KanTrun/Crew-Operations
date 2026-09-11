@@ -87,12 +87,14 @@ export function RosterGrid({
                   {rowLabel}
                 </th>
                 {DAYS.map((d) => {
-                  const shift = (byDay[d] ?? []).find((c) => c.khung === khung);
-                  const assigned = shift ? phanCong[shift.id] ?? [] : [];
-                  const dimmed = shift && !matchCell(assigned, shift);
+                  const shifts = (byDay[d] ?? []).filter((c) => c.khung === khung);
+                  const assigned = [...new Set(shifts.flatMap((shift) => phanCong[shift.id] ?? []))];
+                  const visibleShifts = shifts.filter((shift) => matchCell(phanCong[shift.id] ?? [], shift));
+                  const dimmed = shifts.length > 0 && visibleShifts.length === 0;
                   const lit = spotlightDay === d;
-                  const vt = viTriLabel(shift?.vi_tri);
-                  const summary = rosterCellSummary(assigned.length, vt, assigned.length > 0 && assigned.length < 2);
+                  const roles = [...new Set(shifts.map((shift) => viTriLabel(shift.vi_tri)).filter(Boolean))];
+                  const roleLabel = roles.length > 0 ? roles.join(" · ") : "Nhiều vị trí";
+                  const summary = rosterCellSummary(assigned.length, roleLabel, assigned.length > 0 && assigned.length < 2);
 
                   return (
                     <td
@@ -100,12 +102,12 @@ export function RosterGrid({
                       className={`nq-roster-slot ${lit ? "nq-roster-slot--spot" : ""}`}
                       data-dimmed={dimmed ? "1" : undefined}
                     >
-                      {shift ? (
+                      {shifts.length > 0 ? (
                         <button
                           type="button"
                           className={`nq-roster-slot-btn nq-roster-slot-btn--${summary.tone}`}
                           onClick={() => onSelectDay(d)}
-                          aria-label={`${dayLabels[DAYS.indexOf(d)]?.title} ${rowLabel}: ${summary.countLabel}, ${vt}`}
+                          aria-label={`${dayLabels[DAYS.indexOf(d)]?.title} ${rowLabel}: ${summary.countLabel}, ${roleLabel}`}
                         >
                           <span className="nq-roster-slot-count">{summary.countLabel}</span>
                           <span className="nq-roster-slot-role">{summary.roleLabel}</span>
