@@ -85,8 +85,12 @@ def test_tiktokwm_error_triggers_apify_backup():
     )
 
 
-def test_both_fail_returns_empty():
-    """Khi cả TikWM và Apify đều fail → trả [] an toàn (không crash)."""
+def test_both_fail_returns_static_last_resort():
+    """Khi cả TikWM và Apify đều fail → rớt về static topics (plan §3.4).
+
+    Static là LAST RESORT để UI không rỗng; items mang is_live_scraped=False
+    để downstream phân biệt dữ liệu thật và dữ liệu tĩnh.
+    """
     with patch(
         "ca_agents.ag_trend._scrape_tiktokwm_fallback",
         side_effect=Exception("TikWM dead"),
@@ -96,4 +100,8 @@ def test_both_fail_returns_empty():
     ):
         result = _scrape_tiktok_smart(keyword="k", count=1)
 
-    assert result == []
+    assert isinstance(result, list)
+    assert len(result) > 0, "static last-resort phải có dữ liệu để UI không rỗng"
+    assert all(not getattr(r, "is_live_scraped", True) for r in result), (
+        "static topics phải đánh dấu is_live_scraped=False"
+    )

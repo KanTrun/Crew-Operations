@@ -98,7 +98,7 @@ def test_pin_unknown_ids_404() -> None:
 def test_pin_rejects_missing_skill(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ghim NV thiếu kỹ năng vị trí ca → 422, không để solver INFEASIBLE âm thầm.
 
-    NV seed nv_06 (Chi Vũ) chỉ biết thu_ngan; w1_c05 là ca pha_che.
+    NV seed nv_06 (Chi Vũ) chỉ biết thu_ngan; w1_c01 là role-slot pha_che.
     Bật seed pool qua env để nv_06 vào pool xếp lịch (users thật luôn đủ kỹ năng).
     """
     from ca_api.persist import kv_get
@@ -107,17 +107,17 @@ def test_pin_rejects_missing_skill(monkeypatch: pytest.MonkeyPatch) -> None:
     lan = headers(client, "lan")
     r = client.post(
         "/api/v1/lich-tuan/pin",
-        json={"ca_id": "w1_c05", "nv_id": "nv_06", "pinned": True},
+        json={"ca_id": "w1_c01", "nv_id": "nv_06", "pinned": True},
         headers=lan,
     )
     assert r.status_code == 422, r.text
     assert "nv_thieu_ky_nang" in r.json()["detail"]
-    assert kv_get("pins", {}).get("w1_c05|nv_06") is None
+    assert kv_get("pins", {}).get("w1_c01|nv_06") is None
 
-    # Cùng NV pin vào ca khớp kỹ năng (w1_c01 thu_ngan) thì vẫn thành công.
+    # Cùng NV pin vào role-slot khớp kỹ năng (w1_c05 thu_ngan) thì vẫn thành công.
     r_ok = client.post(
         "/api/v1/lich-tuan/pin",
-        json={"ca_id": "w1_c01", "nv_id": "nv_06", "pinned": True},
+        json={"ca_id": "w1_c05", "nv_id": "nv_06", "pinned": True},
         headers=lan,
     )
     assert r_ok.status_code == 200, r_ok.text

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from ca_agents.ag_copilot import parse_intent, run_copilot, tool_registry
 from ca_contracts import ActionProposalStatus, CopilotIntent
@@ -862,7 +864,8 @@ def test_tool_solve_weekly_schedule_integrates_meeting_constraints() -> None:
     """tool_solve_weekly_schedule tôn trọng ràng buộc nghỉ và ghim ca từ cuộc họp."""
     from ca_agents.ag_copilot.tool_registry import tool_solve_weekly_schedule
 
-    # Giả lập cuộc họp có quyết định: nv_02 nghỉ T4, nv_02 được ghim ca w1_c01 (T2 sáng)
+    # Giả lập cuộc họp có quyết định: nv_02 nghỉ T4, nv_02 được ghim role-slot
+    # thu_ngan T2 sáng (w1_c02 — schema role-slot: w1_c01 là pha_che).
     mock_meeting = {
         "id": "meet_test_01",
         "tieu_de": "Họp tuần giao ban",
@@ -881,7 +884,7 @@ def test_tool_solve_weekly_schedule_integrates_meeting_constraints() -> None:
                 "nhan_vien_id": "nv_02",
                 "ten_nhan_vien": "nv_02",
                 "loai": "ghim_ca",
-                "ca_id": "w1_c01",
+                "ca_id": "w1_c02",
                 "thu": "T2",
                 "tuan_iso": "2026-W36",
             },
@@ -898,9 +901,10 @@ def test_tool_solve_weekly_schedule_integrates_meeting_constraints() -> None:
     try:
         res = tool_solve_weekly_schedule(tuan="2026-W36", nguon_cuoc_hop=True)
         assert res.success is True
-        assert "nv_02" in res.data["phan_cong"]["w1_c01"]
-        # nv_02 nghỉ T4 (w1_c07, w1_c08, w1_c09) -> không được phân vào T4
-        for ca_t4 in ["w1_c07", "w1_c08", "w1_c09"]:
+        assert "nv_02" in res.data["phan_cong"]["w1_c02"]
+        # nv_02 nghỉ T4 (T4 = w1_c21..w1_c30 trong schema role-slot liên tục)
+        # -> không được phân vào bất kỳ role-slot nào của T4.
+        for ca_t4 in [f"w1_c{i:02d}" for i in range(21, 31)]:
             assert "nv_02" not in res.data["phan_cong"].get(ca_t4, [])
         # Explanation phải đề cập tới cuộc họp
         assert "cuộc họp" in res.explanation

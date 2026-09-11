@@ -42,6 +42,12 @@ type CuocHop = {
   tom_tat: string;
   van_de_phat_sinh?: { van_de: string; trang_thai: string; ghi_chu?: string }[];
   quyet_dinh?: string[];
+  de_xuat_sop?: {
+    quy_trinh_lien_quan: string;
+    buoc_so?: number | null;
+    noi_dung_thay_doi: string;
+    ly_do?: string;
+  }[];
   de_xuat_phe_duyet?: {
     id: string;
     loai_de_xuat: string;

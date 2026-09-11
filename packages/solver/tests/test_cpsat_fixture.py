@@ -23,9 +23,9 @@ def test_cpsat_fixture_zero_hard() -> None:
 
 def test_cpsat_enforces_pinned_shift() -> None:
     data = build_lich_input()
-    # nv_02 is Thu Ngan, free on T2 morning (nv_01 has TKB conflict on T2 morning)
-    data.phan_cong["w1_c01"] = ["nv_02"]
+    # w1_c02 là role-slot thu_ngan T2 sáng; nv_02 biết thu_ngan, rảnh T2 sáng.
+    data.phan_cong["w1_c02"] = ["nv_02"]
     r = solve_cpsat(data, time_limit_s=60.0)
     assert r.ok is True
-    assert "nv_02" in r.phan_cong["w1_c01"]
+    assert "nv_02" in r.phan_cong["w1_c02"]
 

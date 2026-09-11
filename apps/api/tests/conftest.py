@@ -26,12 +26,14 @@ def _du_nhan_vien_xep_lich() -> None:
     """Tạo đủ 12 NV cho solver có nghiệm (pool users thay seed).
 
     Sau khi build_lich_input lấy pool ngoài làm TOÀN BỘ (2026-09-07), DB test
-    chỉ có 3-4 user mặc định → 21 ca cần tới 49 lượt là INFEASIBLE. Mọi test
-    đụng solver (copilot SCHEDULE_SOLVE, inbox wiring, worker đề xuất) dùng
-    fixture này để được nghiệm OPTIMAL như production có đủ người.
+    chỉ có 3-4 user mặc định → 70 role-slot cần tới 91 lượt là INFEASIBLE. Mỗi
+    ngày có 10 role-slot (3 sáng + 3 chiều + 4 tối) và C03/C04 chặn 1 người
+    2 khung trùng → cần ≥ 10 người/ngày, thêm biên độ cho TKB/nghỉ phép.
+    Mọi test đụng solver (copilot SCHEDULE_SOLVE, inbox wiring, worker đề
+    xuất) dùng fixture này để được nghiệm OPTIMAL như production có đủ người.
     """
     from ca_api.persist import init_db, register
 
     init_db()
-    for i in range(9):
+    for i in range(13):
         register(f"nv_xep{i}", f"matkhautot{i}9x", f"NV Xếp {i}")
