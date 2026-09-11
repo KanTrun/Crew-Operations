@@ -1295,7 +1295,7 @@ def tool_get_schedule(
             "so_nguoi": len(nvs) if isinstance(nvs, list) else 0,
             "nv_ids": nvs if isinstance(nvs, list) else [],
         }
-        for ca_id, nvs in list(phan_cong.items())[:21]
+        for ca_id, nvs in list(phan_cong.items())[:70]
     ]
     return _read_result(
         "GET_SCHEDULE", "tool_get_schedule",

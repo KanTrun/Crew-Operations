@@ -386,7 +386,7 @@ def lich_ics(
     _require_role(authorization)
     phan = _phan()
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//NHIPQUAN//CA//VI"]
-    for ca_id, nvs in list(phan.items())[:21]:
+    for ca_id, nvs in phan.items():
         uid = f"{ca_id}@nhipquan.local"
         lines += [
             "BEGIN:VEVENT",

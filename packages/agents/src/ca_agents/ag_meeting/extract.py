@@ -9,7 +9,6 @@ from typing import Any, cast
 
 from ca_agents.llm import agent_mode, complete, ensure_dotenv, parse_json_object
 
-
 _THU_CAN = {
     "thứ 2": "T2", "thứ hai": "T2", "thu 2": "T2", "thu hai": "T2",
     "thứ 3": "T3", "thứ ba": "T3", "thu 3": "T3", "thu ba": "T3",
