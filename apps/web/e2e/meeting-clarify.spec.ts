@@ -29,14 +29,14 @@ test.describe("AI Meeting OS — Rà soát Ngữ cảnh & Lịch ca Phân công"
 
     await page.locator("textarea").fill(sampleMeeting);
 
-    // 3. Bấm Phân tích văn bản
-    await page.getByRole("button", { name: /Phân tích văn bản cuộc họp/i }).click();
+    // 3. Bấm Phân tích biên bản
+    await page.getByRole("button", { name: /Phân tích biên bản|Phân tích văn bản/i }).click();
 
     // 4. Chờ kết quả phân tích hiển thị
     await expect(page.getByText(/Kết quả phân tích/i)).toBeVisible({ timeout: 15_000 });
 
-    // 5. Mở tab Việc cần làm
-    await page.getByRole("button", { name: /Việc cần làm/i }).click();
+    // 5. Mở tab Việc giao
+    await page.getByRole("button", { name: /Việc giao/i }).click();
 
     // Kiểm tra các nút chuyển đổi bản chất công việc có mặt
     await expect(page.locator("button", { hasText: "⚡ 1 ca" }).first()).toBeVisible();
