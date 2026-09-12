@@ -20,6 +20,18 @@ def _set_minh_email() -> None:
     assert response.status_code == 200
 
 
+def test_update_email_format_validation() -> None:
+    # Invalid emails should fail with 422
+    for invalid in ["not-an-email", "@missinguser.com", "user@.com", "user@domain"]:
+        res = client.patch(
+            "/api/v1/me/profile/email",
+            json={"email": invalid},
+            headers=headers(client, "minh"),
+        )
+        assert res.status_code == 422
+
+
+
 def test_quality_gate_blocks_before_mail_transport(monkeypatch) -> None:
     _set_minh_email()
     monkeypatch.setattr("ca_api.interfaces.http.mail.send_mail", lambda **_: (_ for _ in ()).throw(AssertionError("must not send")))

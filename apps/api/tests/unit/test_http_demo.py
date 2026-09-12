@@ -140,18 +140,28 @@ def test_pin_reflected_in_lich_tuan() -> None:
 
 
 def test_lifecycle_quanly_can_set() -> None:
-    # Đi đúng chuỗi: may_sinh → nhap → dang_giai (solver chạy, tự sang cho_duyet).
+    # Quản lý đặt trạng thái được, nhưng đổi tuan_iso là việc của chủ quán.
     ql = headers(client, "lan")
-    r0 = client.patch(
+    r = client.patch(
         "/api/v1/lich-tuan/lifecycle",
         json={"trang_thai": "nhap", "tuan_iso": "2026-W36"},
         headers=ql,
+    )
+    assert r.status_code == 403
+    assert r.json()["detail"] == "chi_chu_quan_doi_tuan_iso"
+
+    # Đi đúng chuỗi với chủ quán: may_sinh → nhap → dang_giai (solver chạy, tự sang cho_duyet).
+    cq = headers(client, "hung")
+    r0 = client.patch(
+        "/api/v1/lich-tuan/lifecycle",
+        json={"trang_thai": "nhap", "tuan_iso": "2026-W36"},
+        headers=cq,
     )
     assert r0.status_code == 200, r0.text
     r1 = client.patch(
         "/api/v1/lich-tuan/lifecycle",
         json={"trang_thai": "dang_giai"},
-        headers=ql,
+        headers=cq,
     )
     assert r1.status_code == 200, r1.text
     # dang_giai chạy solver xong tự chuyển cho_duyet — PATCH trả trạng thái mới.
@@ -187,4 +197,30 @@ def test_lifecycle_nhanvien_forbidden() -> None:
         headers=headers(client, "minh"),
     )
     assert r.status_code == 403
+
+
+def test_lifecycle_da_dong_requires_chu_quan() -> None:
+    # Quản lý (lan) không được phép đóng lịch
+    r_lan = client.patch(
+        "/api/v1/lich-tuan/lifecycle",
+        json={"trang_thai": "da_dong"},
+        headers=headers(client, "lan"),
+    )
+    assert r_lan.status_code == 403
+    assert r_lan.json()["detail"] == "chi_chu_quan_dong_lich"
+
+    # Chủ quán (hung) được phép đóng lịch — đi đúng chuỗi tới da_cong_bo rồi đóng.
+    cq = headers(client, "hung")
+    client.patch("/api/v1/lich-tuan/lifecycle", json={"trang_thai": "nhap"}, headers=cq)
+    client.patch("/api/v1/lich-tuan/lifecycle", json={"trang_thai": "dang_giai"}, headers=cq)
+    client.patch("/api/v1/lich-tuan/lifecycle", json={"trang_thai": "da_duyet"}, headers=cq)
+    client.patch("/api/v1/lich-tuan/lifecycle", json={"trang_thai": "da_cong_bo"}, headers=cq)
+    r_hung = client.patch(
+        "/api/v1/lich-tuan/lifecycle",
+        json={"trang_thai": "da_dong"},
+        headers=cq,
+    )
+    assert r_hung.status_code == 200, r_hung.text
+    assert r_hung.json()["trang_thai"] == "da_dong"
+
 

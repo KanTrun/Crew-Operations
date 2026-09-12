@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiError, apiSend } from "../../lib/api";
 import { dangKyLoi, viError } from "../../lib/present";
+import { setSession } from "../../lib/session";
 import { Alert, Btn, Field, Input } from "../../ui/kit";
 
 type RegisterOut = { token: string; role: string; display_name: string; nv_id: string };
@@ -91,10 +92,7 @@ export default function DangKyPage() {
         password,
         display_name: displayName.trim(),
       });
-      sessionStorage.setItem("nq_token", data.token);
-      sessionStorage.setItem("nq_role", data.role);
-      sessionStorage.setItem("nq_name", data.display_name);
-      sessionStorage.setItem("nq_nv", data.nv_id);
+      setSession(data.token, data.role, data.display_name, data.nv_id);
       router.push("/hom-nay");
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {

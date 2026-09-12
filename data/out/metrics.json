@@ -84,7 +84,7 @@
       "gia_tri": {
         "truoc_gio": null,
         "truoc_trang_thai": "chua_do",
-        "sau_giay": 0.085,
+        "sau_giay": 0.117,
         "sau_status": "OPTIMAL",
         "sau_vi_pham_cung": 0,
         "quy_mo": "25 người · 21 ca"
@@ -154,18 +154,18 @@
       "gia_tri": {
         "theo_cong": {
           "VF-SCHEMA": {
-            "chay": 51,
+            "chay": 53,
             "day_len_nguoi": 0,
             "yeu_cau_lam_lai": 0
           },
           "VF-TRACE": {
-            "chay": 51,
-            "day_len_nguoi": 1,
+            "chay": 53,
+            "day_len_nguoi": 2,
             "yeu_cau_lam_lai": 0
           },
           "VF-CONF": {
-            "chay": 51,
-            "day_len_nguoi": 1,
+            "chay": 53,
+            "day_len_nguoi": 2,
             "yeu_cau_lam_lai": 0
           },
           "VF-NUM": {
@@ -179,13 +179,13 @@
             "yeu_cau_lam_lai": 0
           },
           "VF-CONFLICT": {
-            "chay": 51,
-            "day_len_nguoi": 50,
+            "chay": 53,
+            "day_len_nguoi": 52,
             "yeu_cau_lam_lai": 0
           }
         },
-        "tong_day_len_nguoi": 52,
-        "tong_lan_chay_cong": 274
+        "tong_day_len_nguoi": 56,
+        "tong_lan_chay_cong": 282
       },
       "trang_thai": "do_duoc",
       "nguon": "mo_phong_fixture",
@@ -198,9 +198,9 @@
       "gia_tri": {
         "che_do": "replay",
         "so_lan_goi_mang_that": 0,
-        "so_lan_goi_replay_mot_ngay": 51,
+        "so_lan_goi_replay_mot_ngay": 53,
         "provider_khac_replay": 0,
-        "tong_prompt_chars": 8058,
+        "tong_prompt_chars": 21995,
         "p50_ms": null,
         "p95_ms": null,
         "token_ngay": null,

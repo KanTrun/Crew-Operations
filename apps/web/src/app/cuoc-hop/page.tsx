@@ -33,6 +33,16 @@ interface ActionItem {
   muc_do_uu_tien?: "cao" | "trung_binh" | "thap";
   do_tin_cay: number;
   da_chon?: boolean;
+  loai_cong_viec?: "1_ca" | "nhieu_ca" | "gop_y";
+  ca_thuc_hien?: string;
+  ca_du_kien?: string[];
+  can_lam_ro?: boolean;
+  van_de_ngu_canh?: string;
+  cau_hoi_lam_ro?: string;
+  goi_y_xu_ly?: string[];
+  stt_near_miss?: boolean;
+  khong_co_can_cu?: boolean;
+  nguon_cau_noi?: string;
 }
 
 interface DeXuatPheDuyet {
@@ -155,6 +165,9 @@ interface CuocHop {
   trang_thai?: "cho_duyet" | "da_duyet" | "tu_choi";
   duyet_boi?: string;
   duyet_luc?: string;
+  phien_ban?: number;
+  last_modified_at?: string;
+  ngay_ghi_am?: string;
 }
 
 
@@ -419,7 +432,11 @@ export default function MeetingPage() {
         setRecordSeconds((s) => s + 1);
       }, 1000);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Không thể bắt luồng âm thanh Google Meet.");
+      if (e instanceof Error && (e.name === "NotAllowedError" || e.message.toLowerCase().includes("permission denied"))) {
+        setError("Bạn chưa cấp quyền chia sẻ âm thanh hoặc đã hủy thao tác. Vui lòng thử lại và chọn tab Google Meet cùng tùy chọn chia sẻ âm thanh.");
+      } else {
+        setError(e instanceof Error ? e.message : "Không thể bắt luồng âm thanh Google Meet.");
+      }
     }
   }
 
@@ -475,7 +492,13 @@ export default function MeetingPage() {
         setRecordSeconds((s) => s + 1);
       }, 1000);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Không thể mở Microphone trên thiết bị.");
+      if (e instanceof Error && (e.name === "NotAllowedError" || e.message.toLowerCase().includes("permission denied"))) {
+        setError("Trình duyệt đang chặn quyền Micro (Permission denied). Vui lòng bấm vào biểu tượng cài đặt / ổ khoá ở đầu thanh địa chỉ và bật 'Microphone' thành 'Cho phép' (Allow), sau đó tải lại trang.");
+      } else if (e instanceof Error && (e.name === "NotFoundError" || e.name === "DevicesNotFoundError")) {
+        setError("Không tìm thấy thiết bị Microphone nào được cắm vào máy tính.");
+      } else {
+        setError(e instanceof Error ? e.message : "Không thể mở Microphone trên thiết bị.");
+      }
     }
   }
 
@@ -650,13 +673,18 @@ export default function MeetingPage() {
       id: `act_${Date.now().toString().slice(-4)}`,
       tieu_de: "Việc mới cần làm",
       noi_dung_chi_tiet: "",
-      ten_nguoi_nhan: "Cả ca",
+      ten_nguoi_nhan: "Chưa rõ",
+      loai_cong_viec: "1_ca",
       tinh_chat: "bat_buoc",
       pham_vi: "ca_nhan",
       han_chot: "Hết ca",
       muc_do_uu_tien: "trung_binh",
       do_tin_cay: 1.0,
       da_chon: true,
+      can_lam_ro: true,
+      van_de_ngu_canh: "Công việc mới thêm cần chỉ định người phụ trách và ca làm việc",
+      cau_hoi_lam_ro: "Bạn muốn phân công việc mới này cho ai và vào ca trực nào?",
+      goi_y_xu_ly: ["Giao cho nhân viên ca hiện tại", "Giao cho Quản lý", "Chuyển thành việc chung cả ca"],
     };
     setMeeting({
       ...meeting,
@@ -670,6 +698,145 @@ export default function MeetingPage() {
       ...meeting,
       action_items: meeting.action_items.filter((it) => it.id !== id),
     });
+  }
+
+  function updateActionWorkType(id: string, type: "1_ca" | "nhieu_ca" | "gop_y") {
+    if (!meeting) return;
+    setMeeting({
+      ...meeting,
+      action_items: meeting.action_items.map((it) =>
+        it.id === id ? { ...it, loai_cong_viec: type } : it
+      ),
+    });
+  }
+
+  function updateActionCaThucHien(id: string, ca: string) {
+    if (!meeting) return;
+    setMeeting({
+      ...meeting,
+      action_items: meeting.action_items.map((it) =>
+        it.id === id ? { ...it, ca_thuc_hien: ca } : it
+      ),
+    });
+  }
+
+  function convertActionToFeedback(id: string) {
+    if (!meeting) return;
+    const item = meeting.action_items.find((a) => a.id === id);
+    if (!item) return;
+    const newFb = {
+      id: `fb_${Date.now().toString().slice(-4)}`,
+      nguoi_gop_y: item.ten_nguoi_giao || (manager ? "Quản lý" : "Giao ca"),
+      nguoi_nhan: item.ten_nguoi_nhan || "Tất cả",
+      chu_de: "luu_y_chung" as const,
+      tinh_chat: "gop_y" as const,
+      noi_dung: item.tieu_de,
+      ghi_chu: item.noi_dung_chi_tiet || "Chuyển từ việc giao sang góp ý làm việc",
+    };
+    setMeeting({
+      ...meeting,
+      action_items: meeting.action_items.filter((a) => a.id !== id),
+      gop_y_luu_y: [newFb, ...(meeting.gop_y_luu_y || [])],
+    });
+    setSuccess(`Đã chuyển việc "${item.tieu_de}" sang mục Góp ý & lưu ý nội bộ!`);
+  }
+
+  async function clarifyActions() {
+    if (!meeting || !meeting.action_items || meeting.action_items.length === 0) return;
+    setBusy(true);
+    setStatusMsg("AI đang rà soát ngữ cảnh & đối soát lịch ca nhân sự...");
+    try {
+      const res = await apiSend<{ ok: boolean; action_items: ActionItem[] }>(
+        "/api/v1/meeting/clarify-actions",
+        {
+          action_items: meeting.action_items,
+          transcript: liveTranscript || "",
+        }
+      );
+      if (res.ok && res.action_items) {
+        setMeeting({
+          ...meeting,
+          action_items: res.action_items,
+        });
+        setSuccess("AI đã rà soát xong ngữ cảnh phân công và lịch ca!");
+      }
+    } catch (e) {
+      setError(viError(e, { doing: "rà soát ngữ cảnh phân công" }));
+    } finally {
+      setBusy(false);
+      setStatusMsg("");
+    }
+  }
+
+  function resolveClarification(id: string, solution: string) {
+    if (!meeting) return;
+    const sol = solution.trim();
+    const solLower = sol.toLowerCase();
+
+    if (
+      solLower.includes("chuyển sang góp ý") ||
+      solLower.includes("góp ý nội bộ") ||
+      solLower.includes("chuyển thành góp ý")
+    ) {
+      convertActionToFeedback(id);
+      return;
+    }
+
+    setMeeting({
+      ...meeting,
+      action_items: meeting.action_items.map((it) => {
+        if (it.id !== id) return it;
+
+        let newDue = it.han_chot;
+        let newCa = it.ca_thuc_hien;
+        let newType = it.loai_cong_viec || "1_ca";
+        let newAssignee = it.ten_nguoi_nhan;
+
+        // Detect deadline cues
+        if (solLower.includes("hết ca")) {
+          const matchTime = sol.match(/\(([^)]+)\)/);
+          newDue = matchTime ? `Trước ${matchTime[1]}` : "Trước khi hết ca";
+        } else if (solLower.includes("đầu ca")) {
+          const matchTime = sol.match(/\(([^)]+)\)/);
+          newDue = matchTime ? `Lúc ${matchTime[1]}` : "Đầu ca";
+        } else if (/\b\d{1,2}:\d{2}\b/.test(sol)) {
+          const m = sol.match(/\b\d{1,2}:\d{2}\b/);
+          if (m) newDue = m[0];
+        } else if (/\b\d{1,2}h\b/.test(solLower)) {
+          const m = solLower.match(/\b\d{1,2}h\b/);
+          if (m) newDue = m[0];
+        }
+
+        // Detect multi-shift / scope cues
+        if (
+          solLower.includes("nhiều ca") ||
+          solLower.includes("xuyên suốt") ||
+          solLower.includes("định kỳ") ||
+          solLower.includes("trong tuần")
+        ) {
+          newType = "nhieu_ca";
+          newCa = "Xuyên suốt các ca tuần này";
+        }
+
+        // Detect assignee cues: "Giao cho Lan", "chuyển cho Tuấn", "Quản lý"
+        if (solLower.includes("giao cho") || solLower.includes("chuyển cho")) {
+          const match = sol.match(/(?:giao cho|chuyển cho)\s+([^\s,(]+)/i);
+          if (match && match[1]) newAssignee = match[1];
+        } else if (solLower.includes("quản lý")) {
+          newAssignee = "Quản lý";
+        }
+
+        return {
+          ...it,
+          ten_nguoi_nhan: newAssignee,
+          han_chot: newDue,
+          ca_thuc_hien: newCa,
+          loai_cong_viec: newType,
+          can_lam_ro: false,
+        };
+      }),
+    });
+    setSuccess(`Đã áp dụng làm rõ: "${solution}"`);
   }
 
   function updateProposalStatus(id: string, status: "da_duyet" | "cho_duyet" | "tu_choi") {
@@ -918,6 +1085,11 @@ export default function MeetingPage() {
             onAddActionItem={addActionItem}
             onRemoveActionItem={removeActionItem}
             onUpdateProposalStatus={updateProposalStatus}
+            onUpdateWorkType={updateActionWorkType}
+            onUpdateCaThucHien={updateActionCaThucHien}
+            onConvertToFeedback={convertActionToFeedback}
+            onClarifyActions={clarifyActions}
+            onResolveClarification={resolveClarification}
             onApply={applyDecisions}
           />
         </OpsCard>

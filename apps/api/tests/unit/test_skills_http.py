@@ -1,5 +1,6 @@
 from ca_api.interfaces.http.main import app
 from fastapi.testclient import TestClient
+from unit.auth_util import headers
 
 client = TestClient(app)
 
@@ -30,7 +31,7 @@ def test_http_get_skill_detail_not_found() -> None:
 
 
 def test_http_verify_skill_live() -> None:
-    resp = client.post("/skills/solver-scheduling/verify")
+    resp = client.post("/skills/solver-scheduling/verify", headers=headers(client, "lan"))
     assert resp.status_code == 200
     data = resp.json()
     assert data["verified"] is True

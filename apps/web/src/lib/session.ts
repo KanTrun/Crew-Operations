@@ -23,7 +23,8 @@ export function setSession(token: string, role: string, name: string, nvId: stri
     sessionStorage.setItem("nq_nv", nvId);
   } catch {}
   try {
-    localStorage.setItem("nq_token", token);
+    // Token chỉ sống trong sessionStorage (không sống qua tab, không đọng trên đĩa).
+    // role/name/nv vẫn ghi localStorage để UX khôi phục sau khi đăng nhập lại.
     localStorage.setItem("nq_role", role);
     localStorage.setItem("nq_name", name);
     localStorage.setItem("nq_nv", nvId);

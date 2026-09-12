@@ -100,6 +100,9 @@ EXCLUDED_ROUTES: dict[str, str] = {
     # ── Cuộc họp — deep-link /cuoc-hop ──
     "/api/v1/meetings": "meeting — deep-link /cuoc-hop",
     "/api/v1/meetings/{meeting_id}": "meeting — deep-link /cuoc-hop",
+    "/api/v1/meetings/{meeting_id}/draft": "meeting — deep-link /cuoc-hop",
+    "/api/v1/meetings/{meeting_id}/rollback": "meeting — deep-link /cuoc-hop",
+    "/api/v1/meeting/clarify-actions": "meeting — deep-link /cuoc-hop",
     "/api/v1/meeting/transcribe": "meeting — deep-link /cuoc-hop",
     "/api/v1/meeting/analyze": "meeting — deep-link /cuoc-hop",
     "/api/v1/meeting/process-audio": "meeting — deep-link /cuoc-hop",

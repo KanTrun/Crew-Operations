@@ -21,9 +21,10 @@ from ca_agents.clients.apify_client import ApifyError  # noqa: F401  (re-exporte
 
 logger = logging.getLogger(__name__)
 
+# SSL mặc định verify hostname + chain (create_default_context). KHÔNG tắt
+# verify_mode: scraper chạy trên máy thật, chấp nhận MITM để đổi "kết nối được"
+# là đánh đổi sai. Nguồn hỏng cert → request lỗi → trả [] đúng ADR-008.
 _SSL_CTX = ssl.create_default_context()
-_SSL_CTX.check_hostname = False
-_SSL_CTX.verify_mode = ssl.CERT_NONE
 
 _HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -332,7 +333,7 @@ def _static_tiktok_topics(keyword: str = "", count: int = 12) -> list[TrendItem]
 
 
 def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendItem]:
-    """FALLBACK ONLY — gọi khi Apify fail hoặc không có API key.
+    """PRIMARY TikTok source — TikWM Direct Free API (không tốn quota Apify).
 
     Cào dữ liệu thật từ TikWM feed với in-memory cache 5 phút và timeout bảo vệ.
     KHÔNG trả default topics tĩnh khi feed fail — trả [] để chuỗi smart
@@ -370,10 +371,17 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
         if filtered:
             videos = filtered
 
+    # ADR-008 anti-fake-signals: KHÔNG sinh dữ liệu giả khi TikWM fail.
+    # Trả [] để _scrape_tiktok_smart kích hoạt Apify backup (nếu có),
+    # hoặc trả [] an toàn khi cả hai nguồn đều fail.
     if not videos:
         # Feed fail + cache rỗng: trả [] để chuỗi smart rớt tầng Camoufox/Apify
         # lấy dữ liệu thật, thay vì trả default topics tĩnh (plan §3.4).
-        return items_out
+        logger.warning(
+            "tiktok_source_tikwm_empty",
+            extra={"keyword": kw_clean[:50], "has_cache": bool(_TIKTOKWM_CACHE)},
+        )
+        return []
 
     for idx, v in enumerate(videos[:count]):
         author = v.get("author", {}).get("unique_id", "user")

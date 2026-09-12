@@ -125,6 +125,8 @@ def add_treo(run: PhieuRun, noi_dung: str) -> None:
 
 
 def escalate(run: PhieuRun, now_ms: int, han_phut: int = 30) -> str | None:
+    if run.closed and not run.treo:
+        return None
     elapsed_min = (now_ms - run.started_at_ms) / 60_000
     if elapsed_min > han_phut * 2:
         return "bao_chu_quan"

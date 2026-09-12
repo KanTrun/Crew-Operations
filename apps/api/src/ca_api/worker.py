@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from ca_agents.messaging import MessagePort, get_port
@@ -28,6 +28,8 @@ from ca_ops import escalate, load_run
 
 from ca_api.orchestration import Clock
 from ca_api.persist import kv_get, kv_mutate, kv_set, list_users
+
+_VN_TZ = timezone(timedelta(hours=7))
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("ca_api.worker")
@@ -96,11 +98,12 @@ def _danh_dau(khoa: str, moc: str) -> None:
 
 def _sinh_brief_sang() -> str:
     """Brief sáng: ca hôm nay (từ phan_cong), treo chưa xong, tồn dưới ngưỡng."""
-    phan_cong = kv_get("phan_cong", {}) or {}
+    phan_cong_raw = kv_get("phan_cong", {}) or {}
+    phan_cong = phan_cong_raw if isinstance(phan_cong_raw, dict) else {}
     treo = [t for t in kv_get("treo", []) if isinstance(t, dict) and t.get("trang_thai") != "xong"]
     ton = [x for x in kv_get("tieu_thu", []) if isinstance(x, dict) and x.get("duoi_nguong")]
-    brief = {
-        "ngay": datetime.now(timezone.utc).date().isoformat(),
+    brief: dict[str, Any] = {
+        "ngay": datetime.now(_VN_TZ).date().isoformat(),
         "so_ca": len(phan_cong),
         "so_treo_mo": len(treo),
         "ton_canh_bao": [x.get("hang") for x in ton],
@@ -119,7 +122,7 @@ def _chay_solver_tuan() -> str:
     inp = build_lich_input(nhan_vien_ngoai=list_nhan_vien_ops())
     res = solve_cpsat(inp)
     de_xuat = {
-        "ngay": datetime.now(timezone.utc).date().isoformat(),
+        "ngay": datetime.now(_VN_TZ).date().isoformat(),
         "status": res.status,
         "ok": res.ok,
         "phan_cong": res.phan_cong or {},
@@ -133,7 +136,7 @@ def _chay_solver_tuan() -> str:
 
 def _tong_ket_ngay() -> str:
     """Gom số liệu tiêu thụ + hao phí đã ghi trong ngày."""
-    hom_nay = datetime.now(timezone.utc).date().isoformat()
+    hom_nay = datetime.now(_VN_TZ).date().isoformat()
     ton = [x for x in kv_get("tieu_thu", []) if isinstance(x, dict) and str(x.get("ngay") or x.get("at") or "").startswith(hom_nay)]
     hp = [x for x in kv_get("waste_notes", []) if isinstance(x, dict) and str(x.get("ngay") or x.get("at") or "").startswith(hom_nay)]
     tong = {
@@ -147,8 +150,8 @@ def _tong_ket_ngay() -> str:
 
 
 def _quet_dinh_ky() -> list[str]:
-    """Điều phối 3 job theo giờ máy thật. Trả danh sách kết quả để test."""
-    now = datetime.now(timezone.utc)
+    """Điều phối 3 job theo giờ máy thật (giờ Việt Nam UTC+7). Trả danh sách kết quả để test."""
+    now = datetime.now(_VN_TZ)
     ngay = now.date().isoformat()
     ket_qua: list[str] = []
 

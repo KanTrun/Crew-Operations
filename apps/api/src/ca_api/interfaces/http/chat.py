@@ -231,6 +231,9 @@ def get_conversation(
     conv = chat_conversation_get(conv_id, sess["nv_id"])
     if not conv:
         raise HTTPException(status_code=404, detail="khong_tim_thay_hoi_thoai")
+    members = [str(p.get("nv_id")) for p in conv.get("participants", [])]
+    if sess["nv_id"] not in members:
+        raise HTTPException(status_code=403, detail="khong_co_quyen")
     return conv
 
 
@@ -241,7 +244,13 @@ def get_messages(
     before_id: str | None = Query(None),
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    _require_user(authorization)
+    sess = _require_user(authorization)
+    conv = chat_conversation_get(conv_id, sess["nv_id"])
+    if not conv:
+        raise HTTPException(status_code=404, detail="khong_tim_thay_hoi_thoai")
+    members = [str(p.get("nv_id")) for p in conv.get("participants", [])]
+    if sess["nv_id"] not in members:
+        raise HTTPException(status_code=403, detail="khong_co_quyen")
     messages = chat_messages_list(conv_id, limit=limit, before_id=before_id)
     return {"items": messages, "limit": limit, "before_id": before_id}
 

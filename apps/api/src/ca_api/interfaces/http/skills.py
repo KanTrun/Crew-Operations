@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from typing import Any
+from typing import Annotated, Any
 
 from ca_agents.runtime import SkillLoader
 from ca_playbook.distiller import distill_sop_to_dir
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
+
+from ca_api.interfaces.http.sprint3 import _require_manager, _require_role
 
 router = APIRouter(prefix="/skills", tags=["skills"])
 loader = SkillLoader()
@@ -50,8 +52,12 @@ def get_skill_detail(skill_id: str) -> dict[str, Any]:
 
 
 @router.post("/{skill_id}/verify", summary="Chạy kiểm định trực tiếp một Kỹ năng")
-def verify_skill_live(skill_id: str) -> dict[str, Any]:
+def verify_skill_live(
+    skill_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
     """Chạy smoke test của kỹ năng đó ngay lập tức để xác nhận tính khả dụng."""
+    _require_role(authorization)
     try:
         ref = loader.load_skill(skill_id)
     except FileNotFoundError:
@@ -93,8 +99,12 @@ def verify_skill_live(skill_id: str) -> dict[str, Any]:
 
 
 @router.post("/distill-sop", summary="Chưng cất SOP mới thành Kỹ năng (Chế độ Hybrid)")
-def distill_new_sop(req: DistillSopRequest) -> dict[str, Any]:
+def distill_new_sop(
+    req: DistillSopRequest,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
     """Chuyển đổi văn bản cẩm nang SOP thành một Kỹ năng có thể thực thi."""
+    _require_manager(authorization)
     target_dir = (loader.repo_skills_dir / req.sop_id).resolve()
     if not target_dir.is_relative_to(loader.repo_skills_dir.resolve()):
         raise HTTPException(status_code=400, detail="sop_id_khong_hop_le")

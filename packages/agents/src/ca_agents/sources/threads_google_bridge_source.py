@@ -23,9 +23,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# SSL mặc định verify hostname + chain (create_default_context). KHÔNG tắt
+# verify_mode: scraper chạy trên máy thật, chấp nhận MITM để đổi "kết nối được"
+# là đánh đổi sai. Nguồn hỏng cert → request lỗi → trả [] đúng ADR-008.
 _SSL_CTX = ssl.create_default_context()
-_SSL_CTX.check_hostname = False
-_SSL_CTX.verify_mode = ssl.CERT_NONE
 
 _HEADERS = {
     "User-Agent": (

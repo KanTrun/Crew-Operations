@@ -76,9 +76,10 @@ from ca_api.persist import (
     menu_list,
 )
 from ca_api.persist import login as persist_login
+from ca_api.persist import logout as persist_logout
 from ca_api.persist import register as persist_register
 from ca_api.persist import session as auth_session
-from ca_api.services.chat_ws import notify_ops_changed
+from ca_api.services.chat_ws import auth_ip_limiter, notify_ops_changed
 
 
 @asynccontextmanager
@@ -121,6 +122,8 @@ _REALTIME_SKIP_PATHS = {
     "/api/v1/lich-tuan/pin",
     "/api/v1/lich-tuan/lifecycle",
     "/api/v1/lich/lifecycle",
+    "/api/v1/lich-tuan/nv-status",
+    "/api/v1/lich-tuan/xac-nhan-lich",
 }
 
 
@@ -171,13 +174,14 @@ def _pin_map() -> dict[tuple[str, str], bool]:
     raw = kv_get("pins", {})
     out: dict[tuple[str, str], bool] = {}
     for key, val in raw.items():
-        ca_id, nv_id = str(key).split("|", 1)
-        out[(ca_id, nv_id)] = bool(val)
+        if "|" in str(key):
+            ca_id, nv_id = str(key).split("|", 1)
+            out[(ca_id, nv_id)] = bool(val)
     return out
 
 
 def _set_pin(ca_id: str, nv_id: str, pinned: bool) -> bool:
-    state = {"prev": False}
+    state: dict[str, bool] = {"prev": False}
 
     def mut(raw: dict[str, bool]) -> dict[str, bool]:
         key = f"{ca_id}|{nv_id}"
@@ -212,6 +216,16 @@ class PinBody(BaseModel):
     ca_id: str
     nv_id: str
     pinned: bool
+
+
+class NvStatusBody(BaseModel):
+    tuan_iso: str
+    nv_id: str
+    hanh_dong: str  # "xac_nhan" | "du_bi" | "bo_ca" | "dat_lai"
+
+
+class XacNhanLichBody(BaseModel):
+    tuan_iso: str
 
 
 def _seed() -> dict[str, Any]:
@@ -380,6 +394,84 @@ def _tuan_list(base_tuan: str, so_tuan: int) -> list[str]:
     return weeks
 
 
+def _detect_staff_availability(
+    tuan_iso: str,
+    phan_cong: dict[str, list[str]],
+    nhan_vien_list: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, str]]:
+    status_store = kv_get("roster_nv_status", {})
+    week_decisions = status_store.get(tuan_iso, {}) if isinstance(status_store, dict) else {}
+
+    inbox_items = kv_get("inbox_rang_buoc", [])
+    inbox_submitted_nv: set[str] = set()
+    if isinstance(inbox_items, list):
+        for it in inbox_items:
+            if not isinstance(it, dict):
+                continue
+            rb = it.get("rang_buoc") or {}
+            hl = it.get("hieu_luc") or {}
+            it_tuan = rb.get("tuan_id") or hl.get("tuan_id") or it.get("tuan_id")
+            if it_tuan == tuan_iso:
+                nvid = it.get("nv_id") or hl.get("nv_id")
+                if nvid:
+                    inbox_submitted_nv.add(str(nvid))
+
+    tkb_nv = kv_get("tkb_nv", {})
+    tkb_confirmed_nv: set[str] = set()
+    if isinstance(tkb_nv, dict):
+        for nvid, entry in tkb_nv.items():
+            if isinstance(entry, dict) and entry.get("tuan_iso") == tuan_iso:
+                tkb_confirmed_nv.add(str(nvid))
+
+    assigned_count: dict[str, int] = {}
+    assigned_shifts: dict[str, list[str]] = {}
+    for ca_id, nv_ids in phan_cong.items():
+        if isinstance(nv_ids, list):
+            for nvid in nv_ids:
+                s_nid = str(nvid)
+                assigned_count[s_nid] = assigned_count.get(s_nid, 0) + 1
+                assigned_shifts.setdefault(s_nid, []).append(str(ca_id))
+
+    chua_xac_nhan: list[dict[str, Any]] = []
+    du_bi: list[dict[str, Any]] = []
+    nv_status_map: dict[str, str] = {}
+
+    for nv in nhan_vien_list:
+        nvid = str(nv.get("id", ""))
+        if not nvid:
+            continue
+        ten = str(nv.get("ten") or nv.get("username") or nvid)
+        vai = str(nv.get("vai") or "nhan_vien")
+        decision = week_decisions.get(nvid)
+
+        if decision == "du_bi":
+            nv_status_map[nvid] = "du_bi"
+            du_bi.append({
+                "id": nvid,
+                "ten": ten,
+                "vai": vai,
+            })
+        elif decision == "bo_ca":
+            nv_status_map[nvid] = "bo_ca"
+        elif decision == "xac_nhan":
+            nv_status_map[nvid] = "xac_nhan"
+        else:
+            if nvid in inbox_submitted_nv or nvid in tkb_confirmed_nv:
+                nv_status_map[nvid] = "xac_nhan"
+            else:
+                nv_status_map[nvid] = "chua_xac_nhan"
+                if assigned_count.get(nvid, 0) > 0:
+                    chua_xac_nhan.append({
+                        "id": nvid,
+                        "ten": ten,
+                        "vai": vai,
+                        "so_ca_du_kien": assigned_count[nvid],
+                        "ca_ids": assigned_shifts.get(nvid, []),
+                    })
+
+    return chua_xac_nhan, du_bi, nv_status_map
+
+
 def _build_lich_tuan_from_seed(
     seed: dict[str, Any], tuan: str | None, so_tuan: int = 1
 ) -> dict[str, Any]:
@@ -398,6 +490,14 @@ def _build_lich_tuan_from_seed(
                 phan_cong[ca_id].append(nv_id)
         elif nv_id in phan_cong.get(ca_id, []):
             phan_cong[ca_id].remove(nv_id)
+
+    status_store = kv_get("roster_nv_status", {})
+    week_decisions = status_store.get(tuan_iso, {}) if isinstance(status_store, dict) else {}
+    for ca_id, nv_ids in phan_cong.items():
+        phan_cong[ca_id] = [nid for nid in nv_ids if week_decisions.get(nid) not in {"du_bi", "bo_ca"}]
+
+    chua_xac_nhan, du_bi, nv_status_map = _detect_staff_availability(tuan_iso, phan_cong, nhan_vien)
+
     return {
         "nguon": "quan",
         "nguon_lich": "chua_xep",
@@ -408,6 +508,9 @@ def _build_lich_tuan_from_seed(
         "nhan_vien": nhan_vien,
         "ca": ca_list,
         "phan_cong": phan_cong,
+        "chua_xac_nhan": chua_xac_nhan,
+        "du_bi": du_bi,
+        "nv_status_map": nv_status_map,
     }
 
 
@@ -457,6 +560,15 @@ def get_lich_tuan(
                 phan_cong.setdefault(ca_id, []).append(nv_id)
             elif not pinned and nv_id in phan_cong.get(ca_id, []):
                 phan_cong[ca_id].remove(nv_id)
+
+        status_store = kv_get("roster_nv_status", {})
+        week_decisions = status_store.get(tuan_iso, {}) if isinstance(status_store, dict) else {}
+        for ca_id, nv_ids in phan_cong.items():
+            phan_cong[ca_id] = [nid for nid in nv_ids if week_decisions.get(nid) not in {"du_bi", "bo_ca"}]
+
+        nhan_vien = list_nhan_vien_ops()
+        chua_xac_nhan, du_bi, nv_status_map = _detect_staff_availability(tuan_iso, phan_cong, nhan_vien)
+
         lifecycle = kv_get("lich_tuan_lifecycle", {})
         return {
             "nguon": "quan",
@@ -465,7 +577,7 @@ def get_lich_tuan(
             "so_tuan": so_tuan,
             "danh_sach_tuan": _tuan_list(tuan_iso, so_tuan),
             "trang_thai": lifecycle.get("trang_thai", "may_sinh"),
-            "nhan_vien": list_nhan_vien_ops(),
+            "nhan_vien": nhan_vien,
             "ca": ca_list,
             "phan_cong": phan_cong,
             "khung_gio": _khung_template(),
@@ -474,6 +586,9 @@ def get_lich_tuan(
                 "elapsed_s": data.get("elapsed_s"),
                 "status": data.get("status"),
             },
+            "chua_xac_nhan": chua_xac_nhan,
+            "du_bi": du_bi,
+            "nv_status_map": nv_status_map,
         }
     lifecycle = kv_get("lich_tuan_lifecycle", {})
     result = _build_lich_tuan_from_seed(_seed(), tuan_iso, so_tuan)
@@ -606,6 +721,10 @@ async def patch_lifecycle(
             status_code=422,
             detail=f"trang_thai_khong_hop_le — cho phep: {', '.join(_LIFECYCLE_STATES)}",
         )
+    if body.trang_thai == "da_dong" and _role != "chu_quan":
+        raise HTTPException(status_code=403, detail="chi_chu_quan_dong_lich")
+    if body.tuan_iso and _role != "chu_quan":
+        raise HTTPException(status_code=403, detail="chi_chu_quan_doi_tuan_iso")
     cur = kv_get("lich_tuan_lifecycle", {}).get("trang_thai", "may_sinh")
     if body.trang_thai not in _LIFECYCLE_ALLOWED.get(cur, set()):
         raise HTTPException(
@@ -621,7 +740,7 @@ async def patch_lifecycle(
             cur["cap_nhat_luc"] = datetime.now(UTC).isoformat()
             cur["cap_nhat_boi"] = _role
             return cur
-        return kv_mutate("lich_tuan_lifecycle", m, {})
+        return cast(dict[str, Any], kv_mutate("lich_tuan_lifecycle", m, {}))
 
     new_state = chuyen(body.trang_thai)
     record_sua(
@@ -651,6 +770,118 @@ async def patch_lifecycle(
     return {"ok": True, **new_state, "solver": solver_ket_qua}
 
 
+@app.post("/api/v1/lich-tuan/nv-status")
+async def post_nv_status(
+    body: NvStatusBody,
+    _role: Annotated[str, Depends(_require_write_role)],
+) -> dict[str, Any]:
+    """Cập nhật trạng thái xác nhận ca tuần cho một nhân sự.
+
+    Hành động:
+    - `xac_nhan`: Quản lý xác nhận giữ các ca dự kiến cho nhân viên này.
+    - `du_bi`: Tháo nhân viên khỏi các ca cố định tuần này, đưa vào danh sách Trực dự bị On-call.
+    - `bo_ca`: Tháo nhân viên khỏi các ca tuần này (không phân công tuần này).
+    - `dat_lai`: Xóa quyết định thủ công để hệ thống tự tính lại.
+    """
+    valid_actions = {"xac_nhan", "du_bi", "bo_ca", "dat_lai"}
+    if body.hanh_dong not in valid_actions:
+        raise HTTPException(
+            status_code=422,
+            detail=f"hanh_dong_khong_hop_le — cho phep: {', '.join(sorted(valid_actions))}",
+        )
+
+    def mut_status(store: dict[str, Any]) -> dict[str, Any]:
+        week_data = store.setdefault(body.tuan_iso, {})
+        if body.hanh_dong == "dat_lai":
+            week_data.pop(body.nv_id, None)
+        else:
+            week_data[body.nv_id] = body.hanh_dong
+        return store
+
+    kv_mutate("roster_nv_status", mut_status, {})
+
+    if body.hanh_dong in {"du_bi", "bo_ca"}:
+        def mut_pc(cur: dict[str, Any]) -> dict[str, Any]:
+            for cid, nv_ids in list(cur.items()):
+                if isinstance(nv_ids, list) and body.nv_id in nv_ids:
+                    cur[cid] = [x for x in nv_ids if x != body.nv_id]
+            return cur
+
+        kv_mutate("phan_cong", mut_pc, {})
+
+        if LICH_TUAN_OUT.exists():
+            try:
+                out_data = json.loads(LICH_TUAN_OUT.read_text(encoding="utf-8"))
+                if out_data.get("tuan_iso") == body.tuan_iso:
+                    pc = out_data.get("phan_cong", {})
+                    changed = False
+                    for cid, nv_ids in pc.items():
+                        if isinstance(nv_ids, list) and body.nv_id in nv_ids:
+                            pc[cid] = [x for x in nv_ids if x != body.nv_id]
+                            changed = True
+                    if changed:
+                        LICH_TUAN_OUT.write_text(
+                            json.dumps(out_data, ensure_ascii=False, indent=2),
+                            encoding="utf-8",
+                        )
+            except Exception:
+                pass
+
+        def mut_pins(cur: dict[str, Any]) -> dict[str, Any]:
+            for k in list(cur.keys()):
+                if f"|{body.nv_id}" in str(k):
+                    cur[k] = False
+            return cur
+
+        kv_mutate("pins", mut_pins, {})
+
+    record_sua(
+        loai="roster_nv_status",
+        truoc={},
+        sau={"tuan_iso": body.tuan_iso, "nv_id": body.nv_id, "hanh_dong": body.hanh_dong},
+        ai=_role,
+        now_iso=datetime.now(UTC).isoformat(),
+    )
+    await notify_ops_changed("roster:nv-status", body.tuan_iso)
+
+    return {
+        "ok": True,
+        "tuan_iso": body.tuan_iso,
+        "nv_id": body.nv_id,
+        "hanh_dong": body.hanh_dong,
+    }
+
+
+@app.post("/api/v1/lich-tuan/xac-nhan-lich")
+async def post_nv_self_confirm(
+    body: XacNhanLichBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Nhân viên tự bấm xác nhận sẵn sàng đi làm theo ca được xếp cho tuần này."""
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    nv_id = s.get("nv_id")
+    if not nv_id:
+        raise HTTPException(status_code=400, detail="khong_tim_thay_nv_id")
+
+    def mut_status(store: dict[str, Any]) -> dict[str, Any]:
+        week_data = store.setdefault(body.tuan_iso, {})
+        week_data[nv_id] = "xac_nhan"
+        return store
+
+    kv_mutate("roster_nv_status", mut_status, {})
+    record_sua(
+        loai="nv_tu_xac_nhan_lich",
+        truoc={},
+        sau={"tuan_iso": body.tuan_iso, "nv_id": nv_id},
+        ai=nv_id,
+        now_iso=datetime.now(UTC).isoformat(),
+    )
+    await notify_ops_changed("roster:nv-status", body.tuan_iso)
+    return {"ok": True, "tuan_iso": body.tuan_iso, "nv_id": nv_id, "hanh_dong": "xac_nhan"}
+
+
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 
@@ -669,11 +900,25 @@ def register(body: RegisterBody) -> LoginOut:
     return LoginOut(**row)
 
 
+def _client_ip(request: Request) -> str:
+    """IP client cho rate limit — ưu tiên header proxy, fallback về client trực tiếp."""
+    fwd = request.headers.get("x-forwarded-for", "")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @app.post("/api/v1/auth/login", response_model=LoginOut)
-def login(body: LoginBody) -> LoginOut:
+async def login(body: LoginBody, request: Request) -> LoginOut:
+    # Chống dò mật khẩu hàng loạt: quá 5 lần sai trong 10 phút từ 1 IP → khóa tạm.
+    ip = _client_ip(request)
+    if await auth_ip_limiter.is_blocked(ip):
+        raise HTTPException(status_code=429, detail="thu_qua_nhieu_lan_thu_lai_sau")
     row = persist_login(body.username, body.password)
     if not row:
+        await auth_ip_limiter.record_failure(ip)
         raise HTTPException(status_code=401, detail="sai_thong_tin_dang_nhap")
+    await auth_ip_limiter.clear(ip)
     return LoginOut(
         token=row["token"],
         role=row["role"],
@@ -681,6 +926,13 @@ def login(body: LoginBody) -> LoginOut:
         nv_id=row["nv_id"],
         store_id=row["store_id"],
     )
+
+
+@app.post("/api/v1/auth/logout")
+def logout(authorization: Annotated[str | None, Header()] = None) -> dict[str, object]:
+    """Đăng xuất: thu hồi token hiện tại. Không lỗi nếu token đã hết hạn."""
+    ok = persist_logout(authorization or "")
+    return {"ok": ok}
 
 
 @app.get("/api/v1/me")

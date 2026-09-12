@@ -114,12 +114,14 @@ def main() -> int:
 
     # In kết quả
     if not items:
-        print(_colored("⚠️  Không trả về items nào", _YELLOW))
+        print(_colored("⚠️  Không trả về items nào (cả TikWM & Apify đều fail)", _YELLOW))
+        print(_colored("   Kiểm tra: mạng, APIFY_TOKEN, quota Apify, log API", _YELLOW))
         return 0
 
     if source == "tiktokwm":
-        print(_colored("⚠️  Apify fail, đang dùng FALLBACK TikWM", _RED))
-        print(_colored("   Kiểm tra APIFY_TOKEN + quota + log", _YELLOW))
+        print(_colored("⚠️  TikWM OK (Apify không được gọi — tiết kiệm quota)", _YELLOW))
+    elif source == "unknown":
+        print(_colored("⚠️  Source UNKNOWN — có thể là dữ liệu giả/cũ, kiểm tra id prefix!", _RED))
 
     print(_colored(f"✅ Source : {source}", _GREEN if source == "apify" else _YELLOW))
     print(_colored(f"   Items  : {len(items)}", _GREEN))

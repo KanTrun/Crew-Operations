@@ -26,6 +26,7 @@ client = TestClient(app)
 def _setup_db(monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPathFactory) -> None:
     db = str(tmp_path / "test_copilot.db")
     monkeypatch.setenv("NHIPQUAN_DB", db)
+    monkeypatch.setenv("CA_AGENT_MODE", "replay")
     reset_init_flag()
     # Reset rate-limit store giữa các test để test mới không bị 429 (pollution).
     import ca_api.interfaces.http.copilot as copilot_mod

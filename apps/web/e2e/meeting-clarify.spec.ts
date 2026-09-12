@@ -1,0 +1,56 @@
+import { expect, test, type Page } from "@playwright/test";
+
+async function loginAs(page: Page, user: "lan" | "minh" | "hung" = "lan") {
+  await page.goto("/login");
+  await page.getByLabel("Tài khoản").fill(user);
+  await page.getByLabel("Mật khẩu").fill("nhipquan");
+  await page.getByRole("button", { name: "Vào hệ thống" }).click();
+  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
+}
+
+test.describe("AI Meeting OS — Rà soát Ngữ cảnh & Lịch ca Phân công", () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAs(page, "lan");
+  });
+
+  test("Phân tích cuộc họp -> Hiển thị AI Clarifier Agent -> Giải quyết ngữ cảnh 1-chạm", async ({ page }) => {
+    await page.goto("/cuoc-hop");
+    await expect(page.getByRole("heading", { name: /Họp & giao ca/i })).toBeVisible();
+
+    // 1. Chuyển sang tab Dán ghi chép
+    await page.getByRole("button", { name: /Dán ghi chép/i }).click();
+
+    // 2. Điền nội dung mẫu có cả việc gấp, việc nhiều ca và góp ý
+    const sampleMeeting =
+      "Quản lý: Chào ca chiều, Tuấn kiểm tra lại tủ đá và họng máy pha nhé.\n" +
+      "Tuấn: Dạ em sẽ lau họng máy trước 16h.\n" +
+      "Quản lý: Nhắc My nhớ cười tươi và chào khách niềm nở hơn khi đứng quầy.\n" +
+      "My: Dạ em ghi nhận ạ.";
+
+    await page.locator("textarea").fill(sampleMeeting);
+
+    // 3. Bấm Phân tích văn bản
+    await page.getByRole("button", { name: /Phân tích văn bản cuộc họp/i }).click();
+
+    // 4. Chờ kết quả phân tích hiển thị
+    await expect(page.getByText(/Kết quả phân tích/i)).toBeVisible({ timeout: 15_000 });
+
+    // 5. Mở tab Việc cần làm
+    await page.getByRole("button", { name: /Việc cần làm/i }).click();
+
+    // Kiểm tra các nút chuyển đổi bản chất công việc có mặt
+    await expect(page.locator("button", { hasText: "⚡ 1 ca" }).first()).toBeVisible();
+    await expect(page.locator("button", { hasText: "🔄 Nhiều ca" }).first()).toBeVisible();
+    await expect(page.locator("button", { hasText: "💬 Góp ý" }).first()).toBeVisible();
+
+    // Kiểm tra nút AI Rà soát ngữ cảnh & Lịch ca
+    await expect(page.getByRole("button", { name: /AI Rà soát ngữ cảnh & Lịch ca/i })).toBeVisible();
+
+    // 6. Thử nghiệm tương tác với AI Clarifier Agent (nếu có câu hỏi làm rõ)
+    const quickActionBtn = page.locator("button", { hasText: /^✓ / }).first();
+    if (await quickActionBtn.isVisible()) {
+      await quickActionBtn.click();
+      await expect(page.getByText(/Đã áp dụng làm rõ/i)).toBeVisible();
+    }
+  });
+});

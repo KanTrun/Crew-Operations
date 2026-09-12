@@ -15,6 +15,16 @@ import { ActionProposalCard } from "./ActionProposalCard";
 import { ChatText } from "./ChatText";
 import type { ChatMessage, Mode } from "./useCopilotChat";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+function resolveMediaUrl(url: string): string {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:")) {
+    return url;
+  }
+  return `${API_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 interface Props {
   chat: ReturnType<typeof import("./useCopilotChat").useCopilotChat>;
   mode: Mode;
@@ -187,16 +197,17 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   {msg.attachments && msg.attachments.length > 0 && (
                     <div className="mb-2 space-y-1.5">
                       {msg.attachments.map((att, idx) => {
+                        const mediaUrl = resolveMediaUrl(att.url);
                         const isImg =
                           att.mime_type?.startsWith("image/") ||
                           /\.(png|jpe?g|webp|gif)$/i.test(att.url);
                         if (isImg) {
                           return (
                             <div key={idx} className="overflow-hidden rounded-md border border-black/20 max-w-[240px]">
-                              <a href={att.url} target="_blank" rel="noreferrer">
+                              <a href={mediaUrl} target="_blank" rel="noreferrer">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={att.url}
+                                  src={mediaUrl}
                                   alt={att.filename || "Đính kèm"}
                                   className="max-h-44 w-auto object-cover rounded hover:opacity-90 transition"
                                 />
@@ -207,7 +218,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                         return (
                           <a
                             key={idx}
-                            href={att.url}
+                            href={mediaUrl}
                             target="_blank"
                             rel="noreferrer"
                             className="flex items-center gap-2 rounded bg-black/10 px-2 py-1 text-[11px] transition hover:bg-black/20"

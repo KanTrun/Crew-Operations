@@ -53,7 +53,7 @@ from ca_api.interfaces.http.sprint3 import (
 )
 from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.orchestration import Clock
-from ca_api.persist import audit_add, audit_list, kv_get, kv_mutate, kv_set, list_users
+from ca_api.persist import _VN_TZ, audit_add, audit_list, kv_get, kv_mutate, kv_set, list_users
 from ca_api.persist import session as auth_session
 from ca_api.services.chat_ws import notify_ops_changed
 
@@ -135,6 +135,14 @@ def _run_solver() -> dict[str, Any]:
             if tuples:
                 inp.tkb[str(nv_id)] = tuples
 
+    # Tôn trọng quyết định du_bi hoặc bo_ca của quản lý trong tuần hiện tại: không xếp ca cố định
+    status_store = kv_get("roster_nv_status", {})
+    week_decisions = status_store.get(tuan_hien_tai, {}) if isinstance(status_store, dict) else {}
+    for d_nvid, st in week_decisions.items():
+        if st in {"du_bi", "bo_ca"}:
+            for d_thu in ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]:
+                inp.nghi_phep.add((str(d_nvid), d_thu))
+
     # Đọc các ràng buộc từ inbox_rang_buoc đã được duyệt khớp tuần hiện tại
     inbox_items = kv_get("inbox_rang_buoc", [])
     added_nghi: set[tuple[str, str]] = set()
@@ -149,7 +157,8 @@ def _run_solver() -> dict[str, Any]:
                 continue
 
             # Ngữ cảnh tuần: chỉ nạp item khớp tuần đang giải
-            rb = it.get("rang_buoc") if isinstance(it.get("rang_buoc"), dict) else {}
+            rb_raw = it.get("rang_buoc")
+            rb = rb_raw if isinstance(rb_raw, dict) else {}
             it_tuan = rb.get("tuan_id") or hl.get("tuan_id")
             if it_tuan and it_tuan != tuan_hien_tai:
                 continue
@@ -385,17 +394,43 @@ def lich_ics(
 ) -> Any:
     _require_role(authorization)
     phan = _phan()
+    tuan_iso = str(_life().get("tuan_iso") or "2026-W01")
+    try:
+        y_str, w_str = tuan_iso.split("-W")
+        iso_year, iso_week = int(y_str), int(w_str)
+    except Exception:
+        iso_year, iso_week = 2026, 1
+
+    seed_data = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
+    ca_meta_map = {c["id"]: c for c in seed_data.get("ca_mau_21", [])}
+    now_stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//NHIPQUAN//CA//VI"]
     for ca_id, nvs in phan.items():
-        uid = f"{ca_id}@nhipquan.local"
+        uid = f"{ca_id}_{tuan_iso}@nhipquan.local"
+        c_meta = ca_meta_map.get(ca_id, {})
+        day_offset = int(c_meta.get("ngay_offset", 1))
+        bat_dau = str(c_meta.get("bat_dau", "07:00")).replace(":", "")
+        ket_thuc = str(c_meta.get("ket_thuc", "12:00")).replace(":", "")
+        try:
+            from datetime import date
+            ca_date = date.fromisocalendar(iso_year, iso_week, day_offset)
+            d_str = ca_date.strftime("%Y%m%d")
+        except Exception:
+            d_str = "20260101"
+        dtstart = f"{d_str}T{bat_dau}00"
+        dtend = f"{d_str}T{ket_thuc}00"
         lines += [
             "BEGIN:VEVENT",
             f"UID:{uid}",
+            f"DTSTAMP:{now_stamp}",
+            f"DTSTART:{dtstart}",
+            f"DTEND:{dtend}",
             f"SUMMARY:Ca {ca_id} {' '.join(nvs)}",
             "END:VEVENT",
         ]
     lines.append("END:VCALENDAR")
-    ics_text = "\n".join(lines)
+    ics_text = "\r\n".join(lines)
     if download:
         return Response(
             content=ics_text,
@@ -1211,6 +1246,21 @@ def qr_use(
 
     kv_mutate("qr", mut, {})
     assert used is not None
+
+    ngay = datetime.now(_VN_TZ).date().isoformat()
+
+    def dd_mut(dd: dict[str, list[str]]) -> dict[str, list[str]]:
+        # Khoá theo ngày {ngay: [nv_id, ...]} — đồng bộ với /api/v1/diem-danh.
+        hom_nay = dd.get(ngay)
+        if not isinstance(hom_nay, list):
+            hom_nay = []
+        if used["nv_id"] not in hom_nay:
+            hom_nay.append(used["nv_id"])
+        dd[ngay] = hom_nay
+        return dd
+
+    kv_mutate("diem_danh", dd_mut, {})
+    _audit("qr_diem_danh", used["nv_id"], {"token": token, "ca_id": used.get("ca_id")})
     return {"ok": True, "nv_id": used["nv_id"]}
 
 
@@ -1270,9 +1320,13 @@ def swap_dong_y(
         for it in items:
             if it.get("id") != swap_id:
                 continue
-            parties = {it["a"], it["b"]}
-            if it.get("c"):
-                parties.add(it["c"])
+            # Swap đã bị từ chối thì không ai "đồng ý" hồi sinh được nữa.
+            if it.get("trang_thai") == "tu_choi":
+                raise HTTPException(status_code=409, detail="swap_da_tu_choi")
+            parties = {it.get("a"), it.get("b"), it.get("c")} - {None, ""}
+            caller_ids = {caller.get("nv_id"), caller.get("username")} - {None, ""}
+            if not (caller_ids & parties) and caller.get("role") not in {"quan_ly", "chu_quan"}:
+                raise HTTPException(status_code=403, detail="khong_phai_nguoi_tham_gia")
             agreed = set(it.get("dong_y", []))
             if nv and (nv in parties or caller.get("role") in {"quan_ly", "chu_quan"}):
                 agreed.add(nv)
@@ -1307,6 +1361,10 @@ def swap_tu_choi(
         for it in items:
             if it.get("id") != swap_id:
                 continue
+            parties = {it.get("a"), it.get("b"), it.get("c")} - {None, ""}
+            caller_ids = {caller.get("nv_id"), caller.get("username")} - {None, ""}
+            if not (caller_ids & parties) and caller.get("role") not in {"quan_ly", "chu_quan"}:
+                raise HTTPException(status_code=403, detail="khong_phai_nguoi_tham_gia")
             it["trang_thai"] = "tu_choi"
             found = dict(it)
             return items

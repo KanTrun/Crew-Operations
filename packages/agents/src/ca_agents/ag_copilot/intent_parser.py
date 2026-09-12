@@ -39,6 +39,7 @@ PROPOSE_PIN = "PROPOSE_PIN"
 # PR12 external channel intents
 GET_PAGE_STATUS = "GET_PAGE_STATUS"
 PROPOSE_PAGE_SYNC = "PROPOSE_PAGE_SYNC"
+PROPOSE_PAGE_DRAFT = "PROPOSE_PAGE_DRAFT"
 # PR13 read intents bổ sung — lịch tuần / ca cá nhân / ràng buộc chờ duyệt
 GET_SCHEDULE = "GET_SCHEDULE"
 GET_MY_SHIFTS = "GET_MY_SHIFTS"
@@ -142,6 +143,29 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
         ["ghim ca", "ghim ca", "pin ca", "ghim lịch", "ghim lich"],
         0.9,
     ),    # PR12 external channels
+    (
+        PROPOSE_PAGE_DRAFT,
+        [
+            "đăng bài lên fb", "dang bai len fb",
+            "đăng bài lên page", "dang bai len page",
+            "đăng bài fb", "dang bai fb",
+            "đăng bài page", "dang bai page",
+            "đăng bài facebook", "dang bai facebook",
+            "đăng bài", "dang bai",
+            "post bài lên fb", "post bai len fb",
+            "post bài lên page", "post bai len page",
+            "post bài", "post bai",
+            "viết bài đăng", "viet bai dang",
+            "viết bài lên fb", "viet bai len fb",
+            "viết bài lên page", "viet bai len page",
+            "viết bài fb", "viet bai fb",
+            "soạn bài fb", "soan bai fb",
+            "soạn bài đăng", "soan bai dang",
+            "bài đăng fanpage", "bai dang fanpage",
+            "bài viết page", "bai viet page",
+        ],
+        0.92,
+    ),
     (
         PROPOSE_PAGE_SYNC,
         ["đồng bộ page", "dong bo page", "sync page", "đồng bộ fanpage", "dong bo fanpage", "kéo tin nhắn page", "keo tin nhan page"],
@@ -309,12 +333,12 @@ def _add_week(d: Any, n: int = 1) -> Any:
     return d + timedelta(weeks=n)
 _THU_CAN = {
     # Dạng dài — match bằng substring an toàn (không bị ambiguity)
-    "thứ 2": "T2", "thứ hai": "T2",
-    "thứ 3": "T3", "thứ ba": "T3",
-    "thứ 4": "T4", "thứ tư": "T4",
-    "thứ 5": "T5", "thứ năm": "T5",
-    "thứ 6": "T6", "thứ sáu": "T6",
-    "thứ 7": "T7", "thứ bảy": "T7",
+    "thứ 2": "T2", "thứ hai": "T2", "thu 2": "T2", "thu hai": "T2",
+    "thứ 3": "T3", "thứ ba": "T3", "thu 3": "T3", "thu ba": "T3",
+    "thứ 4": "T4", "thứ tư": "T4", "thu 4": "T4", "thu tu": "T4",
+    "thứ 5": "T5", "thứ năm": "T5", "thu 5": "T5", "thu nam": "T5",
+    "thứ 6": "T6", "thứ sáu": "T6", "thu 6": "T6", "thu sau": "T6",
+    "thứ 7": "T7", "thứ bảy": "T7", "thu 7": "T7", "thu bay": "T7",
     "chủ nhật": "CN", "chu nhat": "CN",
 }
 
@@ -411,10 +435,29 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
         if matched_intent != OUT_OF_SCOPE:
             break
 
-    inferred_from_context = matched_intent == OUT_OF_SCOPE and bool(recent_messages)
+    # Regex linh hoạt cho lệnh đăng/viết bài lên Fanpage/Facebook
+    if matched_intent == OUT_OF_SCOPE:
+        if re.search(r"(?:đăng|dang|viết|viet|soạn|soan|post).*(?:bài|bai).*(?:fb|facebook|page|fanpage)", lower) or \
+           re.search(r"(?:đăng|dang|post).*(?:lên|len).*(?:fb|facebook|page|fanpage)", lower):
+            matched_intent = PROPOSE_PAGE_DRAFT
+            matched_conf = 0.92
+
+    # Multi-turn context inference chỉ áp dụng cho các intent có quy trình hội thoại nhiều lượt
+    # (SCHEDULE_SOLVE cho trả lời bổ sung tuần/ràng buộc, SEND_MAIL cho soạn tiếp/chỉ định người nhận).
+    # Không suy diễn cho các intent đọc một lần (GET_*, LIST_*, QUERY_*) tránh bị kẹt vòng lặp.
+    # Đồng thời bỏ qua nếu câu hiện tại là câu phản bác/sửa chủ đề ("không phải", "t kêu", "đâu phải", "nhầm").
+    _MULTI_TURN_ALLOWED_INTENTS = {SCHEDULE_SOLVE, SEND_MAIL}
+    is_negation_or_shift = any(
+        neg in lower for neg in ["không phải", "khong phai", "t kêu", "t keu", "tao kêu", "tao keu", "đâu phải", "dau phai", "nhầm", "nham"]
+    )
+    inferred_from_context = (
+        matched_intent == OUT_OF_SCOPE
+        and bool(recent_messages)
+        and not is_negation_or_shift
+    )
     if inferred_from_context:
         for intent_name, keywords, base_conf in _INTENT_KEYWORDS:
-            if any(kw in recent_text for kw in keywords):
+            if intent_name in _MULTI_TURN_ALLOWED_INTENTS and any(kw in recent_text for kw in keywords):
                 matched_intent = intent_name
                 matched_conf = base_conf
                 break
@@ -468,22 +511,24 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
         if m_comma:
             ly_do = m_comma.group(1).strip()
         else:
-            # Không có dấu phẩy → bỏ cụm mở đầu "tôi bận/xin nghỉ <thứ>" (greedy)
+            # Không có dấu phẩy → bỏ cụm mở đầu ở đầu câu (anchor ^, count=1)
             ly_do = re.sub(
-                r"(?:tôi bận|toi ban|xin nghỉ|xin nghi|nghỉ ca|nghi ca|không đi làm|khong di lam"
-                r"|không đi được|khong di duoc|không rảnh|khong ranh|bận học|ban hoc"
-                r"|bận việc|ban viec|có việc bận|co viec ban)"
-                r"(?:\s+(?:thứ\s*\d|t[2-7]|chủ nhật|chu nhat))?",
+                r"^(?:tôi|toi|em|mình|minh)?\s*"
+                r"(?:xin nghỉ|xin nghi|nghỉ ca|nghi ca|xin nghi ca|bận|ban|không đi làm|khong di lam"
+                r"|không đi được|khong di duoc|không rảnh|khong ranh)"
+                r"(?:\s+(?:thứ\s*\d|thu\s*\d|thứ\s*[a-z]+|thu\s*[a-z]+|t[2-7]|chủ nhật|chu nhat))?"
+                r"(?:\s*(?:vì|vi|do|bởi|boi))?\s*",
                 "",
                 ly_do_raw,
+                count=1,
                 flags=re.IGNORECASE,
             ).strip()
-            # Pass 2: nếu còn sót "thu X" / "t2" ở đầu sau khi bỏ cụm mở đầu
-            # → câu chỉ có thứ, không có lý do thật → bỏ nốt
+            # Pass 2: nếu còn sót "thứ X" / "t2" ở đầu sau khi bỏ cụm mở đầu
             ly_do = re.sub(
-                r"^(?:thứ\s*\d|thu\s*\d|t[2-7]|chủ nhật|chu nhat)\s*",
+                r"^(?:thứ\s*\d|thu\s*\d|thứ\s*[a-z]+|thu\s*[a-z]+|t[2-7]|chủ nhật|chu nhat)\s*(?:vì|vi|do|bởi|boi)?\s*",
                 "",
                 ly_do,
+                count=1,
                 flags=re.IGNORECASE,
             ).strip()
         params["ly_do"] = (ly_do[:200] or "bận")
@@ -687,6 +732,28 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
         # Toàn bộ text là nội dung bàn giao (SBAR) — tool yêu cầu không rỗng.
         params["text"] = text[:2000]
         params["thieu_noi_dung"] = not text.strip()
+
+    elif matched_intent == PROPOSE_PAGE_DRAFT:
+        # Trích chủ đề bài viết: loại bỏ các từ chỉ kênh mạng xã hội
+        cleaned = re.sub(r"\b(lên|tren|vào|vao)?\s*(fb|facebook|page|fanpage)\b", "", text, flags=re.IGNORECASE)
+        m = re.search(
+            r"(?:đăng\s*bài|dang\s*bai|viết\s*bài|viet\s*bai|soạn\s*bài|soan\s*bai|post\s*bài|post\s*bai|tạo\s*bài|tao\s*bai)(?:\s*đăng|\s*viết)?\s*(?:về|ve|chủ\s*đề|chu\s*de|cho|:|-)?\s*(.+)",
+            cleaned,
+            re.IGNORECASE,
+        )
+        topic = (m.group(1).strip() if m else "").strip()
+        if not topic:
+            topic = text.strip()
+        tone = "than thien"
+        lower = text.lower()
+        if any(w in lower for w in ["hài hước", "hai huoc", "gen z", "bắt trend", "bat trend"]):
+            tone = "hai huoc"
+        elif any(w in lower for w in ["nghệ thuật", "nghe thuat", "truyền cảm hứng", "truyen cam hung", "chill"]):
+            tone = "truyen cam hung"
+        elif any(w in lower for w in ["trang trọng", "trang trong", "thông báo", "thong bao"]):
+            tone = "trang trong"
+        params["topic"] = topic
+        params["tone"] = tone
 
     # 4. Confidence thresholds:
     # >= 0.75: regular

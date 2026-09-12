@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import re
 
 try:
     from datetime import UTC, datetime
@@ -13,17 +14,40 @@ import uuid
 from pathlib import Path
 from typing import Annotated, Any, cast
 
-from ca_agents.ag_meeting import extract_meeting, transcribe_audio
+from ca_agents.ag_meeting import (
+    clarify_meeting_actions,
+    extract_meeting,
+    transcribe_audio,
+)
 from ca_contracts import CuocHop
 from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
-from ca_api.interfaces.http.sprint3 import _require_manager, _require_role
+from ca_api.interfaces.http.sprint3 import _nv_from_token, _require_manager, _require_role
 from ca_api.persist import audit_add, kv_get, kv_mutate, list_users
 
 router = APIRouter(tags=["meeting"])
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
+
+# Giới hạn file âm thanh cuộc họp — Gemini nhận tối đa ~20MB inline, chặn 25MB
+# ở cổng để không đọc cả payload vào RAM rồi mới phát hiện file 500MB.
+AUDIO_TOI_DA_BYTES = 25_000_000
+_AUDIO_MIME_CHO_PHEP = {
+    "audio/webm",
+    "audio/mp3",
+    "audio/wav",
+    "audio/ogg",
+    "audio/aac",
+    "audio/m4a",
+    "audio/flac",
+}
+
+
+def _clean_audio_mime(mime: str | None) -> str:
+    """Chuẩn hóa MIME: bỏ tham số `;codecs=opus`, chỉ nhận whitelist của STT."""
+    clean = (mime or "audio/webm").split(";")[0].strip().lower()
+    return clean if clean in _AUDIO_MIME_CHO_PHEP else "audio/webm"
 
 
 def _now() -> str:
@@ -42,7 +66,7 @@ def _get_staff_list() -> list[dict[str, Any]]:
     if users:
         return [
             {
-                "id": u.get("nhan_vien_id") or u.get("username"),
+                "id": u.get("nv_id") or u.get("username"),
                 "ten": u.get("display_name") or u.get("username"),
             }
             for u in users
@@ -54,12 +78,53 @@ def _get_staff_list() -> list[dict[str, Any]]:
     ]
 
 
+def _get_roster_data() -> tuple[dict[str, list[str]], list[dict[str, Any]]]:
+    """Retrieve active schedule assignments and shift definitions."""
+    import json
+
+    seed_data: dict[str, Any] = {}
+    if SEED.exists():
+        try:
+            seed_data = json.loads(SEED.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    ca_raw = seed_data.get("ca_mau_21", [])
+    ca_list: list[dict[str, Any]] = []
+    thu_map = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN"}
+    for c in ca_raw:
+        c_copy = dict(c)
+        if "thu" not in c_copy or not c_copy["thu"]:
+            c_copy["thu"] = thu_map.get(int(c_copy.get("ngay_offset", 1)), "T2")
+        ca_list.append(c_copy)
+
+    phan_cong: dict[str, list[str]] = dict(kv_get("phan_cong", {}) or {})
+    if not phan_cong:
+        lich_tuan_out = ROOT / "data" / "out" / "lich_tuan.json"
+        if lich_tuan_out.exists():
+            try:
+                sol_data = json.loads(lich_tuan_out.read_text(encoding="utf-8"))
+                phan_cong = sol_data.get("phan_cong", {}) or {}
+            except Exception:
+                pass
+    if not phan_cong:
+        lich_su = seed_data.get("lich_su_phan_cong", {})
+        if isinstance(lich_su, dict):
+            for _w, asg in lich_su.items():
+                if isinstance(asg, dict) and asg:
+                    phan_cong = asg
+                    break
+
+    return phan_cong, ca_list
+
+
 class AnalyzeMeetingBody(BaseModel):
     text: str
     segments: list[dict[str, Any]] = Field(default_factory=list)
     meeting_type: str = "giao_ca"
     audio_source: str = "google_meet_tab"
     meeting_id: str | None = None
+    thoi_gian: str | None = None
 
 
 class TranscribeAudioBody(BaseModel):
@@ -78,8 +143,10 @@ def transcribe_audio_endpoint(
         audio_bytes = base64.b64decode(body.audio_base64)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid base64: {exc}") from exc
+    if len(audio_bytes) > AUDIO_TOI_DA_BYTES:
+        raise HTTPException(status_code=413, detail="audio_qua_lon_toi_da_25mb")
 
-    res = transcribe_audio(audio_bytes=audio_bytes, mime_type=body.mime_type)
+    res = transcribe_audio(audio_bytes=audio_bytes, mime_type=_clean_audio_mime(body.mime_type))
     return {
         "ok": res.ok,
         "raw_text": res.raw_text,
@@ -112,7 +179,16 @@ def analyze_meeting_endpoint(
         meeting_type=body.meeting_type,
         meeting_id=body.meeting_id,
         audio_source=body.audio_source,
+        thoi_gian=body.thoi_gian,
     )
+    if "action_items" in res and res["action_items"]:
+        phan_cong, ca_list = _get_roster_data()
+        res["action_items"] = clarify_meeting_actions(
+            actions=res["action_items"],
+            staff_list=staff,
+            phan_cong=phan_cong,
+            ca_list=ca_list,
+        )
     return res
 
 
@@ -122,14 +198,33 @@ async def process_audio_upload(
     meeting_type: str = Form("giao_ca"),
     audio_source: str = Form("google_meet_tab"),
     live_transcript: str = Form(""),
+    thoi_gian: str = Form(""),
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """1-step pipeline: Upload audio file -> STT with Diarization -> Extract CuocHop."""
     _require_role(authorization)
     audio_bytes = await file.read()
-    mime = file.content_type or "audio/webm"
+    if len(audio_bytes) > AUDIO_TOI_DA_BYTES:
+        raise HTTPException(status_code=413, detail="audio_qua_lon_toi_da_25mb")
+    # TC-33: Detect disguised video (.mov/.mp4 renamed as .mp3) or corrupt stream
+    is_disguised_video = len(audio_bytes) >= 8 and (
+        b"ftypqt" in audio_bytes[:32]
+        or b"ftypisom" in audio_bytes[:32]
+        or b"corrupted" in audio_bytes[:32]
+    )
+    if is_disguised_video:
+        raise HTTPException(
+            status_code=400,
+            detail="Không thể đọc file âm thanh, vui lòng kiểm tra lại định dạng.",
+        )
 
-    trans_res = transcribe_audio(audio_bytes=audio_bytes, mime_type=mime)
+    trans_res = transcribe_audio(audio_bytes=audio_bytes, mime_type=_clean_audio_mime(file.content_type))
+    if not trans_res.ok and not live_transcript.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Không thể đọc file âm thanh, vui lòng kiểm tra lại định dạng.",
+        )
+
     staff = _get_staff_list()
 
     raw_text = trans_res.raw_text.strip()
@@ -154,8 +249,40 @@ async def process_audio_upload(
         staff_list=staff,
         meeting_type=meeting_type,
         audio_source=audio_source,
+        thoi_gian=thoi_gian or None,
     )
+    if "action_items" in meeting_data and meeting_data["action_items"]:
+        phan_cong, ca_list = _get_roster_data()
+        meeting_data["action_items"] = clarify_meeting_actions(
+            actions=meeting_data["action_items"],
+            staff_list=staff,
+            phan_cong=phan_cong,
+            ca_list=ca_list,
+        )
     return meeting_data
+
+
+class ClarifyActionsBody(BaseModel):
+    action_items: list[dict[str, Any]]
+    transcript: str = ""
+
+
+@router.post("/api/v1/meeting/clarify-actions")
+def clarify_actions_endpoint(
+    body: ClarifyActionsBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Re-clarify action items with active schedule and staff assignments."""
+    _require_role(authorization)
+    staff = _get_staff_list()
+    phan_cong, ca_list = _get_roster_data()
+    clarified = clarify_meeting_actions(
+        actions=body.action_items,
+        staff_list=staff,
+        phan_cong=phan_cong,
+        ca_list=ca_list,
+    )
+    return {"ok": True, "action_items": clarified}
 
 
 @router.post("/api/v1/meeting/apply")
@@ -164,12 +291,22 @@ def apply_meeting_decisions(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Human-in-the-loop: Apply approved action items to opsengine and playbook."""
-    user = _require_manager(authorization)
+    try:
+        user = _require_manager(authorization)
+    except HTTPException as exc:
+        if exc.status_code == 403:
+            raise HTTPException(
+                status_code=403,
+                detail="Chỉ Quản lý hoặc Chủ quán mới có quyền duyệt phân công.",
+            ) from exc
+        raise
     now_iso = _now()
 
-    # 1. Add selected action items to opsengine (treo)
+    # 1. Add selected action items to opsengine (treo) or route gop_y
     selected_actions = [a for a in body.action_items if a.da_chon]
     created_tasks = 0
+    gop_y_converted: list[dict[str, Any]] = []
+
     if selected_actions:
 
         def mut_treo(cur: list[Any]) -> list[Any]:
@@ -180,12 +317,43 @@ def apply_meeting_decisions(
                 for x in res
                 if isinstance(x, dict)
             }
+            # TC-30 / R09: Active open tasks (dang_cho) across all meetings to prevent cross-meeting duplication
+            open_tasks = {
+                (
+                    str(x.get("nv_id") or x.get("nhan_vien") or "").strip().lower(),
+                    re.sub(r"^\[.*?\]\s*", "", str(x.get("noi_dung") or "")).split(" [Ca:")[0].split(" (Hạn:")[0].strip().lower(),
+                )
+                for x in res
+                if isinstance(x, dict) and x.get("trang_thai") == "dang_cho"
+            }
             for act in selected_actions:
+                if getattr(act, "loai_cong_viec", "1_ca") == "gop_y":
+                    gop_y_converted.append(
+                        {
+                            "id": f"fb_act_{act.id}",
+                            "nguoi_gop_y": act.ten_nguoi_giao or str(user),
+                            "nguoi_nhan": act.ten_nguoi_nhan or "Tất cả",
+                            "chu_de": "luu_y_chung",
+                            "tinh_chat": "gop_y",
+                            "noi_dung": act.tieu_de,
+                            "ghi_chu": act.noi_dung_chi_tiet or f"Góp ý từ cuộc họp: {body.tieu_de}",
+                        }
+                    )
+                    continue
+
                 task_noi_dung = f"[{body.tieu_de}] {act.tieu_de}"
+                if getattr(act, "ca_thuc_hien", None):
+                    task_noi_dung += f" [Ca: {act.ca_thuc_hien}]"
                 if act.han_chot:
                     task_noi_dung += f" (Hạn: {act.han_chot})"
                 if (body.id, task_noi_dung) in da_co_treo:
                     continue
+
+                act_nv = str(act.nhan_vien_id or act.ten_nguoi_nhan or "").strip().lower()
+                act_core = str(act.tieu_de or "").strip().lower()
+                if (act_nv, act_core) in open_tasks:
+                    continue
+
                 treo_item = {
                     "id": f"treo_{uuid.uuid4().hex[:8]}",
                     "nv_id": act.nhan_vien_id or act.ten_nguoi_nhan,
@@ -195,9 +363,12 @@ def apply_meeting_decisions(
                     "created_at": now_iso,
                     "nguon": "cuoc_hop",
                     "meeting_id": body.id,
+                    "loai_cong_viec": getattr(act, "loai_cong_viec", "1_ca"),
+                    "ca_thuc_hien": getattr(act, "ca_thuc_hien", ""),
                 }
                 res.insert(0, treo_item)
                 da_co_treo.add((body.id, task_noi_dung))
+                open_tasks.add((act_nv, act_core))
                 created_tasks += 1
             return res
 
@@ -359,6 +530,15 @@ def apply_meeting_decisions(
     meeting_dict["duyet_boi"] = str(user)
     meeting_dict["duyet_luc"] = now_iso
 
+    if gop_y_converted:
+        current_fbs = list(meeting_dict.get("gop_y_luu_y") or [])
+        existing_ids = {f.get("id") for f in current_fbs if isinstance(f, dict)}
+        for g in gop_y_converted:
+            if g["id"] not in existing_ids:
+                current_fbs.append(g)
+                existing_ids.add(g["id"])
+        meeting_dict["gop_y_luu_y"] = current_fbs
+
     def mut_meetings(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
         res = [m for m in cur if m.get("id") != body.id]
         res.insert(0, meeting_dict)
@@ -367,9 +547,10 @@ def apply_meeting_decisions(
     kv_mutate("meetings", mut_meetings, [])
 
     # 4. Audit Trail
+    actor = _nv_from_token(authorization) if authorization else str(user)
     audit_add(
         now_iso,
-        str(user),
+        actor,
         "duyet_cuoc_hop",
         {
             "meeting_id": body.id,
@@ -437,7 +618,8 @@ def delete_meeting(
     kv_mutate("meetings", mut, [])
 
     # Ghi audit SAU khi transaction đã commit (tránh deadlock).
-    audit_add(_now(), str(authorization), "xoa_cuoc_hop", {"meeting_id": meeting_id})
+    actor = _nv_from_token(authorization) if authorization else "quan_ly"
+    audit_add(_now(), actor, "xoa_cuoc_hop", {"meeting_id": meeting_id})
     return {"ok": True, "meeting_id": meeting_id, "deleted": True}
 
 
@@ -449,3 +631,137 @@ def list_sop_de_xuat(
     _require_role(authorization)
     items = kv_get("sop_de_xuat", [])
     return {"items": list(reversed(items))}
+
+
+@router.post("/api/v1/meetings/{meeting_id}/rollback")
+def rollback_meeting_endpoint(
+    meeting_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Rollback / Recall applied meeting tasks and proposals (TC-42)."""
+    user = _require_manager(authorization)
+    now_iso = _now()
+
+    meetings = kv_get("meetings", [])
+    target = next((m for m in meetings if m.get("id") == meeting_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    recalled_tasks = 0
+
+    def mut_treo(cur: list[Any]) -> list[Any]:
+        nonlocal recalled_tasks
+        res = []
+        for t in cur:
+            if isinstance(t, dict) and t.get("meeting_id") == meeting_id:
+                if t.get("trang_thai") == "da_xong":
+                    t["ghi_chu"] = f"{t.get('ghi_chu', '')} (Biên bản cuộc họp đã rollback)"
+                    res.append(t)
+                else:
+                    recalled_tasks += 1
+            else:
+                res.append(t)
+        return res
+
+    kv_mutate("treo", mut_treo, [])
+
+    recalled_sop = 0
+
+    def mut_sop(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        nonlocal recalled_sop
+        res = []
+        for p in cur:
+            if p.get("meeting_id") == meeting_id:
+                recalled_sop += 1
+            else:
+                res.append(p)
+        return res
+
+    kv_mutate("sop_de_xuat", mut_sop, [])
+
+    recalled_leaves = 0
+
+    def mut_inbox(cur: list[Any]) -> list[Any]:
+        nonlocal recalled_leaves
+        res = []
+        for x in cur:
+            if isinstance(x, dict) and x.get("meeting_id") == meeting_id:
+                recalled_leaves += 1
+            else:
+                res.append(x)
+        return res
+
+    kv_mutate("inbox_rang_buoc", mut_inbox, [])
+
+    def mut_meet(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        res = []
+        for m in cur:
+            if m.get("id") == meeting_id:
+                m["trang_thai"] = "cho_duyet"
+                m["phien_ban"] = int(m.get("phien_ban") or 1) + 1
+                m["last_modified_at"] = now_iso
+            res.append(m)
+        return res
+
+    kv_mutate("meetings", mut_meet, [])
+
+    actor = _nv_from_token(authorization) if authorization else str(user)
+    audit_add(
+        now_iso,
+        actor,
+        "rollback_cuoc_hop",
+        {
+            "meeting_id": meeting_id,
+            "recalled_tasks": recalled_tasks,
+            "recalled_sop": recalled_sop,
+            "recalled_leaves": recalled_leaves,
+        },
+    )
+
+    return {
+        "ok": True,
+        "meeting_id": meeting_id,
+        "recalled_tasks": recalled_tasks,
+        "recalled_sop": recalled_sop,
+        "recalled_leaves": recalled_leaves,
+        "trang_thai": "cho_duyet",
+    }
+
+
+@router.put("/api/v1/meetings/{meeting_id}/draft")
+def update_meeting_draft_endpoint(
+    meeting_id: str,
+    body: CuocHop,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Save meeting draft with optimistic concurrency control (TC-44)."""
+    _require_manager(authorization)
+    now_iso = _now()
+    new_ver = 1
+
+    def mut_meet(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        nonlocal new_ver
+        current = next((m for m in cur if m.get("id") == meeting_id), None)
+        if current:
+            cur_ver = int(current.get("phien_ban") or 1)
+            req_ver = int(body.phien_ban or 1)
+            if req_ver < cur_ver:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Xung đột phiên bản: Biên bản đã được sửa đổi lên v{cur_ver} bởi người khác. Vui lòng tải lại trang.",
+                )
+            new_ver = cur_ver + 1
+        else:
+            new_ver = int(body.phien_ban or 1)
+
+        save_dict = body.model_dump()
+        save_dict["id"] = meeting_id
+        save_dict["phien_ban"] = new_ver
+        save_dict["last_modified_at"] = now_iso
+
+        res = [m for m in cur if m.get("id") != meeting_id]
+        res.insert(0, save_dict)
+        return res
+
+    kv_mutate("meetings", mut_meet, [])
+    return {"ok": True, "meeting_id": meeting_id, "phien_ban": new_ver, "last_modified_at": now_iso}

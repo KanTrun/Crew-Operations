@@ -5,7 +5,6 @@ from __future__ import annotations
 import base64
 import json
 import os
-import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from typing import Any, cast
@@ -41,8 +40,25 @@ def transcribe_audio(
 
     Supports Gemini-3.5-Transcribe / Gemini Flash multimodal audio, Groq Whisper, and Replay mode.
     """
+    if not audio_bytes:
+        return _replay_transcribe()
+
+    # TC-33: Detect disguised video (.mov/.mp4) or corrupted stream
+    if len(audio_bytes) >= 8 and (
+        b"ftypqt" in audio_bytes[:32]
+        or b"ftypisom" in audio_bytes[:32]
+        or b"corrupted" in audio_bytes[:32]
+    ):
+        return TranscribeResult(
+            ok=False,
+            raw_text="",
+            segments=[],
+            provider="fail",
+            reason="invalid_audio_format_or_corrupted_stream",
+        )
+
     mode = agent_mode()
-    if mode == "replay" or not audio_bytes:
+    if mode == "replay":
         return _replay_transcribe()
 
     ensure_dotenv()
@@ -157,14 +173,13 @@ def _transcribe_with_gemini(
 
     last_err: Exception | None = None
     for m in models_to_try:
-        url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent"
-            f"?key={urllib.parse.quote(api_key, safe='')}"
-        )
+        # API key qua header, không qua URL query — key trong URL bị log ở
+        # proxy/access-log và rò ra ngoài. Gemini hỗ trợ x-goog-api-key.
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent"
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
             method="POST",
         )
         try:

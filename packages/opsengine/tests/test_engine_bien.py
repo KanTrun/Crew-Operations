@@ -192,3 +192,11 @@ def test_escalate_dung_bien_han_chua_nhac() -> None:
     """Đúng 30 phút chưa vượt hạn nên không escalate."""
     run = _mo_quan()
     assert escalate(run, now_ms=30 * 60_000) is None
+
+
+def test_escalate_closed_phieu_khong_bao() -> None:
+    """Phiếu đã đóng không báo động dù quá hạn."""
+    run = _mo_quan()
+    run.closed = True
+    assert escalate(run, now_ms=120 * 60_000) is None
+

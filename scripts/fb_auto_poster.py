@@ -59,9 +59,8 @@ def llm_generate_gemini(prompt: str) -> str:
         raise RuntimeError("thieu GEMINI_API_KEY trong .env")
 
     model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip()
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
-    )
+    # API key qua header, không qua URL query — tránh key bị log ở proxy.
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     body = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
@@ -70,7 +69,7 @@ def llm_generate_gemini(prompt: str) -> str:
             "thinkingConfig": {"thinkingBudget": 0},
         },
     }
-    r = requests.post(url, json=body, timeout=30)
+    r = requests.post(url, json=body, timeout=30, headers={"x-goog-api-key": key})
     r.raise_for_status()
     data = r.json()
     cand = (data.get("candidates") or [{}])[0]

@@ -12,9 +12,9 @@ import uuid
 from collections.abc import Callable
 
 try:
-    from datetime import UTC, datetime
+    from datetime import UTC, datetime, timedelta, timezone
 except ImportError:
-    from datetime import datetime, timezone
+    from datetime import datetime, timedelta, timezone
     UTC = timezone.utc
 from pathlib import Path
 from typing import Any
@@ -22,6 +22,9 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[4]
 
 _INITIALIZED = False
+
+# Giờ Việt Nam — dùng cho các khoá kv theo ngày (điểm danh, tổng kết...).
+_VN_TZ = timezone(timedelta(hours=7))
 
 USERS = (
     ("lan", "nhipquan", "quan_ly", "nv_01", "Lan — quản lý"),
@@ -206,7 +209,8 @@ def init_db() -> None:
                 username TEXT NOT NULL,
                 role TEXT NOT NULL,
                 nv_id TEXT NOT NULL,
-                store_id TEXT NOT NULL DEFAULT 'quan_01'
+                store_id TEXT NOT NULL DEFAULT 'quan_01',
+                created_at TEXT NOT NULL DEFAULT ''
             );
             CREATE TABLE IF NOT EXISTS kv (
                 k TEXT PRIMARY KEY,
@@ -534,6 +538,10 @@ def _migrate_schema(cx: sqlite3.Connection) -> None:
     scols = {r[1] for r in cx.execute("PRAGMA table_info(sessions)")}
     if "store_id" not in scols:
         cx.execute("ALTER TABLE sessions ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
+    if "created_at" not in scols:
+        # Phiên cũ không có mốc tạo → TTL coi như chưa từng hết hạn nhưng vẫn
+        # được ghi mốc mới từ lần đăng nhập kế tiếp (migration an toàn, idempotent).
+        cx.execute("ALTER TABLE sessions ADD COLUMN created_at TEXT NOT NULL DEFAULT ''")
     cx.execute("UPDATE sessions SET store_id=(SELECT store_id FROM users WHERE users.username=sessions.username) WHERE store_id='quan_01' AND EXISTS (SELECT 1 FROM users WHERE users.username=sessions.username)")
     evaluation_cols = {r[1] for r in cx.execute("PRAGMA table_info(ai_evaluations)")}
     if "idempotency_key" not in evaluation_cols:
@@ -766,8 +774,8 @@ def login(username: str, password: str) -> dict[str, str] | None:
             return None
         token = uuid.uuid4().hex
         cx.execute(
-            "INSERT INTO sessions(token, username, role, nv_id, store_id) VALUES (?,?,?,?,?)",
-            (token, row[0], row[1], row[2], row[5]),
+            "INSERT INTO sessions(token, username, role, nv_id, store_id, created_at) VALUES (?,?,?,?,?,?)",
+            (token, row[0], row[1], row[2], row[5], datetime.now(UTC).isoformat()),
         )
         return {
             "token": token,
@@ -841,8 +849,8 @@ def register(username: str, password: str, display_name: str) -> dict[str, str]:
             )
             token = uuid.uuid4().hex
             cx.execute(
-                "INSERT INTO sessions(token, username, role, nv_id, store_id) VALUES (?,?,?,?,?)",
-                (token, u, VAI_TU_DANG_KY, nv, store_id),
+                "INSERT INTO sessions(token, username, role, nv_id, store_id, created_at) VALUES (?,?,?,?,?,?)",
+                (token, u, VAI_TU_DANG_KY, nv, store_id, datetime.now(UTC).isoformat()),
             )
 
             # Tự động đưa nhân viên mới vào Nhóm Chung Toàn Quán
@@ -891,6 +899,24 @@ def register(username: str, password: str, display_name: str) -> dict[str, str]:
     return {"token": token, "role": VAI_TU_DANG_KY, "nv_id": nv, "display_name": ten, "store_id": store_id}
 
 
+# TTL phiên đăng nhập (ngày). Hết hạn → token bị xóa, phải đăng nhập lại.
+SESSION_TTL_DAYS = float(os.environ.get("NHIPQUAN_SESSION_TTL_DAYS", "7") or 7)
+
+
+def _session_expired(created_at: str) -> bool:
+    """Phiên không có mốc tạo (bản cũ trước migration) coi như còn hiệu lực
+    cho đến khi đăng nhập lại ghi mốc mới; có mốc thì kiểm tra quá 7 ngày."""
+    if not created_at:
+        return False
+    try:
+        created = datetime.fromisoformat(created_at)
+    except ValueError:
+        return True
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=UTC)
+    return datetime.now(UTC) - created > timedelta(days=SESSION_TTL_DAYS)
+
+
 def session(authorization: str | None) -> dict[str, str] | None:
     init_db()
     if not authorization:
@@ -898,13 +924,27 @@ def session(authorization: str | None) -> dict[str, str] | None:
     raw = authorization.removeprefix("Bearer ").strip()
     with _conn() as cx:
         row = cx.execute(
-            "SELECT s.username, s.role, s.nv_id, u.email, s.store_id FROM sessions s "
+            "SELECT s.username, s.role, s.nv_id, u.email, s.store_id, s.created_at FROM sessions s "
             "LEFT JOIN users u ON u.nv_id = s.nv_id WHERE s.token=?",
             (raw,),
         ).fetchone()
         if not row:
             return None
+        if _session_expired(str(row[5] or "")):
+            cx.execute("DELETE FROM sessions WHERE token=?", (raw,))
+            return None
         return {"username": row[0], "role": row[1], "nv_id": row[2], "email": str(row[3] or ""), "store_id": row[4]}
+
+
+def logout(token: str) -> bool:
+    """Đăng xuất: xóa đúng token này khỏi sessions. Trả True nếu có xóa."""
+    init_db()
+    raw = token.removeprefix("Bearer ").strip()
+    if not raw:
+        return False
+    with _conn() as cx:
+        cur = cx.execute("DELETE FROM sessions WHERE token=?", (raw,))
+        return bool(cur.rowcount)
 
 
 def kv_get(key: str, default: Any) -> Any:
@@ -1312,8 +1352,31 @@ def tieu_thu_append(item: dict[str, Any]) -> None:
     kv_mutate("tieu_thu", mut, [])
 
 
+def diem_danh_hom_nay() -> list[str]:
+    """Danh sách nv_id đã điểm danh HÔM NAY (giờ Việt Nam, UTC+7).
+
+    Trước đây khoá kv ``diem_danh`` là list nv_id tích luỹ vĩnh viễn —
+    sau lần check-in đầu tiên, cổng ``chua_diem_danh`` ở ``phieu_start``
+    thông mãi mãi, ngày hôm sau không quét QR vẫn mở được phiếu.
+    Giờ khoá này là dict ``{ngay: [nv_id, ...]}`` keyed theo ngày ISO;
+    list cũ (dạng ``[nv_id, ...]``) được đọc tương thích ngược.
+    """
+    raw = kv_get("diem_danh", {})
+    if isinstance(raw, list):
+        # Bản cũ: không biết check-in ngày nào → coi như ngày đầu tiên
+        # có dữ liệu (an toàn phía nhân viên, không khoá ai ngoài giờ).
+        return [str(x) for x in raw]
+    if not isinstance(raw, dict):
+        return []
+    hom_nay = datetime.now(_VN_TZ).date().isoformat()
+    rows = raw.get(hom_nay)
+    if isinstance(rows, list):
+        return [str(x) for x in rows]
+    return []
+
+
 def da_diem_danh(nv_id: str) -> bool:
-    return nv_id in set(kv_get("diem_danh", []))
+    return nv_id in set(diem_danh_hom_nay())
 
 
 def audit_list() -> list[dict[str, Any]]:
@@ -1427,7 +1490,7 @@ def copilot_draft_update_status(
             """,
             (status, executed_at, amended_from, amended_by, action_id),
         )
-        return cur.rowcount > 0
+        return bool(cur.rowcount > 0)
 
 
 def copilot_draft_compare_and_set_status(
@@ -1445,7 +1508,7 @@ def copilot_draft_compare_and_set_status(
             """,
             (new_status, action_id, expected_status),
         )
-        return cur.rowcount == 1
+        return bool(cur.rowcount == 1)
 
 
 def copilot_execution_reserve(
@@ -1547,7 +1610,7 @@ def copilot_execution_complete(
                 idempotency_key,
             ),
         )
-        return cur.rowcount == 1
+        return bool(cur.rowcount == 1)
 
 
 def copilot_execution_fail(
@@ -1572,7 +1635,7 @@ def copilot_execution_fail(
                 idempotency_key,
             ),
         )
-        return cur.rowcount == 1
+        return bool(cur.rowcount == 1)
 
 
 def copilot_mail_delivery_reserve(
@@ -1622,7 +1685,7 @@ def copilot_mail_delivery_complete(
                 store_id, idempotency_key,
             ),
         )
-        return cur.rowcount == 1
+        return bool(cur.rowcount == 1)
 
 
 def copilot_draft_list(
@@ -1788,7 +1851,7 @@ def fb_try_claim_scoped_event(*, store_id: str, page_id: str, event_type: str, e
             "INSERT INTO fb_event_receipts(idempotency_key, store_id, page_id, event_type, external_event_id, processed_at) VALUES (?,?,?,?,?,?) ON CONFLICT(idempotency_key) DO NOTHING",
             (idempotency_key, store_id, page_id, event_type, external_event_id, _iso_now()),
         )
-        return cur.rowcount == 1
+        return bool(cur.rowcount == 1)
 
 
 _AI_LEARNING_TABLES = {"generation": "ai_generation_records", "feedback": "ai_feedback_events", "evaluation": "ai_evaluations", "rule_proposal": "ai_rule_proposals"}
@@ -1830,7 +1893,7 @@ def ai_learning_save(kind: str, record: dict[str, Any]) -> bool:
             if {str(row[0]) for row in rows} != set(evidence_ids):
                 raise ValueError("ai_learning_cross_tenant_evidence")
             cur = cx.execute("INSERT INTO ai_rule_proposals(id, store_id, channel, status, version, idempotency_key, payload, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(store_id, idempotency_key) DO NOTHING", (record_id, store_id, channel, str(record.get("status", "pending")), int(record["version"]), str(record["idempotency_key"]), payload, created_at, str(record["updated_at"])))
-        return cur.rowcount == 1
+        return bool(cur.rowcount == 1)
 
 
 def ai_learning_list(kind: str, *, store_id: str, limit: int = 50) -> list[dict[str, Any]]:
@@ -2085,7 +2148,7 @@ def fb_review_transition_pending(item_id: int, *, status: str) -> bool:
             "UPDATE fb_review_queue SET status=? WHERE id=? AND status='pending'",
             (status, item_id),
         )
-        return cur.rowcount == 1
+        return bool(cur.rowcount == 1)
 
 
 def fb_review_release_claim(item_id: int) -> bool:
@@ -2098,7 +2161,7 @@ def fb_review_release_claim(item_id: int) -> bool:
             "WHERE id=? AND status='approved'",
             (item_id,),
         )
-        return cur.rowcount == 1
+        return bool(cur.rowcount == 1)
 
 
 def fb_review_finalize_claim(
@@ -2172,6 +2235,10 @@ def fb_escalation_add(
             "INSERT INTO fb_escalation_log(review_queue_id, escalated_to, reason, notified_channel, notified_at) "
             "VALUES (?,?,?,?,?)",
             (review_queue_id, escalated_to, reason, notified_channel, _iso_now()),
+        )
+        cx.execute(
+            "UPDATE fb_review_queue SET assigned_role = ? WHERE id = ?",
+            (escalated_to, review_queue_id),
         )
 
 

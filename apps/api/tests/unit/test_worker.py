@@ -160,9 +160,11 @@ def test_quet_dinh_ky_chay_dung_mot_lan(_reset_dinh_ky: None) -> None:
 
 
 def test_tong_ket_ngay(_reset_dinh_ky: None) -> None:
-    from datetime import datetime, timezone
+    from datetime import timedelta
 
-    hom_nay = datetime.now(timezone.utc).date().isoformat()
+    from ca_api.worker import _VN_TZ
+
+    hom_nay = (datetime.now(UTC) + timedelta(hours=7)).date().isoformat()
     kv_set("tieu_thu", [{"hang": "sua_tuoi", "so_luong": 8, "duoi_nguong": False, "ngay": hom_nay}])
     kv_set("waste_notes", [{"id": "hp1", "noi_dung": "đổ 2 ly", "ngay": hom_nay}])
     res = worker._tong_ket_ngay()
@@ -170,3 +172,4 @@ def test_tong_ket_ngay(_reset_dinh_ky: None) -> None:
     assert tong is not None
     assert "kiem_ke=1" in res
     assert tong["so_ghi_hao_phi"] == 1
+    assert _VN_TZ.utcoffset(None) == timedelta(hours=7)

@@ -14,6 +14,7 @@ Rules:
 from __future__ import annotations
 
 import json
+import logging
 import os
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -37,6 +38,8 @@ WHITELISTED_INTENTS = {
     "INVENTORY_RESTOCK_CHECK": "tool_check_inventory_restock",
     "SEND_MAIL": "tool_send_mail",
 }
+
+log = logging.getLogger(__name__)
 
 # ── Data source injection (hexagonal architecture) ────────────────────────────
 # API layer gọi `configure_data_sources()` một lần lúc startup để cung cấp
@@ -130,12 +133,13 @@ def build_live_snapshot(
         snapshot["orders"] = list(don_list() or []) if don_list else []
     elif intent == "PROPOSE_PIN":
         snapshot["pins"] = _kv_get("pins", {})
-    elif intent == "PROPOSE_PAGE_SYNC":
+    elif intent in {"PROPOSE_PAGE_SYNC", "PROPOSE_PAGE_DRAFT"}:
         page_status = _src("page_status")
         try:
             snapshot["page"] = page_status() if page_status else None
         except Exception:
             snapshot["page"] = None
+        snapshot["page_quan"] = _kv_get("page_quan", {})
     elif intent == "PROPOSE_TKB_CONFIRM":
         snapshot["tkb_nv"] = _kv_get("tkb_nv", {})
     elif intent == "PROPOSE_SWAP_CONSENT":
@@ -609,7 +613,7 @@ def tool_get_daily_brief(
             try:
                 c_num = int(str(ca_id).split("_c")[1])
                 day_offset = (c_num - 1) // 3 + 1
-                thu_map_num = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "CN"}
+                thu_map_num = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN"}
                 ca_thu = thu_map_num.get(day_offset, "")
             except Exception:
                 pass
@@ -1833,6 +1837,76 @@ def tool_propose_page_sync(
         requires_confirmation=True,
         source_snapshot=build_live_snapshot("PROPOSE_PAGE_SYNC", store_id),
     )
+
+
+def tool_propose_page_draft(
+    topic: str = "",
+    tone: str = "than thien",
+    store_id: str = "quan_01",
+    role: str = "quan_ly",
+    current_user: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> ToolExecutionResult:
+    """PROPOSE_PAGE_DRAFT: Soạn thảo bài đăng Fanpage Facebook và đề xuất duyệt (R2_CONFIRM)."""
+    topic_clean = (topic or "").strip()
+    if not topic_clean:
+        topic_clean = "Chào mừng khách hàng ghé thăm quán cà phê Nhịp Quán"
+
+    noi_dung = ""
+    try:
+        from ca_agents.llm import complete
+
+        tone_desc = {
+            "than thien": "thân thiện, gần gũi và ấm áp",
+            "hai huoc": "hài hước, Gen Z, bắt trend dí dỏm",
+            "truyen cam hung": "nghệ thuật, truyền cảm hứng và chill",
+            "trang trong": "trang trọng, lịch sự dạng thông báo",
+        }.get(tone, "thân thiện, gần gũi")
+
+        sys_p = (
+            "Bạn là chuyên viên truyền thông sáng tạo cho quán cà phê 'Nhịp Quán'. "
+            "Hãy viết một bài đăng Facebook tiếng Việt hoàn chỉnh, gồm 2-3 đoạn ngắn hấp dẫn, có emoji sinh động, "
+            f"theo phong cách {tone_desc}, nêu bật chủ đề người dùng yêu cầu. "
+            "Kết thúc bài bằng lời mời ghé quán (Call-To-Action). "
+            "Lưu ý: Viết trực tiếp nội dung bài đăng, không thêm lời dẫn, không dùng hashtag."
+        )
+        user_p = f"Chủ đề bài đăng: {topic_clean}."
+        res = complete(system=sys_p, user=user_p)
+        if res.ok and res.text.strip():
+            noi_dung = res.text.strip()
+    except Exception:
+        # LLM hỏng không chặn đề xuất — dùng bản nháp fallback bên dưới,
+        # nhưng phải để lại dấu vết để debug (không nuốt âm thầm).
+        log.exception("tool_propose_page_draft: LLM complete() thất bại, dùng fallback")
+
+    if not noi_dung:
+        noi_dung = (
+            f"☕ Chào cả nhà! Hôm nay Nhịp Quán có gợi ý mới về '{topic_clean}'. "
+            f"Ghé quán thưởng thức cùng không gian yên tĩnh và wifi mạnh nhé! Hẹn gặp bạn hôm nay! ✨"
+        )
+
+    payload = {
+        "snapshot_version": "live-v1",
+        "topic": topic_clean,
+        "tone": tone,
+        "noi_dung": noi_dung,
+        "so_ky_tu": len(noi_dung),
+    }
+
+    preview_text = noi_dung if len(noi_dung) <= 80 else f"{noi_dung[:77]}..."
+    summary = f"Đề xuất đăng bài Fanpage ({topic_clean}): \"{preview_text}\""
+    explanation = "Bài viết sẽ được đưa vào kho nháp hoặc đăng trực tiếp lên Facebook sau khi duyệt."
+
+    return ToolExecutionResult(
+        success=True,
+        tool_name="tool_propose_page_draft",
+        intent="PROPOSE_PAGE_DRAFT",
+        data=payload,
+        summary=summary,
+        explanation=explanation,
+        requires_confirmation=True,
+        source_snapshot=build_live_snapshot("PROPOSE_PAGE_DRAFT", store_id),
+    )
 # (PROPOSE_TIME_OFF đăng ký sau khi hàm định nghĩa bên dưới — Python cần
 # name tồn tại lúc update; các proposal khác cũng theo mẫu đó ở khối cuối.)
 
@@ -2138,6 +2212,7 @@ _TOOLS.update({
     "PROPOSE_PIN": tool_propose_pin,
     "GET_PAGE_STATUS": tool_get_page_status,
     "PROPOSE_PAGE_SYNC": tool_propose_page_sync,
+    "PROPOSE_PAGE_DRAFT": tool_propose_page_draft,
     # PR10 còn lại (R2_CONFIRM)
     "PROPOSE_TKB_CONFIRM": tool_propose_tkb_confirm,
     "PROPOSE_SWAP_CONSENT": tool_propose_swap_consent,

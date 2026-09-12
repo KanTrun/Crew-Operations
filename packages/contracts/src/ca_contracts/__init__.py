@@ -127,6 +127,16 @@ class ActionItem(BaseModel):
     muc_do_uu_tien: Literal["cao", "trung_binh", "thap"] = "trung_binh"
     do_tin_cay: float = Field(ge=0.0, le=1.0, default=0.9)
     da_chon: bool = True
+    loai_cong_viec: Literal["1_ca", "nhieu_ca", "gop_y"] = "1_ca"
+    ca_thuc_hien: str = ""
+    ca_du_kien: list[str] = Field(default_factory=list)
+    can_lam_ro: bool = False
+    van_de_ngu_canh: str = ""
+    cau_hoi_lam_ro: str = ""
+    goi_y_xu_ly: list[str] = Field(default_factory=list)
+    stt_near_miss: bool = False
+    khong_co_can_cu: bool = False
+    nguon_cau_noi: str = ""
 
 
 class DieuChinhLichHop(BaseModel):
@@ -234,6 +244,9 @@ class CuocHop(BaseModel):
     de_xuat_sop: list[DeXuatSop] = Field(default_factory=list)
     do_tin_cay_tong_the: float = Field(ge=0.0, le=1.0, default=0.9)
     trang_thai: Literal["cho_duyet", "da_duyet", "tu_choi"] = "cho_duyet"
+    phien_ban: int = 1
+    last_modified_at: str = ""
+    ngay_ghi_am: str = ""
 
 
 class CopilotIntent(StrEnum):
@@ -266,6 +279,7 @@ class CopilotIntent(StrEnum):
     # PR12 external channel intents
     GET_PAGE_STATUS = "GET_PAGE_STATUS"
     PROPOSE_PAGE_SYNC = "PROPOSE_PAGE_SYNC"
+    PROPOSE_PAGE_DRAFT = "PROPOSE_PAGE_DRAFT"
     # PR10 còn lại (R2_CONFIRM): xác nhận TKB, đồng ý đổi ca, ghi bàn giao ca
     PROPOSE_TKB_CONFIRM = "PROPOSE_TKB_CONFIRM"
     PROPOSE_SWAP_CONSENT = "PROPOSE_SWAP_CONSENT"
@@ -321,6 +335,7 @@ _QUAN_LY_INTENTS: frozenset[str] = frozenset(
         # PR12 external channels (R0/R2)
         "GET_PAGE_STATUS",
         "PROPOSE_PAGE_SYNC",
+        "PROPOSE_PAGE_DRAFT",
         # PR10 còn lại (R2_CONFIRM)
         "PROPOSE_TKB_CONFIRM",
         "PROPOSE_SWAP_CONSENT",

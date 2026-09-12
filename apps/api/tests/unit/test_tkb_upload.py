@@ -46,3 +46,16 @@ def test_tkb_confirm_empty_rejected() -> None:
     nv = headers(client, "minh")
     r = client.post("/api/v1/tkb/confirm", json={"khoang_ban": []}, headers=nv)
     assert r.status_code == 400
+
+
+def test_tkb_upload_svg_rejected() -> None:
+    nv = headers(client, "minh")
+    svg_content = b"<svg xmlns='http://www.w3.org/2000/svg'><text>test</text></svg>"
+    r = client.post(
+        "/api/v1/tkb/upload",
+        files={"file": ("test.svg", svg_content, "image/svg+xml")},
+        headers=nv,
+    )
+    assert r.status_code == 400
+    assert r.json()["detail"] == "dinh_dang"
+

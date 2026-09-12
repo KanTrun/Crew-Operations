@@ -1,15 +1,22 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from ca_agents.ag_rule import RuleDraft
 from ca_api.interfaces.http import sprint45
 from ca_api.interfaces.http.main import app
+from ca_api.persist import da_diem_danh, kv_get, kv_set
 from ca_playbook import record_sua
 from fastapi.testclient import TestClient
 
 from unit.auth_util import headers
 
 client = TestClient(app)
+
+
+def _hom_nay() -> str:
+    return datetime.now(timezone(timedelta(hours=7))).date().isoformat()
 
 
 def _seed_three_sua() -> None:
@@ -221,6 +228,16 @@ def test_qr_can_only_be_used_by_target_employee() -> None:
     token = client.post("/api/v1/qr", json={"nv_id": "nv_03", "ca_id": "w1_c01"}, headers=manager).json()["token"]
     assert client.post(f"/api/v1/qr/{token}", headers=other).status_code == 403
     assert client.post(f"/api/v1/qr/{token}", headers=target).status_code == 200
+    assert "nv_03" in kv_get("diem_danh", {}).get(_hom_nay(), [])
+
+
+def test_qr_diem_danh_chi_hieu_luc_trong_ngay() -> None:
+    """Điểm danh scoped theo ngày — ngày khác không tính, phải quét lại."""
+    kv_set("diem_danh", {"2000-01-01": ["nv_03"]})
+    assert da_diem_danh("nv_03") is False
+    # Bản cũ dạng list vẫn đọc được (tương thích ngược)
+    kv_set("diem_danh", ["nv_03"])
+    assert da_diem_danh("nv_03") is True
 
 
 def test_swap_requires_valid_shift_and_staff_participation() -> None:
@@ -254,6 +271,46 @@ def test_swap_consent_three_branches() -> None:
     done = client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "lan")).json()
     assert done["trang_thai"] == "dong_y"
     assert len(done.get("dong_y", [])) == 3
+
+
+def test_swap_tu_choi_idor_protection() -> None:
+    # Đăng ký một nhân viên mới không liên quan đến ca đổi
+    reg = client.post(
+        "/api/v1/auth/register",
+        json={"username": "nv_ngoai_cuoc", "password": "password123", "display_name": "Người Ngoài Cuộc"},
+    ).json()
+    headers_outsider = {"Authorization": f"Bearer {reg['token']}"}
+
+    opened = client.post(
+        "/api/v1/cho-doi-ca",
+        json={"a": "nv_03", "b": "nv_02", "c": "nv_01", "ca_id": "w1_c01"},
+        headers=headers(client, "minh"),
+    ).json()
+    swap_id = opened["id"]
+
+    # Nhân viên ngoài cuộc không có quyền từ chối yêu cầu đổi ca của người khác
+    res_reject = client.post(f"/api/v1/cho-doi-ca/{swap_id}/tu-choi", headers=headers_outsider)
+    assert res_reject.status_code == 403
+    assert res_reject.json()["detail"] == "khong_phai_nguoi_tham_gia"
+
+    # Người trong cuộc (Minh - nv_03) có quyền từ chối
+    res_ok = client.post(f"/api/v1/cho-doi-ca/{swap_id}/tu-choi", headers=headers(client, "minh"))
+    assert res_ok.status_code == 200
+    assert res_ok.json()["trang_thai"] == "tu_choi"
+
+
+def test_lich_ics_event_fields_rfc5545() -> None:
+    ql = headers(client, "lan")
+    from ca_api.persist import kv_mutate
+    kv_mutate("phan_cong", lambda _: {"w1_c01": ["nv_01", "nv_02"]}, {})
+    ics = client.get("/api/v1/lich/ics", headers=ql).json()
+    assert "BEGIN:VCALENDAR" in ics["ics"]
+    assert "BEGIN:VEVENT" in ics["ics"]
+    assert "DTSTART:" in ics["ics"]
+    assert "DTEND:" in ics["ics"]
+    assert "DTSTAMP:" in ics["ics"]
+    assert "END:VEVENT" in ics["ics"]
+
 
 
 def test_hom_nay_preview_fields() -> None:

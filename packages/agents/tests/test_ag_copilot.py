@@ -207,6 +207,46 @@ def test_intent_parser_resolves_mail_follow_up_from_recent_messages() -> None:
     assert "Gửi cho Lan" in parsed.params["raw_request"]
 
 
+def test_intent_parser_does_not_loop_read_intents_from_recent_messages() -> None:
+    parsed = parse_intent(
+        "thời tiết hôm nay ở Đà Lạt thế nào",
+        {
+            "recent_messages": ["Dạ kết quả tra cứu cho anh/chị: 58 việc treo đang chờ xử lý."],
+        },
+    )
+    assert parsed.intent == "OUT_OF_SCOPE"
+
+
+def test_copilot_facebook_post_propose_and_rbac() -> None:
+    # 1. Chủ quán ra lệnh đăng bài -> Tạo ActionProposal PROPOSE_PAGE_DRAFT
+    res_chu = run_copilot(
+        "đăng 1 bài gì đó lên page fb",
+        {
+            "store_id": "quan_01",
+            "user_id": "nv_02",
+            "user_role": "chu_quan",
+            "recent_messages": ["Dạ kết quả tra cứu cho anh/chị: 58 việc treo đang chờ xử lý."],
+        },
+    )
+    assert res_chu.intent.value == "PROPOSE_PAGE_DRAFT"
+    assert res_chu.action_proposal is not None
+    assert res_chu.action_proposal.intent == "PROPOSE_PAGE_DRAFT"
+    assert "việc treo" not in res_chu.reply_text
+
+    # 2. Nhân viên ra lệnh đăng bài -> Bị chặn vượt quyền (RBAC)
+    res_nv = run_copilot(
+        "đăng 1 bài gì đó lên page fb",
+        {
+            "store_id": "quan_01",
+            "user_id": "nv_03",
+            "user_role": "nhan_vien",
+            "recent_messages": [],
+        },
+    )
+    assert "vượt phạm vi vai trò" in res_nv.reply_text
+    assert res_nv.action_proposal is None
+
+
 def test_swap_trung_ca_kiem_tra_khung() -> None:
     """Kiểm tra _swap_khong_trung_ca: trùng khung cùng thứ chặn, khác khung/khác thứ cho phép."""
     from ca_agents.ag_copilot.tool_registry import _swap_khong_trung_ca
@@ -913,5 +953,47 @@ def test_tool_solve_weekly_schedule_integrates_meeting_constraints() -> None:
             tool_registry.configure_data_sources(kv_get=saved_kv)
         else:
             tool_registry._SOURCES.clear()
+
+
+def test_unaccented_time_off_parsing() -> None:
+    """Regression: kiểm tra trích xuất thứ và lý do với tiếng Việt không dấu."""
+    res = parse_intent("tôi xin nghỉ thu 6 vì có việc bận")
+    assert res.intent == CopilotIntent.PROPOSE_TIME_OFF
+    assert res.params.get("thu") == "T6"
+    assert res.params.get("ly_do") == "có việc bận"
+
+    res2 = parse_intent("xin nghi thu hai do ban hoc")
+    assert res2.intent == CopilotIntent.PROPOSE_TIME_OFF
+    assert res2.params.get("thu") == "T2"
+    assert res2.params.get("ly_do") == "ban hoc"
+
+
+def test_daily_brief_saturday_sunday_mapping() -> None:
+    """Regression: kiểm tra lọc ca Thứ 7 (w1_c16..w1_c18) và Chủ Nhật (w1_c19..w1_c21)."""
+    from ca_agents.ag_copilot.tool_registry import tool_get_daily_brief
+
+    mock_phan_cong = {f"w1_c{i:02d}": ["nv_01", "nv_02"] for i in range(1, 22)}
+    saved_kv = tool_registry._SOURCES.get("kv_get")
+    tool_registry.configure_data_sources(
+        kv_get=lambda key, default: mock_phan_cong if key == "phan_cong" else default
+    )
+    try:
+        # 2026-09-12 là Thứ 7 (T7) -> w1_c16, w1_c17, w1_c18
+        res_t7 = tool_get_daily_brief(ngay="2026-09-12")
+        assert res_t7.success is True
+        ca_t7 = res_t7.data.get("ca", {})
+        assert set(ca_t7.keys()) == {"w1_c16", "w1_c17", "w1_c18"}
+
+        # 2026-09-13 là Chủ Nhật (CN) -> w1_c19, w1_c20, w1_c21
+        res_cn = tool_get_daily_brief(ngay="2026-09-13")
+        assert res_cn.success is True
+        ca_cn = res_cn.data.get("ca", {})
+        assert set(ca_cn.keys()) == {"w1_c19", "w1_c20", "w1_c21"}
+    finally:
+        if saved_kv:
+            tool_registry.configure_data_sources(kv_get=saved_kv)
+        else:
+            tool_registry._SOURCES.clear()
+
 
 

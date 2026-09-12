@@ -1111,12 +1111,11 @@ def fb_inbox_decide(
         return {"ok": True, "item": updated, "sent": False}
 
     if body.quyet_dinh == "chuyen_cap":
-        if role != "chu_quan":
-            raise HTTPException(status_code=403, detail="chi_chu_quan_chuyen_cap")
         fb_escalation_add(
             item_id, escalated_to="chu_quan",
             reason=body.ly_do or "chuyen_cap", notified_channel="in_app",
         )
+        _audit(s["nv_id"], "fb_inbox_decide", {"id": item_id, "q": "chuyen_cap", "reason": body.ly_do})
         return {"ok": True, "item": fb_review_get(item_id), "sent": False}
 
     # duyet / sua_gui — gửi đúng transport theo nguồn đã lưu

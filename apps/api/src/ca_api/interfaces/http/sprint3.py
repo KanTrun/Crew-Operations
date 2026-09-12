@@ -13,6 +13,7 @@ try:
     from datetime import UTC, datetime
 except ImportError:
     from datetime import datetime, timezone
+
     UTC = timezone.utc
 from pathlib import Path
 from typing import Annotated, Any, cast
@@ -37,7 +38,14 @@ from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from ca_api.orchestration import Clock, IdempotencyStore, StateMachine, dispatch_parallel
-from ca_api.persist import db_path, kv_get, kv_mutate, kv_set
+from ca_api.persist import (
+    _VN_TZ,
+    db_path,
+    diem_danh_hom_nay,
+    kv_get,
+    kv_mutate,
+    kv_set,
+)
 from ca_api.persist import session as auth_session
 
 router = APIRouter()
@@ -227,13 +235,20 @@ def diem_danh(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, str]:
     nv = _nv_from_token(authorization)
+    ngay = datetime.now(_VN_TZ).date().isoformat()
 
-    def mut(dd: list[str]) -> list[str]:
-        if nv not in dd:
-            dd.append(nv)
+    def mut(dd: dict[str, list[str]]) -> dict[str, list[str]]:
+        # Khoá theo ngày: {ngay: [nv_id, ...]} — điểm danh chỉ có hiệu lực
+        # trong ngày; ngày mới phải quét lại QR/check-in lại.
+        hom_nay = dd.get(ngay)
+        if not isinstance(hom_nay, list):
+            hom_nay = []
+        if nv not in hom_nay:
+            hom_nay.append(nv)
+        dd[ngay] = hom_nay
         return dd
 
-    kv_mutate("diem_danh", mut, [])
+    kv_mutate("diem_danh", mut, {})
     return {"ok": "true", "nv_id": nv}
 
 
@@ -277,7 +292,7 @@ def phieu_start(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     nv = _nv_from_token(authorization)
-    if nv not in set(kv_get("diem_danh", [])):
+    if nv not in set(diem_danh_hom_nay()):
         raise HTTPException(status_code=403, detail="chua_diem_danh")
 
     def next_seq(seq: int) -> int:
@@ -495,7 +510,8 @@ def msg_classify(
     _require_role(authorization)
     r = classify(body.text)
     port = get_port(body.backend)
-    sent = port.send("lan", f"intent={r.intent}")
+    recipient = _nv_from_token(authorization) if authorization else "lan"
+    sent = port.send(recipient, f"intent={r.intent}")
     return {
         "intent": r.intent,
         "tier": r.tier,
@@ -535,7 +551,7 @@ async def tkb_upload(
         if len(raw) > 8_000_000:
             raise HTTPException(status_code=400, detail="file_qua_lon")
         suffix = Path(file.filename).suffix.lower() or ".jpg"
-        if suffix not in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}:
+        if suffix not in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
             raise HTTPException(status_code=400, detail="dinh_dang")
         upload_id = f"up_{uuid.uuid4().hex[:12]}"
         dest = _tkb_upload_dir() / f"{upload_id}{suffix}"

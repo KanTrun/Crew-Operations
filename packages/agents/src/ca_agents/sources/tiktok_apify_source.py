@@ -194,8 +194,7 @@ def _map_item(
         nguon_goc_chi_tiet=f"Cào qua Apify actor {ACTOR_ID} lúc {now_str}.",
         ngu_canh_su_dung=(
             "Video đang được đẩy trên For You / Hashtag TikTok "
-            # Stats raw cho downstream UI xài
-            # (extra attribute, không nằm trong dataclass gốc)  f"với {_format_count(play_count)} lượt xem."
+            f"với {_format_count(play_count)} lượt xem."
         ),
         tam_ly_gioi_tre="Tương tác trực tiếp trên video triệu view.",
         toc_do_tang_truong_24h=max(300.0, 990.0 - (idx * 40)),

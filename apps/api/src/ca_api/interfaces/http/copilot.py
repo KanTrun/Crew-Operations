@@ -229,6 +229,16 @@ class _HandoverCorrections(BaseModel):
     text: str | None = Field(default=None, min_length=3, max_length=2000)
 
 
+class _PageDraftCorrections(BaseModel):
+    """PROPOSE_PAGE_DRAFT — cho sửa nội dung bài đăng trước khi duyệt."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    noi_dung: str | None = Field(default=None, min_length=3, max_length=5000)
+    topic: str | None = Field(default=None, max_length=200)
+    tone: str | None = Field(default=None, max_length=50)
+
+
 _CORRECTION_MODELS: dict[str, type[BaseModel]] = {
     "SEND_MAIL": _MailCorrections,
     "PROPOSE_HANGING_TASK": _HangingTaskCorrections,
@@ -238,6 +248,7 @@ _CORRECTION_MODELS: dict[str, type[BaseModel]] = {
     "PROPOSE_ORDER_TRANSITION": _OrderTransitionCorrections,
     "PROPOSE_PIN": _PinCorrections,
     "PROPOSE_PAGE_SYNC": _NoCorrections,
+    "PROPOSE_PAGE_DRAFT": _PageDraftCorrections,
     # PR10 còn lại (R2_CONFIRM)
     "PROPOSE_TKB_CONFIRM": _TkbConfirmCorrections,
     "PROPOSE_SWAP_CONSENT": _SwapConsentCorrections,
@@ -625,6 +636,7 @@ def copilot_execute_action(
         "PROPOSE_HANGING_TASK", "PROPOSE_TASK_COMPLETE", "PROPOSE_CONSUMPTION_RECORD",
         "PROPOSE_MENU_UPDATE", "PROPOSE_ORDER_TRANSITION", "PROPOSE_PIN",
         "PROPOSE_TKB_CONFIRM", "PROPOSE_SWAP_CONSENT", "PROPOSE_HANDOVER",
+        "PROPOSE_PAGE_DRAFT",
     } and body.decision == "approve":
         if not copilot_execution_rearm_internal(
             user["store_id"], body.action_id, body.idempotency_key, request_hash
@@ -1108,6 +1120,40 @@ def copilot_execute_action(
 
         kv_mutate("page_quan", mut_page, {})
         diff["so_hoi_thoai"] = len(threads)
+    elif intent == "PROPOSE_PAGE_DRAFT":
+        noi_dung = str(diff.get("noi_dung") or "")
+        topic = str(diff.get("topic") or "")
+        tone = str(diff.get("tone") or "than thien")
+        from ca_api.interfaces.http.channels import _now, _page_mode
+        draft_item: dict[str, Any] = {
+            "id": f"pd_{uuid.uuid4().hex[:8]}",
+            "noi_dung": noi_dung,
+            "trang_thai": "da_dang" if _page_mode() == "live" else "da_dang_mock",
+            "by": f"AI Copilot ({user['role']})",
+            "nguoi_tao": f"{user['user_id']} ({user['role']})",
+            "at": _now(),
+            "ngay_tao": _now(),
+            "topic": topic,
+            "tone": tone,
+        }
+        graph_post_id: str | None = None
+        if _page_mode() == "live":
+            from ca_agents.facebook_page import publish_page_post
+            try:
+                pub = publish_page_post(noi_dung)
+                graph_post_id = str(pub.get("id") or "") or None
+                draft_item["graph_post_id"] = graph_post_id
+            except Exception as exc:
+                raise RuntimeError(f"facebook_publish_failed:{str(exc)[:120]}") from exc
+
+        def mut_page(doc: dict[str, Any]) -> dict[str, Any]:
+            doc.setdefault("drafts", []).insert(0, draft_item)
+            return doc
+
+        kv_mutate("page_quan", mut_page, {})
+        diff["draft_id"] = draft_item["id"]
+        diff["graph_post_id"] = graph_post_id
+        diff["trang_thai"] = draft_item["trang_thai"]
     elif intent == "SEND_MAIL":
         to_emails = diff.get("to_emails") or []
         subject = diff.get("subject") or ""
@@ -1143,6 +1189,8 @@ def copilot_execute_action(
         "PROPOSE_HANDOVER": "/handover",
         "PROPOSE_TIME_OFF": "/inbox",
         "PROPOSE_HANGING_TASK": "/treo",
+        "PROPOSE_PAGE_SYNC": "/page-quan",
+        "PROPOSE_PAGE_DRAFT": "/page-quan",
     }
     outcome = {
         "ok": True,

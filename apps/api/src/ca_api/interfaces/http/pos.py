@@ -40,6 +40,7 @@ from ca_api.persist import (
     menu_upsert,
     set_role,
     tieu_thu_append,
+    user_deactivate,
 )
 from ca_api.persist import (
     session as auth_session,
@@ -98,6 +99,22 @@ def _menu_image_dir() -> Path:
     base = db_path().parent / "menu_images"
     base.mkdir(parents=True, exist_ok=True)
     return base
+
+
+def _detect_image_suffix(raw: bytes) -> str | None:
+    """Nhận diện định dạng ảnh từ magic bytes — không tin đuôi file client gửi.
+
+    Trả đuôi file (`.jpg`/`.png`/`.gif`/`.webp`) hoặc None nếu không phải ảnh.
+    """
+    if raw[:3] == b"\xff\xd8\xff":
+        return ".jpg"
+    if raw[:8] == b"\x89PNG\r\n\x1a\n":
+        return ".png"
+    if raw[:6] in (b"GIF87a", b"GIF89a"):
+        return ".gif"
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return ".webp"
+    return None
 
 
 def _menu_image_path(mon_id: str) -> Path | None:
@@ -260,6 +277,26 @@ def nguoi_ha_vai(
     return {**out, "nguon": "quan"}
 
 
+@router.post("/api/v1/nguoi/{username}/deactivate")
+def nguoi_deactivate(
+    username: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Offboarding: vô hiệu hóa tài khoản — chỉ chủ quán, không tự sa thải chính mình."""
+    role = _require_chu_quan(authorization)
+    s = _session(authorization)
+    if s["username"].strip().lower() == username.strip().lower():
+        raise HTTPException(status_code=409, detail="khong_the_vo_hieu_hoa_chinh_minh")
+    users = {str(u.get("username") or "").strip().lower(): u for u in list_users()}
+    target = users.get(username.strip().lower())
+    if not target:
+        raise HTTPException(status_code=404, detail="khong_tim_thay_nguoi")
+    if not user_deactivate(str(target.get("nv_id") or "")):
+        raise HTTPException(status_code=409, detail="vo_hieu_hoa_that_bai")
+    _audit(role, "user_deactivate", {"username": target.get("username"), "nv_id": target.get("nv_id")})
+    return {"ok": True, "username": target.get("username"), "status": "inactive", "nguon": "quan"}
+
+
 @router.get("/api/v1/menu/{mon_id}/anh")
 def menu_anh_get(mon_id: str) -> FileResponse:
     """Ảnh món — public read để <img> không cần Bearer."""
@@ -284,9 +321,9 @@ async def menu_anh_upload(
     raw = await file.read()
     if len(raw) > 4_000_000:
         raise HTTPException(status_code=413, detail="anh_qua_lon")
-    suffix = Path(file.filename or "img.jpg").suffix.lower()
-    if suffix not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
-        suffix = ".jpg"
+    suffix = _detect_image_suffix(raw)
+    if suffix is None:
+        raise HTTPException(status_code=415, detail="khong_phai_anh_hop_le")
     dest = _menu_image_dir() / f"{mid}{suffix}"
     for old in _menu_image_dir().glob(f"{mid}.*"):
         if old != dest:

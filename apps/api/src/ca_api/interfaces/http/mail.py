@@ -34,7 +34,7 @@ router = APIRouter(tags=["mail"])
 
 
 class UpdateEmailBody(BaseModel):
-    email: str = Field(min_length=3, max_length=120)
+    email: str = Field(min_length=3, max_length=120, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class SendMailBody(BaseModel):

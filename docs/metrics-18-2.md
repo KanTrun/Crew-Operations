@@ -2,7 +2,7 @@
 
 | Date | Correct | Total | Accuracy | Blur items |
 |------|---------|-------|----------|------------|
-| 2026-09-03 | 51 | 53 | 96.23% | 2 |
+| 2026-09-12 | 51 | 53 | 96.23% | 2 |
 
 - % đẩy lên người (escalate): 3.8% (2/53)
 - Hard/blur subset accuracy: 33.33% (1/3)
@@ -18,7 +18,7 @@
 
 | Date | Correct | Total | Accuracy |
 |------|---------|-------|----------|
-| 2026-09-03 | 197 | 200 | 98.50% |
+| 2026-09-12 | 197 | 200 | 98.50% |
 
 Hard/medium subset: 74/77 = 96.10%
 
@@ -32,3 +32,23 @@ Golden gồm ~40% hard/medium (`hard_cases.jsonl`). Classifier keyword tier-1; u
 | cap_nhat_tkb | 0 | 0 | 0 | 33 | 0 | 1 |
 | xin_nghi | 0 | 0 | 0 | 0 | 28 | 1 |
 | khac | 0 | 0 | 0 | 0 | 0 | 41 |
+
+## Override demo tuần 1 (nhóm A)
+
+| Tuần | Quyết định | Bị sửa | Không cần sửa | Nguồn |
+|------|------------|--------|---------------|-------|
+| W01 | 49 | 30 | 38.8% | `sample.json` `fixture` |
+
+Đường cong W1→W8: **ngoài phạm vi bài thi** (nhóm B).
+
+
+## VF escalate (fixture demo)
+
+| Cổng | Lần đẩy lên người (fixture) |
+|------|---------------------------|
+| VF-SCHEMA | 0 |
+| VF-TRACE | 1 |
+| VF-CONF | 2 |
+| **Tổng** | **3** |
+
+Replay fixture — không traffic quán thật.

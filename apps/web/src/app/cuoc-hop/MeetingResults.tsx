@@ -25,6 +25,7 @@ type ActionItem = {
   noi_dung_chi_tiet?: string;
   tinh_chat?: "bat_buoc" | "tuy_chon" | "khuyen_khich";
   ten_nguoi_giao?: string;
+  nhan_vien_id?: string | null;
   ten_nguoi_nhan: string;
   pham_vi?: "ca_nhan" | "nhom";
   thoi_gian_bat_dau?: string;
@@ -32,6 +33,16 @@ type ActionItem = {
   muc_do_uu_tien?: "cao" | "trung_binh" | "thap";
   do_tin_cay: number;
   da_chon?: boolean;
+  loai_cong_viec?: "1_ca" | "nhieu_ca" | "gop_y";
+  ca_thuc_hien?: string;
+  ca_du_kien?: string[];
+  can_lam_ro?: boolean;
+  van_de_ngu_canh?: string;
+  cau_hoi_lam_ro?: string;
+  goi_y_xu_ly?: string[];
+  stt_near_miss?: boolean;
+  khong_co_can_cu?: boolean;
+  nguon_cau_noi?: string;
 };
 
 type CuocHop = {
@@ -40,6 +51,9 @@ type CuocHop = {
   nguon_am_thanh?: string;
   transcript_thoai?: { nguoi_noi: string; noi_dung: string }[];
   tom_tat: string;
+  phien_ban?: number;
+  last_modified_at?: string;
+  ngay_ghi_am?: string;
   van_de_phat_sinh?: { van_de: string; trang_thai: string; ghi_chu?: string }[];
   quyet_dinh?: string[];
   de_xuat_sop?: {
@@ -103,6 +117,12 @@ type CuocHop = {
     ly_do?: string;
     trang_thai?: string;
   }[];
+  de_xuat_sop?: {
+    quy_trinh_lien_quan: string;
+    buoc_so?: number | null;
+    noi_dung_thay_doi: string;
+    ly_do?: string;
+  }[];
   do_tin_cay_tong_the?: number;
   khong_lien_quan?: boolean;
   trang_thai?: string;
@@ -147,6 +167,11 @@ export function MeetingResults({
   onAddActionItem,
   onRemoveActionItem,
   onUpdateProposalStatus,
+  onUpdateWorkType,
+  onUpdateCaThucHien,
+  onConvertToFeedback,
+  onClarifyActions,
+  onResolveClarification,
   onApply,
 }: {
   meeting: CuocHop;
@@ -162,6 +187,11 @@ export function MeetingResults({
   onAddActionItem?: () => void;
   onRemoveActionItem?: (id: string) => void;
   onUpdateProposalStatus?: (id: string, status: "da_duyet" | "cho_duyet" | "tu_choi") => void;
+  onUpdateWorkType?: (id: string, type: "1_ca" | "nhieu_ca" | "gop_y") => void;
+  onUpdateCaThucHien?: (id: string, ca: string) => void;
+  onConvertToFeedback?: (id: string) => void;
+  onClarifyActions?: () => void;
+  onResolveClarification?: (id: string, solution: string) => void;
   onApply: () => void;
 }) {
   const [tab, setTab] = useState<ResultTab>("overview");
@@ -173,7 +203,8 @@ export function MeetingResults({
       bantin:
         (meeting.ban_tin_ca ? 1 : 0) +
         (meeting.de_xuat_phe_duyet?.length ?? 0) +
-        (meeting.de_xuat_sop?.length ?? 0),
+        (meeting.de_xuat_sop?.length ?? 0) +
+        (meeting.dieu_chinh_lich?.length ?? 0),
       viec: meeting.action_items.length,
       coaching: (meeting.gop_y_luu_y?.length ?? 0) + (meeting.huan_luyen_quan_ly ? 1 : 0),
     }),
@@ -428,9 +459,7 @@ export function MeetingResults({
             </MeetingSection>
           ) : null}
 
-          {(!meeting.de_xuat_phe_duyet || meeting.de_xuat_phe_duyet.length === 0) &&
-          meeting.de_xuat_sop &&
-          meeting.de_xuat_sop.length > 0 ? (
+          {meeting.de_xuat_sop && meeting.de_xuat_sop.length > 0 ? (
             <MeetingSection title="Đề xuất sửa cẩm nang" count={meeting.de_xuat_sop.length}>
               <MeetingList>
                 {meeting.de_xuat_sop.map((sop, idx) => (
@@ -448,6 +477,33 @@ export function MeetingResults({
               </MeetingList>
             </MeetingSection>
           ) : null}
+
+          {meeting.dieu_chinh_lich && meeting.dieu_chinh_lich.length > 0 ? (
+            <MeetingSection title="Điều chỉnh lịch ca" count={meeting.dieu_chinh_lich.length}>
+              <MeetingList>
+                {meeting.dieu_chinh_lich.map((dcl) => (
+                  <MeetingListItem
+                    key={dcl.id}
+                    title={`${dcl.loai === "xin_nghi" ? "Xin nghỉ ca" : dcl.loai === "ghim_ca" ? "Ghim ca trực" : "Đổi ca"}: ${dcl.ten_nhan_vien || "Nhân viên"} (${dcl.thu || "trong tuần"})`}
+                    badge={
+                      <div className="flex items-center gap-1.5">
+                        <StatusChip tone={dcl.trang_thai === "da_duyet" ? "ok" : "warn"}>
+                          {dcl.trang_thai === "da_duyet" ? "Đã duyệt" : "Chờ duyệt"}
+                        </StatusChip>
+                        <StatusChip>{dcl.ca_id || dcl.khung || "Tất cả khung"}</StatusChip>
+                      </div>
+                    }
+                    meta={
+                      <>
+                        <span>{dcl.ly_do || "Điều chỉnh theo thỏa thuận cuộc họp"}</span>
+                        {dcl.tuan_iso ? <span className="block mt-1 text-xs text-[var(--nq-ink-muted)]">Áp dụng tuần: {dcl.tuan_iso}</span> : null}
+                      </>
+                    }
+                  />
+                ))}
+              </MeetingList>
+            </MeetingSection>
+          ) : null}
         </div>
       ) : null}
 
@@ -457,31 +513,56 @@ export function MeetingResults({
           hint={`Độ tin cậy AI: ${Math.round((meeting.do_tin_cay_tong_the || 0.9) * 100)}%`}
           count={meeting.action_items.length}
         >
-          {manager && onAddActionItem ? (
-            <div className="flex justify-end mb-3">
-              <Btn variant="ghost" onClick={onAddActionItem}>
-                + Thêm việc mới
-              </Btn>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div className="text-xs">
+              {meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length > 0 ? (
+                <span className="text-amber-400 font-medium flex items-center gap-1.5">
+                  <span>⚠️</span> Có{" "}
+                  <strong>{meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length}</strong> việc cần
+                  làm rõ ngữ cảnh hoặc lịch ca trước khi giao
+                </span>
+              ) : (
+                <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                  <span>✓</span> Toàn bộ công việc đã đầy đủ thông tin nhân sự và ca làm việc
+                </span>
+              )}
             </div>
-          ) : null}
+            <div className="flex items-center gap-2 flex-wrap">
+              {onClarifyActions && (
+                <Btn variant="ghost" onClick={onClarifyActions} disabled={busy}>
+                  🤖 AI Rà soát ngữ cảnh & Lịch ca
+                </Btn>
+              )}
+              {manager && onAddActionItem ? (
+                <Btn variant="ghost" onClick={onAddActionItem}>
+                  + Thêm việc mới
+                </Btn>
+              ) : null}
+            </div>
+          </div>
 
           {meeting.action_items.length === 0 ? (
             <Empty title="Không có việc giao">Không phát hiện công việc bắt buộc từ cuộc họp.</Empty>
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {meeting.action_items.map((it) => (
-                <div key={it.id} className={`nq-meeting-action ${it.da_chon ? "" : "nq-meeting-action--off"}`}>
+                <div
+                  key={it.id}
+                  className={`nq-meeting-action ${it.da_chon ? "" : "nq-meeting-action--off"} ${
+                    it.can_lam_ro && it.da_chon ? "border-amber-600/60 bg-amber-950/10" : ""
+                  }`}
+                >
                   <div className="flex gap-3 items-start">
                     <input
                       type="checkbox"
                       checked={it.da_chon}
                       onChange={() => onToggleAction(it.id)}
-                      className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-[var(--nq-copper)]"
+                      className="mt-1.5 h-4 w-4 shrink-0 cursor-pointer accent-[var(--nq-copper)]"
                       aria-label={`Chọn việc ${it.tieu_de}`}
                     />
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div className="nq-meeting-list__row flex items-center justify-between gap-2">
-                        <div className="flex-1">
+                    <div className="min-w-0 flex-1 space-y-2.5">
+                      <div className="nq-meeting-list__row flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex-1 min-w-[200px]">
                           {onUpdateActionTitle ? (
                             <input
                               type="text"
@@ -494,12 +575,51 @@ export function MeetingResults({
                             <p className="nq-meeting-list__title">{it.tieu_de}</p>
                           )}
                         </div>
+
                         <div className="flex items-center gap-1.5 flex-wrap">
+                          {/* Work Type Switcher */}
+                          <div className="flex items-center gap-0.5 bg-neutral-900 p-0.5 rounded border border-neutral-800 text-[11px] font-medium">
+                            <button
+                              type="button"
+                              onClick={() => onUpdateWorkType?.(it.id, "1_ca")}
+                              className={`px-2 py-0.5 rounded transition-colors ${
+                                !it.loai_cong_viec || it.loai_cong_viec === "1_ca"
+                                  ? "bg-amber-600/30 text-amber-300 font-semibold border border-amber-500/40"
+                                  : "text-neutral-400 hover:text-neutral-200"
+                              }`}
+                              title="Làm ngay trong 1 ca (ca hiện tại hoặc ca kế tiếp)"
+                            >
+                              ⚡ 1 ca
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateWorkType?.(it.id, "nhieu_ca")}
+                              className={`px-2 py-0.5 rounded transition-colors ${
+                                it.loai_cong_viec === "nhieu_ca"
+                                  ? "bg-blue-600/30 text-blue-300 font-semibold border border-blue-500/40"
+                                  : "text-neutral-400 hover:text-neutral-200"
+                              }`}
+                              title="Kéo dài qua nhiều ca / theo dõi định kỳ"
+                            >
+                              🔄 Nhiều ca
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateWorkType?.(it.id, "gop_y")}
+                              className={`px-2 py-0.5 rounded transition-colors ${
+                                it.loai_cong_viec === "gop_y"
+                                  ? "bg-purple-600/30 text-purple-300 font-semibold border border-purple-500/40"
+                                  : "text-neutral-400 hover:text-neutral-200"
+                              }`}
+                              title="Chỉ là góp ý / nhắc nhở làm việc"
+                            >
+                              💬 Góp ý
+                            </button>
+                          </div>
+
                           <StatusChip tone={it.tinh_chat === "bat_buoc" || !it.tinh_chat ? "danger" : "default"}>
                             {it.tinh_chat === "bat_buoc" || !it.tinh_chat ? "Bắt buộc" : "Khuyến khích"}
                           </StatusChip>
-                          <StatusChip>{it.pham_vi === "ca_nhan" ? "Cá nhân" : "Nhóm ca"}</StatusChip>
-                          {it.muc_do_uu_tien === "cao" ? <StatusChip tone="warn">Ưu tiên cao</StatusChip> : null}
                           <StatusChip tone={it.do_tin_cay >= 0.9 ? "ok" : it.do_tin_cay >= 0.75 ? "warn" : "danger"}>
                             {Math.round(it.do_tin_cay * 100)}% tin cậy
                           </StatusChip>
@@ -517,41 +637,163 @@ export function MeetingResults({
                       </div>
 
                       {it.noi_dung_chi_tiet ? (
-                        <div className="nq-meeting-action__detail">
+                        <div className="nq-meeting-action__detail text-xs">
                           <strong>Chi tiết:</strong> {it.noi_dung_chi_tiet}
                         </div>
                       ) : null}
 
-                      <div className="nq-meeting-action__fields">
-                        {it.ten_nguoi_giao ? (
-                          <span>
-                            Giao từ: <strong>{it.ten_nguoi_giao}</strong>
+                      {/* Notice if marked as Gop Y */}
+                      {it.loai_cong_viec === "gop_y" && (
+                        <div className="p-2 rounded bg-purple-950/40 border border-purple-800/60 flex items-center justify-between gap-2 flex-wrap text-xs">
+                          <span className="text-purple-300">
+                            💡 Mục này mang tính chất góp ý/nhắc nhở, sẽ được lưu vào biên bản thay vì tạo việc treo.
                           </span>
-                        ) : null}
-                        <label className="flex items-center gap-1.5">
+                          {onConvertToFeedback && (
+                            <button
+                              type="button"
+                              className="px-2 py-0.5 rounded bg-purple-800 hover:bg-purple-700 text-white font-medium transition-colors"
+                              onClick={() => onConvertToFeedback(it.id)}
+                            >
+                              Chuyển ngay sang tab Góp ý ➔
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Assignment and Schedule Details */}
+                      <div className="nq-meeting-action__fields flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
+                        <label className="flex items-center gap-1.5 text-xs">
                           Giao cho:
                           <input
                             type="text"
-                            className={`${inputClassName} nq-input--compact w-32`}
+                            className={`${inputClassName} nq-input--compact w-28`}
                             value={it.ten_nguoi_nhan}
                             onChange={(e) => onUpdateAssignee(it.id, e.target.value)}
                           />
                         </label>
-                        {it.thoi_gian_bat_dau ? (
-                          <span>
-                            Bắt đầu: <strong>{it.thoi_gian_bat_dau}</strong>
+
+                        {/* Ca thực hiện */}
+                        <div className="flex items-center gap-1.5 text-xs flex-wrap">
+                          <span className="text-neutral-400">Ca thực hiện:</span>
+                          {it.ca_du_kien && it.ca_du_kien.length > 0 ? (
+                            <select
+                              className="bg-neutral-900 border border-neutral-700 text-amber-300 text-xs rounded px-2 py-1 font-mono focus:border-amber-500 outline-none max-w-[210px]"
+                              value={it.ca_thuc_hien || it.ca_du_kien[0]}
+                              onChange={(e) => onUpdateCaThucHien?.(it.id, e.target.value)}
+                            >
+                              {it.ca_du_kien.map((c, idx) => (
+                                <option key={idx} value={c}>
+                                  {c}
+                                </option>
+                              ))}
+                              <option value="Xuyên suốt các ca tuần này">Xuyên suốt các ca tuần này</option>
+                              <option value="Tự chọn thời điểm">Tự chọn thời điểm</option>
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              placeholder="Nhập ca thực hiện"
+                              className={`${inputClassName} nq-input--compact w-32`}
+                              value={it.ca_thuc_hien || ""}
+                              onChange={(e) => onUpdateCaThucHien?.(it.id, e.target.value)}
+                            />
+                          )}
+                        </div>
+
+                        {/* Schedule Badge */}
+                        {it.ca_du_kien && it.ca_du_kien.length > 0 ? (
+                          <span
+                            className="text-[11px] px-2 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-neutral-800 font-mono"
+                            title={it.ca_du_kien.join(" | ")}
+                          >
+                            📅 Có {it.ca_du_kien.length} ca trực tuần này
+                          </span>
+                        ) : it.ten_nguoi_nhan &&
+                          it.ten_nguoi_nhan !== "Chưa rõ" &&
+                          it.ten_nguoi_nhan !== "Cả ca" ? (
+                          <span className="text-[11px] px-2 py-0.5 rounded bg-red-950/60 text-red-400 border border-red-800/50 font-mono">
+                            ⚠️ Không có ca trực tuần này
                           </span>
                         ) : null}
-                        <label className="flex items-center gap-1.5">
+
+                        <label className="flex items-center gap-1.5 text-xs">
                           Hạn chót:
                           <input
                             type="text"
-                            className={`${inputClassName} nq-input--compact w-28`}
+                            className={`${inputClassName} nq-input--compact w-24`}
                             value={it.han_chot || ""}
                             onChange={(e) => onUpdateDue(it.id, e.target.value)}
+                            placeholder="vd: 16:00"
                           />
                         </label>
                       </div>
+
+                      {/* AI Clarifier Agent Box */}
+                      {it.can_lam_ro && it.cau_hoi_lam_ro && (
+                        <div className="p-3 rounded-md bg-amber-950/30 border border-amber-700/50 space-y-2 mt-2">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm">🤖</span>
+                              <span className="text-xs font-bold font-mono uppercase tracking-wider text-amber-400">
+                                Trợ lý AI làm rõ phân công
+                              </span>
+                            </div>
+                            {it.van_de_ngu_canh && (
+                              <span className="text-[11px] px-2 py-0.5 rounded bg-neutral-900/90 text-amber-300 border border-amber-800/60">
+                                {it.van_de_ngu_canh}
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-neutral-200 m-0 leading-relaxed font-medium">
+                            {it.cau_hoi_lam_ro}
+                          </p>
+
+                          {it.goi_y_xu_ly && it.goi_y_xu_ly.length > 0 && (
+                            <div className="pt-1 flex flex-wrap items-center gap-1.5">
+                              <span className="text-[11px] text-neutral-400 font-mono">Gợi ý 1-chạm:</span>
+                              {it.goi_y_xu_ly.map((sug, sIdx) => (
+                                <button
+                                  key={sIdx}
+                                  type="button"
+                                  onClick={() => onResolveClarification?.(it.id, sug)}
+                                  className="px-2.5 py-0.5 text-xs rounded-full bg-amber-900/40 hover:bg-amber-800/60 text-amber-200 border border-amber-600/40 transition-colors cursor-pointer"
+                                >
+                                  ✓ {sug}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Custom Clarification Response Input */}
+                          <div className="flex items-center gap-1.5 pt-1">
+                            <input
+                              type="text"
+                              placeholder="Hoặc tự nhập hướng giải quyết (vd: Giao Lan làm trước 15:30)..."
+                              className="bg-neutral-900 border border-neutral-700/80 text-xs text-white rounded px-2.5 py-1 focus:border-amber-500 outline-none flex-1 font-sans"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                                  onResolveClarification?.(it.id, e.currentTarget.value.trim());
+                                  e.currentTarget.value = "";
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="px-2.5 py-1 text-xs rounded bg-amber-800/80 hover:bg-amber-700 text-amber-100 font-medium border border-amber-600/40 transition-colors shrink-0"
+                              onClick={(e) => {
+                                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                if (input && input.value.trim()) {
+                                  onResolveClarification?.(it.id, input.value.trim());
+                                  input.value = "";
+                                }
+                              }}
+                            >
+                              Gửi AI
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -669,9 +911,16 @@ export function MeetingResults({
               {meeting.duyet_luc ? ` lúc ${new Date(meeting.duyet_luc).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}.
             </p>
           ) : (
-            <p className="nq-meeting-footer__note m-0">
-              Sau khi duyệt, việc được chọn sẽ đẩy vào OpsEngine (việc treo ca); đề xuất cẩm nang ghi vào Playbook; điều chỉnh lịch ca được nạp thẳng vào Solver.
-            </p>
+            <div className="space-y-1">
+              <p className="nq-meeting-footer__note m-0">
+                Sau khi duyệt, việc được chọn sẽ đẩy vào OpsEngine (việc treo ca); đề xuất cẩm nang ghi vào Playbook; điều chỉnh lịch ca được nạp thẳng vào Solver.
+              </p>
+              {meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length > 0 && (
+                <p className="text-xs text-amber-400 font-medium m-0">
+                  ⚠️ Còn {meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length} việc chưa hoàn tất làm rõ ngữ cảnh. Bạn có thể chọn nhanh gợi ý của AI ở trên hoặc duyệt nếu đã nắm rõ.
+                </p>
+              )}
+            </div>
           )}
         </div>
         <div className="flex items-center gap-2">

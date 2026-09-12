@@ -94,11 +94,20 @@ def runtime_operations(
 ) -> None:
     assignments = {row["shift_id"]: [db_staff_id(row["staff_id"])] for row in base["assignments"]}
     kv_set("phan_cong", assignments)
-    current_attendance = list(kv_get("diem_danh", []))
+    # Khoá `diem_danh` giờ theo ngày {ngay: [nv_id, ...]} — seed điểm danh
+    # cho hôm nay để demo mở được phiếu ngay.
+    from datetime import datetime, timedelta, timezone as _tz
+
+    hom_nay = datetime.now(_tz(timedelta(hours=7))).date().isoformat()
+    current_attendance = kv_get("diem_danh", {})
+    if not isinstance(current_attendance, dict):
+        current_attendance = {}
+    hom_nay_list = list(current_attendance.get(hom_nay, []))
     for staff_id in ("nv_01", "nv_02", "nv_03", *NEW_USERS):
         resolved = db_staff_id(staff_id)
-        if resolved not in current_attendance:
-            current_attendance.append(resolved)
+        if resolved not in hom_nay_list:
+            hom_nay_list.append(resolved)
+    current_attendance[hom_nay] = hom_nay_list
     kv_set("diem_danh", current_attendance)
     kv_set(
         "treo",

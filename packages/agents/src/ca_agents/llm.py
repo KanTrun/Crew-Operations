@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import os
 import urllib.error
-import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -561,10 +560,9 @@ def _gemini(
 ) -> str:
     import base64
 
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        f"?key={urllib.parse.quote(token, safe='')}"
-    )
+    # API key qua header, không qua URL query — key trong URL bị log ở
+    # proxy/access-log và rò ra ngoài. Gemini hỗ trợ x-goog-api-key.
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     parts: list[dict[str, Any]] = []
     if image_bytes:
         parts.append(
@@ -583,7 +581,7 @@ def _gemini(
     }
     if json_mode:
         payload["generationConfig"]["responseMimeType"] = "application/json"
-    data = _http_json(url, payload, headers={}, timeout_s=timeout_s)
+    data = _http_json(url, payload, headers={"x-goog-api-key": token}, timeout_s=timeout_s)
     try:
         parts_out = data["candidates"][0]["content"]["parts"]
         text = "".join(str(p.get("text") or "") for p in parts_out)

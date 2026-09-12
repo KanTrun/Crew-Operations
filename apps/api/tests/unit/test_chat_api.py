@@ -356,3 +356,33 @@ def test_redis_backend_retries_without_silent_fallback(monkeypatch: pytest.Monke
     final_attempts = asyncio.run(scenario())
     assert final_attempts >= 2, "Redis backend phải retry re-subscribe liên tục"
     assert backend._redis is None  # aclose dọn sạch, không giữ kết nối chết
+
+
+def test_chat_messages_bola_protection(
+    client: TestClient, auth_lan: dict[str, str], auth_minh: dict[str, str]
+) -> None:
+    headers_lan = {"Authorization": auth_lan["Authorization"]}
+    headers_minh = {"Authorization": auth_minh["Authorization"]}
+
+    res = client.post(
+        "/api/v1/chat/conversations",
+        json={"conv_type": "direct", "target_nv_id": "nv_03"},
+        headers=headers_lan,
+    )
+    assert res.status_code == 200
+    conv_id = res.json()["id"]
+
+    res_outsider = client.post(
+        "/api/v1/auth/register",
+        json={"username": "outsider_chat", "password": "password123", "display_name": "Outsider"},
+    )
+    assert res_outsider.status_code in {200, 201}
+    headers_outsider = {"Authorization": f"Bearer {res_outsider.json()['token']}"}
+
+    res_bola = client.get(f"/api/v1/chat/conversations/{conv_id}/messages", headers=headers_outsider)
+    assert res_bola.status_code == 403
+    assert res_bola.json()["detail"] == "khong_co_quyen"
+
+    assert client.get(f"/api/v1/chat/conversations/{conv_id}/messages", headers=headers_lan).status_code == 200
+    assert client.get(f"/api/v1/chat/conversations/{conv_id}/messages", headers=headers_minh).status_code == 200
+

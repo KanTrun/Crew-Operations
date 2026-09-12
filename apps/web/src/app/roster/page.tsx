@@ -31,6 +31,20 @@ type NhanVien = {
   ten: string;
 };
 
+type UnconfirmedStaff = {
+  id: string;
+  ten: string;
+  vai?: string;
+  so_ca_du_kien: number;
+  ca_ids?: string[];
+};
+
+type OnCallStaff = {
+  id: string;
+  ten: string;
+  vai?: string;
+};
+
 type LichData = {
   nguon?: string;
   nguon_lich?: string;
@@ -43,6 +57,9 @@ type LichData = {
   phan_cong?: Record<string, string[]>;
   khung_gio?: KhungGio;
   solver?: { ok?: boolean | null; status?: string | null; elapsed_s?: number | null };
+  chua_xac_nhan?: UnconfirmedStaff[];
+  du_bi?: OnCallStaff[];
+  nv_status_map?: Record<string, string>;
 };
 
 const KHUNG_TEN: Record<string, string> = {
@@ -155,6 +172,7 @@ export default function RosterPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pinBusy, setPinBusy] = useState(false);
+  const [nvStatusBusy, setNvStatusBusy] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleMsg, setLifecycleMsg] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -255,6 +273,50 @@ export default function RosterPage() {
       setError("Không cập nhật được ghim.");
     } finally {
       setPinBusy(false);
+    }
+  }
+
+  async function handleNvStatus(nvId: string, action: "xac_nhan" | "du_bi" | "bo_ca" | "dat_lai") {
+    setNvStatusBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API}/api/v1/lich-tuan/nv-status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader() },
+        body: JSON.stringify({ tuan_iso: currentDisplayWeek, nv_id: nvId, hanh_dong: action }),
+      });
+      if (!res.ok) throw new Error("update_failed");
+      const actionLabels = {
+        xac_nhan: "Đã xác nhận giữ ca",
+        du_bi: "Đã chuyển sang dự bị On-call",
+        bo_ca: "Đã gỡ ca tuần này",
+        dat_lai: "Đã hoàn tác trạng thái",
+      };
+      setLifecycleMsg(`${actionLabels[action]} cho nhân sự ${nvName(nvId)}.`);
+      await loadLich(baseWeek, soTuan);
+    } catch {
+      setError("Không cập nhật được trạng thái nhân sự.");
+    } finally {
+      setNvStatusBusy(false);
+    }
+  }
+
+  async function handleSelfConfirm() {
+    setNvStatusBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API}/api/v1/lich-tuan/xac-nhan-lich`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader() },
+        body: JSON.stringify({ tuan_iso: currentDisplayWeek }),
+      });
+      if (!res.ok) throw new Error("confirm_failed");
+      setLifecycleMsg("Bạn đã xác nhận lịch làm việc tuần này thành công!");
+      await loadLich(baseWeek, soTuan);
+    } catch {
+      setError("Không thể xác nhận lịch làm việc.");
+    } finally {
+      setNvStatusBusy(false);
     }
   }
 
@@ -553,6 +615,108 @@ export default function RosterPage() {
         </div>
       )}
 
+      {/* Cảnh báo nhân sự chưa chốt lịch (Dành cho Quản lý) */}
+      {canWrite && (data?.chua_xac_nhan?.length ?? 0) > 0 && (
+        <div className="mb-6 p-4 rounded-xl bg-amber-950/30 border border-amber-500/50 shadow-md space-y-3 ops-animate-in">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
+              <span className="text-base">⚠️</span>
+              <span>
+                Phát hiện {data?.chua_xac_nhan?.length} nhân sự chưa xác nhận lịch tuần {currentDisplayWeek}
+              </span>
+            </div>
+            <span className="text-xs text-neutral-400 italic">
+              Đã xếp dự thảo theo ca mẫu/lịch sử — Quản lý vui lòng xác nhận trước khi duyệt & công bố
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {data?.chua_xac_nhan?.map((nv) => (
+              <div
+                key={nv.id}
+                className="p-3 rounded-lg bg-neutral-900/90 border border-amber-800/40 flex flex-col justify-between gap-2.5 shadow-sm"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-sm text-neutral-100">{nv.ten}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700">
+                      {nv.so_ca_du_kien} ca dự kiến
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-neutral-400 mt-1">
+                    Chưa đăng ký ca hoặc chưa gửi lịch bận tuần này.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5 pt-2 border-t border-neutral-800">
+                  <button
+                    type="button"
+                    disabled={nvStatusBusy}
+                    onClick={() => void handleNvStatus(nv.id, "xac_nhan")}
+                    className="flex-1 py-1 px-2 rounded bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 text-xs font-bold transition-colors disabled:opacity-50"
+                    title="Xác nhận nhân viên này đồng ý làm các ca đã xếp"
+                  >
+                    ✓ Giữ ca
+                  </button>
+                  <button
+                    type="button"
+                    disabled={nvStatusBusy}
+                    onClick={() => void handleNvStatus(nv.id, "du_bi")}
+                    className="flex-1 py-1 px-2 rounded bg-amber-900/80 hover:bg-amber-800 text-amber-200 text-xs font-bold transition-colors disabled:opacity-50"
+                    title="Tháo khỏi ca cố định, đưa vào danh sách On-Call sẵn sàng thay ca"
+                  >
+                    📞 Dự bị
+                  </button>
+                  <button
+                    type="button"
+                    disabled={nvStatusBusy}
+                    onClick={() => void handleNvStatus(nv.id, "bo_ca")}
+                    className="flex-1 py-1 px-2 rounded bg-neutral-800 hover:bg-rose-950 text-neutral-300 hover:text-rose-300 text-xs font-bold transition-colors disabled:opacity-50"
+                    title="Không xếp ca cho nhân viên này tuần này"
+                  >
+                    ✕ Bỏ ca
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Danh sách nhân sự Dự bị On-Call tuần này */}
+      {canWrite && (data?.du_bi?.length ?? 0) > 0 && (
+        <div className="mb-6 p-3 rounded-lg bg-neutral-900/60 border border-neutral-800 flex items-center justify-between flex-wrap gap-2 ops-animate-in">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm">📞</span>
+            <span className="text-xs font-bold text-neutral-300">
+              Nhân sự Trực dự bị (On-Call) tuần {currentDisplayWeek} ({data?.du_bi?.length}):
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {data?.du_bi?.map((nv) => (
+                <span
+                  key={nv.id}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-neutral-800 border border-neutral-700 text-xs text-amber-200 font-medium"
+                >
+                  {nv.ten}
+                  <button
+                    type="button"
+                    disabled={nvStatusBusy}
+                    onClick={() => void handleNvStatus(nv.id, "dat_lai")}
+                    title="Hoàn tác đưa về chưa xác nhận"
+                    className="text-neutral-400 hover:text-rose-300 ml-0.5 font-bold"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+          <p className="text-[11px] text-neutral-400">
+            Sẵn sàng gọi tăng cường khi có người báo ốm hoặc bận đột xuất.
+          </p>
+        </div>
+      )}
+
       {error ? <Alert kind="err">{error}</Alert> : null}
       {loading ? <Loading skeleton="table" rows={3}>Đang tải lịch tuần…</Loading> : null}
 
@@ -561,6 +725,26 @@ export default function RosterPage() {
       {/* ========================================================================= */}
       {!loading && viewMode === "my_shifts" && (
         <div className="space-y-4">
+          {/* Employee self-confirmation banner */}
+          {data?.nv_status_map?.[targetNvId] === "chua_xac_nhan" && totalMyShifts > 0 && (
+            <div className="p-4 rounded-lg bg-amber-950/30 border border-amber-600/50 flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h4 className="text-sm font-bold text-amber-300">⚠️ Bạn chưa xác nhận lịch đi làm tuần này</h4>
+                <p className="text-xs text-neutral-300 mt-0.5">
+                  Hệ thống đã xếp dự thảo <strong>{totalMyShifts} ca</strong> cho bạn. Bấm xác nhận bên cạnh để Quản lý chốt lịch chính thức.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={nvStatusBusy}
+                onClick={() => void handleSelfConfirm()}
+                className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-neutral-950 text-xs font-bold shadow transition-colors disabled:opacity-50"
+              >
+                {nvStatusBusy ? "Đang lưu…" : "✓ Xác nhận đi làm các ca trên"}
+              </button>
+            </div>
+          )}
+
           {/* Summary Card */}
           <div className="p-4 rounded-lg bg-emerald-950/20 border border-emerald-700/40 flex items-center justify-between flex-wrap gap-3">
             <div>
@@ -691,6 +875,7 @@ export default function RosterPage() {
             nvName={nvName}
             matchCell={matchCell}
             onSelectDay={setSelectedDay}
+            nvStatusMap={data?.nv_status_map}
           />
 
           {filteredActive && shifts.every((s) => !matchCell(phanCong[s.id] ?? [], s)) ? (
@@ -803,6 +988,14 @@ export default function RosterPage() {
                             className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-neutral-900 border border-neutral-700 text-xs text-neutral-100 font-medium"
                           >
                             {nvName(nv_id)}
+                            {data?.nv_status_map?.[nv_id] === "chua_xac_nhan" && (
+                              <span
+                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/60"
+                                title="Nhân viên chưa gửi lịch bận / xác nhận đi làm tuần này"
+                              >
+                                ⚠️ Chưa chốt
+                              </span>
+                            )}
                             {canWrite && trangThai !== "da_dong" ? (
                               <button
                                 type="button"

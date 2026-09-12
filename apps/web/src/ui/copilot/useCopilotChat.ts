@@ -155,8 +155,12 @@ export function useCopilotChat(mode: Mode = "pane") {
       throw new Error(err.detail || "Lỗi tải tệp lên");
     }
     const data = await res.json();
+    const rawUrl = data.url || "";
+    const fullUrl = rawUrl.startsWith("http")
+      ? rawUrl
+      : `${API_BASE}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
     return {
-      url: data.url,
+      url: fullUrl,
       filename: data.filename || file.name,
       mime_type: data.mime_type || file.type,
       size: data.size || file.size,
@@ -194,7 +198,10 @@ export function useCopilotChat(mode: Mode = "pane") {
 
       try {
         const token = getToken();
-        const recent = messagesRef.current.slice(-3).map((m) => m.text);
+        const recent = messagesRef.current
+          .filter((m) => m.sender === "user")
+          .slice(-3)
+          .map((m) => m.text);
         const payload = JSON.stringify({
           message: text,
           channel: mode === "page" ? "web-page" : "web",

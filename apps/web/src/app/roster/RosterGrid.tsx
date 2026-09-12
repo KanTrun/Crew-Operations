@@ -19,6 +19,7 @@ type Props = {
   nvName: (id: string) => string;
   matchCell: (assigned: string[], shift: RosterShift) => boolean;
   onSelectDay: (day: string) => void;
+  nvStatusMap?: Record<string, string>;
 };
 
 export function RosterGrid({
@@ -31,6 +32,7 @@ export function RosterGrid({
   onSelectDay,
   viTriLabel,
   matchCell,
+  nvStatusMap,
 }: Props) {
   const visibleKhungs = filterKhung === "all" ? KHUNGS : KHUNGS.filter((k) => k === filterKhung);
 
@@ -95,6 +97,7 @@ export function RosterGrid({
                   const roles = [...new Set(shifts.map((shift) => viTriLabel(shift.vi_tri)).filter(Boolean))];
                   const roleLabel = roles.length > 0 ? roles.join(" · ") : "Nhiều vị trí";
                   const summary = rosterCellSummary(assigned.length, roleLabel, assigned.length > 0 && assigned.length < 2);
+                  const hasUnconfirmed = assigned.some((id) => nvStatusMap?.[id] === "chua_xac_nhan");
 
                   return (
                     <td
@@ -105,11 +108,18 @@ export function RosterGrid({
                       {shifts.length > 0 ? (
                         <button
                           type="button"
-                          className={`nq-roster-slot-btn nq-roster-slot-btn--${summary.tone}`}
+                          className={`nq-roster-slot-btn nq-roster-slot-btn--${summary.tone} ${hasUnconfirmed ? "ring-1 ring-amber-500/70" : ""}`}
                           onClick={() => onSelectDay(d)}
-                          aria-label={`${dayLabels[DAYS.indexOf(d)]?.title} ${rowLabel}: ${summary.countLabel}, ${roleLabel}`}
+                          aria-label={`${dayLabels[DAYS.indexOf(d)]?.title} ${rowLabel}: ${summary.countLabel}, ${roleLabel}${hasUnconfirmed ? " (Có nhân sự chưa xác nhận lịch)" : ""}`}
                         >
-                          <span className="nq-roster-slot-count">{summary.countLabel}</span>
+                          <span className="nq-roster-slot-count inline-flex items-center justify-center gap-1">
+                            {summary.countLabel}
+                            {hasUnconfirmed && (
+                              <span className="text-amber-400 text-[10px]" title="Có nhân sự chưa xác nhận lịch">
+                                ⚠️
+                              </span>
+                            )}
+                          </span>
                           <span className="nq-roster-slot-role">{summary.roleLabel}</span>
                         </button>
                       ) : (
