@@ -63,6 +63,9 @@ data/full_benchmark_report.json
 !data/out/.gitkeep
 data/uploads/
 
+# Runtime data của apps/api (db, log mail, upload) — sinh ra khi chạy local, không commit
+apps/api/data/
+
 .claude/
 
 
