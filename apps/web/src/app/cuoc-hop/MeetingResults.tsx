@@ -117,12 +117,6 @@ type CuocHop = {
     ly_do?: string;
     trang_thai?: string;
   }[];
-  de_xuat_sop?: {
-    quy_trinh_lien_quan: string;
-    buoc_so?: number | null;
-    noi_dung_thay_doi: string;
-    ly_do?: string;
-  }[];
   do_tin_cay_tong_the?: number;
   khong_lien_quan?: boolean;
   trang_thai?: string;

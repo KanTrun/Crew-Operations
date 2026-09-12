@@ -96,7 +96,8 @@ def runtime_operations(
     kv_set("phan_cong", assignments)
     # Khoá `diem_danh` giờ theo ngày {ngay: [nv_id, ...]} — seed điểm danh
     # cho hôm nay để demo mở được phiếu ngay.
-    from datetime import datetime, timedelta, timezone as _tz
+    from datetime import datetime, timedelta
+    from datetime import timezone as _tz
 
     hom_nay = datetime.now(_tz(timedelta(hours=7))).date().isoformat()
     current_attendance = kv_get("diem_danh", {})
