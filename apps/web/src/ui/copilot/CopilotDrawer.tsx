@@ -5,6 +5,9 @@ import { getToken } from "../../lib/session";
 import { ActionProposalCard, ActionProposalData } from "./ActionProposalCard";
 import { motion, AnimatePresence } from "framer-motion";
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
 interface ChatMessage {
   id: string;
   sender: "user" | "copilot";
@@ -204,7 +207,7 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
 
     try {
       const token = getToken();
-      const res = await fetch("http://localhost:8000/api/v1/copilot/message", {
+      const res = await fetch(`${API_BASE}/api/v1/copilot/message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

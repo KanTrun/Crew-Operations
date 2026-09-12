@@ -735,7 +735,7 @@ def test_copilot_prompt_injection_rejection() -> None:
 
 
 def _login_owner() -> str:
-    res = login("chu", "nhipquan")
+    res = login("hung", "nhipquan")
     assert res is not None
     return res["token"]
 
@@ -1764,5 +1764,131 @@ def test_amendment_fails_closed_for_unsupported_schedule_intent() -> None:
     )
     assert response.status_code == 422
     assert response.json()["detail"] == "amendment_not_supported_for_intent"
+
+
+def test_copilot_upload_valid_image_and_pdf() -> None:
+    import io
+
+    token = _login_staff()
+    # 1. Valid PNG
+    valid_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + b"A" * 50
+    res_png = client.post(
+        "/api/v1/copilot/upload",
+        files={"file": ("tkb_ky1.png", io.BytesIO(valid_png), "image/png")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_png.status_code == 200
+    data_png = res_png.json()
+    assert data_png["url"].startswith("/api/v1/copilot/uploads/")
+    assert data_png["mime_type"] == "image/png"
+    assert data_png["upload_id"].startswith("up_")
+
+    # Verify serving the uploaded file
+    serve_res = client.get(data_png["url"])
+    assert serve_res.status_code == 200
+    assert serve_res.content == valid_png
+    assert serve_res.headers["content-type"] == "image/png"
+
+    # 2. Valid PDF
+    valid_pdf = b"%PDF-1.4\n" + b"B" * 50
+    res_pdf = client.post(
+        "/api/v1/copilot/upload",
+        files={"file": ("sop.pdf", io.BytesIO(valid_pdf), "application/pdf")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_pdf.status_code == 200
+    data_pdf = res_pdf.json()
+    assert data_pdf["mime_type"] == "application/pdf"
+
+
+def test_copilot_upload_reject_fake_extension() -> None:
+    import io
+
+    token = _login_staff()
+    # Fake png (executable binary)
+    fake_exe = b"MZ\x90\x00\x03\x00\x00\x00fake executable content"
+    res_bad = client.post(
+        "/api/v1/copilot/upload",
+        files={"file": ("virus.png", io.BytesIO(fake_exe), "image/png")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_bad.status_code == 415
+    assert res_bad.json()["detail"] == "dinh_dang_tep_khong_hop_le_hoac_nguy_hiem"
+
+
+def test_copilot_message_with_attachment() -> None:
+    import io
+
+    token = _login_staff()
+    valid_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + b"A" * 50
+    upload_res = client.post(
+        "/api/v1/copilot/upload",
+        files={"file": ("tkb_lan.png", io.BytesIO(valid_png), "image/png")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    att_data = upload_res.json()
+
+    # Gửi tin nhắn kèm attachment ảnh TKB
+    msg_res = client.post(
+        "/api/v1/copilot/message",
+        json={
+            "message": "Em gửi ảnh thời khóa biểu tuần tới",
+            "attachments": [att_data],
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert msg_res.status_code == 200
+    data = msg_res.json()
+    assert data["intent"] == "PROPOSE_TKB_CONFIRM"
+    assert data["action_proposal"] is not None
+
+
+def test_copilot_message_stream_rate_limit() -> None:
+    """Stream endpoint /message/stream phải tuân thủ rate limit 30 req/phút như /message."""
+    token = _login_staff()
+    import ca_api.interfaces.http.copilot as copilot_mod
+    copilot_mod._RATE_LIMIT_STORE.clear()
+
+    # Mô phỏng đã có 30 request trong 1 phút qua của user (minh -> nv_03)
+    user_info = copilot_mod._get_verified_user(f"Bearer {token}")
+    copilot_mod._RATE_LIMIT_STORE[user_info["user_id"]] = [time.time()] * 30
+
+    # Request thứ 31 phải bị chặn với 429
+    res_31 = client.post(
+        "/api/v1/copilot/message/stream",
+        json={"message": "Tra cứu quy trình mở quán", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_31.status_code == 429
+    assert "rate_limit_exceeded" in res_31.json()["detail"]
+
+
+def test_chu_quan_can_execute_admin_proposals() -> None:
+    """Chủ quán (chu_quan) có thể tạo đề xuất và duyệt các intent quản trị (menu, pin, order)."""
+    token = _login_owner()
+
+    # 1. Chủ quán yêu cầu sửa giá menu
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Sửa giá Cà phê sữa thành 32000", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "PROPOSE_MENU_UPDATE"
+    prop = data["action_proposal"]
+    assert prop is not None
+    assert prop["status"] == "ready_for_approval"
+
+    # 2. Chủ quán duyệt đề xuất ở Pha 2
+    res_exec = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": prop["action_id"], "decision": "approve"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_exec.status_code == 200
+    exec_data = res_exec.json()
+    assert exec_data["status"] == "executed"
+
 
 

@@ -9,7 +9,7 @@
 
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../icons";
 import { ActionProposalCard } from "./ActionProposalCard";
 import { ChatText } from "./ChatText";
@@ -32,12 +32,62 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
     loading,
     streamingId,
     send,
+    uploadAttachment,
     updateProposal,
     clearHistory,
   } = chat;
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [attachedFile, setAttachedFile] = useState<{
+    file: File;
+    previewUrl?: string;
+    isImage: boolean;
+  } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError(null);
+    const isImage = file.type.startsWith("image/");
+    const previewUrl = isImage ? URL.createObjectURL(file) : undefined;
+    setAttachedFile({ file, previewUrl, isImage });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleRemoveAttachment = () => {
+    if (attachedFile?.previewUrl) {
+      URL.revokeObjectURL(attachedFile.previewUrl);
+    }
+    setAttachedFile(null);
+    setUploadError(null);
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading || Boolean(streamingId) || uploading) return;
+    if (!input.trim() && !attachedFile) return;
+
+    if (attachedFile) {
+      setUploading(true);
+      setUploadError(null);
+      try {
+        const uploaded = await uploadAttachment(attachedFile.file);
+        handleRemoveAttachment();
+        await send(input.trim() || "Đã gửi tệp đính kèm", [uploaded]);
+      } catch (err: any) {
+        setUploadError(err?.message || "Lỗi tải tệp lên");
+      } finally {
+        setUploading(false);
+      }
+    } else {
+      send();
+    }
+  };
 
   // Auto-scroll
   useEffect(() => {
@@ -133,6 +183,44 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                     <span className="mb-1.5 inline-flex items-center gap-1 rounded bg-[var(--nq-bg-elevated)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--nq-copper)]">
                       🤖 AI{msg.agent_mode === "live" ? " · live" : msg.agent_mode === "replay" ? " · mẫu replay" : ""}
                     </span>
+                  )}
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <div className="mb-2 space-y-1.5">
+                      {msg.attachments.map((att, idx) => {
+                        const isImg =
+                          att.mime_type?.startsWith("image/") ||
+                          /\.(png|jpe?g|webp|gif)$/i.test(att.url);
+                        if (isImg) {
+                          return (
+                            <div key={idx} className="overflow-hidden rounded-md border border-black/20 max-w-[240px]">
+                              <a href={att.url} target="_blank" rel="noreferrer">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={att.url}
+                                  alt={att.filename || "Đính kèm"}
+                                  className="max-h-44 w-auto object-cover rounded hover:opacity-90 transition"
+                                />
+                              </a>
+                            </div>
+                          );
+                        }
+                        return (
+                          <a
+                            key={idx}
+                            href={att.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 rounded bg-black/10 px-2 py-1 text-[11px] transition hover:bg-black/20"
+                          >
+                            <Icon name="attachment" size={14} />
+                            <span className="truncate max-w-[180px] font-medium">
+                              {att.filename || "Tệp đính kèm"}
+                            </span>
+                            <Icon name="download" size={12} />
+                          </a>
+                        );
+                      })}
+                    </div>
                   )}
                   <p className="whitespace-pre-wrap leading-relaxed">
                     <ChatText text={msg.text} />
@@ -234,29 +322,78 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
 
           {/* Input */}
           <div className="shrink-0 border-t-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-3">
+            {/* Thanh xem trước đính kèm trước khi gửi */}
+            {attachedFile && (
+              <div className="mb-2 flex items-center justify-between rounded border border-[var(--nq-dim)] bg-[var(--nq-bg)] p-2 text-xs">
+                <div className="flex items-center gap-2 truncate">
+                  {attachedFile.isImage && attachedFile.previewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={attachedFile.previewUrl}
+                      alt="Xem trước"
+                      className="h-8 w-8 rounded object-cover border border-[var(--nq-dim)] shrink-0"
+                    />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded bg-[var(--nq-dim)]/20 text-[var(--nq-copper)] shrink-0">
+                      <Icon name="attachment" size={16} />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-[var(--nq-fg)] text-[11px]">{attachedFile.file.name}</p>
+                    <p className="text-[10px] text-[var(--nq-dim)]">{(attachedFile.file.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveAttachment}
+                  disabled={uploading}
+                  className="p-1 text-xs font-bold text-[var(--nq-dim)] transition hover:text-rose-400 shrink-0"
+                  title="Xóa tệp đính kèm"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {uploadError && (
+              <p className="mb-2 text-[11px] text-rose-400">{uploadError}</p>
+            )}
+
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                send();
-              }}
+              onSubmit={handleFormSubmit}
               className="flex items-center gap-2"
             >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/png,image/jpeg,image/webp,image/gif,application/pdf"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading || Boolean(streamingId) || uploading}
+                className="border-2 border-[var(--nq-dim)] bg-[var(--nq-bg)] p-2 text-[var(--nq-dim)] transition hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] disabled:opacity-40"
+                title="Đính kèm ảnh hoặc tài liệu"
+              >
+                <Icon name="attachment" size={16} />
+              </button>
               <input
                 ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Nhập lệnh hoặc hỏi quy trình..."
-                disabled={loading || Boolean(streamingId)}
+                placeholder={attachedFile ? "Thêm ghi chú cho tệp đính kèm..." : "Nhập lệnh hoặc hỏi quy trình..."}
+                disabled={loading || Boolean(streamingId) || uploading}
                 className="flex-1 border-2 bg-[var(--nq-bg)] px-3.5 py-2 text-xs text-[var(--nq-fg)] placeholder:text-[var(--nq-dim)] focus:outline-none disabled:opacity-50"
                 style={{ borderColor: "var(--accent)" }}
               />
               <button
                 type="submit"
-                disabled={loading || Boolean(streamingId) || !input.trim()}
+                disabled={loading || Boolean(streamingId) || uploading || (!input.trim() && !attachedFile)}
                 className="border-2 border-[var(--nq-copper)] bg-[var(--nq-copper)] px-3.5 py-2 text-xs font-bold uppercase text-[#0e0c0a] transition disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Gửi
+                {uploading ? "Đang tải…" : "Gửi"}
               </button>
             </form>
             <p className="mt-1.5 text-center text-[10px] text-[var(--nq-dim)]">

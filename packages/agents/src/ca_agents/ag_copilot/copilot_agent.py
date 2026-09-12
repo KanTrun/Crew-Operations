@@ -174,6 +174,13 @@ def run_copilot(
                 f"Dạ em đã nhờ Agent Soạn Mail (AG-MAILWRITER) soạn xong: {tool_res.summary}. "
                 "Anh/chị xem qua nội dung bên dưới, có thể bấm 'Duyệt & Gửi', chỉnh sửa hoặc bảo em sửa lại nhé!"
             )
+        elif not tool_res.success:
+            # BUG4 fix: tool thất bại nhưng requires_confirmation=True → proposal ở trạng thái draft
+            # Không nói "Đã hoàn thành" vì sẽ misleading người dùng.
+            reply = (
+                f"Dạ em chưa tạo được đề xuất hoàn chỉnh: {tool_res.summary} "
+                "Anh/chị xem thông tin bên dưới và có thể yêu cầu lại hoặc nhờ quản lý kiểm tra nhé!"
+            )
         else:
             reply = f"Dạ em đã hoàn thành bước chuẩn bị: {tool_res.summary} Anh/chị xem qua và bấm duyệt để áp dụng nhé!"
     else:

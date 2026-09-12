@@ -22,6 +22,7 @@ from typing import Annotated, Any, cast
 from ca_agents.ag_copilot.tool_registry import configure_data_sources
 from ca_agents.ag_mailwriter import draft_email as _draft_email
 from ca_agents.ag_sop import answer as _sop_answer
+from ca_agents.ag_tkb.extract import extract_tkb as _extract_tkb
 from ca_agents.ag_waste import cluster as _waste_cluster
 from ca_contracts import (
     Ca,
@@ -283,6 +284,7 @@ configure_data_sources(
         "mode": os.environ.get("NHIPQUAN_PAGE_MODE", "replay").strip().lower() or "replay",
         "connected": False,
     },
+    extract_tkb=_extract_tkb,
 )
 
 
@@ -541,10 +543,20 @@ async def pin_assignment(
     """Pin or unpin a nhan_vien to a ca. Requires quan_ly or chu_quan token."""
     # NV hợp lệ = pool xếp lịch (users thật + seed nếu bật) — không chỉ seed:
     # pin từ chối users thật sẽ ẩn lỗi sau modal roster (đã sửa 2026-09-07).
-    ca_ids = {c["id"] for c in _seed().get("ca_mau_21", [])}
-    nv_ids = {n["id"] for n in list_nhan_vien_ops()}
-    if body.ca_id not in ca_ids or body.nv_id not in nv_ids:
+    seed = _seed()
+    ca = next((c for c in seed.get("ca_mau_21", []) if c["id"] == body.ca_id), None)
+    nv_pool = {n["id"]: n for n in list_nhan_vien_ops()}
+    if ca is None or body.nv_id not in nv_pool:
         raise HTTPException(status_code=404, detail="ca_or_nv_not_found")
+    # Ghim phải khớp kỹ năng vị trí ca — nếu không, C01 cắt biến khi giải lại
+    # và C02 thiếu ứng viên → INFEASIBLE toàn lịch vì một lần pin sai.
+    vi_tri = str(ca.get("vi_tri") or "")
+    ky_nang = set(nv_pool[body.nv_id].get("ky_nang") or [])
+    if body.pinned and vi_tri and vi_tri not in ky_nang and "da_nang" not in ky_nang:
+        raise HTTPException(
+            status_code=422,
+            detail=f"nv_thieu_ky_nang — ca cần {vi_tri}, NV chỉ có {', '.join(sorted(ky_nang)) or 'không rõ'}",
+        )
     prev = _set_pin(body.ca_id, body.nv_id, body.pinned)
     record_sua(
         loai="pin_ca",
@@ -559,6 +571,18 @@ async def pin_assignment(
 
 _LIFECYCLE_STATES = ("nhap", "dang_giai", "cho_duyet", "da_duyet", "da_cong_bo", "da_dong")
 
+# Ma trận chuyển tiếp dùng chung cho PATCH /lich-tuan/lifecycle và POST /lich/lifecycle.
+# may_sinh là trạng thái đầu (máy/worker sinh lịch) — chỉ được rời sang nháp.
+_LIFECYCLE_ALLOWED: dict[str, set[str]] = {
+    "may_sinh": {"nhap"},
+    "nhap": {"dang_giai"},
+    "dang_giai": {"cho_duyet", "nhap"},
+    "cho_duyet": {"da_duyet", "nhap"},
+    "da_duyet": {"da_cong_bo"},
+    "da_cong_bo": {"da_dong"},
+    "da_dong": {"nhap"},
+}
+
 
 class LifecycleBody(BaseModel):
     trang_thai: str
@@ -572,7 +596,8 @@ async def patch_lifecycle(
 ) -> dict[str, Any]:
     """Quản lý/Chủ quán cập nhật trạng thái và mốc tuần lịch.
 
-    Chuyển trạng thái hợp lệ: nhap → dang_giai → cho_duyet → da_duyet → da_cong_bo → da_dong.
+    Chuyển trạng thái hợp lệ: may_sinh → nhap → dang_giai → cho_duyet → da_duyet
+    → da_cong_bo → da_dong (mở lại từ da_dong về nhap — xem POST /lich/lifecycle).
     `dang_giai` chạy solver CP-SAT ngay (như POST /lich/lifecycle) — UI một nút.
     Chỉ chu_quan mới có thể cập nhật tuan_iso (chuyển sang tuần khác).
     """
@@ -580,6 +605,12 @@ async def patch_lifecycle(
         raise HTTPException(
             status_code=422,
             detail=f"trang_thai_khong_hop_le — cho phep: {', '.join(_LIFECYCLE_STATES)}",
+        )
+    cur = kv_get("lich_tuan_lifecycle", {}).get("trang_thai", "may_sinh")
+    if body.trang_thai not in _LIFECYCLE_ALLOWED.get(cur, set()):
+        raise HTTPException(
+            status_code=409,
+            detail=f"illegal:{cur}->{body.trang_thai}",
         )
 
     def chuyen(trang_thai: str) -> dict[str, Any]:

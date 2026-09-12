@@ -38,6 +38,8 @@ EXCLUDED_ROUTES: dict[str, str] = {
     # Upload tệp nhị phân — trình duyệt xử lý trực tiếp
     "/api/v1/chat/upload": "upload tệp qua trình duyệt",
     "/api/v1/chat/uploads/{filename}": "tệp tĩnh",
+    "/upload": "upload tệp đính kèm copilot qua trình duyệt",
+    "/uploads/{filename}": "tệp tĩnh đính kèm copilot",
     "/api/v1/menu/{mon_id}/anh": "upload ảnh qua trình duyệt",
     # Health/metrics nội bộ
     "/api/v1/ops/pickers": "chẩn đoán nội bộ",

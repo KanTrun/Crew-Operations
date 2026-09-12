@@ -41,11 +41,12 @@ from ca_playbook import (
     tim_mau,
 )
 from ca_solver.fairness import AXES, update_debt_from_assignment, zero_debt
-from fastapi import APIRouter, Header, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Header, HTTPException, Query, Response
+from pydantic import BaseModel, Field
 
 from ca_api.interfaces.http.sprint3 import (
     _known_ca,
+    _known_nv,
     _require_chu_quan,
     _require_manager,
     _require_role,
@@ -71,9 +72,11 @@ _VI_TRI_VI = {
     "da_nang": "Đa năng",
 }
 _ALLOWED = {
+    "may_sinh": {"nhap"},
     "nhap": {"dang_giai"},
     "dang_giai": {"cho_duyet", "nhap"},
-    "cho_duyet": {"da_cong_bo", "nhap"},
+    "cho_duyet": {"da_duyet", "nhap"},
+    "da_duyet": {"da_cong_bo"},
     "da_cong_bo": {"da_dong"},
     "da_dong": {"nhap"},
 }
@@ -172,6 +175,17 @@ def _run_solver() -> dict[str, Any]:
                     added_tkb.add(key)
                     inp.tkb.setdefault(nv_id, []).append((thu, start, end))
 
+    # Ghim ca từ KV "pins"
+    raw_pins = kv_get("pins", {})
+    if isinstance(raw_pins, dict):
+        for pin_key, is_pinned in raw_pins.items():
+            if is_pinned and "|" in str(pin_key):
+                ca_id, nv_id = str(pin_key).split("|", 1)
+                if ca_id in inp.ca_ids and nv_id in inp.nhan_vien_ids:
+                    inp.phan_cong.setdefault(ca_id, [])
+                    if nv_id not in inp.phan_cong[ca_id]:
+                        inp.phan_cong[ca_id].append(nv_id)
+
     inp, applied = apply_luat(inp, list_luat())
     result = solve_cpsat(inp, time_limit_s=60.0)
 
@@ -240,14 +254,14 @@ def _run_solver() -> dict[str, Any]:
 def _life() -> dict[str, Any]:
     """Trạng thái lịch tuần — SSOT là kv `lich_tuan_lifecycle` (giờ main.py,
     copilot và sprint45 cùng một nguồn). Fallback đọc kv `lifecycle` cũ cho
-    data trước khi nhất hóa; thiếu hẳn thì về nháp tuần mặc định."""
+    data trước khi nhất hóa; thiếu hẳn thì về máy-sinh tuần mặc định."""
     moi = kv_get("lich_tuan_lifecycle", None)
     if isinstance(moi, dict) and moi.get("trang_thai"):
         return cast(dict[str, Any], moi)
     cu = kv_get("lifecycle", None)
     if isinstance(cu, dict) and cu.get("trang_thai"):
         return cast(dict[str, Any], cu)
-    return {"tuan_iso": "2026-W01", "trang_thai": "nhap", "nguon": "quan"}
+    return {"tuan_iso": "2026-W01", "trang_thai": "may_sinh", "nguon": "quan"}
 
 
 def _save_life(doc: dict[str, Any]) -> None:
@@ -305,12 +319,12 @@ class SmartApproveBody(BaseModel):
 
 
 class HandoverBody(BaseModel):
-    text: str
-    alt_claim: str | None = None
+    text: str = Field(min_length=1, max_length=10000)
+    alt_claim: str | None = Field(default=None, max_length=5000)
 
 
 class SopBody(BaseModel):
-    question: str
+    question: str = Field(min_length=1, max_length=2000)
     ngu_canh: dict[str, str] | None = None
 
 
@@ -344,7 +358,7 @@ async def lich_transition(
 ) -> dict[str, Any]:
     role = _require_manager(authorization)
     doc = _life()
-    cur = doc.get("trang_thai", "nhap")
+    cur = doc.get("trang_thai", "may_sinh")
     if body.to not in _ALLOWED.get(cur, set()):
         raise HTTPException(status_code=409, detail=f"illegal:{cur}->{body.to}")
     if body.to == "da_dong":
@@ -365,11 +379,14 @@ async def lich_transition(
 
 
 @router.get("/api/v1/lich/ics")
-def lich_ics(authorization: Annotated[str | None, Header()] = None) -> dict[str, str]:
+def lich_ics(
+    authorization: Annotated[str | None, Header()] = None,
+    download: bool = Query(default=False),
+) -> Any:
     _require_role(authorization)
     phan = _phan()
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//NHIPQUAN//CA//VI"]
-    for ca_id, nvs in list(phan.items())[:21]:
+    for ca_id, nvs in phan.items():
         uid = f"{ca_id}@nhipquan.local"
         lines += [
             "BEGIN:VEVENT",
@@ -378,7 +395,14 @@ def lich_ics(authorization: Annotated[str | None, Header()] = None) -> dict[str,
             "END:VEVENT",
         ]
     lines.append("END:VCALENDAR")
-    return {"ics": "\n".join(lines), "nguon": "quan"}
+    ics_text = "\n".join(lines)
+    if download:
+        return Response(
+            content=ics_text,
+            media_type="text/calendar; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="lich_tuan.ics"'},
+        )
+    return {"ics": ics_text, "nguon": "quan"}
 
 
 @router.get("/api/v1/audit")
@@ -675,14 +699,18 @@ def cong_bang_bao_cao(authorization: Annotated[str | None, Header()] = None) -> 
 
 
 class TieuThuBody(BaseModel):
-    hang: str
-    so_luong: float
-    don_vi: str = "khay"
+    hang: str = Field(min_length=1, max_length=100)
+    so_luong: float = Field(ge=0)
+    don_vi: str = Field(default="khay", min_length=1, max_length=30)
 
 
 class WasteNoteBody(BaseModel):
-    thu: str
-    ghi_chu: str
+    thu: str = "T2"
+    ghi_chu: str = ""
+    mon_id: str | None = None
+    so_luong: float | None = Field(default=None, ge=0)
+    don_vi: str | None = None
+    ly_do: str | None = None
 
 
 @router.get("/api/v1/hom-nay")
@@ -865,8 +893,26 @@ def waste_ghi(
     body: WasteNoteBody,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    _require_role(authorization)
-    note = {"thu": body.thu.strip(), "ghi_chu": body.ghi_chu.strip()}
+    role = _require_role(authorization)
+    thu = (body.thu or "T2").strip()
+    ghi_chu = (body.ghi_chu or "").strip()
+    if not ghi_chu:
+        if body.ly_do:
+            ghi_chu = body.ly_do.strip()
+        elif body.mon_id:
+            ghi_chu = f"Hao phí {body.mon_id}: {body.so_luong or 1} {body.don_vi or 'đơn vị'}"
+        else:
+            ghi_chu = "Ghi nhận hao phí"
+    note = {
+        "thu": thu,
+        "ghi_chu": ghi_chu,
+        "mon_id": body.mon_id,
+        "so_luong": body.so_luong,
+        "don_vi": body.don_vi,
+        "ly_do": body.ly_do,
+        "ai": role,
+        "luc": datetime.now(UTC).isoformat(),
+    }
 
     def mut(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         rows.append(note)
@@ -1124,6 +1170,10 @@ def qr_issue(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     _require_manager(authorization)
+    if not _known_nv(body.nv_id):
+        raise HTTPException(status_code=422, detail="nhan_vien_khong_ton_tai")
+    if not _known_ca(body.ca_id):
+        raise HTTPException(status_code=422, detail="ca_khong_hop_le")
     tok = uuid.uuid4().hex
 
     def mut(bag: dict[str, Any]) -> dict[str, Any]:
@@ -1176,6 +1226,8 @@ def swap_open(
         raise HTTPException(status_code=422, detail="doi_ca_khong_hop_le")
     if caller["role"] == "nhan_vien" and caller["nv_id"] not in {body.a, body.b, body.c}:
         raise HTTPException(status_code=403, detail="khong_phai_nguoi_tham_gia")
+    if not _known_nv(body.a) or not _known_nv(body.b) or not _known_nv(body.c):
+        raise HTTPException(status_code=422, detail="nhan_vien_khong_hop_le")
     item = {
         "id": f"sw_{uuid.uuid4().hex[:8]}",
         "a": body.a,

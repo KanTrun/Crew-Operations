@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from ca_agents.ag_copilot import parse_intent, run_copilot, tool_registry
 from ca_contracts import ActionProposalStatus, CopilotIntent
@@ -694,5 +696,222 @@ def test_pr13_run_copilot_read_intent_answers_directly() -> None:
     assert res2.intent == CopilotIntent.GET_MY_SHIFTS
     assert res2.action_proposal is None
 
+
+# ── Regression tests cho các bugs đã sửa ─────────────────────────────────────
+
+
+def test_bugfix_handover_summary_no_ellipsis_for_short_text() -> None:
+    """BUG1: Summary handover chỉ thêm '...' khi text > 80 ký tự."""
+    import ca_agents.ag_copilot.tool_registry as tr
+
+    short_text = "cuoi ca on, nho kiem kho da"
+    r = tr.tool_propose_handover(text=short_text, user_id="nv_01")
+    assert r.success is True
+    # Text ngắn → không có '...' ở cuối summary
+    assert not r.summary.endswith("..."), f"Short text summary must not end with '...': {r.summary!r}"
+
+    long_text = "a" * 100  # > 80 ký tự
+    r2 = tr.tool_propose_handover(text=long_text, user_id="nv_01")
+    assert r2.summary.endswith("..."), "Long text summary must end with '...'"
+
+
+def test_bugfix_parse_thu_t2_at_start_of_sentence() -> None:
+    """BUG2: _parse_thu phải nhận diện T2..T7 ngay đầu câu (không có space trước)."""
+    from ca_agents.ag_copilot.intent_parser import _parse_thu
+
+    assert _parse_thu("t2 em ban viec") == "T2", "T2 at start of sentence not matched"
+    assert _parse_thu("t5 co thi") == "T5", "T5 at start of sentence not matched"
+    # Mid-sentence vẫn đúng
+    assert _parse_thu("em ban vao t3 tuan nay") == "T3"
+    # Cuối câu
+    assert _parse_thu("khong di lam duoc t7") == "T7"
+
+
+def test_bugfix_parse_thu_cn_no_false_positive() -> None:
+    """BUG3: Viết tắt 'cn' quá mơ hồ nên đã bỏ khỏi nhận diện.
+    Chỉ 'chu nhat'/'chủ nhật' mới match Chủ Nhật — không còn false positive."""
+    from ca_agents.ag_copilot.intent_parser import _parse_thu
+
+    # 'cn' trong văn bản không nghỉ không được match nữa
+    assert _parse_thu("cong ty tnhh cn ha noi") == "", "False positive: 'cn' in company name"
+    # 'cn' standalone cũng không match (đã bỏ do ambiguous)
+    assert _parse_thu("toi ban cn") == "", "Bare 'cn' should not match — use 'chu nhat' instead"
+    # Chủ nhật thật sự vẫn match qua từ đầy đủ
+    assert _parse_thu("chu nhat toi ban") == "CN", "Real 'chu nhat' must still match"
+    assert _parse_thu("cuoi tuan chu nhat") == "CN"
+
+
+def test_bugfix_propose_time_off_ly_do_extraction() -> None:
+    """BUG7: ly_do phải trích phần lý do thật sau dấu phẩy hoặc strip cụm mở đầu."""
+    from ca_agents.ag_copilot.intent_parser import parse_intent
+
+    # Có dấu phẩy → lấy phần sau
+    p = parse_intent("toi ban thu 5, co thi")
+    assert "toi ban thu 5" not in p.params["ly_do"], f"Preamble leaked into ly_do: {p.params['ly_do']!r}"
+    assert "co thi" in p.params["ly_do"], f"Reason not extracted: {p.params['ly_do']!r}"
+
+    # Không có dấu phẩy → bỏ cụm mở đầu "tôi bận thu X"
+    p2 = parse_intent("xin nghi thu 4 vi ly do gia dinh")
+    # Không còn giữ nguyên toàn câu
+    assert p2.params["ly_do"] != "xin nghi thu 4 vi ly do gia dinh", "Regex did not strip preamble"
+
+    # Không có lý do → mặc định "bận"
+    p3 = parse_intent("toi ban thu 3")
+    assert p3.params["ly_do"] == "bận", f"Default ly_do must be 'bận': {p3.params['ly_do']!r}"
+
+
+def test_bugfix_reply_when_tool_fails_with_confirmation_required(monkeypatch) -> None:
+    """BUG4: Khi tool fails nhưng requires_confirmation=True, reply không được nói 'Đã hoàn thành'."""
+    import ca_agents.ag_copilot.copilot_agent as ca_mod
+
+    def mock_tool_failed(*args, **kwargs):
+        from ca_agents.ag_copilot import ToolExecutionResult
+        return ToolExecutionResult(
+            success=False,
+            tool_name="mock_solver",
+            intent="SCHEDULE_SOLVE",
+            data={"status": "INFEASIBLE"},
+            summary="Không thể tìm phương án khả thi cho tuần này.",
+            explanation="Ràng buộc cứng không thỏa mãn.",
+            requires_confirmation=True,  # vẫn có proposal nhưng là draft
+        )
+
+    monkeypatch.setattr(ca_mod, "execute_whitelisted_tool", mock_tool_failed)
+
+    ctx = {"store_id": "quan_01", "user_id": "lan", "user_role": "quan_ly"}
+    res = run_copilot("Xếp lịch tuần sau giúp chị", context=ctx)
+    # Reply không được nói "Đã hoàn thành bước chuẩn bị"
+    assert "đã hoàn thành bước chuẩn bị" not in res.reply_text.lower(), (
+        f"Misleading reply on tool failure: {res.reply_text!r}"
+    )
+    # Proposal vẫn được tạo (status=draft)
+    assert res.action_proposal is not None
+
+
+def test_chu_quan_can_use_all_admin_intents() -> None:
+    """Kiểm tra Chủ quán (chu_quan) có toàn bộ quyền quản trị (menu, order, pin, page, tieu thu)."""
+    from ca_contracts import copilot_role_can_use_intent
+
+    admin_intents = [
+        "PROPOSE_MENU_UPDATE",
+        "PROPOSE_ORDER_TRANSITION",
+        "PROPOSE_PIN",
+        "GET_PAGE_STATUS",
+        "PROPOSE_PAGE_SYNC",
+        "PROPOSE_CONSUMPTION_RECORD",
+        "SCHEDULE_SOLVE",
+        "APPROVE_SHIFT_SWAP",
+    ]
+    for intent in admin_intents:
+        assert copilot_role_can_use_intent("chu_quan", intent), f"chu_quan must be able to use {intent}"
+        assert copilot_role_can_use_intent("quan_ly", intent), f"quan_ly must be able to use {intent}"
+
+
+def test_daily_brief_filters_only_today_shifts() -> None:
+    """Kiểm tra Bản tin sáng lọc đúng số ca của ngày (3 ca) thay vì gom cả 21 ca trong tuần."""
+    from ca_agents.ag_copilot.tool_registry import tool_get_daily_brief
+
+    # Cấu hình KV với 21 ca trong tuần
+    mock_phan_cong = {f"w1_c{i:02d}": ["nv_01", "nv_02"] for i in range(1, 22)}
+    saved_kv_get = tool_registry._SOURCES.get("kv_get")
+    tool_registry.configure_data_sources(
+        kv_get=lambda key, default: mock_phan_cong if key == "phan_cong" else default
+    )
+    try:
+        # Ngày 2026-09-07 là Thứ 2 (T2) -> chỉ w1_c01, w1_c02, w1_c03
+        res = tool_get_daily_brief(ngay="2026-09-07")
+        assert res.success is True
+        ca_dict = res.data.get("ca", {})
+        # Chỉ có đúng 3 ca của T2
+        assert len(ca_dict) == 3, f"Expected 3 shifts for T2, got {len(ca_dict)}: {list(ca_dict.keys())}"
+        assert "w1_c01" in ca_dict
+        assert "w1_c02" in ca_dict
+        assert "w1_c03" in ca_dict
+        assert "w1_c04" not in ca_dict  # T3 không được lọt vào
+    finally:
+        if saved_kv_get:
+            tool_registry.configure_data_sources(kv_get=saved_kv_get)
+        else:
+            tool_registry._SOURCES.clear()
+
+
+def test_build_live_snapshot_includes_time_off_and_restock() -> None:
+    """Kiểm tra build_live_snapshot bao hàm inbox_rang_buoc và tieu_thu."""
+    from ca_agents.ag_copilot.tool_registry import build_live_snapshot
+
+    snap_to = build_live_snapshot("PROPOSE_TIME_OFF", "quan_01")
+    assert "inbox_rang_buoc" in snap_to
+
+    snap_inv = build_live_snapshot("INVENTORY_RESTOCK_CHECK", "quan_01")
+    assert "tieu_thu" in snap_inv
+
+
+def test_copilot_schedule_intent_from_meeting() -> None:
+    """Nhận diện intent SCHEDULE_SOLVE khi người dùng yêu cầu lên kế hoạch từ cuộc họp."""
+    res1 = parse_intent("lên kế hoạch lịch từ cuộc họp sáng nay")
+    assert res1.intent == "SCHEDULE_SOLVE"
+    assert res1.params.get("nguon_cuoc_hop") is True
+
+    res2 = parse_intent("lấy thông tin cuộc họp để lên kế hoạch tuần sau")
+    assert res2.intent == "SCHEDULE_SOLVE"
+    assert res2.params.get("nguon_cuoc_hop") is True
+
+    res3 = parse_intent("lập kế hoạch ca tuần sau")
+    assert res3.intent == "SCHEDULE_SOLVE"
+
+
+def test_tool_solve_weekly_schedule_integrates_meeting_constraints() -> None:
+    """tool_solve_weekly_schedule tôn trọng ràng buộc nghỉ và ghim ca từ cuộc họp."""
+    from ca_agents.ag_copilot.tool_registry import tool_solve_weekly_schedule
+
+    # Giả lập cuộc họp có quyết định: nv_02 nghỉ T4, nv_02 được ghim role-slot
+    # thu_ngan T2 sáng (w1_c02 — schema role-slot: w1_c01 là pha_che).
+    mock_meeting = {
+        "id": "meet_test_01",
+        "tieu_de": "Họp tuần giao ban",
+        "trang_thai": "da_duyet",
+        "dieu_chinh_lich": [
+            {
+                "id": "dcl_01",
+                "nhan_vien_id": "nv_02",
+                "ten_nhan_vien": "nv_02",
+                "loai": "xin_nghi",
+                "thu": "T4",
+                "tuan_iso": "2026-W36",
+            },
+            {
+                "id": "dcl_02",
+                "nhan_vien_id": "nv_02",
+                "ten_nhan_vien": "nv_02",
+                "loai": "ghim_ca",
+                "ca_id": "w1_c02",
+                "thu": "T2",
+                "tuan_iso": "2026-W36",
+            },
+        ],
+    }
+
+    saved_kv = tool_registry._SOURCES.get("kv_get")
+    def mock_kv(key: str, default: Any) -> Any:
+        if key == "meetings":
+            return [mock_meeting]
+        return default
+
+    tool_registry.configure_data_sources(kv_get=mock_kv)
+    try:
+        res = tool_solve_weekly_schedule(tuan="2026-W36", nguon_cuoc_hop=True)
+        assert res.success is True
+        assert "nv_02" in res.data["phan_cong"]["w1_c02"]
+        # nv_02 nghỉ T4 (T4 = w1_c21..w1_c30 trong schema role-slot liên tục)
+        # -> không được phân vào bất kỳ role-slot nào của T4.
+        for ca_t4 in [f"w1_c{i:02d}" for i in range(21, 31)]:
+            assert "nv_02" not in res.data["phan_cong"].get(ca_t4, [])
+        # Explanation phải đề cập tới cuộc họp
+        assert "cuộc họp" in res.explanation
+    finally:
+        if saved_kv:
+            tool_registry.configure_data_sources(kv_get=saved_kv)
+        else:
+            tool_registry._SOURCES.clear()
 
 

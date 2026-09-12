@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
@@ -102,7 +103,11 @@ class SkillLoader:
 
     def load_skill(self, skill_id: str) -> SkillRef:
         """Nạp một Skill cụ thể mà không làm phình context window."""
-        skill_dir = self.repo_skills_dir / skill_id
+        if not re.match(r"^[a-z0-9][a-z0-9_-]{1,63}$", skill_id):
+            raise FileNotFoundError(f"Mã kỹ năng không hợp lệ: {skill_id}")
+        skill_dir = (self.repo_skills_dir / skill_id).resolve()
+        if not skill_dir.is_relative_to(self.repo_skills_dir.resolve()):
+            raise FileNotFoundError(f"Mã kỹ năng ngoài phạm vi: {skill_id}")
         skill_file = skill_dir / "SKILL.md"
         if not skill_file.exists():
             raise FileNotFoundError(f"Không tìm thấy file skill tại: {skill_file}")

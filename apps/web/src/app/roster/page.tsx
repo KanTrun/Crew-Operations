@@ -520,6 +520,15 @@ export default function RosterPage() {
                 {lifecycleBusy ? "Đang lưu…" : nextAction.label}
               </button>
             )}
+            <a
+              href={`${API}/api/v1/lich/ics?download=true`}
+              target="_blank"
+              rel="noreferrer"
+              className="nq-btn px-3 py-1 text-sm bg-neutral-800 text-neutral-200 hover:bg-neutral-700 flex items-center gap-1.5"
+              title="Tải file lịch iCalendar (.ics) cho Google Calendar / Apple Calendar"
+            >
+              📅 Xuất lịch (.ics)
+            </a>
             {lifecycleMsg && (
               <span className="text-sm text-[var(--nq-ok)]">{lifecycleMsg}</span>
             )}

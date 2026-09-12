@@ -1,4 +1,4 @@
-"""Generate synthetic seed (25 NV, 21 ca/week pattern, 8 weeks) + golden fixtures.
+"""Generate synthetic seed (25 NV, role-slot week pattern, 8 weeks) + golden fixtures.
 
 All outputs are labeled synthetic — not real cafe PII.
 """
@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import random
+import sys
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -118,12 +119,27 @@ def build_staff(n: int = 25) -> list[dict]:
 
 
 def build_shifts_for_week(week: int) -> list[dict]:
-    """21 ca / tuần: 7 ngày × 3 khung."""
+    """Role-slot / tuần: 7 ngày × 3 khung × nhiều vai trò.
+
+    Mỗi khung giờ có nhiều vai trò cùng lúc — mỗi vai trò là một role-slot
+    riêng để solver C01/C02 khớp kỹ năng và đếm đủ người THEO VAI TRÒ.
+    Quán cà phê nên pha_che luôn là vai trò chính của mọi khung (2 người);
+    khung sáng/chiều thêm thu_ngan + phuc_vu, khung tối thêm cả kho
+    (kiểm kê cuối ngày). 21 role-slot đầu (w{week}_c01..c21) giữ đúng
+    thứ tự 3 vai trò đầu mỗi khung — ID không đổi để tests, seed demo và
+    fixture professional (fx_ca_01..21) vẫn khớp; kho tối từ c22.
+    """
     slots = [("sang", "07:00", "12:00"), ("chieu", "12:00", "17:00"), ("toi", "17:00", "22:00")]
+    phu_theo_khung = {
+        "sang": [("thu_ngan", 1), ("phuc_vu", 1)],
+        "chieu": [("thu_ngan", 1), ("phuc_vu", 1)],
+        "toi": [("thu_ngan", 1), ("phuc_vu", 1), ("kho", 1)],
+    }
     out = []
     idx = 1
     for d in range(1, 8):
         for ten, start, end in slots:
+            # Vai trò chính: pha_che — quán cà phê không thể mở ca không ai pha.
             out.append(
                 {
                     "id": f"w{week}_c{idx:02d}",
@@ -131,12 +147,27 @@ def build_shifts_for_week(week: int) -> list[dict]:
                     "khung": ten,
                     "bat_dau": start,
                     "ket_thuc": end,
-                    "vi_tri": RNG.choice(SKILLS),
-                    "so_nguoi_toi_thieu": 2 if ten != "toi" else 3,
+                    "vi_tri": "pha_che",
+                    "so_nguoi_toi_thieu": 2,
                     "synthetic": True,
                 }
             )
             idx += 1
+            # Vai trò phụ của khung.
+            for vi_tri, so_nguoi in phu_theo_khung[ten]:
+                out.append(
+                    {
+                        "id": f"w{week}_c{idx:02d}",
+                        "ngay_offset": d,
+                        "khung": ten,
+                        "bat_dau": start,
+                        "ket_thuc": end,
+                        "vi_tri": vi_tri,
+                        "so_nguoi_toi_thieu": so_nguoi,
+                        "synthetic": True,
+                    }
+                )
+                idx += 1
     return out
 
 
@@ -146,8 +177,12 @@ def build_history(staff: list[dict], weeks: int = 8) -> list[dict]:
         shifts = build_shifts_for_week(w)
         assign = {}
         for sh in shifts:
+            # Chỉ xếp NV có kỹ năng khớp vai trò của role-slot — lịch sử 8 tuần
+            # phải là lịch khả thi để nợ công bằng phản ánh đúng nghiệp vụ.
+            eligible = [c for c in staff if sh["vi_tri"] in c.get("ky_nang", [])]
+            pool = eligible if eligible else staff
             need = sh["so_nguoi_toi_thieu"]
-            chosen = RNG.sample(staff, k=min(need, len(staff)))
+            chosen = RNG.sample(pool, k=min(need, len(pool)))
             assign[sh["id"]] = [c["id"] for c in chosen]
         hist.append({"tuan": w, "tuan_iso": f"2026-W{w:02d}", "ca": shifts, "phan_cong": assign})
     return hist
@@ -697,14 +732,21 @@ def build_kiem_ke(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
     Công thức §4.3: tiêu thụ = đầu ca + nhập trong ca − cuối ca − hao hụt ghi.
     Bộ sinh đi ngược: chọn tiêu thụ thực rồi suy ra `cuoi_ca`, nên bốn cột luôn
     khớp công thức. Cột `dem_tay_doc_lap` chỉ có ở tuần 1 cho 5 mặt hàng.
+    Kiểm kê theo KHUNG (một bản ghi mỗi ngày × khung sáng/tối), không theo
+    role-slot — kho kiểm đếm mặt hàng một lần mỗi ca, không phải mỗi vai trò.
     """
     out: list[dict[str, Any]] = []
     for tuan_doc in history:
         tuan = int(tuan_doc["tuan"])
         phan_cong = tuan_doc.get("phan_cong", {})
+        da_kiem: set[tuple[int, str]] = set()
         for ca in tuan_doc["ca"]:
             if ca["khung"] not in {"sang", "toi"}:
                 continue
+            khoa = (int(ca["ngay_offset"]), ca["khung"])
+            if khoa in da_kiem:
+                continue
+            da_kiem.add(khoa)
             off = int(ca["ngay_offset"])
             nguoi = (phan_cong.get(ca["id"]) or [f"nv_{(tuan % 25) + 1:02d}"])[0]
             muc: list[dict[str, Any]] = []
@@ -883,15 +925,21 @@ def main() -> None:
     history = build_history(staff, 8)
     # 21 ca reference = week 1 pattern
     ca21 = build_shifts_for_week(1)
+    # Golden là dữ liệu kiểm định đã được chăm sóc thủ công (hard cases
+    # ec86189, TKB blur) — KHÔNG ghi đè khi đã có. build_messages vẫn LUÔN
+    # chạy để giữ chuỗi RNG tất định cho build_van_hanh phía sau (test
+    # test_bo_sinh_khop_voi_sample_da_ghi đối chiếu theo đúng chuỗi này).
+    sinh_golden = "--golden" in sys.argv
     msgs, meta = build_messages(200)
-    (GOLDEN_MSG / "messages.jsonl").write_text(
-        "\n".join(json.dumps(m, ensure_ascii=False) for m in msgs) + "\n",
-        encoding="utf-8",
-    )
-    (GOLDEN_MSG / "meta.json").write_text(
-        json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    build_tkb(50)
+    if sinh_golden or not (GOLDEN_MSG / "messages.jsonl").exists():
+        (GOLDEN_MSG / "messages.jsonl").write_text(
+            "\n".join(json.dumps(m, ensure_ascii=False) for m in msgs) + "\n",
+            encoding="utf-8",
+        )
+        (GOLDEN_MSG / "meta.json").write_text(
+            json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        build_tkb(50)
     # Dữ liệu vận hành sinh CUỐI CÙNG: chuỗi RNG của các phần đang có không đổi,
     # nên messages/tkb/lịch sử vẫn y hệt bản trước.
     van_hanh = build_van_hanh(staff, ca21, history)
@@ -910,8 +958,11 @@ def main() -> None:
     (SEED / "sample.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    print("seed", len(staff), "staff", len(ca21), "shifts", len(history), "weeks")
-    print("golden messages", len(msgs), "tkb", 50)
+    print("seed", len(staff), "staff", len(ca21), "role-slots", len(history), "weeks")
+    if sinh_golden or not (GOLDEN_MSG / "messages.jsonl").exists():
+        print("golden messages", 200, "tkb", 50)
+    else:
+        print("golden: giu nguyen (dung --golden de tai sinh)")
     for k, v in van_hanh.items():
         print("van_hanh", k, len(v))
 

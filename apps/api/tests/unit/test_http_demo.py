@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from ca_api.interfaces.http.main import app
 from fastapi.testclient import TestClient
 
@@ -94,6 +95,34 @@ def test_pin_unknown_ids_404() -> None:
     assert r.status_code == 404
 
 
+def test_pin_rejects_missing_skill(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ghim NV thiếu kỹ năng vị trí ca → 422, không để solver INFEASIBLE âm thầm.
+
+    NV seed nv_06 (Chi Vũ) chỉ biết thu_ngan; w1_c01 là role-slot pha_che.
+    Bật seed pool qua env để nv_06 vào pool xếp lịch (users thật luôn đủ kỹ năng).
+    """
+    from ca_api.persist import kv_get
+
+    monkeypatch.setenv("NHIPQUAN_LOI_GIAI_SEED", "1")
+    lan = headers(client, "lan")
+    r = client.post(
+        "/api/v1/lich-tuan/pin",
+        json={"ca_id": "w1_c01", "nv_id": "nv_06", "pinned": True},
+        headers=lan,
+    )
+    assert r.status_code == 422, r.text
+    assert "nv_thieu_ky_nang" in r.json()["detail"]
+    assert kv_get("pins", {}).get("w1_c01|nv_06") is None
+
+    # Cùng NV pin vào role-slot khớp kỹ năng (w1_c05 thu_ngan) thì vẫn thành công.
+    r_ok = client.post(
+        "/api/v1/lich-tuan/pin",
+        json={"ca_id": "w1_c05", "nv_id": "nv_06", "pinned": True},
+        headers=lan,
+    )
+    assert r_ok.status_code == 200, r_ok.text
+
+
 def test_pin_reflected_in_lich_tuan() -> None:
     """Pin NV thật rồi đọc lại — hành vi sau khi pool = users (seed tắt mặc định)."""
     from ca_api.persist import list_users
@@ -111,15 +140,35 @@ def test_pin_reflected_in_lich_tuan() -> None:
 
 
 def test_lifecycle_quanly_can_set() -> None:
-    r = client.patch(
+    # Đi đúng chuỗi: may_sinh → nhap → dang_giai (solver chạy, tự sang cho_duyet).
+    ql = headers(client, "lan")
+    r0 = client.patch(
         "/api/v1/lich-tuan/lifecycle",
-        json={"trang_thai": "cho_duyet", "tuan_iso": "2026-W36"},
-        headers=headers(client, "lan"),
+        json={"trang_thai": "nhap", "tuan_iso": "2026-W36"},
+        headers=ql,
     )
-    assert r.status_code == 200
-    body = r.json()
+    assert r0.status_code == 200, r0.text
+    r1 = client.patch(
+        "/api/v1/lich-tuan/lifecycle",
+        json={"trang_thai": "dang_giai"},
+        headers=ql,
+    )
+    assert r1.status_code == 200, r1.text
+    # dang_giai chạy solver xong tự chuyển cho_duyet — PATCH trả trạng thái mới.
+    body = r1.json()
     assert body["ok"] is True
     assert body["trang_thai"] == "cho_duyet"
+
+
+def test_lifecycle_rejects_illegal_jump() -> None:
+    """PATCH không cho nhảy tắt — may_sinh chỉ sang nhap, không thẳng cho_duyet."""
+    r = client.patch(
+        "/api/v1/lich-tuan/lifecycle",
+        json={"trang_thai": "cho_duyet"},
+        headers=headers(client, "lan"),
+    )
+    assert r.status_code == 409
+    assert "illegal:" in r.json()["detail"]
 
 
 def test_lifecycle_invalid_state() -> None:

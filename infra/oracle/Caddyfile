@@ -4,9 +4,9 @@
 {$DOMAIN} {
 	encode gzip
 
-	# Web Next.js — mọi path mặc định
-	handle {
-		reverse_proxy web:3000
+	# Chat WebSocket
+	handle /ws/chat* {
+		reverse_proxy api:8000
 	}
 
 	# API — tách path /api/* và /docs, /health, /openapi.json
@@ -21,6 +21,11 @@
 	}
 	handle /openapi.json {
 		reverse_proxy api:8000
+	}
+
+	# Web Next.js — mọi path mặc định
+	handle {
+		reverse_proxy web:3000
 	}
 }
 

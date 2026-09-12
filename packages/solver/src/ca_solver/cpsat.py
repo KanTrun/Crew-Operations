@@ -97,6 +97,20 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
             )
         model.add(sum(vars_ca) == need_n)
 
+    # Enforce pins / fixed assignments from data.phan_cong
+    if data.phan_cong:
+        for ca, pinned_nvs in data.phan_cong.items():
+            for p_nv in (pinned_nvs or []):
+                if not p_nv:
+                    continue
+                if (p_nv, ca) not in x:
+                    return SolveResult(
+                        ok=False,
+                        violations=[f"pin:{ca}:{p_nv}:xung_dot_rang_buoc_hoac_ky_nang"],
+                        status="INFEASIBLE_PIN",
+                    )
+                model.add(x[p_nv, ca] == 1)
+
     # c03 no overlap same day; c04 rest gap
     for nv in nvs:
         nv_cas = [ca for ca in cas if (nv, ca) in x]

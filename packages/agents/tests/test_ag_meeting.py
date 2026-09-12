@@ -80,3 +80,34 @@ def test_extract_meeting_empty_text(monkeypatch: pytest.MonkeyPatch) -> None:
     validated = CuocHop(**res)
     assert validated.trang_thai == "cho_duyet"
     assert len(validated.action_items) >= 1
+
+
+def test_extract_meeting_schedule_adjustments(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CA_AGENT_MODE", "replay")
+    meeting_text = (
+        "Quản lý: Tuấn tuần sau bận thi gì không?\n"
+        "Tuấn: Dạ em xin nghỉ thứ 4 vì bận thi chuyên ngành.\n"
+        "Quản lý: Nhất trí duyệt Tuấn nghỉ T4. Chị Lan sẽ ghim My trực ca sáng thứ 2 nhé.\n"
+        "My: Dạ em đồng ý làm ca sáng thứ 2.\n"
+    )
+    staff = [
+        {"id": "nv_01", "ten": "Tuấn"},
+        {"id": "nv_02", "ten": "My"},
+        {"id": "nv_03", "ten": "Lan"},
+    ]
+    res = extract_meeting(text=meeting_text, staff_list=staff, meeting_type="hop_tuan")
+    validated = CuocHop(**res)
+    assert validated.loai_hop == "hop_tuan"
+    assert len(validated.dieu_chinh_lich) >= 2
+    # Verify xin_nghi
+    leave_item = next((d for d in validated.dieu_chinh_lich if d.loai == "xin_nghi"), None)
+    assert leave_item is not None
+    assert leave_item.nhan_vien_id == "nv_01"
+    assert leave_item.thu == "T4"
+    # Verify ghim_ca
+    pin_item = next((d for d in validated.dieu_chinh_lich if d.loai == "ghim_ca"), None)
+    assert pin_item is not None
+    assert pin_item.nhan_vien_id == "nv_02"
+    assert pin_item.thu == "T2"
+    assert pin_item.khung == "sang"
+

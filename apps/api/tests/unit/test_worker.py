@@ -129,12 +129,13 @@ def test_sinh_brief_sang(_reset_dinh_ky: None) -> None:
 def test_solver_tuan_tao_de_xuat_cho_duyet(_reset_dinh_ky: None) -> None:
     """Worker xếp lịch nhưng KHÔNG công bố — đề xuất chờ quản lý.
 
-    Tạo đủ 12 NV thật trước khi xếp: 3 user mặc định không thể phủ 21 ca
-    (một số ca cần 3 người) — solver INFEASIBLE là đúng, không phải bug.
+    Tạo đủ 16 NV thật trước khi xếp: 3 user mặc định không thể phủ 70
+    role-slot (91 lượt; mỗi ngày 10 role-slot mà C03/C04 chặn 1 người
+    2 khung trùng) — solver INFEASIBLE là đúng, không phải bug.
     """
     from ca_api.persist import register
 
-    for i in range(9):
+    for i in range(13):
         register(f"nv_pool_{i}", f"matkhautot{i}9x", f"NV Pool {i}")
     worker._chay_solver_tuan()
     de = kv_get("worker_de_xuat_lich", None)

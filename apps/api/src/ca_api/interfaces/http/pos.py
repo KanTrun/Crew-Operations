@@ -102,10 +102,12 @@ def _menu_image_dir() -> Path:
 
 def _menu_image_path(mon_id: str) -> Path | None:
     mid = mon_id.strip().lower()
-    base = _menu_image_dir()
+    if not _MON_ID.fullmatch(mid):
+        return None
+    base = _menu_image_dir().resolve()
     for ext in (".webp", ".jpg", ".jpeg", ".png", ".gif"):
-        p = base / f"{mid}{ext}"
-        if p.is_file():
+        p = (base / f"{mid}{ext}").resolve()
+        if p.is_file() and p.is_relative_to(base):
             return p
     return None
 

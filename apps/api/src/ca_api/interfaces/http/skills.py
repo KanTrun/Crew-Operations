@@ -19,9 +19,9 @@ loader = SkillLoader()
 
 
 class DistillSopRequest(BaseModel):
-    sop_id: str = Field(..., description="Mã định danh kỹ năng (vd: sop-ve-sinh-may)")
-    title: str = Field(..., description="Tiêu đề cẩm nang quy trình")
-    markdown_content: str = Field(..., description="Nội dung markdown của SOP")
+    sop_id: str = Field(..., pattern=r"^[a-z0-9][a-z0-9_-]{1,63}$", description="Mã định danh kỹ năng (vd: sop-ve-sinh-may)")
+    title: str = Field(..., min_length=1, max_length=200, description="Tiêu đề cẩm nang quy trình")
+    markdown_content: str = Field(..., min_length=1, max_length=100_000, description="Nội dung markdown của SOP")
 
 
 @router.get("", summary="Lấy danh mục các Kỹ năng đã kiểm định")
@@ -95,7 +95,9 @@ def verify_skill_live(skill_id: str) -> dict[str, Any]:
 @router.post("/distill-sop", summary="Chưng cất SOP mới thành Kỹ năng (Chế độ Hybrid)")
 def distill_new_sop(req: DistillSopRequest) -> dict[str, Any]:
     """Chuyển đổi văn bản cẩm nang SOP thành một Kỹ năng có thể thực thi."""
-    target_dir = loader.repo_skills_dir / req.sop_id
+    target_dir = (loader.repo_skills_dir / req.sop_id).resolve()
+    if not target_dir.is_relative_to(loader.repo_skills_dir.resolve()):
+        raise HTTPException(status_code=400, detail="sop_id_khong_hop_le")
     res = distill_sop_to_dir(req.sop_id, req.markdown_content, target_dir)
     return {
         "success": True,

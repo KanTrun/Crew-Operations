@@ -19,3 +19,13 @@ def test_cpsat_fixture_zero_hard() -> None:
         )
     )
     assert check.ok, check.violations
+
+
+def test_cpsat_enforces_pinned_shift() -> None:
+    data = build_lich_input()
+    # w1_c02 là role-slot thu_ngan T2 sáng; nv_02 biết thu_ngan, rảnh T2 sáng.
+    data.phan_cong["w1_c02"] = ["nv_02"]
+    r = solve_cpsat(data, time_limit_s=60.0)
+    assert r.ok is True
+    assert "nv_02" in r.phan_cong["w1_c02"]
+

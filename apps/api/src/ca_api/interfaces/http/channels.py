@@ -56,6 +56,7 @@ from ca_api.ai_learning.operations import circuit_breaker_open
 from ca_api.ai_learning.repository import AILearningRepository
 from ca_api.ai_learning.rollout import select_active_rules
 from ca_api.interfaces.http.sprint3 import (
+    _known_nv,
     _nv_from_token,
     _phan_cong,
     _require_manager,
@@ -172,9 +173,9 @@ def bind_issue(authorization: Annotated[str | None, Header()] = None) -> dict[st
 
 
 class BindManualBody(BaseModel):
-    channel: str = "telegram"
-    external_user_id: str
-    nv_id: str
+    channel: str = Field(default="telegram", min_length=1, max_length=32)
+    external_user_id: str = Field(min_length=1, max_length=128)
+    nv_id: str = Field(min_length=1, max_length=64)
 
 
 @router.post("/api/v1/channels/bind")
@@ -183,6 +184,10 @@ def bind_manual(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     role = _require_manager(authorization)
+    if body.channel not in {"telegram", "zalo", "facebook"}:
+        raise HTTPException(status_code=422, detail="kenh_khong_hop_le")
+    if not _known_nv(body.nv_id):
+        raise HTTPException(status_code=422, detail="nhan_vien_khong_ton_tai")
     kenh_bind_set(body.channel, body.external_user_id, body.nv_id)
     _audit(role, "kenh_bind", body.model_dump())
     return {"ok": True, **body.model_dump()}
@@ -830,7 +835,7 @@ def page_threads(authorization: Annotated[str | None, Header()] = None) -> dict[
 
 
 class PageReplyBody(BaseModel):
-    text: str
+    text: str = Field(min_length=1, max_length=5000)
     tag: str | None = None
 
 
@@ -844,6 +849,8 @@ def page_reply(
     if not s:
         raise HTTPException(status_code=401, detail="thieu_token")
     _require_manager(authorization)
+    if not body.text.strip():
+        raise HTTPException(status_code=422, detail="noi_dung_trong")
     found: dict[str, Any] | None = None
 
     def mut(doc: dict[str, Any]) -> dict[str, Any]:
@@ -890,7 +897,7 @@ def page_reply(
 
 
 class PageThreadApproveBody(BaseModel):
-    final_reply: str
+    final_reply: str = Field(min_length=1, max_length=5000)
     tag: str | None = None
 
 
@@ -905,6 +912,8 @@ def page_thread_approve(
     if not s:
         raise HTTPException(status_code=401, detail="thieu_token")
     _require_manager(authorization)
+    if not body.final_reply.strip():
+        raise HTTPException(status_code=422, detail="noi_dung_trong")
     found: dict[str, Any] | None = None
     suggested_orig: str = ""
 
@@ -1343,7 +1352,7 @@ def update_promos(
 
 
 class PageDraftBody(BaseModel):
-    noi_dung: str
+    noi_dung: str = Field(min_length=1, max_length=10000)
 
 
 @router.get("/api/v1/page/drafts")
@@ -1358,6 +1367,8 @@ def page_draft_create(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     role = _require_manager(authorization)
+    if not body.noi_dung.strip():
+        raise HTTPException(status_code=422, detail="noi_dung_trong")
     item = {
         "id": f"pd_{uuid.uuid4().hex[:8]}",
         "noi_dung": body.noi_dung.strip(),

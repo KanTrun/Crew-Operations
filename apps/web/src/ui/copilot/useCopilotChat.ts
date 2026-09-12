@@ -6,10 +6,19 @@ import { getRole, getToken } from "../../lib/session";
 import { getCopilotProfile } from "./profile";
 import type { ActionProposalData } from "./ActionProposalCard";
 
+export interface ChatAttachment {
+  url: string;
+  filename: string;
+  mime_type?: string;
+  size?: number;
+  upload_id?: string;
+}
+
 export interface ChatMessage {
   id: string;
   sender: "user" | "copilot";
   text: string;
+  attachments?: ChatAttachment[];
   action_proposal?: ActionProposalData | null;
   citations?: string[] | null;
   agent_mode?: string | null;
@@ -132,10 +141,34 @@ export function useCopilotChat(mode: Mode = "pane") {
     typingTimers.current[msgId] = window.setTimeout(tick, TYPING_TICK_MS);
   }, []);
 
+  const uploadAttachment = useCallback(async (file: File): Promise<ChatAttachment> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/api/v1/copilot/upload`, {
+      method: "POST",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Lỗi tải tệp lên");
+    }
+    const data = await res.json();
+    return {
+      url: data.url,
+      filename: data.filename || file.name,
+      mime_type: data.mime_type || file.type,
+      size: data.size || file.size,
+      upload_id: data.upload_id,
+    };
+  }, []);
+
   const send = useCallback(
-    async (textToSend?: string) => {
+    async (textToSend?: string, attachmentsToSend?: ChatAttachment[]) => {
       const text = (textToSend ?? input).trim();
-      if (!text || loading || streamingId) return;
+      const attachments = attachmentsToSend && attachmentsToSend.length > 0 ? attachmentsToSend : undefined;
+      if ((!text && !attachments) || loading || streamingId) return;
 
       const now = new Date().toLocaleTimeString([], {
         hour: "2-digit",
@@ -145,6 +178,7 @@ export function useCopilotChat(mode: Mode = "pane") {
         id: `user_${Date.now()}`,
         sender: "user",
         text,
+        attachments,
         timestamp: now,
       };
 
@@ -165,6 +199,7 @@ export function useCopilotChat(mode: Mode = "pane") {
           message: text,
           channel: mode === "page" ? "web-page" : "web",
           recent_messages: recent,
+          attachments: attachments || [],
         });
 
         // Ưu tiên SSE streaming; nếu thất bại fallback về POST /message (JSON).
@@ -275,6 +310,7 @@ export function useCopilotChat(mode: Mode = "pane") {
     loading,
     streamingId,
     send,
+    uploadAttachment,
     clearHistory,
     updateProposal,
   };

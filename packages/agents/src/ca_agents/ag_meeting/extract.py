@@ -9,6 +9,43 @@ from typing import Any, cast
 
 from ca_agents.llm import agent_mode, complete, ensure_dotenv, parse_json_object
 
+_THU_CAN = {
+    "thứ 2": "T2", "thứ hai": "T2", "thu 2": "T2", "thu hai": "T2",
+    "thứ 3": "T3", "thứ ba": "T3", "thu 3": "T3", "thu ba": "T3",
+    "thứ 4": "T4", "thứ tư": "T4", "thu 4": "T4", "thu tu": "T4",
+    "thứ 5": "T5", "thứ năm": "T5", "thu 5": "T5", "thu nam": "T5",
+    "thứ 6": "T6", "thứ sáu": "T6", "thu 6": "T6", "thu sau": "T6",
+    "thứ 7": "T7", "thứ bảy": "T7", "thu 7": "T7", "thu bay": "T7",
+    "chủ nhật": "CN", "chu nhat": "CN",
+}
+_THU_ABBREV_PATTERNS = [
+    (r"\bt2\b", "T2"), (r"\bt3\b", "T3"), (r"\bt4\b", "T4"),
+    (r"\bt5\b", "T5"), (r"\bt6\b", "T6"), (r"\bt7\b", "T7"),
+    (r"\bcn\b", "CN"),
+]
+
+
+def _detect_thu(text: str) -> str:
+    low = " ".join(str(text or "").lower().split())
+    for k, v in _THU_CAN.items():
+        if k in low:
+            return v
+    for pat, v in _THU_ABBREV_PATTERNS:
+        if re.search(pat, low):
+            return v
+    return ""
+
+
+def _detect_khung(text: str) -> str:
+    low = text.lower()
+    if "sáng" in low or "sang" in low:
+        return "sang"
+    if "chiều" in low or "chieu" in low:
+        return "chieu"
+    if "tối" in low or "toi" in low or "đêm" in low:
+        return "toi"
+    return ""
+
 
 def resolve_staff_id(name: str, staff_list: list[dict[str, Any]] | None) -> str | None:
     """Fuzzy match spoken person name to official NhanVien ID."""
@@ -216,19 +253,138 @@ def _extract_rule_or_fixture(
     lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
     action_items: list[dict[str, Any]] = []
     quyet_dinh: list[str] = []
+    de_xuat_phe_duyet: list[dict[str, Any]] = []
+    dieu_chinh_lich: list[dict[str, Any]] = []
 
     idx = 1
+    prop_idx = 1
     for line in lines:
         low = line.lower()
-        if any(kw in low for kw in ["nhận", "phụ trách", "làm", "nhớ", "hạn", "trước", "giao"]):
-            # Extract possible assignee
-            assignee = "Chưa rõ"
+
+        # Check speaker if formatted as "Tuấn: ..."
+        speaker = ""
+        m_spk = re.match(r"^([^:]+):", line)
+        if m_spk:
+            clean_spk = re.sub(r"[^\w\s]", "", m_spk.group(1)).strip()
+            if resolve_staff_id(clean_spk, staff_list):
+                speaker = clean_spk
+
+        # Extract default staff name
+        assignee = speaker or "Chưa rõ"
+        if not speaker:
             for word in line.split():
                 clean_w = re.sub(r"[^\w\s]", "", word)
                 matched_id = resolve_staff_id(clean_w, staff_list)
                 if matched_id:
                     assignee = clean_w
                     break
+
+        # Skip questions when extracting proposals
+        is_question = "?" in line or any(q in low for q in ["gì không", "khong?", "không?", "chưa?", "chua?"])
+
+        # Check for schedule requests / adjustments
+        has_leave_cue = (not is_question) and any(kw in low for kw in ["xin nghỉ", "xin nghi", "bận", "ban", "nghỉ ca", "nghi ca", "không đi làm", "khong di lam", "không trực", "bận thi", "bận học"])
+        has_pin_cue = (not is_question) and any(kw in low for kw in ["ghim", "phân công ca", "chốt ca", "cố định ca", "trực ca sáng", "trực ca tối", "trực ca chiều"])
+        has_swap_cue = (not is_question) and any(kw in low for kw in ["đổi ca", "doi ca", "hoán đổi ca"])
+
+        if has_leave_cue:
+            leave_assignee = assignee
+            m_leave_target = re.search(r"(?:duyệt|cho)?\s*([^\s,.:]+)\s+(?:xin\s+)?nghỉ", line, re.IGNORECASE)
+            if m_leave_target and resolve_staff_id(m_leave_target.group(1), staff_list):
+                leave_assignee = m_leave_target.group(1)
+            elif speaker and any(kw in low for kw in ["em xin", "tôi xin", "em bận", "tôi bận"]):
+                leave_assignee = speaker
+
+            thu = _detect_thu(low)
+            khung = _detect_khung(low)
+            sched_item = {
+                "id": f"dcl_{prop_idx}",
+                "nhan_vien_id": resolve_staff_id(leave_assignee, staff_list) if leave_assignee != "Chưa rõ" else None,
+                "ten_nhan_vien": leave_assignee if leave_assignee != "Chưa rõ" else "Nhân viên",
+                "loai": "xin_nghi",
+                "thu": thu,
+                "khung": khung,
+                "ca_id": "",
+                "tuan_iso": "",
+                "ly_do": line,
+                "trang_thai": "cho_duyet",
+            }
+            dieu_chinh_lich.append(sched_item)
+            de_xuat_phe_duyet.append({
+                "id": f"prop_{prop_idx}",
+                "loai_de_xuat": "dieu_chinh_lich",
+                "tieu_de": f"Xin nghỉ ca: {leave_assignee} ({thu or 'trong tuần'})",
+                "nguoi_de_xuat": leave_assignee,
+                "nguoi_phe_duyet": "Quản lý",
+                "noi_dung": line,
+                "ly_do": line,
+                "trang_thai": "cho_duyet",
+                "chi_tiet_lich": sched_item,
+            })
+            prop_idx += 1
+
+        elif has_pin_cue:
+            pin_assignee = assignee
+            m_pin_target = re.search(r"(?:ghim|phân công|chốt ca)\s+([^\s,.:]+)", line, re.IGNORECASE)
+            if m_pin_target and resolve_staff_id(m_pin_target.group(1), staff_list):
+                pin_assignee = m_pin_target.group(1)
+
+            thu = _detect_thu(low)
+            khung = _detect_khung(low)
+            sched_item = {
+                "id": f"dcl_{prop_idx}",
+                "nhan_vien_id": resolve_staff_id(pin_assignee, staff_list) if pin_assignee != "Chưa rõ" else None,
+                "ten_nhan_vien": pin_assignee if pin_assignee != "Chưa rõ" else "Nhân viên",
+                "loai": "ghim_ca",
+                "thu": thu,
+                "khung": khung,
+                "ca_id": "",
+                "tuan_iso": "",
+                "ly_do": line,
+                "trang_thai": "cho_duyet",
+            }
+            dieu_chinh_lich.append(sched_item)
+            de_xuat_phe_duyet.append({
+                "id": f"prop_{prop_idx}",
+                "loai_de_xuat": "dieu_chinh_lich",
+                "tieu_de": f"Ghim ca làm việc: {assignee} ({thu or 'trong tuần'} - ca {khung or 'chỉ định'})",
+                "nguoi_de_xuat": assignee,
+                "nguoi_phe_duyet": "Quản lý",
+                "noi_dung": line,
+                "ly_do": line,
+                "trang_thai": "cho_duyet",
+                "chi_tiet_lich": sched_item,
+            })
+            prop_idx += 1
+
+        elif has_swap_cue:
+            sched_item = {
+                "id": f"dcl_{prop_idx}",
+                "nhan_vien_id": resolve_staff_id(assignee, staff_list) if assignee != "Chưa rõ" else None,
+                "ten_nhan_vien": assignee if assignee != "Chưa rõ" else "Nhân viên",
+                "loai": "doi_ca",
+                "thu": _detect_thu(low),
+                "khung": _detect_khung(low),
+                "ca_id": "",
+                "tuan_iso": "",
+                "ly_do": line,
+                "trang_thai": "cho_duyet",
+            }
+            dieu_chinh_lich.append(sched_item)
+            de_xuat_phe_duyet.append({
+                "id": f"prop_{prop_idx}",
+                "loai_de_xuat": "dieu_chinh_lich",
+                "tieu_de": f"Yêu cầu đổi ca: {line}",
+                "nguoi_de_xuat": assignee,
+                "nguoi_phe_duyet": "Quản lý",
+                "noi_dung": line,
+                "ly_do": line,
+                "trang_thai": "cho_duyet",
+                "chi_tiet_lich": sched_item,
+            })
+            prop_idx += 1
+
+        if any(kw in low for kw in ["nhận", "phụ trách", "làm", "nhớ", "hạn", "trước", "giao"]) and not has_leave_cue:
             action_items.append(
                 {
                     "id": f"act_{idx}",
@@ -242,14 +398,14 @@ def _extract_rule_or_fixture(
                 }
             )
             idx += 1
-        elif any(kw in low for kw in ["thống nhất", "chốt", "quyết định", "từ nay", "đổi"]):
+        elif any(kw in low for kw in ["thống nhất", "chốt", "quyết định", "từ nay", "đổi"]) and not has_swap_cue:
             quyet_dinh.append(line)
 
     summary = (
         f"Ghi nhận {len(lines)} nội dung trao đổi trong cuộc họp. "
-        f"Đã trích xuất {len(action_items)} việc cần làm và {len(quyet_dinh)} quyết định."
+        f"Đã trích xuất {len(action_items)} việc cần làm, {len(de_xuat_phe_duyet)} đề xuất (gồm {len(dieu_chinh_lich)} điều chỉnh lịch) và {len(quyet_dinh)} quyết định."
     )
-    if not action_items:
+    if not action_items and not de_xuat_phe_duyet:
         action_items.append(
             {
                 "id": "act_1",
@@ -273,6 +429,8 @@ def _extract_rule_or_fixture(
         "tom_tat": summary,
         "quyet_dinh": quyet_dinh or ["Duy trì đúng quy trình vận hành ca"],
         "action_items": action_items,
+        "de_xuat_phe_duyet": de_xuat_phe_duyet,
+        "dieu_chinh_lich": dieu_chinh_lich,
         "de_xuat_sop": [],
         "do_tin_cay_tong_the": 0.88,
         "trang_thai": "cho_duyet",
@@ -350,10 +508,55 @@ def _normalize_output(
             }
         )
 
+    # Check if any action item is actually a schedule adjustment / shift pin
+    remaining_actions = []
+    sched_from_actions = []
+    for a in norm_actions:
+        a_full = f"{a.get('tieu_de', '')} {a.get('noi_dung_chi_tiet', '')}".lower()
+        has_pin = any(kw in a_full for kw in ["ghim", "chốt ca", "cố định ca", "trực ca"])
+        has_leave = any(kw in a_full for kw in ["xin nghỉ", "nghỉ ca", "bận thi", "bận học"])
+        detected_thu = _detect_thu(a_full)
+        if (has_pin or has_leave) and (detected_thu or "ca" in a_full):
+            nv_name = a.get("ten_nguoi_nhan") or "Nhân viên"
+            c_nv_id = a.get("nhan_vien_id") or resolve_staff_id(nv_name, staff_list)
+            loai_adj = "ghim_ca" if has_pin else "xin_nghi"
+            c_khung = _detect_khung(a_full)
+            adj_item = {
+                "id": f"dcl_act_{a.get('id', '')}",
+                "nhan_vien_id": c_nv_id,
+                "ten_nhan_vien": nv_name,
+                "loai": loai_adj,
+                "thu": detected_thu or "T2",
+                "khung": c_khung,
+                "ca_id": "",
+                "tuan_iso": "",
+                "ly_do": a.get("noi_dung_chi_tiet") or a.get("tieu_de") or "",
+                "trang_thai": "da_duyet" if has_pin else "cho_duyet",
+            }
+            sched_from_actions.append((adj_item, {
+                "id": f"prop_act_{a.get('id', '')}",
+                "loai_de_xuat": "dieu_chinh_lich",
+                "tieu_de": f"{'Ghim ca' if has_pin else 'Xin nghỉ ca'}: {nv_name} ({detected_thu or 'trong tuần'})",
+                "nguoi_de_xuat": nv_name,
+                "nguoi_phe_duyet": a.get("ten_nguoi_giao") or "Quản lý",
+                "noi_dung": f"{a.get('tieu_de', '')}: {a.get('noi_dung_chi_tiet', '')}",
+                "ly_do": a.get("noi_dung_chi_tiet") or a.get("tieu_de") or "",
+                "trang_thai": "da_duyet" if has_pin else "cho_duyet",
+                "chi_tiet_lich": adj_item,
+            }))
+        else:
+            remaining_actions.append(a)
+    norm_actions = remaining_actions
+
     # De xuat phe duyet (Proposals & Approvals)
     raw_props = [] if khong_lien_quan else (data.get("de_xuat_phe_duyet") or [])
     norm_props: list[dict[str, Any]] = []
     norm_sop: list[dict[str, Any]] = []
+    norm_dieu_chinh_lich: list[dict[str, Any]] = []
+
+    for adj_item, prop_item in sched_from_actions:
+        norm_dieu_chinh_lich.append(adj_item)
+        norm_props.append(prop_item)
 
     for i, p in enumerate(raw_props):
         if not isinstance(p, dict):
@@ -362,8 +565,33 @@ def _normalize_output(
         if trang_thai not in ("da_duyet", "cho_duyet", "tu_choi"):
             trang_thai = "cho_duyet"
         loai = p.get("loai_de_xuat", "quy_trinh_sop")
-        if loai not in ("quy_trinh_sop", "mua_sam_vat_tu", "chinh_sach_nhan_su", "khac"):
+        if loai not in ("quy_trinh_sop", "mua_sam_vat_tu", "chinh_sach_nhan_su", "dieu_chinh_lich", "khac"):
             loai = "quy_trinh_sop"
+
+        chi_tiet_lich = None
+        if loai == "dieu_chinh_lich" or p.get("chi_tiet_lich"):
+            loai = "dieu_chinh_lich"
+            raw_ctl = p.get("chi_tiet_lich") or {}
+            c_nv_name = str(raw_ctl.get("ten_nhan_vien") or p.get("nguoi_de_xuat") or "")
+            c_nv_id = raw_ctl.get("nhan_vien_id") or resolve_staff_id(c_nv_name, staff_list)
+            c_loai = raw_ctl.get("loai", "xin_nghi")
+            if c_loai not in ("xin_nghi", "ghim_ca", "doi_ca", "uu_tien"):
+                c_loai = "xin_nghi"
+            c_thu = str(raw_ctl.get("thu") or _detect_thu(p.get("noi_dung", "")) or "")
+            c_khung = str(raw_ctl.get("khung") or _detect_khung(p.get("noi_dung", "")) or "")
+            chi_tiet_lich = {
+                "id": str(raw_ctl.get("id") or f"dcl_{i + 1}"),
+                "nhan_vien_id": c_nv_id,
+                "ten_nhan_vien": c_nv_name,
+                "loai": c_loai,
+                "thu": c_thu,
+                "khung": c_khung,
+                "ca_id": str(raw_ctl.get("ca_id") or ""),
+                "tuan_iso": str(raw_ctl.get("tuan_iso") or ""),
+                "ly_do": str(raw_ctl.get("ly_do") or p.get("ly_do") or p.get("noi_dung") or ""),
+                "trang_thai": trang_thai,
+            }
+            norm_dieu_chinh_lich.append(chi_tiet_lich)
 
         prop_obj = {
             "id": str(p.get("id") or f"prop_{i + 1}"),
@@ -376,6 +604,7 @@ def _normalize_output(
             "trang_thai": trang_thai,
             "quy_trinh_lien_quan": p.get("quy_trinh_lien_quan"),
             "buoc_so": int(p["buoc_so"]) if p.get("buoc_so") is not None else None,
+            "chi_tiet_lich": chi_tiet_lich,
         }
         norm_props.append(prop_obj)
 
@@ -389,6 +618,25 @@ def _normalize_output(
                     "ly_do": str(p.get("ly_do") or ""),
                 }
             )
+
+    # In case data had raw dieu_chinh_lich directly
+    raw_dcl = [] if khong_lien_quan else (data.get("dieu_chinh_lich") or [])
+    for d in raw_dcl:
+        if isinstance(d, dict) and d not in norm_dieu_chinh_lich:
+            c_nv_name = str(d.get("ten_nhan_vien") or "")
+            c_nv_id = d.get("nhan_vien_id") or resolve_staff_id(c_nv_name, staff_list)
+            norm_dieu_chinh_lich.append({
+                "id": str(d.get("id") or f"dcl_{len(norm_dieu_chinh_lich) + 1}"),
+                "nhan_vien_id": c_nv_id,
+                "ten_nhan_vien": c_nv_name,
+                "loai": d.get("loai", "xin_nghi"),
+                "thu": str(d.get("thu") or ""),
+                "khung": str(d.get("khung") or ""),
+                "ca_id": str(d.get("ca_id") or ""),
+                "tuan_iso": str(d.get("tuan_iso") or ""),
+                "ly_do": str(d.get("ly_do") or ""),
+                "trang_thai": d.get("trang_thai", "cho_duyet"),
+            })
 
     # Gop y & Luu y noi bo (Team feedback & Notes)
     raw_fb = [] if khong_lien_quan else (data.get("gop_y_luu_y") or [])
@@ -519,6 +767,7 @@ def _normalize_output(
         "van_de_phat_sinh": van_de_phat_sinh,
         "quyet_dinh": quyet_dinh,
         "de_xuat_phe_duyet": norm_props,
+        "dieu_chinh_lich": norm_dieu_chinh_lich,
         "action_items": norm_actions,
         "gop_y_luu_y": norm_fb,
         "audit_sop": norm_audit,

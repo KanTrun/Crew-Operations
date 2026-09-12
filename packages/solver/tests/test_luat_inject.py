@@ -20,7 +20,9 @@ def test_apply_luat_bumps_staffing() -> None:
     ]
     out, applied = apply_luat(data, laws)
     assert applied
-    assert out.so_nguoi_toi_thieu.get("w1_c17", 1) >= 4
+    # Role-slot schema đánh số liên tục: T7 chiều = w1_c54 (pha_che) +
+    # w1_c55 (thu_ngan) + w1_c56 (phuc_vu). Luật bump đúng slot thu_ngan.
+    assert out.so_nguoi_toi_thieu.get("w1_c55", 1) >= 4
 
 
 def test_skip_non_hieu_luc() -> None:

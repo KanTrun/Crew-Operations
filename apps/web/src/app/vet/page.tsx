@@ -58,7 +58,7 @@ export default function VetPage() {
         setError(
           viError(e, {
             doing: "đọc được vết hệ thống",
-            forbidden: "Chỉ quản lý hoặc chủ quán đọc được vết hệ thống.",
+            forbidden: "Chỉ chủ quán mới có quyền đọc nhật ký vết hệ thống bảo mật.",
           }),
         ),
       )
