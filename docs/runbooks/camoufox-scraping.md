@@ -8,7 +8,7 @@ Chuỗi cào mới sau khi có Camoufox (plan §3.5):
 
 ```
 TikTok:   Google Bridge → TikWM → [Camoufox nếu available] → Apify → RSS
-Threads:  Google RSS → Jina → [Camoufox nếu available] → Apify → RSS
+Threads:  [Official API nếu có token] → Google RSS → Jina → [Camoufox nếu available] → Apify → RSS
 ```
 
 Mode UI tương ứng:
@@ -73,6 +73,42 @@ python -c "from ca_agents.clients.camoufox_client import is_available; print(is_
 
 - `True` → tier Camoufox sẽ tự kích hoạt trong chuỗi `auto`
 - `False` → kiểm tra `pip show camoufox` và `camoufox fetch`
+
+## Threads Official API (Tier 0 — nguồn chính thức miễn phí)
+
+Meta đã mở **keyword search trên Threads API chính thức** — đây là đường đáng tin nhất để cào Threads, miễn phí, không cần browser.
+
+### Cách hoạt động
+
+- Endpoint: `GET https://graph.threads.net/v1.0/keyword_search`
+- Params: `q` (bắt buộc), `search_type` (TOP|RECENT), `search_mode` (KEYWORD|TAG), `limit` (max 100), `since`/`until`, `author_username`
+- Rate limit: **2,200 queries / 24h** (queries trả 0 kết quả không tốn quota)
+- Permissions: `threads_basic` + `threads_keyword_search`
+
+### Cấu hình
+
+```bash
+# packages/agents/.env
+THREADS_ACCESS_TOKEN=<token từ Graph API Explorer>
+```
+
+- **Chưa set token** → `is_configured()` trả False → tier bị skip hoàn toàn (không import, không delay)
+- **Có token** → tier 0 chạy TRƯỚC Google Bridge trong mode `auto`/`apify_force`; mode `direct_only` khóa cả Official API; mode `browser` vẫn Camoufox first
+
+### Cách lấy token
+
+1. Tạo app tại https://developers.facebook.com/ → thêm product Threads
+2. Thêm permissions `threads_basic` + `threads_keyword_search`
+3. Test nhanh: dùng Graph API Explorer (https://developers.facebook.com/tools/explorer/) sinh short-lived token
+4. **Lưu ý App Review:** app chưa qua review → chỉ search được posts của chính user; sau review → search toàn bộ public posts
+
+### Sự cố thường gặp
+
+| Triệu chứng | Nguyên nhân | Xử lý |
+|---|---|---|
+| `threads_official_api` log warning rồi rớt tầng | Token hết hạn / sai | Sinh token mới, update `THREADS_ACCESS_TOKEN` |
+| Luôn trả `[]` | App chưa qua App Review → chỉ thấy posts của mình | Submit App Review cho `threads_keyword_search` |
+| HTTP 400 Invalid OAuth | Token không hợp lệ | Kiểm tra token trong Graph API Explorer |
 
 ## Theo dõi hàng ngày
 
@@ -221,8 +257,10 @@ print('camoufox:', 'OK' if is_available() else 'NOT INSTALLED')
 - Code client: `packages/agents/src/ca_agents/clients/camoufox_client.py`
 - Code TikTok: `packages/agents/src/ca_agents/sources/tiktok_camoufox_source.py`
 - Code Threads: `packages/agents/src/ca_agents/sources/threads_camoufox_source.py`
+- Code Threads Official API: `packages/agents/src/ca_agents/sources/threads_official_api_source.py`
 - Wire: `packages/agents/src/ca_agents/ag_trend.py::_scrape_tiktok_smart` + `::_scrape_threads_smart`
-- Test: `packages/agents/tests/test_camoufox_client.py`, `test_tiktok_camoufox_source.py`, `test_threads_camoufox_source.py`
+- Test: `packages/agents/tests/test_camoufox_client.py`, `test_tiktok_camoufox_source.py`, `test_threads_camoufox_source.py`, `test_threads_official_api_source.py`
+- Threads keyword search docs: https://developers.facebook.com/docs/threads/keyword-search
 - Camoufox docs: https://camoufox.com/
 - Camoufox repo: https://github.com/daijro/camoufox
 
@@ -232,3 +270,4 @@ print('camoufox:', 'OK' if is_available() else 'NOT INSTALLED')
 |---|---|---|
 | 2026-09-10 | AI assistant | Tạo runbook (kèm plan tích hợp Camoufox vào AG-TREND) |
 | 2026-09-10 | AI assistant | Live-test: TikTok DOM mới `search_top-item` (đã hoạt động, 5 items thật); Threads login-wall mềm → fast-fail ~10s; ghi chú bẫy serialization nháy kép |
+| 2026-09-10 | AI assistant | Thêm Tier 0 Threads Official API keyword search (graph.threads.net, miễn phí 2,200 queries/24h) — live-test 7 đường thay thế đều chết, chỉ Official API là khả thi |

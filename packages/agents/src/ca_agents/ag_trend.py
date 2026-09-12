@@ -745,13 +745,13 @@ def _scrape_threads_smart(
     nguon_goc: str = "threads_vn",
     scrape_mode: str = "auto",
 ) -> list[TrendItem]:
-    """Threads Google Index Bridge as PRIMARY → Apify as SECONDARY → RSS Fallback.
+    """Threads Official API → Google Bridge → Direct Jina → Camoufox → Apify → RSS.
 
     Modes:
-        - auto: Google Bridge first -> Direct Jina -> Camoufox browser -> Apify backup -> RSS fallback
-        - direct_only: Google Bridge -> Direct Jina -> RSS fallback (never uses Apify/Camoufox)
+        - auto: Official API first -> Google Bridge -> Direct Jina -> Camoufox browser -> Apify backup -> RSS fallback
+        - direct_only: Google Bridge -> Direct Jina -> RSS fallback (never uses API/Apify/Camoufox)
         - apify_force: Apify first -> Google Bridge backup
-        - browser: Camoufox first -> Google Bridge -> Direct Jina -> Apify -> RSS (plan §3.5)
+        - browser: Camoufox first -> Official API -> Google Bridge -> Direct Jina -> Apify -> RSS (plan §3.5)
     """
     start = time.monotonic()
 
@@ -786,6 +786,45 @@ def _scrape_threads_smart(
         except Exception as e:  # noqa: BLE001
             logger.warning(
                 "threads_browser_mode_failed_falling_back",
+                extra={"error": str(e)[:200]},
+            )
+
+    # 0. TIER 0 — Threads Official API (graph.threads.net /keyword_search):
+    # nguồn chính thức, hợp lệ, miễn phí (2,200 queries/24h). Chỉ chạy khi
+    # có THREADS_ACCESS_TOKEN; token sai / API lỗi → rớt tầng ngay.
+    if scrape_mode != "direct_only":
+        try:
+            from ca_agents.sources.threads_official_api_source import (
+                ThreadsOfficialApiError,
+                is_configured,
+                scrape_threads_official_api,
+            )
+
+            if is_configured():
+                items = scrape_threads_official_api(
+                    keyword=keyword,
+                    count=count,
+                    nguon_goc=nguon_goc,
+                )
+                if items:
+                    logger.info(
+                        "threads_source_official_api",
+                        extra={
+                            "source": "threads_official_api",
+                            "nguon_goc": nguon_goc,
+                            "items_count": len(items),
+                            "duration_ms": int((time.monotonic() - start) * 1000),
+                        },
+                    )
+                    return cast(list[TrendItem], items)
+        except ThreadsOfficialApiError as e:
+            logger.warning(
+                "threads_official_api_failed_trying_bridge",
+                extra={"error": str(e)[:200]},
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                "threads_official_api_unexpected_error",
                 extra={"error": str(e)[:200]},
             )
 
