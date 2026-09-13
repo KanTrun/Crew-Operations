@@ -53,7 +53,15 @@ from ca_api.interfaces.http.sprint3 import (
 )
 from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.orchestration import Clock
-from ca_api.persist import _VN_TZ, audit_add, audit_list, kv_get, kv_mutate, kv_set, list_users
+from ca_api.persist import (
+    audit_add,
+    audit_list,
+    ghi_diem_danh,
+    kv_get,
+    kv_mutate,
+    kv_set,
+    list_users,
+)
 from ca_api.persist import session as auth_session
 from ca_api.services.chat_ws import notify_ops_changed
 
@@ -1247,19 +1255,8 @@ def qr_use(
     kv_mutate("qr", mut, {})
     assert used is not None
 
-    ngay = datetime.now(_VN_TZ).date().isoformat()
-
-    def dd_mut(dd: dict[str, list[str]]) -> dict[str, list[str]]:
-        # Khoá theo ngày {ngay: [nv_id, ...]} — đồng bộ với /api/v1/diem-danh.
-        hom_nay = dd.get(ngay)
-        if not isinstance(hom_nay, list):
-            hom_nay = []
-        if used["nv_id"] not in hom_nay:
-            hom_nay.append(used["nv_id"])
-        dd[ngay] = hom_nay
-        return dd
-
-    kv_mutate("diem_danh", dd_mut, {})
+    # Khoá theo ngày {ngay: [nv_id, ...]} — đồng bộ với /api/v1/diem-danh.
+    ghi_diem_danh(used["nv_id"])
     _audit("qr_diem_danh", used["nv_id"], {"token": token, "ca_id": used.get("ca_id")})
     return {"ok": True, "nv_id": used["nv_id"]}
 

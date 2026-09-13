@@ -39,9 +39,9 @@ from pydantic import BaseModel, Field
 
 from ca_api.orchestration import Clock, IdempotencyStore, StateMachine, dispatch_parallel
 from ca_api.persist import (
-    _VN_TZ,
     db_path,
     diem_danh_hom_nay,
+    ghi_diem_danh,
     kv_get,
     kv_mutate,
     kv_set,
@@ -235,20 +235,7 @@ def diem_danh(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, str]:
     nv = _nv_from_token(authorization)
-    ngay = datetime.now(_VN_TZ).date().isoformat()
-
-    def mut(dd: dict[str, list[str]]) -> dict[str, list[str]]:
-        # Khoá theo ngày: {ngay: [nv_id, ...]} — điểm danh chỉ có hiệu lực
-        # trong ngày; ngày mới phải quét lại QR/check-in lại.
-        hom_nay = dd.get(ngay)
-        if not isinstance(hom_nay, list):
-            hom_nay = []
-        if nv not in hom_nay:
-            hom_nay.append(nv)
-        dd[ngay] = hom_nay
-        return dd
-
-    kv_mutate("diem_danh", mut, {})
+    ghi_diem_danh(nv)
     return {"ok": "true", "nv_id": nv}
 
 

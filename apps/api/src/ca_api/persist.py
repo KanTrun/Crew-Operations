@@ -1379,6 +1379,34 @@ def da_diem_danh(nv_id: str) -> bool:
     return nv_id in set(diem_danh_hom_nay())
 
 
+def ghi_diem_danh(nv_id: str) -> None:
+    """Ghi nhận nv_id đã có mặt hôm nay (giờ Việt Nam).
+
+    Khoá kv ``diem_danh`` từng là list nv_id tích luỹ vĩnh viễn, nay là dict
+    ``{ngay: [nv_id, ...]}``. ``diem_danh_hom_nay`` vẫn đọc được list cũ nên
+    DB seed từ trước còn giữ dạng đó; nếu hàm ghi chỉ biết dict thì nó ném
+    ``AttributeError`` và endpoint trả 500 — nhân viên không điểm danh được,
+    phiếu không mở. Vì vậy list cũ được nâng cấp tại chỗ thành dict, giữ đúng
+    ngữ nghĩa mà bên đọc đã quy ước (coi như điểm danh hôm nay).
+    """
+    hom_nay = datetime.now(_VN_TZ).date().isoformat()
+
+    def mut(dd: Any) -> dict[str, list[str]]:
+        if not isinstance(dd, dict):
+            # Bản cũ dạng list, hoặc dữ liệu hỏng → nâng cấp, không giữ lại rác.
+            cu = [str(x) for x in dd] if isinstance(dd, list) else []
+            dd = {hom_nay: cu} if cu else {}
+        hom_nay_list = dd.get(hom_nay)
+        if not isinstance(hom_nay_list, list):
+            hom_nay_list = []
+        if nv_id not in hom_nay_list:
+            hom_nay_list.append(nv_id)
+        dd[hom_nay] = hom_nay_list
+        return dd
+
+    kv_mutate("diem_danh", mut, {})
+
+
 def audit_list() -> list[dict[str, Any]]:
     init_db()
     with _conn() as cx:

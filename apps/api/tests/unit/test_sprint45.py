@@ -240,6 +240,34 @@ def test_qr_diem_danh_chi_hieu_luc_trong_ngay() -> None:
     assert da_diem_danh("nv_03") is True
 
 
+def test_diem_danh_nang_cap_kv_list_cu_thanh_dict() -> None:
+    """Ghi điểm danh lên kv dạng list cũ phải nâng cấp, không được 500.
+
+    Bên đọc (`diem_danh_hom_nay`) chấp nhận cả list lẫn dict, nên DB seed từ
+    trước còn giữ dạng list. Nếu bên ghi chỉ biết dict thì nó ném
+    AttributeError và endpoint trả 500 — nhân viên không điểm danh được nên
+    phiếu không mở nổi.
+    """
+    kv_set("diem_danh", ["nv_03", "fx_nv_an"])
+
+    r = client.post("/api/v1/diem-danh", headers=headers(client, "lan"))
+    assert r.status_code == 200
+    assert r.json()["nv_id"] == "nv_01"
+
+    luu = kv_get("diem_danh", {})
+    assert isinstance(luu, dict), "kv phải được nâng cấp sang dạng theo ngày"
+    danh_sach = luu[_hom_nay()]
+    # Người cũ giữ nguyên, người mới được thêm vào đúng ngày hôm nay.
+    assert "nv_03" in danh_sach
+    assert "fx_nv_an" in danh_sach
+    assert "nv_01" in danh_sach
+    assert da_diem_danh("nv_01") is True
+
+    # Gọi lại không được nhân bản phần tử.
+    client.post("/api/v1/diem-danh", headers=headers(client, "lan"))
+    assert kv_get("diem_danh", {})[_hom_nay()].count("nv_01") == 1
+
+
 def test_swap_requires_valid_shift_and_staff_participation() -> None:
     staff = headers(client, "minh")
     outsider = {"a": "nv_01", "b": "nv_02", "c": "nv_04", "ca_id": "w1_c01"}
