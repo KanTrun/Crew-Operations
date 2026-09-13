@@ -200,13 +200,13 @@ Không một tin nhắn Facebook/Zalo/Telegram hay email SMTP nào được gử
 
 ### Giới hạn trung thực — những gì KHÔNG được chứng nhận
 
-- ~~**Không tạo commit, không khoá nhánh.**~~ — **ĐÃ COMMIT** 5 commit trên nhánh `feature/wip` (xem bảng dưới). **Chưa push** và **chưa khoá nhánh** — cả hai cần người dùng xác nhận.
+- ~~**Không tạo commit, không khoá nhánh.**~~ — **ĐÃ COMMIT và ĐÃ PUSH** lên `origin/feature/wip` (nhánh mới, fast-forward, không force; xem bảng dưới). **Chưa khoá nhánh** và **chưa mở PR** — cả hai cần người dùng xác nhận. CI **không** tự chạy vì `ci.yml` chỉ kích hoạt ở `main`/`release/**` hoặc khi có PR.
 - **Chưa kiểm thử restore từ backup** (chỉ tạo backup, chưa thử phục hồi).
 - **Chưa kiểm thử đa profile RBAC bằng 3 browser profile** như kế hoạch đề xuất; RBAC được phủ bằng test API (`test_copilot_vf_scope_insufficient_role`, test 2-quản-lý) chứ không bằng browser riêng biệt.
 - **Chưa probe từng hostname SMTP/Graph** — chỉ probe TCP tổng quát ra ngoài.
 - **Coverage 77.05% là của `ca_api` + `ca_agents`**, không phải toàn repo (chưa đo `ca_gates`, `ca_opsengine`, `ca_playbook`, `ca_solver`, `ca_contracts`).
 - **Không chứng nhận tuyệt đối 0 tương tác kênh thật cho các phiên trước** phiên này (stack mặc định từng bị gọi nhầm ở lượt chạy sớm, đã dừng và xác nhận Stopped).
-- **1 test fail còn mở** — thuộc WIP ngoài phạm vi, chưa được chủ sở hữu xử lý.
+- **1 test fail còn mở** — thuộc WIP ngoài phạm vi, chưa được chủ sở hữu xử lý. Đã chứng minh **5 cách độc lập** không phải do nhánh này (xem mục "Mô phỏng CI").
 - **Bằng chứng log không tái lập được từ clone** — 17 file `.log` bị gitignore, chỉ còn trên máy đã chạy.
 - **Báo cáo này từng có 2 lỗi sự thật** (mã CVE bịa `CVE-2026-75604`, sai bản phân giải `15.5.24` thay vì `15.5.25`) — đã phát hiện bằng cách đối chiếu log thô và sửa ở mục Audit phụ thuộc. Đây là bằng chứng cho thấy **con số trong báo cáo cần được kiểm bằng script, không bằng trí nhớ**.
 
@@ -220,7 +220,7 @@ Không một tin nhắn Facebook/Zalo/Telegram hay email SMTP nào được gử
 6. **Điều tra port publishing** của `compose.test.yml` nếu muốn chạy e2e từ host vào stack Docker.
 7. **Cân nhắc commit `.env.e2e`** (hoặc một `.env.e2e.example`) — file này chứa **0 secret** (mọi token đều rỗng, chỉ 7 cờ chế độ), nhưng `.gitignore:80:.env*` đang chặn nó. Hiện harness đã có mặc định cứng nên không bắt buộc, nhưng commit sẽ giúp người mới thấy rõ ý đồ an toàn.
 
-## Commit đã tạo (nhánh `feature/wip`, **chưa push**)
+## Commit đã tạo (nhánh `feature/wip`, **đã push**)
 
 | Commit | Message | Phạm vi |
 |---|---|---|
@@ -228,11 +228,55 @@ Không một tin nhắn Facebook/Zalo/Telegram hay email SMTP nào được gử
 | `7920c47` | `test(api): them 21 test hoi quy cho 3 loi va ma tran edge case GD9` | 5 file test (192+) |
 | `5871d01` | `fix(web): nang next len 15.5.25 de va 2 loi RCE nghiem trong` | `apps/web/package.json`, `package-lock.json` (211+/171−) |
 | `12a7fbc` | `test(infra): harness e2e an toan + san coverage 75% + cong cu chung minh GĐ10` | 15 file — harness, công cụ kiểm chứng, `.gitignore` (817+) |
-| *(commit này)* | `docs(ops): bao cao kiem thu toan dien V3 + backup DB bang chung GĐ10` | `plans/260913-1151-kiem-thu-toan-dien-v3/`, `data/backups/quan-pre-gd10-260913.db` |
+| `2d6196e` | `docs(ops): bao cao kiem thu toan dien V3 + backup DB bang chung GĐ10` | `plans/260913-1151-kiem-thu-toan-dien-v3/`, `data/backups/quan-pre-gd10-260913.db` (633+) — đã `--amend` từ `dced726` vì phát hiện stage trước khi sửa tiếp |
+| *(commit này)* | `test(api): chan tang Camoufox de 2 file test khong cao mang that` | `test_tiktok_smart_fallback.py`, `test_threads_google_bridge.py`, `scan_secrets_before_commit.py` |
+
+**Trạng thái remote:** `git push -u origin feature/wip` → `* [new branch]`. Đã xác minh `local == remote == 2d6196e`, `git merge-base --is-ancestor origin/main HEAD` exit 0 (fast-forward thật, `origin/main` = `fb8577a` đúng là gốc nhánh), và `git ls-remote --heads origin feature/wip` **rỗng trước khi push** → không có gì bị ghi đè. Tổng cộng so `origin/main`: **31 file, 1928+/191−**.
 
 **Cách tách khỏi WIP song song:** mỗi commit đều `git add` theo **đường dẫn cụ thể**, không dùng `git add -A`; sau mỗi lần stage đều kiểm `git diff --cached --name-only | findstr pricing catchment main.py threads_apify mail_log ag_pricing camoufox gmaps .env` → **rỗng**. Trước khi stage còn chạy `scripts/scan_secrets_before_commit.py` (quét tolerant cả log UTF-16) → 0 secret trên 84 file; nghi vấn duy nhất `infra/docker/.env:7` đã bị `.gitignore:80:.env*` chặn nên không thể lọt vào commit.
 
 **Vì sao commit `.db` binary:** `quan-pre-gd10-260913.db` là **bằng chứng GĐ10** được báo cáo trích dẫn. Đã kiểm riêng tư bằng `scripts/inspect_backup_privacy.py` trước khi commit: 31 bảng, `fb_review_queue` 221 dòng **toàn bộ** `source='messenger'` + `external_thread_id LIKE 'fb_eval%'` (dữ liệu mô phỏng), `fb_processed_events` 0 dòng, `users` 23 người đều là tên fixture → **không có dữ liệu khách hàng thật**. Tiền lệ: repo đã track `data/backups/quan-pre-phase0.db`.
+
+## Mô phỏng CI sau push — 2 lỗi thật được phát hiện thêm
+
+Push xong mới phát hiện **CI ruff scope rộng hơn gate local**: CI chạy `ruff check apps/api/src packages scripts` (có `scripts/`), còn task `validate-all-gates` chỉ quét 5 thư mục `src`. Chạy đúng lệnh CI trên worktree đang làm việc cho ra **19 lỗi ở 8 file** — nhưng đối chiếu với 31 file đã push thì **giao rỗng**; cả 8 file đều thuộc WIP pricing-radar của phiên song song.
+
+Để kết luận chắc chắn thay vì suy diễn, đã tạo **worktree detached tại đúng commit đã push** (`git worktree add ..\ci-sim-260913 HEAD --detach`) và chạy trong đó:
+
+| Kiểm tra | Kết quả |
+|---|---|
+| `ruff check apps/api/src packages scripts` (đúng scope CI) | **`All checks passed!`** |
+| `pytest apps/api/tests/unit/test_capability_coverage.py` | **`4 passed in 0.69s`** |
+| `pytest apps/api/tests/unit packages/agents/tests` (toàn bộ) | **`2 failed, 809 passed in 295.45s`** |
+
+Dòng 3 là bằng chứng thứ 5 và trực tiếp nhất cho thấy 1 test fail của full suite (`/catchment-survey`) **không thuộc nhánh này** — nó chỉ xuất hiện khi có `pricing_radar.py` + `catchment_survey.py` chưa track của phiên song song.
+
+**Nhưng 2 fail mới trong worktree sạch lại là lỗi thật, có sẵn từ `origin/main`:**
+
+`test_tiktok_smart_fallback.py` fail 2 test, và nguyên nhân **nghiêm trọng hơn lỗi test**: chuỗi rớt tầng là TikWM → **Camoufox** → Apify → static (plan §3.5), nhưng tầng Camoufox nằm **giữa** nên rất dễ bỏ sót khi mock. Trên host có cài Camoufox, `is_available()` trả `True` → test **launch browser thật và cào TikTok live**. Bằng chứng trong chính output fail: `Cào qua Camoufox browser thật lúc 16:40:18 13/09/2026`, và 3 test tốn **26.80s**.
+
+Điều này vi phạm **Gate 10 của chính dự án** (`packages/agents/tests/test_no_network.py` — "tests must not open live network when `CA_AGENT_MODE=replay`") và vi phạm ràng buộc an toàn "0 tương tác kênh thật" của đợt kiểm thử. Nó cũng giải thích vì sao 2 test chỉ fail trên host mà pass trong Docker: **Docker không có Camoufox**.
+
+Quét tiếp cho thấy `test_threads_google_bridge.py` **cùng loại lỗi** — test pass nhưng 1 test tốn **26.34s** vì cũng cào Threads live.
+
+**Cách sửa:** thêm fixture autouse chặn `camoufox_client.is_available` → `False`, đúng theo quy ước sẵn có trong `test_threads_apify_source.py`. **Không sửa production code** vì `ag_trend.py` đang đúng theo plan §3.5 — lỗi nằm ở test stale chưa được cập nhật khi tầng Camoufox được chèn vào giữa chuỗi.
+
+| File | Trước | Sau |
+|---|---|---|
+| `test_tiktok_smart_fallback.py` | 2 failed, 26.80s | **3 passed in 0.50s** |
+| `test_threads_google_bridge.py` | pass nhưng 26.34s/test | **0.21s/test** |
+| Gộp 4 file liên quan | 74 passed in 28.33s | **36 passed in 1.29s** |
+| Gate suite (7 file) | 145 passed | **154 passed in 38.82s** |
+
+**Lỗi thứ 3 — trong chính công cụ của tôi:** `scripts/scan_secrets_before_commit.py` khi chạy **không có arg** sẽ quét **0 file** và in `nghi_vu_lo_secret=0`, tức **báo sạch giả** — nguy hiểm hơn là không quét. Đã phát hiện nhờ để ý con số `QUET 0 file` bất thường (trước đó luôn là 84). Sửa: mặc định lấy danh sách từ `git diff --cached --name-only`, và in cảnh báo rõ khi không quét file nào.
+
+Trong lúc tự kiểm còn phát hiện lỗi thứ 4: script **crash** (`ValueError: not in the subpath`) với file nằm ngoài repo, và exit code 1 do crash **bị nhầm với exit 1 do tìm thấy secret**. Đã sửa bằng `duong_dan_hien_thi()` bắt lỗi.
+
+> **Bài học quy trình:** hai lần trên đều là *công cụ kiểm chứng tự nó sai*. Nếu tin `nghi_vu_lo_secret=0` hay `PHAT_HIEN_DUOC: True` mà không đọc kỹ, báo cáo sẽ lại chứa kết luận sai — cùng loại lỗi với 2 lỗi sự thật đã đính chính ở mục Audit. **Công cụ kiểm chứng cũng phải được tự kiểm**, và harness tự kiểm 5 trường hợp đã được chạy: `SELF_TEST_SCANNER=PASS loi=0`.
+
+> **Lưu ý về `%ERRORLEVEL%`:** trong block `(...)` của cmd, `%ERRORLEVEL%` bị expand lúc parse nên **luôn in giá trị cũ**. Các dòng `EXIT=`/`RUFF_EXIT=`/`MYPY_EXIT=` trong log của đợt này **không đáng tin**; mọi kết luận exit code ở trên đều được lấy bằng `subprocess.run(...).returncode` trong Python.
+
+**Đã dọn dẹp:** worktree mô phỏng `D:\ci-sim-260913` đã `git worktree remove --force` + `prune` (xác minh `DA_XOA_HET`, `git worktree list` chỉ còn 2 worktree hợp lệ); 12 file log tạm và DB tạm đã xoá. `git status` sau dọn chỉ còn WIP của phiên song song + đúng 3 file của commit này.
 
 ## Bằng chứng (log)
 
