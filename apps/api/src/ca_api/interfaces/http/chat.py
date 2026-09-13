@@ -130,11 +130,19 @@ async def chat_websocket_endpoint(websocket: WebSocket) -> None:
         first_msg = json.loads(raw_first)
     except TimeoutError:
         await auth_ip_limiter.record_failure(client_ip)
-        await websocket.close(code=4001, reason="auth_timeout")
+        try:
+            await websocket.close(code=4001, reason="auth_timeout")
+        except Exception:
+            pass
+        return
+    except WebSocketDisconnect:
         return
     except Exception:
         await auth_ip_limiter.record_failure(client_ip)
-        await websocket.close(code=4001, reason="auth_invalid")
+        try:
+            await websocket.close(code=4001, reason="auth_invalid")
+        except Exception:
+            pass
         return
 
     if first_msg.get("event") != "auth" or not first_msg.get("token"):

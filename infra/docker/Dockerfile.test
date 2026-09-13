@@ -1,0 +1,10 @@
+FROM nhipquan-test-api:latest
+RUN pip install --no-cache-dir pytest pytest-cov httpx httpx2 pillow
+COPY pyproject.toml /app/pyproject.toml
+COPY apps/api/tests /app/apps/api/tests
+COPY packages/agents/tests /app/packages/agents/tests
+COPY scripts/test_docker_safety.py /app/scripts/test_docker_safety.py
+ENV CA_AGENT_MODE=replay NHIPQUAN_PAGE_MODE=disconnected NHIPQUAN_FB_AUTO_SEND=0
+# Sàn coverage: đo được 77% trên ca_api+ca_agents; đặt 75% để chặn tụt hạng
+# mà không gây fail nhiễu do dao động nhỏ giữa các lượt chạy.
+CMD ["python", "-m", "pytest", "-q", "--cov=ca_api", "--cov=ca_agents", "--cov-fail-under=75", "--cov-report=term", "--cov-report=json:/tmp/coverage.json"]

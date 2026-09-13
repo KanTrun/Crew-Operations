@@ -153,6 +153,37 @@ def test_chat_upload_media_magic_bytes(client: TestClient, auth_lan: dict[str, s
 
 
 @pytest.mark.parametrize(
+    "ten_tep",
+    ["../../etc/passwd", "..%2f..%2fetc%2fpasswd", "....//....//etc/passwd", "/etc/passwd"],
+)
+def test_chat_upload_media_chan_path_traversal(
+    client: TestClient, auth_lan: dict[str, str], ten_tep: str
+) -> None:
+    """Tên tệp chứa ký tự duyệt thư mục không được phép thoát khỏi UPLOAD_DIR.
+
+    Write path sinh tên mới bằng uuid4 nên payload không bao giờ chạm đĩa dưới
+    tên gốc; read path phải trả 404 chứ không phục vụ tệp ngoài thư mục upload.
+    """
+    headers = {"Authorization": auth_lan["Authorization"]}
+    png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + b"A" * 50
+
+    res_up = client.post(
+        "/api/v1/chat/upload",
+        files={"file": (ten_tep, io.BytesIO(png), "image/png")},
+        headers=headers,
+    )
+    assert res_up.status_code == 200, res_up.text
+    luu = res_up.json()["url"].rsplit("/", 1)[-1]
+    assert "/" not in luu and "\\" not in luu
+    assert luu.endswith(".png")
+
+    # Đọc trực tiếp đường dẫn traversal phải 404, không lộ tệp hệ thống.
+    res_get = client.get(f"/api/v1/chat/uploads/{ten_tep}", headers=headers)
+    assert res_get.status_code in (400, 404)
+    assert b"root:" not in res_get.content
+
+
+@pytest.mark.parametrize(
     ("filename", "content_type", "payload", "expected_mime", "expected_suffix"),
     [
         ("voice.webm", "audio/webm;codecs=opus", b"\x1a\x45\xdf\xa3" + b"A" * 40, "audio/webm", ".webm"),

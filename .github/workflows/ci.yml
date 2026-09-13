@@ -157,6 +157,9 @@ jobs:
           cd apps/web && npm ci && for attempt in 1 2 3; do npx playwright install --with-deps chromium && exit 0; rm -rf "$HOME/.cache/ms-playwright"; done; exit 1
       - name: Playwright 8 flows
         working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_URL: "http://127.0.0.1:8000"
+          NHIPQUAN_DISABLE_RATE_LIMIT: "true"
         run: npm run build && npm run test:e2e
 
   docker:

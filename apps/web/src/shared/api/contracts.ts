@@ -4,7 +4,7 @@ export type LichTuan = Record<string, unknown>;
 export type PhieuMau = Record<string, unknown>;
 export type RangBuocTrichXuat = Record<string, unknown>;
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 export async function fetchContracts(): Promise<Record<string, unknown>> {
   const res = await fetch(`${API}/api/v1/contracts`, { cache: "no-store" });

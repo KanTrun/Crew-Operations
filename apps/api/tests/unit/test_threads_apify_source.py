@@ -106,19 +106,26 @@ def test_scrape_threads_apify_success():
         assert len(item.binh_luan_that_tiktok) > 0
 
 
-def test_scrape_threads_smart_fallback_when_apify_fails():
+@pytest.mark.parametrize("rss_items", [[], [object()]])
+def test_scrape_threads_smart_fallback_when_apify_fails(rss_items):
     with patch(
+        "ca_agents.sources.threads_google_bridge_source.scrape_threads_google_bridge",
+        return_value=[],
+    ), patch(
+        "ca_agents.clients.camoufox_client.is_available", return_value=False,
+    ), patch(
         "ca_agents.sources.threads_direct_source.scrape_threads_direct",
         side_effect=Exception("Direct mạng lỗi"),
     ), patch(
-        "ca_agents.sources.threads_apify_source.run_actor_sync",
+        "ca_agents.sources.threads_apify_source.scrape_threads_apify",
         side_effect=ApifyError("Apify token hết hạn"),
-    ):
-        # When both Direct and Apify fail, _scrape_threads_smart must NOT raise, but fallback to RSS gracefully
+    ) as apify, patch(
+        "ca_agents.ag_trend._scrape_genz_media_vn", return_value=rss_items,
+    ) as rss:
         items = _scrape_threads_smart(keyword="", count=5)
-        assert isinstance(items, list)
-        assert len(items) > 0
-        assert items[0].nguon_goc == "threads_vn"
+        assert items is rss_items
+        apify.assert_called_once()
+        rss.assert_called_once_with(keyword="")
 
 
 def test_scrape_threads_direct_primary():

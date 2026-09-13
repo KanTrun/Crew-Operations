@@ -521,6 +521,14 @@ def page_sync(authorization: Annotated[str | None, Header()] = None) -> dict[str
     return {"ok": True, "n": len(threads), "mode": "live"}
 
 
+def _safe_float(value: Any) -> float:
+    """Ép kiểu an toàn cho trường số trong webhook công khai (payload có thể rác)."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 @router.api_route("/api/v1/channels/facebook/webhook", methods=["GET", "POST"])
 async def facebook_webhook(request: Request) -> Any:
     """Meta webhook: GET verify challenge; POST Messenger events → AG-FBPAGE processing."""
@@ -557,19 +565,37 @@ async def facebook_webhook(request: Request) -> Any:
 
     n = 0
     page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
-    for entry in payload.get("entry") or []:
+    entries = payload.get("entry") or []
+    if not isinstance(entries, list):
+        # Payload công khai có thể dị dạng — bỏ qua thay vì 500 (Meta sẽ retry).
+        return {"ok": True, "ignored": True}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
         # L0a — chỉ nhận entry đúng Page cấu hình (kế hoạch §6.3.5); thiếu id → cho qua (tương thích ngược)
         if page_id_cfg and entry.get("id") and str(entry.get("id")) != page_id_cfg:
             continue
-        for ev in entry.get("messaging") or []:
-            sender = ((ev.get("sender") or {}).get("id")) or ""
+        messaging = entry.get("messaging") or []
+        if not isinstance(messaging, list):
+            continue
+        for ev in messaging:
+            if not isinstance(ev, dict):
+                continue
+            sender_raw = ev.get("sender")
+            sender = str((sender_raw or {}).get("id") or "") if isinstance(sender_raw, dict) else ""
             msg = ev.get("message") or {}
+            if not isinstance(msg, dict):
+                continue
             # L0b — lọc echo: tin do chính Page/bot gửi → tránh vòng lặp (§6.2a)
             if msg.get("is_echo"):
                 continue
-            text = (msg.get("text") or "").strip()
+            text = str(msg.get("text") or "").strip()
             postback = ev.get("postback") or {}
+            if not isinstance(postback, dict):
+                postback = {}
             attachments = msg.get("attachments") or []
+            if not isinstance(attachments, list):
+                attachments = []
             if not sender:
                 continue
 
@@ -579,7 +605,10 @@ async def facebook_webhook(request: Request) -> Any:
                     text = f"[Khách chọn: {title}]"
                     event_id = str(postback.get("mid") or f"postback:{sender}:{ev.get('timestamp')}:{postback.get('payload')}")
                 else:
-                    attachment_type = str((attachments[0] or {}).get("type") or "tệp")
+                    first = attachments[0] if attachments else {}
+                    if not isinstance(first, dict):
+                        first = {}
+                    attachment_type = str(first.get("type") or "tệp")
                     attachment_labels = {"image": "ảnh", "audio": "âm thanh", "video": "video", "file": "tệp"}
                     text = f"[Khách gửi {attachment_labels.get(attachment_type, 'tệp đính kèm')}]"
                     event_id = str(msg.get("mid") or f"attachment:{sender}:{ev.get('timestamp')}")
@@ -607,7 +636,7 @@ async def facebook_webhook(request: Request) -> Any:
                 external_event_id=mid,
             ):
                 continue
-            ts = float(ev.get("timestamp") or 0)
+            ts = _safe_float(ev.get("timestamp"))
 
             # L1–L5 — moderation pipeline (policy engine + review queue)
             moderation = moderate_fb_message(
@@ -793,13 +822,22 @@ async def facebook_webhook(request: Request) -> Any:
             kv_mutate("page_quan", mut, _page_store())
             n += 1
 
-        for change in entry.get("changes") or []:
+        changes = entry.get("changes") or []
+        if not isinstance(changes, list):
+            continue
+        for change in changes:
+            if not isinstance(change, dict):
+                continue
             value = change.get("value") or {}
+            if not isinstance(value, dict):
+                continue
             if change.get("field") != "feed" or value.get("item") != "comment":
                 continue
             if value.get("verb") != "add" or value.get("is_hidden"):
                 continue
             author = value.get("from") or {}
+            if not isinstance(author, dict):
+                continue
             sender = str(author.get("id") or "")
             comment_id = str(value.get("comment_id") or "")
             text = str(value.get("message") or "").strip()
@@ -812,7 +850,7 @@ async def facebook_webhook(request: Request) -> Any:
                 psid=sender,
                 text=text,
                 message_id=comment_id,
-                timestamp=float(value.get("created_time") or 0),
+                timestamp=_safe_float(value.get("created_time")),
                 public_context=public_ctx,
                 source="comment",
                 post_id=str(value.get("post_id") or "") or None,

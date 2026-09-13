@@ -240,6 +240,26 @@ def test_qr_diem_danh_chi_hieu_luc_trong_ngay() -> None:
     assert da_diem_danh("nv_03") is True
 
 
+def test_qr_write_path_tuong_thich_nguoc_du_lieu_list_cu() -> None:
+    """QR check-in ghi cùng KV `diem_danh` — bản cũ dạng list phải migrate, không 500.
+
+    Regression cùng lớp lỗi với /api/v1/diem-danh: `dd_mut()` gọi `.get()` trên
+    list → AttributeError → 500, nhân viên không quét QR vào ca được.
+    """
+    kv_set("diem_danh", ["nv_09"])
+    manager = headers(client, "lan")
+    target = headers(client, "minh")
+    token = client.post("/api/v1/qr", json={"nv_id": "nv_03", "ca_id": "w1_c01"}, headers=manager).json()["token"]
+
+    r = client.post(f"/api/v1/qr/{token}", headers=target)
+
+    assert r.status_code == 200, r.text
+    assert r.json()["ok"] is True
+    luu = kv_get("diem_danh", {})
+    assert isinstance(luu, dict)
+    assert set(luu[_hom_nay()]) == {"nv_09", "nv_03"}
+
+
 def test_swap_requires_valid_shift_and_staff_participation() -> None:
     staff = headers(client, "minh")
     outsider = {"a": "nv_01", "b": "nv_02", "c": "nv_04", "ca_id": "w1_c01"}
