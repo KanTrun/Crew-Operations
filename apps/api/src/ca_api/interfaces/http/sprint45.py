@@ -1249,15 +1249,24 @@ def qr_use(
 
     ngay = datetime.now(_VN_TZ).date().isoformat()
 
-    def dd_mut(dd: dict[str, list[str]]) -> dict[str, list[str]]:
+    def dd_mut(dd: Any) -> dict[str, list[str]]:
         # Khoá theo ngày {ngay: [nv_id, ...]} — đồng bộ với /api/v1/diem-danh.
-        hom_nay = dd.get(ngay)
-        if not isinstance(hom_nay, list):
-            hom_nay = []
+        # Tương thích ngược: bản cũ là list nv_id tích luỹ vĩnh viễn; migrate
+        # sang dict gán toàn bộ vào hôm nay để giữ hành vi của
+        # `diem_danh_hom_nay()` và không gây 500 khi store còn dữ liệu cũ.
+        cu: dict[str, list[str]] = {}
+        if isinstance(dd, list):
+            cu = {ngay: [str(x) for x in dd]}
+        elif isinstance(dd, dict):
+            cu = {
+                str(k): [str(x) for x in v]
+                for k, v in dd.items()
+                if isinstance(v, list)
+            }
+        hom_nay = cu.setdefault(ngay, [])
         if used["nv_id"] not in hom_nay:
             hom_nay.append(used["nv_id"])
-        dd[ngay] = hom_nay
-        return dd
+        return cu
 
     kv_mutate("diem_danh", dd_mut, {})
     _audit("qr_diem_danh", used["nv_id"], {"token": token, "ca_id": used.get("ca_id")})
