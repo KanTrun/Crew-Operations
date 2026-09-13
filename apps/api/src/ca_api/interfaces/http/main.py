@@ -43,6 +43,7 @@ from ca_playbook.vong_doi import tim_mau as _tim_mau
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from ca_api.ai_learning.rollout import select_active_rules
 from ca_api.ai_learning.security import configure_data_protection, minimal_data_mode
@@ -58,6 +59,11 @@ from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.pos import router as pos_router
+
+try:
+    from ca_api.interfaces.http.pricing_radar import router as pricing_radar_router
+except ImportError:
+    pricing_radar_router = None
 from ca_api.interfaces.http.reservations import router as reservations_router
 from ca_api.interfaces.http.skills import router as skills_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
@@ -103,7 +109,14 @@ _cors_origins = [
     origin.strip()
     for origin in os.environ.get("NHIPQUAN_CORS_ORIGINS", "").split(",")
     if origin.strip()
-] or ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"]
+] or [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://[::1]:3000",
+    "http://[::1]:3001",
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
@@ -155,6 +168,8 @@ app.include_router(copilot_router)
 app.include_router(pos_router)
 app.include_router(meeting_router)
 app.include_router(trends_router)
+if pricing_radar_router:
+    app.include_router(pricing_radar_router)
 app.include_router(mail_router)
 app.include_router(ai_learning_router)
 app.include_router(chat_router)
@@ -408,8 +423,8 @@ def _detect_staff_availability(
         for it in inbox_items:
             if not isinstance(it, dict):
                 continue
-            rb = it.get("rang_buoc") or {}
-            hl = it.get("hieu_luc") or {}
+            rb = it.get("rang_buoc") if isinstance(it.get("rang_buoc"), dict) else {}
+            hl = it.get("hieu_luc") if isinstance(it.get("hieu_luc"), dict) else {}
             it_tuan = rb.get("tuan_id") or hl.get("tuan_id") or it.get("tuan_id")
             if it_tuan == tuan_iso:
                 nvid = it.get("nv_id") or hl.get("nv_id")
@@ -914,7 +929,7 @@ async def login(body: LoginBody, request: Request) -> LoginOut:
     ip = _client_ip(request)
     if await auth_ip_limiter.is_blocked(ip):
         raise HTTPException(status_code=429, detail="thu_qua_nhieu_lan_thu_lai_sau")
-    row = persist_login(body.username, body.password)
+    row = await run_in_threadpool(persist_login, body.username, body.password)
     if not row:
         await auth_ip_limiter.record_failure(ip)
         raise HTTPException(status_code=401, detail="sai_thong_tin_dang_nhap")

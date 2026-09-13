@@ -48,6 +48,7 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/vf/conflict-demo": "demo VF nội bộ",
     "/api/v1/ai/retention/dry-run": "chẩn đoán retention nội bộ",
     "/api/v1/reservations-metrics": "metrics nội bộ",
+    "/catchment-survey": "khảo sát giá thị trường bán kính catchment (pricing radar)",
     # ── AI-learning / governance (PR13 scope, deep-link /ai-learning) ──
     "/api/v1/ai/rules/proposals": "AI governance — duyệt qua UI /ai-learning",
     "/api/v1/ai/generations": "AI governance — đọc qua UI /ai-learning",
