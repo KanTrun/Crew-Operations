@@ -182,6 +182,50 @@ def test_copilot_execute_action_approve_and_idempotency(_du_nhan_vien_xep_lich: 
     assert conflict.json()["detail"] == "idempotency_conflict"
 
 
+def test_copilot_hai_quan_ly_duyet_cung_de_xuat_mot_thanh_cong(_du_nhan_vien_xep_lich: None) -> None:  # noqa: ANN001
+    """Hai người có quyền duyệt cùng một đề xuất: một 200, người kia 409.
+
+    Chống ghi đè kép — `copilot_draft_compare_and_set_status` chỉ cho một request
+    chuyển trạng thái sang `executing`; request thứ hai không được thực thi lại.
+    """
+    lan = _login_manager()
+    hung_res = login("hung", "nhipquan")
+    assert hung_res is not None
+    hung = hung_res["token"]
+
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Xếp lịch tuần sau giúp chị", "channel": "web"},
+        headers={"Authorization": f"Bearer {lan}"},
+    )
+    action_id = res.json()["action_proposal"]["action_id"]
+
+    first = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve", "idempotency_key": "key_lan"},
+        headers={"Authorization": f"Bearer {lan}"},
+    )
+    assert first.status_code == 200, first.text
+    assert first.json()["status"] == "executed"
+
+    second = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve", "idempotency_key": "key_hung"},
+        headers={"Authorization": f"Bearer {hung}"},
+    )
+    assert second.status_code == 409, second.text
+    assert second.json()["detail"] == "idempotency_conflict"
+
+    # Chỉ một lần thực thi: draft ở trạng thái executed, không có vết approve kép.
+    assert copilot_draft_get(action_id)["status"] == "executed"
+    audits = [
+        a
+        for a in copilot_audit_list("quan_01")
+        if a["action_id"] == action_id and a["decision"] == "approve"
+    ]
+    assert len(audits) == 1
+
+
 def test_copilot_execute_action_reject(_du_nhan_vien_xep_lich: None) -> None:  # noqa: ANN001
     token = _login_manager()
     res = client.post(
