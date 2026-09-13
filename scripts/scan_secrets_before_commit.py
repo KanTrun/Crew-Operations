@@ -31,6 +31,16 @@ BO_QUA = re.compile(
 )
 
 
+def doc_tolerant(p: Path) -> str:
+    """Đọc file kể cả khi bị TRỘN encoding.
+
+    PowerShell 5.1 `Out-File -Append` ghi UTF-16LE trong khi header có thể là
+    utf8, nên decode thẳng theo một codec sẽ đọc sót nội dung. Bỏ byte null rồi
+    decode latin-1 để regex vẫn thấy được chuỗi ASCII (token đều là ASCII).
+    """
+    return p.read_bytes().replace(b"\x00", b"").decode("latin-1", errors="replace")
+
+
 def main() -> int:
     muc_tieu: list[Path] = []
     for arg in sys.argv[1:]:
@@ -40,12 +50,16 @@ def main() -> int:
         elif p.is_file():
             muc_tieu.append(p)
 
-    muc_tieu = [p for p in muc_tieu if p.is_file() and p.suffix in {".py", ".yml", ".yaml", ".md", ".json", ".ts", ".tsx", ".cjs", ""}]
+    muc_tieu = [
+        p
+        for p in muc_tieu
+        if p.is_file() and p.suffix in {".py", ".yml", ".yaml", ".md", ".json", ".ts", ".tsx", ".cjs", ".log", ""}
+    ]
 
     tong = 0
     for p in muc_tieu:
         try:
-            text = p.read_text(encoding="utf-8", errors="replace")
+            text = doc_tolerant(p)
         except OSError:
             continue
         for i, line in enumerate(text.splitlines(), 1):
