@@ -41,6 +41,7 @@ from ca_playbook.vong_doi import de_xuat as _de_xuat
 from ca_playbook.vong_doi import list_luat as _list_luat
 from ca_playbook.vong_doi import tim_mau as _tim_mau
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -79,7 +80,7 @@ from ca_api.persist import login as persist_login
 from ca_api.persist import logout as persist_logout
 from ca_api.persist import register as persist_register
 from ca_api.persist import session as auth_session
-from ca_api.services.chat_ws import auth_ip_limiter, notify_ops_changed
+from ca_api.services.chat_ws import login_ip_limiter, notify_ops_changed
 
 
 @asynccontextmanager
@@ -912,13 +913,16 @@ def _client_ip(request: Request) -> str:
 async def login(body: LoginBody, request: Request) -> LoginOut:
     # Chống dò mật khẩu hàng loạt: quá 5 lần sai trong 10 phút từ 1 IP → khóa tạm.
     ip = _client_ip(request)
-    if await auth_ip_limiter.is_blocked(ip):
+    if await login_ip_limiter.is_blocked(ip):
         raise HTTPException(status_code=429, detail="thu_qua_nhieu_lan_thu_lai_sau")
-    row = persist_login(body.username, body.password)
+    # persist_login băm PBKDF2 và đọc SQLite — đều chặn. Handler là async nên phải
+    # đẩy sang threadpool, chạy thẳng trên event loop sẽ đứng toàn bộ server
+    # (kể cả WebSocket) suốt thời gian băm.
+    row = await run_in_threadpool(persist_login, body.username, body.password)
     if not row:
-        await auth_ip_limiter.record_failure(ip)
+        await login_ip_limiter.record_failure(ip)
         raise HTTPException(status_code=401, detail="sai_thong_tin_dang_nhap")
-    await auth_ip_limiter.clear(ip)
+    await login_ip_limiter.clear(ip)
     return LoginOut(
         token=row["token"],
         role=row["role"],

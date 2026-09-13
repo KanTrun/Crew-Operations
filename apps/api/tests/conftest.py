@@ -18,6 +18,10 @@ def _isolated_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("NHIPQUAN_SUA", str(tmp_path / "sua.jsonl"))
     monkeypatch.setenv("NHIPQUAN_CAMNANG", str(tmp_path / "cam_nang.json"))
     monkeypatch.setenv("NHIPQUAN_PBKDF2_VONG", "1000")
+    # Mail replay ghi nhật ký ra file. Mặc định của ag_mail là đường dẫn
+    # data/out/mail_log.jsonl ĐƯỢC THEO DÕI bởi git — không đổi chỗ thì mỗi lần
+    # chạy test lại nối thêm dòng vào repo, làm bẩn working tree.
+    monkeypatch.setenv("NHIPQUAN_MAIL_LOG", str(tmp_path / "mail_log.jsonl"))
     reset_init_flag()
 
 
