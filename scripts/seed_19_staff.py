@@ -50,29 +50,29 @@ for path in (
 # (nv_id, username, display_name, role)
 ALL_STAFF: list[tuple[str, str, str, str]] = [
     # Khối 1 — Ban Quản Lý (2 Quản lý + 1 Chủ quán)
-    ("nv_01", "lan",  "Lan Nguyễn — Cửa hàng trưởng (SM)",            "quan_ly"),
-    ("nv_02", "hung", "Hùng Trần — Chủ quán (Owner)",                 "chu_quan"),
-    ("nv_12", "nam",  "Nam Lý — Cửa hàng phó kiêm HR (ASM)",          "quan_ly"),
+    ("nv_01", "lan",  "Lan Nguyễn",  "quan_ly"),
+    ("nv_02", "hung", "Hùng Trần",   "chu_quan"),
+    ("nv_12", "nam",  "Nam Lý",       "quan_ly"),
     # Khối 2 — Trưởng Nhóm Chuyên Môn & Nhân Viên Lõi
-    ("nv_03", "minh", "Minh Phạm — Trưởng pha chế (Head Bar)",        "nhan_vien"),
-    ("nv_06", "chi",  "Chi Vũ — Tổ trưởng Thu ngân",                  "nhan_vien"),
-    ("nv_07", "dung", "Dũng Đặng — Trưởng kho & Tiếp liệu",           "nhan_vien"),
-    ("nv_04", "an",   "An Lê — Nhân viên đa năng / Chi viện",         "nhan_vien"),
-    ("nv_05", "bao",  "Bảo Hoàng — Barista chính",                    "nhan_vien"),
+    ("nv_03", "minh", "Minh Phạm",   "nhan_vien"),
+    ("nv_06", "chi",  "Chi Vũ",      "nhan_vien"),
+    ("nv_07", "dung", "Dũng Đặng",   "nhan_vien"),
+    ("nv_04", "an",   "An Lê",       "nhan_vien"),
+    ("nv_05", "bao",  "Bảo Hoàng",   "nhan_vien"),
     # Khối 3 — Nhân Viên Vận Hành Ca / Thu Ngân Xoay Tua
-    ("nv_10", "yen",  "Yến Kiều — Thu ngân ca chiều",                 "nhan_vien"),
-    ("nv_08", "thao", "Thảo Dương — Thu ngân ca tối",                 "nhan_vien"),
-    ("nv_09", "quan", "Quân Lương — Barista part-time",               "nhan_vien"),
-    ("nv_11", "linh", "Linh Ngô — Phục vụ chính",                     "nhan_vien"),
-    ("nv_13", "my",   "Mỹ Tạ — Phụ kho & Sảnh",                       "nhan_vien"),
+    ("nv_10", "yen",  "Yến Kiều",   "nhan_vien"),
+    ("nv_08", "thao", "Thảo Dương", "nhan_vien"),
+    ("nv_09", "quan", "Quân Lương", "nhan_vien"),
+    ("nv_11", "linh", "Linh Ngô",   "nhan_vien"),
+    ("nv_13", "my",   "Mỹ Tạ",      "nhan_vien"),
     # Khối 4 — Nhân Viên Ca Cuối Tuần / Ca Đêm (Demo Sổ Công Bằng)
-    ("nv_14", "khoa", "Khoa Đỗ — Kho ca cuối tuần",                   "nhan_vien"),
-    ("nv_15", "oanh", "Oanh Phan — Phục vụ ca tối",                   "nhan_vien"),
-    ("nv_16", "phuc", "Phúc Trịnh — Barista ca cuối tuần",            "nhan_vien"),
-    ("nv_17", "son",  "Sơn Hà — Barista sáng CN",                     "nhan_vien"),
+    ("nv_14", "khoa", "Khoa Đỗ",    "nhan_vien"),
+    ("nv_15", "oanh", "Oanh Phan",  "nhan_vien"),
+    ("nv_16", "phuc", "Phúc Trịnh", "nhan_vien"),
+    ("nv_17", "son",  "Sơn Hà",     "nhan_vien"),
     # Khối 5 — Nhân Viên Thử Việc / Học Việc (Demo Onboarding & Bù Ca)
-    ("nv_18", "rosa", "Rosa Võ — Thử việc (Phục vụ)",                 "nhan_vien"),
-    ("nv_19", "uyen", "Uyên Cao — Thử việc (Phụ bar/Kho)",            "nhan_vien"),
+    ("nv_18", "rosa", "Rosa Võ",   "nhan_vien"),
+    ("nv_19", "uyen", "Uyên Cao",  "nhan_vien"),
 ]
 
 

@@ -39,6 +39,10 @@ def _seed_nhan_vien() -> list[dict[str, Any]]:
         return []
 
 
+# Vai không phải con người — bot/agent nội bộ, không bao giờ vào pool xếp lịch.
+VAI_KHONG_XEP_LICH = {"ai_assistant"}
+
+
 def list_nhan_vien_ops(include_seed: bool | None = None) -> list[dict[str, Any]]:
     """Danh sách nhân viên dùng được cho xếp lịch, ưu tiên users thật.
 
@@ -48,6 +52,7 @@ def list_nhan_vien_ops(include_seed: bool | None = None) -> list[dict[str, Any]]
     dành cho dev/test/demo (set =1 trong .env khi cần lịch sử công bằng).
     Không fallback ngầm theo số users: pool phải tất định theo env, không
     đổi theo dữ liệu quán (test_mac_dinh_chi_users_that khóa hợp đồng này).
+    Tài khoản bot (vai `ai_assistant`) không phải nhân viên — loại khỏi pool.
     """
     env_flag = os.environ.get("NHIPQUAN_LOI_GIAI_SEED")
     explicit_seed = None
@@ -64,6 +69,8 @@ def list_nhan_vien_ops(include_seed: bool | None = None) -> list[dict[str, Any]]
         for u in list_users():
             nv_id = str(u.get("nv_id") or "").strip()
             if not nv_id or nv_id in seen:
+                continue
+            if str(u.get("role") or "") in VAI_KHONG_XEP_LICH:
                 continue
             seen.add(nv_id)
             out.append(
