@@ -141,7 +141,7 @@ def parse_gmaps_results_to_candidates(
                 url=str(item.get("place_id_search") or ""),
                 menu_image_urls=menu_images,
                 dishes=[],
-                data_source=data_source,  # type: ignore
+                data_source=data_source,
                 fetched_at=now_iso,
             )
         )
