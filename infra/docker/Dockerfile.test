@@ -1,5 +1,6 @@
 FROM nhipquan-test-api:latest
-RUN pip install --no-cache-dir pytest pytest-cov httpx httpx2 pillow
+# hypothesis: property-based test cho 4 bất biến Math Layer (plan 260913-1455 mục 4.6)
+RUN pip install --no-cache-dir pytest pytest-cov httpx httpx2 pillow hypothesis
 COPY pyproject.toml /app/pyproject.toml
 COPY apps/api/tests /app/apps/api/tests
 COPY packages/agents/tests /app/packages/agents/tests

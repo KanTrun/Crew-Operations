@@ -1,0 +1,151 @@
+# Tham số nghiệp vụ — Khảo sát Giá & Định vị Thị trường F&B theo Bán kính
+#
+# Nguồn: plans/260913-1455-khao-sat-gia-fb-online-dinein-substitutes/plan.md (v2.1)
+#
+# QUY TẮC (plan mục 1.5): KHÔNG hard-code các con số này trong mã nghiệp vụ.
+# Mọi khóa gắn nhãn BUSINESS_DECISION_PENDING_REVIEW là ĐỀ XUẤT — agent không
+# được tự chốt thay chủ dự án. Đổi quy định → sửa file này, không sửa mã.
+#
+# Loader tất định: packages/agents/src/ca_agents/ag_pricing/pricing_config.py
+
+phien_ban: "1.0.0"
+schema_version_hop_dong: "2.1"
+ngay_kiem: "2026-09-13"
+
+# ── Plan mục 4.1 — Phương pháp tính phân vị ─────────────────────────────────
+phan_vi:
+  # Nội suy tuyến tính chuẩn, tương đương numpy.percentile(..., method="linear").
+  # Ghi rõ để mọi engineer dùng MỘT phương pháp, tránh lệch số liệu giữa các lần chạy.
+  method: "linear"
+  # n < ngưỡng → không tính phân vị, trả cờ insufficient_data=True (không trả số không đáng tin)
+  # BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 4.1 và mã lỗi 422 INSUFFICIENT_MARKET_DATA (mục 5.3)
+  min_sample_size: 5
+  # Khoảng giá hợp lệ khi lọc mẫu (VNĐ) — chống nhiễu OCR/parse sai
+  gia_hop_le_toi_thieu_vnd: 5000
+  gia_hop_le_toi_da_vnd: 2000000
+
+# ── Plan mục 1.4 / 4.2 — Dual-Gate Qualification ────────────────────────────
+dual_gate:
+  # Gate 1 (Volume): review_count >= min_v HOẶC có nhãn "Quán yêu thích"
+  min_review_count: 50
+  # Gate 2 (Quality): rating >= min_r VÀ weighted_rating >= min_wr
+  min_rating: 4.2
+  # BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 1.4 (ngưỡng WR 4.0)
+  min_weighted_rating: 4.0
+  # Bayesian WR = (v/(v+m))*R + (m/(v+m))*C
+  bayes_m: 50
+  # BUSINESS_DECISION_PENDING_REVIEW: prior C = điểm trung bình thị trường, plan mục 1.4
+  bayes_prior_c: 4.2
+  # Trọng số suy giảm theo khoảng cách: W = 1/(1+alpha*d)
+  distance_decay_alpha: 0.15
+  # Plan mục 4.2: qua Gate 1 nhờ badge nhưng review_count < ngưỡng này → low_confidence
+  # BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 4.2 ("VD v=3")
+  low_confidence_review_threshold: 10
+  # Plan mục 4.2 chỉ nói "trọng số giảm", KHÔNG cho con số cụ thể.
+  # BUSINESS_DECISION_PENDING_REVIEW: con số này KHÔNG có trong plan — cần chủ dự án chốt
+  low_confidence_weight_factor: 0.5
+
+# ── Plan mục 1.1 / 3.1 — Bán kính theo kênh ─────────────────────────────────
+# BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 1.1 (radius theo mật độ đô thị)
+radius_profile_mac_dinh:
+  dine_in_km: 1.0
+  delivery_km: 5.0
+
+# Theo mật độ đô thị — plan mục 1.1. Khóa chưa được dùng cho tới khi chủ dự án
+# duyệt cách phân loại mật độ (chưa có trong plan).
+# BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 1.1
+radius_profile_theo_mat_do:
+  dense_urban:
+    dine_in_km: 1.0
+    delivery_km: 3.0
+  suburban:
+    dine_in_km: 2.0
+    delivery_km: 7.0
+  rural:
+    dine_in_km: 3.0
+    delivery_km: 10.0
+
+# ── Plan mục 1.3 / 4.3 — AMBI (Area Meal Budget Index) ──────────────────────
+ambi:
+  # AMBI = w_core * Median(Core) + w_sub * mean(Median các nhóm thay thế)
+  # BUSINESS_DECISION_PENDING_REVIEW: trọng số 0.5/0.5 giữ nguyên từ v1.0, xem plan mục 1.3
+  trong_so_core: 0.5
+  trong_so_substitutes: 0.5
+  # Vùng rủi ro bắt đầu từ AMBI * he_so (plan mục 4.3: 42.000 * 1.2 = 50.400)
+  # BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 4.3
+  he_so_vung_rui_ro: 1.2
+
+# ── Plan mục 4.4 — Sweet Spot Pricing Zone ──────────────────────────────────
+# BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 4.4 — TOÀN BỘ công thức này là
+# [ĐỀ XUẤT MỚI], plan ghi rõ "Cần chủ dự án duyệt chính thức công thức này ở
+# Phase 1 trước khi code hoá, vì đây là điểm mấu chốt hiển thị cho người dùng cuối."
+sweet_spot:
+  phan_vi_canh_duoi: 40      # SweetSpot_low_raw  = P40(Core ∪ Substitutes | cùng tier)
+  phan_vi_canh_tren: 60      # SweetSpot_high_raw = min(AMBI, P60(Core ∪ Substitutes | cùng tier))
+  # Chỉ dùng original_price_vnd, KHÔNG dùng giá khuyến mãi (plan mục 1.5.2)
+  dung_gia_goc: true
+  # Tính riêng theo positioning_tier, không trộn (plan mục 1.5.3)
+  tach_theo_tang_dinh_vi: true
+  # Loại combo khỏi phân vị món lẻ (plan mục 1.5.9)
+  loai_tru_combo: true
+
+# ── Plan mục 1.5.7 / 4.4.1 — Làm tròn theo tâm lý giá thị trường VN ────────
+# CHỈ áp dụng ở tầng hiển thị (_display), không ghi đè giá trị _raw.
+# BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 1.5.7 (bội số làm tròn)
+lam_tron_hien_thi:
+  beverage: 1000
+  mon_chinh: 5000
+  mac_dinh: 5000
+
+# ── Plan mục 1.5.1 / 4.4.2 — Cost-Plus Sanity Check ─────────────────────────
+cost_plus:
+  # MinViablePrice = estimated_cogs_vnd / (1 - target_margin_ratio)
+  # BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 1.5.1 (mặc định 0.30)
+  target_margin_ratio_mac_dinh: 0.30
+  # Chuẩn ngành tham chiếu để diễn giải trên UI (không dùng trong công thức)
+  food_cost_chuan_nganh:
+    quan_an_phan_tram_doanh_thu: [28, 33]
+    do_uong_phan_tram_doanh_thu: [25, 30]
+
+# ── Plan mục 1.5.6 / 4.5 — Competitive Intensity ────────────────────────────
+# Chỉ mang tính diễn giải ngữ cảnh (AreaContext), KHÔNG đưa vào AMBI/Sweet Spot.
+canh_tranh:
+  # Diện tích = PI * r^2. Plan mục 4.5 dùng hằng số 3.14159.
+  pi: 3.14159
+
+# ── Plan mục 9 — Chi phí biến đổi & ngưỡng cảnh báo nguồn ────────────────────
+# Dùng cho cost dashboard. Đây là SUẤT CHI PHÍ để QUY ĐỔI số lượt gọi thành tiền,
+# không phải tham số nghiệp vụ định giá — nhưng đơn giá thật vẫn do đội tài chính
+# chốt theo hợp đồng proxy/Vision đang ký.
+# BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 9 — đơn giá dưới đây là ước lượng từ bảng giá công
+# khai, chưa được chủ dự án duyệt; đổi nhà cung cấp là phải sửa lại.
+chi_phi:
+  # USD mỗi ảnh menu đưa qua Vision OCR (kể cả ảnh bị từ chối đọc).
+  vision_usd_moi_anh: 0.0025
+  # USD mỗi lượt trình duyệt anti-detect (Camoufox qua proxy) mở một trang nguồn.
+  proxy_usd_moi_luot: 0.002
+  # Ngân sách tháng — vượt số này thì dashboard báo đỏ, KHÔNG tự tắt tính năng.
+  ngan_sach_usd_thang: 50.0
+
+canh_bao:
+  # Plan mục 9: "cảnh báo khi tỷ lệ SOURCE_BLOCKED vượt ngưỡng (VD >15% trong 1 giờ)".
+  # BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 9 — 15% là con số ví dụ trong plan, chưa được chốt.
+  source_blocked_nguong_phan_tram: 15.0
+  # Dưới số lượt gọi này thì tỷ lệ % chưa có ý nghĩa thống kê — không báo động.
+  source_blocked_mau_toi_thieu: 20
+
+# ── Plan mục 2.2 — Guardrail OCR chống ảo giác ──────────────────────────────
+# (chưa dùng ở Phase 1 — khai báo sẵn để Phase 2 không hard-code)
+ocr_guardrail:
+  # Giá lệch quá N sigma so với trung vị nhóm → đẩy vào NEEDS_REVIEW (ADR-008)
+  # BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 2.2 và ma trận rủi ro mục 11
+  nguong_lech_sigma: 2.0
+  # confidence dưới mức này → needs_review
+  # BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 2.2
+  confidence_can_review: "low"
+
+ghi_chu: |
+  Số trên dùng cho ag_pricing Math Layer. Đổi chính sách giá → sửa file này, không sửa mã.
+  Các khóa BUSINESS_DECISION_PENDING_REVIEW chưa được chủ dự án duyệt — đang chạy ở dạng
+  default có thể cấu hình, KHÔNG phải quyết định đã chốt. Danh sách đầy đủ cần duyệt nằm ở
+  IMPLEMENTATION_STATUS.md và báo cáo Phase 1.

@@ -28,7 +28,16 @@ from ca_contracts import (
     copilot_intents_allowed_for_role,
 )
 from ca_gates import compute_snapshot_hash, validate_scope, validate_stale
-from fastapi import APIRouter, File, Header, HTTPException, Query, Request, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    File,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -568,6 +577,7 @@ def _chunk_text(text: str, size: int = 4) -> list[str]:
 @_recover_execution_failure
 def copilot_execute_action(
     body: ExecuteActionBody,
+    background_tasks: BackgroundTasks,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Confirm/Approve or Reject an ActionProposal with VF-SCOPE, VF-STALE and Idempotency."""
@@ -636,7 +646,7 @@ def copilot_execute_action(
         "PROPOSE_HANGING_TASK", "PROPOSE_TASK_COMPLETE", "PROPOSE_CONSUMPTION_RECORD",
         "PROPOSE_MENU_UPDATE", "PROPOSE_ORDER_TRANSITION", "PROPOSE_PIN",
         "PROPOSE_TKB_CONFIRM", "PROPOSE_SWAP_CONSENT", "PROPOSE_HANDOVER",
-        "PROPOSE_PAGE_DRAFT",
+        "PROPOSE_PAGE_DRAFT", "RUN_CATCHMENT_SURVEY",
     } and body.decision == "approve":
         if not copilot_execution_rearm_internal(
             user["store_id"], body.action_id, body.idempotency_key, request_hash
@@ -1173,6 +1183,45 @@ def copilot_execute_action(
         diff["mail_result"] = mail_result
         if not mail_result.get("ok"):
             raise RuntimeError(f"mail_delivery_failed:{mail_result.get('reason') or 'unknown'}")
+    elif intent == "RUN_CATCHMENT_SURVEY":
+        # 1. Server-side role check (defense-in-depth): chỉ quan_ly/chu_quan
+        if user["role"] not in {"quan_ly", "chu_quan"}:
+            raise HTTPException(status_code=403, detail="forbidden: survey requires manager role")
+
+        # 2. Tạo SurveyJob qua SurveyOrchestrator
+        from ca_agents.ag_pricing.job_manager import get_job_store
+        from ca_agents.ag_pricing.orchestrator_v2 import SurveyOrchestrator
+        from ca_contracts.catchment_survey_v2 import (
+            CatchmentSurveyRequest,
+            ChannelMode,
+            RadiusProfile,
+        )
+
+        cat_kw = str(diff.get("category_keyword") or "cà phê")
+        radius_val = float(diff.get("radius_km") or 3.0)
+        mode_val = str(diff.get("channel_mode") or "hybrid")
+
+        req_v2 = CatchmentSurveyRequest(
+            latitude=10.7769,
+            longitude=106.7009,
+            core_category=cat_kw,
+            channel_mode=ChannelMode(mode_val) if mode_val in [m.value for m in ChannelMode] else ChannelMode.HYBRID,
+            radius_profile=RadiusProfile(
+                dine_in_km=min(3.0, radius_val),
+                delivery_km=min(10.0, radius_val),
+            ),
+            idempotency_key=body.idempotency_key,
+        )
+
+        orch = SurveyOrchestrator(job_store=get_job_store())
+        job = orch.create_job(req_v2)
+        job.meta["store_id"] = user["store_id"]
+
+        background_tasks.add_task(orch.execute_job, job.job_id)
+
+        diff["job_id"] = job.job_id
+        diff["status"] = job.status.value
+        diff["link"] = f"/khao-sat-gia?job_id={job.job_id}"
 
     _RESULT_LINK: dict[str, str] = {
         "SCHEDULE_SOLVE": "/roster",
@@ -1191,6 +1240,7 @@ def copilot_execute_action(
         "PROPOSE_HANGING_TASK": "/treo",
         "PROPOSE_PAGE_SYNC": "/page-quan",
         "PROPOSE_PAGE_DRAFT": "/page-quan",
+        "RUN_CATCHMENT_SURVEY": "/khao-sat-gia",
     }
     outcome = {
         "ok": True,

@@ -27,6 +27,7 @@ def _setup_db(monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPathFactory)
     db = str(tmp_path / "test_copilot.db")
     monkeypatch.setenv("NHIPQUAN_DB", db)
     monkeypatch.setenv("CA_AGENT_MODE", "replay")
+    monkeypatch.setattr("ca_agents.ag_pricing.orchestrator_v2.SurveyOrchestrator.execute_job", lambda self, jid: None)
     reset_init_flag()
     # Reset rate-limit store giữa các test để test mới không bị 429 (pollution).
     import ca_api.interfaces.http.copilot as copilot_mod
@@ -1934,6 +1935,76 @@ def test_chu_quan_can_execute_admin_proposals() -> None:
     assert res_exec.status_code == 200
     exec_data = res_exec.json()
     assert exec_data["status"] == "executed"
+
+
+def test_manager_can_propose_and_approve_catchment_survey() -> None:
+    """Quản lý đề xuất khảo sát giá qua chat và phê duyệt ở Pha 2 (plan v2.0)."""
+    token = _login_manager()
+
+    # 1. Quản lý gửi yêu cầu khảo sát giá qua chat
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Khảo sát giá bún bò quanh quán 3km", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["intent"] == "RUN_CATCHMENT_SURVEY"
+    prop = data["action_proposal"]
+    assert prop is not None
+    assert prop["status"] == "ready_for_approval"
+    assert prop["requires_confirmation"] is True
+    assert prop["payload_diff"]["category_keyword"] == "bún bò"
+    assert prop["payload_diff"]["radius_km"] == 3.0
+
+    # 2. Quản lý bấm Duyệt & Thực thi (Pha 2)
+    action_id = prop["action_id"]
+    idem_key = f"idem-survey-{action_id}"
+    res_exec = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve", "idempotency_key": idem_key},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_exec.status_code == 200
+    exec_data = res_exec.json()
+    assert exec_data["status"] == "executed"
+    assert exec_data["result_link"] == "/khao-sat-gia"
+    assert "job_id" in exec_data["payload_diff"]
+
+    # 3. Idempotency replay check: gửi lại cùng idempotency key trả kết quả cũ
+    res_replay = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": action_id, "decision": "approve", "idempotency_key": idem_key},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_replay.status_code == 200
+    assert res_replay.json()["status"] == "executed"
+    assert res_replay.json()["payload_diff"]["job_id"] == exec_data["payload_diff"]["job_id"]
+
+
+def test_staff_cannot_execute_catchment_survey_action() -> None:
+    """Nhân viên không thể gọi execute-action cho RUN_CATCHMENT_SURVEY (Defense-in-depth §5)."""
+    manager_token = _login_manager()
+    staff_token = _login_staff()
+
+    # Quản lý tạo proposal
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "Khảo sát giá bún bò quanh quán 3km", "channel": "web"},
+        headers={"Authorization": f"Bearer {manager_token}"},
+    )
+    assert res.status_code == 200
+    prop = res.json()["action_proposal"]
+    assert prop is not None
+
+    # Nhân viên cố tình gọi execute-action -> 403
+    res_exec = client.post(
+        "/api/v1/copilot/execute-action",
+        json={"action_id": prop["action_id"], "decision": "approve"},
+        headers={"Authorization": f"Bearer {staff_token}"},
+    )
+    assert res_exec.status_code == 403
+
 
 
 

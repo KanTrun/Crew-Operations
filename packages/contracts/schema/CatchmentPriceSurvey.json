@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CatchmentPriceSurvey",
+  "type": "object",
+  "properties": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+        "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+        "address": { "type": "string" },
+        "radius_km": { "type": "number", "minimum": 0.5, "maximum": 15.0, "default": 3.0 },
+        "category_keyword": { "type": "string" },
+        "min_reviews": { "type": "integer", "minimum": 10, "default": 50 },
+        "min_rating": { "type": "number", "minimum": 1.0, "maximum": 5.0, "default": 4.2 },
+        "only_bestsellers": { "type": "boolean", "default": true },
+        "channel_mode": { "type": "string", "enum": ["dine_in_vision", "delivery_platform", "hybrid"], "default": "dine_in_vision" },
+        "include_substitutes": { "type": "boolean", "default": true },
+        "max_menu_images_per_store": { "type": "integer", "minimum": 1, "maximum": 5, "default": 3 }
+      },
+      "required": ["latitude", "longitude", "category_keyword"]
+    },
+    "total_scanned_stores": { "type": "integer", "minimum": 0 },
+    "validated_stores_count": { "type": "integer", "minimum": 0 },
+    "disqualified_stores_count": { "type": "integer", "minimum": 0 },
+    "validated_stores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "address": { "type": "string" },
+          "distance_km": { "type": "number" },
+          "rating": { "type": "number" },
+          "review_count": { "type": "integer" },
+          "bayesian_rating": { "type": "number" },
+          "distance_weight": { "type": "number" },
+          "is_favorite": { "type": "boolean" },
+          "url": { "type": "string" },
+          "has_menu_images": { "type": "boolean" }
+        },
+        "required": ["id", "name", "distance_km", "rating", "review_count", "bayesian_rating"]
+      }
+    },
+    "price_distribution": {
+      "type": "object",
+      "properties": {
+        "sample_size": { "type": "integer" },
+        "min_price": { "type": "integer" },
+        "max_price": { "type": "integer" },
+        "median_price": { "type": "integer" },
+        "p25_price": { "type": "integer" },
+        "p75_price": { "type": "integer" },
+        "volume_weighted_mean": { "type": "integer" },
+        "sweet_spot_range": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": ["sample_size", "min_price", "max_price", "median_price", "p25_price", "p75_price", "volume_weighted_mean", "sweet_spot_range"]
+    },
+    "top_competitor_signatures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "store_name": { "type": "string" },
+          "dish_name": { "type": "string" },
+          "price": { "type": "integer" },
+          "is_bestseller": { "type": "boolean" },
+          "category": { "type": "string" }
+        },
+        "required": ["store_name", "dish_name", "price"]
+      }
+    },
+    "substitute_comparison": {
+      "type": ["object", "null"],
+      "properties": {
+        "core_category_name": { "type": "string" },
+        "core_price_distribution": { "$ref": "#/properties/price_distribution" },
+        "substitute_categories": { "type": "array" },
+        "area_meal_budget_index": { "type": "integer" }
+      }
+    },
+    "menu_snapshots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "store_id": { "type": "string" },
+          "store_name": { "type": "string" },
+          "image_url": { "type": "string" },
+          "source": { "type": "string" },
+          "extracted_dishes_count": { "type": "integer" }
+        },
+        "required": ["store_id", "store_name", "image_url"]
+      }
+    },
+    "market_insight": { "type": "string" }
+  },
+  "required": [
+    "request",
+    "total_scanned_stores",
+    "validated_stores_count",
+    "disqualified_stores_count",
+    "validated_stores",
+    "price_distribution",
+    "market_insight"
+  ]
+}

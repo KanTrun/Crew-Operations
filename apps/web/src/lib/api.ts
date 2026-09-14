@@ -79,6 +79,26 @@ export function apiSend<T>(path: string, body?: unknown, method = "POST"): Promi
   });
 }
 
+/**
+ * Như `apiSend` nhưng gắn thêm header riêng (vd `Idempotency-Key`).
+ *
+ * Tách hàm thay vì thêm tham số vào `apiSend`: header idempotency là ràng buộc
+ * của MỘT endpoint (khảo sát giá, plan `260913-1455` mục 5.2), không phải mặc định
+ * cho mọi lời gọi ghi — để nó ngoài chữ ký chung thì không trang nào vô tình bỏ sót.
+ */
+export function apiSendHeaders<T>(
+  path: string,
+  body: unknown,
+  extra: HeadersInit,
+  method = "POST",
+): Promise<T> {
+  return request<T>(path, {
+    method,
+    headers: authHeaders({ "Content-Type": "application/json", ...extra }),
+    body: JSON.stringify(body),
+  });
+}
+
 /** Upload multipart (ảnh TKB). Không gắn Content-Type — browser tự set boundary. */
 export function apiUpload<T>(path: string, form: FormData): Promise<T> {
   return request<T>(path, {

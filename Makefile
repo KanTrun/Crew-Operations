@@ -1,8 +1,8 @@
-.PHONY: setup contracts dev test test-unit lint demo demo-local demo-reset seed seed-ops seed-demo bench eval ab replay budget metrics \
+.PHONY: setup contracts dev test test-unit canary lint demo demo-local demo-reset seed seed-ops seed-demo bench eval ab replay budget metrics \
 	docker-up docker-down docker-logs docker-smoke docker-ps docker-reset docker-seed-ops test-fb test-fb-post
 
 setup:
-	python -m pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api pytest httpx ruff pyyaml
+	python -m pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api pytest httpx ruff pyyaml hypothesis
 	cd apps/web && npm install
 
 contracts:
@@ -25,6 +25,14 @@ test:
 
 test-unit:
 	CA_AGENT_MODE=replay python -m pytest -q
+
+# Canary dò selector trên trang THẬT (Google Maps / ShopeeeFood). TÁCH KHỎI `test`:
+# nó cần camoufox + mạng, có thể đỏ vì bên thứ ba đổi UI chứ không phải lỗi repo,
+# nên KHÔNG được nằm trong luồng chặn merge (plan mục 7). Chạy tay hoặc theo cron
+# của workflow `canary-nguon.yml`. LUÔN exit 0 — đây là báo cáo, không phải gate.
+# Thêm `JSON=1` để in payload máy đọc được: `make canary JSON=1`.
+canary:
+	python scripts/canary/chay_canary_nguon.py $(if $(JSON),--json,)
 
 test-fb:
 	@python -m pip install -q python-dotenv requests || true

@@ -92,6 +92,16 @@ export interface ActionItem {
   muc_do_uu_tien?: "cao" | "trung_binh" | "thap";
   do_tin_cay?: number;
   da_chon?: boolean;
+  loai_cong_viec?: "1_ca" | "nhieu_ca" | "gop_y";
+  ca_thuc_hien?: string;
+  ca_du_kien?: string[];
+  can_lam_ro?: boolean;
+  van_de_ngu_canh?: string;
+  cau_hoi_lam_ro?: string;
+  goi_y_xu_ly?: string[];
+  stt_near_miss?: boolean;
+  khong_co_can_cu?: boolean;
+  nguon_cau_noi?: string;
 }
 
 export interface AuditTuanThuSop {
@@ -112,7 +122,7 @@ export interface BanTinCaKhan {
 
 export interface DeXuatPheDuyet {
   id: string;
-  loai_de_xuat?: "quy_trinh_sop" | "mua_sam_vat_tu" | "chinh_sach_nhan_su" | "khac";
+  loai_de_xuat?: "quy_trinh_sop" | "mua_sam_vat_tu" | "chinh_sach_nhan_su" | "dieu_chinh_lich" | "khac";
   tieu_de: string;
   nguoi_de_xuat?: string;
   nguoi_phe_duyet?: string;
@@ -121,6 +131,7 @@ export interface DeXuatPheDuyet {
   trang_thai?: "da_duyet" | "cho_duyet" | "tu_choi";
   quy_trinh_lien_quan?: string | null;
   buoc_so?: number | null;
+  chi_tiet_lich?: DieuChinhLichHop | null;
 }
 
 export interface DeXuatSop {
@@ -128,6 +139,19 @@ export interface DeXuatSop {
   buoc_so?: number | null;
   noi_dung_thay_doi: string;
   ly_do?: string;
+}
+
+export interface DieuChinhLichHop {
+  id?: string;
+  nhan_vien_id?: string | null;
+  ten_nhan_vien?: string;
+  loai?: "xin_nghi" | "ghim_ca" | "doi_ca" | "uu_tien";
+  thu?: string;
+  khung?: string;
+  ca_id?: string;
+  tuan_iso?: string;
+  ly_do?: string;
+  trang_thai?: "cho_duyet" | "da_duyet" | "tu_choi";
 }
 
 export interface DoanThoaiTranscript {
@@ -175,12 +199,16 @@ export interface CuocHop {
   de_xuat_phe_duyet?: DeXuatPheDuyet[];
   action_items?: ActionItem[];
   gop_y_luu_y?: GopYLuuY[];
+  dieu_chinh_lich?: DieuChinhLichHop[];
   audit_sop?: AuditTuanThuSop | null;
   ban_tin_ca?: BanTinCaKhan | null;
   huan_luyen_quan_ly?: HuanLuyenQuanLy | null;
   de_xuat_sop?: DeXuatSop[];
   do_tin_cay_tong_the?: number;
   trang_thai?: "cho_duyet" | "da_duyet" | "tu_choi";
+  phien_ban?: number;
+  last_modified_at?: string;
+  ngay_ghi_am?: string;
 }
 
 export interface CopilotContext {
@@ -199,7 +227,7 @@ export interface CopilotMessage {
 
 export type ActionProposalStatus = "draft" | "ready_for_approval" | "amendment_ready" | "executing" | "executed" | "execution_failed" | "rejected" | "expired" | "stale_rejected";
 
-export type CopilotIntent = "SCHEDULE_SOLVE" | "APPROVE_SHIFT_SWAP" | "GENERATE_DAILY_BRIEF" | "QUERY_SOP" | "ANALYZE_WASTE" | "CREATE_RULE_PROPOSAL" | "INVENTORY_RESTOCK_CHECK" | "SEND_MAIL" | "GET_MY_PROFILE" | "LIST_STAFF" | "QUERY_MENU" | "GET_INVENTORY" | "GET_SHIFT_SWAPS" | "GET_HANGING_TASKS" | "GET_HANDOVERS" | "PROPOSE_HANGING_TASK" | "PROPOSE_TASK_COMPLETE" | "PROPOSE_CONSUMPTION_RECORD" | "PROPOSE_MENU_UPDATE" | "PROPOSE_ORDER_TRANSITION" | "PROPOSE_PIN" | "GET_PAGE_STATUS" | "PROPOSE_PAGE_SYNC" | "OUT_OF_SCOPE";
+export type CopilotIntent = "SCHEDULE_SOLVE" | "APPROVE_SHIFT_SWAP" | "GENERATE_DAILY_BRIEF" | "QUERY_SOP" | "ANALYZE_WASTE" | "CREATE_RULE_PROPOSAL" | "INVENTORY_RESTOCK_CHECK" | "SEND_MAIL" | "GET_MY_PROFILE" | "LIST_STAFF" | "QUERY_MENU" | "GET_INVENTORY" | "GET_SHIFT_SWAPS" | "GET_HANGING_TASKS" | "GET_HANDOVERS" | "PROPOSE_HANGING_TASK" | "PROPOSE_TASK_COMPLETE" | "PROPOSE_CONSUMPTION_RECORD" | "PROPOSE_TIME_OFF" | "PROPOSE_MENU_UPDATE" | "PROPOSE_ORDER_TRANSITION" | "PROPOSE_PIN" | "GET_PAGE_STATUS" | "PROPOSE_PAGE_SYNC" | "PROPOSE_PAGE_DRAFT" | "PROPOSE_TKB_CONFIRM" | "PROPOSE_SWAP_CONSENT" | "PROPOSE_HANDOVER" | "GET_SCHEDULE" | "GET_MY_SHIFTS" | "GET_CONSTRAINT_CANDIDATES" | "RUN_CATCHMENT_SURVEY" | "GET_SERPAPI_QUOTA" | "GET_SURVEY_RESULT" | "OUT_OF_SCOPE";
 
 export interface ActionProposal {
   action_id: string;

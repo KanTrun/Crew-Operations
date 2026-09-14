@@ -1,0 +1,161 @@
+{
+  "reply": {
+    "restaurants": [
+      {
+        "id": "shopeefood_store_001",
+        "name": "Quán Cơm Tấm Sài Gòn",
+        "address": "123 Đường ABC, Quận 1, TP.HCM",
+        "rating": 4.7,
+        "review_count": 1250,
+        "is_favorite": true,
+        "distance_km": 1.2,
+        "url": "https://shopeefood.vn/quan-com-tam-sai-gon",
+        "dishes": [
+          {
+            "name": "Cơm tấm sườn bì chả",
+            "original_price": 45000,
+            "sale_price": 36000,
+            "discount_pct": "20%",
+            "is_bestseller": true,
+            "category": "Cơm"
+          },
+          {
+            "name": "Cơm tấm sườn nướng",
+            "price": 40000,
+            "is_bestseller": false,
+            "category": "Cơm"
+          },
+          {
+            "name": "Cơm tấm bì",
+            "list_price": "35.000đ",
+            "discount_price": "28.000đ",
+            "discount": "20%",
+            "is_bestseller": false,
+            "category": "Cơm"
+          }
+        ]
+      },
+      {
+        "id": "shopeefood_store_002",
+        "name": "Phở Bò Gia Truyền Hà Nội",
+        "address": "456 Đường XYZ, Quận 3, TP.HCM",
+        "rating": 4.8,
+        "review_count": 2100,
+        "is_favorite": true,
+        "distance_km": 2.5,
+        "url": "https://shopeefood.vn/pho-bo-gia-truyen",
+        "dishes": [
+          {
+            "name": "Phở bò tái",
+            "price": 55000,
+            "is_bestseller": true,
+            "category": "Phở"
+          },
+          {
+            "name": "Phở bò chín",
+            "price": 55000,
+            "is_bestseller": false,
+            "category": "Phở"
+          },
+          {
+            "name": "Phở bò tái lăn đặc biệt",
+            "original_price": 65000,
+            "sale_price": 58500,
+            "discount_pct": "10%",
+            "is_bestseller": true,
+            "category": "Phở"
+          }
+        ]
+      },
+      {
+        "id": "shopeefood_store_003",
+        "name": "Bún Bò Huế Đông Ba",
+        "address": "789 Đường DEF, Bình Thạnh, TP.HCM",
+        "rating": 4.6,
+        "review_count": 890,
+        "is_favorite": false,
+        "distance_km": 3.1,
+        "url": "https://shopeefood.vn/bun-bo-hue-dong-ba",
+        "dishes": [
+          {
+            "name": "Bún bò Huế đặc biệt",
+            "price": 50000,
+            "is_bestseller": true,
+            "category": "Bún"
+          },
+          {
+            "name": "Bún bò Huế thường",
+            "price": 40000,
+            "is_bestseller": false,
+            "category": "Bún"
+          }
+        ]
+      },
+      {
+        "id": "shopeefood_store_004",
+        "name": "Cà Phê Trung Nguyên Legend",
+        "address": "321 Đường GHI, Quận 1, TP.HCM",
+        "rating": 4.5,
+        "review_count": 3200,
+        "is_favorite": true,
+        "distance_km": 0.8,
+        "url": "https://shopeefood.vn/ca-phe-trung-nguyen",
+        "dishes": [
+          {
+            "name": "Cà phê sữa đá",
+            "price": 35000,
+            "is_bestseller": true,
+            "category": "Cà phê"
+          },
+          {
+            "name": "Cà phê đen đá",
+            "price": 30000,
+            "is_bestseller": false,
+            "category": "Cà phê"
+          },
+          {
+            "name": "Bạc xỉu đá",
+            "list_price": "38.000đ",
+            "discount_price": "32.300đ",
+            "discount": "15%",
+            "is_bestseller": false,
+            "category": "Cà phê"
+          }
+        ]
+      },
+      {
+        "id": "shopeefood_store_005",
+        "name": "Trà Sữa Phúc Long",
+        "address": "654 Đường JKL, Quận 3, TP.HCM",
+        "rating": 4.4,
+        "review_count": 1800,
+        "is_favorite": true,
+        "distance_km": 1.9,
+        "url": "https://shopeefood.vn/tra-sua-phuc-long",
+        "dishes": [
+          {
+            "name": "Trà sữa truyền thống size M",
+            "price": 45000,
+            "is_bestseller": true,
+            "category": "Trà sữa"
+          },
+          {
+            "name": "Trà đào cam sả",
+            "price": 40000,
+            "is_bestseller": false,
+            "category": "Trà"
+          },
+          {
+            "name": "Combo trà sữa + topping",
+            "original_price": 60000,
+            "sale_price": 50000,
+            "discount_pct": "17%",
+            "is_combo": true,
+            "is_bestseller": false,
+            "category": "Combo"
+          }
+        ]
+      }
+    ]
+  }
+}

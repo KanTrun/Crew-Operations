@@ -1,0 +1,322 @@
+{
+  "$defs": {
+    "AreaContext": {
+      "description": "Ngữ cảnh diễn giải (plan mục 1.5.5, 1.5.6) — KHÔNG phải công thức giá.\n\n`competitive_intensity` chỉ hiển thị song song AMBI, không gộp vào AMBI/Sweet Spot.",
+      "properties": {
+        "area_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AreaType"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None khi chưa suy ra được từ mật độ POI — KHÔNG được bịa (ADR-002)"
+        },
+        "competitive_intensity": {
+          "default": 0.0,
+          "description": "Số quán đạt Dual-Gate / km² (plan mục 4.5)",
+          "minimum": 0.0,
+          "title": "Competitive Intensity",
+          "type": "number"
+        }
+      },
+      "title": "AreaContext",
+      "type": "object"
+    },
+    "AreaType": {
+      "description": "Loại khu vực theo đối tượng khách (plan mục 1.5.5) — ngữ cảnh diễn giải AMBI.",
+      "enum": [
+        "office",
+        "residential",
+        "mixed",
+        "tourist"
+      ],
+      "title": "AreaType",
+      "type": "string"
+    },
+    "PercentileStats": {
+      "description": "Phân vị giá của một tập mẫu (plan mục 3.3 + 4.1).\n\n`insufficient_data=True` khi `sample_size < min_sample_size`: KHÔNG trả số liệu\nphân vị không đáng tin, chỉ trả `sample_size` (plan mục 4.1).",
+      "properties": {
+        "p25": {
+          "default": 0.0,
+          "minimum": 0.0,
+          "title": "P25",
+          "type": "number"
+        },
+        "p50": {
+          "default": 0.0,
+          "minimum": 0.0,
+          "title": "P50",
+          "type": "number"
+        },
+        "p75": {
+          "default": 0.0,
+          "minimum": 0.0,
+          "title": "P75",
+          "type": "number"
+        },
+        "sample_size": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Sample Size",
+          "type": "integer"
+        },
+        "insufficient_data": {
+          "default": false,
+          "description": "True khi mẫu < ngưỡng tối thiểu (plan mục 4.1)",
+          "title": "Insufficient Data",
+          "type": "boolean"
+        }
+      },
+      "title": "PercentileStats",
+      "type": "object"
+    },
+    "PositioningTier": {
+      "description": "Tầng định vị thương hiệu (plan mục 1.5.3).\n\nAMBI và Sweet Spot PHẢI tính riêng theo từng tầng — gộp quán vỉa hè với chuỗi\nthương hiệu vào một rổ trung vị là sai bản chất cạnh tranh.",
+      "enum": [
+        "street_food",
+        "casual_dine_in",
+        "branded_chain"
+      ],
+      "title": "PositioningTier",
+      "type": "string"
+    },
+    "SubstituteCategoryStats": {
+      "description": "Thống kê phổ giá của một nhóm món thay thế (plan mục 3.3).",
+      "properties": {
+        "category_name": {
+          "description": "VD \"bun_bo_hue\"",
+          "minLength": 1,
+          "title": "Category Name",
+          "type": "string"
+        },
+        "stats": {
+          "$ref": "#/$defs/PercentileStats"
+        }
+      },
+      "required": [
+        "category_name",
+        "stats"
+      ],
+      "title": "SubstituteCategoryStats",
+      "type": "object"
+    },
+    "SubstitutePriceComparison": {
+      "description": "Bảng so sánh core ↔ substitutes trong CÙNG một tầng định vị (plan mục 3.3).",
+      "properties": {
+        "core_category": {
+          "minLength": 1,
+          "title": "Core Category",
+          "type": "string"
+        },
+        "positioning_tier": {
+          "$ref": "#/$defs/PositioningTier",
+          "description": "Mục 1.5.3 — tính riêng theo tầng, không trộn"
+        },
+        "core_stats": {
+          "$ref": "#/$defs/PercentileStats"
+        },
+        "substitutes": {
+          "items": {
+            "$ref": "#/$defs/SubstituteCategoryStats"
+          },
+          "title": "Substitutes",
+          "type": "array"
+        },
+        "ambi": {
+          "description": "Area Meal Budget Index (plan mục 1.3/4.3)",
+          "minimum": 0.0,
+          "title": "Ambi",
+          "type": "number"
+        },
+        "sweet_spot_low_raw": {
+          "description": "Giá trị toán học CHƯA làm tròn — dùng lưu trữ/tính tiếp",
+          "minimum": 0.0,
+          "title": "Sweet Spot Low Raw",
+          "type": "number"
+        },
+        "sweet_spot_high_raw": {
+          "minimum": 0.0,
+          "title": "Sweet Spot High Raw",
+          "type": "number"
+        },
+        "sweet_spot_low_display": {
+          "description": "Đã làm tròn theo mục 1.5.7 — CHỈ dùng hiển thị",
+          "minimum": 0.0,
+          "title": "Sweet Spot Low Display",
+          "type": "number"
+        },
+        "sweet_spot_high_display": {
+          "minimum": 0.0,
+          "title": "Sweet Spot High Display",
+          "type": "number"
+        },
+        "min_viable_price": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Mục 1.5.1 — chỉ có nếu request kèm cost_plus_check",
+          "title": "Min Viable Price"
+        },
+        "cost_plus_warning": {
+          "default": false,
+          "description": "True nếu sweet_spot_high_raw < min_viable_price. UI BẮT BUỘC hiển thị cảnh báo, không được ẩn cho 'gọn' (mục 1.5.1)",
+          "title": "Cost Plus Warning",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "core_category",
+        "positioning_tier",
+        "core_stats",
+        "ambi",
+        "sweet_spot_low_raw",
+        "sweet_spot_high_raw",
+        "sweet_spot_low_display",
+        "sweet_spot_high_display"
+      ],
+      "title": "SubstitutePriceComparison",
+      "type": "object"
+    },
+    "SurveyErrorCode": {
+      "description": "Bảng mã lỗi (plan mục 5.3).",
+      "enum": [
+        "INVALID_RADIUS",
+        "SCHEMA_VERSION_MISMATCH",
+        "INSUFFICIENT_MARKET_DATA",
+        "RATE_LIMITED",
+        "SOURCE_BLOCKED",
+        "VISION_QUOTA_EXCEEDED"
+      ],
+      "title": "SurveyErrorCode",
+      "type": "string"
+    },
+    "SurveyJobStatus": {
+      "description": "State machine của một job khảo sát (plan mục 2.4).\n\n`needs_review` là ĐIỂM DỪNG THẬT (ADR-008): job không tự chuyển sang\n`aggregating` nếu chưa có người dùng xác nhận qua `POST .../{job_id}/review`.\nKhông được thiết kế \"auto-approve sau N giây\".",
+      "enum": [
+        "queued",
+        "scraping_online",
+        "scraping_dinein",
+        "ocr_processing",
+        "aggregating",
+        "needs_review",
+        "completed",
+        "failed"
+      ],
+      "title": "SurveyJobStatus",
+      "type": "string"
+    }
+  },
+  "description": "Kết quả một job khảo sát (plan mục 3.3).",
+  "properties": {
+    "schema_version": {
+      "default": "2.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "job_id": {
+      "minLength": 1,
+      "title": "Job Id",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/SurveyJobStatus",
+      "default": "queued"
+    },
+    "online_stats": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PercentileStats"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Phân vị giá kênh delivery"
+    },
+    "dinein_stats": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PercentileStats"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Phân vị giá kênh dine-in (OCR)"
+    },
+    "substitute_comparison": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SubstitutePriceComparison"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "area_context": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AreaContext"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "stores_flagged_for_review": {
+      "description": "store_id chờ người dùng xác nhận (ADR-008) — điểm dừng thật",
+      "items": {
+        "type": "string"
+      },
+      "title": "Stores Flagged For Review",
+      "type": "array"
+    },
+    "survey_captured_at": {
+      "description": "Mục 1.5.8 — BẮT BUỘC hiển thị trên UI",
+      "minLength": 1,
+      "title": "Survey Captured At",
+      "type": "string"
+    },
+    "generated_at": {
+      "description": "ISO 8601",
+      "minLength": 1,
+      "title": "Generated At",
+      "type": "string"
+    },
+    "error_code": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SurveyErrorCode"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Chỉ có khi status=failed (plan mục 5.3)"
+    }
+  },
+  "required": [
+    "job_id",
+    "survey_captured_at",
+    "generated_at"
+  ],
+  "title": "CatchmentSurveyResponse",
+  "type": "object"
+}

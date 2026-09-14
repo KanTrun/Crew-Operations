@@ -23,6 +23,12 @@ ROOT = Path(__file__).resolve().parents[4]
 
 _INITIALIZED = False
 
+try:
+    import psycopg
+    _DB_INTEGRITY_ERRORS: tuple[type[Exception], ...] = (sqlite3.IntegrityError, psycopg.IntegrityError)
+except ImportError:
+    _DB_INTEGRITY_ERRORS = (sqlite3.IntegrityError,)
+
 # Giờ Việt Nam — dùng cho các khoá kv theo ngày (điểm danh, tổng kết...).
 _VN_TZ = timezone(timedelta(hours=7))
 
@@ -1529,7 +1535,9 @@ def copilot_execution_reserve(
                 (store_id, action_id, idempotency_key, request_hash, "pending", _iso_now()),
             )
             return "reserved", None
-        except sqlite3.IntegrityError:
+        except _DB_INTEGRITY_ERRORS:
+            if hasattr(cx, "rollback"):
+                cx.rollback()
             row = cx.execute(
                 """
                 SELECT idempotency_key, request_hash, status, outcome
@@ -1654,7 +1662,9 @@ def copilot_mail_delivery_reserve(
                 (store_id, idempotency_key, request_hash, "pending", _iso_now()),
             )
             return "reserved", None
-        except sqlite3.IntegrityError:
+        except _DB_INTEGRITY_ERRORS:
+            if hasattr(cx, "rollback"):
+                cx.rollback()
             row = cx.execute(
                 "SELECT request_hash, status, outcome "
                 "FROM copilot_mail_delivery_receipts WHERE store_id=? AND idempotency_key=?",

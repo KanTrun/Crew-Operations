@@ -49,6 +49,12 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/ai/retention/dry-run": "chẩn đoán retention nội bộ",
     "/api/v1/reservations-metrics": "metrics nội bộ",
     "/catchment-survey": "khảo sát giá thị trường bán kính catchment (pricing radar)",
+    "/catchment-survey/{job_id}": "tiến trình job khảo sát giá — poll qua UI /khao-sat-gia",
+    "/catchment-survey/{job_id}/result": "kết quả job khảo sát giá — đọc qua UI /khao-sat-gia",
+    "/catchment-survey/{job_id}/review": "R2: chủ quán xác nhận giá OCR qua UI /khao-sat-gia (ADR-008)",
+    "/catchment-survey-dashboard": "dashboard tổng quan chi phí & kết quả khảo sát — đọc qua UI /khao-sat-gia",
+    "/catchment-survey-metrics": "metrics chi phí Vision & độ tin cậy nguồn (nội bộ)",
+    "/serpapi/quota": "hạn ngạch SerpApi trong tháng (pricing radar)",
     # ── AI-learning / governance (PR13 scope, deep-link /ai-learning) ──
     "/api/v1/ai/rules/proposals": "AI governance — duyệt qua UI /ai-learning",
     "/api/v1/ai/generations": "AI governance — đọc qua UI /ai-learning",

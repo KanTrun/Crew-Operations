@@ -41,10 +41,13 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      BAI_API_KEY: ${BAI_API_KEY:-}
+      BAI_BASE_URL: ${BAI_BASE_URL:-https://api.b.ai/v1}
       GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-8b-instant}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.6-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       GEMINI_TRANSCRIBE_MODEL: ${GEMINI_TRANSCRIBE_MODEL:-gemini-3.5-transcribe}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-oss-20b:free}
+      BAI_MODEL: ${BAI_MODEL:-qwen3.8-flash}
 
       NHIPQUAN_MSG_BACKEND: ${NHIPQUAN_MSG_BACKEND:-console}
       NHIPQUAN_TELEGRAM_BOT_TOKEN: ${NHIPQUAN_TELEGRAM_BOT_TOKEN:-}
@@ -87,10 +90,13 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      BAI_API_KEY: ${BAI_API_KEY:-}
+      BAI_BASE_URL: ${BAI_BASE_URL:-https://api.b.ai/v1}
       GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-8b-instant}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.6-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       GEMINI_TRANSCRIBE_MODEL: ${GEMINI_TRANSCRIBE_MODEL:-gemini-3.5-transcribe}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-oss-20b:free}
+      BAI_MODEL: ${BAI_MODEL:-qwen3.8-flash}
 
       NHIPQUAN_MSG_BACKEND: ${NHIPQUAN_MSG_BACKEND:-console}
       NHIPQUAN_TELEGRAM_BOT_TOKEN: ${NHIPQUAN_TELEGRAM_BOT_TOKEN:-}

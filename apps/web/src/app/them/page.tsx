@@ -14,6 +14,7 @@ const LINKS: Array<[string, string]> = [
   ["/qr", "Điểm danh QR"],
   ["/tieu-thu", "Sổ tiêu thụ"],
   ["/hao-phi", "Hao phí"],
+  ["/khao-sat-gia", "Khảo sát giá"],
   ["/sop", "Hỏi SOP"],
   ["/handover", "Bàn giao"],
   ["/vet", "Vết hệ thống"],

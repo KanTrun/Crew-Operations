@@ -74,6 +74,15 @@ data/uploads/
 # Runtime data của apps/api (db, log mail, upload) — sinh ra khi chạy local, không commit
 apps/api/data/
 
+# L2 persistent cache của SerpApi client (`_DEFAULT_CACHE_DIR` trong
+# packages/agents/src/ca_agents/clients/serpapi_client.py) + file đếm quota.
+# Là artifact runtime, KHÔNG commit vì hai lý do:
+#   1. Chứa nội dung crawl được của bên thứ ba (hàng chục KB mỗi file) — plan
+#      khảo sát giá mục 8 cấm tái phân phối nội dung đã crawl.
+#   2. Nội dung thay đổi theo từng lần chạy nên diff sẽ nhiễu và dễ lỗi thời.
+# Test không chạm thư mục này: mọi test SerpApi đều truyền `cache_dir=tmp_path`.
+data/cache/
+
 .claude/
 
 

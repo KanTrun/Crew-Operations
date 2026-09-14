@@ -73,6 +73,7 @@ def main() -> int:
         "GROQ_API_KEY",
         "GEMINI_API_KEY",
         "OPENROUTER_API_KEY",
+        "BAI_API_KEY",
         "OLLAMA_BASE_URL",
         "APIFY_TOKEN",
     ):

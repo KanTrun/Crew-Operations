@@ -1,0 +1,96 @@
+{
+  "reply": {
+    "restaurants": [
+      {
+        "id": "res_001",
+        "name": "Cà Phê Muối Chú Long - Đinh Tiên Hoàng",
+        "address": "45 Đinh Tiên Hoàng, P. Đa Kao, Quận 1",
+        "distance_km": 1.2,
+        "rating": 4.8,
+        "review_count": 2150,
+        "is_favorite": true,
+        "sold_count_text": "10k+ đã bán",
+        "url": "https://shopeefood.vn/ho-chi-minh/ca-phe-muoi-chu-long",
+        "dishes": [
+          { "name": "Cà phê muối đặc biệt (Best seller)", "price": "32.000đ", "is_bestseller": true, "category": "Signature" },
+          { "name": "Cà phê đen đá đậm vị", "price": 25000, "is_bestseller": false, "category": "Cà phê" },
+          { "name": "Cà phê sữa đá béo ngậy", "price": "29k", "is_bestseller": true, "category": "Cà phê" }
+        ]
+      },
+      {
+        "id": "res_002",
+        "name": "The Coffee House - Nguyễn Đình Chiểu",
+        "address": "86 Nguyễn Đình Chiểu, Quận 3",
+        "distance_km": 2.1,
+        "rating": 4.6,
+        "review_count": 1420,
+        "is_favorite": true,
+        "sold_count_text": "5k+ đã bán",
+        "url": "https://shopeefood.vn/ho-chi-minh/the-coffee-house-nguyen-dinh-chieu",
+        "dishes": [
+          { "name": "Trà Đào Cam Sả Bán Chạy", "price": 55000, "is_bestseller": true, "category": "Trà" },
+          { "name": "Cà Phê Sữa Đá Đậm Đà", "price": 39000, "is_bestseller": true, "category": "Cà phê" },
+          { "name": "Bạc Xỉu Đá", "price": 45000, "is_bestseller": false, "category": "Cà phê" }
+        ]
+      },
+      {
+        "id": "res_003",
+        "name": "Highlands Coffee - Điện Biên Phủ",
+        "address": "135 Điện Biên Phủ, Bình Thạnh",
+        "distance_km": 1.8,
+        "rating": 4.4,
+        "review_count": 3900,
+        "is_favorite": true,
+        "sold_count_text": "10k+ đã bán",
+        "url": "https://shopeefood.vn/ho-chi-minh/highlands-coffee-dien-bien-phu",
+        "dishes": [
+          { "name": "Phin Sữa Đá Size M (Hot)", "price": "39.000đ", "is_bestseller": true, "category": "Phin" },
+          { "name": "Trà Sen Vàng Kem Cheese", "price": "55k", "is_bestseller": true, "category": "Trà" },
+          { "name": "Freeze Trà Xanh", "price": 59000, "is_bestseller": false, "category": "Freeze" }
+        ]
+      },
+      {
+        "id": "res_004",
+        "name": "Cà Phê Hương Quê Mới Mở",
+        "address": "12 Ngõ Hẻm X, Quận 1",
+        "distance_km": 1.5,
+        "rating": 5.0,
+        "review_count": 2,
+        "is_favorite": false,
+        "sold_count_text": "2 đã bán",
+        "url": "",
+        "dishes": [
+          { "name": "Cà phê chồn thượng hạng", "price": 150000, "is_bestseller": true, "category": "Đặc biệt" }
+        ]
+      },
+      {
+        "id": "res_005",
+        "name": "Cà Phê Cóc Giá Rẻ Vỉa Hè",
+        "address": "99 Vỉa Hè X, Bình Thạnh",
+        "distance_km": 0.8,
+        "rating": 3.2,
+        "review_count": 180,
+        "is_favorite": false,
+        "sold_count_text": "500 đã bán",
+        "url": "",
+        "dishes": [
+          { "name": "Cà phê bắp rang hóa chất", "price": 12000, "is_bestseller": true, "category": "Cà phê" }
+        ]
+      },
+      {
+        "id": "res_006",
+        "name": "Quán Trà Nhỏ Góc Phố",
+        "address": "5B Ngô Thời Nhiệm, Quận 3",
+        "distance_km": 2.8,
+        "rating": 4.5,
+        "review_count": 15,
+        "is_favorite": false,
+        "sold_count_text": "30 đã bán",
+        "url": "",
+        "dishes": [
+          { "name": "Trà vải lài", "price": 35000, "is_bestseller": true, "category": "Trà" }
+        ]
+      }
+    ]
+  }
+}

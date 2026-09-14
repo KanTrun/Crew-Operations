@@ -15,6 +15,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+# Import ở đầu file chứ không để cuối: hai module con chỉ phụ thuộc stdlib + pydantic
+# nên không có vòng lặp import, và để cuối file thì ruff báo E402 (lint gate đỏ).
+from ca_contracts.catchment_survey import StoreCandidate
+from ca_contracts.trend_item import TrendItem
+
 
 class NhanVien(BaseModel):
     id: str
@@ -249,6 +254,18 @@ class CuocHop(BaseModel):
     ngay_ghi_am: str = ""
 
 
+class CatchmentSurveyParams(BaseModel):
+    """Tham số khảo sát giá thị trường được schema hoá tất định (plan v2.0 mục 4.1)."""
+
+    contract_version: Literal["v1"] = "v1"
+    store_id: str = Field(min_length=1)
+    category_keyword: str = Field(min_length=1, max_length=64)
+    radius_km: float = Field(ge=0.5, le=10.0, default=3.0)
+    channel_mode: Literal["dine_in_vision", "delivery_platform", "hybrid"] = "hybrid"
+    include_substitutes: bool = True
+    quota_cost: int = Field(default=1, ge=1)
+
+
 class CopilotIntent(StrEnum):
     SCHEDULE_SOLVE = "SCHEDULE_SOLVE"
     APPROVE_SHIFT_SWAP = "APPROVE_SHIFT_SWAP"
@@ -288,6 +305,10 @@ class CopilotIntent(StrEnum):
     GET_SCHEDULE = "GET_SCHEDULE"
     GET_MY_SHIFTS = "GET_MY_SHIFTS"
     GET_CONSTRAINT_CANDIDATES = "GET_CONSTRAINT_CANDIDATES"
+    # Khảo sát thị trường & SerpApi
+    RUN_CATCHMENT_SURVEY = "RUN_CATCHMENT_SURVEY"
+    GET_SERPAPI_QUOTA = "GET_SERPAPI_QUOTA"
+    GET_SURVEY_RESULT = "GET_SURVEY_RESULT"
     OUT_OF_SCOPE = "OUT_OF_SCOPE"
 
 
@@ -309,6 +330,9 @@ _READ_INTENTS = frozenset(
         "GET_SCHEDULE",
         "GET_MY_SHIFTS",
         "GET_CONSTRAINT_CANDIDATES",
+        # Thị trường & SerpApi — R0_READ
+        "GET_SERPAPI_QUOTA",
+        "GET_SURVEY_RESULT",
     }
 )
 _QUAN_LY_INTENTS: frozenset[str] = frozenset(
@@ -340,6 +364,8 @@ _QUAN_LY_INTENTS: frozenset[str] = frozenset(
         "PROPOSE_TKB_CONFIRM",
         "PROPOSE_SWAP_CONSENT",
         "PROPOSE_HANDOVER",
+        # Khảo sát giá thị trường — R2_CONFIRM (chỉ quản lý/chủ quán)
+        "RUN_CATCHMENT_SURVEY",
     }
 )
 COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
@@ -573,6 +599,13 @@ CAPABILITY_REGISTRY: tuple[CapabilityDefinition, ...] = (
     _cap("SEARCH_TRENDS", "Tra cứu xu hướng", "trend", "R0_READ"),
     _cap("GET_TREND_DETAIL", "Chi tiết xu hướng", "trend", "R0_READ"),
     _cap("GET_SCRAPER_USAGE", "Mức dùng Apify", "trend", "R0_READ"),
+    # ── Khảo sát giá thị trường (plan 260913-1455) ──
+    _cap("RUN_CATCHMENT_SURVEY", "Khảo sát giá bán kính", "market", "R2_CONFIRM", "/khao-sat-gia"),
+    _cap("GET_SURVEY_STATUS", "Tiến trình khảo sát giá", "market", "R0_READ", "/khao-sat-gia"),
+    _cap("GET_SURVEY_RESULT", "Kết quả khảo sát giá", "market", "R0_READ", "/khao-sat-gia"),
+    _cap("REVIEW_SURVEY_ITEMS", "Xác nhận giá OCR", "market", "R2_CONFIRM", "/khao-sat-gia"),
+    _cap("GET_SURVEY_METRICS", "Chi phí Vision & nguồn", "market", "R0_READ", "/khao-sat-gia"),
+    _cap("GET_SERPAPI_QUOTA", "Xem hạn ngạch SerpApi", "market", "R0_READ", "/khao-sat-gia"),
     # ── AI learning / governance ──
     _cap("GET_AI_QUALITY", "Chất lượng AI", "ai", "R0_READ", "/ai-learning"),
     _cap("SUBMIT_AI_FEEDBACK", "Gửi phản hồi AI", "ai", "R2_CONFIRM", "/ai-learning"),
@@ -845,4 +878,11 @@ CONTRACTS = {
     "AIRuleProposal": AIRuleProposal,
     "TableReservation": TableReservation,
 }
+
+__all__ = [
+    "CONTRACTS",
+    "CatchmentSurveyParams",
+    "StoreCandidate",
+    "TrendItem",
+]
 

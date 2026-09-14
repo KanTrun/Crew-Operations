@@ -1,0 +1,64 @@
+{
+  "search_metadata": {
+    "id": "serpapi_mock_maps_001",
+    "status": "Success",
+    "created_at": "2026-09-13 13:45:00 UTC"
+  },
+  "search_parameters": {
+    "engine": "google_maps",
+    "q": "quán cà phê",
+    "ll": "@10.7769,106.7009,15z",
+    "hl": "vi",
+    "gl": "vn"
+  },
+  "local_results": [
+    {
+      "position": 1,
+      "title": "Cộng Cà Phê - Lý Tự Trọng",
+      "place_id": "ChIJ_3j4n9IpdTERx_example1",
+      "data_id": "0x317529d29ff878ff:0x7a",
+      "gps_coordinates": {
+        "latitude": 10.7775,
+        "longitude": 106.7012
+      },
+      "rating": 4.6,
+      "reviews": 1280,
+      "price": "$$",
+      "type": "Quán cà phê",
+      "address": "26 Lý Tự Trọng, Bến Nghé, Quận 1, Hồ Chí Minh",
+      "thumbnail": "https://lh5.googleusercontent.com/p/AF1QipN_example1=w408-h272-k-no"
+    },
+    {
+      "position": 2,
+      "title": "Phúc Long Coffee & Tea - Ngô Đức Kế",
+      "place_id": "ChIJ_abc123_example2",
+      "data_id": "0x317529d29ff878ff:0x8b",
+      "gps_coordinates": {
+        "latitude": 10.7742,
+        "longitude": 106.7045
+      },
+      "rating": 4.4,
+      "reviews": 2150,
+      "price": "$$",
+      "type": "Quán cà phê",
+      "address": "2 Ngô Đức Kế, Bến Nghé, Quận 1, Hồ Chí Minh",
+      "thumbnail": "https://lh5.googleusercontent.com/p/AF1QipN_example2=w408-h272-k-no"
+    },
+    {
+      "position": 3,
+      "title": "The Workshop Specialty Coffee",
+      "place_id": "ChIJ_xyz789_example3",
+      "data_id": "0x317529d29ff878ff:0x9c",
+      "gps_coordinates": {
+        "latitude": 10.7728,
+        "longitude": 106.7031
+      },
+      "rating": 4.7,
+      "reviews": 890,
+      "price": "$$$",
+      "type": "Quán cà phê",
+      "address": "27 Ngô Đức Kế, Bến Nghé, Quận 1, Hồ Chí Minh",
+      "thumbnail": "https://lh5.googleusercontent.com/p/AF1QipN_example3=w408-h272-k-no"
+    }
+  ]
+}
