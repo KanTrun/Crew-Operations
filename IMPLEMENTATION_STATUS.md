@@ -18,7 +18,7 @@ File này là bảng trạng thái sống. Cập nhật sau mỗi phase, không 
 | **4 — UI Dashboard** | Nhập liệu, tiến trình, review thủ công, dashboard (mục 6) | ✅ Code complete | ✅ `tsc` + `next build` + **22 Playwright pass** | `/khao-sat-gia` 4 màn hình (nhập → chạy → review → kết quả); route 9.41 kB; Playwright spec `khao-sat-gia-review.spec.ts` phủ luồng `NEEDS_REVIEW` (API stub) |
 | **5 — Kiểm thử toàn diện & Vận hành thí điểm** | import-linter, canary daily, cost dashboard, thí điểm 1 khu vực | ✅ Code complete | ✅ 500 pass (16 suite) | Math-Layer purity gate, cost dashboard + alerting, canary selector chạy thật, `make canary`. **Chưa chạy thí điểm 2 tuần** (cần chủ dự án bật) |
 
-**Toàn nhánh:** `1587 passed` (full suite, `CA_AGENT_MODE=replay`, **KHÔNG cần `--ignore`** — 3 test treo mạng đã được làm hermetic) · `ruff check apps/api/src packages scripts` → **All checks passed!** · `mypy` trên toàn bộ file của tính năng này → **Success: no issues found in 37 source files**.
+**Toàn nhánh:** `1596 passed` (full suite, `CA_AGENT_MODE=replay`, **KHÔNG cần `--ignore`** — 3 test treo mạng đã được làm hermetic) · `ruff check apps/api/src packages scripts` → **All checks passed!** · `mypy` trên toàn bộ file của tính năng này → **Success: no issues found in 37 source files**.
 
 **Mô phỏng CI trên commit `669898a`** (vì `ci.yml` chỉ chạy ở `main`/`release/**` hoặc PR, không chạy trên push nhánh feature) — **9/12 job đã xác minh green thủ công**:
 
