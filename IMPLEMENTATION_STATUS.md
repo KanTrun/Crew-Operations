@@ -20,6 +20,22 @@ File này là bảng trạng thái sống. Cập nhật sau mỗi phase, không 
 
 **Toàn nhánh:** `1587 passed` (full suite, `CA_AGENT_MODE=replay`, **KHÔNG cần `--ignore`** — 3 test treo mạng đã được làm hermetic) · `ruff check apps/api/src packages scripts` → **All checks passed!** · `mypy` trên toàn bộ file của tính năng này → **Success: no issues found in 37 source files**.
 
+**Mô phỏng CI trên commit `669898a`** (vì `ci.yml` chỉ chạy ở `main`/`release/**` hoặc PR, không chạy trên push nhánh feature) — **9/12 job đã xác minh green thủ công**:
+
+| Job CI | Lệnh mô phỏng | Kết quả |
+|---|---|---|
+| `01 lint-type` | `ruff check apps/api/src packages scripts` | ✅ All checks passed (mypy `|| true`) |
+| `02 unit` (post) | `scripts/export_contracts.py` | ✅ wrote 25 schemas — **idempotent**, không drift |
+| `04 architecture` + `10 no-live-llm` | `pytest test_architecture.py test_no_network.py` | ✅ 5 passed |
+| `05 solver-bench` | `solve_tuan.py` + `verify_hard.py` | ✅ OPTIMAL, 0 violations; `ok=True` c01–c06=0 |
+| `06 agent-eval` | `eval_ag_tkb.py` + `eval_ag_msg.py` | ✅ TKB 51/53 (96.23%), MSG 197/200 (98.50%) |
+| `07 web` | `npm test` (`tsc --noEmit`) + `npm run build` | ✅ exit 0; 38 static pages, `/khao-sat-gia` 9.41 kB |
+| `11 yaml-templates` | `scripts/validate_templates.py` | ✅ ok: 3 templates |
+| `12 skills-verify` | `distill_project_skills.py --verify-only` | ✅ 13/13 VERIFIED |
+
+> **Chưa chạy local (cần hạ tầng, để CI thật trên PR xử lý):** `03 integration` (postgres16 + redis7 services), `08 e2e` (API + Playwright browser), `09 docker` (compose build).
+> **Lưu ý:** `eval_ag_tkb.py` ghi đè `docs/metrics-18-2.md` (chỉ đổi ngày, xoá 2 section biên tập thủ công) — CI không commit output nên gate vẫn pass; đã `git checkout --` khôi phục sau khi chạy.
+
 ---
 
 ## Blocker đang mở
