@@ -1,14 +1,50 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import cast
 
 from ca_api.interfaces.http.main import app
+from ca_api.persist import kv_get, kv_set
 from fastapi.testclient import TestClient
 
 from unit.auth_util import headers
 
 client = TestClient(app)
 PHOTO = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+
+
+def _hom_nay() -> str:
+    return datetime.now(timezone(timedelta(hours=7))).date().isoformat()
+
+
+def test_diem_danh_tuong_thich_nguoc_du_lieu_list_cu() -> None:
+    """KV `diem_danh` bản cũ là list nv_id; write path phải migrate chứ không 500.
+
+    Regression: `mut()` gọi `.get()` trên list → AttributeError → 500 → UI báo
+    "Không ghi được điểm danh" và không render nút Mở quán.
+    """
+    kv_set("diem_danh", ["nv_09"])
+    auth = headers(client, "minh")
+
+    r = client.post("/api/v1/diem-danh", headers=auth)
+
+    assert r.status_code == 200, r.text
+    assert r.json()["nv_id"] == "nv_03"
+    luu = kv_get("diem_danh", {})
+    assert isinstance(luu, dict)
+    # nv cũ được giữ (đọc như check-in hôm nay) và nv mới được thêm vào.
+    assert set(luu[_hom_nay()]) == {"nv_09", "nv_03"}
+
+
+def test_diem_danh_khong_loi_khi_kv_hong() -> None:
+    """KV sai kiểu (không phải list/dict) vẫn ghi được, không 500."""
+    kv_set("diem_danh", "chuoi_khong_hop_le")
+    auth = headers(client, "minh")
+
+    r = client.post("/api/v1/diem-danh", headers=auth)
+
+    assert r.status_code == 200, r.text
+    assert kv_get("diem_danh", {})[_hom_nay()] == ["nv_03"]
 
 
 def test_phieu_twenty_steps_and_treo() -> None:

@@ -14,6 +14,23 @@ from ca_agents.sources.threads_google_bridge_source import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _chan_tang_camoufox():
+    """Tắt tầng Camoufox để test hermetic — KHÔNG được mở mạng thật.
+
+    `test_scrape_threads_smart_falls_back_when_google_bridge_fails` mock Bridge,
+    Direct và Apify nhưng bỏ sót tầng **Camoufox** nằm giữa chuỗi rớt tầng
+    (plan §3.5). Trên host có cài Camoufox, `is_available()` trả True → test
+    launch browser thật và cào Threads live (~26s/test), vi phạm Gate 10
+    (`packages/agents/tests/test_no_network.py`) và làm kết quả phụ thuộc mạng.
+    Chặn tại `is_available` giống quy ước sẵn có ở `test_threads_apify_source.py`.
+    """
+    with patch(
+        "ca_agents.clients.camoufox_client.is_available", return_value=False
+    ):
+        yield
+
+
 _MOCK_GOOGLE_RSS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>

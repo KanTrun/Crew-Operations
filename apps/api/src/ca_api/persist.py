@@ -23,6 +23,12 @@ ROOT = Path(__file__).resolve().parents[4]
 
 _INITIALIZED = False
 
+try:
+    import psycopg
+    _DB_INTEGRITY_ERRORS: tuple[type[Exception], ...] = (sqlite3.IntegrityError, psycopg.IntegrityError)
+except ImportError:
+    _DB_INTEGRITY_ERRORS = (sqlite3.IntegrityError,)
+
 # Giờ Việt Nam — dùng cho các khoá kv theo ngày (điểm danh, tổng kết...).
 _VN_TZ = timezone(timedelta(hours=7))
 
@@ -1557,7 +1563,9 @@ def copilot_execution_reserve(
                 (store_id, action_id, idempotency_key, request_hash, "pending", _iso_now()),
             )
             return "reserved", None
-        except sqlite3.IntegrityError:
+        except _DB_INTEGRITY_ERRORS:
+            if hasattr(cx, "rollback"):
+                cx.rollback()
             row = cx.execute(
                 """
                 SELECT idempotency_key, request_hash, status, outcome
@@ -1682,7 +1690,9 @@ def copilot_mail_delivery_reserve(
                 (store_id, idempotency_key, request_hash, "pending", _iso_now()),
             )
             return "reserved", None
-        except sqlite3.IntegrityError:
+        except _DB_INTEGRITY_ERRORS:
+            if hasattr(cx, "rollback"):
+                cx.rollback()
             row = cx.execute(
                 "SELECT request_hash, status, outcome "
                 "FROM copilot_mail_delivery_receipts WHERE store_id=? AND idempotency_key=?",
@@ -2166,6 +2176,18 @@ def fb_review_link_generation(item_id: int, *, generation_id: str) -> None:
             "UPDATE fb_review_queue SET ai_generation_id=? WHERE id=?",
             (generation_id, item_id),
         )
+
+
+def fb_review_update_proposed(item_id: int, *, proposed_response: str) -> bool:
+    """Nâng cấp bản nháp trong hàng duyệt (vd LLM thay template) — chỉ khi pending."""
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            "UPDATE fb_review_queue SET proposed_response=? "
+            "WHERE id=? AND status='pending'",
+            (proposed_response, item_id),
+        )
+        return bool(cur.rowcount == 1)
 
 
 def fb_review_transition_pending(item_id: int, *, status: str) -> bool:

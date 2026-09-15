@@ -1,4 +1,80 @@
 {
+  "$defs": {
+    "DieuChinhLichHop": {
+      "properties": {
+        "id": {
+          "default": "",
+          "title": "Id",
+          "type": "string"
+        },
+        "nhan_vien_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nhan Vien Id"
+        },
+        "ten_nhan_vien": {
+          "default": "",
+          "title": "Ten Nhan Vien",
+          "type": "string"
+        },
+        "loai": {
+          "default": "xin_nghi",
+          "enum": [
+            "xin_nghi",
+            "ghim_ca",
+            "doi_ca",
+            "uu_tien"
+          ],
+          "title": "Loai",
+          "type": "string"
+        },
+        "thu": {
+          "default": "",
+          "title": "Thu",
+          "type": "string"
+        },
+        "khung": {
+          "default": "",
+          "title": "Khung",
+          "type": "string"
+        },
+        "ca_id": {
+          "default": "",
+          "title": "Ca Id",
+          "type": "string"
+        },
+        "tuan_iso": {
+          "default": "",
+          "title": "Tuan Iso",
+          "type": "string"
+        },
+        "ly_do": {
+          "default": "",
+          "title": "Ly Do",
+          "type": "string"
+        },
+        "trang_thai": {
+          "default": "cho_duyet",
+          "enum": [
+            "cho_duyet",
+            "da_duyet",
+            "tu_choi"
+          ],
+          "title": "Trang Thai",
+          "type": "string"
+        }
+      },
+      "title": "DieuChinhLichHop",
+      "type": "object"
+    }
+  },
   "properties": {
     "id": {
       "title": "Id",
@@ -10,6 +86,7 @@
         "quy_trinh_sop",
         "mua_sam_vat_tu",
         "chinh_sach_nhan_su",
+        "dieu_chinh_lich",
         "khac"
       ],
       "title": "Loai De Xuat",
@@ -71,6 +148,17 @@
       ],
       "default": null,
       "title": "Buoc So"
+    },
+    "chi_tiet_lich": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DieuChinhLichHop"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [

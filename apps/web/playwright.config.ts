@@ -16,10 +16,15 @@ export default defineConfig({
   webServer: [
     {
       command: "python ../../scripts/demo_api.py",
-      url: "http://localhost:8000/health",
+      url: "http://127.0.0.1:8000/health",
       cwd: __dirname,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
+      env: {
+        NHIPQUAN_API_HOST: "0.0.0.0",
+        NHIPQUAN_API_PORT: "8000",
+        NHIPQUAN_DISABLE_RATE_LIMIT: "true",
+      },
     },
     {
       command: "npx next start -p 3001",
@@ -27,6 +32,9 @@ export default defineConfig({
       cwd: __dirname,
       reuseExistingServer: false,
       timeout: 120_000,
+      env: {
+        NEXT_PUBLIC_API_URL: "http://127.0.0.1:8000",
+      },
     },
   ],
 });

@@ -563,3 +563,107 @@ export function maskCode(code: string): string {
   if (raw.length <= 4) return "••••";
   return `•••• •••• ${raw.slice(-4)}`;
 }
+
+/* ── Khảo sát giá thị trường (`/khao-sat-gia`) ──
+   Mã trạng thái và mã lỗi của plan `260913-1455` mục 2.4/5.3 là nội bộ; UI chỉ
+   được nói tiếng Việt kèm hành động kế tiếp (`docs/design-guidelines.md`). */
+
+const KHAO_SAT_TRANG_THAI: Record<string, string> = {
+  queued: "Đang xếp hàng",
+  scraping_online: "Đang quét kênh giao hàng",
+  scraping_dinein: "Đang quét quán tại chỗ",
+  ocr_processing: "Đang đọc ảnh thực đơn",
+  needs_review: "Chờ bạn xác nhận giá",
+  aggregating: "Đang tổng hợp",
+  completed: "Hoàn tất",
+  failed: "Thất bại",
+};
+
+export function khaoSatTrangThaiLabel(code: unknown): string {
+  return pick(KHAO_SAT_TRANG_THAI, code, "Đang chạy");
+}
+
+const KHAO_SAT_LOI: Record<string, string> = {
+  INVALID_RADIUS:
+    "Bán kính khảo sát chưa hợp lệ. Bán kính tại chỗ tối đa 3 km, giao hàng tối đa 10 km.",
+  SCHEMA_VERSION_MISMATCH:
+    "Trang đang dùng phiên bản dữ liệu cũ hơn máy chủ. Tải lại trang rồi khảo sát lại.",
+  INSUFFICIENT_MARKET_DATA:
+    "Khu vực này chưa đủ quán đạt chuẩn để kết luận về giá. Nới rộng bán kính hoặc hạ ngưỡng đánh giá rồi khảo sát lại.",
+  RATE_LIMITED:
+    "Đã dùng hết lượt khảo sát trong giờ. Mỗi lượt tốn chi phí thật nên chờ một lát rồi khảo sát lại.",
+  SOURCE_BLOCKED:
+    "Nguồn dữ liệu đang chặn truy cập tự động. Thử lại sau ít phút; nếu vẫn vậy báo quản lý.",
+  VISION_QUOTA_EXCEEDED:
+    "Hạn mức đọc ảnh thực đơn tháng này đã hết. Báo quản lý để nạp thêm rồi khảo sát lại.",
+  MISSING_IDEMPOTENCY_KEY: "Phiên gửi bị lặp. Bấm khảo sát lại một lần nữa.",
+  JOB_NOT_COMPLETED: "Khảo sát chưa chạy xong nên chưa có kết quả.",
+  JOB_NOT_NEEDS_REVIEW: "Khảo sát này không còn ở bước chờ xác nhận giá.",
+};
+
+/**
+ * Mã lỗi khảo sát → câu tiếng Việt + hành động kế tiếp.
+ * `fallback` dùng khi máy chủ trả mã chưa có trong bảng — vẫn không in mã thô.
+ */
+export function khaoSatLoiLabel(code: unknown, fallback?: string): string {
+  const key = typeof code === "string" ? code : "";
+  return KHAO_SAT_LOI[key] ?? fallback ?? "Khảo sát gặp sự cố. Thử lại sau ít phút.";
+}
+
+const DINH_VI: Record<string, string> = {
+  street_food: "Bình dân / vỉa hè",
+  casual_dine_in: "Quán ngồi thoải mái",
+  branded_chain: "Chuỗi thương hiệu",
+};
+
+export function dinhViLabel(code: unknown): string {
+  return pick(DINH_VI, code, "Chưa xác định phân khúc");
+}
+
+const LOAI_KHU_VUC: Record<string, string> = {
+  office: "Khu văn phòng",
+  residential: "Khu dân cư",
+  mixed: "Khu hỗn hợp",
+  tourist: "Khu du lịch",
+};
+
+/** `area_type` có thể `null` — chưa suy ra được thì nói thẳng là chưa rõ, không bịa. */
+export function loaiKhuVucLabel(code: unknown): string {
+  return pick(LOAI_KHU_VUC, code, "Chưa rõ loại khu vực");
+}
+
+const KENH_GIA: Record<string, string> = {
+  delivery_platform: "Kênh giao hàng",
+  dine_in_vision: "Tại chỗ (đọc ảnh thực đơn)",
+  hybrid: "Cả hai kênh",
+};
+
+export function kenhGiaLabel(code: unknown): string {
+  return pick(KENH_GIA, code, "Kênh khảo sát");
+}
+
+const LY_DO_REVIEW: Record<string, string> = {
+  price_unreadable: "Ảnh mờ, không đọc chắc được giá",
+  price_outlier: "Giá lệch bất thường so với các quán cùng khu",
+  low_confidence: "Máy đọc ảnh chưa đủ tự tin",
+  ambiguous_item: "Không rõ tên món thuộc nhóm nào",
+};
+
+export function lyDoReviewLabel(code: unknown): string {
+  return pick(LY_DO_REVIEW, code, "Cần bạn kiểm tra lại");
+}
+
+/** `com_tam` → "cơm tấm". Tên danh mục đã có dấu thì giữ nguyên. */
+export function danhMucLabel(code: unknown): string {
+  const raw = safeText(code, "");
+  if (!raw) return "Danh mục chưa ghi tên";
+  return raw.replace(/_/g, " ");
+}
+
+const TIEN_VND = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 });
+
+/** Giá tiền: `45000` → "45.000đ". Giá trị không phải số → dấu gạch. */
+export function giaVnd(value: unknown): string {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? `${TIEN_VND.format(n)}đ` : DASH;
+}

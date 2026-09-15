@@ -1,0 +1,34 @@
+services:
+  postgres:
+    ports: !override []
+  redis:
+    ports: !override []
+  api:
+    env_file: !override []
+    environment: !override
+      DATABASE_URL: postgresql+psycopg://nhipquan:nhipquan@postgres:5432/nhipquan
+      REDIS_URL: redis://redis:6379/0
+      CA_AGENT_MODE: replay
+      NHIPQUAN_PAGE_MODE: disconnected
+      NHIPQUAN_FB_AUTO_SEND: "0"
+      NHIPQUAN_MSG_BACKEND: console
+    ports: !override
+      - "127.0.0.1:18000:8000"
+  worker:
+    env_file: !override []
+    environment: !override
+      DATABASE_URL: postgresql+psycopg://nhipquan:nhipquan@postgres:5432/nhipquan
+      REDIS_URL: redis://redis:6379/0
+      CA_AGENT_MODE: replay
+      NHIPQUAN_PAGE_MODE: disconnected
+      NHIPQUAN_FB_AUTO_SEND: "0"
+      NHIPQUAN_MSG_BACKEND: console
+  web:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:18000
+    ports: !override
+      - "127.0.0.1:13000:3000"
+networks:
+  default:
+    internal: true

@@ -687,6 +687,67 @@ def test_rate_limit_blocks_flood(api: TestClient) -> None:
 # ── Schema ──────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.parametrize(
+    "payload_rac",
+    [
+        "{không phải json",
+        "[]",
+        '"chuoi"',
+        "123",
+        "{}",
+        {"entry": "khong_phai_list"},
+        {"entry": [{"id": "page_1"}]},
+        {"entry": [{"id": "page_1", "messaging": "khong_phai_list"}]},
+        {"entry": [{"id": "page_1", "messaging": [{}]}]},
+        {"entry": [{"id": "page_1", "messaging": [{"message": {"mid": "m_1", "text": "hi"}}]}]},
+        {"entry": [{"id": "page_1", "messaging": [{"sender": {"id": ""}, "message": {"mid": "m_2", "text": "hi"}}]}]},
+        {"entry": [{"id": "page_1", "messaging": [{"sender": {"id": "psid_x"}, "message": {"mid": "", "text": "hi"}}]}]},
+        {"entry": None},
+    ],
+)
+def test_webhook_payload_rac_khong_crash_khong_ban_ghi_rac(
+    api: TestClient, payload_rac: object
+) -> None:
+    """Webhook công khai nhận payload rác: không 500, không sinh bản ghi nào.
+
+    Meta retry webhook nên endpoint phải luôn trả 2xx cho payload hợp lệ chữ ký;
+    dữ liệu không dùng được phải bị bỏ qua thay vì ghi vào hàng đợi duyệt.
+    """
+    if isinstance(payload_rac, str):
+        raw = payload_rac.encode()
+        digest = hmac.new(b"secret_test", raw, hashlib.sha256).hexdigest()
+        r = api.post(
+            "/api/v1/channels/facebook/webhook",
+            content=raw,
+            headers={
+                "content-type": "application/json",
+                "x-hub-signature-256": f"sha256={digest}",
+            },
+        )
+    else:
+        r = api.post("/api/v1/channels/facebook/webhook", json=payload_rac)
+
+    assert r.status_code == 200, r.text
+    assert r.json().get("n", 0) == 0
+
+    from ca_api.persist import db_path
+
+    def _dem(bang: str) -> int:
+        conn = sqlite3.connect(db_path())
+        try:
+            ton_tai = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (bang,)
+            ).fetchone()
+            if not ton_tai:
+                return 0
+            return int(conn.execute(f"SELECT COUNT(*) FROM {bang}").fetchone()[0])
+        finally:
+            conn.close()
+
+    assert _dem("fb_review_queue") == 0
+    assert _dem("fb_processed_events") == 0
+
+
 def test_fb_tables_created(api: TestClient) -> None:
     _post(api, "schema_1", "xin chào")
     from ca_api.persist import db_path

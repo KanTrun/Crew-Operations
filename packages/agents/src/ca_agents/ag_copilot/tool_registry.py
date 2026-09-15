@@ -37,6 +37,9 @@ WHITELISTED_INTENTS = {
     "CREATE_RULE_PROPOSAL": "tool_propose_rule_from_recent_edits",
     "INVENTORY_RESTOCK_CHECK": "tool_check_inventory_restock",
     "SEND_MAIL": "tool_send_mail",
+    "RUN_CATCHMENT_SURVEY": "tool_propose_catchment_survey",
+    "GET_SERPAPI_QUOTA": "tool_get_serpapi_quota",
+    "GET_SURVEY_RESULT": "tool_get_latest_survey_result",
 }
 
 log = logging.getLogger(__name__)
@@ -156,6 +159,19 @@ def build_live_snapshot(
         snapshot["tieu_thu"] = [
             item for item in (_kv_get("tieu_thu", []) or []) if isinstance(item, dict)
         ]
+    elif intent == "RUN_CATCHMENT_SURVEY":
+        # Snapshot CHỈ bao gồm tham số khảo sát bất biến (category_keyword, radius_km,
+        # channel_mode). KHÔNG đưa quota_used vào vì đây là dữ liệu biến động: nếu
+        # người dùng khác chạy khảo sát giữa thời điểm Đề xuất và Duyệt, quota_used
+        # sẽ thay đổi → VF-STALE bị kích hoạt sai (false-positive). Quota được kiểm
+        # tra nghiêm ngặt trước khi đề xuất (tool_propose_catchment_survey) và không
+        # cần tái xác minh bằng hash để chặn thay đổi ý định của người dùng.
+        payload0 = payload or {}
+        snapshot.update({
+            "category_keyword": str(payload0.get("category_keyword") or ""),
+            "radius_km": float(payload0.get("radius_km") or 3.0),
+            "channel_mode": str(payload0.get("channel_mode") or "hybrid"),
+        })
     list_ca_meta = _src("list_ca_meta")
     if list_ca_meta is not None:
         try:
@@ -2203,6 +2219,256 @@ def tool_propose_handover(
     )
 
 
+def tool_propose_catchment_survey(
+    store_id: str = "quan_01",
+    user_id: str = "nv_01",
+    user_role: str = "quan_ly",
+    category_keyword: str = "cà phê",
+    radius_km: float = 3.0,
+    channel_mode: str = "hybrid",
+    include_substitutes: bool = True,
+    **kwargs: Any,
+) -> ToolExecutionResult:
+    """Đề xuất khảo sát giá thị trường bán kính catchment (plan v2.0 mục 4.2).
+
+    Tuân thủ:
+    - ADR-008: luôn requires_confirmation=True vì tốn chi phí thật.
+    - Quản trị chi phí: kiểm tra Circuit Breaker, Hard Limit (240/250), Store Daily Cap (5/ngày).
+    - Contracts-first: validate tham số bằng CatchmentSurveyParams.
+    """
+    from ca_contracts import CatchmentSurveyParams
+
+    # 1. Feature Flag Check: copilot_catchment_survey_enabled
+    flag_val = os.environ.get("COPILOT_CATCHMENT_SURVEY_ENABLED", "true").strip().lower()
+    if flag_val in ("0", "false", "off", "disable", "disabled"):
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_catchment_survey",
+            intent="RUN_CATCHMENT_SURVEY",
+            data={},
+            summary="Tính năng Khảo sát giá qua AI Copilot hiện đang tạm tắt.",
+            explanation="Hệ thống đang cấu hình flag tắt tính năng này. Quản lý có thể khảo sát trực tiếp tại /khao-sat-gia.",
+            requires_confirmation=False,
+            error="feature_flag_disabled",
+        )
+
+    # 2. Schema validation qua contract CatchmentSurveyParams
+    try:
+        params_obj = CatchmentSurveyParams(
+            store_id=store_id,
+            category_keyword=category_keyword,
+            radius_km=float(radius_km),
+            channel_mode=channel_mode if channel_mode in ("dine_in_vision", "delivery_platform", "hybrid") else "hybrid",
+            include_substitutes=bool(include_substitutes),
+            quota_cost=1,
+        )
+    except Exception as exc:
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_catchment_survey",
+            intent="RUN_CATCHMENT_SURVEY",
+            data={},
+            summary=f"Tham số khảo sát giá không hợp lệ: {exc}",
+            explanation=str(exc),
+            requires_confirmation=False,
+            error=f"validation_error:{exc}",
+        )
+
+    # 3. Cost Governance & Circuit Breaker Check
+    breaker_fn = _src("get_circuit_breaker_state")
+    breaker_state = breaker_fn() if breaker_fn else "CLOSED"
+    if breaker_state == "OPEN":
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_catchment_survey",
+            intent="RUN_CATCHMENT_SURVEY",
+            data={"circuit_breaker": "OPEN"},
+            summary="Hệ thống tìm kiếm SerpApi tạm thời dừng do phát hiện lỗi liên tiếp từ Google.",
+            explanation="Circuit Breaker đang ở trạng thái OPEN để bảo vệ hệ thống. Đang trong thời gian cooldown, anh/chị vui lòng thử lại sau ít phút nhé!",
+            requires_confirmation=False,
+            error="CIRCUIT_OPEN",
+        )
+
+    quota_fn = _src("get_serpapi_quota")
+    if not quota_fn:
+        # ADR-008 Fail-Closed: không thể xác minh quota → chặn đề xuất
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_catchment_survey",
+            intent="RUN_CATCHMENT_SURVEY",
+            data={"quota_service": "unavailable"},
+            summary="Không thể xác minh hạn ngạch SerpApi — hệ thống đang ở chế độ an toàn.",
+            explanation="Dịch vụ kiểm tra hạn ngạch chưa được cấu hình. Để đảm bảo không phát sinh chi phí ngoài dự kiến, hệ thống tạm dừng nhận đề xuất. Anh/chị vui lòng liên hệ kỹ thuật để kiểm tra cấu hình nhé!",
+            requires_confirmation=False,
+            error="QUOTA_SERVICE_UNAVAILABLE",
+        )
+    quota_info = quota_fn()
+    if not isinstance(quota_info, dict):
+        # Fail-Closed: quota service trả về dữ liệu không hợp lệ
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_catchment_survey",
+            intent="RUN_CATCHMENT_SURVEY",
+            data={"quota_service": "invalid_response"},
+            summary="Không thể xác minh hạn ngạch SerpApi — phản hồi không hợp lệ.",
+            explanation="Dịch vụ kiểm tra hạn ngạch trả về dữ liệu bất thường. Hệ thống tạm dừng để tránh sử dụng ngoài dự kiến.",
+            requires_confirmation=False,
+            error="QUOTA_SERVICE_INVALID",
+        )
+    used_count = int(quota_info.get("used_count", 0))
+    total_quota = int(quota_info.get("monthly_limit", 250))
+    remaining = max(0, total_quota - used_count)
+
+    # Hard limit: >= 240/250
+    if used_count >= 240:
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_catchment_survey",
+            intent="RUN_CATCHMENT_SURVEY",
+            data={"quota_used": used_count, "monthly_limit": total_quota},
+            summary="Hạn ngạch SerpApi trong tháng đã đạt mức an toàn tối đa (240/250).",
+            explanation="Hệ thống đã kích hoạt Fail-Closed để tránh phát sinh chi phí ngoài dự kiến. Hạn ngạch sẽ được làm mới vào đầu tháng tới.",
+            requires_confirmation=False,
+            error="QUOTA_EXCEEDED",
+        )
+
+    # Store Daily Cap: 5 lần/quán/ngày
+    daily_count_fn = _src("get_store_survey_count_today")
+    if not daily_count_fn:
+        # Fail-Closed: không thể xác minh daily cap → chặn để tránh bùng nổ chi phí
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_catchment_survey",
+            intent="RUN_CATCHMENT_SURVEY",
+            data={"store_rate_limit_service": "unavailable"},
+            summary="Không thể xác minh giới hạn khảo sát hàng ngày của quán.",
+            explanation="Dịch vụ kiểm tra giới hạn ngày chưa được cấu hình. Để đảm bảo phân bổ công bằng, hệ thống tạm dừng nhận đề xuất.",
+            requires_confirmation=False,
+            error="DAILY_CAP_SERVICE_UNAVAILABLE",
+        )
+    store_daily_count = daily_count_fn(store_id)
+    if store_daily_count >= 5:
+        return ToolExecutionResult(
+            success=False,
+            tool_name="tool_propose_catchment_survey",
+            intent="RUN_CATCHMENT_SURVEY",
+            data={"store_daily_count": store_daily_count, "store_daily_cap": 5},
+            summary="Quán đã đạt giới hạn 5 lượt khảo sát đối thủ trong ngày hôm nay.",
+            explanation="Để tối ưu chi phí và phân bổ công bằng, mỗi quán tối đa 5 lượt khảo sát/ngày. Anh/chị vui lòng quay lại vào ngày mai nhé!",
+            requires_confirmation=False,
+            error="STORE_RATE_LIMITED",
+        )
+
+    # 4. Tạo payload diff và snapshot
+    payload = params_obj.model_dump()
+    payload.update({
+        "snapshot_version": "live-v1",
+        "quota_cost": 1,
+        "quota_remaining": remaining,
+        "quota_warning": (used_count >= 200),
+        "requested_by": user_id,
+        "requested_role": user_role,
+    })
+
+    channel_vn = {
+        "hybrid": "Tại quán & Online",
+        "dine_in_vision": "Tại quán (Menu ảnh)",
+        "delivery_platform": "Kênh giao hàng online",
+    }.get(params_obj.channel_mode, params_obj.channel_mode)
+
+    warning_text = " (⚠️ Cảnh báo: Hạn ngạch tháng sắp hết, còn dưới 50 lượt)" if used_count >= 200 else ""
+    summary = f"Khảo sát giá '{params_obj.category_keyword}' bán kính {params_obj.radius_km}km ({channel_vn})"
+    explanation = (
+        f"Em đã chuẩn bị khảo sát giá cho ngành hàng '{params_obj.category_keyword}' trong bán kính {params_obj.radius_km}km. "
+        f"Thao tác này sẽ dùng 1 lượt hạn ngạch SerpApi (hiện còn {remaining}/{total_quota} lượt trong tháng){warning_text}. "
+        "Anh/chị xem qua thông số và bấm 'Xác nhận' để bắt đầu quét đối thủ nhé!"
+    )
+
+    return ToolExecutionResult(
+        success=True,
+        tool_name="tool_propose_catchment_survey",
+        intent="RUN_CATCHMENT_SURVEY",
+        data=payload,
+        summary=summary,
+        explanation=explanation,
+        requires_confirmation=True,
+        source_snapshot=build_live_snapshot("RUN_CATCHMENT_SURVEY", store_id, payload),
+    )
+
+
+def tool_get_serpapi_quota(**kwargs: Any) -> ToolExecutionResult:
+    """Đọc trạng thái hạn mức SerpApi (plan v2.0 mục 4.2) — R0_READ."""
+    quota_fn = _src("get_serpapi_quota")
+    if not quota_fn:
+        return _read_result(
+            intent="GET_SERPAPI_QUOTA",
+            tool_name="tool_get_serpapi_quota",
+            data={"status": "not_configured"},
+            summary="Chưa cấu hình theo dõi hạn ngạch SerpApi.",
+            explanation="API layer chưa tiêm provider get_serpapi_quota.",
+        )
+
+    quota_data = quota_fn() or {}
+    used = quota_data.get("used_count", 0)
+    total = quota_data.get("monthly_limit", 250)
+    remaining = quota_data.get("remaining", max(0, total - used))
+    cb_state = quota_data.get("circuit_breaker_state", "CLOSED")
+    cache_hits = quota_data.get("cache_hits", 0)
+    month = quota_data.get("month", "")
+
+    summary = (
+        f"Hạn ngạch SerpApi tháng {month}: Đã dùng {used}/{total} lượt (còn {remaining} lượt). "
+        f"Trạng thái Circuit Breaker: {cb_state}. Lượt dùng Cache: {cache_hits}."
+    )
+    explanation = "Dữ liệu được cập nhật thời gian thực từ bộ đếm quota nguyên tử và Circuit Breaker."
+
+    return _read_result(
+        intent="GET_SERPAPI_QUOTA",
+        tool_name="tool_get_serpapi_quota",
+        data=quota_data,
+        summary=summary,
+        explanation=explanation,
+    )
+
+
+def tool_get_latest_survey_result(store_id: str = "quan_01", **kwargs: Any) -> ToolExecutionResult:
+    """Đọc kết quả khảo sát giá đối thủ gần nhất (plan v2.0 mục 4.2) — R0_READ."""
+    latest_survey_fn = _src("get_latest_survey")
+    job = latest_survey_fn(store_id) if latest_survey_fn else None
+
+    if not job or not getattr(job, "response", None):
+        return _read_result(
+            intent="GET_SURVEY_RESULT",
+            tool_name="tool_get_latest_survey_result",
+            data={"status": "no_data"},
+            summary="Chưa có kết quả khảo sát giá nào gần đây cho quán.",
+            explanation="Quán chưa thực hiện cuộc khảo sát nào. Anh/chị có thể yêu cầu: 'Khảo sát giá bún bò quanh quán 3km' để em chuẩn bị quét nhé!",
+        )
+
+    resp = job.response
+    price_dist = getattr(resp, "price_distribution", None)
+    p50_k = f"{price_dist.median_price:,.0f}đ".replace(",", ".") if price_dist else "N/A"
+    sweet_spot = getattr(price_dist, "sweet_spot_range", [0, 0]) if price_dist else [0, 0]
+    sweet_spot_str = f"{sweet_spot[0]:,.0f}đ – {sweet_spot[1]:,.0f}đ".replace(",", ".") if sweet_spot else "N/A"
+    stores_count = getattr(resp, "validated_stores_count", 0)
+    req = getattr(resp, "request", None)
+    cat = getattr(req, "core_category", getattr(req, "category_keyword", "ngành hàng"))
+
+    summary = (
+        f"Kết quả khảo sát gần nhất ngành '{cat}': Phân tích từ {stores_count} đối thủ đã kiểm chứng. "
+        f"Giá trung vị P50: {p50_k}. Vùng giá vàng (Sweet Spot): {sweet_spot_str}."
+    )
+    explanation = "Chi tiết đầy đủ về đối thủ, phân vị P25-P75 và ma trận món thay thế có thể xem tại /khao-sat-gia."
+
+    return _read_result(
+        intent="GET_SURVEY_RESULT",
+        tool_name="tool_get_latest_survey_result",
+        data=resp.model_dump() if hasattr(resp, "model_dump") else {},
+        summary=summary,
+        explanation=explanation,
+    )
+
+
 _TOOLS.update({
     "PROPOSE_HANGING_TASK": tool_propose_hanging_task,
     "PROPOSE_TASK_COMPLETE": tool_propose_task_complete,
@@ -2218,6 +2484,10 @@ _TOOLS.update({
     "PROPOSE_SWAP_CONSENT": tool_propose_swap_consent,
     "PROPOSE_HANDOVER": tool_propose_handover,
     "PROPOSE_TIME_OFF": tool_propose_time_off,
+    # Khảo sát thị trường & SerpApi
+    "RUN_CATCHMENT_SURVEY": tool_propose_catchment_survey,
+    "GET_SERPAPI_QUOTA": tool_get_serpapi_quota,
+    "GET_SURVEY_RESULT": tool_get_latest_survey_result,
 })
 
 

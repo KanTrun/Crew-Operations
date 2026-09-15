@@ -1,0 +1,134 @@
+# Taxonomy nhóm món thay thế (Jobs-to-be-Done) — Khảo sát Giá F&B
+#
+# Nguồn: plans/260913-1455-khao-sat-gia-fb-online-dinein-substitutes/plan.md
+#        mục 1.2 (ma trận nhu cầu) và mục 3.4 (cấu hình động, không hard-code).
+#
+# LÝ DO TỒN TẠI: bản WIP cũ hard-code ma trận này trong
+# `packages/agents/src/ca_agents/ag_pricing/substitute_matrix.py` (_MEAL_GROUPS).
+# Plan mục 3.4 yêu cầu chuyển sang config versioned để đội vận hành thêm nhóm
+# nhu cầu mới (VD "Ăn chay", "Ăn kiêng low-carb") mà KHÔNG cần release code.
+#
+# Contract: ca_contracts.catchment_survey_v2.SubstituteTaxonomy
+# Loader:   ca_agents.ag_pricing.substitute_taxonomy
+#
+# Quy ước tên: snake_case không dấu, để so khớp tất định sau bước normalization.
+# `alias` là các biến thể tên món có dấu/thường gặp — dùng cho lớp chuẩn hoá
+# (plan mục 2.2), KHÔNG dùng để tính toán.
+
+schema_version: 1
+phien_ban: "1.0.0"
+ngay_kiem: "2026-09-13"
+
+# Bội số làm tròn hiển thị áp cho cả nhóm (plan mục 1.5.7 / 4.4.1).
+# "beverage" → 1.000đ; còn lại → 5.000đ.
+# BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 1.5.7
+
+entries:
+  - jtbd_group: "lunch_meal_replacement"
+    mo_ta: "Bữa trưa no bụng — khách so sánh trong cùng một mức ngân sách no"
+    nhom_lam_tron: "mon_chinh"
+    version: 1
+    core_categories:
+      - "com_tam"
+      - "com_suon"
+      - "com_van_phong"
+      - "com_ga"
+      - "com_chay"
+    substitute_categories:
+      - "bun_bo_hue"
+      - "bun_thit_nuong"
+      - "pho_bo"
+      - "pho_ga"
+      - "hu_tieu"
+      - "banh_canh"
+      - "mi_quang"
+      - "banh_mi"
+    alias:
+      com_tam: ["cơm tấm", "com tam", "cơm sườn bì chả", "cơm sườn"]
+      bun_bo_hue: ["bún bò", "bún bò huế", "bun bo"]
+      pho_bo: ["phở", "phở bò", "pho"]
+      hu_tieu: ["hủ tiếu", "hủ tiếu nam vang", "hu tieu"]
+
+  - jtbd_group: "beverage_third_place"
+    mo_ta: "Thức uống / chỗ ngồi làm việc — cạnh tranh theo trải nghiệm, không theo độ no"
+    nhom_lam_tron: "beverage"
+    version: 1
+    core_categories:
+      - "ca_phe"
+      - "ca_phe_muoi"
+      - "bac_xiu"
+    substitute_categories:
+      - "tra_trai_cay"
+      - "tra_sua"
+      - "nuoc_ep"
+      - "sinh_to"
+      - "tra_da"
+    alias:
+      ca_phe: ["cà phê", "cafe", "coffee", "cà phê đen", "cà phê sữa"]
+      ca_phe_muoi: ["cà phê muối", "cafe muối"]
+      tra_sua: ["trà sữa", "tra sua", "milk tea"]
+      tra_trai_cay: ["trà trái cây", "trà đào", "trà vải"]
+
+  - jtbd_group: "snack_afternoon"
+    mo_ta: "Ăn xế / ăn vặt — ngân sách thấp, quyết định nhanh"
+    nhom_lam_tron: "mon_chinh"
+    version: 1
+    core_categories:
+      - "banh_trang_tron"
+      - "an_vat"
+    substitute_categories:
+      - "che"
+      - "kem"
+      - "ca_vien_chien"
+      - "ga_ran"
+      - "tra_sua"
+    alias:
+      banh_trang_tron: ["bánh tráng trộn", "bánh tráng"]
+      ga_ran: ["gà rán", "gà chiên"]
+
+  - jtbd_group: "gathering_dinner"
+    mo_ta: "Tụ tập / bữa tối — nhóm đông, chi tiêu theo đầu người"
+    nhom_lam_tron: "mon_chinh"
+    version: 1
+    core_categories:
+      - "lau"
+    substitute_categories:
+      - "bbq_nuong"
+      - "quan_oc"
+      - "quan_nhau"
+      - "mon_viet"
+    alias:
+      lau: ["lẩu", "lau", "lẩu thái", "lẩu bò"]
+      bbq_nuong: ["nướng", "bbq", "thịt nướng"]
+
+# ── Nhóm chờ chủ dự án duyệt — plan mục 3.4 gợi ý nhưng chưa có trong ma trận 1.2 ──
+# BUSINESS_DECISION_PENDING_REVIEW: xem plan mục 3.4. Hai nhóm dưới đây là VÍ DỤ
+# plan nêu ra ("Ăn chay", "Ăn kiêng low-carb"), chưa có dữ liệu thị trường kiểm chứng.
+entries_cho_duyet:
+  - jtbd_group: "vegetarian_meal"
+    mo_ta: "Ăn chay — chưa có trong ma trận plan mục 1.2, chờ duyệt"
+    nhom_lam_tron: "mon_chinh"
+    version: 1
+    core_categories:
+      - "com_chay"
+      - "bun_chay"
+    substitute_categories:
+      - "pho_chay"
+      - "lau_chay"
+
+  - jtbd_group: "low_carb_meal"
+    mo_ta: "Ăn kiêng low-carb — chưa có trong ma trận plan mục 1.2, chờ duyệt"
+    nhom_lam_tron: "mon_chinh"
+    version: 1
+    core_categories:
+      - "salad"
+      - "eat_clean"
+    substitute_categories:
+      - "gym_meal"
+      - "smoothie_bowl"
+
+ghi_chu: |
+  Thêm nhóm nhu cầu mới = thêm một entry vào `entries` và bump `version` của entry đó.
+  KHÔNG sửa mã trong ag_pricing. Loader sẽ từ chối file thiếu trường bắt buộc
+  (jtbd_group / core_categories / substitute_categories / version) thay vì âm thầm bỏ qua.
+  `entries_cho_duyet` KHÔNG được loader nạp vào taxonomy hoạt động.

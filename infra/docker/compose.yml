@@ -41,10 +41,13 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      BAI_API_KEY: ${BAI_API_KEY:-}
+      BAI_BASE_URL: ${BAI_BASE_URL:-https://api.b.ai/v1}
       GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-8b-instant}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.6-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       GEMINI_TRANSCRIBE_MODEL: ${GEMINI_TRANSCRIBE_MODEL:-gemini-3.5-transcribe}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-oss-20b:free}
+      BAI_MODEL: ${BAI_MODEL:-qwen3.8-flash}
 
       NHIPQUAN_MSG_BACKEND: ${NHIPQUAN_MSG_BACKEND:-console}
       NHIPQUAN_TELEGRAM_BOT_TOKEN: ${NHIPQUAN_TELEGRAM_BOT_TOKEN:-}
@@ -52,7 +55,11 @@ services:
       NHIPQUAN_ZALO_ENABLED: ${NHIPQUAN_ZALO_ENABLED:-}
       NHIPQUAN_ZALO_OA_ACCESS_TOKEN: ${NHIPQUAN_ZALO_OA_ACCESS_TOKEN:-}
       NHIPQUAN_FB_PAGE_TOKEN: ${NHIPQUAN_FB_PAGE_TOKEN:-}
+      NHIPQUAN_FB_APP_SECRET: ${NHIPQUAN_FB_APP_SECRET:-}
       NHIPQUAN_FB_PAGE_ID: ${NHIPQUAN_FB_PAGE_ID:-}
+      NHIPQUAN_PAGE_MODE: ${NHIPQUAN_PAGE_MODE:-replay}
+      NHIPQUAN_FB_AUTO_SEND: ${NHIPQUAN_FB_AUTO_SEND:-0}
+      NHIPQUAN_FB_WEBHOOK_VERIFY: ${NHIPQUAN_FB_WEBHOOK_VERIFY:-}
     command: ["sh", "-c", "cd /app/apps/api && alembic -c alembic/alembic.ini upgrade head && uvicorn ca_api.interfaces.http.main:app --host 0.0.0.0 --port 8000"]
     ports:
       - "8000:8000"
@@ -87,10 +94,13 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      BAI_API_KEY: ${BAI_API_KEY:-}
+      BAI_BASE_URL: ${BAI_BASE_URL:-https://api.b.ai/v1}
       GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-8b-instant}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.6-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       GEMINI_TRANSCRIBE_MODEL: ${GEMINI_TRANSCRIBE_MODEL:-gemini-3.5-transcribe}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-oss-20b:free}
+      BAI_MODEL: ${BAI_MODEL:-qwen3.8-flash}
 
       NHIPQUAN_MSG_BACKEND: ${NHIPQUAN_MSG_BACKEND:-console}
       NHIPQUAN_TELEGRAM_BOT_TOKEN: ${NHIPQUAN_TELEGRAM_BOT_TOKEN:-}
@@ -98,7 +108,11 @@ services:
       NHIPQUAN_ZALO_ENABLED: ${NHIPQUAN_ZALO_ENABLED:-}
       NHIPQUAN_ZALO_OA_ACCESS_TOKEN: ${NHIPQUAN_ZALO_OA_ACCESS_TOKEN:-}
       NHIPQUAN_FB_PAGE_TOKEN: ${NHIPQUAN_FB_PAGE_TOKEN:-}
+      NHIPQUAN_FB_APP_SECRET: ${NHIPQUAN_FB_APP_SECRET:-}
       NHIPQUAN_FB_PAGE_ID: ${NHIPQUAN_FB_PAGE_ID:-}
+      NHIPQUAN_PAGE_MODE: ${NHIPQUAN_PAGE_MODE:-replay}
+      NHIPQUAN_FB_AUTO_SEND: ${NHIPQUAN_FB_AUTO_SEND:-0}
+      NHIPQUAN_FB_WEBHOOK_VERIFY: ${NHIPQUAN_FB_WEBHOOK_VERIFY:-}
     volumes:
       - nhipquan_var:/app/var
     depends_on:

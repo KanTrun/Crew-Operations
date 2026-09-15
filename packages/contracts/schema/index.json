@@ -22,5 +22,6 @@
   "AIFeedbackEvent": "packages/contracts/schema/AIFeedbackEvent.json",
   "AIEvaluation": "packages/contracts/schema/AIEvaluation.json",
   "AIRuleProposal": "packages/contracts/schema/AIRuleProposal.json",
-  "TableReservation": "packages/contracts/schema/TableReservation.json"
+  "TableReservation": "packages/contracts/schema/TableReservation.json",
+  "CatchmentPriceSurveyV2": "packages/contracts/schema/CatchmentPriceSurveyV2.json"
 }

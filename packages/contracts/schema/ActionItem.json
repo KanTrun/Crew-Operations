@@ -84,6 +84,65 @@
       "default": true,
       "title": "Da Chon",
       "type": "boolean"
+    },
+    "loai_cong_viec": {
+      "default": "1_ca",
+      "enum": [
+        "1_ca",
+        "nhieu_ca",
+        "gop_y"
+      ],
+      "title": "Loai Cong Viec",
+      "type": "string"
+    },
+    "ca_thuc_hien": {
+      "default": "",
+      "title": "Ca Thuc Hien",
+      "type": "string"
+    },
+    "ca_du_kien": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Ca Du Kien",
+      "type": "array"
+    },
+    "can_lam_ro": {
+      "default": false,
+      "title": "Can Lam Ro",
+      "type": "boolean"
+    },
+    "van_de_ngu_canh": {
+      "default": "",
+      "title": "Van De Ngu Canh",
+      "type": "string"
+    },
+    "cau_hoi_lam_ro": {
+      "default": "",
+      "title": "Cau Hoi Lam Ro",
+      "type": "string"
+    },
+    "goi_y_xu_ly": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Goi Y Xu Ly",
+      "type": "array"
+    },
+    "stt_near_miss": {
+      "default": false,
+      "title": "Stt Near Miss",
+      "type": "boolean"
+    },
+    "khong_co_can_cu": {
+      "default": false,
+      "title": "Khong Co Can Cu",
+      "type": "boolean"
+    },
+    "nguon_cau_noi": {
+      "default": "",
+      "title": "Nguon Cau Noi",
+      "type": "string"
     }
   },
   "required": [

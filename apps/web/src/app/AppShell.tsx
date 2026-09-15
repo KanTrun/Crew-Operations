@@ -83,6 +83,7 @@ const MORE: LinkItem[] = [
   { href: "/vet", label: "Vết hệ thống" },
   { href: "/cam-nang", label: "Cẩm nang" },
   { href: "/menu", label: "Menu & giá" },
+  { href: "/khao-sat-gia", label: "Khảo sát giá" },
   { href: "/nguoi", label: "Người dùng" },
 ];
 

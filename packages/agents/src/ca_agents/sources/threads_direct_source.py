@@ -26,7 +26,16 @@ logger = logging.getLogger(__name__)
 # SSL mặc định verify hostname + chain (create_default_context). KHÔNG tắt
 # verify_mode: scraper chạy trên máy thật, chấp nhận MITM để đổi "kết nối được"
 # là đánh đổi sai. Nguồn hỏng cert → request lỗi → trả [] đúng ADR-008.
-_SSL_CTX = ssl.create_default_context()
+# Lazy-init để tránh treo khi import module (ssl.create_default_context() có thể
+# treo trên Windows khi load certs).
+_SSL_CTX: ssl.SSLContext | None = None
+
+
+def _get_ssl_context() -> ssl.SSLContext:
+    global _SSL_CTX
+    if _SSL_CTX is None:
+        _SSL_CTX = ssl.create_default_context()
+    return _SSL_CTX
 
 _HEADERS = {
     "User-Agent": (
@@ -101,7 +110,7 @@ def scrape_threads_direct(
 
     try:
         req = urllib.request.Request(jina_url, headers=_HEADERS)
-        with urllib.request.urlopen(req, timeout=8, context=_SSL_CTX) as resp:
+        with urllib.request.urlopen(req, timeout=8, context=_get_ssl_context()) as resp:
             content = resp.read().decode("utf-8")
             
             # Bóc tách các đoạn post từ Markdown

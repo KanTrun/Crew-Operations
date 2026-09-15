@@ -1,0 +1,170 @@
+{
+  "places": [
+    {
+      "place_id": "ChIJ_example_001",
+      "name": "Quán Cơm Tấm Sài Gòn",
+      "formatted_address": "123 Đường ABC, Quận 1, TP.HCM",
+      "geometry": {
+        "location": {
+          "lat": 10.7769,
+          "lng": 106.7009
+        }
+      },
+      "rating": 4.7,
+      "user_ratings_total": 1250,
+      "price_level": 2,
+      "types": ["restaurant", "food", "point_of_interest"],
+      "photos": [
+        {
+          "photo_reference": "menu_tab_photo_001",
+          "height": 1080,
+          "width": 1920,
+          "html_attributions": ["User A"],
+          "type": "menu",
+          "timestamp": "2024-01-15T10:30:00Z"
+        },
+        {
+          "photo_reference": "menu_tab_photo_002",
+          "height": 1080,
+          "width": 1920,
+          "html_attributions": ["User B"],
+          "type": "menu",
+          "timestamp": "2024-01-10T14:20:00Z"
+        },
+        {
+          "photo_reference": "all_photo_001",
+          "height": 1080,
+          "width": 1920,
+          "html_attributions": ["User C"],
+          "type": "food",
+          "timestamp": "2024-01-20T09:15:00Z"
+        }
+      ],
+      "menu_photos_count": 2,
+      "all_photos_count": 3
+    },
+    {
+      "place_id": "ChIJ_example_002",
+      "name": "Phở Bò Gia Truyền Hà Nội",
+      "formatted_address": "456 Đường XYZ, Quận 3, TP.HCM",
+      "geometry": {
+        "location": {
+          "lat": 10.7756,
+          "lng": 106.6889
+        }
+      },
+      "rating": 4.8,
+      "user_ratings_total": 2100,
+      "price_level": 2,
+      "types": ["restaurant", "food", "point_of_interest"],
+      "photos": [
+        {
+          "photo_reference": "menu_tab_photo_003",
+          "height": 1080,
+          "width": 1920,
+          "html_attributions": ["User D"],
+          "type": "menu",
+          "timestamp": "2024-01-18T11:45:00Z"
+        }
+      ],
+      "menu_photos_count": 1,
+      "all_photos_count": 1
+    },
+    {
+      "place_id": "ChIJ_example_003",
+      "name": "Bún Bò Huế Đông Ba",
+      "formatted_address": "789 Đường DEF, Bình Thạnh, TP.HCM",
+      "geometry": {
+        "location": {
+          "lat": 10.8012,
+          "lng": 106.7085
+        }
+      },
+      "rating": 4.6,
+      "user_ratings_total": 890,
+      "price_level": 2,
+      "types": ["restaurant", "food", "point_of_interest"],
+      "photos": [
+        {
+          "photo_reference": "all_photo_002",
+          "height": 1080,
+          "width": 1920,
+          "html_attributions": ["User E"],
+          "type": "food",
+          "timestamp": "2024-01-22T16:30:00Z"
+        },
+        {
+          "photo_reference": "all_photo_003",
+          "height": 1080,
+          "width": 1920,
+          "html_attributions": ["User F"],
+          "type": "interior",
+          "timestamp": "2024-01-19T13:20:00Z"
+        }
+      ],
+      "menu_photos_count": 0,
+      "all_photos_count": 2
+    },
+    {
+      "place_id": "ChIJ_example_004",
+      "name": "Cà Phê Trung Nguyên Legend",
+      "formatted_address": "321 Đường GHI, Quận 1, TP.HCM",
+      "geometry": {
+        "location": {
+          "lat": 10.7789,
+          "lng": 106.7021
+        }
+      },
+      "rating": 4.5,
+      "user_ratings_total": 3200,
+      "price_level": 3,
+      "types": ["cafe", "food", "point_of_interest"],
+      "photos": [
+        {
+          "photo_reference": "menu_tab_photo_004",
+          "height": 1080,
+          "width": 1920,
+          "html_attributions": ["User G"],
+          "type": "menu",
+          "timestamp": "2024-01-25T08:10:00Z"
+        },
+        {
+          "photo_reference": "menu_tab_photo_005",
+          "height": 1080,
+          "width": 1920,
+          "html_attributions": ["User H"],
+          "type": "menu",
+          "timestamp": "2024-01-20T15:45:00Z"
+        },
+        {
+          "photo_reference": "menu_tab_photo_006",
+          "height": 1080,
+          "width": 1920,
+          "html_attributions": ["User I"],
+          "type": "menu",
+          "timestamp": "2024-01-12T10:30:00Z"
+        }
+      ],
+      "menu_photos_count": 3,
+      "all_photos_count": 3
+    },
+    {
+      "place_id": "ChIJ_example_005",
+      "name": "Trà Sữa Phúc Long",
+      "formatted_address": "654 Đường JKL, Quận 3, TP.HCM",
+      "geometry": {
+        "location": {
+          "lat": 10.7734,
+          "lng": 106.6912
+        }
+      },
+      "rating": 4.4,
+      "user_ratings_total": 1800,
+      "price_level": 2,
+      "types": ["cafe", "food", "point_of_interest"],
+      "photos": [],
+      "menu_photos_count": 0,
+      "all_photos_count": 0
+    }
+  ]
+}

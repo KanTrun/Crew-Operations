@@ -48,6 +48,10 @@ GET_CONSTRAINT_CANDIDATES = "GET_CONSTRAINT_CANDIDATES"
 PROPOSE_TKB_CONFIRM = "PROPOSE_TKB_CONFIRM"
 PROPOSE_SWAP_CONSENT = "PROPOSE_SWAP_CONSENT"
 PROPOSE_HANDOVER = "PROPOSE_HANDOVER"
+# Khảo sát thị trường & SerpApi
+RUN_CATCHMENT_SURVEY = "RUN_CATCHMENT_SURVEY"
+GET_SERPAPI_QUOTA = "GET_SERPAPI_QUOTA"
+GET_SURVEY_RESULT = "GET_SURVEY_RESULT"
 OUT_OF_SCOPE = "OUT_OF_SCOPE"
 # Patterns detecting attempts to bypass two-phase approval
 _BYPASS_PATTERNS = [
@@ -221,6 +225,24 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
         0.9,
     ),
     (
+        GET_SERPAPI_QUOTA,
+        [
+            "hạn ngạch serpapi", "han ngach serpapi", "quota serpapi", "kiểm tra quota", "kiem tra quota",
+            "lượt tìm kiếm còn lại", "luot tim kiem con lai", "hạn mức serpapi", "han muc serpapi",
+            "hạn ngạch tìm kiếm", "han ngach tim kiem", "quota tìm kiếm", "quota tim kiem",
+        ],
+        0.92,
+    ),
+    (
+        GET_SURVEY_RESULT,
+        [
+            "kết quả khảo sát giá", "ket qua khao sat gia", "báo cáo đối thủ gần nhất", "bao cao doi thu gan nhat",
+            "kết quả radar giá", "ket qua radar gia", "kết quả khảo sát đối thủ", "ket qua khao sat doi thu",
+            "xem khảo sát giá", "xem khao sat gia", "báo cáo khảo sát giá", "bao cao khao sat gia",
+        ],
+        0.91,
+    ),
+    (
         SCHEDULE_SOLVE,
         [
             "xếp lịch", "xep lich", "chia ca", "xếp ca", "xep ca", "lên lịch", "len lich",
@@ -271,6 +293,23 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
     (
         INVENTORY_RESTOCK_CHECK,
         ["kiểm kho", "tồn kho", "sắp hết hàng", "hết sữa", "đặt hàng", "nhập hàng", "ngưỡng tồn", "restock"],
+        0.90,
+    ),
+    (
+        RUN_CATCHMENT_SURVEY,
+        [
+            "khảo sát giá", "khao sat gia",
+            "quét giá đối thủ", "quet gia doi thu",
+            "quét đối thủ", "quet doi thu",
+            "quét giá", "quet gia",
+            "phân tích giá khu vực", "phan tich gia khu vuc",
+            "radar định giá", "radar dinh gia",
+            "radar giá", "radar gia",
+            "khảo sát đối thủ", "khao sat doi thu",
+            "so sánh giá khu vực", "so sanh gia khu vuc",
+            "khảo sát thị trường", "khao sat thi truong",
+            "báo cáo đối thủ quanh", "bao cao doi thu quanh",
+        ],
         0.90,
     ),
     (
@@ -379,6 +418,107 @@ def _active_date(context: dict[str, Any]) -> Any:
         return date.today()
 
 
+def _extract_survey_params(text: str) -> tuple[dict[str, Any], str | None]:
+    """Trích xuất tham số khảo sát giá từ câu nói người dùng (plan v2.0 mục 4.2).
+
+    Returns:
+        (params, clarification_question): nếu thiếu thông tin hoặc vượt ngưỡng,
+        clarification_question sẽ có nội dung hỏi lại thay vì đoán mò.
+    """
+    lower = text.lower()
+
+    # 1. Trích xuất bán kính (km)
+    m_r = re.search(
+        r"(?:bán\s*kính|ban\s*kinh|trong\s*vòng|trong\s*vong|phạm\s*vi|pham\s*vi)?\s*(\d+(?:[.,]\d+)?)\s*(?:km|cây|cay|kilomet|kilômét)\b",
+        lower,
+    )
+    radius_km = 3.0
+    if m_r:
+        try:
+            r_val = float(m_r.group(1).replace(",", "."))
+            if r_val > 10.0:
+                return {}, f"Dạ bán kính khảo sát tối đa là 10.0km (đang yêu cầu {r_val}km). Anh/chị vui lòng chọn bán kính từ 0.5km đến 10.0km nhé!"
+            if r_val < 0.5:
+                return {}, f"Dạ bán kính khảo sát tối thiểu là 0.5km (đang yêu cầu {r_val}km). Anh/chị vui lòng chọn bán kính từ 0.5km đến 10.0km nhé!"
+            radius_km = r_val
+        except ValueError:
+            pass
+
+    # 2. Trích xuất kênh (channel_mode)
+    channel_mode = "hybrid"
+    if any(k in lower for k in ["tại quán", "tai quan", "tại chỗ", "tai cho", "dine in", "dine-in", "menu ảnh", "menu anh"]):
+        channel_mode = "dine_in_vision"
+    elif any(k in lower for k in ["online", "trên sàn", "tren san", "delivery", "shopeefood", "grabfood", "giao hàng", "giao hang"]):
+        channel_mode = "delivery_platform"
+
+    # 3. Trích xuất danh mục / món
+    category: str | None = None
+    canonical_dishes = {
+        "cơm tấm": "cơm tấm", "com tam": "cơm tấm",
+        "cơm sườn": "cơm sườn", "com suon": "cơm sườn",
+        "bún bò": "bún bò", "bun bo": "bún bò",
+        "cà phê": "cà phê", "ca phe": "cà phê",
+        "bạc xỉu": "bạc xỉu", "bac xiu": "bạc xỉu",
+        "cà phê sữa": "cà phê sữa", "ca phe sua": "cà phê sữa",
+        "cà phê đen": "cà phê đen", "ca phe den": "cà phê đen",
+        "đen đá": "đen đá", "den da": "đen đá",
+        "espresso": "espresso", "latte": "latte", "cappuccino": "cappuccino", "americano": "americano",
+        "trà sữa": "trà sữa", "tra sua": "trà sữa",
+        "trà đào": "trà đào", "tra dao": "trà đào",
+        "trà trái cây": "trà trái cây", "tra trai cay": "trà trái cây",
+        "trà chanh": "trà chanh", "tra chanh": "trà chanh",
+        "trà ô long": "trà ô long", "tra o long": "trà ô long", "tra oolong": "trà ô long",
+        "matcha": "matcha", "cacao": "cacao",
+        "phở bò": "phở bò", "pho bo": "phở bò",
+        "phở gà": "phở gà", "pho ga": "phở gà",
+        "hủ tiếu": "hủ tiếu", "hu tieu": "hủ tiếu",
+        "bánh mì": "bánh mì", "banh mi": "bánh mì",
+        "bánh ngọt": "bánh ngọt", "banh ngot": "bánh ngọt",
+        "croissant": "croissant",
+        "bún chả": "bún chả", "bun cha": "bún chả",
+        "bún riêu": "bún riêu", "bun rieu": "bún riêu",
+        "mì quảng": "mì quảng", "mi quang": "mì quảng",
+        "bánh cuốn": "bánh cuốn", "banh cuon": "bánh cuốn",
+        "nước ép": "nước ép", "nuoc ep": "nước ép",
+        "sinh tố": "sinh tố", "sinh to": "sinh tố",
+    }
+    for d, canonical in canonical_dishes.items():
+        if re.search(r"\b" + re.escape(d) + r"\b", lower):
+            category = canonical
+            break
+
+    if not category:
+        # Regex trích xuất danh mục sau các từ khóa khảo sát (bao gồm cả biến thể)
+        m_cat = re.search(
+            r"(?:khảo\s*sát\s*thị\s*trường|khao\s*sat\s*thi\s*truong|khảo\s*sát\s*giá|khao\s*sat\s*gia|radar\s*định\s*giá|quét\s*giá|quet\s*gia|quét\s*đối\s*thủ|quet\s*doi\s*thu|giá\s*món|gia\s*mon|giá)\s+([a-zA-ZÀ-ỹ0-9\s]+?)(?:\s+(?:quanh|trong|ở|tai|tại|bán\s*kính|với|theo)|\s*$)",
+            text,
+            re.IGNORECASE,
+        )
+        if m_cat:
+            cand = m_cat.group(1).strip()
+            cand = re.sub(r"^(?:của|cho|về|ngành|món)\s+", "", cand, flags=re.IGNORECASE).strip()
+            # Lọc bỏ các token chỉ khoảng cách (ví dụ 2km, 3m)
+            cand = re.sub(r"\d+(?:\.\d+)?\s*(?:km|m|cay)\b", "", cand, flags=re.IGNORECASE).strip()
+            # Bỏ các từ không phải món
+            if (
+                cand.lower() not in ["thị trường", "khu vực", "đối thủ", "quán", "quanh quán", "bán kính", ""]
+                and 2 <= len(cand) <= 40
+                and len(cand.split()) <= 4
+            ):
+                category = cand
+
+    # Nếu không trích xuất được danh mục -> yêu cầu làm rõ theo Non-Goal §1.3
+    if not category:
+        return {}, "Dạ anh/chị muốn khảo sát giá cho món ăn hoặc ngành hàng nào (ví dụ: bún bò, cà phê, cơm tấm...) ạ?"
+
+    return {
+        "category_keyword": category,
+        "radius_km": radius_km,
+        "channel_mode": channel_mode,
+        "include_substitutes": True,
+    }, None
+
+
 def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentParseResult:
     """Parse intent from user message with confidence rules and injection checks."""
     text = (message or "").strip()
@@ -434,6 +574,12 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
                 break
         if matched_intent != OUT_OF_SCOPE:
             break
+
+    # Fix W6: Ranh giới QUERY_MENU (chứa "giá món") và RUN_CATCHMENT_SURVEY
+    if matched_intent == QUERY_MENU:
+        if any(w in lower for w in ["quanh", "bán kính", "ban kinh", "khảo sát", "khao sat", "đối thủ", "doi thu", "thị trường"]):
+            matched_intent = RUN_CATCHMENT_SURVEY
+            matched_conf = 0.9
 
     # Regex linh hoạt cho lệnh đăng/viết bài lên Fanpage/Facebook
     if matched_intent == OUT_OF_SCOPE:
@@ -754,6 +900,27 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
             tone = "trang trong"
         params["topic"] = topic
         params["tone"] = tone
+
+    elif matched_intent == RUN_CATCHMENT_SURVEY:
+        survey_params, clarif_q = _extract_survey_params(text)
+        if clarif_q is not None:
+            return IntentParseResult(
+                intent=RUN_CATCHMENT_SURVEY,
+                confidence=0.70,
+                params={},
+                clarification_needed=True,
+                clarification_question=clarif_q,
+            )
+        params.update(survey_params)
+
+    elif matched_intent == GET_SURVEY_RESULT:
+        # Nếu có nói rõ món/bán kính thì trích xuất kèm
+        survey_params, _ = _extract_survey_params(text)
+        if survey_params:
+            params.update(survey_params)
+
+    elif matched_intent == GET_SERPAPI_QUOTA:
+        pass
 
     # 4. Confidence thresholds:
     # >= 0.75: regular

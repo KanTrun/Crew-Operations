@@ -86,6 +86,65 @@
           "default": true,
           "title": "Da Chon",
           "type": "boolean"
+        },
+        "loai_cong_viec": {
+          "default": "1_ca",
+          "enum": [
+            "1_ca",
+            "nhieu_ca",
+            "gop_y"
+          ],
+          "title": "Loai Cong Viec",
+          "type": "string"
+        },
+        "ca_thuc_hien": {
+          "default": "",
+          "title": "Ca Thuc Hien",
+          "type": "string"
+        },
+        "ca_du_kien": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Ca Du Kien",
+          "type": "array"
+        },
+        "can_lam_ro": {
+          "default": false,
+          "title": "Can Lam Ro",
+          "type": "boolean"
+        },
+        "van_de_ngu_canh": {
+          "default": "",
+          "title": "Van De Ngu Canh",
+          "type": "string"
+        },
+        "cau_hoi_lam_ro": {
+          "default": "",
+          "title": "Cau Hoi Lam Ro",
+          "type": "string"
+        },
+        "goi_y_xu_ly": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Goi Y Xu Ly",
+          "type": "array"
+        },
+        "stt_near_miss": {
+          "default": false,
+          "title": "Stt Near Miss",
+          "type": "boolean"
+        },
+        "khong_co_can_cu": {
+          "default": false,
+          "title": "Khong Co Can Cu",
+          "type": "boolean"
+        },
+        "nguon_cau_noi": {
+          "default": "",
+          "title": "Nguon Cau Noi",
+          "type": "string"
         }
       },
       "required": [
@@ -190,6 +249,7 @@
             "quy_trinh_sop",
             "mua_sam_vat_tu",
             "chinh_sach_nhan_su",
+            "dieu_chinh_lich",
             "khac"
           ],
           "title": "Loai De Xuat",
@@ -251,6 +311,17 @@
           ],
           "default": null,
           "title": "Buoc So"
+        },
+        "chi_tiet_lich": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DieuChinhLichHop"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -294,6 +365,80 @@
         "noi_dung_thay_doi"
       ],
       "title": "DeXuatSop",
+      "type": "object"
+    },
+    "DieuChinhLichHop": {
+      "properties": {
+        "id": {
+          "default": "",
+          "title": "Id",
+          "type": "string"
+        },
+        "nhan_vien_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nhan Vien Id"
+        },
+        "ten_nhan_vien": {
+          "default": "",
+          "title": "Ten Nhan Vien",
+          "type": "string"
+        },
+        "loai": {
+          "default": "xin_nghi",
+          "enum": [
+            "xin_nghi",
+            "ghim_ca",
+            "doi_ca",
+            "uu_tien"
+          ],
+          "title": "Loai",
+          "type": "string"
+        },
+        "thu": {
+          "default": "",
+          "title": "Thu",
+          "type": "string"
+        },
+        "khung": {
+          "default": "",
+          "title": "Khung",
+          "type": "string"
+        },
+        "ca_id": {
+          "default": "",
+          "title": "Ca Id",
+          "type": "string"
+        },
+        "tuan_iso": {
+          "default": "",
+          "title": "Tuan Iso",
+          "type": "string"
+        },
+        "ly_do": {
+          "default": "",
+          "title": "Ly Do",
+          "type": "string"
+        },
+        "trang_thai": {
+          "default": "cho_duyet",
+          "enum": [
+            "cho_duyet",
+            "da_duyet",
+            "tu_choi"
+          ],
+          "title": "Trang Thai",
+          "type": "string"
+        }
+      },
+      "title": "DieuChinhLichHop",
       "type": "object"
     },
     "DoanThoaiTranscript": {
@@ -544,6 +689,13 @@
       "title": "Gop Y Luu Y",
       "type": "array"
     },
+    "dieu_chinh_lich": {
+      "items": {
+        "$ref": "#/$defs/DieuChinhLichHop"
+      },
+      "title": "Dieu Chinh Lich",
+      "type": "array"
+    },
     "audit_sop": {
       "anyOf": [
         {
@@ -599,6 +751,21 @@
         "tu_choi"
       ],
       "title": "Trang Thai",
+      "type": "string"
+    },
+    "phien_ban": {
+      "default": 1,
+      "title": "Phien Ban",
+      "type": "integer"
+    },
+    "last_modified_at": {
+      "default": "",
+      "title": "Last Modified At",
+      "type": "string"
+    },
+    "ngay_ghi_am": {
+      "default": "",
+      "title": "Ngay Ghi Am",
       "type": "string"
     }
   },

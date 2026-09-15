@@ -2,7 +2,20 @@
 name = "ca-agents"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = []
+# numpy: Math Layer AG-PRICING dùng numpy.percentile(method="linear") — plan
+# 260913-1455 mục 4.1 yêu cầu MỘT phương pháp phân vị duy nhất, không tự viết tay.
+# pyyaml: pricing_config / substitute_taxonomy nạp tham số từ config/*.yaml
+# (plan mục 1.5 và 3.4 — không hard-code số nghiệp vụ trong mã).
+# ca-contracts KHÔNG khai báo ở đây theo convention sẵn có của repo: package
+# được cài riêng (`make setup` / Dockerfile.api cài ./packages/contracts trước).
+dependencies = [
+    "numpy>=2.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# hypothesis: property-based test cho 4 bất biến plan mục 4.6.
+dev = ["hypothesis>=6.100"]
 
 [build-system]
 requires = ["hatchling"]

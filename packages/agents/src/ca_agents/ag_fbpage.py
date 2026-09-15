@@ -396,6 +396,84 @@ def build_human_response(
     return reply, True, "AG-FRONTDESK"
 
 
+async def draft_llm_reply(
+    *,
+    text: str,
+    public_context: dict[str, Any] | None = None,
+    customer_profile: dict[str, Any] | None = None,
+    golden_examples: list[dict[str, Any]] | None = None,
+    active_rules: list[dict[str, Any]] | None = None,
+    is_comment: bool = False,
+) -> str | None:
+    """Sinh bản nháp trả lời bằng LLM (live mode) — dùng cho cả messenger & comment.
+
+    Trả về None nếu LLM lỗi/timeout/empty — caller fallback về template.
+    Bản nháp LUÔN qua supervise_outgoing_response trước khi dùng.
+    """
+    if agent_mode() != "live":
+        return None
+    try:
+        profile = (public_context or {}).get("profile", {})
+        menu = (public_context or {}).get("menu", [])
+        promos = (public_context or {}).get("promotions", [])
+        menu_items = [
+            f"{m.get('ten', '')} ({m.get('gia_formatted') or (str(m.get('gia', '')) + 'đ')})"
+            for m in menu
+            if isinstance(m, dict) and m.get("ten")
+        ]
+        menu_str = ", ".join(menu_items) if menu_items else "Đang cập nhật"
+        wifi_info = ""
+        if profile.get("wifi_ssid"):
+            wifi_info = f", Wifi: {profile.get('wifi_ssid')}" + (f" (Pass: {profile.get('wifi_pass')})" if profile.get("wifi_pass") else "")
+        ctx_summary = (
+            f"Quán: {profile.get('ten_quan', 'Nhịp Quán')}, Địa chỉ: {profile.get('dia_chi', '')}, "
+            f"Giờ mở cửa: {profile.get('gio_mo_cua', '')}, Hotline: {profile.get('hotline', '')}{wifi_info}\n"
+            f"Menu & Giá: {menu_str}\n"
+            f"Khuyến mãi: {', '.join([p.get('tieu_de', '') for p in promos])}"
+        )
+        sys_prompt = build_fb_system_prompt(ctx_summary)
+
+        extra_instructions = []
+        if customer_profile:
+            cust_ctx = format_customer_greeting_context(customer_profile)
+            if cust_ctx:
+                extra_instructions.append(cust_ctx)
+        if golden_examples:
+            gold_ctx = format_golden_cskh_prompt(golden_examples)
+            if gold_ctx:
+                extra_instructions.append(gold_ctx)
+        rule_texts = [str((rule.get("rule") or {}).get("text") or "").strip() for rule in active_rules or []]
+        if rule_texts:
+            extra_instructions.append("QUY TẮC ĐÃ ĐƯỢC CHỦ QUÁN DUYỆT:\n" + "\n".join(f"- {text}" for text in rule_texts if text))
+
+        if extra_instructions:
+            sys_prompt += "\n\n" + "\n\n".join(extra_instructions)
+
+        if is_comment:
+            sys_prompt += (
+                "\n\nLƯU Ý: Đây là COMMENT công khai trên bài viết Facebook của quán "
+                "(không phải tin nhắn riêng). Hãy trả lời ngắn gọn, tự nhiên, phù hợp "
+                "thể loại comment công khai (3-5 câu), tránh hỏi thông tin cá nhân."
+            )
+
+        llm_res = await asyncio.wait_for(
+            asyncio.to_thread(
+                complete,
+                system=sys_prompt,
+                user=text,
+                task="text",
+                json_mode=False,
+                timeout_s=3.0,
+            ),
+            timeout=3.5,
+        )
+        if llm_res.ok and llm_res.text.strip():
+            return llm_res.text.strip()
+        return None
+    except Exception:
+        return None
+
+
 async def process_fb_message(
     input_msg: FBMessageInput,
     *,
@@ -439,50 +517,21 @@ async def process_fb_message(
         requires_approval = True
 
     # 4. Live LLM execution if enabled
-    if agent_mode() == "live" and not requires_approval and auto_respond_enabled:
-        try:
-            profile = (public_context or {}).get("profile", {})
-            menu = (public_context or {}).get("menu", [])
-            promos = (public_context or {}).get("promotions", [])
-            ctx_summary = (
-                f"Quán: {profile.get('ten_quan', 'Nhịp Quán')}, Địa chỉ: {profile.get('dia_chi', '')}, "
-                f"Giờ mở cửa: {profile.get('gio_mo_cua', '')}, Hotline: {profile.get('hotline', '')}\n"
-                f"Menu: {', '.join([m.get('ten', '') for m in menu])}\n"
-                f"Khuyến mãi: {', '.join([p.get('tieu_de', '') for p in promos])}"
-            )
-            sys_prompt = build_fb_system_prompt(ctx_summary)
-
-            extra_instructions = []
-            if customer_profile:
-                cust_ctx = format_customer_greeting_context(customer_profile)
-                if cust_ctx:
-                    extra_instructions.append(cust_ctx)
-            if golden_examples:
-                gold_ctx = format_golden_cskh_prompt(golden_examples)
-                if gold_ctx:
-                    extra_instructions.append(gold_ctx)
-            rule_texts = [str((rule.get("rule") or {}).get("text") or "").strip() for rule in active_rules or []]
-            if rule_texts:
-                extra_instructions.append("QUY TẮC ĐÃ ĐƯỢC CHỦ QUÁN DUYỆT:\n" + "\n".join(f"- {text}" for text in rule_texts if text))
-
-            if extra_instructions:
-                sys_prompt += "\n\n" + "\n\n".join(extra_instructions)
-
-            llm_res = await asyncio.wait_for(
-                asyncio.to_thread(
-                    complete,
-                    system=sys_prompt,
-                    user=guard.sanitized_text,
-                    task="text",
-                    json_mode=False,
-                    timeout_s=3.0,
-                ),
-                timeout=3.5,
-            )
-            if llm_res.ok and llm_res.text.strip():
-                reply_text = llm_res.text.strip()
-        except Exception:
-            pass
+    # Sinh bản nháp LLM cho MỌI intent (kể cả "khac") — tin tự do vẫn cần câu
+    # trả lời tự nhiên thay vì template cứng. Với intent ngoài whitelist auto,
+    # bản nháp chỉ dùng làm suggested_reply cho QL duyệt, KHÔNG TỰ GỬI (ADR-008).
+    llm_drafted = False
+    if agent_mode() == "live" and auto_respond_enabled:
+        llm_draft = await draft_llm_reply(
+            text=guard.sanitized_text,
+            public_context=public_context,
+            customer_profile=customer_profile,
+            golden_examples=golden_examples,
+            active_rules=active_rules,
+        )
+        if llm_draft:
+            reply_text = llm_draft
+            llm_drafted = True
 
     # 5. AG-SUPERVISOR Pre-flight Safety Gate
     sup_check = supervise_outgoing_response(guard.sanitized_text, reply_text)
@@ -491,6 +540,8 @@ async def process_fb_message(
         requires_approval = True
 
     # 6. Action decision
+    # Intent ngoài whitelist auto (vd "khac") hoặc confidence thấp → queue duyệt,
+    # nhưng suggested_reply là bản nháp LLM tự nhiên (nếu có) để QL duyệt nhanh.
     if not requires_approval and confidence >= confidence_threshold and auto_respond_enabled:
         return FBMessageOutput(
             action="auto_respond",
@@ -514,7 +565,7 @@ async def process_fb_message(
             reason=(
                 f"missing_verified_context:{missing_context}"
                 if missing_context
-                else "Queued for manager approval"
+                else ("llm_draft_for_manager_review" if llm_drafted else "Queued for manager approval")
             ),
         )
 

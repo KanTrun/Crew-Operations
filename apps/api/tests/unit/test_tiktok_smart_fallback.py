@@ -9,6 +9,24 @@ from ca_agents.ag_trend import TrendItem, _scrape_tiktok_smart
 from ca_agents.clients.apify_client import ApifyError
 
 
+@pytest.fixture(autouse=True)
+def _chan_tang_camoufox():
+    """Tắt tầng Camoufox để test hermetic — KHÔNG được mở mạng thật.
+
+    Chuỗi rớt tầng là TikWM → **Camoufox** → Apify → static (plan §3.5), nhưng
+    tầng Camoufox nằm giữa nên rất dễ bị bỏ sót khi mock. Trên host có cài
+    Camoufox, `is_available()` trả True → test launch browser thật và cào TikTok
+    live: vừa vi phạm Gate 10 (`packages/agents/tests/test_no_network.py`), vừa
+    làm kết quả phụ thuộc mạng (2 test fail chỉ trên host có Camoufox, pass
+    trong Docker). Chặn tại `is_available` giống quy ước sẵn có ở
+    `test_threads_apify_source.py`.
+    """
+    with patch(
+        "ca_agents.clients.camoufox_client.is_available", return_value=False
+    ):
+        yield
+
+
 def _tiktokwm_item(idx: int) -> TrendItem:
     return TrendItem(
         id=f"live_tiktok_direct_{idx}_xxx",

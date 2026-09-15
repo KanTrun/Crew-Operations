@@ -20,11 +20,12 @@ from typing import Annotated, Any, cast
 from ca_agents.ag_fbpage import (
     FBMessageInput,
     FBMessageOutput,
+    draft_llm_reply,
     process_fb_message,
 )
 from ca_agents.ag_fbpage_memory import extract_cskh_golden_pair
 from ca_agents.ag_msg import classify
-from ca_agents.ag_supervisor import run_nightly_cskh_reflection
+from ca_agents.ag_supervisor import run_nightly_cskh_reflection, supervise_outgoing_response
 from ca_agents.customer_memory import (
     extract_customer_preferences,
     merge_customer_profile,
@@ -71,6 +72,7 @@ from ca_api.persist import (
     fb_review_list,
     fb_review_release_claim,
     fb_review_transition_pending,
+    fb_review_update_proposed,
     fb_stats,
     fb_try_claim_event,
     fb_try_claim_scoped_event,
@@ -533,6 +535,14 @@ def page_sync(authorization: Annotated[str | None, Header()] = None) -> dict[str
     return {"ok": True, "n": len(threads), "mode": "live"}
 
 
+def _safe_float(value: Any) -> float:
+    """Ép kiểu an toàn cho trường số trong webhook công khai (payload có thể rác)."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 @router.api_route("/api/v1/channels/facebook/webhook", methods=["GET", "POST"])
 async def facebook_webhook(request: Request) -> Any:
     """Meta webhook: GET verify challenge; POST Messenger events → AG-FBPAGE processing."""
@@ -548,6 +558,14 @@ async def facebook_webhook(request: Request) -> Any:
     body_bytes = await request.body()
     sig_header = request.headers.get("x-hub-signature-256", "")
     if not verify_fb_webhook_signature(body_bytes, sig_header):
+        # APP_SECRET thiếu là cấu hình phổ biến nhất: chặn 100% webhook thật
+        # (fail-closed an toàn) nhưng cần log rõ để vận hành nhận ra ngay.
+        if not os.environ.get("NHIPQUAN_FB_APP_SECRET", "").strip():
+            LOG.warning(
+                "FB webhook rejected: NHIPQUAN_FB_APP_SECRET is EMPTY — "
+                "add it to .env (Meta App Dashboard → App Settings → Basic → App Secret) "
+                "then restart the stack, otherwise ALL real Meta events get 403."
+            )
         raise HTTPException(status_code=403, detail="invalid_signature")
 
     if _page_mode() != "live" or not os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip():
@@ -569,19 +587,37 @@ async def facebook_webhook(request: Request) -> Any:
 
     n = 0
     page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
-    for entry in payload.get("entry") or []:
+    entries = payload.get("entry") or []
+    if not isinstance(entries, list):
+        # Payload công khai có thể dị dạng — bỏ qua thay vì 500 (Meta sẽ retry).
+        return {"ok": True, "ignored": True}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
         # L0a — chỉ nhận entry đúng Page cấu hình (kế hoạch §6.3.5); thiếu id → cho qua (tương thích ngược)
         if page_id_cfg and entry.get("id") and str(entry.get("id")) != page_id_cfg:
             continue
-        for ev in entry.get("messaging") or []:
-            sender = ((ev.get("sender") or {}).get("id")) or ""
+        messaging = entry.get("messaging") or []
+        if not isinstance(messaging, list):
+            continue
+        for ev in messaging:
+            if not isinstance(ev, dict):
+                continue
+            sender_raw = ev.get("sender")
+            sender = str((sender_raw or {}).get("id") or "") if isinstance(sender_raw, dict) else ""
             msg = ev.get("message") or {}
+            if not isinstance(msg, dict):
+                continue
             # L0b — lọc echo: tin do chính Page/bot gửi → tránh vòng lặp (§6.2a)
             if msg.get("is_echo"):
                 continue
-            text = (msg.get("text") or "").strip()
+            text = str(msg.get("text") or "").strip()
             postback = ev.get("postback") or {}
+            if not isinstance(postback, dict):
+                postback = {}
             attachments = msg.get("attachments") or []
+            if not isinstance(attachments, list):
+                attachments = []
             if not sender:
                 continue
 
@@ -591,7 +627,10 @@ async def facebook_webhook(request: Request) -> Any:
                     text = f"[Khách chọn: {title}]"
                     event_id = str(postback.get("mid") or f"postback:{sender}:{ev.get('timestamp')}:{postback.get('payload')}")
                 else:
-                    attachment_type = str((attachments[0] or {}).get("type") or "tệp")
+                    first = attachments[0] if attachments else {}
+                    if not isinstance(first, dict):
+                        first = {}
+                    attachment_type = str(first.get("type") or "tệp")
                     attachment_labels = {"image": "ảnh", "audio": "âm thanh", "video": "video", "file": "tệp"}
                     text = f"[Khách gửi {attachment_labels.get(attachment_type, 'tệp đính kèm')}]"
                     event_id = str(msg.get("mid") or f"attachment:{sender}:{ev.get('timestamp')}")
@@ -619,7 +658,7 @@ async def facebook_webhook(request: Request) -> Any:
                 external_event_id=mid,
             ):
                 continue
-            ts = float(ev.get("timestamp") or 0)
+            ts = _safe_float(ev.get("timestamp"))
 
             # L1–L5 — moderation pipeline (policy engine + review queue)
             moderation = moderate_fb_message(
@@ -805,13 +844,22 @@ async def facebook_webhook(request: Request) -> Any:
             kv_mutate("page_quan", mut, _page_store())
             n += 1
 
-        for change in entry.get("changes") or []:
+        changes = entry.get("changes") or []
+        if not isinstance(changes, list):
+            continue
+        for change in changes:
+            if not isinstance(change, dict):
+                continue
             value = change.get("value") or {}
+            if not isinstance(value, dict):
+                continue
             if change.get("field") != "feed" or value.get("item") != "comment":
                 continue
             if value.get("verb") != "add" or value.get("is_hidden"):
                 continue
             author = value.get("from") or {}
+            if not isinstance(author, dict):
+                continue
             sender = str(author.get("id") or "")
             comment_id = str(value.get("comment_id") or "")
             text = str(value.get("message") or "").strip()
@@ -824,13 +872,32 @@ async def facebook_webhook(request: Request) -> Any:
                 psid=sender,
                 text=text,
                 message_id=comment_id,
-                timestamp=float(value.get("created_time") or 0),
+                timestamp=_safe_float(value.get("created_time")),
                 public_context=public_ctx,
                 source="comment",
                 post_id=str(value.get("post_id") or "") or None,
                 external_user_name=str(author.get("name") or "") or None,
             )
             if moderation.get("action") not in {"block_silent", "block_polite"}:
+                # Comment công khai: LLM sinh bản nháp thông minh thay cho template
+                # cứng, nhưng vẫn 100% qua QL duyệt tay (AUTO_THRESHOLD_COMMENT=0.95,
+                # policy comment luôn queue_review — ADR-008).
+                if agent_mode() == "live" and "review_id" in moderation and moderation.get("review_id"):
+                    try:
+                        comment_draft = await draft_llm_reply(
+                            text=text,
+                            public_context=public_ctx,
+                            is_comment=True,
+                        )
+                        if comment_draft:
+                            sup = supervise_outgoing_response(text, comment_draft)
+                            if sup.is_approved and sup.sanitized_response.strip():
+                                fb_review_update_proposed(
+                                    int(moderation["review_id"]),
+                                    proposed_response=sup.sanitized_response.strip(),
+                                )
+                    except Exception:
+                        pass
                 n += 1
     return {"ok": True, "n": n}
 

@@ -177,6 +177,24 @@ def runtime_operations(
         kenh_bind_set(row["channel"], row["channel_user_id"], db_staff_id(row["staff_id"]))
 
 
+def backup_db() -> Path | None:
+    """Sao lưu `data/quan.db` trước khi xoá — `--reset` là thao tác phá huỷ."""
+    import shutil
+    from datetime import datetime
+
+    from ca_api.persist import db_path
+
+    p = db_path()
+    if not p.exists():
+        return None
+    thu_muc = ROOT / "data" / "backups"
+    thu_muc.mkdir(parents=True, exist_ok=True)
+    moc = datetime.now().strftime("%y%m%d-%H%M%S")
+    dich = thu_muc / f"{p.stem}-pre-reset-{moc}{p.suffix}"
+    shutil.copy2(p, dich)
+    return dich
+
+
 def wipe_db() -> None:
     from ca_api.persist import db_path, reset_init_flag
 
@@ -191,7 +209,9 @@ def wipe_db() -> None:
 
 def main() -> int:
     if "--reset" in sys.argv:
+        ban_sao = backup_db()
         wipe_db()
+        print(f"backup: {ban_sao.relative_to(ROOT).as_posix() if ban_sao else 'khong co DB de sao luu'}")
         print("database wiped cleanly.")
     base = read("base.json")
     pos = read("pos.json")

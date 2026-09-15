@@ -7,7 +7,7 @@ type ReviewItem = {
   proposed_response: string;
 };
 
-const API_PATTERN = /^http:\/\/localhost:8000\/api\/v1\/page\/fb-inbox/;
+const API_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/page\/fb-inbox/;
 
 async function setSession(page: Page, role: "quan_ly" | "chu_quan" | "nhan_vien") {
   await page.addInitScript((sessionRole) => {
@@ -35,6 +35,18 @@ function fixture(item: ReviewItem) {
 }
 
 async function mockInbox(page: Page, items: ReviewItem[], decisions: unknown[]) {
+  await page.routeWebSocket(/.*\/ws\/chat/, (ws) => {
+    ws.onMessage((message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        if (data.event === "auth") {
+          ws.send(JSON.stringify({ event: "auth:ack" }));
+        }
+      } catch {
+        // Ignore malformed message in test mock
+      }
+    });
+  });
   await page.route(API_PATTERN, async (route: Route) => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith("/stats")) {

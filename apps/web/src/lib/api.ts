@@ -1,6 +1,6 @@
 import { getToken } from "./session";
 
-export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 export function mediaUrl(value: unknown): string {
   if (typeof value !== "string" || !value.trim()) return "";
@@ -76,6 +76,26 @@ export function apiSend<T>(path: string, body?: unknown, method = "POST"): Promi
     method,
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+/**
+ * Như `apiSend` nhưng gắn thêm header riêng (vd `Idempotency-Key`).
+ *
+ * Tách hàm thay vì thêm tham số vào `apiSend`: header idempotency là ràng buộc
+ * của MỘT endpoint (khảo sát giá, plan `260913-1455` mục 5.2), không phải mặc định
+ * cho mọi lời gọi ghi — để nó ngoài chữ ký chung thì không trang nào vô tình bỏ sót.
+ */
+export function apiSendHeaders<T>(
+  path: string,
+  body: unknown,
+  extra: HeadersInit,
+  method = "POST",
+): Promise<T> {
+  return request<T>(path, {
+    method,
+    headers: authHeaders({ "Content-Type": "application/json", ...extra }),
+    body: JSON.stringify(body),
   });
 }
 

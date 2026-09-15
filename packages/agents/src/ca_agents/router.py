@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-_LIVE_ORDER = ("groq", "gemini", "openrouter", "ollama")
+_LIVE_ORDER = ("groq", "gemini", "openrouter", "bai", "ollama")
 # Ảnh TKB: ưu tiên Gemini (vision ổn định trên free tier); bỏ ollama (không gửi ảnh).
-_VISION_ORDER = ("gemini", "openrouter", "groq")
+_VISION_ORDER = ("gemini", "openrouter", "groq", "bai")
 
 
 @dataclass(frozen=True)

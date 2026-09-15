@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -21,7 +22,10 @@ _KEY_ENV = {
     "groq": "GROQ_API_KEY",
     "gemini": "GEMINI_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
+    "bai": "BAI_API_KEY",
 }
+_MODEL_COOLDOWNS: dict[str, float] = {}
+_PROVIDER_COOLDOWNS: dict[str, float] = {}
 _GROQ_MODELS = (
     "qwen/qwen3.8-27b",
     "qwen/qwen3.6-27b",
@@ -32,13 +36,12 @@ _GROQ_MODELS = (
     "llama-3.1-8b-instant",
 )
 _GEMINI_MODELS = (
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-3.5-flash",
-    "gemini-3.6-flash",
     "gemini-3.8-flash",
-    "gemini-2.0-flash",
-    "gemini-flash-latest",
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-2.5-flash",
 )
 
 
@@ -53,6 +56,11 @@ _OPENROUTER_MODELS = (
     "openai/gpt-oss-20b:free",
     "deepseek/deepseek-chat:free",
     "meta-llama/llama-3.3-70b-instruct:free",
+)
+_BAI_MODELS = (
+    "qwen3.8-flash",
+    "mimo-v2.5",
+    "hy3",
 )
 _UA = "nhip-quan/0.1 (https://github.com/KanTrun/Crew-Operations)"
 _DOTENV_LOADED = False
@@ -113,6 +121,7 @@ def provider_status() -> dict[str, bool]:
         "groq": bool(os.environ.get(_KEY_ENV["groq"], "").strip()),
         "gemini": bool(os.environ.get(_KEY_ENV["gemini"], "").strip()),
         "openrouter": bool(os.environ.get(_KEY_ENV["openrouter"], "").strip()),
+        "bai": bool(os.environ.get(_KEY_ENV["bai"], "").strip()),
         "ollama": bool(os.environ.get("OLLAMA_BASE_URL", "").strip()),
     }
 
@@ -188,6 +197,11 @@ def complete(
             last_reason = "ollama_disabled"
             continue
 
+        if _PROVIDER_COOLDOWNS.get(decision.provider, 0.0) > time.time():
+            exhausted.add(decision.provider)
+            last_reason = f"cooldown:{decision.provider}"
+            continue
+
         try:
             text = _call_provider(
                 decision.provider,
@@ -199,6 +213,11 @@ def complete(
                 image_mime=image_mime,
             )
         except _ProviderError as exc:
+            err_msg = str(exc).lower()
+            if "http_401" in err_msg or "http_403" in err_msg:
+                _PROVIDER_COOLDOWNS[decision.provider] = time.time() + 300.0
+            elif "http_429" in err_msg or "rate limit" in err_msg:
+                _PROVIDER_COOLDOWNS[decision.provider] = time.time() + 60.0
             exhausted.add(decision.provider)
             last_reason = str(exc)
             continue
@@ -207,6 +226,8 @@ def complete(
             exhausted.add(decision.provider)
             last_reason = f"empty:{decision.provider}"
             continue
+
+        _PROVIDER_COOLDOWNS.pop(decision.provider, None)
 
         return LlmResult(
             ok=True,
@@ -233,6 +254,10 @@ _MODEL_ALIASES: dict[str, str] = {
     "nemotron-3.5-lightning": "nvidia/nemotron-3.5-lightning:free",
     "gemma-4-31b": "google/gemma-4-31b-it:free",
     "gemma-4-26b": "google/gemma-4-26b-a4b-it:free",
+    "qwen-3.8-flash": "qwen3.8-flash",
+    "qwen-flash": "qwen3.8-flash",
+    "mimo": "mimo-v2.5",
+    "mimo-2.5": "mimo-v2.5",
 }
 
 
@@ -251,6 +276,13 @@ def _model_list(env_name: str, defaults: tuple[str, ...]) -> list[str]:
         if name not in out:
             out.append(name)
     return out
+
+
+def _active_model_list(env_name: str, defaults: tuple[str, ...]) -> list[str]:
+    all_models = _model_list(env_name, defaults)
+    now = time.time()
+    active = [m for m in all_models if _MODEL_COOLDOWNS.get(m, 0.0) <= now]
+    return active if active else all_models
 
 
 def _is_model_missing(exc: _ProviderError) -> bool:
@@ -291,9 +323,9 @@ def _call_provider(
     if provider == "groq":
         if image_bytes:
             raise _ProviderError("vision_unsupported:groq")
-        for model in _model_list("GROQ_MODEL", _GROQ_MODELS):
+        for model in _active_model_list("GROQ_MODEL", _GROQ_MODELS):
             try:
-                return _openai_compat(
+                res = _openai_compat(
                     url="https://api.groq.com/openai/v1/chat/completions",
                     token=os.environ[_KEY_ENV["groq"]].strip(),
                     model=model,
@@ -302,16 +334,23 @@ def _call_provider(
                     timeout_s=min(timeout_s, 10.0),
                     json_mode=json_mode,
                 )
+                _MODEL_COOLDOWNS.pop(model, None)
+                return res
             except _ProviderError as exc:
                 last = exc
                 if _is_model_missing(exc):
+                    err_m = str(exc).lower()
+                    if "http_429" in err_m or "rate limit" in err_m or "http_503" in err_m or "overloaded" in err_m:
+                        _MODEL_COOLDOWNS[model] = time.time() + 60.0
+                    elif "http_404" in err_m or "no longer available" in err_m:
+                        _MODEL_COOLDOWNS[model] = time.time() + 3600.0
                     continue
                 raise
         raise last or _ProviderError("groq_no_model")
     if provider == "openrouter":
-        for model in _model_list("OPENROUTER_MODEL", _OPENROUTER_MODELS):
+        for model in _active_model_list("OPENROUTER_MODEL", _OPENROUTER_MODELS):
             try:
-                return _openai_compat(
+                res = _openai_compat(
                     url="https://openrouter.ai/api/v1/chat/completions",
                     token=os.environ[_KEY_ENV["openrouter"]].strip(),
                     model=model,
@@ -326,16 +365,23 @@ def _call_provider(
                         "X-Title": "NHIP QUAN",
                     },
                 )
+                _MODEL_COOLDOWNS.pop(model, None)
+                return res
             except _ProviderError as exc:
                 last = exc
                 if _is_model_missing(exc):
+                    err_m = str(exc).lower()
+                    if "http_429" in err_m or "rate limit" in err_m or "http_503" in err_m or "overloaded" in err_m:
+                        _MODEL_COOLDOWNS[model] = time.time() + 60.0
+                    elif "http_404" in err_m or "no longer available" in err_m:
+                        _MODEL_COOLDOWNS[model] = time.time() + 3600.0
                     continue
                 raise
         raise last or _ProviderError("openrouter_no_model")
     if provider == "gemini":
-        for model in _model_list("GEMINI_MODEL", _GEMINI_MODELS):
+        for model in _active_model_list("GEMINI_MODEL", _GEMINI_MODELS):
             try:
-                return _gemini(
+                res = _gemini(
                     token=os.environ[_KEY_ENV["gemini"]].strip(),
                     model=model,
                     system=system,
@@ -345,12 +391,47 @@ def _call_provider(
                     image_bytes=image_bytes,
                     image_mime=image_mime,
                 )
+                _MODEL_COOLDOWNS.pop(model, None)
+                return res
             except _ProviderError as exc:
                 last = exc
                 if _is_model_missing(exc):
+                    err_m = str(exc).lower()
+                    if "http_429" in err_m or "rate limit" in err_m or "http_503" in err_m or "overloaded" in err_m:
+                        _MODEL_COOLDOWNS[model] = time.time() + 60.0
+                    elif "http_404" in err_m or "no longer available" in err_m:
+                        _MODEL_COOLDOWNS[model] = time.time() + 3600.0
                     continue
                 raise
         raise last or _ProviderError("gemini_no_model")
+    if provider == "bai":
+        base_url = os.environ.get("BAI_BASE_URL", "https://api.b.ai/v1").rstrip("/")
+        for model in _active_model_list("BAI_MODEL", _BAI_MODELS):
+            try:
+                res = _openai_compat(
+                    url=f"{base_url}/chat/completions",
+                    token=os.environ[_KEY_ENV["bai"]].strip(),
+                    model=model,
+                    system=system,
+                    user=user,
+                    timeout_s=min(timeout_s, 20.0),
+                    json_mode=json_mode,
+                    image_bytes=image_bytes,
+                    image_mime=image_mime,
+                )
+                _MODEL_COOLDOWNS.pop(model, None)
+                return res
+            except _ProviderError as exc:
+                last = exc
+                if _is_model_missing(exc):
+                    err_m = str(exc).lower()
+                    if "http_429" in err_m or "rate limit" in err_m or "http_503" in err_m or "overloaded" in err_m:
+                        _MODEL_COOLDOWNS[model] = time.time() + 60.0
+                    elif "http_404" in err_m or "no longer available" in err_m:
+                        _MODEL_COOLDOWNS[model] = time.time() + 3600.0
+                    continue
+                raise
+        raise last or _ProviderError("bai_no_model")
     if provider == "ollama":
         if image_bytes:
             raise _ProviderError("vision_unsupported:ollama")
@@ -518,33 +599,59 @@ def complete_stream(
 ) -> tuple[str, Any]:
     """Stream a live LLM response (copilot). Trả về (provider, generator chunk text).
 
-    Dàn xếp: groq → openrouter (những provider OpenAI-compatible có stream).
+    Dàn xếp: groq → openrouter → bai (những provider OpenAI-compatible có stream).
     Nếu không có credential / replay → trả () rỗng (caller fallback về complete).
     """
     ensure_dotenv()
     router = FreeTierRouter(mode="live")
-    for provider in ("groq", "openrouter"):
-        decision = router.choose(task, set())
-        # Chỉ thử provider OpenAI-compatible đã có key.
-        if decision.provider != provider or not provider_status().get(provider, False):
+    base_bai = os.environ.get("BAI_BASE_URL", "https://api.b.ai/v1").rstrip("/")
+    stream_urls = {
+        "groq": "https://api.groq.com/openai/v1/chat/completions",
+        "openrouter": "https://openrouter.ai/api/v1/chat/completions",
+        "bai": f"{base_bai}/chat/completions",
+    }
+    env_models = {
+        "groq": ("GROQ_MODEL", "llama-3.1-8b-instant"),
+        "openrouter": ("OPENROUTER_MODEL", _OPENROUTER_MODELS[0]),
+        "bai": ("BAI_MODEL", _BAI_MODELS[0]),
+    }
+    exhausted: set[str] = set()
+    supported_stream_providers = set(stream_urls.keys())
+
+    while True:
+        decision = router.choose(task, exhausted)
+        if decision.provider in ("tu_choi", "replay"):
+            return "", ()
+        if decision.provider not in supported_stream_providers:
+            exhausted.add(decision.provider)
+            continue
+        if not provider_status().get(decision.provider, False):
+            exhausted.add(decision.provider)
+            continue
+        if _PROVIDER_COOLDOWNS.get(decision.provider, 0.0) > time.time():
+            exhausted.add(decision.provider)
             continue
         try:
+            env_var, default_m = env_models[decision.provider]
             gen = _openai_compat_stream(
-                url={"groq": "https://api.groq.com/openai/v1/chat/completions", "openrouter": "https://openrouter.ai/api/v1/chat/completions"}[provider],
-                token=os.environ[_KEY_ENV[provider]].strip(),
-                model=_env_model(
-                    "GROQ_MODEL" if provider == "groq" else "OPENROUTER_MODEL",
-                    "llama-3.1-8b-instant" if provider == "groq" else _OPENROUTER_MODELS[0],
-                ),
+                url=stream_urls[decision.provider],
+                token=os.environ[_KEY_ENV[decision.provider]].strip(),
+                model=_env_model(env_var, default_m),
                 system=system,
                 user=user,
                 timeout_s=timeout_s,
                 json_mode=False,
             )
-            return provider, gen
-        except _ProviderError:
+            _PROVIDER_COOLDOWNS.pop(decision.provider, None)
+            return decision.provider, gen
+        except _ProviderError as exc:
+            err_m = str(exc).lower()
+            if "http_401" in err_m or "http_403" in err_m:
+                _PROVIDER_COOLDOWNS[decision.provider] = time.time() + 300.0
+            elif "http_429" in err_m or "rate limit" in err_m:
+                _PROVIDER_COOLDOWNS[decision.provider] = time.time() + 60.0
+            exhausted.add(decision.provider)
             continue
-    return "", ()
 
 
 def _gemini(

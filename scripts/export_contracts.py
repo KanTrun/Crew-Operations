@@ -11,8 +11,17 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "packages" / "contracts" / "src"))
 
 from ca_contracts import CONTRACTS  # noqa: E402
+from ca_contracts.catchment_survey_v2 import (  # noqa: E402
+    CatchmentSurveyResponse as CatchmentSurveyResponseV2,
+)
 
 OUT = ROOT / "packages" / "contracts" / "schema"
+
+# Schema xuất riêng, KHÔNG nằm trong CONTRACTS (giữ nguyên phạm vi TS export
+# và test_contracts.py). Nguồn: plan 260913-1455 mục 3.
+EXTRA_SCHEMAS: dict[str, type] = {
+    "CatchmentPriceSurveyV2": CatchmentSurveyResponseV2,
+}
 
 _TS_PRIM = {
     "string": "string",
@@ -115,13 +124,19 @@ def main() -> None:
         path = OUT / f"{name}.json"
         path.write_text(json.dumps(schema, ensure_ascii=False, indent=2), encoding="utf-8")
         index[name] = str(path.relative_to(ROOT)).replace("\\", "/")
+    # Schema bổ sung nằm ngoài CONTRACTS (không vào TS bundle dùng chung).
+    for name, model in EXTRA_SCHEMAS.items():
+        schema = model.model_json_schema()
+        path = OUT / f"{name}.json"
+        path.write_text(json.dumps(schema, ensure_ascii=False, indent=2), encoding="utf-8")
+        index[name] = str(path.relative_to(ROOT)).replace("\\", "/")
     (OUT / "index.json").write_text(
         json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     ts = ROOT / "packages" / "contracts" / "ts" / "contracts.ts"
     ts.parent.mkdir(parents=True, exist_ok=True)
     ts.write_text(ts_types_from_schemas(schemas), encoding="utf-8")
-    print("wrote", len(CONTRACTS), "schemas + ts types")
+    print("wrote", len(CONTRACTS) + len(EXTRA_SCHEMAS), "schemas + ts types")
 
 
 if __name__ == "__main__":

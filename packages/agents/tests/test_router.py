@@ -1,4 +1,4 @@
-"""Tests for FreeTierRouter — 4-provider live order + replay."""
+"""Tests for FreeTierRouter — 5-provider live order + replay."""
 
 from __future__ import annotations
 
@@ -33,11 +33,24 @@ def test_live_order_skip_two() -> None:
 def test_live_order_skip_three() -> None:
     router = FreeTierRouter(mode="live")
     d = router.choose("text:foo", exhausted={"groq", "gemini", "openrouter"})
+    assert d.provider == "bai"
+
+
+def test_live_order_skip_four() -> None:
+    router = FreeTierRouter(mode="live")
+    d = router.choose("text:foo", exhausted={"groq", "gemini", "openrouter", "bai"})
     assert d.provider == "ollama"
 
 
 def test_all_exhausted_returns_tu_choi() -> None:
     router = FreeTierRouter(mode="live")
-    d = router.choose("text:foo", exhausted={"groq", "gemini", "openrouter", "ollama"})
+    d = router.choose("text:foo", exhausted={"groq", "gemini", "openrouter", "bai", "ollama"})
     assert d.provider == "tu_choi"
     assert "escalate" in d.reason
+
+
+def test_vision_order_includes_bai() -> None:
+    router = FreeTierRouter(mode="live")
+    d = router.choose("vision:tkb", exhausted={"gemini", "openrouter", "groq"})
+    assert d.provider == "bai"
+

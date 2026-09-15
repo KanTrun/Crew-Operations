@@ -451,7 +451,20 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
 
 
 def _scrape_google_trends_vn(keyword: str = "") -> list[TrendItem]:
-    """Cào 100% trực tiếp từ Google Trends RSS Việt Nam theo thời gian thực."""
+    """Lấy dữ liệu Google Trends Việt Nam (Ưu tiên SerpApi, fallback RSS)."""
+    # 1. PRIMARY: SerpApi Google Trends
+    try:
+        from ca_agents.sources.gtrends_serpapi_source import fetch_fnb_trends_serpapi
+
+        serp_kw = keyword.strip() or "cà phê"
+        serp_items = fetch_fnb_trends_serpapi(keyword=serp_kw, geo="VN")
+        if serp_items:
+            logger.info("google_trends_source_serpapi_primary items_count=%d", len(serp_items))
+            return serp_items
+    except Exception as exc:
+        logger.info("SerpApi Trends fallback sang RSS: %s", exc)
+
+    # 2. FALLBACK: Google Trends RSS Việt Nam
     items_out: list[TrendItem] = []
     now_str = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
     try:

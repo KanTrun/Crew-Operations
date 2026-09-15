@@ -7,7 +7,15 @@ async function login(page: Page) {
   await page.getByLabel("Tài khoản").fill("lan");
   await page.getByLabel("Mật khẩu").fill("nhipquan");
   await page.getByRole("button", { name: "Vào hệ thống" }).click();
-  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
+  try {
+    await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
+  } catch (err) {
+    const alert = await page.locator(".nq-alert, [role='alert']").textContent().catch(() => null);
+    if (alert) {
+      throw new Error(`Login failed with page error: "${alert.trim()}". Original: ${err}`);
+    }
+    throw err;
+  }
 }
 
 test.describe("Phiếu demo — latency mở form (#7 nhóm A)", () => {

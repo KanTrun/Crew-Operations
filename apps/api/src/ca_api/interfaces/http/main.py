@@ -21,9 +21,16 @@ from typing import Annotated, Any, cast
 # nên API layer cung cấp dữ liệu thật qua configure_data_sources().
 from ca_agents.ag_copilot.tool_registry import configure_data_sources
 from ca_agents.ag_mailwriter import draft_email as _draft_email
+from ca_agents.ag_pricing.job_manager import get_job_store as _get_job_store
 from ca_agents.ag_sop import answer as _sop_answer
 from ca_agents.ag_tkb.extract import extract_tkb as _extract_tkb
 from ca_agents.ag_waste import cluster as _waste_cluster
+from ca_agents.clients.serpapi_client import (
+    get_circuit_breaker as _get_circuit_breaker,
+)
+from ca_agents.clients.serpapi_client import (
+    get_quota_status as _get_quota_status,
+)
 from ca_contracts import (
     Ca,
     DongDon,
@@ -59,6 +66,17 @@ from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.pos import router as pos_router
+
+try:
+    from ca_api.interfaces.http.pricing_radar import (
+        router as pricing_radar_router,
+    )
+    from ca_api.interfaces.http.pricing_radar import (
+        system_router as serpapi_system_router,
+    )
+except ImportError:
+    pricing_radar_router = None
+    serpapi_system_router = None
 from ca_api.interfaces.http.reservations import router as reservations_router
 from ca_api.interfaces.http.skills import router as skills_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
@@ -104,7 +122,14 @@ _cors_origins = [
     origin.strip()
     for origin in os.environ.get("NHIPQUAN_CORS_ORIGINS", "").split(",")
     if origin.strip()
-] or ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"]
+] or [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://[::1]:3000",
+    "http://[::1]:3001",
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
@@ -156,6 +181,10 @@ app.include_router(copilot_router)
 app.include_router(pos_router)
 app.include_router(meeting_router)
 app.include_router(trends_router)
+if pricing_radar_router:
+    app.include_router(pricing_radar_router)
+if serpapi_system_router:
+    app.include_router(serpapi_system_router)
 app.include_router(mail_router)
 app.include_router(ai_learning_router)
 app.include_router(chat_router)
@@ -278,6 +307,26 @@ def _draft_mail_with_active_rules(**kwargs: Any) -> Any:
     return draft
 
 
+def _adapted_serpapi_quota() -> dict[str, Any]:
+    """Adapter chuyển đổi schema get_quota_status → contract mà tool_registry.py expect.
+
+    serpapi_client trả về keys: used_requests, total_limit, remaining_usable, ...
+    tool_registry.py expect keys: used_count, monthly_limit, remaining.
+    Adapter này là boundary duy nhất giữa hai schema — không được bỏ qua.
+    """
+    raw = _get_quota_status() or {}
+    cb = _get_circuit_breaker()
+    return {
+        "used_count": raw.get("used_requests", 0),
+        "monthly_limit": raw.get("total_limit", 250),
+        "remaining": raw.get("remaining_usable", 250),
+        "circuit_breaker_state": cb.state,
+        "enabled": raw.get("enabled", False),
+        "warning_level": raw.get("warning_level", "NORMAL"),
+        "month": raw.get("year_month", ""),
+    }
+
+
 configure_data_sources(
     kv_get=kv_get,
     list_luat=_list_luat,
@@ -308,6 +357,14 @@ configure_data_sources(
         "connected": False,
     },
     extract_tkb=_extract_tkb,
+    # Khảo sát thị trường & SerpApi providers (plan 260913-2340 v2.0)
+    # Dùng _adapted_serpapi_quota() để chuẩn hóa schema: serpapi_client trả
+    # keys (used_requests, total_limit) nhưng tool_registry expect (used_count,
+    # monthly_limit). _adapted_serpapi_quota là boundary adapter duy nhất.
+    get_serpapi_quota=_adapted_serpapi_quota,
+    get_circuit_breaker_state=lambda: _get_circuit_breaker().state,
+    get_store_survey_count_today=lambda sid: _get_job_store().count_today(sid),
+    get_latest_survey=lambda sid="": _get_job_store().get_latest_completed_job(sid),
 )
 
 
@@ -417,8 +474,8 @@ def _detect_staff_availability(
         for it in inbox_items:
             if not isinstance(it, dict):
                 continue
-            rb = it.get("rang_buoc") or {}
-            hl = it.get("hieu_luc") or {}
+            rb = it.get("rang_buoc") if isinstance(it.get("rang_buoc"), dict) else {}
+            hl = it.get("hieu_luc") if isinstance(it.get("hieu_luc"), dict) else {}
             it_tuan = rb.get("tuan_id") or hl.get("tuan_id") or it.get("tuan_id")
             if it_tuan == tuan_iso:
                 nvid = it.get("nv_id") or hl.get("nv_id")

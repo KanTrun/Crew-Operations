@@ -247,8 +247,8 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 | Biến | Mục đích |
 |------|----------|
 | `CA_AGENT_MODE` | `replay` (mặc định, CI) hoặc `live` (LLM thật) |
-| `GROQ_API_KEY` / `GEMINI_API_KEY` / `OPENROUTER_API_KEY` | Router LLM khi live |
-| `GROQ_MODEL` / `GEMINI_MODEL` / `OPENROUTER_MODEL` | Chọn model từng provider |
+| `GROQ_API_KEY` / `GEMINI_API_KEY` / `OPENROUTER_API_KEY` / `BAI_API_KEY` | Router LLM khi live |
+| `GROQ_MODEL` / `GEMINI_MODEL` / `OPENROUTER_MODEL` / `BAI_MODEL` | Chọn model từng provider |
 | `DATABASE_URL` | Postgres (mặc định SQLite `data/quan.db`) |
 | `REDIS_URL` | Redis Pub/Sub realtime |
 | `NHIPQUAN_MSG_BACKEND` | `telegram` · `zalo` · `console` |

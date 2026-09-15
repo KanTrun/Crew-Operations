@@ -5,7 +5,15 @@ async function loginAs(page: Page, user: "lan" | "minh" | "hung" = "lan") {
   await page.getByLabel("Tài khoản").fill(user);
   await page.getByLabel("Mật khẩu").fill("nhipquan");
   await page.getByRole("button", { name: "Vào hệ thống" }).click();
-  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
+  try {
+    await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
+  } catch (err) {
+    const alert = await page.locator(".nq-alert, [role='alert']").textContent().catch(() => null);
+    if (alert) {
+      throw new Error(`Login failed for user "${user}" with page error: "${alert.trim()}". Original: ${err}`);
+    }
+    throw err;
+  }
 }
 
 test.describe("8 luồng vận hành chính (Quản lý - lan)", () => {
