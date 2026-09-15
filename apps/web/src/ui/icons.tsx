@@ -50,7 +50,13 @@ export type IconName =
   | "clipboard"
   | "refresh"
   | "phone"
-  | "clock";
+  | "clock"
+  | "check"
+  | "x-mark"
+  | "plus"
+  | "warn"
+  | "call"
+  | "export";
 
 const PATHS: Record<IconName, ReactNode> = {
   attachment: <path d="m20.5 11.5-8.9 8.9a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 0 1-2.8-2.8l8.8-8.8" />,
@@ -81,6 +87,18 @@ const PATHS: Record<IconName, ReactNode> = {
   refresh: <path d="M20 11a8 8 0 0 0-14.8-3.8L4 9M4 5v4h4M4 13a8 8 0 0 0 14.8 3.8L20 15M20 19v-4h-4" />,
   phone: <path d="M6.5 3.5h3l1.5 4-2 1.5a14 14 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2C11.6 19.5 4.5 12.4 4.5 5.5a2 2 0 0 1 2-2Z" />,
   clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+  // Dấu tích — xác nhận / giữ ca
+  check: <path d="m4.5 12.5 5 5 10-11" />,
+  // Dấu × đậm — bỏ ca / gỡ người
+  "x-mark": <path d="m6 6 12 12M18 6 6 18" />,
+  // Dấu + — thêm người vào ca
+  plus: <path d="M12 5v14M5 12h14" />,
+  // Tam giác chấm than — cảnh báo / chưa chốt
+  warn: <><path d="M12 4 2.5 20h19L12 4Z" /><path d="M12 10v4M12 17.5h.01" /></>,
+  // Máy nghe đeo đầu — trực dự bị On-call
+  call: <><path d="M4 13a8 8 0 0 1 16 0" /><path d="M4 13v3a2 2 0 0 0 2 2h1v-5H6a2 2 0 0 0-2 2ZM20 13v3a2 2 0 0 1-2 2h-1v-5h1a2 2 0 0 1 2 2Z" /></>,
+  // Lịch + mũi tên ra — xuất file .ics
+  export: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18M12 13v5m0 0 2.5-2.5M12 18l-2.5-2.5" /></>,
   // Bong bóng hội thoại — chat nội bộ
   chat: (
     <>

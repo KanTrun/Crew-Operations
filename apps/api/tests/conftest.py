@@ -22,6 +22,10 @@ def _isolated_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # data/out/mail_log.jsonl ĐƯỢC THEO DÕI bởi git — không đổi chỗ thì mỗi lần
     # chạy test lại nối thêm dòng vào repo, làm bẩn working tree.
     monkeypatch.setenv("NHIPQUAN_MAIL_LOG", str(tmp_path / "mail_log.jsonl"))
+    # _run_solver ghi output ra data/out/lich_tuan.json — file lịch THẬT của
+    # quán. Test INFEASIBLE (vd test_infeasible_solver_returns_specific_conflicts)
+    # ghi đè phan_cong rỗng + status INFEASIBLE vào file này, làm UI mất lịch.
+    monkeypatch.setenv("NHIPQUAN_LICH_TUAN_OUT", str(tmp_path / "lich_tuan.json"))
     reset_init_flag()
 
 

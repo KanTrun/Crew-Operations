@@ -13,6 +13,7 @@ import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 import { KhungConfigPanel } from "./KhungConfigPanel";
 import { RosterGrid } from "./RosterGrid";
 import { CopilotPane } from "../../ui/copilot/CopilotPane";
+import { Icon } from "../../ui/icons";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -589,7 +590,7 @@ export default function RosterPage() {
               className="nq-btn px-3 py-1 text-sm bg-neutral-800 text-neutral-200 hover:bg-neutral-700 flex items-center gap-1.5"
               title="Tải file lịch iCalendar (.ics) cho Google Calendar / Apple Calendar"
             >
-              📅 Xuất lịch (.ics)
+              <Icon name="export" size={14} /> Xuất lịch (.ics)
             </a>
             {lifecycleMsg && (
               <span className="text-sm text-[var(--nq-ok)]">{lifecycleMsg}</span>
@@ -620,7 +621,7 @@ export default function RosterPage() {
         <div className="mb-6 p-4 rounded-xl bg-amber-950/30 border border-amber-500/50 shadow-md space-y-3 ops-animate-in">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
-              <span className="text-base">⚠️</span>
+              <Icon name="warn" size={16} />
               <span>
                 Phát hiện {data?.chua_xac_nhan?.length} nhân sự chưa xác nhận lịch tuần {currentDisplayWeek}
               </span>
@@ -653,28 +654,28 @@ export default function RosterPage() {
                     type="button"
                     disabled={nvStatusBusy}
                     onClick={() => void handleNvStatus(nv.id, "xac_nhan")}
-                    className="flex-1 py-1 px-2 rounded bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 text-xs font-bold transition-colors disabled:opacity-50"
+                    className="flex-1 py-1 px-2 rounded bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1"
                     title="Xác nhận nhân viên này đồng ý làm các ca đã xếp"
                   >
-                    ✓ Giữ ca
+                    <Icon name="check" size={12} /> Giữ ca
                   </button>
                   <button
                     type="button"
                     disabled={nvStatusBusy}
                     onClick={() => void handleNvStatus(nv.id, "du_bi")}
-                    className="flex-1 py-1 px-2 rounded bg-amber-900/80 hover:bg-amber-800 text-amber-200 text-xs font-bold transition-colors disabled:opacity-50"
+                    className="flex-1 py-1 px-2 rounded bg-amber-900/80 hover:bg-amber-800 text-amber-200 text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1"
                     title="Tháo khỏi ca cố định, đưa vào danh sách On-Call sẵn sàng thay ca"
                   >
-                    📞 Dự bị
+                    <Icon name="call" size={12} /> Dự bị
                   </button>
                   <button
                     type="button"
                     disabled={nvStatusBusy}
                     onClick={() => void handleNvStatus(nv.id, "bo_ca")}
-                    className="flex-1 py-1 px-2 rounded bg-neutral-800 hover:bg-rose-950 text-neutral-300 hover:text-rose-300 text-xs font-bold transition-colors disabled:opacity-50"
+                    className="flex-1 py-1 px-2 rounded bg-neutral-800 hover:bg-rose-950 text-neutral-300 hover:text-rose-300 text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1"
                     title="Không xếp ca cho nhân viên này tuần này"
                   >
-                    ✕ Bỏ ca
+                    <Icon name="x-mark" size={12} /> Bỏ ca
                   </button>
                 </div>
               </div>
@@ -687,7 +688,7 @@ export default function RosterPage() {
       {canWrite && (data?.du_bi?.length ?? 0) > 0 && (
         <div className="mb-6 p-3 rounded-lg bg-neutral-900/60 border border-neutral-800 flex items-center justify-between flex-wrap gap-2 ops-animate-in">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm">📞</span>
+            <Icon name="phone" size={16} />
             <span className="text-xs font-bold text-neutral-300">
               Nhân sự Trực dự bị (On-Call) tuần {currentDisplayWeek} ({data?.du_bi?.length}):
             </span>
@@ -729,7 +730,10 @@ export default function RosterPage() {
           {data?.nv_status_map?.[targetNvId] === "chua_xac_nhan" && totalMyShifts > 0 && (
             <div className="p-4 rounded-lg bg-amber-950/30 border border-amber-600/50 flex items-center justify-between flex-wrap gap-3">
               <div>
-                <h4 className="text-sm font-bold text-amber-300">⚠️ Bạn chưa xác nhận lịch đi làm tuần này</h4>
+                <h4 className="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                  <Icon name="warn" size={16} />
+                  Bạn chưa xác nhận lịch đi làm tuần này
+                </h4>
                 <p className="text-xs text-neutral-300 mt-0.5">
                   Hệ thống đã xếp dự thảo <strong>{totalMyShifts} ca</strong> cho bạn. Bấm xác nhận bên cạnh để Quản lý chốt lịch chính thức.
                 </p>
@@ -738,9 +742,9 @@ export default function RosterPage() {
                 type="button"
                 disabled={nvStatusBusy}
                 onClick={() => void handleSelfConfirm()}
-                className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-neutral-950 text-xs font-bold shadow transition-colors disabled:opacity-50"
+                className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-neutral-950 text-xs font-bold shadow transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
               >
-                {nvStatusBusy ? "Đang lưu…" : "✓ Xác nhận đi làm các ca trên"}
+                {nvStatusBusy ? "Đang lưu…" : <><Icon name="check" size={14} /> Xác nhận đi làm các ca trên</>}
               </button>
             </div>
           )}
@@ -922,9 +926,9 @@ export default function RosterPage() {
               <button
                 type="button"
                 onClick={() => setSelectedDay(null)}
-                className="px-3 py-1 text-xs font-bold uppercase tracking-widest text-neutral-400 hover:text-amber-400"
+                className="px-3 py-1 text-xs font-bold uppercase tracking-widest text-neutral-400 hover:text-amber-400 inline-flex items-center gap-1"
               >
-                Đóng ✕
+                Đóng <Icon name="close" size={14} />
               </button>
             </div>
 
@@ -990,10 +994,10 @@ export default function RosterPage() {
                             {nvName(nv_id)}
                             {data?.nv_status_map?.[nv_id] === "chua_xac_nhan" && (
                               <span
-                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/60"
+                                className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/60"
                                 title="Nhân viên chưa gửi lịch bận / xác nhận đi làm tuần này"
                               >
-                                ⚠️ Chưa chốt
+                                <Icon name="warn" size={10} /> Chưa chốt
                               </span>
                             )}
                             {canWrite && trangThai !== "da_dong" ? (
@@ -1015,8 +1019,8 @@ export default function RosterPage() {
                         {canWrite && trangThai !== "da_dong" ? (
                       <div className="pt-2 border-t border-neutral-900">
                         <details className="group">
-                          <summary className="cursor-pointer text-xs font-bold text-amber-400 hover:text-amber-300 list-none">
-                            ＋ Thêm người vào ca
+                          <summary className="cursor-pointer text-xs font-bold text-amber-400 hover:text-amber-300 list-none inline-flex items-center gap-1">
+                            <Icon name="plus" size={14} /> Thêm người vào ca
                           </summary>
                           <div className="mt-2 flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
                             {khacCa.length === 0 ? (

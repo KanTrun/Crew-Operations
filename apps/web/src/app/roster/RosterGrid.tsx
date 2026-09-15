@@ -2,6 +2,7 @@
 
 import type { KhungGio, RosterShift } from "../../lib/roster";
 import { khungOrder, rosterCellSummary, shiftRowLabel } from "../../lib/roster";
+import { Icon } from "../../ui/icons";
 
 const KHUNGS = ["sang", "chieu", "toi"] as const;
 const DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] as const;
@@ -115,8 +116,8 @@ export function RosterGrid({
                           <span className="nq-roster-slot-count inline-flex items-center justify-center gap-1">
                             {summary.countLabel}
                             {hasUnconfirmed && (
-                              <span className="text-amber-400 text-[10px]" title="Có nhân sự chưa xác nhận lịch">
-                                ⚠️
+                              <span className="text-amber-400" title="Có nhân sự chưa xác nhận lịch">
+                                <Icon name="warn" size={10} />
                               </span>
                             )}
                           </span>

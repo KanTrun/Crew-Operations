@@ -166,7 +166,15 @@ app.include_router(skills_router)
 
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
-LICH_TUAN_OUT = ROOT / "data" / "out" / "lich_tuan.json"
+
+
+def _lich_tuan_out() -> Path:
+    """Output solver — đồng bộ sprint45._lich_out(). Đọc env MỖI LẦN GỌI
+    vì conftest set NHIPQUAN_LICH_TUAN_OUT per-test sau khi import module. """
+    env = os.environ.get("NHIPQUAN_LICH_TUAN_OUT")
+    if env:
+        return Path(env)
+    return ROOT / "data" / "out" / "lich_tuan.json"
 
 # Pins persist in SQLite kv
 
@@ -539,8 +547,9 @@ def get_lich_tuan(
     tuan_iso = tuan or "2026-W36"
 
     # Try data/out/lich_tuan.json first (solver output)
-    if LICH_TUAN_OUT.exists():
-        data = json.loads(LICH_TUAN_OUT.read_text(encoding="utf-8"))
+    lich_out = _lich_tuan_out()
+    if lich_out.exists():
+        data = json.loads(lich_out.read_text(encoding="utf-8"))
         seed = _seed()
         ca_list = _format_ca_list(seed.get("ca_mau_21", []))
         solver_assignments = data.get("phan_cong", {})
@@ -810,9 +819,10 @@ async def post_nv_status(
 
         kv_mutate("phan_cong", mut_pc, {})
 
-        if LICH_TUAN_OUT.exists():
+        lich_out = _lich_tuan_out()
+        if lich_out.exists():
             try:
-                out_data = json.loads(LICH_TUAN_OUT.read_text(encoding="utf-8"))
+                out_data = json.loads(lich_out.read_text(encoding="utf-8"))
                 if out_data.get("tuan_iso") == body.tuan_iso:
                     pc = out_data.get("phan_cong", {})
                     changed = False
@@ -821,7 +831,7 @@ async def post_nv_status(
                             pc[cid] = [x for x in nv_ids if x != body.nv_id]
                             changed = True
                     if changed:
-                        LICH_TUAN_OUT.write_text(
+                        lich_out.write_text(
                             json.dumps(out_data, ensure_ascii=False, indent=2),
                             encoding="utf-8",
                         )
