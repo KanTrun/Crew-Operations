@@ -566,8 +566,15 @@ export default function InboxPage() {
         ))}
 
       {duyetModalItem ? (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nq-panel-bg,#222)] border-2 border-emerald-500/70 p-6 max-w-lg w-full shadow-2xl rounded max-h-[85vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setDuyetModalItem(null)}
+          onKeyDown={(e) => e.key === 'Escape' && setDuyetModalItem(null)}
+        >
+          <div
+            className="bg-[var(--nq-surface)] border-2 border-emerald-500/70 p-6 max-w-lg w-full shadow-2xl rounded max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-bold uppercase tracking-wider mb-2 text-emerald-300">
               Duyệt ràng buộc — xem chi tiết trước khi chốt
             </h3>
@@ -624,8 +631,15 @@ export default function InboxPage() {
       ) : null}
 
       {tuChoiModalItem ? (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nq-panel-bg,#222)] border-2 border-rose-500/70 p-6 max-w-md w-full shadow-2xl rounded">
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setTuChoiModalItem(null)}
+          onKeyDown={(e) => e.key === 'Escape' && setTuChoiModalItem(null)}
+        >
+          <div
+            className="bg-[var(--nq-surface)] border-2 border-rose-500/70 p-6 max-w-md w-full shadow-2xl rounded"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-bold uppercase tracking-wider mb-2 text-rose-300">
               Từ chối ràng buộc
             </h3>
@@ -679,8 +693,15 @@ export default function InboxPage() {
       ) : null}
 
       {swapModalItem ? (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nq-panel-bg,#222)] border-2 border-[var(--nq-copper)] p-6 max-w-md w-full shadow-2xl rounded">
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setSwapModalItem(null)}
+          onKeyDown={(e) => e.key === 'Escape' && setSwapModalItem(null)}
+        >
+          <div
+            className="bg-[var(--nq-surface)] border-2 border-[var(--nq-copper)] p-6 max-w-md w-full shadow-2xl rounded"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-bold uppercase tracking-wider mb-2 text-[var(--nq-fg)]">
               Chỉ định ca & đối tác đổi ca
             </h3>

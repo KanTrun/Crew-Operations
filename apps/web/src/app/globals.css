@@ -763,6 +763,7 @@ a:focus-visible {
   display: grid;
   gap: 0.45rem;
   align-content: start;
+  min-width: 0;
 }
 
 .nq-lawbook__dieu-text {
@@ -770,6 +771,9 @@ a:focus-visible {
   font-size: 0.95rem;
   line-height: 1.55;
   color: var(--nq-fg);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .nq-lawbook__dieu--open .nq-lawbook__dieu-text {
