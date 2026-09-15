@@ -275,8 +275,8 @@ export default function CamNangPage() {
             const apDung = typeof luat.ap_dung === "number" ? luat.ap_dung : 0;
             return (
               <li key={luat.id} className={`nq-lawbook__dieu ${open ? "nq-lawbook__dieu--open" : ""}`}>
+                <p className="nq-lawbook__dieu-so">Điều {idx + 1}</p>
                 <div className="nq-lawbook__dieu-head">
-                  <p className="nq-lawbook__dieu-so">Điều {idx + 1}</p>
                   <p className="nq-lawbook__dieu-text">{text}</p>
                   <div className="nq-lawbook__dieu-meta">
                     <StatusChip tone={luatTone(luat.trang_thai)}>{luatLabel(luat.trang_thai)}</StatusChip>
