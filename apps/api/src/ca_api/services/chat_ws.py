@@ -202,7 +202,14 @@ class IPAuthRateLimiter:
         async with self._lock:
             self._failed.pop(ip, None)
 
-auth_ip_limiter = IPAuthRateLimiter()
+# Hai bề mặt auth giữ hai bí mật KHÁC nhau nên phải đếm riêng:
+#   - login_ip_limiter   : đoán MẬT KHẨU qua POST /api/v1/auth/login
+#   - ws_auth_ip_limiter : TOKEN phiên sai/hết hạn qua /ws/chat
+# Dùng chung một bộ đếm thì chỉ cần vài token phiên hết hạn (client tự
+# reconnect) là cả IP đó bị khóa luôn trang đăng nhập trong 10 phút — người
+# dùng thật không vào lại được đúng lúc họ cần đăng nhập lại.
+login_ip_limiter = IPAuthRateLimiter()
+ws_auth_ip_limiter = IPAuthRateLimiter()
 
 
 class MessageRateLimiter:

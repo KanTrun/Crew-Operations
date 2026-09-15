@@ -50,6 +50,24 @@ def test_nhan_vien_dang_ky_xuat_hien_ngay() -> None:
     assert moi["ten"] == "Test NV Mới"
 
 
+def test_bot_khong_vao_pool_xep_lich() -> None:
+    """Tài khoản bot (vai ai_assistant) không bao giờ bị solver xếp ca."""
+    from ca_api.persist import _conn, init_db
+
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            """
+            INSERT INTO users(username, password_sha, role, nv_id, display_name, store_id, status)
+            VALUES ('test_bot_scheduler', 'bot_internal', 'ai_assistant', 'test_bot_scheduler',
+                    'Bot Test', 'quan_01', 'active')
+            ON CONFLICT(username) DO NOTHING
+            """
+        )
+    ids = {x["id"] for x in list_nhan_vien_ops()}
+    assert "test_bot_scheduler" not in ids, "bot không được vào pool xếp lịch"
+
+
 def test_solver_nhan_nv_that() -> None:
     """build_lich_input: pool ngoài là TOÀN BỘ — seed không tự thêm người."""
     nv_moi = {"id": "nv_99", "ten": "T", "ky_nang": ["da_nang"], "la_sinh_vien": False}

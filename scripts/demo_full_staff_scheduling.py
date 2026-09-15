@@ -31,20 +31,20 @@ from ca_api.services.chat_scheduler_agent import handle_scheduling_request  # no
 # Danh sách 14 nhân viên chính thức của NHỊP QUÁN tham gia phiên chat demo
 STAFF_CREW = [
     # (username, display_name, role, availability_message)
-    ("lan",   "Lan Nguyễn (SM)",      "quan_ly",   "Chào cả nhà, tuần tới 2026-W38 quán cần xếp lịch đầy đủ 21 ca (Sáng, Chiều, Tối từ T2 đến CN). Mọi người nhắn thời gian rảnh vào nhóm nhé!"),
-    ("minh",  "Minh Phạm (Head Bar)", "nhan_vien", "Em rảnh sáng T2, T3, T4, T5 và sáng T7 phụ trách quầy bar chính ạ."),
-    ("bao",   "Bảo Hoàng (Barista)",  "nhan_vien", "Em Bảo rảnh chiều T2, T3, T4, T5, T6 phụ trách pha chế chiều nhé chị."),
-    ("chi",   "Chi Vũ (Thu ngân)",    "nhan_vien", "Chi đăng ký rảnh sáng T2, T4, T6 và sáng CN quầy thu ngân nha."),
-    ("yen",   "Yến Kiều (Thu ngân)",  "nhan_vien", "Em Yến rảnh chiều T2, T3, T5, T7 thu ngân ạ."),
-    ("thao",  "Thảo Dương (Thu ngân)","nhan_vien", "Thảo rảnh tối T2, T4, T6, T7, CN thu ngân ca tối nhé."),
-    ("dung",  "Dũng Đặng (Kho)",      "nhan_vien", "Dũng rảnh sáng T2, T4, T6 nhận hàng tiếp liệu kho."),
-    ("linh",  "Linh Ngô (Phục vụ)",   "nhan_vien", "Em Linh rảnh sáng T3, T5, T7 và cả ngày CN phục vụ sảnh."),
-    ("oanh",  "Oanh Phan (Phục vụ)",  "nhan_vien", "Em Oanh rảnh tối T2, T3, T5, T6, T7 phục vụ tối ạ."),
-    ("quan",  "Quân Lương (Barista)", "nhan_vien", "Quân rảnh tối T3, T4, T5, T6, CN ca tối bar."),
-    ("an",    "An Lê (Đa năng)",      "nhan_vien", "An rảnh chiều T4, T6, T7 chi viện mọi vị trí cần hỗ trợ."),
-    ("phuc",  "Phúc Trịnh (Barista)", "nhan_vien", "Em Phúc rảnh cả ngày T7 và CN hỗ trợ đông khách."),
-    ("son",   "Sơn Hà (Barista)",     "nhan_vien", "Sơn rảnh sáng CN và chiều CN bar nhé chị Lan."),
-    ("nam",   "Nam Lý (ASM/HR)",      "quan_ly",   "@agent_lich tổng hợp thời gian rảnh của toàn bộ nhân viên đã đăng ký và xếp lịch tuần tới giúp quán nhé! Đảm bảo đủ người cho 21 ca và chia đều công bằng."),
+    ("lan",   "Lan Nguyễn",   "quan_ly",   "Chào cả nhà, tuần tới 2026-W38 quán cần xếp lịch đầy đủ 21 ca (Sáng, Chiều, Tối từ T2 đến CN). Mọi người nhắn thời gian rảnh vào nhóm nhé!"),
+    ("minh",  "Minh Phạm",    "nhan_vien", "Em rảnh sáng T2, T3, T4, T5 và sáng T7 phụ trách quầy bar chính ạ."),
+    ("bao",   "Bảo Hoàng",    "nhan_vien", "Em Bảo rảnh chiều T2, T3, T4, T5, T6 phụ trách pha chế chiều nhé chị."),
+    ("chi",   "Chi Vũ",       "nhan_vien", "Chi đăng ký rảnh sáng T2, T4, T6 và sáng CN quầy thu ngân nha."),
+    ("yen",   "Yến Kiều",     "nhan_vien", "Em Yến rảnh chiều T2, T3, T5, T7 thu ngân ạ."),
+    ("thao",  "Thảo Dương",   "nhan_vien", "Thảo rảnh tối T2, T4, T6, T7, CN thu ngân ca tối nhé."),
+    ("dung",  "Dũng Đặng",    "nhan_vien", "Dũng rảnh sáng T2, T4, T6 nhận hàng tiếp liệu kho."),
+    ("linh",  "Linh Ngô",     "nhan_vien", "Em Linh rảnh sáng T3, T5, T7 và cả ngày CN phục vụ sảnh."),
+    ("oanh",  "Oanh Phan",    "nhan_vien", "Em Oanh rảnh tối T2, T3, T5, T6, T7 phục vụ tối ạ."),
+    ("quan",  "Quân Lương",   "nhan_vien", "Quân rảnh tối T3, T4, T5, T6, CN ca tối bar."),
+    ("an",    "An Lê",        "nhan_vien", "An rảnh chiều T4, T6, T7 chi viện mọi vị trí cần hỗ trợ."),
+    ("phuc",  "Phúc Trịnh",   "nhan_vien", "Em Phúc rảnh cả ngày T7 và CN hỗ trợ đông khách."),
+    ("son",   "Sơn Hà",       "nhan_vien", "Sơn rảnh sáng CN và chiều CN bar nhé chị Lan."),
+    ("nam",   "Nam Lý",       "quan_ly",   "@agent_lich tổng hợp thời gian rảnh của toàn bộ nhân viên đã đăng ký và xếp lịch tuần tới giúp quán nhé! Đảm bảo đủ người cho 21 ca và chia đều công bằng."),
 ]
 
 

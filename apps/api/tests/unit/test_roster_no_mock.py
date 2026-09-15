@@ -52,7 +52,7 @@ def test_lich_chua_xep_tra_khung_trong(monkeypatch: pytest.MonkeyPatch, tmp_path
     """Chưa chạy solver và chưa seed phân công: roster vẫn chỉ có khung ca."""
     import ca_api.interfaces.http.main as m
 
-    monkeypatch.setattr(m, "LICH_TUAN_OUT", tmp_path / "khong_co_lich.json")
+    monkeypatch.setenv("NHIPQUAN_LICH_TUAN_OUT", str(tmp_path / "khong_co_lich.json"))
     kv_set("phan_cong", {})
     token = _login_manager()
     res = client.get("/api/v1/lich-tuan", headers={"Authorization": f"Bearer {token}"})
@@ -71,7 +71,7 @@ def test_lich_tra_phan_cong_da_seed_khi_chua_co_solver(
     """Seed demo phải hiện trên roster ngay cả trước khi solver tạo output file."""
     import ca_api.interfaces.http.main as m
 
-    monkeypatch.setattr(m, "LICH_TUAN_OUT", tmp_path / "khong_co_lich.json")
+    monkeypatch.setenv("NHIPQUAN_LICH_TUAN_OUT", str(tmp_path / "khong_co_lich.json"))
     kv_set("phan_cong", {"w1_c01": ["nv_01", "nv_02"]})
     token = _login_manager()
     res = client.get("/api/v1/lich-tuan", headers={"Authorization": f"Bearer {token}"})
@@ -90,7 +90,7 @@ def test_lich_solver_partial_khong_lam_mat_phan_cong_seed(
         '{"ok": true, "status": "optimal", "phan_cong": {"w1_c01": ["nv_03"]}}',
         encoding="utf-8",
     )
-    monkeypatch.setattr(m, "LICH_TUAN_OUT", output)
+    monkeypatch.setenv("NHIPQUAN_LICH_TUAN_OUT", str(output))
     kv_set("phan_cong", {"w1_c01": ["nv_01"], "w1_c02": ["nv_02", "nv_03"]})
     token = _login_manager()
     res = client.get("/api/v1/lich-tuan", headers={"Authorization": f"Bearer {token}"})
@@ -108,7 +108,7 @@ def test_lich_output_rong_fallback_phan_cong_seed_history(
 
     output = tmp_path / "lich_tuan.json"
     output.write_text('{"ok": true, "status": "optimal", "phan_cong": {}}', encoding="utf-8")
-    monkeypatch.setattr(m, "LICH_TUAN_OUT", output)
+    monkeypatch.setenv("NHIPQUAN_LICH_TUAN_OUT", str(output))
     kv_set("phan_cong", {})
     token = _login_manager()
     res = client.get(

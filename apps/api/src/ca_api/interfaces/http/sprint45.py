@@ -53,14 +53,34 @@ from ca_api.interfaces.http.sprint3 import (
 )
 from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.orchestration import Clock
-from ca_api.persist import _VN_TZ, audit_add, audit_list, kv_get, kv_mutate, kv_set, list_users
+from ca_api.persist import (
+    audit_add,
+    audit_list,
+    ghi_diem_danh,
+    kv_get,
+    kv_mutate,
+    kv_set,
+    list_users,
+)
 from ca_api.persist import session as auth_session
 from ca_api.services.chat_ws import notify_ops_changed
 
 router = APIRouter()
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
-LICH = ROOT / "data" / "out" / "lich_tuan.json"
+
+
+def _lich_out() -> Path:
+    """Output solver — đọc MỖI LẦN GỌI, không phải lúc import module.
+
+    Conftest set ``NHIPQUAN_LICH_TUAN_OUT`` per-test (sau import), nên nếu
+    đọc env một lần lúc import thì test vẫn ghi đè ``data/out/lich_tuan.json``
+    thật của quán. Đọc mỗi lần gọi mới trỏ đúng tmp_path của test.
+    """
+    env = os.environ.get("NHIPQUAN_LICH_TUAN_OUT")
+    if env:
+        return Path(env)
+    return ROOT / "data" / "out" / "lich_tuan.json"
 _clock = Clock()
 _THU_MAP = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN"}
 _VI_TRI_VI = {
@@ -246,8 +266,9 @@ def _run_solver() -> dict[str, Any]:
         "luat_ap_dung": applied,
         "danh_sach_xung_dot": danh_sach_xung_dot,
     }
-    LICH.parent.mkdir(parents=True, exist_ok=True)
-    LICH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    out = _lich_out()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     if result.ok:
         kv_set("phan_cong", result.phan_cong)
     return {
@@ -304,8 +325,9 @@ def _phan() -> dict[str, list[str]]:
     stored = kv_get("phan_cong", None)
     if stored:
         return cast(dict[str, list[str]], stored)
-    if LICH.exists():
-        raw = json.loads(LICH.read_text(encoding="utf-8")).get("phan_cong", {})
+    out = _lich_out()
+    if out.exists():
+        raw = json.loads(out.read_text(encoding="utf-8")).get("phan_cong", {})
         return cast(dict[str, list[str]], raw)
     return {}
 
@@ -469,9 +491,10 @@ def _get_swap_candidates_for_item(it: dict[str, Any]) -> list[dict[str, Any]]:
         ca_list.append(item_c)
 
     phan_cong: dict[str, list[str]] = {}
-    if LICH.exists():
+    lich_out = _lich_out()
+    if lich_out.exists():
         try:
-            lich_data = json.loads(LICH.read_text(encoding="utf-8"))
+            lich_data = json.loads(lich_out.read_text(encoding="utf-8"))
             phan_cong = lich_data.get("phan_cong", {})
         except Exception:
             pass
@@ -1247,28 +1270,8 @@ def qr_use(
     kv_mutate("qr", mut, {})
     assert used is not None
 
-    ngay = datetime.now(_VN_TZ).date().isoformat()
-
-    def dd_mut(dd: Any) -> dict[str, list[str]]:
-        # Khoá theo ngày {ngay: [nv_id, ...]} — đồng bộ với /api/v1/diem-danh.
-        # Tương thích ngược: bản cũ là list nv_id tích luỹ vĩnh viễn; migrate
-        # sang dict gán toàn bộ vào hôm nay để giữ hành vi của
-        # `diem_danh_hom_nay()` và không gây 500 khi store còn dữ liệu cũ.
-        cu: dict[str, list[str]] = {}
-        if isinstance(dd, list):
-            cu = {ngay: [str(x) for x in dd]}
-        elif isinstance(dd, dict):
-            cu = {
-                str(k): [str(x) for x in v]
-                for k, v in dd.items()
-                if isinstance(v, list)
-            }
-        hom_nay = cu.setdefault(ngay, [])
-        if used["nv_id"] not in hom_nay:
-            hom_nay.append(used["nv_id"])
-        return cu
-
-    kv_mutate("diem_danh", dd_mut, {})
+    # Khoá theo ngày {ngay: [nv_id, ...]} — đồng bộ với /api/v1/diem-danh.
+    ghi_diem_danh(used["nv_id"])
     _audit("qr_diem_danh", used["nv_id"], {"token": token, "ca_id": used.get("ca_id")})
     return {"ok": True, "nv_id": used["nv_id"]}
 

@@ -50,10 +50,10 @@ from ca_api.persist import (
     session as auth_session,
 )
 from ca_api.services.chat_ws import (
-    auth_ip_limiter,
     chat_ws_manager,
     msg_rate_limiter,
     sanitize_text,
+    ws_auth_ip_limiter,
 )
 
 router = APIRouter(tags=["chat"])
@@ -120,7 +120,7 @@ async def chat_websocket_endpoint(websocket: WebSocket) -> None:
     client_ip = websocket.client.host if websocket.client else "unknown"
 
     # 1. Kiểm tra rate limit brute-force theo IP
-    if await auth_ip_limiter.is_blocked(client_ip):
+    if await ws_auth_ip_limiter.is_blocked(client_ip):
         await websocket.close(code=4001, reason="ip_blocked")
         return
 
@@ -129,7 +129,7 @@ async def chat_websocket_endpoint(websocket: WebSocket) -> None:
         raw_first = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
         first_msg = json.loads(raw_first)
     except TimeoutError:
-        await auth_ip_limiter.record_failure(client_ip)
+        await ws_auth_ip_limiter.record_failure(client_ip)
         try:
             await websocket.close(code=4001, reason="auth_timeout")
         except Exception:
@@ -138,7 +138,7 @@ async def chat_websocket_endpoint(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         return
     except Exception:
-        await auth_ip_limiter.record_failure(client_ip)
+        await ws_auth_ip_limiter.record_failure(client_ip)
         try:
             await websocket.close(code=4001, reason="auth_invalid")
         except Exception:
@@ -146,19 +146,19 @@ async def chat_websocket_endpoint(websocket: WebSocket) -> None:
         return
 
     if first_msg.get("event") != "auth" or not first_msg.get("token"):
-        await auth_ip_limiter.record_failure(client_ip)
+        await ws_auth_ip_limiter.record_failure(client_ip)
         await websocket.close(code=4001, reason="auth_invalid")
         return
 
     token = str(first_msg.get("token")).strip()
     sess = auth_session(f"Bearer {token}") or auth_session(token)
     if not sess or not user_is_active(sess["nv_id"]):
-        await auth_ip_limiter.record_failure(client_ip)
+        await ws_auth_ip_limiter.record_failure(client_ip)
         await websocket.close(code=4001, reason="auth_invalid")
         return
 
     # Auth thành công
-    await auth_ip_limiter.clear(client_ip)
+    await ws_auth_ip_limiter.clear(client_ip)
     nv_id = sess["nv_id"]
     display_name = sess.get("display_name", nv_id)
 

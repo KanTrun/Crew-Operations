@@ -48,6 +48,7 @@ from ca_playbook.vong_doi import de_xuat as _de_xuat
 from ca_playbook.vong_doi import list_luat as _list_luat
 from ca_playbook.vong_doi import tim_mau as _tim_mau
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
@@ -98,7 +99,7 @@ from ca_api.persist import login as persist_login
 from ca_api.persist import logout as persist_logout
 from ca_api.persist import register as persist_register
 from ca_api.persist import session as auth_session
-from ca_api.services.chat_ws import auth_ip_limiter, notify_ops_changed
+from ca_api.services.chat_ws import login_ip_limiter, notify_ops_changed
 
 
 @asynccontextmanager
@@ -195,7 +196,15 @@ app.include_router(skills_router)
 
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
-LICH_TUAN_OUT = ROOT / "data" / "out" / "lich_tuan.json"
+
+
+def _lich_tuan_out() -> Path:
+    """Output solver — đồng bộ sprint45._lich_out(). Đọc env MỖI LẦN GỌI
+    vì conftest set NHIPQUAN_LICH_TUAN_OUT per-test sau khi import module. """
+    env = os.environ.get("NHIPQUAN_LICH_TUAN_OUT")
+    if env:
+        return Path(env)
+    return ROOT / "data" / "out" / "lich_tuan.json"
 
 # Pins persist in SQLite kv
 
@@ -596,8 +605,9 @@ def get_lich_tuan(
     tuan_iso = tuan or "2026-W36"
 
     # Try data/out/lich_tuan.json first (solver output)
-    if LICH_TUAN_OUT.exists():
-        data = json.loads(LICH_TUAN_OUT.read_text(encoding="utf-8"))
+    lich_out = _lich_tuan_out()
+    if lich_out.exists():
+        data = json.loads(lich_out.read_text(encoding="utf-8"))
         seed = _seed()
         ca_list = _format_ca_list(seed.get("ca_mau_21", []))
         solver_assignments = data.get("phan_cong", {})
@@ -867,9 +877,10 @@ async def post_nv_status(
 
         kv_mutate("phan_cong", mut_pc, {})
 
-        if LICH_TUAN_OUT.exists():
+        lich_out = _lich_tuan_out()
+        if lich_out.exists():
             try:
-                out_data = json.loads(LICH_TUAN_OUT.read_text(encoding="utf-8"))
+                out_data = json.loads(lich_out.read_text(encoding="utf-8"))
                 if out_data.get("tuan_iso") == body.tuan_iso:
                     pc = out_data.get("phan_cong", {})
                     changed = False
@@ -878,7 +889,7 @@ async def post_nv_status(
                             pc[cid] = [x for x in nv_ids if x != body.nv_id]
                             changed = True
                     if changed:
-                        LICH_TUAN_OUT.write_text(
+                        lich_out.write_text(
                             json.dumps(out_data, ensure_ascii=False, indent=2),
                             encoding="utf-8",
                         )
@@ -970,13 +981,16 @@ def _client_ip(request: Request) -> str:
 async def login(body: LoginBody, request: Request) -> LoginOut:
     # Chống dò mật khẩu hàng loạt: quá 5 lần sai trong 10 phút từ 1 IP → khóa tạm.
     ip = _client_ip(request)
-    if await auth_ip_limiter.is_blocked(ip):
+    if await login_ip_limiter.is_blocked(ip):
         raise HTTPException(status_code=429, detail="thu_qua_nhieu_lan_thu_lai_sau")
+    # persist_login băm PBKDF2 và đọc SQLite — đều chặn. Handler là async nên phải
+    # đẩy sang threadpool, chạy thẳng trên event loop sẽ đứng toàn bộ server
+    # (kể cả WebSocket) suốt thời gian băm.
     row = await run_in_threadpool(persist_login, body.username, body.password)
     if not row:
-        await auth_ip_limiter.record_failure(ip)
+        await login_ip_limiter.record_failure(ip)
         raise HTTPException(status_code=401, detail="sai_thong_tin_dang_nhap")
-    await auth_ip_limiter.clear(ip)
+    await login_ip_limiter.clear(ip)
     return LoginOut(
         token=row["token"],
         role=row["role"],

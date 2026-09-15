@@ -218,6 +218,47 @@ def test_chat_upload_accepts_browser_voice_formats(
     assert media_res.content == payload
 
 
+def test_ws_auth_failures_do_not_lock_out_password_login(client: TestClient) -> None:
+    """Token phiên sai/hết hạn qua /ws/chat không được khóa trang đăng nhập.
+
+    Hai bề mặt auth giữ hai bí mật khác nhau — mật khẩu và token phiên — nên bộ
+    đếm brute-force phải tách riêng. Client tự reconnect bằng token đã hết hạn là
+    chuyện thường ngày; nếu đếm chung thì vài lần reconnect là cả IP đó bị 429 ở
+    /api/v1/auth/login suốt 10 phút, đúng lúc người dùng cần đăng nhập lại nhất.
+    """
+    from ca_api.services.chat_ws import login_ip_limiter, ws_auth_ip_limiter
+
+    try:
+        # Vượt ngưỡng chặn của WS bằng token hết hạn.
+        for _ in range(6):
+            with client.websocket_connect("/ws/chat") as ws:
+                ws.send_text(json.dumps({"event": "auth", "token": "token_da_het_han"}))
+                with pytest.raises(Exception):
+                    ws.receive_text()
+
+        # Đăng nhập bằng mật khẩu đúng vẫn phải vào được.
+        ok = client.post(
+            "/api/v1/auth/login", json={"username": "lan", "password": "nhipquan"}
+        )
+        assert ok.status_code == 200
+        assert ok.json()["role"] == "quan_ly"
+
+        # Bộ đếm riêng của login vẫn chặn dò mật khẩu độc lập với WS.
+        for _ in range(5):
+            bad = client.post(
+                "/api/v1/auth/login", json={"username": "lan", "password": "sai_mat_khau"}
+            )
+            assert bad.status_code == 401
+        blocked = client.post(
+            "/api/v1/auth/login", json={"username": "lan", "password": "nhipquan"}
+        )
+        assert blocked.status_code == 429
+    finally:
+        # Bộ đếm là singleton cấp module — dọn sạch để không rò sang test khác.
+        login_ip_limiter._failed.clear()
+        ws_auth_ip_limiter._failed.clear()
+
+
 def test_chat_websocket_first_message_auth(
     client: TestClient, auth_lan: dict[str, str], auth_minh: dict[str, str]
 ) -> None:

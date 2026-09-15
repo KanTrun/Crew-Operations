@@ -39,9 +39,9 @@ from pydantic import BaseModel, Field
 
 from ca_api.orchestration import Clock, IdempotencyStore, StateMachine, dispatch_parallel
 from ca_api.persist import (
-    _VN_TZ,
     db_path,
     diem_danh_hom_nay,
+    ghi_diem_danh,
     kv_get,
     kv_mutate,
     kv_set,
@@ -235,30 +235,7 @@ def diem_danh(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, str]:
     nv = _nv_from_token(authorization)
-    ngay = datetime.now(_VN_TZ).date().isoformat()
-
-    def mut(dd: Any) -> dict[str, list[str]]:
-        # Khoá theo ngày: {ngay: [nv_id, ...]} — điểm danh chỉ có hiệu lực
-        # trong ngày; ngày mới phải quét lại QR/check-in lại.
-        # Tương thích ngược: bản cũ là list nv_id tích luỹ vĩnh viễn.
-        # `diem_danh_hom_nay()` đọc list cũ như check-in hôm nay, nên migrate
-        # list sang dict và gán toàn bộ vào hôm nay để giữ nguyên hành vi đó
-        # (không khoá ai ngoài giờ, không gây 500 khi store còn dữ liệu cũ).
-        cu: dict[str, list[str]] = {}
-        if isinstance(dd, list):
-            cu = {ngay: [str(x) for x in dd]}
-        elif isinstance(dd, dict):
-            cu = {
-                str(k): [str(x) for x in v]
-                for k, v in dd.items()
-                if isinstance(v, list)
-            }
-        hom_nay = cu.setdefault(ngay, [])
-        if nv not in hom_nay:
-            hom_nay.append(nv)
-        return cu
-
-    kv_mutate("diem_danh", mut, {})
+    ghi_diem_danh(nv)
     return {"ok": "true", "nv_id": nv}
 
 
