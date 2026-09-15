@@ -17,6 +17,7 @@ Mỗi cặp (phiếu, cấp) chỉ nhắn một lần — kv ``worker_da_nhac``,
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import time
@@ -149,6 +150,66 @@ def _tong_ket_ngay() -> str:
     return f"kiem_ke={tong['so_lan_kiem_ke']} hao_phi={tong['so_ghi_hao_phi']}"
 
 
+def _quet_telegram_longpoll() -> int:
+    """Polling getUpdates Telegram (long-poll 25s) khi không dùng webhook.
+
+    Chỉ chạy khi NHIPQUAN_TELEGRAM_BOT_TOKEN có và backend telegram được chọn
+    (NHIPQUAN_MSG_BACKEND=telegram). Kết quả đánh dấu qua kv
+    `telegram_update_offset` để không xử lý trùng lẫn sau restart.
+    """
+    token = os.environ.get("NHIPQUAN_TELEGRAM_BOT_TOKEN", "").strip()
+    if not token:
+        return 0
+    if (os.environ.get("NHIPQUAN_MSG_BACKEND", "").strip().lower()) != "telegram":
+        return 0
+    try:
+        import urllib.parse
+        import urllib.request
+
+        from ca_agents.messaging import parse_telegram_update
+
+        from ca_api.interfaces.http.channels import process_inbound
+
+        offset = int(kv_get("telegram_update_offset", 0) or 0)
+        qs = urllib.parse.urlencode(
+            {"timeout": 25, "offset": offset, "allowed_updates": '["message"]'}
+        )
+        url = f"https://api.telegram.org/bot{token}/getUpdates?{qs}"
+        with urllib.request.urlopen(url, timeout=30) as resp:  # noqa: S310
+            payload = json.loads(resp.read().decode("utf-8"))
+        updates = payload.get("result") or []
+        if not isinstance(updates, list):
+            return 0
+        n = 0
+        max_id = offset
+        for upd in updates:
+            if not isinstance(upd, dict):
+                continue
+            upd_id = int(upd.get("update_id") or 0)
+            if upd_id >= max_id:
+                max_id = upd_id + 1
+            msg = parse_telegram_update(upd)
+            if not msg:
+                continue
+            try:
+                res = process_inbound(msg, reply_backend="telegram")
+                n += 1
+                log.info("telegram poll: hanh=%s ok=%s", res.get("hanh"), res.get("ok"))
+            except Exception:  # noqa: BLE001 — một tin hỏng không chặn lượt
+                log.exception("telegram poll: xu ly that bai update=%s", upd_id)
+        if max_id > offset:
+
+            def mut(cur: dict[str, int]) -> dict[str, int]:
+                cur["offset"] = max_id
+                return cur
+
+            kv_mutate("telegram_update_offset", mut, {"offset": 0})
+        return n
+    except Exception:  # noqa: BLE001 — worker phải sống sót qua một lượt hỏng
+        log.exception("telegram long-poll that bai — thu lai o chu ky tiep")
+        return 0
+
+
 def _quet_dinh_ky() -> list[str]:
     """Điều phối 3 job theo giờ máy thật (giờ Việt Nam UTC+7). Trả danh sách kết quả để test."""
     now = datetime.now(_VN_TZ)
@@ -192,6 +253,12 @@ def main() -> None:
                 log.info("dinh ky: %s", dong)
         except Exception:  # noqa: BLE001
             log.exception("viec dinh ky that bai — thu lai o chu ky tiep")
+        try:
+            so_tin = _quet_telegram_longpoll()
+            if so_tin:
+                log.info("telegram long-poll: xu ly %s tin", so_tin)
+        except Exception:  # noqa: BLE001
+            log.exception("telegram long-poll that bai — thu lai o chu ky tiep")
         time.sleep(chu_ky_s)
 
 

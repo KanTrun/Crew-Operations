@@ -17,7 +17,6 @@ import {
   Loading,
   Notice,
   PageHeader,
-  ProgressBar,
   StatusChip,
   Summary,
   TechnicalDrawer,
@@ -248,59 +247,89 @@ export default function CamNangPage() {
       {!loading && !error && filtered.length === 0 ? (
         <Empty>Chưa có luật phù hợp bộ lọc. Luật sinh ra từ lần sửa có bằng chứng trong ca.</Empty>
       ) : null}
-      <div className="nq-card-grid">
-        {filtered.map((luat) => {
-          const open = expanded === luat.id;
-          const text = safeText(luat.cau, "Luật chưa có câu diễn giải");
-          const tapSu = typeof luat.tap_su_dung === "number" ? luat.tap_su_dung : 0;
-          const apDung = typeof luat.ap_dung === "number" ? luat.ap_dung : 0;
-          return (
-            <article key={luat.id} className="nq-item flex flex-col gap-3">
-              <p className={open ? "nq-item-title" : "nq-item-title nq-clamp-3"}>{text}</p>
-              {text.length > 120 ? (
-                <button
-                  type="button"
-                  className="self-start text-xs font-mono uppercase tracking-widest text-[var(--nq-copper)] underline"
-                  onClick={() => setExpanded(open ? null : luat.id)}
-                >
-                  {open ? "Thu gọn" : "Xem thêm"}
-                </button>
-              ) : null}
-              <p className="nq-item-sub flex flex-wrap items-center gap-2">
-                <StatusChip tone={luatTone(luat.trang_thai)}>{luatLabel(luat.trang_thai)}</StatusChip>
-                {luat.mau_minh_hoa ? (
-                  <StatusChip tone="default">Mẫu minh họa</StatusChip>
-                ) : null}
-              </p>
-              {tapSu > 0 || apDung > 0 ? (
-                <div>
-                  <p className="text-xs text-[var(--nq-dim)] mb-1">
-                    Tập sự {tapSu} · Áp dụng {apDung}
-                  </p>
-                  <ProgressBar value={Math.min(apDung, 10)} max={10} />
+      <div className="nq-lawbook">
+        {/* Mục lục cuốn luật — đếm theo nhóm trạng thái để người đọc nắm nhanh */}
+        <div className="nq-lawbook__toc">
+          <p className="nq-lawbook__toc-title">Mục lục</p>
+          <ul className="nq-lawbook__toc-list">
+            <li>
+              <span>Đang hiệu lực</span>
+              <span className="nq-lawbook__toc-count">{items.filter((l) => l.trang_thai === "hieu_luc").length}</span>
+            </li>
+            <li>
+              <span>Đang xét duyệt</span>
+              <span className="nq-lawbook__toc-count">{items.filter((l) => ["de_xuat", "qua_vf_rule", "cho_chu_quan"].includes(l.trang_thai)).length}</span>
+            </li>
+            <li>
+              <span>Đã loại / tắt</span>
+              <span className="nq-lawbook__toc-count">{items.filter((l) => ["loai", "truot_tap_su", "tu_choi", "tu_tat"].includes(l.trang_thai)).length}</span>
+            </li>
+          </ul>
+        </div>
+
+        <ol className="nq-lawbook__list">
+          {filtered.map((luat, idx) => {
+            const open = expanded === luat.id;
+            const text = safeText(luat.cau, "Luật chưa có câu diễn giải");
+            const tapSu = typeof luat.tap_su_dung === "number" ? luat.tap_su_dung : 0;
+            const apDung = typeof luat.ap_dung === "number" ? luat.ap_dung : 0;
+            return (
+              <li key={luat.id} className={`nq-lawbook__dieu ${open ? "nq-lawbook__dieu--open" : ""}`}>
+                <div className="nq-lawbook__dieu-head">
+                  <p className="nq-lawbook__dieu-so">Điều {idx + 1}</p>
+                  <p className="nq-lawbook__dieu-text">{text}</p>
+                  <div className="nq-lawbook__dieu-meta">
+                    <StatusChip tone={luatTone(luat.trang_thai)}>{luatLabel(luat.trang_thai)}</StatusChip>
+                    {luat.mau_minh_hoa ? <StatusChip tone="default">Luật mẫu minh họa</StatusChip> : null}
+                    {tapSu > 0 || apDung > 0 ? (
+                      <span className="nq-lawbook__dieu-note">
+                        Tập sự {tapSu} lần · Áp dụng {apDung} lần
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-              ) : null}
-              {open && luat.vf_rule ? (
-                <p className="text-sm text-[var(--nq-ink-muted)]">{vfRuleLyDo(luat.vf_rule)}</p>
-              ) : null}
-              {open && (luat.bang_chung?.length ?? 0) > 0 ? (
-                <p className="text-xs text-[var(--nq-dim)]">Bằng chứng: {luat.bang_chung?.length} lần sửa</p>
-              ) : null}
-              <div className="flex flex-wrap gap-2">
-                {chuQuan && luat.trang_thai === "cho_chu_quan" ? (
-                  <Btn busy={busy} onClick={() => void chot(luat.id)}>
-                    Chốt hiệu lực
-                  </Btn>
+                {text.length > 140 ? (
+                  <button
+                    type="button"
+                    className="nq-lawbook__dieu-toggle"
+                    onClick={() => setExpanded(open ? null : luat.id)}
+                  >
+                    {open ? "Thu gọn điều luật" : "Xem đầy đủ điều luật"}
+                  </button>
                 ) : null}
-                {chuQuan && luat.trang_thai === "hieu_luc" && !luat.mau_minh_hoa ? (
-                  <Btn variant="ghost" busy={busy} onClick={() => void goLuat(luat.id)}>
-                    Gỡ luật
-                  </Btn>
+                {open ? (
+                  <div className="nq-lawbook__dieu-detail">
+                    <p className="text-sm">{text}</p>
+                    {luat.vf_rule ? (
+                      <p className="text-sm text-[var(--nq-ink-muted)] mt-2">
+                        Vòng kiểm luật: {vfRuleLyDo(luat.vf_rule)}
+                      </p>
+                    ) : null}
+                    {(luat.bang_chung?.length ?? 0) > 0 ? (
+                      <p className="text-xs text-[var(--nq-dim)] mt-1">
+                        Bằng chứng: {luat.bang_chung?.length} lần sửa thật trong ca
+                      </p>
+                    ) : null}
+                  </div>
                 ) : null}
-              </div>
-            </article>
-          );
-        })}
+                {open && (chuQuan || manager) ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {chuQuan && luat.trang_thai === "cho_chu_quan" ? (
+                      <Btn busy={busy} onClick={() => void chot(luat.id)}>
+                        Chốt hiệu lực
+                      </Btn>
+                    ) : null}
+                    {chuQuan && luat.trang_thai === "hieu_luc" && !luat.mau_minh_hoa ? (
+                      <Btn variant="ghost" busy={busy} onClick={() => void goLuat(luat.id)}>
+                        Gỡ luật
+                      </Btn>
+                    ) : null}
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
+        </ol>
       </div>
 
       <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />

@@ -219,6 +219,12 @@ def _clean_khoang_api(raw: list[dict[str, str]]) -> list[dict[str, str]]:
             thu = "CN"
         start = str(item.get("start") or "").strip()
         end = str(item.get("end") or "").strip()
+        # AG-TKB có thể trả "07:30:00" — chuẩn hóa về "HH:MM" 5 ký tự
+        # trước khi kiểm, nếu không khung giờ thật bị lọc sạch → khoang_rong.
+        if len(start) == 8 and start.count(":") == 2:
+            start = start[:5]
+        if len(end) == 8 and end.count(":") == 2:
+            end = end[:5]
         if thu not in thu_ok or len(start) != 5 or len(end) != 5:
             continue
         out.append({"thu": thu, "start": start, "end": end})

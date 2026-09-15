@@ -267,7 +267,10 @@ def _enqueue_inbox(
 
 
 def process_inbound(msg: InboundMessage, *, reply_backend: str | None = None) -> dict[str, Any]:
-    """Xử lý một tin: bind → xem lịch | classify → inbox."""
+    """Xử lý một tin: bind → xem lịch | classify → inbox.
+
+    Văn phong trả lời: lịch sự, tự nhiên như nhân sự quán, không máy móc.
+    """
     port = get_port(reply_backend or msg.channel)
     text = msg.text.strip()
     bind_m = re.match(r"^/bind\s+([a-z0-9]{6,16})$", text, re.I)
@@ -276,12 +279,12 @@ def process_inbound(msg: InboundMessage, *, reply_backend: str | None = None) ->
         if not nv:
             sent = port.send(
                 msg.external_user_id,
-                "Mã bind không đúng hoặc đã dùng. Lấy mã mới trên /toi.",
+                "Dạ mã kết nối này chưa đúng hoặc đã được dùng rồi ạ. Anh/chị vui lòng lấy mã mới trong mục «Ca của tôi» trên web rồi gửi lại giúp em nhé.",
             )
             return {"ok": False, "ly_do": "bind_code", "message": sent.__dict__}
         sent = port.send(
             msg.external_user_id,
-            f"Đã nối kênh với {nv}. Bạn có thể hỏi lịch hoặc gửi ý định ca.",
+            "Dạ em đã nối kênh thành công rồi ạ. Từ giờ anh/chị có thể nhắn «xem lịch» để biết ca của mình, hoặc nhắn xin nghỉ, đổi ca, báo trễ — em sẽ chuyển thẳng cho quản lý duyệt.",
         )
         return {"ok": True, "hanh": "bind", "nv_id": nv, "message": sent.__dict__}
 
@@ -289,14 +292,16 @@ def process_inbound(msg: InboundMessage, *, reply_backend: str | None = None) ->
     if not nv_id:
         sent = port.send(
             msg.external_user_id,
-            "Chưa nối tài khoản quán. Vào web NHỊP QUÁN → Ca của tôi → lấy mã bind, "
-            "rồi nhắn: /bind <mã>",
+            "Dạ anh/chị vui lòng kết nối tài khoản quán trước nhé: vào web NHỊP QUÁN, chọn «Ca của tôi», bấm «Lấy mã kết nối» rồi nhắn lại đúng dòng «/bind <mã>» ở đây ạ. Sau đó em hỗ trợ xem lịch và nhận các yêu cầu nghỉ, đổi ca ngay.",
         )
         return {"ok": False, "ly_do": "chua_bind", "message": sent.__dict__}
 
     if is_xem_lich(text):
         body = _format_lich(nv_id)
-        sent = port.send(msg.external_user_id, body)
+        sent = port.send(
+            msg.external_user_id,
+            f"Dạ đây là lịch ca tuần này của anh/chị ạ:\n{body}\nNếu cần xin nghỉ hay đổi ca, anh/chị cứ nhắn trực tiếp cho em nhé.",
+        )
         return {"ok": True, "hanh": "xem_lich", "nv_id": nv_id, "message": sent.__dict__}
 
     staff_list: list[dict[str, str]] = []
@@ -317,8 +322,7 @@ def process_inbound(msg: InboundMessage, *, reply_backend: str | None = None) ->
     if not should_enqueue_constraint(text, r.intent, r.do_tin_cay):
         sent = port.send(
             msg.external_user_id,
-            "Đã nhận tin. Đây không phải ràng buộc ca — nhắn xin nghỉ / đổi ca / cập nhật TKB "
-            "hoặc «xem lịch» nếu cần.",
+            "Dạ em đã nhận được tin nhắn của anh/chị ạ. Nội dung này chưa phải yêu cầu về ca làm việc, nên tạm chưa cần quản lý duyệt. Nếu anh/chị muốn xin nghỉ, đổi ca, nhận thêm ca, báo đến trễ hay cập nhật lịch học, cứ nhắn rõ giúp em nhé.",
         )
         return {
             "ok": True,
@@ -336,9 +340,17 @@ def process_inbound(msg: InboundMessage, *, reply_backend: str | None = None) ->
         external_user_id=msg.external_user_id,
         rang_buoc=dict(r.rang_buoc),
     )
+    y_dinh_depngon = {
+        "xin_nghi": "xin nghỉ ca",
+        "doi_ca": "yêu cầu đổi ca",
+        "nhan_ca": "yêu cầu nhận thêm ca",
+        "bao_tre": "lời báo đến trễ",
+        "cap_nhat_tkb": "cập nhật thời khóa biểu",
+    }
+    ten_y_dinh = y_dinh_depngon.get(str(r.intent), f"yêu cầu «{r.intent}»")
     sent = port.send(
         msg.external_user_id,
-        f"Đã ghi nhận ý định «{r.intent}» — quản lý sẽ duyệt trên hộp thư ràng buộc.",
+        f"Dạ em đã ghi nhận {ten_y_dinh} của anh/chị và chuyển vào hộp thư duyệt rồi ạ. Quản lý sẽ xem và quyết trong thời gian sớm nhất; quyết định xong em sẽ thông báo lại ngay. Anh/chị cần thêm gì cứ nhắn em nhé.",
     )
     return {"ok": True, "hanh": "enqueue", "item": item, "message": sent.__dict__}
 

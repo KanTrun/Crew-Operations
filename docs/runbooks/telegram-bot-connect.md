@@ -17,9 +17,29 @@ NHIPQUAN_TELEGRAM_WEBHOOK_SECRET=chuoi_bi_mat_tu_chon
 # NHIPQUAN_MSG_BACKEND=telegram
 ```
 
-## 3. Webhook (bắt buộc để nhận tin)
+## 3. Hai chế độ nhận tin — chọn MỘT
 
-Telegram không đẩy tin vào `localhost`. Cần HTTPS công khai trỏ về API (`:8000`).
+### 3a. Long-poll qua worker (mặc định, không cần HTTPS)
+
+Với máy AWS / NAT không có ngõ vào công khai, dùng chế độ này — worker tự gọi
+`getUpdates` mỗi chu kỳ và xử lý tin như webhook:
+
+```env
+NHIPQUAN_MSG_BACKEND=telegram
+NHIPQUAN_TELEGRAM_BOT_TOKEN=123456:ABC...
+```
+
+Chạy đủ dịch vụ `worker` (`docker compose up -d worker`, hoặc Makefile
+`make docker-up`). Worker long-poll 25 giây/lượt, ghi mốc
+`telegram_update_offset` vào KV nên restart không xử lý trùng tin.
+
+> Lưu ý: Telegram chỉ cho **một** trong hai nguồn nhận (webhook hoặc getUpdates).
+> Nếu trước đó đã `setWebhook`, gỡ bỏ trước khi dùng long-poll:
+> `curl "https://api.telegram.org/bot<TOKEN>/deleteWebhook?drop_pending_updates=true"`
+
+### 3b. Webhook (cần HTTPS công khai)
+
+Telegram đẩy tin vào `:8000`. Cần domain công khai trỏ về API.
 
 **Dev với ngrok** (ví dụ):
 
@@ -49,3 +69,5 @@ Giống Zalo: mã trên `/toi` → nhắn bot `/bind <mã>`.
 ## 5. Kiểm
 
 `GET /api/v1/channels/status` → `telegram.connected: true`
+Nhắn bot `xem lịch` — bot trả lời lịch ca của người đã bind: xác nhận cả gửi
+lẫn nhận đều sống.

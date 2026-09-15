@@ -176,6 +176,7 @@ export default function RosterPage() {
   const [nvStatusBusy, setNvStatusBusy] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleMsg, setLifecycleMsg] = useState<string | null>(null);
+  const [icsBusy, setIcsBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [filterKhung, setFilterKhung] = useState("all");
   const [filterViTri, setFilterViTri] = useState("all");
@@ -318,6 +319,31 @@ export default function RosterPage() {
       setError("Không thể xác nhận lịch làm việc.");
     } finally {
       setNvStatusBusy(false);
+    }
+  }
+
+  async function taiLichIcs() {
+    setIcsBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API}/api/v1/lich/ics?download=true&tuan=${currentDisplayWeek}`, {
+        headers: authHeader(),
+      });
+      if (!res.ok) throw new Error("ics_failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lich_tuan_${currentDisplayWeek}.ics`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setLifecycleMsg(`Đã tải lịch tuần ${currentDisplayWeek} dạng iCalendar (.ics).`);
+    } catch {
+      setError("Không tải được tệp lịch .ics. Thử lại; nếu vẫn lỗi báo quản lý kiểm tra phiên đăng nhập.");
+    } finally {
+      setIcsBusy(false);
     }
   }
 
@@ -583,15 +609,15 @@ export default function RosterPage() {
                 {lifecycleBusy ? "Đang lưu…" : nextAction.label}
               </button>
             )}
-            <a
-              href={`${API}/api/v1/lich/ics?download=true`}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
               className="nq-btn px-3 py-1 text-sm bg-neutral-800 text-neutral-200 hover:bg-neutral-700 flex items-center gap-1.5"
+              disabled={icsBusy}
+              onClick={() => void taiLichIcs()}
               title="Tải file lịch iCalendar (.ics) cho Google Calendar / Apple Calendar"
             >
-              <Icon name="export" size={14} /> Xuất lịch (.ics)
-            </a>
+              <Icon name="export" size={14} /> {icsBusy ? "Đang tải…" : "Xuất lịch (.ics)"}
+            </button>
             {lifecycleMsg && (
               <span className="text-sm text-[var(--nq-ok)]">{lifecycleMsg}</span>
             )}

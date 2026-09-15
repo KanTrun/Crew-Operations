@@ -125,10 +125,10 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
               color: "var(--nq-copper)",
             }}
           >
-            <Icon name="cam-nang" size={18} />
+            <Icon name="copilot" size={18} />
           </div>
           <div>
-            <h3 className="text-sm font-bold uppercase text-[var(--nq-fg)]">🤖 {profile.label}</h3>
+            <h3 className="text-sm font-bold uppercase text-[var(--nq-fg)]">{profile.label}</h3>
             <p className="flex items-center gap-1 text-[11px] text-[var(--nq-dim)]">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Sẵn sàng hỗ trợ · AI trả lời kèm đề xuất, người duyệt mới áp dụng
@@ -191,7 +191,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 >
                   {msg.sender === "copilot" && msg.id !== "welcome" && (
                     <span className="mb-1.5 inline-flex items-center gap-1 rounded bg-[var(--nq-bg-elevated)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--nq-copper)]">
-                      🤖 AI{msg.agent_mode === "live" ? " · live" : msg.agent_mode === "replay" ? " · mẫu replay" : ""}
+                      {msg.agent_mode === "live" ? "AI trực tiếp" : msg.agent_mode === "replay" ? "Bản ghi mẫu" : "Trợ lý"}
                     </span>
                   )}
                   {msg.attachments && msg.attachments.length > 0 && (
@@ -253,13 +253,13 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                               key={`cap-${i}`}
                               className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/80 border border-emerald-500/20 text-emerald-300"
                             >
-                              ✓ {cap}
+                              {cap}
                             </li>
                           ))}
                         </ul>
                         {profile.deniedNote ? (
                           <p className="text-[10px] text-zinc-500 mt-1.5 italic">
-                            ⚠ {profile.deniedNote}
+                            {profile.deniedNote}
                           </p>
                         ) : null}
                       </div>
@@ -282,7 +282,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                                 borderColor: `color-mix(in srgb, ${profile.accent} 20%, transparent)`,
                               }}
                             >
-                              📎 {c}
+                              {c}
                             </li>
                           ))}
                         </ul>

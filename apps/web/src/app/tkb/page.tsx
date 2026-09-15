@@ -44,6 +44,15 @@ type ExtractOut = {
 type Nv = { id: string; ten: string };
 
 const THU = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] as const;
+const THU_TEN: Record<string, string> = {
+  T2: "Thứ Hai",
+  T3: "Thứ Ba",
+  T4: "Thứ Tư",
+  T5: "Thứ Năm",
+  T6: "Thứ Sáu",
+  T7: "Thứ Bảy",
+  CN: "Chủ Nhật",
+};
 
 export default function TkbPage() {
   const [token, setToken] = useState("");
@@ -73,9 +82,12 @@ export default function TkbPage() {
   const loadMine = useCallback(() => {
     if (!getToken()) return;
     setLoading(true);
+    // Danh sách nhân viên lấy từ /ops/pickers (mọi role) — không dùng
+    // /lich-tuan (chỉ quản lý) kèm tuần hardcode cũ đã gây lỗi tải → nút
+    // duyệt TKB không chạy sau khi lọc.
     Promise.all([
       apiGet<{ nv_id: string; item: { khoang_ban?: Khoang[] } | null }>("/api/v1/tkb/mine"),
-      apiGet<{ nhan_vien?: Nv[] }>("/api/v1/lich-tuan?tuan=2026-W34").catch(() => ({ nhan_vien: [] })),
+      apiGet<{ nhan_vien?: Nv[] }>("/api/v1/ops/pickers").catch(() => ({ nhan_vien: [] })),
     ])
       .then(([mine, lich]) => {
         setMyNv(mine.nv_id || sessionStorage.getItem("nq_nv") || "");
@@ -186,14 +198,50 @@ export default function TkbPage() {
       </Notice>
 
       {saved && saved.length > 0 ? (
-        <OpsCard eyebrow="Đã lưu" title="Khoảng bận của bạn" count={saved.length} countLabel="khung">
-          <ul className="nq-tkb-list">
-            {saved.map((k, i) => (
-              <li key={`${k.thu}-${k.start}-${i}`}>
-                {k.thu} · {k.start}–{k.end}
-              </li>
-            ))}
-          </ul>
+        <OpsCard
+          eyebrow="Đã lưu"
+          title="Lưới lịch bận đã gắn"
+          count={saved.length}
+          countLabel="khung bận"
+        >
+          <p className="mb-3 text-sm text-[var(--nq-fg)]">
+            Các khung bên dưới sẽ được AvoidConflict khi xếp lịch lần tới — bấm «Xóa khung» để bỏ.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {THU.map((t) => {
+              const khungTrongNgay = saved.filter((k) => k.thu === t);
+              if (khungTrongNgay.length === 0) {
+                return (
+                  <div
+                    key={t}
+                    className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-3 opacity-70"
+                  >
+                    <p className="text-xs font-bold uppercase tracking-wide text-neutral-300">
+                      {THU_TEN[t]}
+                    </p>
+                    <p className="mt-1 text-xs text-neutral-500">Rảnh cả ngày</p>
+                  </div>
+                );
+              }
+              return (
+                <div key={t} className="rounded-lg border border-amber-700/50 bg-amber-950/20 p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-amber-300">
+                    {THU_TEN[t]}
+                  </p>
+                  <ul className="mt-1.5 space-y-1">
+                    {khungTrongNgay.map((k, i) => (
+                      <li
+                        key={`${k.thu}-${k.start}-${i}`}
+                        className="rounded bg-neutral-900/80 px-2 py-1 font-mono text-xs text-neutral-200"
+                      >
+                        {k.start} – {k.end}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
         </OpsCard>
       ) : null}
 
@@ -257,44 +305,68 @@ export default function TkbPage() {
             </StatusChip>
           </div>
           {hint ? <Alert kind="info">{hint}</Alert> : null}
-          <div className="nq-tkb-edit">
-            {rows.map((r, i) => (
-              <div key={i} className="nq-tkb-row">
-                <select className={inputClassName} value={r.thu} onChange={(e) => updateRow(i, { thu: e.target.value })}>
-                  {THU.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className={inputClassName}
-                  type="time"
-                  value={r.start}
-                  onChange={(e) => updateRow(i, { start: e.target.value })}
-                />
-                <span className="text-[var(--nq-fg)]">→</span>
-                <input
-                  className={inputClassName}
-                  type="time"
-                  value={r.end}
-                  onChange={(e) => updateRow(i, { end: e.target.value })}
-                />
-                <Btn
-                  variant="ghost"
-                  onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}
+
+          {/* Lưới chi tiết theo ngày — mỗi khung hiện đầy đủ thứ, giờ, nút xóa */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {THU.map((t) => {
+              const khungTrongNgay = rows.map((r, i) => ({ ...r, _i: i })).filter((r) => r.thu === t);
+              return (
+                <div
+                  key={t}
+                  className={`rounded-lg border p-3 space-y-2 ${
+                    khungTrongNgay.length > 0
+                      ? "border-amber-700/50 bg-amber-950/20"
+                      : "border-neutral-800 bg-neutral-950/50"
+                  }`}
                 >
-                  Xóa
-                </Btn>
-              </div>
-            ))}
-            <Btn
-              variant="ghost"
-              onClick={() => setRows((prev) => [...prev, { thu: "T2", start: "13:00", end: "17:00" }])}
-            >
-              Thêm khung
-            </Btn>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold uppercase tracking-wide text-[var(--nq-fg)]">
+                      {THU_TEN[t]}
+                    </p>
+                    <button
+                      type="button"
+                      className="rounded px-1.5 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-950"
+                      title={`Thêm khung bận cho ${THU_TEN[t]}`}
+                      onClick={() => setRows((prev) => [...prev, { thu: t, start: "13:00", end: "17:00" }])}
+                    >
+                      + Khung
+                    </button>
+                  </div>
+                  {khungTrongNgay.length === 0 ? (
+                    <p className="text-xs text-neutral-500">Không có khung bận</p>
+                  ) : (
+                    khungTrongNgay.map((r) => (
+                      <div key={r._i} className="flex items-center gap-1.5">
+                        <input
+                          className="nq-input w-full text-xs"
+                          type="time"
+                          value={r.start}
+                          onChange={(e) => updateRow(r._i, { start: e.target.value })}
+                          aria-label={`Giờ bắt đầu bận ${THU_TEN[t]}`}
+                        />
+                        <span className="text-[var(--nq-fg)] text-xs">đến</span>
+                        <input
+                          className="nq-input w-full text-xs"
+                          type="time"
+                          value={r.end}
+                          onChange={(e) => updateRow(r._i, { end: e.target.value })}
+                          aria-label={`Giờ kết thúc bận ${THU_TEN[t]}`}
+                        />
+                        <Btn
+                          variant="ghost"
+                          title={`Xóa khung bận ${THU_TEN[t]} ${r.start}–${r.end}`}
+                          onClick={() => setRows((prev) => prev.filter((_, j) => j !== r._i))}
+                        >
+                          Xóa
+                        </Btn>
+                      </div>
+                    ))
+                  )}
+                </div>
+              );
+            })}
           </div>
+
           <div className="mt-6 pb-24 md:pb-8">
             <Btn variant="primary" disabled={busy || rows.length === 0} onClick={xacNhan}>
               Xác nhận gắn TKB

@@ -671,6 +671,168 @@ a:focus-visible {
   color: var(--nq-fg);
 }
 
+/* ── Cẩm nang dạng cuốn sách Luật ──
+   Mỗi luật trình bày như một điều luật: số điều lớn cột trái,
+   thân điều bên phải, đường phân cách giữa các điều. */
+
+.nq-lawbook {
+  display: grid;
+  gap: var(--nq-s3, 1rem);
+}
+
+.nq-lawbook__toc {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--nq-line);
+  border-left: 4px solid var(--nq-copper);
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-bg-elevated);
+}
+
+.nq-lawbook__toc-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.62rem;
+  font-family: var(--nq-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--nq-ink-muted);
+}
+
+.nq-lawbook__toc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.nq-lawbook__toc-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: var(--nq-fg);
+}
+
+.nq-lawbook__toc-count {
+  font-family: var(--nq-font-mono);
+  font-weight: 700;
+  color: var(--nq-copper);
+}
+
+.nq-lawbook__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: nq-dieu;
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--nq-line);
+}
+
+.nq-lawbook__dieu {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 1rem 1.25rem;
+  padding: 1.1rem 0.5rem;
+  border-bottom: 1px solid var(--nq-line);
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.nq-lawbook__dieu:hover {
+  background: color-mix(in srgb, var(--nq-copper) 4%, transparent);
+}
+
+.nq-lawbook__dieu--open {
+  background: color-mix(in srgb, var(--nq-copper) 7%, transparent);
+}
+
+.nq-lawbook__dieu-so {
+  margin: 0;
+  font-family: var(--nq-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--nq-copper);
+  line-height: 1.5;
+}
+
+.nq-lawbook__dieu-head {
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+}
+
+.nq-lawbook__dieu-text {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--nq-fg);
+}
+
+.nq-lawbook__dieu--open .nq-lawbook__dieu-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.nq-lawbook__dieu--open .nq-lawbook__dieu-detail .nq-lawbook__dieu-text {
+  display: none;
+}
+
+.nq-lawbook__dieu-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nq-lawbook__dieu-note {
+  font-size: 0.72rem;
+  color: var(--nq-ink-muted);
+  font-family: var(--nq-font-mono);
+}
+
+.nq-lawbook__dieu-toggle {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-family: var(--nq-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--nq-copper);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  justify-self: start;
+}
+
+.nq-lawbook__dieu-toggle:hover {
+  color: var(--nq-fg);
+}
+
+.nq-lawbook__dieu-detail {
+  grid-column: 1 / -1;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--nq-line);
+}
+
+@media (max-width: 640px) {
+  .nq-lawbook__dieu {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.4rem;
+  }
+
+  .nq-lawbook__dieu-so {
+    font-size: 0.8rem;
+  }
+}
+
 .nq-nguoi-grid {
   display: grid;
   gap: var(--nq-s2);

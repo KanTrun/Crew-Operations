@@ -32,13 +32,6 @@ type Luat = { id: string; cau?: string; trang_thai: string };
 
 type GoiY = { label: string; q: string };
 
-const GOI_Y_CO_DINH: GoiY[] = [
-  { label: "Nhiệt độ tủ lạnh", q: "Nhiệt độ tủ lạnh bao nhiêu là được?" },
-  { label: "Kiểm kê mở quán", q: "Mở quán phải kiểm kê những gì?" },
-  { label: "Bồn rửa", q: "Bồn rửa mấy giờ phải vệ sinh?" },
-  { label: "Đặt sữa tươi", q: "Khi nào phải đặt thêm sữa tươi?" },
-];
-
 const BUOC_TEN: Record<string, string> = {
   nhiet_do_tu_lanh: "Ghi nhiệt độ tủ lạnh",
   nhiet_do_tu_dong: "Ghi nhiệt độ tủ đông",
@@ -92,13 +85,15 @@ export default function SopPage() {
   }, [token]);
 
   const goiY = useMemo(() => {
-    const fromLuat: GoiY[] = luat.slice(0, 2).map((l) => {
+    // Gợi ý chỉ sinh từ luật đang hiệu lực của quán — không dùng danh sách
+    // gợi ý cố định cũ (đã lỗi thời sau khi dữ liệu quán thay đổi).
+    const fromLuat: GoiY[] = luat.map((l) => {
       const cau = safeText(l.cau, "");
       return { label: chipLabel(cau, 32), q: cau };
     });
     const seen = new Set<string>();
     const out: GoiY[] = [];
-    for (const item of [...fromLuat, ...GOI_Y_CO_DINH]) {
+    for (const item of fromLuat) {
       if (!item.q || seen.has(item.q)) continue;
       seen.add(item.q);
       out.push(item);
@@ -180,7 +175,7 @@ export default function SopPage() {
 
         {goiY.length > 0 ? (
           <div className="nq-sop-copilot__suggest">
-            <span className="nq-sop-copilot__suggest-label">Gợi ý</span>
+            <span className="nq-sop-copilot__suggest-label">Luật hiệu lực của quán</span>
             <div className="nq-sop-copilot__suggest-row" role="list">
               {goiY.map((item) => (
                 <button
