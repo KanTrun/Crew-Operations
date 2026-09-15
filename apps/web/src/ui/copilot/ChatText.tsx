@@ -6,9 +6,10 @@ import React from "react";
  * Render text chat an toàn, không lỗi phông/định dạng.
  *
  * - Escape HTML trước (chống XSS khi LLM/backend trả markup).
- * - Hỗ trợ markdown nhẹ: `**bold**`, `*italic*`, `` `code` ``.
+ * - Hỗ trợ markdown nhẹ: `*italic*`, `` `code` ``.
  * - Giữ xuống dòng `\n` bằng className `whitespace-pre-wrap`.
  * - Ký tự đặc biệt (→, ⚠, ✨, 📎...) render nguyên vẹn — không bị break.
+ * - Không render **bold** để tránh hiển thị markdown trong chat.
  */
 
 /** Escape các ký tự HTML nguy hiểm. */
@@ -22,7 +23,6 @@ function escapeHtml(s: string): string {
 }
 
 const CODE_RE = /(`+)([^`]*?)\1/g;
-const BOLD_RE = /(\*\*)([^*]+?)\1/g;
 const ITALIC_RE = /(\*)([^*]+?)\1/g;
 
 /**
@@ -33,16 +33,14 @@ function renderInline(text: string): string {
   let out = text;
   // code trước (tránh conflict với * trong code)
   out = out.replace(CODE_RE, (_m, _tick, code) => `<code>${code}</code>`);
-  // bold
-  out = out.replace(BOLD_RE, (_m, _star, inner) => `<strong>${inner}</strong>`);
-  // italic (không đụng vào đã thành <strong>/<code>)
+  // italic (không đụng vào đã thành <code>)
   out = out.replace(ITALIC_RE, (_m, _star, inner) => `<em>${inner}</em>`);
   return out;
 }
 
 export function ChatText({ text }: { text: string }) {
   // Nếu không có markdown đặc biệt, render thuần (an toàn, nhanh).
-  const hasMarkdown = /\*\*|\*|`/.test(text);
+  const hasMarkdown = /\*|`/.test(text);
 
   if (!hasMarkdown) {
     return <>{text}</>;

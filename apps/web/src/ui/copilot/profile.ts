@@ -59,11 +59,11 @@ const MANAGER: CopilotProfile = {
   persona: "quan_ly",
   accent: "#22d3ee", // cyan-400
   quickPrompts: [
-    "Xếp lịch tuần sau, ưu tiên Lan ca sáng",
-    "Xem xét duyệt đổi ca cho bạn Minh",
+    "Xếp lịch tuần sau, ưu tiên ca sáng cho nhân viên A",
+    "Xem xét duyệt đổi ca ngày mai",
     "Tóm tắt bản tin sáng hôm nay",
     "Kiểm tra tồn kho và cảnh báo hết hàng",
-    "Đề xuất luật mới từ các lần sửa của chị",
+    "Đề xuất quy định mới từ các lần sửa gần đây",
   ],
   greeting:
     "Chào anh/chị. Em hỗ trợ xếp lịch, duyệt đổi ca, bản tin, quy trình, hao hụt, đề xuất quy định và kiểm kê. Mọi thay đổi đều chờ anh/chị duyệt trước khi áp dụng.",
@@ -73,7 +73,7 @@ const MANAGER: CopilotProfile = {
     "Xếp lịch tuần (solver)",
     "Duyệt đổi ca",
     "Bản tin + quy trình + hao hụt",
-    "Đề xuất luật mới",
+    "Đề xuất quy định mới",
     "Kiểm kê tồn kho",
   ],
   deniedNote:
@@ -87,8 +87,8 @@ const OWNER: CopilotProfile = {
   accent: "#a78bfa", // violet-400
   quickPrompts: [
     "Tóm tắt bản tin sáng hôm nay",
-    "Xếp lịch tuần sau, ưu tiên Lan ca sáng",
-    "Xem xét duyệt đổi ca cho bạn Minh",
+    "Xếp lịch tuần sau, ưu tiên ca sáng cho nhân viên A",
+    "Xem xét duyệt đổi ca ngày mai",
     "Báo cáo hao hụt sữa hôm nay",
     "Quy trình mở quán gồm các bước nào?",
   ],

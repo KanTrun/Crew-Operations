@@ -342,6 +342,7 @@ class InboxBody(BaseModel):
     ca_id: str | None = None
     doi_tac_nv_id: str | None = None
     ap_dat: bool = False
+    ly_do: str | None = Field(default=None, max_length=500)
 
 
 class SmartApproveBody(BaseModel):
@@ -413,10 +414,12 @@ async def lich_transition(
 def lich_ics(
     authorization: Annotated[str | None, Header()] = None,
     download: bool = Query(default=False),
+    tuan: str | None = Query(default=None, description="Tuần ISO muốn xuất, vd 2026-W37"),
 ) -> Any:
-    _require_role(authorization)
+    s = _require_role_session(authorization)
     phan = _phan()
-    tuan_iso = str(_life().get("tuan_iso") or "2026-W01")
+    # Tuần hiển thị trên /roster được truyền qua ?tuan= — mặc định tuần lifecycle.
+    tuan_iso = (tuan or "").strip() or str(_life().get("tuan_iso") or "2026-W01")
     try:
         y_str, w_str = tuan_iso.split("-W")
         iso_year, iso_week = int(y_str), int(w_str)
@@ -425,11 +428,12 @@ def lich_ics(
 
     seed_data = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
     ca_meta_map = {c["id"]: c for c in seed_data.get("ca_mau_21", [])}
+    ten_map = {nv["id"]: nv.get("ten") or nv["id"] for nv in seed_data.get("nhan_vien", [])}
     now_stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//NHIPQUAN//CA//VI"]
     for ca_id, nvs in phan.items():
-        uid = f"{ca_id}_{tuan_iso}@nhipquan.local"
+        uid = f"{ca_id}_{tuan_iso}_{s['nv_id']}@nhipquan.local"
         c_meta = ca_meta_map.get(ca_id, {})
         day_offset = int(c_meta.get("ngay_offset", 1))
         bat_dau = str(c_meta.get("bat_dau", "07:00")).replace(":", "")
@@ -442,13 +446,15 @@ def lich_ics(
             d_str = "20260101"
         dtstart = f"{d_str}T{bat_dau}00"
         dtend = f"{d_str}T{ket_thuc}00"
+        ten_list = " · ".join(ten_map.get(nv, nv) for nv in nvs)
+        summary = _ics_escape(f"Ca {ca_id} — {ten_list}" if ten_list else f"Ca {ca_id}")
         lines += [
             "BEGIN:VEVENT",
             f"UID:{uid}",
             f"DTSTAMP:{now_stamp}",
             f"DTSTART:{dtstart}",
             f"DTEND:{dtend}",
-            f"SUMMARY:Ca {ca_id} {' '.join(nvs)}",
+            f"SUMMARY:{summary}",
             "END:VEVENT",
         ]
     lines.append("END:VCALENDAR")
@@ -457,15 +463,36 @@ def lich_ics(
         return Response(
             content=ics_text,
             media_type="text/calendar; charset=utf-8",
-            headers={"Content-Disposition": 'attachment; filename="lich_tuan.ics"'},
+            headers={
+                "Content-Disposition": f'attachment; filename="lich_tuan_{tuan_iso}.ics"',
+            },
         )
-    return {"ics": ics_text, "nguon": "quan"}
+    return {"ics": ics_text, "nguon": "quan", "tuan_iso": tuan_iso}
 
 
 @router.get("/api/v1/audit")
 def audit_get(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_chu_quan(authorization)
     return {"items": audit_list(), "nguon": "quan"}
+
+
+def _ics_escape(text: str) -> str:
+    """Escape ký tự theo RFC 5545 TEXT: backslash, chấm phẩy, phẩy, xuống dòng."""
+    return (
+        text.replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\n", "\\n")
+    )
+
+
+def _require_role_session(authorization: str | None) -> dict[str, Any]:
+    """Yêu cầu đăng nhập và trả về session (để chèn người duyệt vào UID ICS)."""
+    role = _require_role(authorization)
+    from ca_api.persist import session as auth_session
+
+    s = auth_session(authorization)
+    return s if s else {"nv_id": role, "role": role}
 
 
 def _get_swap_candidates_for_item(it: dict[str, Any]) -> list[dict[str, Any]]:
@@ -558,6 +585,8 @@ def inbox_decide(
                 if body.quyet_dinh not in {"duyet", "tu_choi"}:
                     raise HTTPException(status_code=400, detail="quyet_dinh")
                 it["trang_thai"] = body.quyet_dinh
+                if body.ly_do and str(body.ly_do).strip():
+                    it["ly_do_quyet"] = str(body.ly_do).strip()[:500]
                 if body.quyet_dinh == "duyet":
                     y = str(it.get("y_dinh") or "")
                     rb = it.get("rang_buoc") or {}
