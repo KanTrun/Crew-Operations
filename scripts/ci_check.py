@@ -41,8 +41,28 @@ def run_step(name: str, cmd: list[str], env_extra: dict[str, str] | None = None)
     return True
 
 
+def find_python() -> str:
+    if sys.version_info >= (3, 12):  # noqa: UP036
+        return sys.executable
+    import shutil
+    py_launcher = shutil.which("py")
+    if py_launcher:
+        try:
+            res = subprocess.run(
+                [py_launcher, "-3.12", "-c", "import sys; print(sys.executable)"],
+                capture_output=True,
+                text=True,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip()
+        except Exception:
+            pass
+    return sys.executable
+
+
 def main() -> int:
-    python_cmd = sys.executable
+    python_cmd = find_python()
+    print(f"🐍 Sử dụng Python runtime: {python_cmd}")
 
     steps = [
         (
