@@ -38,6 +38,7 @@ from ca_agents.clients.camoufox_client import CamoufoxUnavailable
 from ca_agents.sources.delivery_camoufox_source import scrape_delivery_stores_camoufox
 from ca_agents.sources.gmaps_menu_source import scrape_gmaps_menu_images_camoufox
 from ca_agents.sources.gmaps_serpapi_source import fetch_gmaps_competitors_serpapi
+from ca_agents.sources.shopeefood_serpapi_source import fetch_shopeefood_competitors_serpapi
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +170,27 @@ def run_catchment_price_survey(
 
         fetcher = _dine_in_fetcher
     else:
-        fetcher = scrape_delivery_stores_camoufox
+        def _delivery_fetcher(lat: float, lng: float, kw: str, r: float) -> list[StoreCandidate]:
+            # Thử SerpApi trước (trả JSON sạch, không captcha)
+            try:
+                candidates = fetch_shopeefood_competitors_serpapi(lat, lng, kw, r)
+                if candidates:
+                    logger.info("SerpApi ShopeeFood trả về %d quán", len(candidates))
+                    return candidates
+            except Exception as exc:
+                logger.info("SerpApi ShopeeFood không khả dụng (%s), chuyển fallback Camoufox", exc)
+            
+            # Fallback sang Camoufox nếu SerpApi không khả dụng
+            try:
+                return scrape_delivery_stores_camoufox(lat, lng, kw, r)
+            except CamoufoxUnavailable:
+                logger.warning("Camoufox không khả dụng cho delivery scraping")
+                raise
+            except Exception as exc:
+                logger.warning("Scrape delivery thất bại: %s", exc)
+                return []
+        
+        fetcher = _delivery_fetcher
 
     try:
         raw_stores = fetcher(

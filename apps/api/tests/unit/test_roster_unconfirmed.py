@@ -130,3 +130,28 @@ def test_post_nv_self_confirm() -> None:
     # Check that status store now has minh's nv_id confirmed
     status_store = kv_get("roster_nv_status", {})
     assert status_store.get(tuan, {}).get("nv_03") == "xac_nhan"
+
+
+def test_post_nv_status_batch_all() -> None:
+    tuan = "2026-W36"
+    kv_set("roster_nv_status", {})
+    # Put multiple assignments
+    kv_set("phan_cong", {"1": ["nv_01", "nv_02"], "2": ["nv_03"]})
+
+    # Manager confirms all staff in one click
+    res = client.post(
+        "/api/v1/lich-tuan/nv-status",
+        json={"tuan_iso": tuan, "nv_id": "all", "hanh_dong": "xac_nhan"},
+        headers=headers(client, "lan"),
+    )
+    assert res.status_code == 200
+    assert res.json()["ok"] is True
+
+    # Roster should now have empty chua_xac_nhan
+    r = client.get(f"/api/v1/lich-tuan?tuan={tuan}", headers=headers(client, "lan"))
+    body = r.json()
+    assert len(body.get("chua_xac_nhan", [])) == 0
+    assert body["nv_status_map"].get("nv_01") == "xac_nhan"
+    assert body["nv_status_map"].get("nv_02") == "xac_nhan"
+    assert body["nv_status_map"].get("nv_03") == "xac_nhan"
+

@@ -43,7 +43,7 @@ class FacebookTokenChecker:
         try:
             # Debug token to see permissions
             response = requests.get(
-                "https://graph.instagram.com/debug_token",
+                "https://graph.facebook.com/debug_token",
                 params={"input_token": self.page_token, "access_token": self.page_token},
                 timeout=10,
             )

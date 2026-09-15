@@ -9,6 +9,8 @@ try:
 except ImportError:
     from datetime import datetime, timedelta, timezone
     UTC = timezone.utc
+# Per-user rate limiter: max 30 requests/60s sliding window.
+import collections as _collections
 from typing import Any
 
 from ca_contracts import (
@@ -28,8 +30,6 @@ from ca_agents.ag_copilot.tool_registry import (
 )
 from ca_agents.ag_supervisor import supervise_outgoing_response
 
-# Per-user rate limiter: max 30 requests/60s sliding window.
-import collections as _collections
 _RATE_WINDOWS: dict[str, _collections.deque[float]] = {}
 _RATE_LIMIT = 30
 _RATE_WINDOW_S = 60.0

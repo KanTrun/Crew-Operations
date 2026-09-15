@@ -795,6 +795,16 @@ def _scrape_threads_smart(
     # BROWSER mode: Camoufox first (plan §3.5) — rớt tầng về chuỗi cũ nếu fail.
     if scrape_mode == "browser":
         try:
+            if not keyword.strip():
+                try:
+                    from ca_agents.sources.threads_trending_source import scrape_threads_trending
+
+                    t_items = scrape_threads_trending(count=count, nguon_goc=nguon_goc)
+                    if t_items:
+                        return cast(list[TrendItem], t_items)
+                except Exception as te:  # noqa: BLE001
+                    logger.warning("threads_browser_trending_failed_trying_search: %s", te)
+
             from ca_agents.sources.threads_camoufox_source import scrape_threads_camoufox
 
             items = scrape_threads_camoufox(
@@ -894,6 +904,18 @@ def _scrape_threads_smart(
             from ca_agents.clients.camoufox_client import is_available
 
             if is_available():
+                if not keyword.strip():
+                    try:
+                        from ca_agents.sources.threads_trending_source import (
+                            scrape_threads_trending,
+                        )
+
+                        t_items = scrape_threads_trending(count=count, nguon_goc=nguon_goc)
+                        if t_items:
+                            return cast(list[TrendItem], t_items)
+                    except Exception as te:  # noqa: BLE001
+                        logger.warning("threads_camoufox_trending_failed_trying_search: %s", te)
+
                 from ca_agents.sources.threads_camoufox_source import scrape_threads_camoufox
 
                 items = scrape_threads_camoufox(

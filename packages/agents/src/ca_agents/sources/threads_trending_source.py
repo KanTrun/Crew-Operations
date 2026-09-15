@@ -38,6 +38,8 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
+from ca_contracts.threads_trending import ThreadsTrendingItem
+
 from ca_agents.clients.camoufox_client import scrape_page
 from ca_agents.sources.threads_direct_source import _detect_category
 from ca_agents.sources.threads_trending_lifecycle import (
@@ -46,7 +48,6 @@ from ca_agents.sources.threads_trending_lifecycle import (
     tinh_trang_thai_chu_ky_sau,
 )
 from ca_agents.sources.tiktok_camoufox_source import _parse_count
-from ca_contracts.threads_trending import ThreadsTrendingItem
 
 # Map lifecycle (plan §4.2) → vong_doi TrendItem (từ vựng ag_trend).
 _LIFECYCLE_TO_VONG_DOI = {

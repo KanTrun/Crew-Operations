@@ -859,7 +859,16 @@ async def post_nv_status(
 
     def mut_status(store: dict[str, Any]) -> dict[str, Any]:
         week_data = store.setdefault(body.tuan_iso, {})
-        if body.hanh_dong == "dat_lai":
+        if body.nv_id == "all":
+            all_nvs = list_nhan_vien_ops()
+            for nv in all_nvs:
+                nid = str(nv.get("id") or "")
+                if nid:
+                    if body.hanh_dong == "dat_lai":
+                        week_data.pop(nid, None)
+                    else:
+                        week_data[nid] = body.hanh_dong
+        elif body.hanh_dong == "dat_lai":
             week_data.pop(body.nv_id, None)
         else:
             week_data[body.nv_id] = body.hanh_dong
@@ -870,8 +879,11 @@ async def post_nv_status(
     if body.hanh_dong in {"du_bi", "bo_ca"}:
         def mut_pc(cur: dict[str, Any]) -> dict[str, Any]:
             for cid, nv_ids in list(cur.items()):
-                if isinstance(nv_ids, list) and body.nv_id in nv_ids:
-                    cur[cid] = [x for x in nv_ids if x != body.nv_id]
+                if isinstance(nv_ids, list):
+                    if body.nv_id == "all":
+                        cur[cid] = []
+                    elif body.nv_id in nv_ids:
+                        cur[cid] = [x for x in nv_ids if x != body.nv_id]
             return cur
 
         kv_mutate("phan_cong", mut_pc, {})
@@ -884,9 +896,13 @@ async def post_nv_status(
                     pc = out_data.get("phan_cong", {})
                     changed = False
                     for cid, nv_ids in pc.items():
-                        if isinstance(nv_ids, list) and body.nv_id in nv_ids:
-                            pc[cid] = [x for x in nv_ids if x != body.nv_id]
-                            changed = True
+                        if isinstance(nv_ids, list):
+                            if body.nv_id == "all":
+                                pc[cid] = []
+                                changed = True
+                            elif body.nv_id in nv_ids:
+                                pc[cid] = [x for x in nv_ids if x != body.nv_id]
+                                changed = True
                     if changed:
                         lich_out.write_text(
                             json.dumps(out_data, ensure_ascii=False, indent=2),
@@ -897,7 +913,7 @@ async def post_nv_status(
 
         def mut_pins(cur: dict[str, Any]) -> dict[str, Any]:
             for k in list(cur.keys()):
-                if f"|{body.nv_id}" in str(k):
+                if body.nv_id == "all" or f"|{body.nv_id}" in str(k):
                     cur[k] = False
             return cur
 
