@@ -167,6 +167,7 @@ def _attempt_once(
     url: str,
     extractor: Callable[[Any], Any],
     timeout_ms: int,
+    user_data_dir: str | None = None,
 ) -> Any:
     """1 lần launch → goto → extract → close.
 
@@ -178,14 +179,22 @@ def _attempt_once(
     Gọi __enter__/__exit__ thủ công thay vì `with` để lỗi extractor không
     rơi vào nhánh classify launch — browser vẫn luôn đóng trong finally.
     """
+    launch_kwargs: dict[str, Any] = {
+        "headless": _is_headless(),
+        "geoip": True,
+        "humanize": True,
+    }
+    if user_data_dir:
+        launch_kwargs["user_data_dir"] = user_data_dir
+
     try:
-        cm = camoufox_cls(headless=_is_headless(), geoip=True, humanize=True)
+        cm = camoufox_cls(**launch_kwargs)
         browser = cm.__enter__()
     except Exception as e:  # noqa: BLE001
         raise CamoufoxUnavailable(_classify_launch_error(e)) from e
 
     try:
-        page = browser.new_page()
+        page = browser.new_page() if hasattr(browser, "new_page") else browser
         try:
             page.goto(url, timeout=timeout_ms)
         except Exception as e:  # noqa: BLE001
@@ -202,6 +211,7 @@ def scrape_page(
     url: str,
     extractor: Callable[[Any], Any],
     timeout_s: int | None = None,
+    user_data_dir: str | None = None,
 ) -> Any:
     """
     Launch Camoufox → goto url → chạy extractor(page) → đóng browser.
@@ -217,9 +227,10 @@ def scrape_page(
     rớt tầng ngay.
 
     Args:
-        url:       trang cần cào (vd: https://www.tiktok.com/search?q=...).
-        extractor: hàm nhận Playwright page, trả dữ liệu đã extract.
-        timeout_s: timeout goto + extract (default env CA_CAMOUFOX_TIMEOUT_S=45).
+        url:           trang cần cào (vd: https://www.tiktok.com/search?q=...).
+        extractor:     hàm nhận Playwright page, trả dữ liệu đã extract.
+        timeout_s:     timeout goto + extract (default env CA_CAMOUFOX_TIMEOUT_S=45).
+        user_data_dir: đường dẫn profile lưu session đăng nhập (optional).
 
     Raises:
         CamoufoxUnavailable: chưa cài / chưa fetch / thiếu system deps / bị tắt qua env.
@@ -239,6 +250,7 @@ def scrape_page(
         ) from e
 
     effective_timeout = _get_timeout_s() if timeout_s is None else max(5, timeout_s)
+    effective_profile = user_data_dir or os.getenv("CA_THREADS_USER_DATA_DIR") or os.getenv("CA_CAMOUFOX_USER_DATA_DIR")
     semaphore = _get_semaphore()
 
     last_goto_error: _GotoError | None = None
@@ -246,7 +258,13 @@ def scrape_page(
         # Concurrency guard: chờ slot — không launch vô hạn browser song song (OOM).
         with semaphore:
             try:
-                return _attempt_once(Camoufox, url, extractor, effective_timeout * 1000)
+                return _attempt_once(
+                    Camoufox,
+                    url,
+                    extractor,
+                    effective_timeout * 1000,
+                    user_data_dir=effective_profile,
+                )
             except _GotoError as goto_err:
                 last_goto_error = goto_err
         # Backoff NGOÀI semaphore — không giữ slot khi chờ retry.

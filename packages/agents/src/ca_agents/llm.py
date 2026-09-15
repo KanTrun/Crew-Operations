@@ -146,10 +146,14 @@ def parse_json_object(text: str) -> dict[str, Any] | None:
     except json.JSONDecodeError:
         start = raw.find("{")
         end = raw.rfind("}")
-        if start < 0 or end <= start:
+        if start < 0 or end <= start or end - start > 10_000:
+            return None
+        candidate = raw[start : end + 1]
+        # Reject if braces are unbalanced (likely prose, not JSON).
+        if candidate.count("{") != candidate.count("}"):
             return None
         try:
-            val = json.loads(raw[start : end + 1])
+            val = json.loads(candidate)
         except json.JSONDecodeError:
             return None
         return val if isinstance(val, dict) else None
