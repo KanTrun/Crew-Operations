@@ -20,11 +20,12 @@ from typing import Annotated, Any, cast
 from ca_agents.ag_fbpage import (
     FBMessageInput,
     FBMessageOutput,
+    draft_llm_reply,
     process_fb_message,
 )
 from ca_agents.ag_fbpage_memory import extract_cskh_golden_pair
 from ca_agents.ag_msg import classify
-from ca_agents.ag_supervisor import run_nightly_cskh_reflection
+from ca_agents.ag_supervisor import run_nightly_cskh_reflection, supervise_outgoing_response
 from ca_agents.customer_memory import (
     extract_customer_preferences,
     merge_customer_profile,
@@ -71,6 +72,7 @@ from ca_api.persist import (
     fb_review_list,
     fb_review_release_claim,
     fb_review_transition_pending,
+    fb_review_update_proposed,
     fb_stats,
     fb_try_claim_event,
     fb_try_claim_scoped_event,
@@ -544,6 +546,14 @@ async def facebook_webhook(request: Request) -> Any:
     body_bytes = await request.body()
     sig_header = request.headers.get("x-hub-signature-256", "")
     if not verify_fb_webhook_signature(body_bytes, sig_header):
+        # APP_SECRET thiếu là cấu hình phổ biến nhất: chặn 100% webhook thật
+        # (fail-closed an toàn) nhưng cần log rõ để vận hành nhận ra ngay.
+        if not os.environ.get("NHIPQUAN_FB_APP_SECRET", "").strip():
+            LOG.warning(
+                "FB webhook rejected: NHIPQUAN_FB_APP_SECRET is EMPTY — "
+                "add it to .env (Meta App Dashboard → App Settings → Basic → App Secret) "
+                "then restart the stack, otherwise ALL real Meta events get 403."
+            )
         raise HTTPException(status_code=403, detail="invalid_signature")
 
     if _page_mode() != "live" or not os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip():
@@ -857,6 +867,25 @@ async def facebook_webhook(request: Request) -> Any:
                 external_user_name=str(author.get("name") or "") or None,
             )
             if moderation.get("action") not in {"block_silent", "block_polite"}:
+                # Comment công khai: LLM sinh bản nháp thông minh thay cho template
+                # cứng, nhưng vẫn 100% qua QL duyệt tay (AUTO_THRESHOLD_COMMENT=0.95,
+                # policy comment luôn queue_review — ADR-008).
+                if agent_mode() == "live" and "review_id" in moderation and moderation.get("review_id"):
+                    try:
+                        comment_draft = await draft_llm_reply(
+                            text=text,
+                            public_context=public_ctx,
+                            is_comment=True,
+                        )
+                        if comment_draft:
+                            sup = supervise_outgoing_response(text, comment_draft)
+                            if sup.is_approved and sup.sanitized_response.strip():
+                                fb_review_update_proposed(
+                                    int(moderation["review_id"]),
+                                    proposed_response=sup.sanitized_response.strip(),
+                                )
+                    except Exception:
+                        pass
                 n += 1
     return {"ok": True, "n": n}
 

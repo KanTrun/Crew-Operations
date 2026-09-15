@@ -2150,6 +2150,18 @@ def fb_review_link_generation(item_id: int, *, generation_id: str) -> None:
         )
 
 
+def fb_review_update_proposed(item_id: int, *, proposed_response: str) -> bool:
+    """Nâng cấp bản nháp trong hàng duyệt (vd LLM thay template) — chỉ khi pending."""
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            "UPDATE fb_review_queue SET proposed_response=? "
+            "WHERE id=? AND status='pending'",
+            (proposed_response, item_id),
+        )
+        return bool(cur.rowcount == 1)
+
+
 def fb_review_transition_pending(item_id: int, *, status: str) -> bool:
     """Atomically claim a pending review item for one terminal workflow."""
     init_db()
