@@ -15,6 +15,7 @@ Luồng (kế hoạch §3.3 + bản vá §6.2):
 from __future__ import annotations
 
 import os
+import re
 import uuid
 from datetime import timedelta
 from typing import Any
@@ -27,9 +28,9 @@ except ImportError:
 
 from ca_agents.ag_fbpage import build_human_response, detect_customer_psychology
 from ca_agents.ag_supervisor import supervise_outgoing_response
-from ca_agents.fb_policy import PolicyContext, decide
+from ca_agents.fb_policy import FINANCIAL_KEYWORDS, PolicyContext, decide
 from ca_agents.fb_rate_limiter import SlidingWindowRateLimiter
-from ca_agents.guardrails import check_input_guardrail
+from ca_agents.guardrails import check_input_guardrail, normalize_text
 from ca_contracts import FbPolicyAction, PolicyDecision
 
 from ca_api.persist import (
@@ -38,27 +39,80 @@ from ca_api.persist import (
     fb_blacklist_check,
     fb_escalation_add,
     fb_review_insert,
+    kv_get,
+    kv_set,
 )
 
 _RATE_LIMITER = SlidingWindowRateLimiter()
+_FB_POLICY_KV = "fb_policy_runtime"
+
+
+def _policy_runtime() -> dict[str, Any]:
+    raw = kv_get(_FB_POLICY_KV, {})
+    return raw if isinstance(raw, dict) else {}
 
 
 def fb_auto_send_enabled() -> bool:
     """Feature flag — kế hoạch §5.5. Mặc định OFF; Chủ quán bật qua env/API.
 
-    Single source of truth cho cả service (ghi queue/stats) và webhook (gửi
-    thật). Khi OFF, nhánh auto_send được ghi là 'pending' cho QL duyệt —
-    không bao giờ ghi 'auto_sent' khi chưa gửi thật.
+    KV (Chủ quán bật trên hộp thư) thắng env, để không mất sau restart Docker
+    khi compose vẫn để NHIPQUAN_FB_AUTO_SEND=0. Khi OFF, nhánh auto_send được
+    ghi 'pending' — không bao giờ ghi 'auto_sent' khi chưa gửi thật.
     """
+    stored = _policy_runtime()
+    if "auto_send_enabled" in stored:
+        return bool(stored["auto_send_enabled"])
     env = os.environ.get("NHIPQUAN_FB_AUTO_SEND", "0").strip().lower()
     return env in {"1", "true", "yes", "on"}
 
 
-# Ngưỡng giá auto (kế hoạch §6.3.2 — chính sách kinh doanh, đọc env để Chủ quán
-# chỉnh không cần sửa code; default 100_000 đúng số đã thống nhất).
-
 def fb_auto_price_cap_vnd() -> int:
+    stored = _policy_runtime()
+    if stored.get("auto_price_cap_vnd") is not None:
+        try:
+            return int(stored["auto_price_cap_vnd"])
+        except (TypeError, ValueError):
+            pass
     return int(os.environ.get("NHIPQUAN_FB_AUTO_PRICE_CAP_VND", "100000"))
+
+
+def fb_compensation_cap_vnd() -> int:
+    stored = _policy_runtime()
+    if stored.get("compensation_cap_vnd") is not None:
+        try:
+            return int(stored["compensation_cap_vnd"])
+        except (TypeError, ValueError):
+            pass
+    return int(os.environ.get("NHIPQUAN_FB_COMPENSATION_CAP_VND", "500000"))
+
+
+def _compensation_above_cap(text: str) -> bool:
+    low = normalize_text(text)
+    if not any(k in low for k in FINANCIAL_KEYWORDS):
+        return False
+    if "trieu" in low:
+        return True
+    cap = fb_compensation_cap_vnd()
+    for tok in re.sub(r"[^\d]", " ", text).split():
+        if tok.isdigit() and int(tok) > cap:
+            return True
+    return False
+
+
+def set_fb_policy_runtime(
+    auto_send_enabled: bool | None = None,
+    auto_price_cap_vnd: int | None = None,
+) -> dict[str, Any]:
+    """Ghi chính sách runtime (KV + env process) — Chủ quán chỉnh không restart."""
+    cur = dict(_policy_runtime())
+    if auto_send_enabled is not None:
+        cur["auto_send_enabled"] = bool(auto_send_enabled)
+        os.environ["NHIPQUAN_FB_AUTO_SEND"] = "1" if auto_send_enabled else "0"
+    if auto_price_cap_vnd is not None:
+        cur["auto_price_cap_vnd"] = int(auto_price_cap_vnd)
+        os.environ["NHIPQUAN_FB_AUTO_PRICE_CAP_VND"] = str(int(auto_price_cap_vnd))
+    kv_set(_FB_POLICY_KV, cur)
+    return cur
 
 
 def _now_iso() -> str:
@@ -226,6 +280,8 @@ def moderate_fb_message(
             (public_context or {}).get("menu") or [], guard.sanitized_text
         ),
         reservation_auto_eligible=res_eligible,
+        booking_system_down=False,
+        compensation_above_limit=_compensation_above_cap(guard.sanitized_text),
     )
     decision = decide(intent, confidence, guard.sanitized_text, ctx)
     flagged = list(decision.flagged_reasons)

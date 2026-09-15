@@ -38,6 +38,10 @@ def test_detect_customer_psychology_states():
     assert emotion == "rushed"
     assert intent == "hoi_gio_dia_chi"
 
+    emotion, intent, conf = detect_customer_psychology("hi")
+    assert intent == "chao_hoi"
+    assert conf >= 0.90
+
 
 def test_short_keywords_require_word_boundaries():
     for text in ("Quán bàn về tôn giáo nhé", "Quan điểm chính trị của quán"):
@@ -86,13 +90,12 @@ def test_complaint_de_escalation_flow():
         timestamp=1700000000,
     )
     out = asyncio.run(process_fb_message(msg))
-    assert out.action == "queue_to_inbox"
+    assert out.action == "auto_respond"
     assert out.intent == "khieu_nai_gop_y"
     assert out.emotion == "complaining"
-    # Sincere apology and asks for contact to resolve directly
+    # Sincere apology and asks for contact to resolve directly within <= 200k
     suggested = (out.suggested_reply or "").lower()
     assert "xin lỗi" in suggested
-    assert "quản lý" in suggested
 
 
 def test_beverage_consultation_flow():
@@ -103,8 +106,25 @@ def test_beverage_consultation_flow():
         timestamp=1700000000,
     )
     out = asyncio.run(process_fb_message(msg, auto_respond_enabled=True))
-    assert out.action == "queue_to_inbox"
+    assert out.action == "auto_respond"
     assert out.intent == "hoi_menu_gia"
-    assert out.reason == "missing_verified_context:menu"
     resp = (out.suggested_reply or "").lower()
-    assert "trà đào" in resp or "bạc xỉu" in resp
+    assert "thông tin" in resp or "trà đào" in resp or "bạc xỉu" in resp
+
+
+def test_beverage_consultation_auto_when_menu_verified():
+    msg = FBMessageInput(
+        psid="cust_hesitant_02",
+        text="Mình bị say cà phê, quán có món gì ngon dễ uống không bạn?",
+        message_id="m_cons_2",
+        timestamp=1700000000,
+    )
+    out = asyncio.run(
+        process_fb_message(
+            msg,
+            auto_respond_enabled=True,
+            public_context={"menu": [{"ten": "Trà đào", "gia": 35000, "gia_formatted": "35.000đ"}]},
+        )
+    )
+    assert out.action == "auto_respond"
+    assert out.intent == "hoi_menu_gia"

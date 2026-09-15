@@ -45,6 +45,10 @@ type Stats = {
   escalation_unacked: number;
 };
 
+type Policy = {
+  auto_send_enabled: boolean;
+};
+
 type StatusFilter = "pending" | "approved" | "rejected" | "all";
 
 const INTENT_LABEL: Record<string, string> = {
@@ -96,6 +100,8 @@ export default function FbInboxPage() {
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
+  const [policy, setPolicy] = useState<Policy | null>(null);
+  const [policyBusy, setPolicyBusy] = useState(false);
   const { push } = useToasts();
 
   useEffect(() => {
@@ -114,6 +120,9 @@ export default function FbInboxPage() {
       .finally(() => setLoading(false));
     apiGet<Stats>("/api/v1/page/fb-inbox/stats")
       .then((s) => setStats(s))
+      .catch(() => {});
+    apiGet<Policy>("/api/v1/page/fb-policy")
+      .then((p) => setPolicy(p))
       .catch(() => {});
   }, [statusFilter]);
 
@@ -162,7 +171,7 @@ export default function FbInboxPage() {
         <PageHeader
           kicker="AG-FBPAGE · Kiểm duyệt chỉn chu"
           title="Hộp thư Fanpage chờ duyệt"
-          meta="Tin nhắn khách được policy engine phân loại. Mặc định cần người duyệt — auto-send chỉ cho nhóm thông tin an toàn."
+          meta="Agent tự trả lời chào hỏi, menu, địa chỉ và giờ mở cửa đã niêm yết. Quản lý chỉ duyệt khiếu nại, đặt bàn, đổi giờ đặc biệt và việc nhạy cảm."
         />
         <a
           href="/page-quan/dat-ban"
@@ -185,6 +194,40 @@ export default function FbInboxPage() {
           📅 Sơ đồ & Lịch đặt bàn
         </a>
       </div>
+
+      {policy ? (
+        <Notice>
+          {policy.auto_send_enabled
+            ? "Đang bật tự trả lời FAQ (chào hỏi, menu, địa chỉ, giờ niêm yết). Khiếu nại, đặt bàn, đổi giờ đặc biệt vẫn chờ duyệt."
+            : "Đang tắt tự gửi — mọi tin FAQ cũng vào hộp thư này. Chủ quán bật tự trả lời để khách nhận ngay."}
+          {chuQuan ? (
+            <span style={{ display: "inline-block", marginLeft: 12 }}>
+              <Btn
+                variant={policy.auto_send_enabled ? "ghost" : undefined}
+                busy={policyBusy}
+                onClick={async () => {
+                  setPolicyBusy(true);
+                  try {
+                    const next = await apiSend<Policy>(
+                      "/api/v1/page/fb-policy",
+                      { auto_send_enabled: !policy.auto_send_enabled, note: "inbox_toggle" },
+                      "PUT",
+                    );
+                    setPolicy(next);
+                    push(next.auto_send_enabled ? "Đã bật tự trả lời FAQ." : "Đã tắt tự gửi.");
+                  } catch (e) {
+                    setError(viError(e, { doing: "cập nhật chính sách tự trả lời" }));
+                  } finally {
+                    setPolicyBusy(false);
+                  }
+                }}
+              >
+                {policy.auto_send_enabled ? "Tắt tự trả lời" : "Bật tự trả lời FAQ"}
+              </Btn>
+            </span>
+          ) : null}
+        </Notice>
+      ) : null}
 
       {error ? <Alert>{error}</Alert> : null}
       {loading ? <Loading skeleton="list">Đang tải hộp thư…</Loading> : null}
