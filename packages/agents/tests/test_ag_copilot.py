@@ -570,6 +570,11 @@ def test_pr13_schedule_solve_wins_over_get_schedule() -> None:
     assert parse_intent("Xếp lịch tuần này").intent == "SCHEDULE_SOLVE"
     # Câu hỏi đọc vẫn map GET_SCHEDULE.
     assert parse_intent("Xem lịch tuần này").intent == "GET_SCHEDULE"
+    # Câu hỏi thăm dò / phủ định ai chưa có lịch / chưa duyệt / chưa xếp phải map GET_SCHEDULE
+    assert parse_intent("t hoi dang co những nhân viên nào chưa dc xếp lịch").intent == "GET_SCHEDULE"
+    assert parse_intent("có nhân viên nào chưa duyệt lịch").intent == "GET_SCHEDULE"
+    assert parse_intent("ai chưa có ca").intent == "GET_SCHEDULE"
+    assert parse_intent("ai chưa được xếp lịch").intent == "GET_SCHEDULE"
 
 
 def test_pr13_read_intents_allowed_for_every_role() -> None:
@@ -994,6 +999,48 @@ def test_daily_brief_saturday_sunday_mapping() -> None:
             tool_registry.configure_data_sources(kv_get=saved_kv)
         else:
             tool_registry._SOURCES.clear()
+
+
+def test_copilot_conversational_chat_and_anti_context_loop() -> None:
+    """Kiểm tra: không bị bẫy ngữ cảnh xếp lịch khi người dùng nói lời cảm ơn, chào hỏi, hoặc hỏi tự nhiên."""
+    ctx = {
+        "store_id": "quan_01",
+        "user_id": "lan",
+        "user_role": "quan_ly",
+        "recent_messages": ["Xếp lịch tuần sau giúp chị"],
+    }
+    # 1. Sau khi xếp lịch, user cảm ơn -> KHÔNG lặp lại xếp lịch
+    res_thanks = run_copilot("Cảm ơn em nhé", context=ctx)
+    assert res_thanks.intent == CopilotIntent.OUT_OF_SCOPE
+    assert res_thanks.action_proposal is None
+    assert any(k in res_thanks.reply_text.lower() for k in ("không có chi", "hỗ trợ", "nhắn em", "chúc"))
+
+    # 2. Chào hỏi tự nhiên
+    res_hello = run_copilot("Xin chào em", context={"user_role": "chu_quan"})
+    assert res_hello.intent == CopilotIntent.OUT_OF_SCOPE
+    assert any(k in res_hello.reply_text.lower() for k in ("chào", "chúc", "hỗ trợ"))
+
+    # 3. Hỏi danh tính
+    res_who = run_copilot("Bạn là ai?", context={"user_role": "quan_ly"})
+    assert res_who.intent == CopilotIntent.OUT_OF_SCOPE
+    assert "ag-copilot" in res_who.reply_text.lower()
+
+    # 4. "Ai làm vỡ cái ly" không bị nhận nhầm thành LIST_STAFF
+    res_glass = run_copilot("Ai làm vỡ cái ly vậy?", context={"user_role": "quan_ly"})
+    assert res_glass.intent != CopilotIntent.LIST_STAFF
+
+    # 5. "Hôm nay ai đổi ca" nhận diện đúng GET_SHIFT_SWAPS chứ không phải APPROVE_SHIFT_SWAP
+    res_swap = run_copilot("Hôm nay ai đổi ca", context={"user_role": "quan_ly"})
+    assert res_swap.intent == CopilotIntent.GET_SHIFT_SWAPS
+
+    # 6. "Quán hôm nay thế nào" nhận diện đúng GENERATE_DAILY_BRIEF
+    res_brief = run_copilot("Quán hôm nay thế nào em?", context={"user_role": "quan_ly"})
+    assert res_brief.intent == CopilotIntent.GENERATE_DAILY_BRIEF
+
+    # 7. "Cách pha cà phê sữa đá" nhận diện đúng QUERY_SOP
+    res_sop = run_copilot("Cách pha cà phê sữa đá", context={"user_role": "nhan_vien"})
+    assert res_sop.intent == CopilotIntent.QUERY_SOP
+
 
 
 

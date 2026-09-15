@@ -65,6 +65,17 @@ _BYPASS_PATTERNS = [
 ]
 _BYPASS_REGEX = re.compile("|".join(_BYPASS_PATTERNS), re.IGNORECASE)
 
+# Stop words để ngăn multi-turn inference quá agresif
+_CONVERSATIONAL_STOP_WORDS = frozenset({
+    "không phải", "khong phai", "t kêu", "t keu", "tao kêu", "tao keu",
+    "đâu phải", "dau phai", "nhầm", "nham", "thôi", "thoi", "hủy", "huy",
+    "cảm ơn", "cam on", "thank", "thanks", "tks", "ok", "oke", "được rồi", "duoc roi",
+    "xong rồi", "xong roi", "dạ vâng", "da vang", "vâng", "vang", "dạ", "da",
+    "chào", "chao", "alo", "hi", "hello", "sao vậy", "sao vay", "tại sao", "tai sao",
+    "thế nào", "the nao", "là sao", "la sao", "là gì", "la gi", "?", "ngáo", "kỳ vậy",
+    "quán", "quan", "ai làm", "ai lam", "thời tiết", "thoi tiet"
+})
+
 # Intent matching keywords
 # PR9 read intents đặt ĐẦU danh sách: cụm hỏi đọc cụ thể ("đổi ca nào",
 # "việc treo") phải thắng từ chung của mutating intents ("đổi ca").
@@ -89,7 +100,14 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
     ),
     (
         GET_SHIFT_SWAPS,
-        ["đổi ca nào", "doi ca nao", "yêu cầu đổi ca nào", "yeu cau doi ca nao", "chợ đổi ca", "cho doi ca", "danh sách đổi ca", "danh sach doi ca"],
+        [
+            "đổi ca nào", "doi ca nao", "yêu cầu đổi ca nào", "yeu cau doi ca nao",
+            "chợ đổi ca", "cho doi ca", "danh sách đổi ca", "danh sach doi ca",
+            "ai đổi ca", "ai doi ca", "ai xin đổi ca", "ai xin doi ca",
+            "có ai đổi ca", "co ai doi ca", "xem đổi ca", "xem doi ca",
+            "kèo đổi ca", "keo doi ca", "ai muốn đổi ca", "ai muon doi ca",
+            "danh sách yêu cầu đổi ca", "danh sach yeu cau doi ca",
+        ],
         0.9,
     ),
     (
@@ -127,7 +145,19 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
     ),
     (
         LIST_STAFF,
-        ["danh sách nhân", "danh sach nhan", "nhân sự", "nhan su", "ai làm", "ai lam", "ai đang làm", "ai dang lam"],
+        [
+            "danh sách nhân sự", "danh sach nhan su",
+            "danh sách nhân viên", "danh sach nhan vien",
+            "danh sách nhân", "danh sach nhan",
+            "nhân sự hôm nay", "nhan su hom nay",
+            "nhân sự của quán", "nhan su cua quan",
+            "nhân sự hiện tại", "nhan su hien tai",
+            "ai đang làm", "ai dang lam",
+            "ai làm ca", "ai lam ca",
+            "ai làm hôm nay", "ai lam hom nay",
+            "hôm nay ai đi làm", "hom nay ai di lam",
+            "nhân viên nào làm", "nhan vien nao lam",
+        ],
         0.9,
     ),
     (
@@ -212,8 +242,9 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
         0.9,
     ),
     # PR13 read — ràng buộc chờ duyệt / lịch cá nhân phải thắng từ chung của
-    # mutating intents ("đổi ca"), nhưng SCHEDULE_SOLVE ("xếp lịch") phải thắng
-    # GET_SCHEDULE nên GET_SCHEDULE được đặt SAU SCHEDULE_SOLVE.
+    # mutating intents ("đổi ca"). GET_SCHEDULE đặt TRƯỚC SCHEDULE_SOLVE để các
+    # cụm phủ định ("chưa dc xếp lịch") match đúng intent đọc. Post-match override
+    # bên dưới sẽ sửa thành SCHEDULE_SOLVE khi có động từ hành động ("xếp lịch").
     (
         GET_MY_SHIFTS,
         ["lịch của tôi", "lich cua toi", "ca của tôi", "ca cua toi", "lịch làm việc của tôi", "lich lam viec cua toi", "ca của mình", "ca cua minh", "lịch tôi", "lich toi", "lịch của em", "lich cua em", "ca tôi làm", "ca toi lam"],
@@ -243,6 +274,48 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
         0.91,
     ),
     (
+        GET_SCHEDULE,
+        [
+            # Trạng thái chưa xếp / chưa duyệt (priority cao)
+            "chưa được xếp lịch", "chua duoc xep lich",
+            "chưa dc xếp lịch", "chua dc xep lich",
+            "chưa được xếp ca", "chua duoc xep ca",
+            "chưa dc xếp ca", "chua dc xep ca",
+            "chưa có ca", "chua co ca",
+            "chưa có lịch", "chua co lich",
+            "chưa xếp lịch", "chua xep lich",
+            "chưa xếp ca", "chua xep ca",
+            "chưa duyệt lịch", "chua duyet lich",
+            "chưa xác nhận lịch", "chua xac nhan lich",
+            "chưa chốt lịch", "chua chot lich",
+            "chưa được duyệt", "chua duoc duyet",
+            "ai chưa có ca", "ai chua co ca",
+            "ai chưa có lịch", "ai chua co lich",
+            "ai chưa được xếp", "ai chua duoc xep",
+            "ai chưa dc xếp", "ai chua dc xep",
+            "ai chưa duyệt", "ai chua duyet",
+            "ai chưa xác nhận", "ai chua xac nhan",
+            "ai chưa chốt", "ai chua chot",
+            "ai chưa xếp", "ai chua xep",
+            "nhân viên nào chưa", "nhan vien nao chua",
+            "nhân sự nào chưa", "nhan su nao chua",
+            "có ai chưa có ca", "co ai chua co ca",
+            "có ai chưa duyệt", "co ai chua duyet",
+            "có ai chưa được xếp", "co ai chua duoc xep",
+            "có nhân viên nào chưa", "co nhan vien nao chua",
+            # Tra cứu lịch tổng quát (priority thấp hơn nhưng cùng intent)
+            "xem lịch tuần", "xem lich tuan",
+            "lịch tuần này", "lich tuan nay",
+            "lịch làm việc", "lich lam viec",
+            "xem lịch", "xem lich",
+            "lịch ca", "lich ca",
+            "tình hình lịch", "tinh hinh lich",
+            "trạng thái lịch", "trang thai lich",
+            "roster",
+        ],
+        0.92,
+    ),
+    (
         SCHEDULE_SOLVE,
         [
             "xếp lịch", "xep lich", "chia ca", "xếp ca", "xep ca", "lên lịch", "len lich",
@@ -261,23 +334,43 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
         0.92,
     ),
     (
-        GET_SCHEDULE,
-        ["xem lịch tuần", "xem lich tuan", "lịch tuần này", "lich tuan nay", "lịch làm việc", "lich lam viec", "xem lịch", "xem lich", "lịch ca", "lich ca", "roster"],
-        0.9,
-    ),
-    (
         APPROVE_SHIFT_SWAP,
-        ["đổi ca", "doi ca", "nhường ca", "nhận ca", "chuyển ca", "duyệt đổi ca", "yêu cầu đổi ca"],
+        [
+            "duyệt đổi ca", "duyet doi ca",
+            "duyệt ca", "duyet ca",
+            "xem xét duyệt đổi ca", "xem xet duyet doi ca",
+            "phê duyệt đổi ca", "phe duyet doi ca",
+            "đồng ý cho đổi ca", "dong y cho doi ca",
+            "chấp thuận đổi ca", "chap thuan doi ca",
+            "duyệt đơn đổi ca", "duyet don doi ca",
+            "duyệt yêu cầu đổi ca", "duyet yeu cau doi ca",
+            "xác nhận duyệt đổi ca", "xac nhan duyet doi ca",
+            "đổi ca cho", "doi ca cho",
+            "nhường ca cho", "nhuong ca cho",
+        ],
         0.90,
     ),
     (
         GENERATE_DAILY_BRIEF,
-        ["bản tin", "ban tin", "tin sáng", "tóm tắt đầu ngày", "tình hình hôm nay", "tình hình ca sáng"],
+        [
+            "bản tin", "ban tin", "tin sáng", "tóm tắt đầu ngày",
+            "tình hình hôm nay", "tình hình ca sáng",
+            "quán hôm nay thế nào", "quan hom nay the nao",
+            "tình hình quán", "tinh hinh quan",
+            "tổng kết hôm nay", "tong ket hom nay",
+            "tổng quan hôm nay", "tong quan hom nay",
+        ],
         0.95,
     ),
     (
         QUERY_SOP,
-        ["quy trình", "quy trinh", "cẩm nang", "hướng dẫn", "mở quán", "đóng quán", "vệ sinh", "cách làm", "sop"],
+        [
+            "quy trình", "quy trinh", "cẩm nang", "hướng dẫn", "mở quán", "đóng quán",
+            "vệ sinh", "cách làm", "sop",
+            "cách pha", "cach pha", "công thức", "cong thuc",
+            "hướng dẫn pha", "huong dan pha", "quy trình pha", "quy trinh pha",
+            "cách nấu", "cach nau", "pha chế", "pha che",
+        ],
         0.90,
     ),
     (
@@ -575,6 +668,32 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
         if matched_intent != OUT_OF_SCOPE:
             break
 
+    # Post-match override: GET_SCHEDULE có thể match trước do substring ("chưa dc xếp lịch"
+    # chứa "xếp lịch"), nhưng nếu câu có động từ hành động rõ ràng và KHÔNG có từ phủ định
+    # thì phải override thành SCHEDULE_SOLVE.
+    if matched_intent == GET_SCHEDULE:
+        action_verbs = ["xếp lịch", "xep lich", "lên lịch", "len lich", "tạo lịch", "tao lich", 
+                       "chia ca", "phân công ca", "phan cong ca", "lập lịch", "lap lich"]
+        negation_words = ["chưa", "chua", "không", "khong", "ai chưa", "ai chua", "chưa dc", "chua dc"]
+        has_action = any(verb in lower for verb in action_verbs)
+        has_negation = any(neg in lower for neg in negation_words)
+        if has_action and not has_negation:
+            matched_intent = SCHEDULE_SOLVE
+            matched_conf = 0.92
+
+    # Nếu câu hỏi mang tính chất xin lời khuyên / tư vấn / hỏi ý kiến mở:
+    # KHÔNG ép vào các intent mutating (sửa DB/thêm món/xếp lịch) mà để LLM trò chuyện & tư vấn.
+    is_advisory = any(
+        w in lower for w in [
+            "nghĩ xem", "nghi xem", "gợi ý", "goi y", "tư vấn", "tu van",
+            "có nên", "co nen", "làm sao để", "lam sao de", "làm thế nào để", "lam the nao de",
+            "kinh nghiệm", "kinh nghiem", "ý kiến", "y kien", "đánh giá", "danh gia"
+        ]
+    )
+    if is_advisory and matched_intent in (PROPOSE_MENU_UPDATE, SCHEDULE_SOLVE, PROPOSE_ORDER_TRANSITION):
+        matched_intent = OUT_OF_SCOPE
+        matched_conf = 0.85
+
     # Fix W6: Ranh giới QUERY_MENU (chứa "giá món") và RUN_CATCHMENT_SURVEY
     if matched_intent == QUERY_MENU:
         if any(w in lower for w in ["quanh", "bán kính", "ban kinh", "khảo sát", "khao sat", "đối thủ", "doi thu", "thị trường"]):
@@ -587,26 +706,59 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
            re.search(r"(?:đăng|dang|post).*(?:lên|len).*(?:fb|facebook|page|fanpage)", lower):
             matched_intent = PROPOSE_PAGE_DRAFT
             matched_conf = 0.92
+        # Nhận diện linh hoạt cho xếp lịch ca — giới hạn .{0,30}? để tránh match xuyên câu;
+        # loại trừ "lịch sử" (history) và các từ phủ định.
+        elif re.search(r"(?:xếp|lên|tạo|chia|phân công|lập)\s*(?:giúp|hộ|dùm|giùm|cho)?.{0,30}?(?:lịch(?! sử)|ca\b)", lower) and \
+             not any(neg in lower for neg in ["không", "khong", "hủy", "huy", "đổi ca", "doi ca", "chưa", "chua", "ai chưa", "ai chua", "lịch sử", "lich su"]):
+            matched_intent = SCHEDULE_SOLVE
+            matched_conf = 0.90
+        # Nhận diện linh hoạt cho tra cứu ai chưa có ca / chưa xếp lịch / chưa duyệt
+        elif any(w in lower for w in ["chưa", "chua"]) and any(w in lower for w in ["lịch", "lich", "ca", "xếp", "xep", "duyệt", "duyet"]):
+            matched_intent = GET_SCHEDULE
+            matched_conf = 0.90
+        # Nhận diện linh hoạt cho tra cứu đổi ca
+        elif re.search(r"(?:ai|có ai|danh sách|kèo|chợ|xem).*(?:đổi ca|nhận ca)", lower):
+            matched_intent = GET_SHIFT_SWAPS
+            matched_conf = 0.90
+        # Nhận diện linh hoạt cho quy trình / cẩm nang
+        elif re.search(r"(?:cách|hướng dẫn|công thức|quy trình).*(?:pha|nấu|làm|mở quán|đóng quán|vệ sinh)", lower):
+            matched_intent = QUERY_SOP
+            matched_conf = 0.90
+        # Nhận diện linh hoạt cho bản tin hôm nay (phải liên quan rõ ràng tới quán/ca, không bắt thời tiết hay hao hụt)
+        elif re.search(r"(?:tình hình quán|quán hôm nay thế nào|tổng kết quán)", lower):
+            matched_intent = GENERATE_DAILY_BRIEF
+            matched_conf = 0.90
 
-    # Multi-turn context inference chỉ áp dụng cho các intent có quy trình hội thoại nhiều lượt
-    # (SCHEDULE_SOLVE cho trả lời bổ sung tuần/ràng buộc, SEND_MAIL cho soạn tiếp/chỉ định người nhận).
-    # Không suy diễn cho các intent đọc một lần (GET_*, LIST_*, QUERY_*) tránh bị kẹt vòng lặp.
-    # Đồng thời bỏ qua nếu câu hiện tại là câu phản bác/sửa chủ đề ("không phải", "t kêu", "đâu phải", "nhầm").
-    _MULTI_TURN_ALLOWED_INTENTS = {SCHEDULE_SOLVE, SEND_MAIL}
-    is_negation_or_shift = any(
-        neg in lower for neg in ["không phải", "khong phai", "t kêu", "t keu", "tao kêu", "tao keu", "đâu phải", "dau phai", "nhầm", "nham"]
-    )
-    inferred_from_context = (
-        matched_intent == OUT_OF_SCOPE
-        and bool(recent_messages)
-        and not is_negation_or_shift
-    )
-    if inferred_from_context:
-        for intent_name, keywords, base_conf in _INTENT_KEYWORDS:
-            if intent_name in _MULTI_TURN_ALLOWED_INTENTS and any(kw in recent_text for kw in keywords):
-                matched_intent = intent_name
-                matched_conf = base_conf
-                break
+    # Multi-turn context inference:
+    # CHỈ áp dụng khi câu mới mang tham số bổ sung cụ thể cho intent trước (SCHEDULE_SOLVE, SEND_MAIL).
+    # KHÔNG suy diễn khi câu mới là chào hỏi, cảm ơn, đóng hội thoại, thắc mắc chung ("sao vậy", "?", "alo", v.v.).
+    inferred_from_context = False
+    is_conversational_or_stop = any(w in lower for w in _CONVERSATIONAL_STOP_WORDS)
+
+    if matched_intent == OUT_OF_SCOPE and bool(recent_messages) and not is_conversational_or_stop:
+        # Kiểm tra xem câu hiện tại có chứa tham số bổ sung hay lệnh tiếp tục rõ ràng không
+        has_schedule_signal = any(
+            w in lower for w in [
+                "tuần", "tuan", "ca ", "ca_", "ưu tiên", "uu tien",
+                "xếp đi", "xep di", "chạy đi", "chay di", "lên lịch đi", "len lich di",
+                "làm đi", "lam di", "đồng ý", "dong y", "xác nhận", "xac nhan"
+            ]
+        )
+        has_mail_signal = any(
+            w in lower for w in [
+                "gửi", "gui", "cho ", "@", "mail", "email", "nhắc", "nhac",
+                "nội dung", "noi dung", "tiêu đề", "tieu de"
+            ]
+        )
+
+        if has_schedule_signal and any(kw in recent_text for iname, keywords, _ in _INTENT_KEYWORDS if iname == SCHEDULE_SOLVE for kw in keywords):
+            matched_intent = SCHEDULE_SOLVE
+            matched_conf = 0.88
+            inferred_from_context = True
+        elif has_mail_signal and any(kw in recent_text for iname, keywords, _ in _INTENT_KEYWORDS if iname == SEND_MAIL for kw in keywords):
+            matched_intent = SEND_MAIL
+            matched_conf = 0.88
+            inferred_from_context = True
 
     # Nếu có đính kèm ảnh và người dùng hỏi về lịch/TKB hoặc chỉ gửi ảnh
     attachments = list(context.get("attachments") or [])
@@ -641,6 +793,25 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
         # Meeting context detection
         if any(w in combined_lower for w in ["cuộc họp", "cuoc hop", "họp", "hop", "biên bản", "bien ban", "giao ca"]):
             params["nguon_cuoc_hop"] = True
+
+    elif matched_intent == GET_SCHEDULE:
+        active_date = _active_date(context)
+        combined_lower = f"{recent_text} {lower}"
+        tuan = _iso_week(active_date)
+        if "tuần sau" in combined_lower or "tuan sau" in combined_lower:
+            params["tuan"] = _iso_week(_add_week(active_date, 1))
+        elif "tuần này" in combined_lower or "tuan nay" in combined_lower:
+            params["tuan"] = tuan
+        else:
+            m_iso = re.search(r"(\d{4}-w\d{2})", combined_lower)
+            if m_iso:
+                params["tuan"] = m_iso.group(1).upper()
+            else:
+                m_t = re.search(r"\btuần\s*(\d{1,2})\b", combined_lower)
+                if m_t:
+                    params["tuan"] = f"{active_date.year}-W{int(m_t.group(1)):02d}"
+                else:
+                    params["tuan"] = tuan
 
     elif matched_intent == QUERY_SOP:
         params["cau_hoi"] = text
