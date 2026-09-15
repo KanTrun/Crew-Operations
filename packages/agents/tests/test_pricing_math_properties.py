@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import math
 
+import pytest
 from ca_agents.ag_pricing.math_layer import (
     check_cost_plus_warning,
     competitive_intensity,
@@ -39,8 +40,13 @@ from ca_agents.ag_pricing.math_layer import (
     weighted_rating,
 )
 from ca_contracts.catchment_survey_v2 import StoreRecord
-from hypothesis import given, settings
-from hypothesis import strategies as st
+
+try:
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
+except ImportError:
+    pytest.skip("hypothesis is required for property-based tests", allow_module_level=True)
+
 from pytest import approx
 
 # Sai số chấp nhận được do số học dấu phẩy động (không phải sai số nghiệp vụ).

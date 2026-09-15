@@ -46,7 +46,7 @@ jobs:
           python-version: "3.12"
       - name: Install workspace
         run: |
-          pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api pytest httpx pyyaml ortools
+          pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api pytest httpx pyyaml ortools hypothesis
       - run: CA_AGENT_MODE=replay pytest -q
       - name: Export contracts
         run: python scripts/export_contracts.py

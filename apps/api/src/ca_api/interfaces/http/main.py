@@ -51,7 +51,6 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from starlette.concurrency import run_in_threadpool
 
 from ca_api.ai_learning.rollout import select_active_rules
 from ca_api.ai_learning.security import configure_data_protection, minimal_data_mode

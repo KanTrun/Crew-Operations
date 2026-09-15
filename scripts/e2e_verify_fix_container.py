@@ -66,7 +66,7 @@ async def main() -> None:
     print(f"action       = {out.action}")
     print(f"intent       = {out.intent}")
     print(f"reason       = {out.reason}")
-    print(f"suggested_reply =")
+    print("suggested_reply =")
     print(f"  {out.suggested_reply}")
     template_marker = "em đã nhận được tin nhắn của mình"
     is_template = template_marker in (out.suggested_reply or "")
