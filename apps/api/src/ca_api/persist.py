@@ -777,11 +777,19 @@ def login(username: str, password: str) -> dict[str, str] | None:
         # Không tách "không có tài khoản" khỏi "sai mật khẩu": tách ra là cho
         # người ngoài dò được username nào tồn tại.
         if not row or not verify_password(password, row[4]):
+            cx.execute(
+                "INSERT INTO audit(at, ai, hanh, payload) VALUES (?,?,?,?)",
+                (datetime.now(UTC).isoformat(), "system", "user.login_failed", json.dumps({"entity_type": "user", "entity_id": username.strip().lower()}, ensure_ascii=False)),
+            )
             return None
         token = uuid.uuid4().hex
         cx.execute(
             "INSERT INTO sessions(token, username, role, nv_id, store_id, created_at) VALUES (?,?,?,?,?,?)",
             (token, row[0], row[1], row[2], row[5], datetime.now(UTC).isoformat()),
+        )
+        cx.execute(
+            "INSERT INTO audit(at, ai, hanh, payload) VALUES (?,?,?,?)",
+            (datetime.now(UTC).isoformat(), row[2], "user.login", json.dumps({"entity_type": "session", "entity_id": token, "username": row[0]}, ensure_ascii=False)),
         )
         return {
             "token": token,

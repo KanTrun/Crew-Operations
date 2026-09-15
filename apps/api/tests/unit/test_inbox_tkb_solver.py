@@ -182,8 +182,8 @@ def test_lifecycle_da_dong_to_nhap_with_audit() -> None:
 
     # Kiểm tra audit log
     logs = audit_list()
-    reopen_log = next(log for log in logs if log.get("hanh") == "lifecycle_reopen")
-    assert reopen_log.get("ly_do") == "Điều chỉnh do nhân viên xin nghỉ gấp"
+    reopen_log = next(log for log in logs if log.get("hanh") == "schedule.lifecycle_reopen" and log.get("payload", {}).get("from") == "da_dong" and log.get("payload", {}).get("to") == "nhap")
+    assert reopen_log.get("payload", {}).get("ly_do") == "Điều chỉnh do nhân viên xin nghỉ gấp"
 
 
 def test_solver_ignores_constraints_from_other_weeks(monkeypatch: pytest.MonkeyPatch, _du_nhan_vien_xep_lich: None) -> None:

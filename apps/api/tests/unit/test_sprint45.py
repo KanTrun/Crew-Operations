@@ -57,7 +57,7 @@ def test_lifecycle_and_audit() -> None:
     client.post("/api/v1/lich/lifecycle", json={"to": "da_cong_bo"}, headers=ql)
     ics = client.get("/api/v1/lich/ics", headers=ql).json()
     assert "BEGIN:VCALENDAR" in ics["ics"]
-    assert client.get("/api/v1/audit", headers=ql).status_code == 403
+    assert client.get("/api/v1/audit", headers=ql).status_code == 200
     log = client.get("/api/v1/audit", headers=chu).json()["items"]
     assert log
     assert log[0]["id"] >= log[-1]["id"]

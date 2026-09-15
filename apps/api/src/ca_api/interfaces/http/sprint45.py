@@ -399,13 +399,13 @@ async def lich_transition(
         _require_chu_quan(authorization)
         if not body.ly_do or not body.ly_do.strip():
             raise HTTPException(status_code=400, detail="can_ly_do_mo_lai_lich")
-        _audit("lifecycle_reopen", role, {"from": cur, "to": body.to, "ly_do": body.ly_do.strip()})
+        _audit("schedule.lifecycle_reopen", role, {"entity_type": "schedule", "entity_id": doc.get("tuan_iso", "2026-W01"), "from": cur, "to": body.to, "ly_do": body.ly_do.strip()})
 
     doc["trang_thai"] = body.to
     if body.to == "dang_giai":
         doc["solver"] = _run_solver()
     _save_life(doc)
-    _audit("lifecycle", role, {"from": cur, "to": body.to})
+    _audit("schedule.lifecycle", role, {"entity_type": "schedule", "entity_id": doc.get("tuan_iso", "2026-W01"), "from": cur, "to": body.to})
     await notify_ops_changed("roster:lifecycle", doc.get("tuan_iso"))
     return doc
 
@@ -472,7 +472,7 @@ def lich_ics(
 
 @router.get("/api/v1/audit")
 def audit_get(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
-    _require_chu_quan(authorization)
+    _require_manager(authorization)
     return {"items": audit_list(), "nguon": "quan"}
 
 
@@ -671,7 +671,9 @@ def inbox_decide(
         kv_mutate("swap", add_swap, [])
     if not found:
         raise HTTPException(status_code=404, detail="inbox_item")
-    _audit("inbox", role, {"id": item_id, "q": body.quyet_dinh, "y": found.get("y_dinh")})
+    
+    action_name = "shift_swap.approve" if body.quyet_dinh == "duyet" else "shift_swap.reject"
+    _audit(action_name, role, {"entity_type": "inbox_item", "entity_id": item_id, "q": body.quyet_dinh, "y": found.get("y_dinh")})
     return found
 
 
@@ -728,6 +730,10 @@ def inbox_smart_approve(
     res = inbox_decide(item_id, decide_body, authorization)
     res["selected_candidate"] = target_nv
     res["smart_matched"] = True
+    
+    _require_manager(authorization)
+    role = _require_manager(authorization)
+    _audit("shift_swap.smart_approve", role, {"entity_type": "inbox_item", "entity_id": item_id, "selected_candidate": target_nv})
     return res
 
 
@@ -1334,7 +1340,17 @@ def swap_open(
         return items
 
     kv_mutate("swap", mut, [])
-    _audit("swap", body.a, item)
+    
+    # Do not audit sensitive data if any
+    audit_payload = {
+        "entity_type": "shift_swap",
+        "entity_id": item["id"],
+        "a": body.a,
+        "b": body.b,
+        "c": body.c,
+        "ca_id": body.ca_id
+    }
+    _audit("shift_swap.request", body.a, audit_payload)
     return item
 
 
@@ -1381,7 +1397,7 @@ def swap_dong_y(
     kv_mutate("swap", mut, [])
     if not found:
         raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
-    _audit("swap_dong_y", nv or caller["role"], {"id": swap_id, "dong_y": found.get("dong_y", [])})
+    _audit("shift_swap.confirm", nv or caller["role"], {"entity_type": "shift_swap", "entity_id": swap_id, "dong_y": found.get("dong_y", [])})
     return found
 
 
@@ -1414,7 +1430,7 @@ def swap_tu_choi(
     kv_mutate("swap", mut, [])
     if not found:
         raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
-    _audit("swap_tu_choi", nv or caller["role"], {"id": swap_id})
+    _audit("shift_swap.reject", nv or caller["role"], {"entity_type": "shift_swap", "entity_id": swap_id})
     return found
 
 
