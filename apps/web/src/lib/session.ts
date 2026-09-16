@@ -72,6 +72,7 @@ const STAFF_ACCESS = new Set([
   "/chat",
 ]);
 const MANAGER_ONLY = new Set([
+  "/lich-tuan",
   "/roster",
   "/inbox",
   "/page-quan",

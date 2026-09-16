@@ -146,7 +146,7 @@ export default function CongBangPage() {
           tiên bù. Chỉnh ca trực tiếp ở Lịch tuần, còn xin nghỉ hoặc đổi ca thì vào Hộp thư.
         </p>
         <div className="flex flex-wrap gap-3">
-          <BtnLink href="/roster">Sắp lại lịch tuần →</BtnLink>
+          <BtnLink href="/lich-tuan">Sắp lại lịch tuần →</BtnLink>
           <BtnLink href="/inbox" variant="ghost">Hộp thư duyệt</BtnLink>
         </div>
       </OpsCard>

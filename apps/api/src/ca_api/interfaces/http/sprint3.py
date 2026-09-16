@@ -28,6 +28,7 @@ from ca_ops import (
     complete_buoc,
     dump_run,
     escalate,
+    load_phieu_catalog,
     load_run,
     load_template,
     run_to_dict,
@@ -82,6 +83,13 @@ def _nv_from_token(authorization: str | None) -> str:
     if not s:
         raise HTTPException(status_code=401, detail="thieu_token")
     return s["nv_id"]
+
+
+def _store_from_token(authorization: str | None) -> str:
+    s = auth_session(authorization)
+    if not s:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    return s.get("store_id", "quan_01")
 
 
 def _can_touch(run: Any, authorization: str | None) -> str:
@@ -165,7 +173,7 @@ def _signals(run: Any, extra: dict[str, Any] | None = None) -> dict[str, Any]:
 
 
 class StartBody(BaseModel):
-    mau: str = "mo_quan"
+    mau: str = Field(min_length=1)
     ca_id: str = "w1_c01"
 
 
@@ -257,22 +265,13 @@ def diem_danh(
     return {"ok": "true", "nv_id": nv}
 
 
-MAU_PHIEU = ("mo_quan", "dong_quan", "ban_giao_ca")
-
-
 @router.get("/api/v1/phieu/mau")
-def phieu_mau() -> dict[str, Any]:
-    """Liệt kê MỌI mẫu phiếu trong `infra/templates/`.
-
-    Trước đây hàm này hardcode `mo_quan`, nên `/phieu` chỉ thấy 1 trong 3 mẫu
-    và hai quy trình đóng quán + bàn giao ca không có đường vào từ giao diện.
-    """
+def phieu_mau(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    """Liệt kê các mẫu được quán bật trong cấu hình, không phải mọi fixture."""
     items: list[dict[str, Any]] = []
-    for ma in MAU_PHIEU:
-        try:
-            tpl = load_template(ma)
-        except FileNotFoundError:
-            continue
+    for entry in load_phieu_catalog(_store_from_token(authorization)):
+        ma = str(entry["ma"])
+        tpl = load_template(ma)
         items.append(
             {
                 "ma": ma,
@@ -281,6 +280,7 @@ def phieu_mau() -> dict[str, Any]:
                 "gan_voi": tpl.get("gan_voi", ""),
                 "mo_khi": tpl.get("mo_khi", ""),
                 "han_hoan_thanh_phut": tpl.get("han_hoan_thanh_phut"),
+                "bat_buoc": entry["bat_buoc"],
                 "buoc": tpl["buoc"],
             }
         )
@@ -297,8 +297,10 @@ def phieu_start(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     nv = _nv_from_token(authorization)
-    if nv not in set(diem_danh_hom_nay()):
-        raise HTTPException(status_code=403, detail="chua_diem_danh")
+    catalog = {entry["ma"] for entry in load_phieu_catalog(_store_from_token(authorization))}
+    if body.mau not in catalog:
+        raise HTTPException(status_code=404, detail="mau_phieu_khong_bat")
+    da_diem_danh = nv in set(diem_danh_hom_nay())
 
     def next_seq(seq: int) -> int:
         return int(seq) + 1
@@ -312,7 +314,7 @@ def phieu_start(
             nv_id=nv,
             ca_id=body.ca_id,
             now_ms=_clock.now_ms(),
-            diem_danh=True,
+            diem_danh=da_diem_danh,
         )
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc

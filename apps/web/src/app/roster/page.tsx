@@ -61,6 +61,12 @@ type LichData = {
   chua_xac_nhan?: UnconfirmedStaff[];
   du_bi?: OnCallStaff[];
   nv_status_map?: Record<string, string>;
+  pins?: Array<{ ca_id: string; nv_id: string }>;
+  kiem_tra?: {
+    hard?: { passed?: boolean; gates?: string[]; violations?: string[] };
+    vf?: { applies_to_solver?: boolean; message?: string; gates?: string[] };
+    coverage?: { passed?: boolean; filled?: number; total?: number };
+  };
 };
 
 const KHUNG_TEN: Record<string, string> = {
@@ -268,12 +274,36 @@ export default function RosterPage() {
       const res = await fetch(`${API}/api/v1/lich-tuan/pin`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify({ ca_id: caId, nv_id: nvId, pinned: ghim }),
+        body: JSON.stringify({
+          ca_id: caId,
+          nv_id: nvId,
+          pinned: ghim,
+          tuan_iso: currentDisplayWeek,
+          xep_lai: true,
+        }),
       });
-      if (!res.ok) throw new Error("pin_failed");
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null) as {
+          detail?: string | { reasons?: string[] };
+        } | null;
+        const detail = payload?.detail;
+        const reason = typeof detail === "string"
+          ? detail
+          : detail?.reasons?.join(" ");
+        throw new Error(reason || "pin_failed");
+      }
+      setLifecycleMsg(
+        ghim
+          ? "Đã ghim và xếp lại phần lịch còn lại. Ca ghim được giữ nguyên."
+          : "Đã bỏ ghim và xếp lại lịch. Nhân viên có thể vẫn được máy xếp chọn.",
+      );
       await loadLich(baseWeek, soTuan);
-    } catch {
-      setError("Không cập nhật được ghim.");
+    } catch (e) {
+      setError(
+        e instanceof Error && e.message !== "pin_failed"
+          ? `Không thể ghim: ${e.message}`
+          : "Không cập nhật được ghim.",
+      );
     } finally {
       setPinBusy(false);
     }
@@ -326,26 +356,27 @@ export default function RosterPage() {
     }
   }
 
-  async function taiLichIcs() {
+  async function taiLich(format: "ics" | "xlsx" | "pdf") {
     setIcsBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API}/api/v1/lich/ics?download=true&tuan=${currentDisplayWeek}`, {
+      const downloadArg = format === "ics" ? "&download=true" : "";
+      const res = await fetch(`${API}/api/v1/lich/${format}?tuan=${currentDisplayWeek}${downloadArg}`, {
         headers: authHeader(),
       });
-      if (!res.ok) throw new Error("ics_failed");
+      if (!res.ok) throw new Error("export_failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `lich_tuan_${currentDisplayWeek}.ics`;
+      a.download = `lich_tuan_${currentDisplayWeek}.${format}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setLifecycleMsg(`Đã tải lịch tuần ${currentDisplayWeek} dạng iCalendar (.ics).`);
+      setLifecycleMsg(`Đã tải lịch tuần ${currentDisplayWeek} dạng .${format}.`);
     } catch {
-      setError("Không tải được tệp lịch .ics. Thử lại; nếu vẫn lỗi báo quản lý kiểm tra phiên đăng nhập.");
+      setError(`Không tải được tệp .${format}. Kiểm tra trạng thái công bố và thử lại.`);
     } finally {
       setIcsBusy(false);
     }
@@ -353,6 +384,14 @@ export default function RosterPage() {
 
   async function handleLifecycle(nextState: string, weekIso: string) {
     if (!nextState) return;
+    if (
+      nextState === "da_cong_bo" &&
+      !window.confirm("Công bố lịch này cho toàn bộ nhân viên? Sau khi công bố không thể ghim hoặc sửa trực tiếp.")
+    ) return;
+    if (
+      nextState === "da_dong" &&
+      !window.confirm("Đóng lịch tuần này? Chỉ chủ quán có thể mở lại và phải ghi lý do.")
+    ) return;
     const reopenReason = trangThai === "da_dong" && nextState === "nhap"
       ? window.prompt("Lý do mở lại lịch để điều chỉnh:")?.trim()
       : null;
@@ -361,7 +400,11 @@ export default function RosterPage() {
     setLifecycleMsg(null);
     try {
       if (reopenReason) {
-        await apiSend("/api/v1/lich/lifecycle", { to: nextState, ly_do: reopenReason }, "POST");
+        await apiSend(
+          "/api/v1/lich/lifecycle",
+          { to: nextState, ly_do: reopenReason, tuan_iso: weekIso },
+          "POST",
+        );
       } else {
         await apiSend(
           "/api/v1/lich-tuan/lifecycle",
@@ -416,16 +459,20 @@ export default function RosterPage() {
 
   const rosterStats = useMemo(() => {
     const phanCongEarly = data?.phan_cong ?? {};
-    let slots = 0;
-    let staffed = 0;
-    let thin = 0;
+    const cells = new Map<string, { assigned: Set<string>; required: number }>();
     for (const s of shiftsEarly) {
-      slots += 1;
-      const n = (phanCongEarly[s.id] ?? []).length;
-      if (n > 0) staffed += 1;
-      if (n > 0 && n < 2) thin += 1;
+      const key = `${s.thu}|${s.khung}`;
+      const cell = cells.get(key) ?? { assigned: new Set<string>(), required: 0 };
+      for (const id of phanCongEarly[s.id] ?? []) cell.assigned.add(id);
+      cell.required += Number(s.so_nguoi_toi_thieu ?? 1);
+      cells.set(key, cell);
     }
-    return { slots, staffed, thin };
+    const values = [...cells.values()];
+    return {
+      slots: values.length,
+      staffed: values.filter((cell) => cell.assigned.size >= cell.required).length,
+      thin: values.filter((cell) => cell.assigned.size < cell.required).length,
+    };
   }, [shiftsEarly, data?.phan_cong]);
 
   if (!token) return <AuthGate />;
@@ -444,6 +491,7 @@ export default function RosterPage() {
   const nextAction = TRANG_THAI_NEXT[trangThai];
   const khungGio = data?.khung_gio ?? DEFAULT_KHUNG_GIO;
   const phanCong = data?.phan_cong ?? {};
+  const pinSet = new Set((data?.pins ?? []).map((pin) => `${pin.ca_id}|${pin.nv_id}`));
 
   const khungOptions = [
     { value: "all", label: "Mọi khung" },
@@ -591,6 +639,29 @@ export default function RosterPage() {
         </div>
       </header>
 
+      {canWrite && (
+        <section className="nq-workflow mb-4" aria-label="Quy trình lịch tuần">
+          {[
+            ["nhap", "1. Nháp"],
+            ["dang_giai", "2. Xếp tự động"],
+            ["cho_duyet", "3. Chờ duyệt"],
+            ["da_duyet", "4. Đã duyệt"],
+            ["da_cong_bo", "5. Công bố"],
+            ["da_dong", "6. Đóng"],
+          ].map(([state, label]) => (
+            <span
+              key={state}
+              className={`nq-workflow-step ${trangThai === state ? "nq-workflow-step--active" : ""}`}
+            >
+              {label}
+            </span>
+          ))}
+          <p className="nq-muted text-xs basis-full">
+            Máy chỉ tạo lịch nháp. Quản lý vẫn phải duyệt và công bố; hệ thống không tự công bố.
+          </p>
+        </section>
+      )}
+
       {/* Trạng thái & nút duyệt của quản lý */}
       {canWrite && (
         <div className="nq-item mb-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -613,15 +684,24 @@ export default function RosterPage() {
                 {lifecycleBusy ? "Đang lưu…" : nextAction.label}
               </button>
             )}
-            <button
-              type="button"
-              className="nq-btn px-3 py-1 text-sm bg-neutral-800 text-neutral-200 hover:bg-neutral-700 flex items-center gap-1.5"
-              disabled={icsBusy}
-              onClick={() => void taiLichIcs()}
-              title="Tải file lịch iCalendar (.ics) cho Google Calendar / Apple Calendar"
-            >
-              <Icon name="export" size={14} /> {icsBusy ? "Đang tải…" : "Xuất lịch (.ics)"}
-            </button>
+            <details className="relative">
+              <summary className="nq-btn px-3 py-1 text-sm cursor-pointer list-none">
+                {icsBusy ? "Đang xuất…" : "Xuất lịch"}
+              </summary>
+              <div className="absolute right-0 z-20 mt-2 min-w-48 rounded border border-neutral-700 bg-neutral-950 p-2 shadow-xl">
+                {(["ics", "xlsx", "pdf"] as const).map((format) => (
+                  <button
+                    key={format}
+                    type="button"
+                    disabled={icsBusy}
+                    onClick={() => void taiLich(format)}
+                    className="block w-full rounded px-3 py-2 text-left text-sm text-neutral-200 hover:bg-neutral-800"
+                  >
+                    {format === "ics" ? "Lịch điện tử (.ics)" : format === "xlsx" ? "Excel (.xlsx)" : "PDF (.pdf)"}
+                  </button>
+                ))}
+              </div>
+            </details>
             {lifecycleMsg && (
               <span className="text-sm text-[var(--nq-ok)]">{lifecycleMsg}</span>
             )}
@@ -784,6 +864,32 @@ export default function RosterPage() {
       {error ? <Alert kind="err">{error}</Alert> : null}
       {loading ? <Loading skeleton="table" rows={3}>Đang tải lịch tuần…</Loading> : null}
 
+      {!loading && viewMode === "all" && (
+        <details className="nq-constraint-panel mb-4">
+          <summary>Ràng buộc & kiểm tra lần xếp này</summary>
+          <div className="grid gap-4 md:grid-cols-2 mt-3">
+            <div>
+              <h3>6 ràng buộc cứng — bắt buộc đạt</h3>
+              <p>Không trùng lịch học; đủ người và kỹ năng; không trùng ca; đủ thời gian nghỉ; không vượt giờ tuần; tôn trọng nghỉ đã duyệt.</p>
+              <p className={data?.kiem_tra?.hard?.passed ? "text-emerald-300" : "text-amber-300"}>
+                Kết quả: {data?.kiem_tra?.hard?.passed ? "Đạt C01–C06" : "Chưa có lần kiểm tra đạt"}
+              </p>
+            </div>
+            <div>
+              <h3>5 ràng buộc mềm — dùng để tối ưu</h3>
+              <p>Nguyện vọng; chia đều tối/cuối tuần; ca liền mạch; ổn định tuần trước; ghép người mới với người có kinh nghiệm.</p>
+              <p>
+                Phủ ca: {data?.kiem_tra?.coverage?.filled ?? 0}/{data?.kiem_tra?.coverage?.total ?? 21} ô.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 border-t border-neutral-800 pt-3 text-xs text-neutral-400">
+            <strong className="text-neutral-200">VF không phải ràng buộc CP-SAT.</strong>{" "}
+            {data?.kiem_tra?.vf?.message ?? "VF-SCHEMA, TRACE, CONF, CONFLICT kiểm dữ liệu agent; VF-NUM kiểm lời giải thích; VF-RULE kiểm luật học."}
+          </div>
+        </details>
+      )}
+
       {/* ========================================================================= */}
       {/* 1. CHẾ ĐỘ NHÂN VIÊN: CHỈ HIỆN NHỮNG NGÀY ĐI LÀM CỦA CÁ NHÂN             */}
       {/* ========================================================================= */}
@@ -895,7 +1001,7 @@ export default function RosterPage() {
             cells={[
               { n: rosterStats.slots, k: "Ô ca tuần" },
               { n: rosterStats.staffed, k: "Đã có người", tone: "ok" },
-              { n: rosterStats.thin, k: "Mỏng (<2 NV)", tone: rosterStats.thin > 0 ? "warn" : "default" },
+              { n: rosterStats.thin, k: "Thiếu định biên", tone: rosterStats.thin > 0 ? "warn" : "default" },
               { n: lifeLabel(trangThai), k: "Trạng thái lịch" },
             ]}
           />
@@ -943,6 +1049,7 @@ export default function RosterPage() {
             matchCell={matchCell}
             onSelectDay={setSelectedDay}
             nvStatusMap={data?.nv_status_map}
+            pins={data?.pins}
           />
 
           {filteredActive && shifts.every((s) => !matchCell(phanCong[s.id] ?? [], s)) ? (
@@ -1055,6 +1162,9 @@ export default function RosterPage() {
                             className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-neutral-900 border border-neutral-700 text-xs text-neutral-100 font-medium"
                           >
                             {nvName(nv_id)}
+                            {pinSet.has(`${shift.id}|${nv_id}`) ? (
+                              <span className="text-[10px] text-amber-300">Đã ghim</span>
+                            ) : null}
                             {data?.nv_status_map?.[nv_id] === "chua_xac_nhan" && (
                               <span
                                 className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/60"
@@ -1063,15 +1173,19 @@ export default function RosterPage() {
                                 <Icon name="warn" size={10} /> Chưa chốt
                               </span>
                             )}
-                            {canWrite && trangThai !== "da_dong" ? (
+                            {canWrite && ["nhap", "cho_duyet"].includes(trangThai) ? (
                               <button
                                 type="button"
                                 disabled={pinBusy}
-                                title={`Gỡ ${nvName(nv_id)} khỏi ca`}
-                                onClick={() => handlePin(shift.id, nv_id, false)}
-                                className="w-5 h-5 rounded-full bg-neutral-800 hover:bg-rose-800 text-neutral-400 hover:text-rose-200 text-[11px] leading-none flex items-center justify-center"
+                                title={pinSet.has(`${shift.id}|${nv_id}`) ? "Bỏ cố định ca" : "Cố định người này ở ca"}
+                                onClick={() => handlePin(
+                                  shift.id,
+                                  nv_id,
+                                  !pinSet.has(`${shift.id}|${nv_id}`),
+                                )}
+                                className="rounded bg-neutral-800 px-2 py-1 text-[10px] text-neutral-300 hover:text-amber-300"
                               >
-                                ×
+                                {pinSet.has(`${shift.id}|${nv_id}`) ? "Bỏ ghim" : "Ghim"}
                               </button>
                             ) : null}
                           </span>
@@ -1079,7 +1193,7 @@ export default function RosterPage() {
                       </div>
                     ) : null}
 
-                        {canWrite && trangThai !== "da_dong" ? (
+                        {canWrite && ["nhap", "cho_duyet"].includes(trangThai) ? (
                       <div className="pt-2 border-t border-neutral-900">
                         <details className="group">
                           <summary className="cursor-pointer text-xs font-bold text-amber-400 hover:text-amber-300 list-none inline-flex items-center gap-1">

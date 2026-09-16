@@ -21,6 +21,7 @@ type Props = {
   matchCell: (assigned: string[], shift: RosterShift) => boolean;
   onSelectDay: (day: string) => void;
   nvStatusMap?: Record<string, string>;
+  pins?: Array<{ ca_id: string; nv_id: string }>;
 };
 
 export function RosterGrid({
@@ -32,8 +33,10 @@ export function RosterGrid({
   filterKhung,
   onSelectDay,
   viTriLabel,
+  nvName,
   matchCell,
   nvStatusMap,
+  pins = [],
 }: Props) {
   const visibleKhungs = filterKhung === "all" ? KHUNGS : KHUNGS.filter((k) => k === filterKhung);
 
@@ -97,8 +100,17 @@ export function RosterGrid({
                   const lit = spotlightDay === d;
                   const roles = [...new Set(shifts.map((shift) => viTriLabel(shift.vi_tri)).filter(Boolean))];
                   const roleLabel = roles.length > 0 ? roles.join(" · ") : "Nhiều vị trí";
-                  const summary = rosterCellSummary(assigned.length, roleLabel, assigned.length > 0 && assigned.length < 2);
+                  const required = shifts.reduce(
+                    (sum, shift) => sum + Number(shift.so_nguoi_toi_thieu ?? 1),
+                    0,
+                  );
+                  const summary = rosterCellSummary(assigned.length, roleLabel, assigned.length < required);
                   const hasUnconfirmed = assigned.some((id) => nvStatusMap?.[id] === "chua_xac_nhan");
+                  const pinnedIds = new Set(
+                    pins
+                      .filter((pin) => shifts.some((shift) => shift.id === pin.ca_id))
+                      .map((pin) => pin.nv_id),
+                  );
 
                   return (
                     <td
@@ -114,7 +126,9 @@ export function RosterGrid({
                           aria-label={`${dayLabels[DAYS.indexOf(d)]?.title} ${rowLabel}: ${summary.countLabel}, ${roleLabel}${hasUnconfirmed ? " (Có nhân sự chưa xác nhận lịch)" : ""}`}
                         >
                           <span className="nq-roster-slot-count inline-flex items-center justify-center gap-1">
-                            {summary.countLabel}
+                            {assigned.length >= required
+                              ? `Đủ ${assigned.length}/${required}`
+                              : `Thiếu ${required - assigned.length} · ${assigned.length}/${required}`}
                             {hasUnconfirmed && (
                               <span className="text-amber-400" title="Có nhân sự chưa xác nhận lịch">
                                 <Icon name="warn" size={10} />
@@ -122,6 +136,11 @@ export function RosterGrid({
                             )}
                           </span>
                           <span className="nq-roster-slot-role">{summary.roleLabel}</span>
+                          <span className="nq-roster-slot-people">
+                            {assigned.length > 0
+                              ? assigned.map((id) => `${nvName(id)}${pinnedIds.has(id) ? " · ghim" : ""}`).join(", ")
+                              : "Chưa có nhân viên"}
+                          </span>
                         </button>
                       ) : (
                         <span className="nq-muted">—</span>

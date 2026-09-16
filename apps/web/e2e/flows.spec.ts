@@ -79,8 +79,8 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
     await page.goto("/pha");
     await expect(page.getByRole("heading", { name: /Màn hình pha chế|KDS/i })).toBeVisible();
 
-    // Bị chặn khỏi /roster (quản lý)
-    await page.goto("/roster");
+    // Bị chặn khỏi /lich-tuan (quản lý)
+    await page.goto("/lich-tuan");
     await expect(page.getByRole("heading", { name: /Trang này dành cho vai trò khác|Không đủ quyền/i })).toBeVisible();
 
     // Bị chặn khỏi /menu (chủ quán)
@@ -107,9 +107,12 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
   test("Quản lý (lan): vào được lịch tuần/hộp thư, bị chặn khỏi menu/người", async ({ page }) => {
     await loginAs(page, "lan");
 
-    // Vào /roster
-    await page.goto("/roster");
+    // Vào đường dẫn chính /lich-tuan
+    await page.goto("/lich-tuan");
     await expect(page.getByRole("heading", { name: /Lịch/i })).toBeVisible();
+    await expect(page.getByText("1. Nháp", { exact: true })).toBeVisible();
+    await expect(page.getByText("Ràng buộc & kiểm tra lần xếp này")).toBeVisible();
+    await expect(page.locator(".nq-roster-slot-btn")).toHaveCount(21);
 
     // Vào /inbox
     await page.goto("/inbox");

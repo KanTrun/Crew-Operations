@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { apiGet, apiSend } from "../../lib/api";
 import {
   agentLabel,
@@ -44,6 +45,15 @@ type Lifecycle = {
   };
 };
 
+type AutoScheduleResult = {
+  ok?: boolean;
+  skipped?: boolean;
+  status?: string;
+  detail?: string;
+  tong_so_o_ca?: number;
+  so_o_ca_da_xep?: number;
+};
+
 type Candidate = {
   nv_id: string;
   ten: string;
@@ -83,6 +93,10 @@ type Item = {
     doi_tac_khong_ro?: boolean;
     can_xac_minh?: boolean;
   };
+};
+
+type DecisionResponse = Item & {
+  tu_dong_xep_lich?: AutoScheduleResult;
 };
 
 const THU_TU = ["cho_duyet", "moi", "duyet", "tu_choi"];
@@ -166,6 +180,10 @@ function itemHaystack(it: Item): string {
     .join(" ");
 }
 
+function anhHuongXepLich(it: Item): boolean {
+  return ["xin_nghi", "bao_tre", "cap_nhat_tkb"].includes(it.y_dinh ?? "");
+}
+
 export default function InboxPage() {
   const [token, setToken] = useState("");
   const [items, setItems] = useState<Item[]>([]);
@@ -186,6 +204,8 @@ export default function InboxPage() {
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
   const [duyetModalItem, setDuyetModalItem] = useState<Item | null>(null);
+  const [autoXepSauDuyet, setAutoXepSauDuyet] = useState(true);
+  const [autoScheduleResult, setAutoScheduleResult] = useState<AutoScheduleResult | null>(null);
   const [tuChoiModalItem, setTuChoiModalItem] = useState<Item | null>(null);
   const [tuChoiLyDo, setTuChoiLyDo] = useState("");
   const [coMau, setCoMau] = useState(false);
@@ -235,6 +255,28 @@ export default function InboxPage() {
     if (token) load();
   }, [token, load]);
 
+  useEffect(() => {
+    const hasOpenDialog = Boolean(duyetModalItem || tuChoiModalItem || swapModalItem || showReopenModal);
+    if (!hasOpenDialog) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function closeDialog(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setDuyetModalItem(null);
+      setTuChoiModalItem(null);
+      setSwapModalItem(null);
+      setShowReopenModal(false);
+    }
+
+    document.addEventListener("keydown", closeDialog);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeDialog);
+    };
+  }, [duyetModalItem, showReopenModal, swapModalItem, tuChoiModalItem]);
+
   const personOptions = useMemo(
     () => [{ value: "all", label: "Mọi người" }, ...uniqueSorted(items.map((i) => i.nv_id)).map((v) => ({ value: v, label: v }))],
     [items],
@@ -277,13 +319,28 @@ export default function InboxPage() {
   async function decide(
     id: string,
     quyet_dinh: string,
-    extra?: { ca_id?: string; doi_tac_nv_id?: string; ap_dat?: boolean; ly_do?: string },
+    extra?: {
+      ca_id?: string;
+      doi_tac_nv_id?: string;
+      ap_dat?: boolean;
+      ly_do?: string;
+      tu_dong_xep_lich?: boolean;
+    },
   ) {
     setBusy(id);
+    setAutoScheduleResult(null);
     try {
-      await apiSend(`/api/v1/inbox/rang-buoc/${id}`, { quyet_dinh, ...extra });
+      const response = await apiSend<DecisionResponse>(
+        `/api/v1/inbox/rang-buoc/${id}`,
+        { quyet_dinh, ...extra },
+      );
+      if (response.tu_dong_xep_lich) {
+        setAutoScheduleResult(response.tu_dong_xep_lich);
+      }
       push(
-        quyet_dinh === "duyet"
+        response.tu_dong_xep_lich?.ok
+          ? `Đã duyệt và tự xếp đủ ${response.tu_dong_xep_lich.so_o_ca_da_xep ?? 0}/${response.tu_dong_xep_lich.tong_so_o_ca ?? 21} ô ca tuần.`
+          : quyet_dinh === "duyet"
           ? "Đã duyệt. Hệ thống ghi hiệu lực — không sửa lịch âm thầm."
           : "Đã từ chối. Ràng buộc này không vào lượt xếp lịch.",
       );
@@ -310,11 +367,15 @@ export default function InboxPage() {
       }
     }
     // Mở khung chi tiết để người duyệt đọc đủ thông tin trước khi bấm chốt.
+    setAutoXepSauDuyet(anhHuongXepLich(it));
     setDuyetModalItem(it);
   }
 
   async function xacNhanDuyet(it: Item, extra?: { ca_id?: string; doi_tac_nv_id?: string; ap_dat?: boolean }) {
-    await decide(it.id, "duyet", extra);
+    await decide(it.id, "duyet", {
+      ...extra,
+      tu_dong_xep_lich: anhHuongXepLich(it) && autoXepSauDuyet,
+    });
     setDuyetModalItem(null);
   }
 
@@ -358,6 +419,24 @@ export default function InboxPage() {
         </p>
       ) : null}
       {error ? <Alert>{error}</Alert> : null}
+      {autoScheduleResult ? (
+        autoScheduleResult.ok ? (
+          <Notice>
+            Đã tự xếp đủ{" "}
+            <strong>
+              {autoScheduleResult.so_o_ca_da_xep ?? 0}/{autoScheduleResult.tong_so_o_ca ?? 21} ô ca tuần
+            </strong>
+            . Lịch đang chờ quản lý duyệt. <Link href="/lich-tuan" className="underline">Mở lịch tuần →</Link>
+          </Notice>
+        ) : (
+          <Alert>
+            Ràng buộc đã được duyệt nhưng chưa thể tự xếp lịch
+            {autoScheduleResult.status === "LIFECYCLE_LOCKED"
+              ? " vì lịch đã duyệt, công bố hoặc đóng. Hãy mở đợt xếp tuần mới."
+              : " vì không đủ nhân sự phù hợp với các ràng buộc hiện tại."}
+          </Alert>
+        )
+      ) : null}
       {!manager ? <Notice>Bạn xem được nội dung. Quản lý hoặc chủ quán mới bấm duyệt.</Notice> : null}
       {life?.solver && (!life.solver.ok || life.solver.status?.includes("INFEASIBLE")) ? (
         <div className="mb-4 p-4 border-2 border-red-500 bg-red-950/40 text-red-200 rounded">
@@ -565,17 +644,19 @@ export default function InboxPage() {
           </Group>
         ))}
 
-      {duyetModalItem ? (
+      {duyetModalItem && typeof document !== "undefined" ? createPortal(
         <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          className="nq-inbox-dialog-layer"
           onClick={() => setDuyetModalItem(null)}
-          onKeyDown={(e) => e.key === 'Escape' && setDuyetModalItem(null)}
         >
           <div
-            className="bg-[var(--nq-surface)] border-2 border-emerald-500/70 p-6 max-w-lg w-full shadow-2xl rounded max-h-[85vh] overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inbox-approve-dialog-title"
+            className="nq-inbox-dialog-panel"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold uppercase tracking-wider mb-2 text-emerald-300">
+            <h3 id="inbox-approve-dialog-title" className="text-lg font-bold uppercase tracking-wider mb-2 text-emerald-300">
               Duyệt ràng buộc — xem chi tiết trước khi chốt
             </h3>
             <p className="text-sm opacity-80 mb-4 text-[var(--nq-fg)]">
@@ -614,6 +695,22 @@ export default function InboxPage() {
                 </dd>
               </div>
             </dl>
+            {anhHuongXepLich(duyetModalItem) ? (
+              <label className="flex items-start gap-3 rounded border border-emerald-700/50 bg-emerald-950/20 p-3 text-sm text-[var(--nq-fg)]">
+                <input
+                  type="checkbox"
+                  checked={autoXepSauDuyet}
+                  onChange={(event) => setAutoXepSauDuyet(event.target.checked)}
+                  className="mt-0.5 h-4 w-4"
+                />
+                <span>
+                  <strong>Tự động xếp lại đủ 21 ô ca tuần sau khi duyệt</strong>
+                  <span className="mt-1 block text-xs text-[var(--nq-dim)]">
+                    Solver tôn trọng TKB, nghỉ phép, kỹ năng và giới hạn giờ; lịch mới sẽ ở trạng thái chờ duyệt.
+                  </span>
+                </span>
+              </label>
+            ) : null}
             <div className="mt-6 flex justify-end gap-3">
               <Btn variant="ghost" onClick={() => setDuyetModalItem(null)}>
                 Xem lại sau
@@ -627,20 +724,23 @@ export default function InboxPage() {
               </Btn>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
 
-      {tuChoiModalItem ? (
+      {tuChoiModalItem && typeof document !== "undefined" ? createPortal(
         <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          className="nq-inbox-dialog-layer"
           onClick={() => setTuChoiModalItem(null)}
-          onKeyDown={(e) => e.key === 'Escape' && setTuChoiModalItem(null)}
         >
           <div
-            className="bg-[var(--nq-surface)] border-2 border-rose-500/70 p-6 max-w-md w-full shadow-2xl rounded"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inbox-reject-dialog-title"
+            className="nq-inbox-dialog-panel nq-inbox-dialog-panel--compact nq-inbox-dialog-panel--danger"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold uppercase tracking-wider mb-2 text-rose-300">
+            <h3 id="inbox-reject-dialog-title" className="text-lg font-bold uppercase tracking-wider mb-2 text-rose-300">
               Từ chối ràng buộc
             </h3>
             <p className="text-sm opacity-80 mb-4 text-[var(--nq-fg)]">
@@ -689,20 +789,23 @@ export default function InboxPage() {
               </Btn>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
 
-      {swapModalItem ? (
+      {swapModalItem && typeof document !== "undefined" ? createPortal(
         <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          className="nq-inbox-dialog-layer"
           onClick={() => setSwapModalItem(null)}
-          onKeyDown={(e) => e.key === 'Escape' && setSwapModalItem(null)}
         >
           <div
-            className="bg-[var(--nq-surface)] border-2 border-[var(--nq-copper)] p-6 max-w-md w-full shadow-2xl rounded"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inbox-swap-dialog-title"
+            className="nq-inbox-dialog-panel nq-inbox-dialog-panel--compact nq-inbox-dialog-panel--accent"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold uppercase tracking-wider mb-2 text-[var(--nq-fg)]">
+            <h3 id="inbox-swap-dialog-title" className="text-lg font-bold uppercase tracking-wider mb-2 text-[var(--nq-fg)]">
               Chỉ định ca & đối tác đổi ca
             </h3>
             <p className="text-sm opacity-80 mb-4 text-[var(--nq-fg)]">
@@ -752,13 +855,19 @@ export default function InboxPage() {
               </Btn>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
 
-      {showReopenModal ? (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nq-panel-bg,#222)] border-2 border-[var(--nq-copper)] p-6 max-w-md w-full shadow-2xl rounded">
-            <h3 className="text-lg font-bold uppercase tracking-wider mb-2 text-[var(--nq-fg)]">
+      {showReopenModal && typeof document !== "undefined" ? createPortal(
+        <div className="nq-inbox-dialog-layer">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inbox-reopen-dialog-title"
+            className="nq-inbox-dialog-panel nq-inbox-dialog-panel--compact nq-inbox-dialog-panel--accent"
+          >
+            <h3 id="inbox-reopen-dialog-title" className="text-lg font-bold uppercase tracking-wider mb-2 text-[var(--nq-fg)]">
               Mở lại đợt xếp lịch tuần mới
             </h3>
             <p className="text-sm opacity-80 mb-4 text-[var(--nq-fg)]">
@@ -792,7 +901,8 @@ export default function InboxPage() {
               </Btn>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );

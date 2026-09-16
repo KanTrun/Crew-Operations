@@ -23,6 +23,8 @@ class LichInput:
     khoang_nghi_gio: float = 0.0
     # Fairness debt balances (4 axes) — ADR-005
     debt: dict[str, dict[str, float]] = field(default_factory=dict)
+    phan_cong_tuan_truoc: dict[str, list[str]] = field(default_factory=dict)
+    nhan_vien_kinh_nghiem: set[str] = field(default_factory=set)
     soft_enabled: bool = True
     soft_count: int = 5  # cut to 3 + ADR if mốc trượt
 

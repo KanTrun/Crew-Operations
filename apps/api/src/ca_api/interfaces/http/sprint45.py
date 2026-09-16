@@ -6,13 +6,14 @@ import json
 import os
 import uuid
 from dataclasses import asdict
+from io import BytesIO
 from pathlib import Path
 from typing import Annotated, Any, cast
 
 try:
-    from datetime import UTC, datetime
+    from datetime import UTC, date, datetime, timedelta
 except ImportError:
-    from datetime import datetime, timezone
+    from datetime import date, datetime, timedelta, timezone
 
     UTC = timezone.utc
 
@@ -128,13 +129,69 @@ def _audit(hanh: str, ai: str, payload: dict[str, Any]) -> None:
     audit_add(_clock.now_iso(), ai, hanh, payload)
 
 
-def _run_solver() -> dict[str, Any]:
+def _week_value(key: str, tuan_iso: str, default: Any) -> Any:
+    """Read week-scoped KV with a one-way compatible fallback to legacy data."""
+    raw = kv_get(key, None)
+    if isinstance(raw, dict) and raw:
+        return raw.get(tuan_iso, default)
+    if key.endswith("_by_week"):
+        legacy = kv_get(key.removesuffix("_by_week"), None)
+        if legacy is not None:
+            return legacy
+    return default
+
+
+def _set_week_value(key: str, tuan_iso: str, value: Any) -> None:
+    def mut(raw: dict[str, Any]) -> dict[str, Any]:
+        raw[tuan_iso] = value
+        return raw
+
+    kv_mutate(key, mut, {})
+
+
+def _previous_week(tuan_iso: str) -> str | None:
+    try:
+        year, week = tuan_iso.split("-W")
+        previous = date.fromisocalendar(int(year), int(week), 1) - timedelta(days=7)
+        iso = previous.isocalendar()
+        return f"{iso.year}-W{iso.week:02d}"
+    except (TypeError, ValueError):
+        return None
+
+
+def _run_solver(
+    tuan_iso: str | None = None,
+    *,
+    extra_pin: tuple[str, str] | None = None,
+) -> dict[str, Any]:
     from ca_solver import apply_luat, build_lich_input, solve_cpsat
 
     from ca_api.nhan_vien import list_nhan_vien_ops
 
     inp = build_lich_input(nhan_vien_ngoai=list_nhan_vien_ops())
-    tuan_hien_tai = _life().get("tuan_iso", "2026-W01")
+    tuan_hien_tai = tuan_iso or _life().get("tuan_iso", "2026-W01")
+
+    # Giờ ca do quản lý cấu hình phải là đầu vào thật của CP-SAT.
+    khung_gio = kv_get("khung_gio", {})
+    if isinstance(khung_gio, dict):
+        for meta in inp.ca_meta.values():
+            frame = khung_gio.get(meta.get("khung", ""))
+            if isinstance(frame, dict):
+                meta["bat_dau"] = str(frame.get("bat_dau") or meta["bat_dau"])
+                meta["ket_thuc"] = str(frame.get("ket_thuc") or meta["ket_thuc"])
+
+    debt = _week_value("fairness_debt_by_week", tuan_hien_tai, {})
+    if isinstance(debt, dict) and debt:
+        inp.debt = debt
+    previous_week = _previous_week(str(tuan_hien_tai))
+    if previous_week:
+        previous_assignments = _week_value("phan_cong_by_week", previous_week, {})
+        if isinstance(previous_assignments, dict):
+            inp.phan_cong_tuan_truoc = {
+                str(ca_id): list(nv_ids)
+                for ca_id, nv_ids in previous_assignments.items()
+                if isinstance(nv_ids, list)
+            }
 
     # TKB đã xác nhận từ ảnh đè lên (hoặc bổ sung) TKB synthetic của fixture.
     stored = kv_get("tkb_nv", {})
@@ -205,7 +262,7 @@ def _run_solver() -> dict[str, Any]:
                     inp.tkb.setdefault(nv_id, []).append((thu, start, end))
 
     # Ghim ca từ KV "pins"
-    raw_pins = kv_get("pins", {})
+    raw_pins = _week_value("pins_by_week", tuan_hien_tai, {})
     if isinstance(raw_pins, dict):
         for pin_key, is_pinned in raw_pins.items():
             if is_pinned and "|" in str(pin_key):
@@ -214,6 +271,11 @@ def _run_solver() -> dict[str, Any]:
                     inp.phan_cong.setdefault(ca_id, [])
                     if nv_id not in inp.phan_cong[ca_id]:
                         inp.phan_cong[ca_id].append(nv_id)
+    if extra_pin:
+        ca_id, nv_id = extra_pin
+        inp.phan_cong.setdefault(ca_id, [])
+        if nv_id not in inp.phan_cong[ca_id]:
+            inp.phan_cong[ca_id].append(nv_id)
 
     inp, applied = apply_luat(inp, list_luat())
     result = solve_cpsat(inp, time_limit_s=60.0)
@@ -266,10 +328,49 @@ def _run_solver() -> dict[str, Any]:
         "luat_ap_dung": applied,
         "danh_sach_xung_dot": danh_sach_xung_dot,
     }
+    o_ca = {
+        (str(meta.get("thu") or ""), str(meta.get("khung") or ""))
+        for meta in inp.ca_meta.values()
+        if meta.get("thu") and meta.get("khung")
+    }
+    o_ca_da_xep = {
+        (
+            str(inp.ca_meta.get(ca_id, {}).get("thu") or ""),
+            str(inp.ca_meta.get(ca_id, {}).get("khung") or ""),
+        )
+        for ca_id, nhan_vien_ids in result.phan_cong.items()
+        if nhan_vien_ids
+    }
+    payload["tong_so_o_ca"] = len(o_ca)
+    payload["so_o_ca_da_xep"] = len(o_ca_da_xep & o_ca)
+    payload["kiem_tra"] = {
+        "hard": {
+            "passed": result.ok and not result.violations,
+            "gates": ["C01", "C02", "C03", "C04", "C05", "C06"],
+            "violations": result.violations,
+        },
+        "vf": {
+            "applies_to_solver": False,
+            "message": (
+                "VF kiểm dữ liệu do agent trích xuất và lời giải thích; "
+                "CP-SAT được hậu kiểm bằng C01–C06."
+            ),
+            "gates": ["VF-SCHEMA", "VF-TRACE", "VF-CONF", "VF-CONFLICT", "VF-NUM", "VF-RULE"],
+        },
+        "coverage": {
+            "passed": len(o_ca_da_xep & o_ca) == len(o_ca),
+            "filled": len(o_ca_da_xep & o_ca),
+            "total": len(o_ca),
+        },
+    }
     out = _lich_out()
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     if result.ok:
+        _set_week_value("phan_cong_by_week", tuan_hien_tai, result.phan_cong)
+        _set_week_value("lich_tuan_results_by_week", tuan_hien_tai, payload)
+        _set_week_value("fairness_debt_by_week", tuan_hien_tai, result.debt_after)
+        # Latest-week mirror for older workers/tests; week-scoped stores remain authoritative.
         kv_set("phan_cong", result.phan_cong)
     return {
         "status": result.status,
@@ -278,13 +379,22 @@ def _run_solver() -> dict[str, Any]:
         "luat_ap_dung": applied,
         "violations": len(result.violations),
         "danh_sach_xung_dot": danh_sach_xung_dot,
+        "tong_so_o_ca": len(o_ca),
+        "so_o_ca_da_xep": len(o_ca_da_xep & o_ca),
+        "kiem_tra": payload["kiem_tra"],
     }
 
 
-def _life() -> dict[str, Any]:
+def _life(tuan_iso: str | None = None) -> dict[str, Any]:
     """Trạng thái lịch tuần — SSOT là kv `lich_tuan_lifecycle` (giờ main.py,
     copilot và sprint45 cùng một nguồn). Fallback đọc kv `lifecycle` cũ cho
     data trước khi nhất hóa; thiếu hẳn thì về máy-sinh tuần mặc định."""
+    requested = tuan_iso
+    if requested:
+        by_week = kv_get("lich_tuan_lifecycle_by_week", {})
+        if isinstance(by_week, dict) and isinstance(by_week.get(requested), dict):
+            return cast(dict[str, Any], by_week[requested])
+        return {"tuan_iso": requested, "trang_thai": "nhap", "nguon": "quan"}
     moi = kv_get("lich_tuan_lifecycle", None)
     if isinstance(moi, dict) and moi.get("trang_thai"):
         return cast(dict[str, Any], moi)
@@ -299,6 +409,11 @@ def _save_life(doc: dict[str, Any]) -> None:
     # còn đọc chưa nâng cấp (đọc soft ở trên tự bỏ qua khi mới tồn tại).
     kv_set("lich_tuan_lifecycle", doc)
     kv_set("lifecycle", doc)
+    _set_week_value(
+        "lich_tuan_lifecycle_by_week",
+        str(doc.get("tuan_iso") or "2026-W01"),
+        doc,
+    )
 
 
 def _seed_inbox() -> list[dict[str, Any]]:
@@ -321,20 +436,23 @@ def _seed_inbox() -> list[dict[str, Any]]:
     return items
 
 
-def _phan() -> dict[str, list[str]]:
-    stored = kv_get("phan_cong", None)
+def _phan(tuan_iso: str | None = None) -> dict[str, list[str]]:
+    week = tuan_iso or str(_life().get("tuan_iso") or "2026-W01")
+    stored = _week_value("phan_cong_by_week", week, None)
     if stored:
         return cast(dict[str, list[str]], stored)
     out = _lich_out()
     if out.exists():
-        raw = json.loads(out.read_text(encoding="utf-8")).get("phan_cong", {})
-        return cast(dict[str, list[str]], raw)
+        doc = json.loads(out.read_text(encoding="utf-8"))
+        if not doc.get("tuan_iso") or doc.get("tuan_iso") == week:
+            return cast(dict[str, list[str]], doc.get("phan_cong", {}))
     return {}
 
 
 class LifeBody(BaseModel):
     to: str
     ly_do: str | None = None
+    tuan_iso: str | None = None
 
 
 class InboxBody(BaseModel):
@@ -342,6 +460,7 @@ class InboxBody(BaseModel):
     ca_id: str | None = None
     doi_tac_nv_id: str | None = None
     ap_dat: bool = False
+    tu_dong_xep_lich: bool = False
     ly_do: str | None = Field(default=None, max_length=500)
 
 
@@ -378,9 +497,12 @@ class QrBody(BaseModel):
 
 
 @router.get("/api/v1/lich/lifecycle")
-def lich_life(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+def lich_life(
+    authorization: Annotated[str | None, Header()] = None,
+    tuan: str | None = Query(default=None),
+) -> dict[str, Any]:
     _require_role(authorization)
-    return _life()
+    return _life(tuan)
 
 
 @router.post("/api/v1/lich/lifecycle")
@@ -389,7 +511,9 @@ async def lich_transition(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     role = _require_manager(authorization)
-    doc = _life()
+    current = _life()
+    week = (body.tuan_iso or "").strip() or str(current.get("tuan_iso") or "2026-W01")
+    doc = _life(week) if body.tuan_iso else current
     cur = doc.get("trang_thai", "may_sinh")
     if body.to not in _ALLOWED.get(cur, set()):
         raise HTTPException(status_code=409, detail=f"illegal:{cur}->{body.to}")
@@ -401,13 +525,69 @@ async def lich_transition(
             raise HTTPException(status_code=400, detail="can_ly_do_mo_lai_lich")
         _audit("schedule.lifecycle_reopen", role, {"entity_type": "schedule", "entity_id": doc.get("tuan_iso", "2026-W01"), "from": cur, "to": body.to, "ly_do": body.ly_do.strip()})
 
+    doc["tuan_iso"] = week
     doc["trang_thai"] = body.to
     if body.to == "dang_giai":
-        doc["solver"] = _run_solver()
+        solver = _run_solver(week)
+        doc["solver"] = solver
+        doc["trang_thai"] = "cho_duyet" if solver.get("ok") else "nhap"
     _save_life(doc)
     _audit("schedule.lifecycle", role, {"entity_type": "schedule", "entity_id": doc.get("tuan_iso", "2026-W01"), "from": cur, "to": body.to})
     await notify_ops_changed("roster:lifecycle", doc.get("tuan_iso"))
     return doc
+
+
+def _export_rows(
+    authorization: str | None,
+    tuan: str | None,
+) -> tuple[str, dict[str, Any], list[dict[str, Any]]]:
+    s = _require_role_session(authorization)
+    tuan_iso = (tuan or "").strip() or str(_life().get("tuan_iso") or "2026-W01")
+    life = _life(tuan_iso)
+    if s.get("role") == "nhan_vien" and life.get("trang_thai") not in {"da_cong_bo", "da_dong"}:
+        raise HTTPException(status_code=409, detail="lich_chua_cong_bo")
+    phan = _phan(tuan_iso)
+    try:
+        y_str, w_str = tuan_iso.split("-W")
+        iso_year, iso_week = int(y_str), int(w_str)
+    except Exception:
+        raise HTTPException(status_code=422, detail="tuan_iso_khong_hop_le") from None
+
+    seed_data = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
+    ca_meta_map = {c["id"]: c for c in seed_data.get("ca_mau_21", [])}
+    ten_map = {
+        str(nv["id"]): str(nv.get("ten") or nv["id"])
+        for nv in list_nhan_vien_ops()
+    }
+    khung_gio = kv_get("khung_gio", {})
+    personal = s.get("role") == "nhan_vien"
+    rows: list[dict[str, Any]] = []
+    for ca_id, assigned_raw in phan.items():
+        assigned = list(assigned_raw)
+        if personal:
+            assigned = [nv for nv in assigned if nv == s.get("nv_id")]
+        if not assigned:
+            continue
+        meta = ca_meta_map.get(ca_id, {})
+        frame = khung_gio.get(meta.get("khung"), {}) if isinstance(khung_gio, dict) else {}
+        start = str(frame.get("bat_dau") or meta.get("bat_dau", "07:00"))
+        finish = str(frame.get("ket_thuc") or meta.get("ket_thuc", "12:00"))
+        day_offset = int(meta.get("ngay_offset", 1))
+        shift_date = date.fromisocalendar(iso_year, iso_week, day_offset)
+        rows.append(
+            {
+                "ca_id": ca_id,
+                "date": shift_date,
+                "thu": _THU_MAP.get(day_offset, "T2"),
+                "khung": str(meta.get("khung") or ""),
+                "bat_dau": start,
+                "ket_thuc": finish,
+                "vi_tri": _VI_TRI_VI.get(str(meta.get("vi_tri") or ""), str(meta.get("vi_tri") or "")),
+                "nhan_vien": [ten_map.get(nv, nv) for nv in assigned],
+            }
+        )
+    rows.sort(key=lambda row: (row["date"], row["bat_dau"], row["vi_tri"]))
+    return tuan_iso, s, rows
 
 
 @router.get("/api/v1/lich/ics")
@@ -416,44 +596,30 @@ def lich_ics(
     download: bool = Query(default=False),
     tuan: str | None = Query(default=None, description="Tuần ISO muốn xuất, vd 2026-W37"),
 ) -> Any:
-    s = _require_role_session(authorization)
-    phan = _phan()
-    # Tuần hiển thị trên /roster được truyền qua ?tuan= — mặc định tuần lifecycle.
-    tuan_iso = (tuan or "").strip() or str(_life().get("tuan_iso") or "2026-W01")
-    try:
-        y_str, w_str = tuan_iso.split("-W")
-        iso_year, iso_week = int(y_str), int(w_str)
-    except Exception:
-        iso_year, iso_week = 2026, 1
-
-    seed_data = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
-    ca_meta_map = {c["id"]: c for c in seed_data.get("ca_mau_21", [])}
-    ten_map = {nv["id"]: nv.get("ten") or nv["id"] for nv in seed_data.get("nhan_vien", [])}
+    tuan_iso, s, rows = _export_rows(authorization, tuan)
     now_stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
-    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//NHIPQUAN//CA//VI"]
-    for ca_id, nvs in phan.items():
-        uid = f"{ca_id}_{tuan_iso}_{s['nv_id']}@nhipquan.local"
-        c_meta = ca_meta_map.get(ca_id, {})
-        day_offset = int(c_meta.get("ngay_offset", 1))
-        bat_dau = str(c_meta.get("bat_dau", "07:00")).replace(":", "")
-        ket_thuc = str(c_meta.get("ket_thuc", "12:00")).replace(":", "")
-        try:
-            from datetime import date
-            ca_date = date.fromisocalendar(iso_year, iso_week, day_offset)
-            d_str = ca_date.strftime("%Y%m%d")
-        except Exception:
-            d_str = "20260101"
-        dtstart = f"{d_str}T{bat_dau}00"
-        dtend = f"{d_str}T{ket_thuc}00"
-        ten_list = " · ".join(ten_map.get(nv, nv) for nv in nvs)
-        summary = _ics_escape(f"Ca {ca_id} — {ten_list}" if ten_list else f"Ca {ca_id}")
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//NHIPQUAN//CA//VI",
+        "CALSCALE:GREGORIAN",
+        "X-WR-TIMEZONE:Asia/Ho_Chi_Minh",
+    ]
+    for row in rows:
+        uid = f"{row['ca_id']}_{tuan_iso}_{s['nv_id']}@nhipquan.local"
+        d_str = row["date"].strftime("%Y%m%d")
+        dtstart = f"{d_str}T{str(row['bat_dau']).replace(':', '')}00"
+        dtend = f"{d_str}T{str(row['ket_thuc']).replace(':', '')}00"
+        summary = _ics_escape(
+            f"{row['vi_tri']} — {' · '.join(row['nhan_vien'])}"
+        )
         lines += [
             "BEGIN:VEVENT",
             f"UID:{uid}",
             f"DTSTAMP:{now_stamp}",
-            f"DTSTART:{dtstart}",
-            f"DTEND:{dtend}",
+            f"DTSTART;TZID=Asia/Ho_Chi_Minh:{dtstart}",
+            f"DTEND;TZID=Asia/Ho_Chi_Minh:{dtend}",
             f"SUMMARY:{summary}",
             "END:VEVENT",
         ]
@@ -468,6 +634,114 @@ def lich_ics(
             },
         )
     return {"ics": ics_text, "nguon": "quan", "tuan_iso": tuan_iso}
+
+
+@router.get("/api/v1/lich/xlsx")
+def lich_xlsx(
+    authorization: Annotated[str | None, Header()] = None,
+    tuan: str | None = Query(default=None),
+) -> Response:
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    tuan_iso, _session, rows = _export_rows(authorization, tuan)
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Lịch tuần"
+    sheet.append(["Tuần", "Ngày", "Thứ", "Khung", "Giờ", "Vị trí", "Nhân viên"])
+    for cell in sheet[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="8C5A3C")
+        cell.alignment = Alignment(horizontal="center")
+    for row in rows:
+        sheet.append(
+            [
+                tuan_iso,
+                row["date"].strftime("%d/%m/%Y"),
+                row["thu"],
+                row["khung"],
+                f"{row['bat_dau']}–{row['ket_thuc']}",
+                row["vi_tri"],
+                ", ".join(row["nhan_vien"]),
+            ]
+        )
+    for width, column in zip((14, 14, 8, 12, 16, 18, 42), "ABCDEFG", strict=True):
+        sheet.column_dimensions[column].width = width
+    output = BytesIO()
+    workbook.save(output)
+    return Response(
+        content=output.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="lich_tuan_{tuan_iso}.xlsx"'},
+    )
+
+
+@router.get("/api/v1/lich/pdf")
+def lich_pdf(
+    authorization: Annotated[str | None, Header()] = None,
+    tuan: str | None = Query(default=None),
+) -> Response:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Table, TableStyle
+
+    tuan_iso, _session, rows = _export_rows(authorization, tuan)
+    font_name = "Helvetica"
+    for font_path in (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+    ):
+        if Path(font_path).exists():
+            pdfmetrics.registerFont(TTFont("NhipQuanUnicode", font_path))
+            font_name = "NhipQuanUnicode"
+            break
+    output = BytesIO()
+    doc = SimpleDocTemplate(
+        output,
+        pagesize=landscape(A4),
+        leftMargin=10 * mm,
+        rightMargin=10 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
+    )
+    styles = getSampleStyleSheet()
+    styles["Title"].fontName = font_name
+    story: list[Any] = [Paragraph(f"Lịch tuần {tuan_iso}", styles["Title"])]
+    data = [["Ngày", "Khung giờ", "Vị trí", "Nhân viên"]]
+    data.extend(
+        [
+            row["date"].strftime("%d/%m/%Y"),
+            f"{row['khung']} {row['bat_dau']}–{row['ket_thuc']}",
+            row["vi_tri"],
+            ", ".join(row["nhan_vien"]),
+        ]
+        for row in rows
+    )
+    table = Table(data, colWidths=[35 * mm, 45 * mm, 42 * mm, 145 * mm], repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), font_name),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#8C5A3C")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.35, colors.grey),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4EEE9")]),
+            ]
+        )
+    )
+    story.append(table)
+    doc.build(story)
+    return Response(
+        content=output.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="lich_tuan_{tuan_iso}.pdf"'},
+    )
 
 
 @router.get("/api/v1/audit")
@@ -671,10 +945,74 @@ def inbox_decide(
         kv_mutate("swap", add_swap, [])
     if not found:
         raise HTTPException(status_code=404, detail="inbox_item")
-    
-    action_name = "shift_swap.approve" if body.quyet_dinh == "duyet" else "shift_swap.reject"
-    _audit(action_name, role, {"entity_type": "inbox_item", "entity_id": item_id, "q": body.quyet_dinh, "y": found.get("y_dinh")})
-    return found
+
+    y_dinh = str(found.get("y_dinh") or "")
+    if y_dinh == "doi_ca":
+        action_name = (
+            "shift_swap.approve"
+            if body.quyet_dinh == "duyet"
+            else "shift_swap.reject"
+        )
+    else:
+        action_name = (
+            "constraint.approve"
+            if body.quyet_dinh == "duyet"
+            else "constraint.reject"
+        )
+    _audit(
+        action_name,
+        role,
+        {
+            "entity_type": "inbox_item",
+            "entity_id": item_id,
+            "q": body.quyet_dinh,
+            "y": y_dinh,
+        },
+    )
+
+    response = dict(found)
+    if (
+        body.quyet_dinh == "duyet"
+        and body.tu_dong_xep_lich
+        and found.get("hieu_luc", {}).get("loai") == "rang_buoc_cho_solver"
+    ):
+        life = _life()
+        current_state = str(life.get("trang_thai") or "may_sinh")
+        if current_state in {"da_duyet", "da_cong_bo", "da_dong"}:
+            solver_result = {
+                "ok": False,
+                "skipped": True,
+                "status": "LIFECYCLE_LOCKED",
+                "detail": f"lich_{current_state}_khong_tu_dong_xep_lai",
+            }
+        else:
+            try:
+                solver_result = _run_solver()
+            except Exception:
+                solver_result = {
+                    "ok": False,
+                    "status": "ERROR",
+                    "detail": "khong_the_chay_solver",
+                }
+            if solver_result.get("ok"):
+                life["trang_thai"] = "cho_duyet"
+                life["solver"] = solver_result
+                life["cap_nhat_luc"] = _clock.now_iso()
+                life["cap_nhat_boi"] = role
+                _save_life(life)
+        response["tu_dong_xep_lich"] = solver_result
+        _audit(
+            "inbox_auto_schedule",
+            role,
+            {
+                "id": item_id,
+                "ok": solver_result.get("ok"),
+                "status": solver_result.get("status"),
+                "so_o_ca_da_xep": solver_result.get("so_o_ca_da_xep"),
+                "tong_so_o_ca": solver_result.get("tong_so_o_ca"),
+            },
+        )
+    return response
 
 
 @router.get("/api/v1/inbox/candidates/{item_id}")

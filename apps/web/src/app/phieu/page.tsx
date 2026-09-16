@@ -28,6 +28,7 @@ type MauPhieu = {
   mo_khi?: string;
   han_hoan_thanh_phut?: number;
   gan_voi?: string;
+  bat_buoc?: boolean;
 };
 
 type BuocState = {
@@ -357,17 +358,17 @@ export default function PhieuPage() {
 
       {!phieu ? (
         <>
-          {!daCoMat ? (
-            <OpsCard eyebrow="Bước 1" title="Xác nhận có mặt hôm nay">
+          {!daCoMat && mauList.some((m) => m.mo_khi === "nhan_vien_da_diem_danh") ? (
+            <OpsCard eyebrow="Tùy theo phiếu" title="Xác nhận có mặt">
               <p className="mb-3 text-sm text-[var(--nq-dim)]">
-                Phiếu chỉ mở được sau khi bạn đã có mặt — giống điểm danh vào ca ngoài đời.
+                Chỉ các phiếu cần có mặt mới yêu cầu bước này. Bàn giao ca vẫn có thể mở khi cần.
               </p>
-              <Btn variant="primary" busy={busy} onClick={xacNhanCoMat}>
+              <Btn variant="ghost" busy={busy} onClick={xacNhanCoMat}>
                 Tôi đã có mặt
               </Btn>
             </OpsCard>
-          ) : (
-            <OpsCard eyebrow="Bước 2" title="Chọn phiếu cho ca" count={mauList.length} countLabel="mẫu">
+          ) : null}
+          <OpsCard eyebrow="Theo cấu hình quán" title="Chọn phiếu cho ca" count={mauList.length} countLabel="mẫu">
               {mauList.length === 0 ? (
                 <Empty title="Chưa tải được danh sách phiếu">
                   Kiểm tra kết nối rồi bấm thử lại.
@@ -389,14 +390,14 @@ export default function PhieuPage() {
                       <span className="mt-1 block text-xs text-[var(--nq-dim)]">
                         {m.so_buoc ? `${m.so_buoc} bước · ` : ""}
                         {m.mo_khi ? `mở ${MO_KHI_VI[m.mo_khi] ?? m.mo_khi} · ` : ""}
+                        {m.bat_buoc ? "bắt buộc · " : "tùy chọn · "}
                         {m.han_hoan_thanh_phut ? `nên xong trong ${m.han_hoan_thanh_phut} phút` : ""}
                       </span>
                     </button>
                   ))}
                 </div>
               )}
-            </OpsCard>
-          )}
+          </OpsCard>
         </>
       ) : null}
 

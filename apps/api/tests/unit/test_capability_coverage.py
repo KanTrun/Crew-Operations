@@ -100,6 +100,7 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/store/promotions": "R3: promotions qua UI /page-quan",
     "/api/v1/page/status": "PR12: GET_PAGE_STATUS đã phủ qua chat",
     "/api/v1/page/sync": "PR12: PROPOSE_PAGE_SYNC đã phủ qua chat",
+    "/api/v1/page/sync-multi": "multi-page sync qua trang quan ly",
     # ── Việc treo / hao hụt — PR10 intents đã phủ qua chat ──
     "/api/v1/viec-treo": "PR10: GET_HANGING_TASKS đã phủ qua chat",
     "/api/v1/viec-treo/{treo_id}": "PR10: PROPOSE_TASK_COMPLETE đã phủ qua chat",
@@ -139,6 +140,8 @@ EXCLUDED_ROUTES: dict[str, str] = {
     # ── Lịch lifecycle / ICS — deep-link /roster ──
     "/api/v1/lich/lifecycle": "R3: lifecycle lịch qua UI /roster",
     "/api/v1/lich/ics": "R0: xuất ICS qua UI /roster",
+    "/api/v1/lich/xlsx": "R0: xuất Excel qua UI /lich-tuan",
+    "/api/v1/lich/pdf": "R0: xuất PDF qua UI /lich-tuan",
     "/api/v1/audit": "R0: audit qua UI /vet",
     # ── Mail / profile — deep-link /toi ──
     "/api/v1/mail/send": "R2: gửi mail qua UI (Copilot SEND_MAIL đã phủ chat)",

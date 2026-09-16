@@ -1,0 +1,15 @@
+# Cấu hình theo quán mẫu. Chỉ các mẫu `bat: true` mới xuất hiện và mở được.
+# `bat_buoc` để quán/điều phối tất định đánh giá sau này; không tự tạo Phiếu từ lịch ca.
+mac_dinh:
+  - ma: mo_quan
+    bat: true
+    bat_buoc: false
+  - ma: dong_quan
+    bat: true
+    bat_buoc: false
+  - ma: ban_giao_ca
+    bat: true
+    bat_buoc: false
+
+# Ghi đè danh sách cho một quán khi nghiệp vụ quán đó khác cấu hình mặc định.
+quan: {}

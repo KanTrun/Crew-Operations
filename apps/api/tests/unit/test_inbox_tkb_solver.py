@@ -1,4 +1,4 @@
-"""Unit tests cho luồng nối logic lịch ↔ inbox ↔ TKB ↔ Solver lifecycle (11 tests)."""
+"""Unit tests cho luồng nối logic lịch ↔ inbox ↔ TKB ↔ Solver lifecycle."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from ca_api.interfaces.http.main import app
 from ca_api.interfaces.http.sprint45 import _run_solver
 from ca_api.persist import audit_list, kv_get, kv_set
 from fastapi.testclient import TestClient
+
 from unit.auth_util import headers
 
 client = TestClient(app)
@@ -101,6 +102,139 @@ def test_duyet_cap_nhat_tkb_wires_into_solver_tkb(monkeypatch: pytest.MonkeyPatc
         meta = inp.ca_meta.get(ca_id, {})
         if meta.get("thu") == "T3" and meta.get("bat_dau") == "07:00":
             assert "nv_02" not in nvs, f"nv_02 bị xếp vào ca sáng T3 {ca_id} dù bận TKB!"
+
+
+def test_duyet_rang_buoc_co_the_tu_dong_xep_du_21_o_ca(
+    monkeypatch: pytest.MonkeyPatch,
+    _du_nhan_vien_xep_lich: None,
+) -> None:
+    """Duyệt có xác nhận auto phải chạy solver, phủ đủ 21 ô và đưa lịch về chờ duyệt."""
+    monkeypatch.setenv("CA_AGENT_MODE", "replay")
+    ql = headers(client, "lan")
+    item_id = "test_inbox_auto_schedule_21"
+    kv_set(
+        "inbox_rang_buoc",
+        [
+            {
+                "id": item_id,
+                "agent": "ag_msg",
+                "tom_tat": "Xin nghỉ T5",
+                "trang_thai": "cho_duyet",
+                "nguon": "zalo",
+                "y_dinh": "xin_nghi",
+                "do_tin_cay": 0.9,
+                "nv_id": "nv_01",
+                "rang_buoc": {"thu": "T5", "tuan_id": "2026-W01"},
+            }
+        ],
+    )
+    kv_set(
+        "lich_tuan_lifecycle",
+        {"tuan_iso": "2026-W01", "trang_thai": "nhap", "nguon": "quan"},
+    )
+
+    response = client.post(
+        f"/api/v1/inbox/rang-buoc/{item_id}",
+        json={"quyet_dinh": "duyet", "tu_dong_xep_lich": True},
+        headers=ql,
+    )
+
+    assert response.status_code == 200, response.text
+    solver = response.json()["tu_dong_xep_lich"]
+    assert solver["ok"] is True
+    assert solver["so_o_ca_da_xep"] == solver["tong_so_o_ca"] == 21
+    assert kv_get("lich_tuan_lifecycle", {})["trang_thai"] == "cho_duyet"
+    phan_cong = kv_get("phan_cong", {})
+    assert len(phan_cong) == 70
+    assert all(phan_cong.values())
+
+
+def test_auto_xep_khong_ghi_de_lich_da_cong_bo(_du_nhan_vien_xep_lich: None) -> None:
+    """Lịch đã công bố chỉ ghi nhận ràng buộc cho lượt sau, không bị auto sửa âm thầm."""
+    ql = headers(client, "lan")
+    item_id = "test_inbox_auto_locked"
+    existing_schedule = {"w1_c01": ["nv_01"]}
+    kv_set("phan_cong", existing_schedule)
+    kv_set(
+        "inbox_rang_buoc",
+        [
+            {
+                "id": item_id,
+                "agent": "ag_msg",
+                "tom_tat": "Xin nghỉ T5",
+                "trang_thai": "cho_duyet",
+                "nguon": "zalo",
+                "y_dinh": "xin_nghi",
+                "nv_id": "nv_01",
+                "rang_buoc": {"thu": "T5", "tuan_id": "2026-W01"},
+            }
+        ],
+    )
+    kv_set(
+        "lich_tuan_lifecycle",
+        {"tuan_iso": "2026-W01", "trang_thai": "da_cong_bo", "nguon": "quan"},
+    )
+
+    response = client.post(
+        f"/api/v1/inbox/rang-buoc/{item_id}",
+        json={"quyet_dinh": "duyet", "tu_dong_xep_lich": True},
+        headers=ql,
+    )
+
+    assert response.status_code == 200
+    solver = response.json()["tu_dong_xep_lich"]
+    assert solver["ok"] is False
+    assert solver["status"] == "LIFECYCLE_LOCKED"
+    assert kv_get("phan_cong", {}) == existing_schedule
+
+
+def test_auto_xep_bao_khong_kha_thi_va_giu_lich_cu(_du_nhan_vien_xep_lich: None) -> None:
+    """Không đủ người thì trả xung đột và tuyệt đối không thay lịch đang có."""
+    from ca_api.nhan_vien import list_nhan_vien_ops
+
+    ql = headers(client, "lan")
+    staff_ids = [str(item["id"]) for item in list_nhan_vien_ops()]
+    pending_id = "test_inbox_auto_infeasible"
+    items = [
+        {
+            "id": pending_id if index == 0 else f"approved_leave_{index}",
+            "agent": "ag_msg",
+            "tom_tat": f"{nv_id} xin nghỉ T2",
+            "trang_thai": "cho_duyet" if index == 0 else "duyet",
+            "nguon": "zalo",
+            "y_dinh": "xin_nghi",
+            "nv_id": nv_id,
+            "hieu_luc": None if index == 0 else {
+                "loai": "rang_buoc_cho_solver",
+                "nv_id": nv_id,
+                "thu": "T2",
+                "tuan_id": "2026-W01",
+            },
+            "rang_buoc": {"thu": "T2", "tuan_id": "2026-W01"},
+        }
+        for index, nv_id in enumerate(staff_ids)
+    ]
+    existing_schedule = {"w1_c01": [staff_ids[0]]}
+    kv_set("phan_cong", existing_schedule)
+    kv_set("inbox_rang_buoc", items)
+    kv_set(
+        "lich_tuan_lifecycle",
+        {"tuan_iso": "2026-W01", "trang_thai": "nhap", "nguon": "quan"},
+    )
+
+    response = client.post(
+        f"/api/v1/inbox/rang-buoc/{pending_id}",
+        json={"quyet_dinh": "duyet", "tu_dong_xep_lich": True},
+        headers=ql,
+    )
+
+    assert response.status_code == 200
+    solver = response.json()["tu_dong_xep_lich"]
+    assert solver["ok"] is False
+    assert "INFEASIBLE" in solver["status"]
+    assert solver["danh_sach_xung_dot"]
+    assert kv_get("phan_cong", {}) == existing_schedule
+    assert kv_get("lich_tuan_lifecycle", {})["trang_thai"] == "nhap"
 
 
 def test_duyet_doi_ca_requires_ca_id_and_doi_tac() -> None:

@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 type LinkItem = { href: string; label: string; short?: string };
 
 const COPILOT_LAUNCHER_ROUTES = new Set([
+  "/lich-tuan",
   "/roster",
   "/qr",
   "/phieu",
@@ -42,7 +43,7 @@ const STAFF_PRIMARY: LinkItem[] = [
 ];
 const MANAGER_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/roster", label: "Lịch tuần", short: "Lịch" },
+  { href: "/lich-tuan", label: "Lịch tuần", short: "Lịch" },
   { href: "/phieu", label: "Phiếu", short: "Phiếu" },
   { href: "/inbox", label: "Trao đổi", short: "Duyệt" },
   { href: "/copilot", label: "Trợ lý", short: "Trợ lý" },
@@ -50,7 +51,7 @@ const MANAGER_PRIMARY: LinkItem[] = [
 
 const ADMIN_PRIMARY: LinkItem[] = [
   { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/roster", label: "Lịch tuần", short: "Lịch" },
+  { href: "/lich-tuan", label: "Lịch tuần", short: "Lịch" },
   { href: "/phieu", label: "Phiếu", short: "Phiếu" },
   { href: "/inbox", label: "Trao đổi", short: "Duyệt" },
   { href: "/cam-nang", label: "Cẩm nang", short: "Luật" },
@@ -65,7 +66,7 @@ const MORE: LinkItem[] = [
   { href: "/quay", label: "Quầy" },
   { href: "/pha", label: "Pha chế" },
   { href: "/inbox", label: "Hộp thư" },
-  { href: "/roster", label: "Lịch tuần" },
+  { href: "/lich-tuan", label: "Lịch tuần" },
   { href: "/page-quan", label: "Page quán (FB)" },
   { href: "/page-quan/fb-inbox", label: "Hộp thư Fanpage (duyệt)" },
   { href: "/page-quan/dat-ban", label: "Sơ đồ & Đặt bàn" },
@@ -150,7 +151,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const primary = isChuQuan(role) ? ADMIN_PRIMARY : isManager(role) ? MANAGER_PRIMARY : STAFF_PRIMARY;
   const more = MORE.filter((x) => !primary.some((p) => p.href === x.href) && canAccess(role, x.href));
-  const wide = path === "/roster" || path === "/cuoc-hop" || path === "/inbox" || path === "/quay" || path === "/chat";
+  const wide = path === "/lich-tuan" || path === "/roster" || path === "/cuoc-hop" || path === "/inbox" || path === "/quay" || path === "/chat";
 
   function logout() {
     clearSession();

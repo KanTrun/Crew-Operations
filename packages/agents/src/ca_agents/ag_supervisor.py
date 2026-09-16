@@ -76,14 +76,28 @@ _INJECTION_REGEX = re.compile("|".join(_INJECTION_PATTERNS), re.IGNORECASE)
 
 
 def clean_robotic_phrasing(text: str) -> tuple[str, bool]:
-    """Clean robotic AI jargon while preserving natural Vietnamese phrasing."""
+    """Clean robotic AI jargon and raw markdown asterisks while preserving natural Vietnamese phrasing."""
     cleaned = text
     modified = False
     for rx, repl in _ROBOT_REPLACEMENTS:
         if rx.search(cleaned):
             cleaned = rx.sub(repl, cleaned)
             modified = True
-    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+
+    # Clean markdown bold/italic asterisks (e.g. **tên món** -> tên món)
+    if "**" in cleaned:
+        cleaned = re.sub(r"\*\*([^*]+)\*\*", r"\1", cleaned)
+        modified = True
+    if re.search(r"(?<!\*)\*([^*\n]+)\*(?!\*)", cleaned):
+        cleaned = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", r"\1", cleaned)
+        modified = True
+
+    # Normalize markdown list bullets (* or -) to clean dots (•)
+    if re.search(r"(?m)^\s*[\*\-]\s+", cleaned):
+        cleaned = re.sub(r"(?m)^\s*[\*\-]\s+", "• ", cleaned)
+        modified = True
+
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned).strip()
     return cleaned, modified
 
 
