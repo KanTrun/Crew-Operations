@@ -81,8 +81,9 @@ const MANAGER_ONLY = new Set([
   // Mỗi lượt khảo sát tốn chi phí proxy + Vision thật, nên khớp với `_require_manager`
   // ở `apps/api/src/ca_api/interfaces/http/pricing_radar.py`.
   "/khao-sat-gia",
+  "/vet",
 ]);
-const OWNER_ONLY = new Set(["/menu", "/nguoi", "/vet"]);
+const OWNER_ONLY = new Set(["/menu", "/nguoi"]);
 
 /** Client-side gate for navigation and hand-typed URLs. API remains authoritative. */
 export function canAccess(role: Role, path: string): boolean {

@@ -85,6 +85,10 @@ from ca_api.interfaces.http.trends import router as trends_router
 from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import (
     DangKyLoi,
+    audit_add,
+    audit_request_begin,
+    audit_request_end,
+    audit_request_had_entry,
     don_get,
     don_list,
     get_user_emails,
@@ -141,6 +145,10 @@ _LOG = logging.getLogger(__name__)
 _REALTIME_SKIP_PREFIXES = (
     "/api/v1/auth/",
     "/api/v1/chat/",
+    # Các endpoint đổi ca phát sự kiện sau khi audit đã commit để /vet tải
+    # đúng bản ghi mới, tránh broadcast chung đến sớm hoặc phát hai lần.
+    "/api/v1/cho-doi-ca",
+    "/api/v1/doi-ca",
     "/api/v1/channels/telegram/webhook",
     "/api/v1/channels/zalo/webhook",
 )
@@ -151,27 +159,75 @@ _REALTIME_SKIP_PATHS = {
     "/api/v1/lich-tuan/nv-status",
     "/api/v1/lich-tuan/xac-nhan-lich",
 }
+_AUDIT_SKIP_PATHS = {
+    # Hai endpoint này tự ghi loại log chuyên biệt, và chưa có session đầu vào.
+    "/api/v1/auth/register",
+    "/api/v1/auth/login",
+}
 
 
 @app.middleware("http")
 async def broadcast_successful_mutation(request: Request, call_next: Any) -> Any:
-    response = await call_next(request)
+    audit_token = audit_request_begin()
     path = request.url.path
-    should_broadcast = (
-        request.method in {"POST", "PUT", "PATCH", "DELETE"}
-        and response.status_code < 400
-        and path not in _REALTIME_SKIP_PATHS
-        and not path.startswith(_REALTIME_SKIP_PREFIXES)
+    method = request.method.upper()
+    is_mutation_method = method in {"POST", "PUT", "PATCH", "DELETE"}
+    actor_session = (
+        auth_session(request.headers.get("authorization"))
+        if is_mutation_method
+        else None
     )
-    if should_broadcast:
-        try:
-            await notify_ops_changed(
-                "http:mutation",
-                details={"path": path, "status": response.status_code},
+    generic_audit_added = False
+    try:
+        response = await call_next(request)
+        successful_mutation = (
+            is_mutation_method
+            and response.status_code < 400
+        )
+
+        # Mọi mutation thành công của người đã đăng nhập phải có ít nhất một
+        # vết. Endpoint có audit nghiệp vụ sẽ tự đánh dấu; endpoint còn thiếu
+        # nhận vết dự phòng không chứa body, token hay dữ liệu nhạy cảm.
+        if (
+            successful_mutation
+            and actor_session
+            and path not in _AUDIT_SKIP_PATHS
+            and not audit_request_had_entry()
+        ):
+            route = request.scope.get("route")
+            route_path = str(getattr(route, "path", path))
+            await run_in_threadpool(
+                audit_add,
+                datetime.now(UTC).isoformat(),
+                str(actor_session.get("nv_id") or actor_session.get("username") or actor_session["role"]),
+                "operation.mutation",
+                {
+                    "entity_type": "operation",
+                    "method": method,
+                    "route": route_path,
+                    "status": response.status_code,
+                },
             )
-        except Exception:
-            _LOG.exception("Operational realtime notification failed for %s", path)
-    return response
+            generic_audit_added = True
+
+        should_broadcast = successful_mutation and (
+            generic_audit_added
+            or (
+                path not in _REALTIME_SKIP_PATHS
+                and not path.startswith(_REALTIME_SKIP_PREFIXES)
+            )
+        )
+        if should_broadcast:
+            try:
+                await notify_ops_changed(
+                    "audit:mutation" if generic_audit_added else "http:mutation",
+                    details={"path": path, "status": response.status_code},
+                )
+            except Exception:
+                _LOG.exception("Operational realtime notification failed for %s", path)
+        return response
+    finally:
+        audit_request_end(audit_token)
 
 
 app.include_router(sprint3_router)
@@ -1170,6 +1226,17 @@ def register(body: RegisterBody) -> LoginOut:
         row = persist_register(body.username, body.password, body.display_name)
     except DangKyLoi as exc:
         raise HTTPException(status_code=409, detail=exc.ma) from exc
+    audit_add(
+        datetime.now(UTC).isoformat(),
+        row["nv_id"],
+        "user.register",
+        {
+            "entity_type": "user",
+            "entity_id": body.username.strip().lower(),
+            "username": body.username.strip().lower(),
+            "role": row["role"],
+        },
+    )
     return LoginOut(**row)
 
 
@@ -1207,6 +1274,14 @@ async def login(body: LoginBody, request: Request) -> LoginOut:
 @app.post("/api/v1/auth/logout")
 def logout(authorization: Annotated[str | None, Header()] = None) -> dict[str, object]:
     """Đăng xuất: thu hồi token hiện tại. Không lỗi nếu token đã hết hạn."""
+    s = auth_session(authorization)
+    if s:
+        audit_add(
+            datetime.now(UTC).isoformat(),
+            s["nv_id"],
+            "user.logout",
+            {"entity_type": "session", "username": s["username"]},
+        )
     ok = persist_logout(authorization or "")
     return {"ok": ok}
 

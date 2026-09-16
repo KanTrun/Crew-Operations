@@ -421,7 +421,7 @@ def _seed_inbox() -> list[dict[str, Any]]:
     items = kv_get("inbox_rang_buoc", [])
     if items:
         return cast(list[dict[str, Any]], items)
-    if os.environ.get("NHIPQUAN_INBOX_SEED_FIXTURE", "1").strip() in {"0", "false", "no"}:
+    if os.environ.get("NHIPQUAN_INBOX_SEED_FIXTURE", "0").strip().lower() not in {"1", "true", "yes"}:
         return []
     items = [
         {
@@ -524,7 +524,7 @@ async def lich_transition(
         _require_chu_quan(authorization)
         if not body.ly_do or not body.ly_do.strip():
             raise HTTPException(status_code=400, detail="can_ly_do_mo_lai_lich")
-        _audit("lifecycle_reopen", role, {"from": cur, "to": body.to, "ly_do": body.ly_do.strip()})
+        _audit("schedule.lifecycle_reopen", role, {"entity_type": "schedule", "entity_id": doc.get("tuan_iso", "2026-W01"), "from": cur, "to": body.to, "ly_do": body.ly_do.strip()})
 
     doc["tuan_iso"] = week
     doc["trang_thai"] = body.to
@@ -533,7 +533,7 @@ async def lich_transition(
         doc["solver"] = solver
         doc["trang_thai"] = "cho_duyet" if solver.get("ok") else "nhap"
     _save_life(doc)
-    _audit("lifecycle", role, {"from": cur, "to": body.to})
+    _audit("schedule.lifecycle", role, {"entity_type": "schedule", "entity_id": doc.get("tuan_iso", "2026-W01"), "from": cur, "to": body.to})
     await notify_ops_changed("roster:lifecycle", doc.get("tuan_iso"))
     return doc
 
@@ -747,7 +747,7 @@ def lich_pdf(
 
 @router.get("/api/v1/audit")
 def audit_get(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
-    _require_chu_quan(authorization)
+    _require_manager(authorization)
     return {"items": audit_list(), "nguon": "quan"}
 
 
@@ -946,7 +946,30 @@ def inbox_decide(
         kv_mutate("swap", add_swap, [])
     if not found:
         raise HTTPException(status_code=404, detail="inbox_item")
-    _audit("inbox", role, {"id": item_id, "q": body.quyet_dinh, "y": found.get("y_dinh")})
+
+    y_dinh = str(found.get("y_dinh") or "")
+    if y_dinh == "doi_ca":
+        action_name = (
+            "shift_swap.approve"
+            if body.quyet_dinh == "duyet"
+            else "shift_swap.reject"
+        )
+    else:
+        action_name = (
+            "constraint.approve"
+            if body.quyet_dinh == "duyet"
+            else "constraint.reject"
+        )
+    _audit(
+        action_name,
+        role,
+        {
+            "entity_type": "inbox_item",
+            "entity_id": item_id,
+            "q": body.quyet_dinh,
+            "y": y_dinh,
+        },
+    )
 
     response = dict(found)
     if (
@@ -1046,6 +1069,10 @@ def inbox_smart_approve(
     res = inbox_decide(item_id, decide_body, authorization)
     res["selected_candidate"] = target_nv
     res["smart_matched"] = True
+    
+    _require_manager(authorization)
+    role = _require_manager(authorization)
+    _audit("shift_swap.smart_approve", role, {"entity_type": "inbox_item", "entity_id": item_id, "selected_candidate": target_nv})
     return res
 
 
@@ -1628,12 +1655,22 @@ def qr_use(
         nv_id=str(used["nv_id"]),
         at_ms=_clock.now_ms(),
     )
-    _audit("qr_diem_danh", used["nv_id"], {"token": token, "ca_id": used.get("ca_id")})
+    _audit(
+        "attendance.check_in",
+        used["nv_id"],
+        {
+            "entity_type": "attendance",
+            "entity_id": used["nv_id"],
+            "nv_id": used["nv_id"],
+            "ca_id": used.get("ca_id"),
+            "source": "qr",
+        },
+    )
     return {"ok": True, "nv_id": used["nv_id"]}
 
 
 @router.post("/api/v1/cho-doi-ca")
-def swap_open(
+async def swap_open(
     body: SwapBody,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
@@ -1661,7 +1698,22 @@ def swap_open(
         return items
 
     kv_mutate("swap", mut, [])
-    _audit("swap", body.a, item)
+    
+    actor = str(caller.get("nv_id") or caller.get("username") or caller["role"])
+    audit_payload = {
+        "entity_type": "shift_swap",
+        "entity_id": item["id"],
+        "a": body.a,
+        "b": body.b,
+        "c": body.c,
+        "ca_id": body.ca_id,
+        "trang_thai": item["trang_thai"],
+    }
+    _audit("shift_swap.request", actor, audit_payload)
+    await notify_ops_changed(
+        "audit:shift_swap",
+        details={"action": "shift_swap.request", "swap_id": item["id"]},
+    )
     return item
 
 
@@ -1673,7 +1725,7 @@ def swap_list(authorization: Annotated[str | None, Header()] = None) -> dict[str
 
 @router.post("/api/v1/cho-doi-ca/{swap_id}/dong-y")
 @router.post("/api/v1/doi-ca/{swap_id}/xac-nhan")
-def swap_dong_y(
+async def swap_dong_y(
     swap_id: str,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
@@ -1708,13 +1760,26 @@ def swap_dong_y(
     kv_mutate("swap", mut, [])
     if not found:
         raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
-    _audit("swap_dong_y", nv or caller["role"], {"id": swap_id, "dong_y": found.get("dong_y", [])})
+    _audit(
+        "shift_swap.confirm",
+        nv or caller["role"],
+        {
+            "entity_type": "shift_swap",
+            "entity_id": swap_id,
+            "dong_y": found.get("dong_y", []),
+            "trang_thai": found.get("trang_thai"),
+        },
+    )
+    await notify_ops_changed(
+        "audit:shift_swap",
+        details={"action": "shift_swap.confirm", "swap_id": swap_id},
+    )
     return found
 
 
 @router.post("/api/v1/cho-doi-ca/{swap_id}/tu-choi")
 @router.post("/api/v1/doi-ca/{swap_id}/tu-choi")
-def swap_tu_choi(
+async def swap_tu_choi(
     swap_id: str,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
@@ -1741,7 +1806,19 @@ def swap_tu_choi(
     kv_mutate("swap", mut, [])
     if not found:
         raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
-    _audit("swap_tu_choi", nv or caller["role"], {"id": swap_id})
+    _audit(
+        "shift_swap.reject",
+        nv or caller["role"],
+        {
+            "entity_type": "shift_swap",
+            "entity_id": swap_id,
+            "trang_thai": found.get("trang_thai"),
+        },
+    )
+    await notify_ops_changed(
+        "audit:shift_swap",
+        details={"action": "shift_swap.reject", "swap_id": swap_id},
+    )
     return found
 
 

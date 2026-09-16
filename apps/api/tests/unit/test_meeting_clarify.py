@@ -613,7 +613,7 @@ def test_tc41_audit_trail_recorded_on_apply() -> None:
         (
             entry
             for entry in logs
-            if entry.get("hanh") == "duyet_cuoc_hop"
+            if entry.get("hanh") == "meeting.approve"
             and entry.get("payload", {}).get("meeting_id") == meet_id
         ),
         None,
@@ -727,7 +727,7 @@ def test_tc42_meeting_rollback_recalls_tasks_and_proposals() -> None:
         (
             entry
             for entry in logs
-            if entry.get("hanh") == "rollback_cuoc_hop"
+            if entry.get("hanh") == "meeting.rollback"
             and entry.get("payload", {}).get("meeting_id") == meet_id
         ),
         None,

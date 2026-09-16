@@ -41,6 +41,7 @@ from pydantic import BaseModel, Field
 
 from ca_api.orchestration import Clock, IdempotencyStore, StateMachine, dispatch_parallel
 from ca_api.persist import (
+    audit_add,
     da_diem_danh_ca,
     db_path,
     ghi_diem_danh,
@@ -311,6 +312,18 @@ def diem_danh(
             at_ms=now_ms,
         )
     ghi_diem_danh(nv)
+    audit_add(
+        _clock.now_iso(),
+        nv,
+        "attendance.check_in",
+        {
+            "entity_type": "attendance",
+            "entity_id": nv,
+            "nv_id": nv,
+            "occurrence_id": occurrence_id,
+            "source": "manual",
+        },
+    )
     return {"ok": "true", "nv_id": nv, "occurrence_id": occurrence_id}
 
 
