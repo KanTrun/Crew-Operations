@@ -551,8 +551,10 @@ def apply_meeting_decisions(
     audit_add(
         now_iso,
         actor,
-        "duyet_cuoc_hop",
+        "meeting.approve",
         {
+            "entity_type": "meeting",
+            "entity_id": body.id,
             "meeting_id": body.id,
             "tieu_de": body.tieu_de,
             "tasks_created": created_tasks,
@@ -619,7 +621,7 @@ def delete_meeting(
 
     # Ghi audit SAU khi transaction đã commit (tránh deadlock).
     actor = _nv_from_token(authorization) if authorization else "quan_ly"
-    audit_add(_now(), actor, "xoa_cuoc_hop", {"meeting_id": meeting_id})
+    audit_add(_now(), actor, "meeting.delete", {"entity_type": "meeting", "entity_id": meeting_id, "meeting_id": meeting_id})
     return {"ok": True, "meeting_id": meeting_id, "deleted": True}
 
 
@@ -709,8 +711,10 @@ def rollback_meeting_endpoint(
     audit_add(
         now_iso,
         actor,
-        "rollback_cuoc_hop",
+        "meeting.rollback",
         {
+            "entity_type": "meeting",
+            "entity_id": meeting_id,
             "meeting_id": meeting_id,
             "recalled_tasks": recalled_tasks,
             "recalled_sop": recalled_sop,

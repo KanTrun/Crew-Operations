@@ -1,24 +1,22 @@
 name: Build & push images to GHCR
 
 on:
-  push:
+  workflow_run:
+    workflows: ["ci"]
     branches: [main]
-    paths:
-      - "apps/**"
-      - "packages/**"
-      - "scripts/**"
-      - "data/fixtures/professional/**"
-      - "data/seed/**"
-      - "infra/docker/**"
-      - ".github/workflows/docker-ghcr.yml"
+    types: [completed]
 
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
+  IMAGE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   build-push:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
 
     permissions:
@@ -37,6 +35,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.IMAGE_SHA }}
 
       - name: Web build arg — API URL public
         if: matrix.name == 'nhipquan-web'
@@ -66,6 +66,6 @@ jobs:
             ${{ matrix.name == 'nhipquan-web' && format('NEXT_PUBLIC_API_URL={0}', env.WEB_API_URL) || '' }}
           tags: |
             ghcr.io/kantrun/crew-operations/${{ matrix.name }}:latest
-            ghcr.io/kantrun/crew-operations/${{ matrix.name }}:${{ github.sha }}
+            ghcr.io/kantrun/crew-operations/${{ matrix.name }}:${{ env.IMAGE_SHA }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

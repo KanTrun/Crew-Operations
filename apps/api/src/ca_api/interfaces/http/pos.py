@@ -259,7 +259,7 @@ def nguoi_nang_vai(
         out = set_role(username, body.role)
     except NangVaiLoi as exc:
         raise HTTPException(status_code=409, detail=exc.ma) from exc
-    _audit(role, "nang_vai", {"username": out["username"], "role": out["role"]})
+    _audit(role, "role.promote", {"entity_type": "user", "entity_id": out["username"], "username": out["username"], "role": out["role"]})
     return {**out, "nguon": "quan"}
 
 
@@ -273,7 +273,7 @@ def nguoi_ha_vai(
         out = ha_vai(username)
     except NangVaiLoi as exc:
         raise HTTPException(status_code=409, detail=exc.ma) from exc
-    _audit(role, "ha_vai", {"username": out["username"], "role": out["role"]})
+    _audit(role, "role.demote", {"entity_type": "user", "entity_id": out["username"], "username": out["username"], "role": out["role"]})
     return {**out, "nguon": "quan"}
 
 
@@ -293,7 +293,7 @@ def nguoi_deactivate(
         raise HTTPException(status_code=404, detail="khong_tim_thay_nguoi")
     if not user_deactivate(str(target.get("nv_id") or "")):
         raise HTTPException(status_code=409, detail="vo_hieu_hoa_that_bai")
-    _audit(role, "user_deactivate", {"username": target.get("username"), "nv_id": target.get("nv_id")})
+    _audit(role, "user.deactivate", {"entity_type": "user", "entity_id": target.get("username"), "username": target.get("username"), "nv_id": target.get("nv_id")})
     return {"ok": True, "username": target.get("username"), "status": "inactive", "nguon": "quan"}
 
 
