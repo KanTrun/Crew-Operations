@@ -26,7 +26,11 @@ test.describe("Phiếu demo — latency mở form (#7 nhóm A)", () => {
     await expect(
       page.getByRole("heading", { name: /Phiếu ca làm việc|Mở phiếu/i }),
     ).toBeVisible();
-    // Luồng mới: xác nhận có mặt → chọn phiếu "Mở quán" → thấy bước đầu.
+    // Luồng tất định: không hiện catalog ba phiếu để nhân viên tự chọn.
+    await expect(page.getByText(/Hệ thống tự trình đúng phiếu/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Đóng quán/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Bàn giao ca/i })).toHaveCount(0);
+    // Nếu fixture hiện tại có phiếu Mở đến hạn, check-in sẽ mở thẳng bước đầu.
     const coMatBtn = page.getByRole("button", { name: /Tôi đã có mặt/i });
     if (await coMatBtn.isVisible()) {
       await coMatBtn.click();

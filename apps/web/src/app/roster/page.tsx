@@ -56,6 +56,7 @@ type LichData = {
   ca?: Shift[];
   nhan_vien?: NhanVien[];
   phan_cong?: Record<string, string[]>;
+  phu_trach_ca?: Record<string, string>;
   khung_gio?: KhungGio;
   solver?: { ok?: boolean | null; status?: string | null; elapsed_s?: number | null };
   chua_xac_nhan?: UnconfirmedStaff[];
@@ -304,6 +305,29 @@ export default function RosterPage() {
           ? `Không thể ghim: ${e.message}`
           : "Không cập nhật được ghim.",
       );
+    } finally {
+      setPinBusy(false);
+    }
+  }
+
+  async function handleResponsibility(occurrenceId: string, nvId: string) {
+    setPinBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API}/api/v1/lich-tuan/phu-trach`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader() },
+        body: JSON.stringify({
+          tuan_iso: currentDisplayWeek,
+          occurrence_id: occurrenceId,
+          nv_id: nvId,
+        }),
+      });
+      if (!res.ok) throw new Error("responsibility_failed");
+      setLifecycleMsg("Đã chọn phụ trách ca. Người này nhận phiếu vận hành đúng mốc.");
+      await loadLich(baseWeek, soTuan);
+    } catch {
+      setError("Không cập nhật được phụ trách ca. Người được chọn phải thuộc ô ca.");
     } finally {
       setPinBusy(false);
     }
@@ -1050,6 +1074,9 @@ export default function RosterPage() {
             onSelectDay={setSelectedDay}
             nvStatusMap={data?.nv_status_map}
             pins={data?.pins}
+            phuTrachCa={data?.phu_trach_ca}
+            canManageResponsibility={canWrite && !["da_cong_bo", "da_dong"].includes(trangThai)}
+            onSetResponsibility={handleResponsibility}
           />
 
           {filteredActive && shifts.every((s) => !matchCell(phanCong[s.id] ?? [], s)) ? (

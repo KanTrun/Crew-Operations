@@ -22,6 +22,9 @@ type Props = {
   onSelectDay: (day: string) => void;
   nvStatusMap?: Record<string, string>;
   pins?: Array<{ ca_id: string; nv_id: string }>;
+  phuTrachCa?: Record<string, string>;
+  canManageResponsibility?: boolean;
+  onSetResponsibility?: (occurrenceId: string, nvId: string) => void;
 };
 
 export function RosterGrid({
@@ -37,6 +40,9 @@ export function RosterGrid({
   matchCell,
   nvStatusMap,
   pins = [],
+  phuTrachCa = {},
+  canManageResponsibility = false,
+  onSetResponsibility,
 }: Props) {
   const visibleKhungs = filterKhung === "all" ? KHUNGS : KHUNGS.filter((k) => k === filterKhung);
 
@@ -111,6 +117,8 @@ export function RosterGrid({
                       .filter((pin) => shifts.some((shift) => shift.id === pin.ca_id))
                       .map((pin) => pin.nv_id),
                   );
+                  const occurrenceId = `${d}|${khung}`;
+                  const responsibleId = phuTrachCa[occurrenceId] ?? "";
 
                   return (
                     <td
@@ -119,6 +127,7 @@ export function RosterGrid({
                       data-dimmed={dimmed ? "1" : undefined}
                     >
                       {shifts.length > 0 ? (
+                        <>
                         <button
                           type="button"
                           className={`nq-roster-slot-btn nq-roster-slot-btn--${summary.tone} ${hasUnconfirmed ? "ring-1 ring-amber-500/70" : ""}`}
@@ -141,7 +150,26 @@ export function RosterGrid({
                               ? assigned.map((id) => `${nvName(id)}${pinnedIds.has(id) ? " · ghim" : ""}`).join(", ")
                               : "Chưa có nhân viên"}
                           </span>
+                          <span className="mt-2 block border-t border-[var(--nq-dim)] pt-2 text-xs">
+                            Phụ trách: {responsibleId ? nvName(responsibleId) : "Chưa chọn"}
+                          </span>
                         </button>
+                        {canManageResponsibility && assigned.length > 0 ? (
+                          <select
+                            aria-label={`Phụ trách ${d} ${khung}`}
+                            value={responsibleId}
+                            onChange={(event) => {
+                              if (event.target.value) onSetResponsibility?.(occurrenceId, event.target.value);
+                            }}
+                            className="mt-2 w-full border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-2 py-1 text-xs"
+                          >
+                            <option value="">Chọn phụ trách</option>
+                            {assigned.map((nvId) => (
+                              <option key={nvId} value={nvId}>{nvName(nvId)}</option>
+                            ))}
+                          </select>
+                        ) : null}
+                        </>
                       ) : (
                         <span className="nq-muted">—</span>
                       )}

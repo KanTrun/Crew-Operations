@@ -1,5 +1,4 @@
-# Cấu hình theo quán mẫu. Chỉ các mẫu `bat: true` mới xuất hiện và mở được.
-# `bat_buoc` để quán/điều phối tất định đánh giá sau này; không tự tạo Phiếu từ lịch ca.
+# Catalog chọn quy trình; core policy bên dưới quyết định đúng người và thời điểm.
 mac_dinh:
   - ma: mo_quan
     bat: true
@@ -11,5 +10,23 @@ mac_dinh:
     bat: true
     bat_buoc: false
 
-# Ghi đè danh sách cho một quán khi nghiệp vụ quán đó khác cấu hình mặc định.
+# Mốc của ca đầu là giờ bắt đầu; giao ca và ca cuối là giờ kết thúc.
+# Ngoài cửa sổ này API luôn fail-closed.
+chinh_sach:
+  phien_ban: 1
+  mui_gio: Asia/Ho_Chi_Minh
+  cua_so:
+    ca_dau_ngay:
+      mo_truoc_moc_phut: 60
+      dong_sau_moc_phut: 30
+    giao_ca:
+      mo_truoc_moc_phut: 30
+      dong_sau_moc_phut: 15
+    ca_cuoi_ngay:
+      mo_truoc_moc_phut: 30
+      dong_sau_moc_phut: 60
+
+# Tương thích hai dạng:
+# quan_02: [catalog entries]
+# quan_02: {phieu: [catalog entries], chinh_sach: {cua_so: {...}}}
 quan: {}

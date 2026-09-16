@@ -199,6 +199,8 @@ def test_lifecycle_nhanvien_forbidden() -> None:
 
 
 def test_lifecycle_da_dong_requires_chu_quan(_du_nhan_vien_xep_lich: None) -> None:
+    from ca_api.persist import kv_set
+
     # Quản lý (lan) không được phép đóng lịch
     r_lan = client.patch(
         "/api/v1/lich-tuan/lifecycle",
@@ -212,7 +214,19 @@ def test_lifecycle_da_dong_requires_chu_quan(_du_nhan_vien_xep_lich: None) -> No
     cq = headers(client, "hung")
     client.patch("/api/v1/lich-tuan/lifecycle", json={"trang_thai": "dang_giai"}, headers=cq)
     client.patch("/api/v1/lich-tuan/lifecycle", json={"trang_thai": "da_duyet"}, headers=cq)
-    client.patch("/api/v1/lich-tuan/lifecycle", json={"trang_thai": "da_cong_bo"}, headers=cq)
+    lich = client.get("/api/v1/lich-tuan?tuan=2026-W36", headers=cq).json()
+    duties: dict[str, str] = {}
+    for shift in lich["ca"]:
+        assigned = lich["phan_cong"].get(shift["id"], [])
+        if assigned:
+            duties.setdefault(f"{shift['thu']}|{shift['khung']}", assigned[0])
+    kv_set("phu_trach_ca_by_week", {"2026-W36": duties})
+    published = client.patch(
+        "/api/v1/lich-tuan/lifecycle",
+        json={"trang_thai": "da_cong_bo", "tuan_iso": "2026-W36"},
+        headers=cq,
+    )
+    assert published.status_code == 200, published.text
     r_hung = client.patch(
         "/api/v1/lich-tuan/lifecycle",
         json={"trang_thai": "da_dong"},
