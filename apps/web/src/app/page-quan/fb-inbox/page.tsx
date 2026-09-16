@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiGet, apiSend } from "../../../lib/api";
 import { safeText, viError } from "../../../lib/present";
 import { getToken, isChuQuan, isManager } from "../../../lib/session";
@@ -142,14 +142,18 @@ export default function FbInboxPage() {
     if (token) load();
   }, [token, load]);
 
+  const statusFilterRef = useRef(statusFilter);
+  statusFilterRef.current = statusFilter;
+
   // Real-time subscription for fb-inbox updates
   useEffect(() => {
     if (!token) return;
     const unsubscribe = subscribeRealtime((packet) => {
       if (packet.event === "fb_inbox:new") {
         const newItem = packet.data as FbItem;
+        const currentFilter = statusFilterRef.current;
         // Only add if matches current filter
-        if (statusFilter === "all" || statusFilter === newItem.status) {
+        if (currentFilter === "all" || currentFilter === newItem.status) {
           setItems((prev) => {
             // Avoid duplicates
             if (prev.some((it) => it.id === newItem.id)) return prev;
@@ -175,7 +179,7 @@ export default function FbInboxPage() {
       }
     });
     return () => unsubscribe();
-  }, [token, statusFilter]);
+  }, [token]);
 
   async function decide(item: FbItem, quyet_dinh: string, noi_dung?: string, ly_do?: string) {
     setBusy(item.id);
@@ -375,7 +379,7 @@ export default function FbInboxPage() {
                            it.sentiment.sentiment === "negative" ? "Tiêu cực" : "Trung tính"}
                           ({it.sentiment.score > 0 ? "+" : ""}{it.sentiment.score})
                         </StatusChip>
-                        {it.sentiment.keywords_found.length > 0 && (
+                        {Array.isArray(it.sentiment.keywords_found) && it.sentiment.keywords_found.length > 0 && (
                           <span className="text-xs text-[var(--nq-dim)]">
                             Từ khóa: {it.sentiment.keywords_found.slice(0, 5).join(", ")}
                             {it.sentiment.keywords_found.length > 5 ? "..." : ""}

@@ -7,7 +7,22 @@ type ReviewItem = {
   proposed_response: string;
 };
 
-const API_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/page\/fb-inbox/;
+const API_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/page\/fb-(inbox|policy)/;
+
+test.beforeEach(async ({ page }) => {
+  await page.routeWebSocket(/.*\/ws\/chat/, (ws) => {
+    ws.onMessage((message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        if (data.event === "auth") {
+          ws.send(JSON.stringify({ event: "auth:ack" }));
+        }
+      } catch {
+        // Ignore malformed message in test mock
+      }
+    });
+  });
+});
 
 async function setSession(page: Page, role: "quan_ly" | "chu_quan" | "nhan_vien") {
   await page.addInitScript((sessionRole) => {
@@ -35,20 +50,14 @@ function fixture(item: ReviewItem) {
 }
 
 async function mockInbox(page: Page, items: ReviewItem[], decisions: unknown[]) {
-  await page.routeWebSocket(/.*\/ws\/chat/, (ws) => {
-    ws.onMessage((message) => {
-      try {
-        const data = JSON.parse(message.toString());
-        if (data.event === "auth") {
-          ws.send(JSON.stringify({ event: "auth:ack" }));
-        }
-      } catch {
-        // Ignore malformed message in test mock
-      }
-    });
-  });
   await page.route(API_PATTERN, async (route: Route) => {
     const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/fb-policy")) {
+      await route.fulfill({
+        json: { auto_send_enabled: true },
+      });
+      return;
+    }
     if (url.pathname.endsWith("/stats")) {
       await route.fulfill({
         json: { by_status: { pending: items.length }, total: items.length, auto_sent: 0, auto_rate: 0, escalation_unacked: 0 },
@@ -121,6 +130,10 @@ test("Bộ lọc tải đúng trạng thái và khóa mục đã xử lý", asyn
   await setSession(page, "quan_ly");
   await page.route(API_PATTERN, async (route) => {
     const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/fb-policy")) {
+      await route.fulfill({ json: { auto_send_enabled: true } });
+      return;
+    }
     if (url.pathname.endsWith("/stats")) {
       await route.fulfill({ json: { by_status: {}, total: 1, auto_sent: 0, auto_rate: 0, escalation_unacked: 0 } });
       return;
@@ -154,6 +167,7 @@ test("Chủ quán có thể xử lý escalation", async ({ page }) => {
   );
 
   await page.goto("/page-quan/fb-inbox");
+  await expect(page.getByRole("heading", { name: "Hộp thư Fanpage chờ duyệt" })).toBeVisible();
   await page.getByRole("button", { name: "Duyệt & gửi" }).click();
   await expect.poll(() => decisions).toEqual([{ quyet_dinh: "duyet" }]);
 });

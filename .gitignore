@@ -62,6 +62,7 @@ data/quan.db-shm
 # Hai backup có chủ đích vẫn track: `quan-pre-phase0.db` (có sẵn) và
 # `quan-pre-gd10-260913.db` (bằng chứng GĐ10 trong bao-cao.md).
 data/backups/quan-pre-reset-*.db
+data/backups/quan-pre-staff-replacement-*.db
 # Coverage JSON do `pytest --cov-report=json` sinh ra — hàng trăm KB và dễ lỗi
 # thời; con số thật đã nằm trong log `.log` cùng thư mục.
 plans/*/coverage*.json
