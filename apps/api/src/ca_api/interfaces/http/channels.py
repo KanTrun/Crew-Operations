@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -36,6 +37,7 @@ from ca_agents.facebook_page import (
     page_health,
     publish_page_post,
     reply_to_comment,
+    send_messenger_bubbles,
     send_messenger_text,
     upsert_thread_from_messaging,
     verify_fb_webhook_signature,
@@ -74,7 +76,6 @@ from ca_api.persist import (
     fb_review_transition_pending,
     fb_review_update_proposed,
     fb_stats,
-    fb_try_claim_event,
     fb_try_claim_scoped_event,
     kenh_bind_code_consume,
     kenh_bind_code_issue,
@@ -84,9 +85,21 @@ from ca_api.persist import (
     kv_get,
     kv_mutate,
     kv_set,
+    page_store_map_list,
+    resolve_store_id_from_page_id,
 )
 from ca_api.persist import session as auth_session
-from ca_api.services.fb_moderation import moderate_fb_message, queue_fb_non_text
+from ca_api.services.chat_ws import chat_ws_manager
+from ca_api.services.fb_attachment_processor import (
+    format_attachment_for_review,
+    process_attachment,
+)
+from ca_api.services.fb_moderation import (
+    analyze_comment_sentiment,
+    classify_comment_action,
+    moderate_fb_message,
+    queue_fb_non_text,
+)
 from ca_api.services.store_public_context import (
     get_active_promotions,
     get_public_menu,
@@ -96,6 +109,7 @@ from ca_api.services.store_public_context import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 LOG = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
@@ -438,12 +452,14 @@ async def zalo_webhook(request: Request) -> dict[str, Any]:
 # ── Page quán (Facebook replay) ────────────────────────────────────────────
 
 
-def _page_store() -> dict[str, Any]:
+def _page_store(store_id: str = "quan_01") -> dict[str, Any]:
     """Store trống theo mặc định — không nhồi fixture làm dữ liệu quán.
 
     Chỉ seed file golden khi `NHIPQUAN_PAGE_SEED_FIXTURE=1` (CI).
+    Multi-page: mỗi store có key riêng (page_quan:{store_id}).
     """
-    stored = kv_get("page_quan", None)
+    key = f"page_quan:{store_id}"
+    stored = kv_get(key, None)
     if stored:
         return cast(dict[str, Any], stored)
     seed = os.environ.get("NHIPQUAN_PAGE_SEED_FIXTURE", "").strip() in {"1", "true", "yes"}
@@ -454,7 +470,7 @@ def _page_store() -> dict[str, Any]:
     data.setdefault("mode", "disconnected")
     data.setdefault("threads", [])
     data.setdefault("drafts", [])
-    kv_set("page_quan", data)
+    kv_set(key, data)
     return cast(dict[str, Any], data)
 
 
@@ -519,8 +535,38 @@ def page_sync(authorization: Annotated[str | None, Header()] = None) -> dict[str
         doc["mode"] = "live"
         return doc
 
-    kv_mutate("page_quan", mut, _page_store())
-    return {"ok": True, "n": len(threads), "mode": "live"}
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
+    kv_mutate(f"page_quan:{store_id}", mut, _page_store(store_id))
+    return {"ok": True, "n": len(threads), "mode": "live", "store_id": store_id}
+
+
+@router.post("/api/v1/page/sync-multi")
+def page_sync_multi(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    """Kéo hội thoại Messenger từ nhiều Page (multi-page support)."""
+    _require_manager(authorization)
+    if _page_mode() != "live" or not os.environ.get("NHIPQUAN_FB_PAGE_TOKEN", "").strip():
+        raise HTTPException(status_code=400, detail="page_chua_live")
+
+    mappings = page_store_map_list()
+    if not mappings:
+        raise HTTPException(status_code=400, detail="no_page_mappings")
+
+    results: dict[str, dict[str, Any]] = {}
+    for mapping in mappings:
+        page_id = str(mapping.get("page_id") or "")
+        store_id = str(mapping.get("store_id") or "quan_01")
+        if not page_id:
+            continue
+        try:
+            # Note: fetch_conversations uses the default page token from env
+            # For multi-page, we'd need page-specific tokens
+            threads = fetch_conversations(limit=20)
+            results[page_id] = {"ok": True, "n": len(threads), "store_id": store_id}
+        except RuntimeError as e:
+            results[page_id] = {"ok": False, "error": str(e)[:180]}
+
+    return {"ok": True, "results": results}
 
 
 def _safe_float(value: Any) -> float:
@@ -529,6 +575,304 @@ def _safe_float(value: Any) -> float:
         return float(value)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _fb_debounce_delay() -> float:
+    """Thời gian debounce gom tin nhắn dồn dập từ khách (giây).
+
+    Mặc định 3.5s khi live (theo genz-texting-agent skill).
+    Trong test tự động (pytest), nếu không chỉ định NHIPQUAN_FB_DEBOUNCE_SECONDS,
+    sẽ là 0.0s để pipeline webhook chạy tức thì đồng bộ.
+    """
+    env_val = os.environ.get("NHIPQUAN_FB_DEBOUNCE_SECONDS", "").strip()
+    if env_val:
+        try:
+            return max(0.0, float(env_val))
+        except ValueError:
+            pass
+    if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("PYTEST_VERSION"):
+        return 0.0
+    if os.environ.get("CA_AGENT_MODE", "").strip().lower() == "live":
+        return 3.5
+    return 0.0
+
+
+class FBDebounceManager:
+    """Debounce buffer gom nhiều tin nhắn ngắn gửi liên tiếp từ 1 khách hàng trước khi gọi AI."""
+
+    def __init__(self) -> None:
+        self._buffers: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        self._timers: dict[tuple[str, str], asyncio.Task[None]] = {}
+        self._lock = asyncio.Lock()
+
+    async def push(
+        self,
+        *,
+        store_id: str,
+        sender: str,
+        mid: str,
+        text: str,
+        ts: float,
+        page_id: str,
+        public_ctx: dict[str, Any] | None,
+        callback: Any,
+        delay_seconds: float = 3.5,
+    ) -> None:
+        key = (store_id, sender)
+        async with self._lock:
+            if key not in self._buffers:
+                self._buffers[key] = []
+            self._buffers[key].append({"mid": mid, "text": text, "ts": ts})
+
+            existing_timer = self._timers.get(key)
+            if existing_timer and not existing_timer.done():
+                existing_timer.cancel()
+
+            async def _worker() -> None:
+                try:
+                    await asyncio.sleep(delay_seconds)
+                    async with self._lock:
+                        messages = self._buffers.pop(key, [])
+                        self._timers.pop(key, None)
+                    if not messages:
+                        return
+                    combined_text = "\n".join(m["text"] for m in messages if m.get("text"))
+                    latest_mid = messages[-1]["mid"]
+                    latest_ts = messages[-1]["ts"]
+                    await callback(
+                        store_id=store_id,
+                        page_id=page_id,
+                        sender=sender,
+                        text=combined_text,
+                        mid=latest_mid,
+                        ts=latest_ts,
+                        public_ctx=public_ctx,
+                    )
+                except asyncio.CancelledError:
+                    pass
+                except Exception as err:
+                    LOG.exception("Lỗi trong fb debounce worker: %s", err)
+
+            self._timers[key] = asyncio.create_task(_worker())
+
+
+_FB_DEBOUNCE_MANAGER = FBDebounceManager()
+
+
+async def _execute_fb_pipeline(
+    *,
+    store_id: str,
+    page_id: str,
+    sender: str,
+    text: str,
+    mid: str,
+    ts: float,
+    public_ctx: dict[str, Any] | None,
+) -> bool:
+    moderation = moderate_fb_message(
+        psid=sender,
+        text=text,
+        message_id=mid,
+        timestamp=ts,
+        public_context=public_ctx,
+        store_id=store_id,
+    )
+    action = moderation.get("action", "")
+    if action in {"block_silent", "block_polite"}:
+        return False
+
+    input_msg = FBMessageInput(psid=sender, text=text, message_id=mid, timestamp=ts)
+
+    cust_prof = kv_get(f"customer_profile:{store_id}:{sender}", {})
+    res_session = kv_get(f"reservation_session:{store_id}:{sender}", {})
+    if isinstance(res_session, dict) and res_session:
+        last_ts = _safe_float(res_session.get("updated_ts", 0))
+        if last_ts > 0 and ts - last_ts > 1800:
+            res_session = {}
+            kv_set(f"reservation_session:{store_id}:{sender}", {})
+
+    if isinstance(cust_prof, dict):
+        cust_prof["psid"] = sender
+        if res_session:
+            cust_prof["reservation_state"] = res_session
+
+    goldens = kv_get(f"cskh_golden_memory:{store_id}", [])
+    learning_repository = AILearningRepository()
+    active_rules, rollout_bucket = select_active_rules(
+        learning_repository.active_rules(store_id=store_id, channel="facebook"),
+        store_id=store_id,
+        identity=sender,
+    )
+
+    prior_thread = next(
+        (thread for thread in _page_store(store_id).get("threads", []) if thread.get("psid") == sender),
+        None,
+    )
+    prior_generation_id = str((prior_thread or {}).get("ai_generation_id") or "")
+    if prior_generation_id:
+        _record_fb_feedback(
+            store_id=store_id, conversation_id=sender, feedback_type="customer_followup",
+            final=text, actor_role="customer", generation_id=prior_generation_id,
+        )
+        if _customer_negative_signal(text):
+            _record_fb_feedback(
+                store_id=store_id, conversation_id=sender, feedback_type="customer_negative",
+                final=text, actor_role="customer", generation_id=prior_generation_id,
+            )
+
+    out: FBMessageOutput = await process_fb_message(
+        input_msg,
+        auto_respond_enabled=True,
+        public_context=public_ctx,
+        customer_profile=cust_prof if cust_prof else None,
+        golden_examples=goldens if goldens else None,
+        active_rules=active_rules,
+    )
+
+    if circuit_breaker_open(store_id=store_id, channel="facebook") or action in {"queue_review", "priority_review", "escalate_owner"}:
+        out = FBMessageOutput(
+            action="queue_to_inbox",
+            response=None,
+            intent=out.intent,
+            confidence=out.confidence,
+            emotion=out.emotion,
+            suggested_reply=out.suggested_reply or moderation.get("response"),
+            delegated_agent=out.delegated_agent,
+            reason="ai_circuit_breaker_open" if circuit_breaker_open(store_id=store_id, channel="facebook") else f"fb_policy:{moderation.get('reason')}",
+            reservation_state=out.reservation_state,
+        )
+    elif action == "auto_send" and out.action == "auto_respond" and _fb_auto_send_enabled():
+        out = FBMessageOutput(
+            action="auto_respond",
+            response=out.response,
+            intent=out.intent,
+            confidence=out.confidence,
+            emotion=out.emotion,
+            suggested_reply=out.suggested_reply,
+            delegated_agent=out.delegated_agent,
+            reason=f"fb_policy_auto:{moderation.get('reason')}",
+            reservation_state=out.reservation_state,
+        )
+    else:
+        out = FBMessageOutput(
+            action="queue_to_inbox",
+            response=None,
+            intent=out.intent,
+            confidence=out.confidence,
+            emotion=out.emotion,
+            suggested_reply=out.suggested_reply or moderation.get("response"),
+            delegated_agent=out.delegated_agent,
+            reason="fb_policy_auto_guarded",
+            reservation_state=out.reservation_state,
+        )
+
+    fingerprint = hashlib.sha256(f"{store_id}:{page_id}:{mid}:{out.action}:{out.suggested_reply or out.response or ''}".encode()).hexdigest()
+    policy_action = "auto_send" if out.action == "auto_respond" else "queue_review"
+    generation_id = f"facebook-{fingerprint[:24]}"
+    learning_repository.save(AIGenerationRecord(
+        id=generation_id, store_id=store_id, channel="facebook",
+        conversation_id=sender, request_kind="facebook_message", external_event_hash=hashlib.sha256(mid.encode()).hexdigest(),
+        draft={"body": out.suggested_reply or out.response or "Đã chuyển quản lý xử lý."}, context_snapshot_hash=fingerprint,
+        agent_version="ag-fbpage", prompt_version="fb-messenger-v1",
+        rule_version=",".join(str(rule.get("id")) for rule in active_rules) or "none",
+        rollout_bucket=rollout_bucket, model={"provider": agent_mode(), "model_id": "ag-fbpage", "temperature": 0, "tool_context_hash": fingerprint},
+        policy_action=policy_action, idempotency_key=f"generation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
+    ))
+    if moderation.get("review_id"):
+        fb_review_link_generation(int(moderation["review_id"]), generation_id=generation_id)
+    learning_repository.save(AIEvaluation(
+        id=f"facebook-evaluation-{fingerprint[:20]}", store_id=store_id, generation_id=f"facebook-{fingerprint[:24]}", channel="facebook",
+        scores={"accuracy": out.confidence, "safety": 1.0}, aggregate_score=out.confidence,
+        passed=out.action == "auto_respond", action=policy_action,
+        flags=[] if out.action == "auto_respond" else ["manager_review_required"], threshold_version="facebook-policy-v1",
+        calibration_version="deterministic-v1", sample_count=0, evaluation_window="per_messenger_event",
+        evaluator="ag-fbpage-policy", idempotency_key=f"evaluation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
+    ))
+
+    new_prefs = extract_customer_preferences([text])
+    if new_prefs.get("ten_khach") or new_prefs.get("favorite_drinks") or new_prefs.get("special_notes"):
+        def mut_prof(cur: dict[str, Any] | None, _p: dict[str, Any] = new_prefs) -> dict[str, Any]:
+            return merge_customer_profile(cur, _p)
+
+        cust_prof = kv_mutate(f"customer_profile:{store_id}:{sender}", mut_prof, {})
+
+    if out.reservation_state is not None:
+        step = out.reservation_state.get("dialog_step")
+        if step in ("CONFIRMED", "CANCELLED") or out.reservation_state.get("status") == "confirmed":
+            kv_set(f"reservation_session:{store_id}:{sender}", {})
+            if isinstance(cust_prof, dict):
+                cust_prof["reservation_state"] = None
+        else:
+            new_res_state = {
+                k: (v.isoformat() if hasattr(v, "isoformat") else v)
+                for k, v in dict(out.reservation_state).items()
+            }
+            new_res_state["updated_ts"] = ts
+            kv_set(f"reservation_session:{store_id}:{sender}", new_res_state)
+            if isinstance(cust_prof, dict):
+                cust_prof["reservation_state"] = new_res_state
+
+    th = upsert_thread_from_messaging(sender, text, mid)
+    th["ai_generation_id"] = generation_id
+    th["intent"] = out.intent
+    th["confidence"] = out.confidence
+    th["suggested_reply"] = out.suggested_reply
+    th["pending_approval"] = out.action == "queue_to_inbox"
+    th["last_message_ts"] = ts
+    th["is_within_24h"] = is_within_24h_window(ts)
+    th["customer_profile"] = cust_prof
+
+    if out.action == "auto_respond" and out.response:
+        bot_reply = {
+            "id": f"bot_{uuid.uuid4().hex[:6]}",
+            "text": out.response,
+            "by": "Chatbot (Tự động)",
+            "at": _now(),
+            "mock": False,
+        }
+        delivered = _page_mode() != "live"
+        if _page_mode() == "live":
+            try:
+                await send_messenger_bubbles(sender, out.response)
+                delivered = True
+            except Exception:
+                delivered = False
+        review_id = moderation.get("review_id")
+        if review_id is not None:
+            if delivered:
+                fb_review_finalize_claim(
+                    int(review_id),
+                    status="auto_sent",
+                    decided_by="fb_auto",
+                    final_response=out.response,
+                )
+            else:
+                fb_review_release_claim(int(review_id))
+        if delivered:
+            th.setdefault("replies", []).append(bot_reply)
+
+    def mut(doc: dict[str, Any], thread: dict[str, Any] = th) -> dict[str, Any]:
+        threads = doc.setdefault("threads", [])
+        existing = next((t for t in threads if t.get("id") == thread["id"]), None)
+        if existing:
+            existing["tom_tat"] = thread["tom_tat"]
+            existing.setdefault("replies", []).extend(thread.get("replies") or [])
+            existing["psid"] = thread.get("psid")
+            existing["intent"] = thread.get("intent")
+            existing["confidence"] = thread.get("confidence")
+            existing["suggested_reply"] = thread.get("suggested_reply")
+            existing["pending_approval"] = thread.get("pending_approval")
+            existing["last_message_ts"] = thread.get("last_message_ts")
+            existing["is_within_24h"] = thread.get("is_within_24h")
+            existing["ai_generation_id"] = thread.get("ai_generation_id")
+            existing["customer_profile"] = thread.get("customer_profile")
+        else:
+            threads.insert(0, thread)
+        doc["mode"] = "live"
+        return doc
+
+    kv_mutate(f"page_quan:{store_id}", mut, _page_store(store_id))
+    return True
 
 
 @router.api_route("/api/v1/channels/facebook/webhook", methods=["GET", "POST"])
@@ -610,6 +954,8 @@ async def facebook_webhook(request: Request) -> Any:
                 continue
 
             if not text and (attachments or postback):
+                attachment_url = None
+                attachment_type = ""
                 if postback:
                     title = str(postback.get("title") or "lựa chọn nhanh").strip()
                     text = f"[Khách chọn: {title}]"
@@ -619,12 +965,52 @@ async def facebook_webhook(request: Request) -> Any:
                     if not isinstance(first, dict):
                         first = {}
                     attachment_type = str(first.get("type") or "tệp")
+                    attachment_url = str(first.get("payload", {}).get("url") or "") or None
                     attachment_labels = {"image": "ảnh", "audio": "âm thanh", "video": "video", "file": "tệp"}
                     text = f"[Khách gửi {attachment_labels.get(attachment_type, 'tệp đính kèm')}]"
                     event_id = str(msg.get("mid") or f"attachment:{sender}:{ev.get('timestamp')}")
-                if not fb_try_claim_event(event_id):
+                page_id = str(entry.get("id") or page_id_cfg).strip()
+                store_id = resolve_store_id_from_page_id(page_id)
+                if not fb_try_claim_scoped_event(
+                    store_id=store_id,
+                    page_id=page_id,
+                    event_type="messaging",
+                    external_event_id=event_id,
+                ):
                     continue
-                queue_fb_non_text(psid=sender, event_id=event_id, description=text)
+
+                # Process attachment content if available
+                if attachment_url:
+                    try:
+                        att_info = await process_attachment(first)
+                        description, flagged_reasons = format_attachment_for_review(att_info)
+                        queue_fb_non_text(
+                            psid=sender,
+                            event_id=event_id,
+                            description=description if not att_info.error else text,
+                            attachment_type=attachment_type,
+                            attachment_url=attachment_url,
+                            store_id=store_id
+                        )
+                    except Exception as e:
+                        logger.warning("Attachment processing failed, falling back to basic queue: %s", e)
+                        queue_fb_non_text(
+                            psid=sender,
+                            event_id=event_id,
+                            description=text,
+                            attachment_type=attachment_type,
+                            attachment_url=attachment_url,
+                            store_id=store_id
+                        )
+                else:
+                    queue_fb_non_text(
+                        psid=sender,
+                        event_id=event_id,
+                        description=text,
+                        attachment_type=attachment_type,
+                        attachment_url=attachment_url,
+                        store_id=store_id
+                    )
                 n += 1
                 continue
 
@@ -638,7 +1024,7 @@ async def facebook_webhook(request: Request) -> Any:
             page_id = str(entry.get("id") or page_id_cfg).strip()
             if not mid or not page_id:
                 continue
-            store_id = "quan_01"
+            store_id = resolve_store_id_from_page_id(page_id)
             if not fb_try_claim_scoped_event(
                 store_id=store_id,
                 page_id=page_id,
@@ -648,189 +1034,32 @@ async def facebook_webhook(request: Request) -> Any:
                 continue
             ts = _safe_float(ev.get("timestamp"))
 
-            # L1–L5 — moderation pipeline (policy engine + review queue)
-            moderation = moderate_fb_message(
-                psid=sender,
-                text=text,
-                message_id=mid,
-                timestamp=ts,
-                public_context=public_ctx,
-            )
-            action = moderation.get("action", "")
-            # Block: không trả lời, không tạo thread, không đếm
-            if action in {"block_silent", "block_polite"}:
-                continue
-
-            input_msg = FBMessageInput(psid=sender, text=text, message_id=mid, timestamp=ts)
-
-            # Lấy hồ sơ khách quen & bài học mẫu Quản lý đã duyệt
-            cust_prof = kv_get(f"customer_profile:{store_id}:{sender}", {})
-            goldens = kv_get(f"cskh_golden_memory:{store_id}", [])
-            learning_repository = AILearningRepository()
-            active_rules, rollout_bucket = select_active_rules(
-                learning_repository.active_rules(store_id=store_id, channel="facebook"),
-                store_id=store_id,
-                identity=sender,
-            )
-
-            # A later inbound message is feedback only when this exact thread already
-            # carries a generation ID. Never guess based on the newest conversation.
-            prior_thread = next(
-                (thread for thread in _page_store().get("threads", []) if thread.get("psid") == sender),
-                None,
-            )
-            prior_generation_id = str((prior_thread or {}).get("ai_generation_id") or "")
-            if prior_generation_id:
-                _record_fb_feedback(
-                    store_id=store_id, conversation_id=sender, feedback_type="customer_followup",
-                    final=text, actor_role="customer", generation_id=prior_generation_id,
+            debounce_sec = _fb_debounce_delay()
+            if debounce_sec > 0:
+                await _FB_DEBOUNCE_MANAGER.push(
+                    store_id=store_id,
+                    page_id=page_id,
+                    sender=sender,
+                    mid=mid,
+                    text=text,
+                    ts=ts,
+                    public_ctx=public_ctx,
+                    callback=_execute_fb_pipeline,
+                    delay_seconds=debounce_sec,
                 )
-                if _customer_negative_signal(text):
-                    _record_fb_feedback(
-                        store_id=store_id, conversation_id=sender, feedback_type="customer_negative",
-                        final=text, actor_role="customer", generation_id=prior_generation_id,
-                    )
-
-            # Xử lý tin nhắn qua AG-FBPAGE với Guardrails và Ngưỡng tin cậy
-            out: FBMessageOutput = await process_fb_message(
-                input_msg,
-                auto_respond_enabled=True,
-                public_context=public_ctx,
-                customer_profile=cust_prof if cust_prof else None,
-                golden_examples=goldens if goldens else None,
-                active_rules=active_rules,
-            )
-
-            # Policy engine là cổng cuối (ADR-008): auto chỉ khi fb_policy đồng thuận
-            # Nếu policy nói queue → ép queue bất kể kết quả AG-FBPAGE
-            if circuit_breaker_open(store_id=store_id, channel="facebook") or action in {"queue_review", "priority_review", "escalate_owner"}:
-                out = FBMessageOutput(
-                    action="queue_to_inbox",
-                    response=None,
-                    intent=out.intent,
-                    confidence=out.confidence,
-                    emotion=out.emotion,
-                    suggested_reply=out.suggested_reply or moderation.get("response"),
-                    delegated_agent=out.delegated_agent,
-                    reason="ai_circuit_breaker_open" if circuit_breaker_open(store_id=store_id, channel="facebook") else f"fb_policy:{moderation.get('reason')}",
-                )
-            # Ngược lại: fb_policy auto_send, AG-FBPAGE cũng auto_respond + feature flag bật
-            elif action == "auto_send" and out.action == "auto_respond" and _fb_auto_send_enabled():
-                out = FBMessageOutput(
-                    action="auto_respond",
-                    response=out.response,
-                    intent=out.intent,
-                    confidence=out.confidence,
-                    emotion=out.emotion,
-                    suggested_reply=out.suggested_reply,
-                    delegated_agent=out.delegated_agent,
-                    reason=f"fb_policy_auto:{moderation.get('reason')}",
-                )
+                n += 1
             else:
-                # Policy auto nhưng AG-FBPAGE queue, hoặc flag tắt → queue để QL duyệt tay
-                out = FBMessageOutput(
-                    action="queue_to_inbox",
-                    response=None,
-                    intent=out.intent,
-                    confidence=out.confidence,
-                    emotion=out.emotion,
-                    suggested_reply=out.suggested_reply or moderation.get("response"),
-                    delegated_agent=out.delegated_agent,
-                    reason="fb_policy_auto_guarded",
+                ok = await _execute_fb_pipeline(
+                    store_id=store_id,
+                    page_id=page_id,
+                    sender=sender,
+                    text=text,
+                    mid=mid,
+                    ts=ts,
+                    public_ctx=public_ctx,
                 )
-
-            fingerprint = hashlib.sha256(f"{store_id}:{page_id}:{mid}:{out.action}:{out.suggested_reply or out.response or ''}".encode()).hexdigest()
-            policy_action = "auto_send" if out.action == "auto_respond" else "queue_review"
-            generation_id = f"facebook-{fingerprint[:24]}"
-            learning_repository.save(AIGenerationRecord(
-                id=generation_id, store_id=store_id, channel="facebook",
-                conversation_id=sender, request_kind="facebook_message", external_event_hash=hashlib.sha256(mid.encode()).hexdigest(),
-                draft={"body": out.suggested_reply or out.response or "Đã chuyển quản lý xử lý."}, context_snapshot_hash=fingerprint,
-                agent_version="ag-fbpage", prompt_version="fb-messenger-v1",
-                rule_version=",".join(str(rule.get("id")) for rule in active_rules) or "none",
-                rollout_bucket=rollout_bucket, model={"provider": agent_mode(), "model_id": "ag-fbpage", "temperature": 0, "tool_context_hash": fingerprint},
-                policy_action=policy_action, idempotency_key=f"generation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
-            ))
-            if moderation.get("review_id"):
-                fb_review_link_generation(int(moderation["review_id"]), generation_id=generation_id)
-            learning_repository.save(AIEvaluation(
-                id=f"facebook-evaluation-{fingerprint[:20]}", store_id=store_id, generation_id=f"facebook-{fingerprint[:24]}", channel="facebook",
-                scores={"accuracy": out.confidence, "safety": 1.0}, aggregate_score=out.confidence,
-                passed=out.action == "auto_respond", action=policy_action,
-                flags=[] if out.action == "auto_respond" else ["manager_review_required"], threshold_version="facebook-policy-v1",
-                calibration_version="deterministic-v1", sample_count=0, evaluation_window="per_messenger_event",
-                evaluator="ag-fbpage-policy", idempotency_key=f"evaluation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
-            ))
-
-            # Cập nhật hồ sơ khách quen nếu khách tự giới thiệu tên hoặc sở thích
-            new_prefs = extract_customer_preferences([text])
-            if new_prefs.get("ten_khach") or new_prefs.get("favorite_drinks") or new_prefs.get("special_notes"):
-                def mut_prof(cur: dict[str, Any] | None, _p: dict[str, Any] = new_prefs) -> dict[str, Any]:
-                    return merge_customer_profile(cur, _p)
-
-                cust_prof = kv_mutate(f"customer_profile:{store_id}:{sender}", mut_prof, {})
-
-            th = upsert_thread_from_messaging(sender, text, mid)
-            th["ai_generation_id"] = generation_id
-            th["intent"] = out.intent
-            th["confidence"] = out.confidence
-            th["suggested_reply"] = out.suggested_reply
-            th["pending_approval"] = out.action == "queue_to_inbox"
-            th["last_message_ts"] = ts
-            th["is_within_24h"] = is_within_24h_window(ts)
-            th["customer_profile"] = cust_prof
-
-            if out.action == "auto_respond" and out.response:
-                bot_reply = {
-                    "id": f"bot_{uuid.uuid4().hex[:6]}",
-                    "text": out.response,
-                    "by": "Chatbot (Tự động)",
-                    "at": _now(),
-                    "mock": False,
-                }
-                delivered = _page_mode() != "live"
-                if _page_mode() == "live":
-                    try:
-                        send_messenger_text(sender, out.response)
-                        delivered = True
-                    except Exception:
-                        delivered = False
-                review_id = moderation.get("review_id")
-                if review_id is not None:
-                    if delivered:
-                        fb_review_finalize_claim(
-                            int(review_id),
-                            status="auto_sent",
-                            decided_by="fb_auto",
-                            final_response=out.response,
-                        )
-                    else:
-                        fb_review_release_claim(int(review_id))
-                if delivered:
-                    th.setdefault("replies", []).append(bot_reply)
-
-            def mut(doc: dict[str, Any], thread: dict[str, Any] = th) -> dict[str, Any]:
-                threads = doc.setdefault("threads", [])
-                existing = next((t for t in threads if t.get("id") == thread["id"]), None)
-                if existing:
-                    existing["tom_tat"] = thread["tom_tat"]
-                    existing.setdefault("replies", []).extend(thread.get("replies") or [])
-                    existing["psid"] = thread.get("psid")
-                    existing["intent"] = thread.get("intent")
-                    existing["confidence"] = thread.get("confidence")
-                    existing["suggested_reply"] = thread.get("suggested_reply")
-                    existing["pending_approval"] = thread.get("pending_approval")
-                    existing["last_message_ts"] = thread.get("last_message_ts")
-                    existing["is_within_24h"] = thread.get("is_within_24h")
-                    existing["ai_generation_id"] = thread.get("ai_generation_id")
-                    existing["customer_profile"] = thread.get("customer_profile")
-                else:
-                    threads.insert(0, thread)
-                doc["mode"] = "live"
-                return doc
-
-            kv_mutate("page_quan", mut, _page_store())
-            n += 1
+                if ok:
+                    n += 1
 
         changes = entry.get("changes") or []
         if not isinstance(changes, list):
@@ -853,8 +1082,22 @@ async def facebook_webhook(request: Request) -> Any:
             text = str(value.get("message") or "").strip()
             if not sender or sender == page_id_cfg or not comment_id or not text:
                 continue
-            if not fb_try_claim_event(comment_id):
+            page_id = str(entry.get("id") or page_id_cfg).strip()
+            store_id = resolve_store_id_from_page_id(page_id)
+            if not fb_try_claim_scoped_event(
+                store_id=store_id,
+                page_id=page_id,
+                event_type="comment",
+                external_event_id=comment_id,
+            ):
                 continue
+
+            # Determine if post is sensitive (default False since webhook doesn't provide this)
+            post_is_sensitive = False
+
+            # Analyze sentiment and classify action for comment
+            sentiment = analyze_comment_sentiment(text)
+            comment_action, flagged_reasons = classify_comment_action(text, sentiment, post_is_sensitive)
 
             moderation = moderate_fb_message(
                 psid=sender,
@@ -865,7 +1108,15 @@ async def facebook_webhook(request: Request) -> Any:
                 source="comment",
                 post_id=str(value.get("post_id") or "") or None,
                 external_user_name=str(author.get("name") or "") or None,
+                post_is_sensitive=post_is_sensitive,
+                store_id=store_id,
             )
+
+            # Add sentiment and comment action to moderation result
+            moderation["sentiment"] = sentiment
+            moderation["comment_action"] = comment_action
+            moderation["flagged_reasons"] = list(set((moderation.get("flagged_reasons") or []) + flagged_reasons))
+
             if moderation.get("action") not in {"block_silent", "block_polite"}:
                 # Comment công khai: LLM sinh bản nháp thông minh thay cho template
                 # cứng, nhưng vẫn 100% qua QL duyệt tay (AUTO_THRESHOLD_COMMENT=0.95,
@@ -893,12 +1144,14 @@ async def facebook_webhook(request: Request) -> Any:
 @router.get("/api/v1/page/threads")
 def page_threads(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_manager(authorization)
-    doc = _page_store()
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
+    doc = _page_store(store_id)
     threads = doc.get("threads", [])
     # Update is_within_24h dynamic flag
     for t in threads:
         t["is_within_24h"] = is_within_24h_window(t.get("last_message_ts"))
-    return {"items": threads, "mode": _page_mode(), "nguon": "quan"}
+    return {"items": threads, "mode": _page_mode(), "nguon": "quan", "store_id": store_id}
 
 
 class PageReplyBody(BaseModel):
@@ -918,6 +1171,10 @@ def page_reply(
     _require_manager(authorization)
     if not body.text.strip():
         raise HTTPException(status_code=422, detail="noi_dung_trong")
+
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
+
     found: dict[str, Any] | None = None
 
     def mut(doc: dict[str, Any]) -> dict[str, Any]:
@@ -939,7 +1196,7 @@ def page_reply(
                 break
         return doc
 
-    kv_mutate("page_quan", mut, _page_store())
+    kv_mutate("page_quan", mut, _page_store(store_id))
     if not found:
         raise HTTPException(status_code=404, detail="thread")
     graph_sent = False
@@ -958,9 +1215,9 @@ def page_reply(
     _audit(
         s["nv_id"],
         "page_reply",
-        {"thread_id": thread_id, "text": body.text.strip(), "graph_sent": graph_sent},
+        {"thread_id": thread_id, "text": body.text.strip(), "graph_sent": graph_sent, "store_id": store_id},
     )
-    return {"ok": True, "thread": found, "mode": _page_mode(), "graph_sent": graph_sent}
+    return {"ok": True, "thread": found, "mode": _page_mode(), "graph_sent": graph_sent, "store_id": store_id}
 
 
 class PageThreadApproveBody(BaseModel):
@@ -1004,7 +1261,9 @@ def page_thread_approve(
                 break
         return doc
 
-    kv_mutate("page_quan", mut, _page_store())
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
+    kv_mutate("page_quan", mut, _page_store(store_id))
     if not found:
         raise HTTPException(status_code=404, detail="thread")
 
@@ -1022,7 +1281,7 @@ def page_thread_approve(
                 raise HTTPException(status_code=502, detail=str(e)[:180]) from e
 
     # ── Vòng lặp học từ câu sửa của Quản lý (CSKH Golden Memory) ──
-    store_id = "quan_01"
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
     clean_final = body.final_reply.strip()
     msgs = found.get("messages") or []
     cust_msg = ""
@@ -1112,7 +1371,9 @@ def fb_inbox_list(
     if role == "quan_ly" and assigned_role == "chu_quan":
         raise HTTPException(status_code=403, detail="forbidden")
     visible_role = "quan_ly" if role == "quan_ly" else assigned_role
-    items = fb_review_list(status=status, assigned_role=visible_role, limit=limit)
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
+    items = fb_review_list(status=status, assigned_role=visible_role, limit=limit, store_id=store_id)
     for it in items:
         it["flagged_reasons"] = json.loads(it.get("flagged_reasons") or "[]")
     return {"items": items, "role": role}
@@ -1123,7 +1384,9 @@ def fb_inbox_stats(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     _require_manager(authorization)
-    return fb_stats()
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
+    return fb_stats(store_id)
 
 
 @router.get("/api/v1/page/fb-inbox/{item_id}")
@@ -1140,7 +1403,7 @@ def fb_inbox_detail(
 
 
 @router.post("/api/v1/page/fb-inbox/{item_id}/decide")
-def fb_inbox_decide(
+async def fb_inbox_decide(
     item_id: int,
     body: FbInboxDecideBody,
     authorization: Annotated[str | None, Header()] = None,
@@ -1168,8 +1431,10 @@ def fb_inbox_decide(
         updated = fb_review_decide(item_id, status="rejected", decided_by=s["nv_id"])
         if not updated:
             raise HTTPException(status_code=409, detail="da_quyet_truoc_do")
+        page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+        store_id = resolve_store_id_from_page_id(page_id_cfg)
         _record_fb_feedback(
-            store_id="quan_01", conversation_id=str(item.get("external_psid") or item_id),
+            store_id=store_id, conversation_id=str(item.get("external_psid") or item_id),
             feedback_type="manager_reject", original=str(item.get("proposed_response") or ""),
             actor_user_id=s["nv_id"], actor_role=str(s["role"]),
             generation_id=str(item.get("ai_generation_id") or "") or None,
@@ -1213,14 +1478,16 @@ def fb_inbox_decide(
         fb_review_release_claim(item_id)
         updated = fb_review_get(item_id)
     proposed = str(item.get("proposed_response") or "")
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
     _record_fb_feedback(
-        store_id="quan_01", conversation_id=str(item.get("external_psid") or item_id),
+        store_id=store_id, conversation_id=str(item.get("external_psid") or item_id),
         feedback_type="manager_edit" if proposed and proposed != final_text else "manager_approve",
         original=proposed, final=final_text, actor_user_id=s["nv_id"], actor_role=str(s["role"]),
         generation_id=str(item.get("ai_generation_id") or "") or None,
     )
     _record_fb_feedback(
-        store_id="quan_01", conversation_id=str(item.get("external_psid") or item_id),
+        store_id=store_id, conversation_id=str(item.get("external_psid") or item_id),
         feedback_type="send_success" if graph_sent else "send_failure", final=final_text,
         actor_user_id=s["nv_id"], actor_role="system", send_status="sent" if graph_sent else "failed",
         failure_code=None if graph_sent else "not_sent_or_replay",
@@ -1232,6 +1499,20 @@ def fb_inbox_decide(
         {"id": item_id, "q": body.quyet_dinh, "graph_sent": graph_sent,
          "final_len": len(final_text)},
     )
+    # Broadcast real-time update to fb-inbox
+    updated = updated or {}
+    await chat_ws_manager.broadcast_all({
+        "event": "fb_inbox:update",
+        "data": {
+            "id": item_id,
+            "store_id": store_id,
+            "status": updated.get("status"),
+            "final_response": updated.get("final_response"),
+            "decided_by": updated.get("decided_by"),
+            "decided_at": updated.get("decided_at"),
+            "sent": graph_sent,
+        }
+    })
     return {"ok": True, "item": updated, "sent": graph_sent}
 
 
@@ -1331,8 +1612,9 @@ def page_audit_reflection(
         raise HTTPException(status_code=401, detail="thieu_token")
     _require_manager(authorization)
 
-    store_id = "quan_01"
-    doc = _page_store()
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
+    doc = _page_store(store_id)
     threads = doc.get("threads", [])
 
     report = run_nightly_cskh_reflection(threads, store_id=store_id)
@@ -1350,10 +1632,11 @@ def get_latest_reflection(
     s = auth_session(authorization)
     if not s:
         raise HTTPException(status_code=401, detail="thieu_token")
-    store_id = "quan_01"
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
     report = kv_get(f"cskh_reflection_reports:{store_id}", None)
     if not report:
-        doc = _page_store()
+        doc = _page_store(store_id)
         threads = doc.get("threads", [])
         report = run_nightly_cskh_reflection(threads, store_id=store_id)
         kv_set(f"cskh_reflection_reports:{store_id}", report)
@@ -1371,7 +1654,8 @@ def apply_reflection_proposal(
         raise HTTPException(status_code=401, detail="thieu_token")
     _require_manager(authorization)
 
-    store_id = "quan_01"
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
     def mut_rules(rules: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
         lst = list(rules or [])
         lst.append({
@@ -1429,7 +1713,9 @@ class PageDraftBody(BaseModel):
 @router.get("/api/v1/page/drafts")
 def page_drafts(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_manager(authorization)
-    return {"items": _page_store().get("drafts", []), "mode": _page_mode()}
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
+    return {"items": _page_store(store_id).get("drafts", []), "mode": _page_mode(), "store_id": store_id}
 
 
 @router.post("/api/v1/page/drafts")
@@ -1440,6 +1726,8 @@ def page_draft_create(
     role = _require_manager(authorization)
     if not body.noi_dung.strip():
         raise HTTPException(status_code=422, detail="noi_dung_trong")
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
     item = {
         "id": f"pd_{uuid.uuid4().hex[:8]}",
         "noi_dung": body.noi_dung.strip(),
@@ -1454,7 +1742,7 @@ def page_draft_create(
         doc.setdefault("drafts", []).insert(0, item)
         return doc
 
-    kv_mutate("page_quan", mut, _page_store())
+    kv_mutate(f"page_quan:{store_id}", mut, _page_store(store_id))
     return item
 
 
@@ -1523,7 +1811,9 @@ def page_draft_ai_generate(
         doc.setdefault("drafts", []).insert(0, item)
         return doc
 
-    kv_mutate("page_quan", mut, _page_store())
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
+    kv_mutate(f"page_quan:{store_id}", mut, _page_store(store_id))
     return item
 
 
@@ -1540,6 +1830,8 @@ def page_draft_decide(
     role = _require_manager(authorization)
     if body.quyet_dinh not in {"cho_duyet", "duyet", "tu_choi"}:
         raise HTTPException(status_code=400, detail="quyet_dinh")
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
     found: dict[str, Any] | None = None
 
     def mut(doc: dict[str, Any]) -> dict[str, Any]:
@@ -1557,7 +1849,7 @@ def page_draft_decide(
                 break
         return doc
 
-    kv_mutate("page_quan", mut, _page_store())
+    kv_mutate(f"page_quan:{store_id}", mut, _page_store(store_id))
     if not found:
         raise HTTPException(status_code=404, detail="draft")
     graph_post_id = None
@@ -1574,7 +1866,7 @@ def page_draft_decide(
                         break
                 return doc
 
-            kv_mutate("page_quan", mark, _page_store())
+            kv_mutate(f"page_quan:{store_id}", mark, _page_store(store_id))
             found = {**found, "trang_thai": "da_dang", "graph_post_id": graph_post_id}
         except RuntimeError as e:
             if os.environ.get("CA_AGENT_MODE", "").strip().lower() == "replay":
@@ -1605,7 +1897,9 @@ def page_treo(
 ) -> dict[str, Any]:
     """Cầu nối ops: thread page → việc treo (không CRM)."""
     _require_manager(authorization)
-    doc = _page_store()
+    page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+    store_id = resolve_store_id_from_page_id(page_id_cfg)
+    doc = _page_store(store_id)
     th = next((t for t in doc.get("threads", []) if t.get("id") == body.thread_id), None)
     if not th:
         raise HTTPException(status_code=404, detail="thread")

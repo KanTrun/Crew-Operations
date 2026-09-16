@@ -82,9 +82,9 @@ def extract_reservation_entities(text: str) -> dict[str, Any]:
                 break
 
     # 4. Phone number (Vietnamese phone regex: 10 digits starting with 0 or +84)
-    phone_m = re.search(r"(?:(?:\+84)|0)(?:3|5|7|8|9)\d{8}\b", text.replace(" ", "").replace(".", "").replace("-", ""))
+    phone_m = re.search(r"(?:(?:\+84[\s.-]*)|0)[35789](?:[\s.-]*\d){8}(?!\d)", text)
     if phone_m:
-        data["phone"] = phone_m.group(0)
+        data["phone"] = re.sub(r"[\s.-]", "", phone_m.group(0))
 
     # 5. Customer name
     name_m = re.search(r"(?:tên|tên là|mình là|anh|chị)\s+([A-ZÀ-Ỹa-zà-ỹ]+(?:\s+[A-ZÀ-Ỹa-zà-ỹ]+)*)", text)
@@ -93,51 +93,84 @@ def extract_reservation_entities(text: str) -> dict[str, Any]:
         if cand_name.lower() not in ("quán", "em", "nhịp quán", "bàn", "người", "hôm nay", "tối nay", "mai"):
             data["customer_name"] = cand_name
 
-    # 6. Time extraction
-    # Matches "19h", "19h30", "19:30", "7h tối", "18 giờ"
-    time_m = re.search(r"(\d{1,2})(?:h|:)(\d{2})?", low)
-    hour = None
-    minute = 0
-    if time_m:
-        hour = int(time_m.group(1))
-        if time_m.group(2):
-            minute = int(time_m.group(2))
-        if "tối" in low and hour < 12:
-            hour += 12
-        elif "chiều" in low and hour < 12 and hour <= 6:
-            hour += 12
-    else:
-        gio_m = re.search(r"(\d{1,2})\s*(?:giờ|g)", low)
-        if gio_m:
-            hour = int(gio_m.group(1))
-            if "tối" in low and hour < 12:
-                hour += 12
-
-    # 7. Date extraction
+    # 6. Date extraction
     now_ict = datetime.now(ICT)
-    target_date = now_ict.date()
+    target_date = None
 
-    if any(k in low for k in ("mai", "ngày mai", "ngay mai")):
+    if any(k in low for k in ("mai", "ngày mai", "ngay mai", "tối mai", "trưa mai", "chiều mai", "sáng mai")):
         target_date = now_ict.date() + timedelta(days=1)
-    elif "ngày kia" in low or "mốt" in low:
+    elif any(k in low for k in ("ngày kia", "mốt", "ngay kia", "ngay mot")):
         target_date = now_ict.date() + timedelta(days=2)
-    elif "hôm nay" in low or "tối nay" in low or "trưa nay" in low or "chiều nay" in low:
+    elif any(k in low for k in ("hôm nay", "tối nay", "trưa nay", "chiều nay", "sáng nay", "hom nay", "toi nay")):
         target_date = now_ict.date()
+    else:
+        # Weekday detection ("thứ 7", "thứ bảy", "chủ nhật", v.v.)
+        weekday_map = {
+            "thứ 2": 0, "thứ hai": 0, "thu 2": 0, "thu hai": 0,
+            "thứ 3": 1, "thứ ba": 1, "thu 3": 1, "thu ba": 1,
+            "thứ 4": 2, "thứ tư": 2, "thu 4": 2, "thu tu": 2,
+            "thứ 5": 3, "thứ năm": 3, "thu 5": 3, "thu nam": 3,
+            "thứ 6": 4, "thứ sáu": 4, "thu 6": 4, "thu sau": 4,
+            "thứ 7": 5, "thứ bảy": 5, "thu 7": 5, "thu bay": 5,
+            "chủ nhật": 6, "chu nhat": 6, "cn": 6,
+        }
+        for w_str, w_num in weekday_map.items():
+            if w_str in low:
+                delta = (w_num - now_ict.weekday()) % 7
+                if delta == 0 and ("tuần sau" in low or "tuan sau" in low):
+                    delta = 7
+                target_date = now_ict.date() + timedelta(days=delta)
+                break
 
-    # Exact date pattern DD/MM
+    # Exact date pattern DD/MM or DD-MM
     date_m = re.search(r"(\d{1,2})[/-](\d{1,2})", low)
     if date_m:
         try:
             d_val = int(date_m.group(1))
             m_val = int(date_m.group(2))
-            target_date = target_date.replace(month=m_val, day=d_val)
+            target_date = (target_date or now_ict.date()).replace(month=m_val, day=d_val)
         except Exception:
             pass
 
+    if target_date is not None:
+        data["target_date_iso"] = target_date.isoformat()
+
+    # 7. Time extraction
+    # Matches "19h", "19h30", "19:30", "19h 30", "7h tối", "18 giờ", "7 rưỡi", "19g"
+    hour = None
+    minute = 0
+
+    ruoi_m = re.search(r"(\d{1,2})\s*(?:h|g|giờ)?\s*rưỡi", low)
+    if ruoi_m:
+        hour = int(ruoi_m.group(1))
+        minute = 30
+    else:
+        time_m = re.search(r"(\d{1,2})\s*(?:h|:|giờ|g)\s*(\d{1,2})?", low)
+        if time_m:
+            hour = int(time_m.group(1))
+            if time_m.group(2):
+                minute = int(time_m.group(2))
+        else:
+            pm_m = re.search(r"(\d{1,2})\s*pm\b", low)
+            if pm_m:
+                hour = int(pm_m.group(1))
+                if hour < 12:
+                    hour += 12
+
     if hour is not None:
+        if any(k in low for k in ("tối", "toi", "đêm", "dem")) and hour < 12:
+            hour += 12
+        elif any(k in low for k in ("chiều", "chieu")) and hour <= 6:
+            hour += 12
+        elif any(k in low for k in ("trưa", "trua")) and hour in (1, 2):
+            hour += 12
+        elif any(k in low for k in ("sáng", "sang")) and hour == 12:
+            hour = 0
+
+        final_date = target_date or now_ict.date()
         try:
-            target_dt = datetime(target_date.year, target_date.month, target_date.day, hour, minute, tzinfo=ICT)
-            data["booking_datetime"] = target_dt
+            target_dt = datetime(final_date.year, final_date.month, final_date.day, hour, minute, tzinfo=ICT)
+            data["booking_datetime"] = target_dt.isoformat()
             data["booking_time_iso"] = target_dt.isoformat()
             data["time_display"] = target_dt.strftime("%H:%M ngày %d/%m/%Y")
         except Exception:
@@ -175,6 +208,11 @@ def _resolve_backend() -> dict[str, Any]:
         import sys
 
         mod = sys.modules.get("ca_api.services.table_reservation_service")
+        if mod is None:
+            try:
+                import ca_api.services.table_reservation_service as mod
+            except Exception:
+                mod = None
         if mod is not None:
             register_reservation_backend(
                 book_fn=getattr(mod, "atomic_hold_or_book_table", None),
@@ -200,15 +238,41 @@ def handle_reservation(
     is_enabled_fn = backend.get("is_enabled")
     is_auto = is_enabled_fn() if callable(is_enabled_fn) else False
 
+    state = dict(session_state or {})
+    extracted = extract_reservation_entities(text)
+
+    # Merge extracted details into state
+    for k in ("party_size", "phone", "customer_name", "booking_datetime", "booking_time_iso", "time_display", "target_date_iso"):
+        if extracted.get(k) is not None:
+            state[k] = extracted[k]
+
+    # When auto-reservation is disabled, acknowledge whatever info is given instead of asking blindly
     if not is_auto:
+        detail_parts = []
+        if state.get("party_size"):
+            detail_parts.append(f"nhóm {state['party_size']} người")
+        if state.get("time_display"):
+            detail_parts.append(f"lúc {state['time_display']}")
+        if state.get("phone"):
+            detail_parts.append(f"SĐT {state['phone']}")
+
+        if detail_parts:
+            details_str = " ".join(detail_parts)
+            reply = (
+                f"Dạ {store_name} rất vui được đón tiếp nhóm mình ạ! 🎉\n"
+                f"Em đã ghi nhận thông tin đặt bàn ({details_str}). "
+                "Quản lý ca sẽ liên hệ xác nhận và chuẩn bị bàn chu đáo trước cho mình nha!"
+            )
+        else:
+            reply = (
+                f"Dạ {store_name} rất vui được đón tiếp nhóm mình ạ! 🎉\n"
+                "Anh/chị dự kiến ghé lúc mấy giờ và nhóm mình đi khoảng bao nhiêu người để em chuẩn bị bàn chu đáo trước cho mình nha?"
+            )
         return ConciergeTicket(
             ticket_type="reservation",
             customer_message=text,
-            extracted_data={"request_summary": text[:160]},
-            suggested_reply=(
-                f"Dạ {store_name} rất vui được đón tiếp nhóm mình ạ! 🎉\n"
-                "Anh/chị dự kiến ghé lúc mấy giờ và nhóm mình đi khoảng bao nhiêu người để em chuẩn bị bàn chu đáo trước cho mình nha?"
-            ),
+            extracted_data=state,
+            suggested_reply=reply,
             urgency="medium",
             action_type="needs_manager_review",
             requires_human_approval=True,
@@ -219,9 +283,6 @@ def handle_reservation(
     notify_fn = backend.get("notify")
     anti_abuse_fn = backend.get("anti_abuse")
 
-    state = dict(session_state or {})
-    extracted = extract_reservation_entities(text)
-
     # ── CASE 1: Customer Cancellation Request ────────────────────────────────
     if extracted.get("is_cancellation"):
         cancelled = cancel_fn(psid) if callable(cancel_fn) else False
@@ -230,10 +291,11 @@ def handle_reservation(
                 "Dạ em đã hủy lịch đặt bàn cho mình rồi ạ! 🥺\n"
                 "Bàn đã được giải phóng trên hệ thống. Rất mong được đón tiếp anh/chị vào lần ghé quán tiếp theo nhé ạ!"
             )
+            state["dialog_step"] = "CANCELLED"
             return ConciergeTicket(
                 ticket_type="reservation",
                 customer_message=text,
-                extracted_data={"action": "cancelled"},
+                extracted_data={"action": "cancelled", "dialog_step": "CANCELLED"},
                 suggested_reply=reply,
                 urgency="low",
                 action_type="cancelled",
@@ -244,17 +306,12 @@ def handle_reservation(
             return ConciergeTicket(
                 ticket_type="reservation",
                 customer_message=text,
-                extracted_data={"action": "no_active_booking"},
+                extracted_data={"action": "no_active_booking", "dialog_step": "EXTRACTING"},
                 suggested_reply=reply,
                 urgency="low",
                 action_type="ask_info",
                 requires_human_approval=False,
             )
-
-    # Merge extracted details into state
-    for k in ("party_size", "phone", "customer_name", "booking_datetime", "booking_time_iso", "time_display"):
-        if extracted.get(k) is not None:
-            state[k] = extracted[k]
 
     dialog_step = state.get("dialog_step", "EXTRACTING")
 
@@ -291,14 +348,16 @@ def handle_reservation(
                 status="confirmed",
                 source="ai_auto",
             )
+            res["dialog_step"] = "CONFIRMED"
             # Dispatch notifications to shift manager
             if callable(notify_fn):
                 notify_fn(res)
 
             tables_str = ", ".join(res.get("table_ids") or [])
+            table_info = f"bàn {tables_str} " if tables_str else "bàn "
             time_display = state.get("time_display") or booking_time_iso
             reply = (
-                f"Dạ {store_name} đã xác nhận giữ bàn [{tables_str}] cho nhóm mình ({party_size} người) "
+                f"Dạ {store_name} đã xác nhận giữ {table_info}cho nhóm mình ({party_size} người) "
                 f"vào lúc {time_display} rồi ạ! 🎉\n"
                 f"Quán sẽ chuẩn bị chỗ ngồi chu đáo trước giờ đón mình. Nếu có thay đổi gì, anh/chị cứ nhắn lại tin nhắn này nhé ạ! ❤️"
             )
@@ -344,7 +403,7 @@ def handle_reservation(
 
     # ── CASE 3: Missing Information -> Natural Clarification ──────────────────
     missing = []
-    if not state.get("booking_datetime"):
+    if not state.get("booking_datetime") and not state.get("booking_time_iso"):
         missing.append("thời gian đến (mấy giờ, ngày nào)")
     if not state.get("party_size"):
         missing.append("số lượng khách")
@@ -410,7 +469,7 @@ def handle_reservation(
     state["dialog_step"] = "CONFIRMING"
     reply = (
         f"Dạ em xin xác nhận lại thông tin đặt bàn của mình ạ: "
-        f"Bàn [{state.get('party_size')}] người, vào lúc [{state.get('time_display')}], SĐT liên hệ [{state.get('phone')}].\n"
+        f"Bàn {state.get('party_size')} người, vào lúc {state.get('time_display')}, SĐT liên hệ {state.get('phone')}.\n"
         f"Anh/chị kiểm tra đúng thông tin giúp em để em chốt giữ bàn cho mình nhé ạ! 😊"
     )
     return ConciergeTicket(

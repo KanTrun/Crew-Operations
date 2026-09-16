@@ -78,6 +78,12 @@ _BOOKING_WORDS = (
     "dat ban",
     "giữ chỗ",
     "giu cho",
+    "giữ bàn",
+    "giu ban",
+    "đặt chỗ",
+    "dat cho",
+    "book bàn",
+    "book ban",
     "bàn 10 người",
     "bàn mấy người",
     "reserve",
@@ -87,6 +93,15 @@ _BOOKING_WORDS = (
     "ghép bàn",
     "tiệc",
     "tiec",
+    "đặt tiệc",
+    "còn bàn",
+    "con ban",
+    "có bàn",
+    "co ban",
+    "bàn trống",
+    "ban trong",
+    "lấy bàn",
+    "lay ban",
 )
 
 _PROMO_WORDS = (
@@ -204,6 +219,7 @@ class FBMessageOutput:
     delegated_agent: str = "AG-FRONTDESK"
     reason: str | None = None
     error: str | None = None
+    reservation_state: dict[str, Any] | None = None
 
 
 def _norm(text: str) -> str:
@@ -244,7 +260,17 @@ def _has_any_keyword(text: str, keywords: tuple[str, ...]) -> bool:
     return any(_has_keyword(text, keyword) for keyword in keywords)
 
 
-def detect_customer_psychology(text: str) -> tuple[str, str, float]:
+_PHONE_REGEX = re.compile(r"(?:(?:\+84)|0)[35789]\d{8}")
+_BOOKING_PATTERN_REGEX = re.compile(
+    r"\b(?:bàn\s+(?:cho\s+)?\d+\s*(?:người|khách|chỗ|bạn|ng)|nhóm\s+\d+\s*(?:người|khách|bạn)|(?:đặt|giữ|book)\s+(?:1|một|cái)?\s*bàn)\b",
+    re.IGNORECASE,
+)
+
+
+def detect_customer_psychology(
+    text: str,
+    reservation_state: dict[str, Any] | None = None,
+) -> tuple[str, str, float]:
     """
     Analyze customer emotion and intent.
     Returns (emotion, intent, confidence).
@@ -256,8 +282,22 @@ def detect_customer_psychology(text: str) -> tuple[str, str, float]:
         return "complaining", "khieu_nai_gop_y", 0.95
 
     # 2. Table Booking (AG-CONCIERGE)
-    if _has_any_keyword(t, _BOOKING_WORDS):
+    if _has_any_keyword(t, _BOOKING_WORDS) or bool(_BOOKING_PATTERN_REGEX.search(t)):
         return "booking", "dat_ban", 0.92
+
+    # 2b. Multi-turn continuation for ongoing table reservation
+    res_step = (reservation_state or {}).get("dialog_step")
+    if res_step in ("EXTRACTING", "CONFIRMING"):
+        is_asking_menu = _has_any_keyword(t, _MENU_WORDS) or _has_any_keyword(t, _CONSULT_WORDS)
+        if not is_asking_menu:
+            low_clean = t.replace(" ", "").replace(".", "").replace("-", "")
+            has_phone = bool(_PHONE_REGEX.search(low_clean))
+            is_confirm = any(k in t for k in ("đúng", "dung", "ok", "chốt", "chot", "xác nhận", "xac nhan", "chuẩn", "chuan"))
+            is_cancel = any(k in t for k in ("hủy", "huy", "không đến", "khong den", "bận", "ban"))
+            has_time_or_date = bool(re.search(r"\d{1,2}\s*(?:h|:|giờ|g|pm|am)", t) or any(k in t for k in ("mai", "hôm nay", "tối", "trưa", "chiều", "rưỡi")))
+            has_size = bool(re.search(r"\d+\s*(?:người|ng|khách|bạn|chỗ|pax)", t) or any(k in t for k in ("một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín", "mười")))
+            if is_confirm or is_cancel or has_phone or has_time_or_date or has_size or len(t.split()) <= 5:
+                return "booking", "dat_ban", 0.95
 
     # 3. Beverage Consultation (AG-BARISTA)
     if _has_any_keyword(t, _CONSULT_WORDS):
@@ -282,9 +322,6 @@ def detect_customer_psychology(text: str) -> tuple[str, str, float]:
         return "friendly", "chao_hoi", 0.92
 
     return "neutral", "khac", 0.50
-
-
-_PHONE_REGEX = re.compile(r"(?:(?:\+84)|0)[35789]\d{8}")
 _ADDRESS_KEYWORDS = (
     "dia chi", "địa chỉ", "nha o", "nhà ở", "so nha", "số nhà",
     "giao den", "giao đến", "ship den", "ship đến", "giao qua", "ship qua",
@@ -385,6 +422,8 @@ def build_human_response(
             psid=str(customer.get("psid") or ""),
             session_state=customer.get("reservation_state"),
         )
+        if isinstance(customer_profile, dict):
+            customer_profile["reservation_state"] = ticket.extracted_data
         return ticket.suggested_reply, ticket.requires_human_approval, "AG-CONCIERGE"
 
     # Case C: AG-BARISTA (Taste consultation)
@@ -572,7 +611,14 @@ async def process_fb_message(
         )
 
     # 2. Emotion & Intent Detection
-    emotion, intent, confidence = detect_customer_psychology(guard.sanitized_text)
+    cust_prof = dict(customer_profile or {})
+    if input_msg.psid and not cust_prof.get("psid"):
+        cust_prof["psid"] = input_msg.psid
+
+    current_res_state = cust_prof.get("reservation_state")
+    emotion, intent, confidence = detect_customer_psychology(
+        guard.sanitized_text, reservation_state=current_res_state
+    )
 
     # 3. Squad Routing (Frontdesk, Barista, Concierge)
     missing_context = _missing_verified_context(intent, emotion, public_context)
@@ -581,7 +627,7 @@ async def process_fb_message(
         emotion,
         guard.sanitized_text,
         public_context,
-        customer_profile=customer_profile,
+        customer_profile=cust_prof,
         golden_examples=golden_examples,
     )
     # Thiếu dữ liệu: vẫn tự trả lời trung thực — không đẩy duyệt (Mục 5).
@@ -593,13 +639,13 @@ async def process_fb_message(
         requires_approval = False
 
     # 4. Live LLM execution if enabled
-    # Sinh bản nháp LLM cho mọi intent; policy Mục 4 mới được phép chặn tự gửi.
+    # Sinh bản nháp LLM cho mọi intent NGOẠI TRỪ dat_ban (để bảo vệ state machine & DB booking)
     llm_drafted = False
-    if agent_mode() == "live" and auto_respond_enabled:
+    if agent_mode() == "live" and auto_respond_enabled and intent != "dat_ban":
         llm_draft = await draft_llm_reply(
             text=guard.sanitized_text,
             public_context=public_context,
-            customer_profile=customer_profile,
+            customer_profile=cust_prof,
             golden_examples=golden_examples,
             active_rules=active_rules,
         )
@@ -609,9 +655,11 @@ async def process_fb_message(
 
     # 5. AG-SUPERVISOR Pre-flight Safety Gate
     sup_check = supervise_outgoing_response(guard.sanitized_text, reply_text)
+    reply_text = sup_check.sanitized_response
     if not sup_check.is_approved:
-        reply_text = sup_check.sanitized_response
         requires_approval = True
+
+    updated_res_state = cust_prof.get("reservation_state")
 
     # 6. Action decision — tự gửi trừ khi supervisor/an toàn bắt buộc duyệt.
     if not requires_approval and auto_respond_enabled:
@@ -624,6 +672,7 @@ async def process_fb_message(
             delegated_agent=agent_name,
             suggested_reply=reply_text,
             reason=f"Approved by AG-SUPERVISOR ({agent_name})",
+            reservation_state=updated_res_state,
         )
     else:
         return FBMessageOutput(
@@ -639,6 +688,7 @@ async def process_fb_message(
                 if missing_context
                 else ("llm_draft_for_manager_review" if llm_drafted else "Queued for manager approval")
             ),
+            reservation_state=updated_res_state,
         )
 
 
@@ -666,9 +716,11 @@ def parse_fb_webhook_message(entry: dict[str, Any]) -> FBMessageInput | None:
         return None
 
 
-def classify_customer_intent(text: str) -> tuple[str, float]:
+def classify_customer_intent(
+    text: str, reservation_state: dict[str, Any] | None = None
+) -> tuple[str, float]:
     """Helper alias for intent classification."""
-    _, intent, conf = detect_customer_psychology(text)
+    _, intent, conf = detect_customer_psychology(text, reservation_state=reservation_state)
     return intent, conf
 
 
