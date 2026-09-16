@@ -971,11 +971,15 @@ def test_tool_solve_weekly_schedule_filters_tkb_by_week(
     captured: list[list[tuple[str, str, str]]] = []
 
     def mock_kv(key: str, default: Any) -> Any:
-        if key == "tkb_nv":
+        if key == "tkb_nv_by_week":
             return {
-                "nv_02": {
-                    "tuan_iso": "2026-W39",
-                    "khoang_ban": [{"thu": block[0], "start": block[1], "end": block[2]}],
+                "2026-W39": {
+                    "nv_02": {
+                        "tuan_iso": "2026-W39",
+                        "khoang_ban": [
+                            {"thu": block[0], "start": block[1], "end": block[2]}
+                        ],
+                    }
                 }
             }
         return default

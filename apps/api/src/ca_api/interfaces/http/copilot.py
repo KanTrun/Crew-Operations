@@ -1033,7 +1033,7 @@ def copilot_execute_action(
         internal_mutations["pins"] = (mut_pins, {})
     elif intent == "PROPOSE_TKB_CONFIRM":
         # Cùng key/schema với route web POST /api/v1/tkb/confirm (sprint3.py):
-        # tkb_nv[nv] = {tuan_iso, khoang_ban, source_id, upload_id, xac_nhan_boi, vai}.
+        # tkb_nv_by_week[tuan_iso][nv] = {khoang_ban, source_id, ...}.
         nv_tkb = str(diff.get("nv_id") or user["user_id"])
         tuan_iso = str(diff.get("tuan_iso") or "").strip()
         if not tuan_iso:
@@ -1048,8 +1048,12 @@ def copilot_execute_action(
         if user["role"] not in {"quan_ly", "chu_quan"} and nv_tkb != user["user_id"]:
             raise RuntimeError("chi_gan_tkb_cua_minh")
 
-        def mut_tkb_nv(tkb_nv: dict[str, Any]) -> dict[str, Any]:
-            tkb_nv[nv_tkb] = {
+        def mut_tkb_by_week(tkb_by_week: dict[str, Any]) -> dict[str, Any]:
+            week_doc = tkb_by_week.setdefault(tuan_iso, {})
+            if not isinstance(week_doc, dict):
+                week_doc = {}
+                tkb_by_week[tuan_iso] = week_doc
+            week_doc[nv_tkb] = {
                 "tuan_iso": tuan_iso,
                 "khoang_ban": khoang,
                 "source_id": str(diff.get("source_id") or "copilot"),
@@ -1057,9 +1061,9 @@ def copilot_execute_action(
                 "xac_nhan_boi": user["user_id"],
                 "vai": user["role"],
             }
-            return tkb_nv
+            return tkb_by_week
 
-        internal_mutations["tkb_nv"] = (mut_tkb_nv, {})
+        internal_mutations["tkb_nv_by_week"] = (mut_tkb_by_week, {})
         # Ghi nhận lần sửa giống route web (record_sua loai="tkb_xac_nhan").
         try:
             from ca_playbook.sua import record_sua

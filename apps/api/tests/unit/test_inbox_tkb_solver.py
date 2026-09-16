@@ -113,11 +113,15 @@ def test_solver_only_loads_confirmed_tkb_for_target_week(
 
     block = ("T4", "12:00", "17:00")
     kv_set(
-        "tkb_nv",
+        "tkb_nv_by_week",
         {
-            "nv_02": {
-                "tuan_iso": "2026-W39",
-                "khoang_ban": [{"thu": block[0], "start": block[1], "end": block[2]}],
+            "2026-W39": {
+                "nv_02": {
+                    "tuan_iso": "2026-W39",
+                    "khoang_ban": [
+                        {"thu": block[0], "start": block[1], "end": block[2]}
+                    ],
+                }
             }
         },
     )

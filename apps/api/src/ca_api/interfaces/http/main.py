@@ -552,10 +552,14 @@ def _detect_staff_availability(
                 if nvid:
                     inbox_submitted_nv.add(str(nvid))
 
-    tkb_nv = kv_get("tkb_nv", {})
+    tkb_by_week = kv_get("tkb_nv_by_week", {})
+    tkb_nv = tkb_by_week.get(tuan_iso, {}) if isinstance(tkb_by_week, dict) else {}
     tkb_confirmed_nv: set[str] = set()
     if isinstance(tkb_nv, dict):
-        for nvid, entry in tkb_nv.items():
+        tkb_confirmed_nv.update(str(nvid) for nvid in tkb_nv)
+    legacy_tkb = kv_get("tkb_nv", {})
+    if isinstance(legacy_tkb, dict):
+        for nvid, entry in legacy_tkb.items():
             if isinstance(entry, dict) and entry.get("tuan_iso") == tuan_iso:
                 tkb_confirmed_nv.add(str(nvid))
 

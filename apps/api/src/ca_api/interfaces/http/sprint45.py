@@ -194,14 +194,21 @@ def _run_solver(
             }
 
     # TKB đã xác nhận từ ảnh đè lên (hoặc bổ sung) TKB synthetic của fixture.
-    stored = kv_get("tkb_nv", {})
+    by_week = kv_get("tkb_nv_by_week", {})
+    stored = by_week.get(tuan_hien_tai, {}) if isinstance(by_week, dict) else {}
+    legacy = kv_get("tkb_nv", {})
+    if isinstance(legacy, dict):
+        stored = dict(stored) if isinstance(stored, dict) else {}
+        for nv_id, entry in legacy.items():
+            if (
+                nv_id not in stored
+                and isinstance(entry, dict)
+                and entry.get("tuan_iso") == tuan_hien_tai
+            ):
+                stored[nv_id] = entry
     if isinstance(stored, dict):
         for nv_id, entry in stored.items():
             if not isinstance(entry, dict):
-                continue
-            # TKB là ràng buộc theo tuần. Bản ghi legacy không có tuần không
-            # được phép rò sang mọi lịch tương lai; nhân viên cần xác nhận lại.
-            if entry.get("tuan_iso") != tuan_hien_tai:
                 continue
             blocks = entry.get("khoang_ban") or []
             tuples: list[tuple[str, str, str]] = []

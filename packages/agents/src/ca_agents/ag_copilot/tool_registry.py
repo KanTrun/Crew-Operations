@@ -145,6 +145,7 @@ def build_live_snapshot(
         snapshot["page_quan"] = _kv_get("page_quan", {})
     elif intent == "PROPOSE_TKB_CONFIRM":
         snapshot["tkb_nv"] = _kv_get("tkb_nv", {})
+        snapshot["tkb_nv_by_week"] = _kv_get("tkb_nv_by_week", {})
     elif intent == "PROPOSE_SWAP_CONSENT":
         snapshot["swap"] = [s for s in (_kv_get("swap", []) or []) if isinstance(s, dict)]
     elif intent == "PROPOSE_HANDOVER":
@@ -234,12 +235,21 @@ def tool_solve_weekly_schedule(
     inp = build_lich_input(nhan_vien_ngoai=nvs)
 
     # 2. TKB thật đã xác nhận từ ảnh / sinh viên
-    stored_tkb = _kv_get("tkb_nv", {})
+    tkb_by_week = _kv_get("tkb_nv_by_week", {})
+    stored_tkb = tkb_by_week.get(tuan, {}) if isinstance(tkb_by_week, dict) else {}
+    legacy_tkb = _kv_get("tkb_nv", {})
+    if isinstance(legacy_tkb, dict):
+        stored_tkb = dict(stored_tkb) if isinstance(stored_tkb, dict) else {}
+        for nv_id, entry in legacy_tkb.items():
+            if (
+                nv_id not in stored_tkb
+                and isinstance(entry, dict)
+                and entry.get("tuan_iso") == tuan
+            ):
+                stored_tkb[nv_id] = entry
     if isinstance(stored_tkb, dict):
         for nv_id, entry in stored_tkb.items():
             if not isinstance(entry, dict):
-                continue
-            if entry.get("tuan_iso") != tuan:
                 continue
             blocks = entry.get("khoang_ban") or []
             tuples: list[tuple[str, str, str]] = []
@@ -1350,10 +1360,14 @@ def tool_get_schedule(
                     if nvid:
                         inbox_submitted_nv.add(str(nvid))
 
-    tkb_nv = _kv_get("tkb_nv", {}) or {}
+    tkb_by_week = _kv_get("tkb_nv_by_week", {}) or {}
+    tkb_nv = tkb_by_week.get(tuan_iso, {}) if isinstance(tkb_by_week, dict) else {}
     tkb_confirmed_nv: set[str] = set()
     if isinstance(tkb_nv, dict):
-        for nvid, entry in tkb_nv.items():
+        tkb_confirmed_nv.update(str(nvid) for nvid in tkb_nv)
+    legacy_tkb = _kv_get("tkb_nv", {}) or {}
+    if isinstance(legacy_tkb, dict):
+        for nvid, entry in legacy_tkb.items():
             if isinstance(entry, dict) and entry.get("tuan_iso") == tuan_iso:
                 tkb_confirmed_nv.add(str(nvid))
 

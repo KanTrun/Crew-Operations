@@ -105,21 +105,20 @@ export default function TkbPage() {
     // duyệt TKB không chạy sau khi lọc.
     Promise.all([
       apiGet<{ nv_id: string; item: { tuan_iso?: string; khoang_ban?: Khoang[] } | null }>(
-        "/api/v1/tkb/mine",
+        `/api/v1/tkb/mine?tuan_iso=${encodeURIComponent(tuanIso)}`,
       ),
       apiGet<{ nhan_vien?: Nv[] }>("/api/v1/ops/pickers").catch(() => ({ nhan_vien: [] })),
     ])
       .then(([mine, lich]) => {
         setMyNv(mine.nv_id || sessionStorage.getItem("nq_nv") || "");
         setNvId((prev) => prev || mine.nv_id || "");
-        setTuanIso(mine.item?.tuan_iso || nextISOWeek());
         setSaved(mine.item?.khoang_ban ?? null);
         setStaff(lich.nhan_vien ?? []);
         setError(null);
       })
       .catch((e) => setError(viError(e, { doing: "mở được trang thời khoá biểu" })))
       .finally(() => setLoading(false));
-  }, []);
+  }, [tuanIso]);
 
   useEffect(() => {
     if (token) loadMine();
