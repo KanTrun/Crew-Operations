@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import cast
 
 from ca_api.interfaces.http.main import app
@@ -111,6 +112,46 @@ def test_start_requires_diem_danh() -> None:
     chu = headers(client, "hung")
     r = client.post("/api/v1/phieu/start", json={"mau": "mo_quan"}, headers=chu)
     assert r.status_code == 403
+
+
+def test_ban_giao_ca_khong_can_diem_danh() -> None:
+    chu = headers(client, "hung")
+    r = client.post("/api/v1/phieu/start", json={"mau": "ban_giao_ca"}, headers=chu)
+    assert r.status_code == 200, r.text
+
+
+def test_mau_phieu_tat_khong_hien_va_khong_mo_duoc(monkeypatch, tmp_path: Path) -> None:
+    cfg = tmp_path / "quy-trinh-phieu.yaml"
+    cfg.write_text(
+        "mac_dinh:\n  - ma: mo_quan\n    bat: false\n  - ma: ban_giao_ca\n    bat: true\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("NHIPQUAN_PHIEU_CONFIG", str(cfg))
+    auth = headers(client, "minh")
+
+    listed = client.get("/api/v1/phieu/mau", headers=auth)
+    assert listed.status_code == 200
+    assert [item["ma"] for item in listed.json()["items"]] == ["ban_giao_ca"]
+    denied = client.post("/api/v1/phieu/start", json={"mau": "mo_quan"}, headers=auth)
+    assert denied.status_code == 404
+
+
+def test_mau_phieu_theo_tung_quan(monkeypatch, tmp_path: Path) -> None:
+    cfg = tmp_path / "quy-trinh-phieu.yaml"
+    cfg.write_text(
+        "mac_dinh:\n  - ma: mo_quan\n    bat: true\n"
+        "quan:\n  quan_02:\n    - ma: ban_giao_ca\n      bat: true\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("NHIPQUAN_PHIEU_CONFIG", str(cfg))
+    monkeypatch.setattr(
+        "ca_api.interfaces.http.sprint3.auth_session",
+        lambda _: {"nv_id": "nv_03", "role": "nhan_vien", "store_id": "quan_02"},
+    )
+
+    listed = client.get("/api/v1/phieu/mau", headers={"Authorization": "Bearer test"})
+    assert listed.status_code == 200
+    assert [item["ma"] for item in listed.json()["items"]] == ["ban_giao_ca"]
 
 
 def test_orc_idempotency() -> None:

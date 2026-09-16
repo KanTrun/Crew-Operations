@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
@@ -10,6 +11,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[4]
 TEMPLATES = ROOT / "infra" / "templates"
+DEFAULT_CATALOG = ROOT / "config" / "quy-trinh-phieu.yaml"
 
 
 @dataclass
@@ -48,6 +50,34 @@ def load_template(ma: str) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(ma)
     return cast(dict[str, Any], yaml.safe_load(path.read_text(encoding="utf-8")))
+
+
+def load_phieu_catalog(store_id: str, path: Path | None = None) -> list[dict[str, Any]]:
+    """Load the forms enabled for a venue; templates remain separate from policy."""
+    configured = os.environ.get("NHIPQUAN_PHIEU_CONFIG", "").strip()
+    cfg = path or (Path(configured) if configured else DEFAULT_CATALOG)
+    data = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or not isinstance(data.get("mac_dinh"), list):
+        raise ValueError("quy-trinh-phieu.yaml must contain a mac_dinh list")
+    venues = data.get("quan", {})
+    if not isinstance(venues, dict):
+        raise ValueError("quy-trinh-phieu.yaml quan must be a mapping")
+    catalog = venues.get(store_id, data["mac_dinh"])
+    if not isinstance(catalog, list):
+        raise ValueError("quy-trinh-phieu.yaml venue catalog must be a list")
+    items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for raw in catalog:
+        if not isinstance(raw, dict) or not isinstance(raw.get("ma"), str):
+            raise ValueError("phieu item must have ma")
+        ma = raw["ma"].strip()
+        if not ma or ma in seen or not isinstance(raw.get("bat"), bool):
+            raise ValueError("phieu item is invalid")
+        seen.add(ma)
+        if raw["bat"]:
+            load_template(ma)
+            items.append({"ma": ma, "bat_buoc": bool(raw.get("bat_buoc", False))})
+    return items
 
 
 def start_phieu(
