@@ -151,6 +151,39 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      # Cache pip packages — tránh tải lại ortools/uvicorn (~60s)
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-e2e-${{ runner.os }}-${{ hashFiles('apps/api/pyproject.toml', 'packages/*/pyproject.toml') }}
+          restore-keys: pip-e2e-${{ runner.os }}-
+
+      # Cache node_modules — tránh npm ci mỗi lần (~60s)
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: apps/web/node_modules
+          key: npm-e2e-${{ runner.os }}-${{ hashFiles('apps/web/package-lock.json') }}
+          restore-keys: npm-e2e-${{ runner.os }}-
+
+      # Cache Playwright browser (Chromium) — lớn nhất, ~90s nếu không cache
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('apps/web/package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      # Cache Next.js incremental build (.next/cache) — giảm build từ ~3min xuống ~1min
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: apps/web/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('apps/web/package-lock.json') }}-${{ hashFiles('apps/web/src/**/*.ts', 'apps/web/src/**/*.tsx') }}
+          restore-keys: nextjs-${{ runner.os }}-${{ hashFiles('apps/web/package-lock.json') }}-
+
       - name: Install API + Playwright
         run: |
           pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api httpx pyyaml ortools uvicorn
