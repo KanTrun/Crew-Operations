@@ -305,7 +305,7 @@ def _seed_inbox() -> list[dict[str, Any]]:
     items = kv_get("inbox_rang_buoc", [])
     if items:
         return cast(list[dict[str, Any]], items)
-    if os.environ.get("NHIPQUAN_INBOX_SEED_FIXTURE", "1").strip() in {"0", "false", "no"}:
+    if os.environ.get("NHIPQUAN_INBOX_SEED_FIXTURE", "0").strip().lower() not in {"1", "true", "yes"}:
         return []
     items = [
         {
@@ -1307,12 +1307,22 @@ def qr_use(
 
     # Khoá theo ngày {ngay: [nv_id, ...]} — đồng bộ với /api/v1/diem-danh.
     ghi_diem_danh(used["nv_id"])
-    _audit("qr_diem_danh", used["nv_id"], {"token": token, "ca_id": used.get("ca_id")})
+    _audit(
+        "attendance.check_in",
+        used["nv_id"],
+        {
+            "entity_type": "attendance",
+            "entity_id": used["nv_id"],
+            "nv_id": used["nv_id"],
+            "ca_id": used.get("ca_id"),
+            "source": "qr",
+        },
+    )
     return {"ok": True, "nv_id": used["nv_id"]}
 
 
 @router.post("/api/v1/cho-doi-ca")
-def swap_open(
+async def swap_open(
     body: SwapBody,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
@@ -1341,16 +1351,21 @@ def swap_open(
 
     kv_mutate("swap", mut, [])
     
-    # Do not audit sensitive data if any
+    actor = str(caller.get("nv_id") or caller.get("username") or caller["role"])
     audit_payload = {
         "entity_type": "shift_swap",
         "entity_id": item["id"],
         "a": body.a,
         "b": body.b,
         "c": body.c,
-        "ca_id": body.ca_id
+        "ca_id": body.ca_id,
+        "trang_thai": item["trang_thai"],
     }
-    _audit("shift_swap.request", body.a, audit_payload)
+    _audit("shift_swap.request", actor, audit_payload)
+    await notify_ops_changed(
+        "audit:shift_swap",
+        details={"action": "shift_swap.request", "swap_id": item["id"]},
+    )
     return item
 
 
@@ -1362,7 +1377,7 @@ def swap_list(authorization: Annotated[str | None, Header()] = None) -> dict[str
 
 @router.post("/api/v1/cho-doi-ca/{swap_id}/dong-y")
 @router.post("/api/v1/doi-ca/{swap_id}/xac-nhan")
-def swap_dong_y(
+async def swap_dong_y(
     swap_id: str,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
@@ -1397,13 +1412,26 @@ def swap_dong_y(
     kv_mutate("swap", mut, [])
     if not found:
         raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
-    _audit("shift_swap.confirm", nv or caller["role"], {"entity_type": "shift_swap", "entity_id": swap_id, "dong_y": found.get("dong_y", [])})
+    _audit(
+        "shift_swap.confirm",
+        nv or caller["role"],
+        {
+            "entity_type": "shift_swap",
+            "entity_id": swap_id,
+            "dong_y": found.get("dong_y", []),
+            "trang_thai": found.get("trang_thai"),
+        },
+    )
+    await notify_ops_changed(
+        "audit:shift_swap",
+        details={"action": "shift_swap.confirm", "swap_id": swap_id},
+    )
     return found
 
 
 @router.post("/api/v1/cho-doi-ca/{swap_id}/tu-choi")
 @router.post("/api/v1/doi-ca/{swap_id}/tu-choi")
-def swap_tu_choi(
+async def swap_tu_choi(
     swap_id: str,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
@@ -1430,7 +1458,19 @@ def swap_tu_choi(
     kv_mutate("swap", mut, [])
     if not found:
         raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
-    _audit("shift_swap.reject", nv or caller["role"], {"entity_type": "shift_swap", "entity_id": swap_id})
+    _audit(
+        "shift_swap.reject",
+        nv or caller["role"],
+        {
+            "entity_type": "shift_swap",
+            "entity_id": swap_id,
+            "trang_thai": found.get("trang_thai"),
+        },
+    )
+    await notify_ops_changed(
+        "audit:shift_swap",
+        details={"action": "shift_swap.reject", "swap_id": swap_id},
+    )
     return found
 
 

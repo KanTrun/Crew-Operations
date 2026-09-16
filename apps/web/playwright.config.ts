@@ -24,6 +24,8 @@ export default defineConfig({
         NHIPQUAN_API_HOST: "0.0.0.0",
         NHIPQUAN_API_PORT: "8000",
         NHIPQUAN_DISABLE_RATE_LIMIT: "true",
+        NHIPQUAN_SEED_DEMO: "true",
+        NHIPQUAN_INBOX_SEED_FIXTURE: "1",
       },
     },
     {

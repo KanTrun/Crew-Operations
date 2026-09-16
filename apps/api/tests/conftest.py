@@ -17,6 +17,9 @@ def _isolated_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("NHIPQUAN_DB", str(tmp_path / "quan.db"))
     monkeypatch.setenv("NHIPQUAN_SUA", str(tmp_path / "sua.jsonl"))
     monkeypatch.setenv("NHIPQUAN_CAMNANG", str(tmp_path / "cam_nang.json"))
+    # Test unit chủ động dùng bộ demo/fixture; runtime thật mặc định không seed.
+    monkeypatch.setenv("NHIPQUAN_SEED_DEMO", "1")
+    monkeypatch.setenv("NHIPQUAN_INBOX_SEED_FIXTURE", "1")
     # `ag_mail._log_mail_replay` mặc định ghi vào ĐƯỜNG DẪN TƯƠNG ĐỐI
     # `data/out/mail_log.jsonl` khi biến này chưa được đặt. File đó ĐÃ ĐƯỢC
     # TRACK trong git, nên mỗi lần chạy suite sẽ nối thêm bản ghi replay và làm

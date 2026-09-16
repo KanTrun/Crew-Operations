@@ -11,6 +11,10 @@ on:
 
   workflow_dispatch:
 
+concurrency:
+  group: nhipquan-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     if: >
@@ -18,21 +22,84 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
+      - name: Validate AWS deployment secrets
+        env:
+          AWS_HOST: ${{ secrets.AWS_HOST }}
+          AWS_USER: ${{ secrets.AWS_USER }}
+          AWS_SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
+        run: |
+          test -n "$AWS_HOST"
+          test -n "$AWS_USER"
+          test -n "$AWS_SSH_KEY"
+
       - name: Deploy to AWS
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USER }}
           key: ${{ secrets.AWS_SSH_KEY }}
+          command_timeout: 15m
           script: |
+            set -eu
             cd /opt/nhipquan
 
-            docker compose pull
+            release_sha="${{ github.event.workflow_run.head_sha || github.sha }}"
+            test -n "$release_sha"
+            test -f .env
+            if grep -Eiq '^[[:space:]]*NHIPQUAN_(SEED_DEMO|INBOX_SEED_FIXTURE|PAGE_SEED_FIXTURE|LOI_GIAI_SEED)[[:space:]]*=[[:space:]]*(1|true|yes)([[:space:]]*#.*)?$' .env; then
+              echo "Fixture/demo seed đang bật trong /opt/nhipquan/.env; dừng deploy production."
+              exit 1
+            fi
 
-            docker compose up -d --remove-orphans
+            sudo chown -R "$(id -u):$(id -g)" /opt/nhipquan/repo
+            cd /opt/nhipquan/repo
+            git fetch --depth 1 origin main
+            main_sha="$(git rev-parse FETCH_HEAD)"
+            if [ "$release_sha" != "$main_sha" ]; then
+              echo "Bỏ qua release $release_sha vì main hiện tại là $main_sha."
+              exit 0
+            fi
+            git checkout --detach "$release_sha"
+            cd /opt/nhipquan
 
-            docker image prune -f
+            sudo install -d -o "$(id -u)" -g "$(id -g)" /opt/nhipquan/backups
+            if sudo docker compose ps --status running --services 2>/dev/null | grep -qx postgres; then
+              backup="backups/postgres-before-${release_sha}.sql"
+              sudo docker compose exec -T postgres pg_dump -U nhipquan -d nhipquan > "$backup"
+              gzip -f "$backup"
+              ls -1t backups/postgres-before-*.sql.gz | tail -n +11 | xargs -r rm -f
+            fi
 
-            docker compose ps
+            api_container="$(sudo docker compose ps -q api 2>/dev/null || true)"
+            web_container="$(sudo docker compose ps -q web 2>/dev/null || true)"
+            if [ -n "$api_container" ]; then
+              api_image="$(sudo docker inspect --format '{{.Image}}' "$api_container")"
+              sudo docker image tag "$api_image" ghcr.io/kantrun/crew-operations/nhipquan-api:rollback
+            fi
+            if [ -n "$web_container" ]; then
+              web_image="$(sudo docker inspect --format '{{.Image}}' "$web_container")"
+              sudo docker image tag "$web_image" ghcr.io/kantrun/crew-operations/nhipquan-web:rollback
+            fi
+
+            sudo cp repo/infra/oracle/compose.prod.yml compose.yml
+            sudo cp repo/infra/oracle/Caddyfile Caddyfile
+
+            domain="$(awk -F= '/^DOMAIN=/{print $2; exit}' .env)"
+            if sudo IMAGE_TAG="$release_sha" docker compose pull &&
+               sudo IMAGE_TAG="$release_sha" docker compose up -d --remove-orphans --wait --wait-timeout 180 &&
+               test -n "$domain" &&
+               curl -fsS --retry 12 --retry-delay 5 "https://${domain}/health" &&
+               curl -fsS --retry 12 --retry-delay 5 "https://${domain}/"; then
+              printf '%s\n' "$release_sha" | sudo tee .deployed_sha >/dev/null
+              sudo docker image prune -f
+              sudo IMAGE_TAG="$release_sha" docker compose ps
+            else
+              echo "Deploy lỗi; khôi phục image đang chạy trước đó."
+              sudo docker compose logs --tail=200 api web || true
+              sudo IMAGE_TAG=rollback docker compose up -d --remove-orphans --wait --wait-timeout 180 || true
+              exit 1
+            fi

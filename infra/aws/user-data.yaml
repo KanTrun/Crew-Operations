@@ -19,10 +19,15 @@ write_files:
       mkdir -p /opt/nhipquan
       cd /opt/nhipquan
 
-      git clone --depth 1 https://github.com/KanTrun/Crew-Operations.git repo || true
+      if [ -d repo/.git ]; then
+        git -C repo fetch --depth 1 origin main
+        git -C repo checkout --detach FETCH_HEAD
+      else
+        git clone --depth 1 https://github.com/KanTrun/Crew-Operations.git repo
+      fi
       # Dùng compose prod Oracle/AWS dùng chung — hạ tầng 2 nhà giống nhau
-      cp repo/infra/oracle/compose.prod.yml compose.yml 2>/dev/null || true
-      cp repo/infra/oracle/Caddyfile Caddyfile 2>/dev/null || true
+      cp repo/infra/oracle/compose.prod.yml compose.yml
+      cp repo/infra/oracle/Caddyfile Caddyfile
 
       # Swap 4GB — t3.small 2GB RAM, ortools solve 60s có thể đỉnh; swap chống OOM-kill
       if [ ! -f /swapfile ]; then

@@ -37,7 +37,7 @@ services:
     restart: always
 
   api:
-    image: ghcr.io/kantrun/crew-operations/nhipquan-api:latest
+    image: ghcr.io/kantrun/crew-operations/nhipquan-api:${IMAGE_TAG:-latest}
     env_file:
       - path: /opt/nhipquan/.env
         required: true
@@ -49,6 +49,7 @@ services:
       - "8000"
     volumes:
       - nhipquan_var:/app/var
+      - nhipquan_uploads:/app/data/uploads
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
       interval: 10s
@@ -63,7 +64,7 @@ services:
     restart: always
 
   worker:
-    image: ghcr.io/kantrun/crew-operations/nhipquan-api:latest
+    image: ghcr.io/kantrun/crew-operations/nhipquan-api:${IMAGE_TAG:-latest}
     command: ["python", "-m", "ca_api.worker"]
     env_file:
       - path: /opt/nhipquan/.env
@@ -73,6 +74,7 @@ services:
       REDIS_URL: redis://redis:6379/0
     volumes:
       - nhipquan_var:/app/var
+      - nhipquan_uploads:/app/data/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,16 +85,25 @@ services:
     restart: always
 
   web:
-    image: ghcr.io/kantrun/crew-operations/nhipquan-web:latest
+    image: ghcr.io/kantrun/crew-operations/nhipquan-web:${IMAGE_TAG:-latest}
     expose:
       - "3000"
     depends_on:
       api:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/login >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     restart: always
 
   caddy:
     image: caddy:2-alpine
+    env_file:
+      - path: /opt/nhipquan/.env
+        required: true
     ports:
       - "80:80"
       - "443:443"
@@ -108,5 +119,6 @@ services:
 volumes:
   nhipquan_pg:
   nhipquan_var:
+  nhipquan_uploads:
   caddy_data:
   caddy_config:

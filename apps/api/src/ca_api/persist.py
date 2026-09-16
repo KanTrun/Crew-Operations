@@ -10,6 +10,7 @@ import re
 import sqlite3
 import uuid
 from collections.abc import Callable
+from contextvars import ContextVar, Token
 
 try:
     from datetime import UTC, datetime, timedelta, timezone
@@ -22,6 +23,10 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[4]
 
 _INITIALIZED = False
+_AUDIT_REQUEST_STATE: ContextVar[dict[str, bool] | None] = ContextVar(
+    "audit_request_state",
+    default=None,
+)
 
 try:
     import psycopg
@@ -96,6 +101,14 @@ def db_path() -> Path:
 def _database_url() -> str | None:
     url = os.environ.get("DATABASE_URL", "").strip()
     return url or None
+
+
+def _demo_seed_enabled() -> bool:
+    return os.environ.get("NHIPQUAN_SEED_DEMO", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
 
 class _PostgresRow(dict[str, Any]):
@@ -513,18 +526,21 @@ def init_db() -> None:
         )
         if not _database_url():
             _migrate_schema(cx)
-        for u, pw, role, nv, name in USERS:
-            cx.execute(
-                """
-                INSERT INTO users(username, password_sha, role, nv_id, display_name, store_id, status)
-                VALUES (?,?,?,?,?,?,'active')
-                ON CONFLICT(username) DO NOTHING
-                """,
-                (u, hash_password(pw), role, nv, name, DEFAULT_STORE_ID),
-            )
-        _seed_menu_neu_trong(cx)
+        # Production/fresh database không được tự nhồi tài khoản, menu hay bàn
+        # minh họa. Chỉ seed khi operator bật NHIPQUAN_SEED_DEMO rõ ràng.
+        if _demo_seed_enabled():
+            for u, pw, role, nv, name in USERS:
+                cx.execute(
+                    """
+                    INSERT INTO users(username, password_sha, role, nv_id, display_name, store_id, status)
+                    VALUES (?,?,?,?,?,?,'active')
+                    ON CONFLICT(username) DO NOTHING
+                    """,
+                    (u, hash_password(pw), role, nv, name, DEFAULT_STORE_ID),
+                )
+            _seed_menu_neu_trong(cx)
+            _seed_tables_neu_trong(cx)
         _seed_chat_neu_trong(cx)
-        _seed_tables_neu_trong(cx)
         _INITIALIZED_PATHS.add(p_str)
     _INITIALIZED = True
 
@@ -1088,6 +1104,24 @@ def copilot_commit_internal_execution(
             raise
 
 
+def audit_request_begin() -> Token[dict[str, bool] | None]:
+    """Bắt đầu theo dõi audit cho một HTTP request.
+
+    Giá trị là dict mutable để endpoint sync chạy trong threadpool vẫn đánh
+    dấu được cho middleware ở event-loop thread.
+    """
+    return _AUDIT_REQUEST_STATE.set({"written": False})
+
+
+def audit_request_had_entry() -> bool:
+    state = _AUDIT_REQUEST_STATE.get()
+    return bool(state and state.get("written"))
+
+
+def audit_request_end(token: Token[dict[str, bool] | None]) -> None:
+    _AUDIT_REQUEST_STATE.reset(token)
+
+
 def audit_add(at: str, ai: str, hanh: str, payload: dict[str, Any]) -> None:
     init_db()
     with _conn() as cx:
@@ -1095,6 +1129,9 @@ def audit_add(at: str, ai: str, hanh: str, payload: dict[str, Any]) -> None:
             "INSERT INTO audit(at, ai, hanh, payload) VALUES (?,?,?,?)",
             (at, ai, hanh, json.dumps(payload, ensure_ascii=False)),
         )
+    state = _AUDIT_REQUEST_STATE.get()
+    if state is not None:
+        state["written"] = True
 
 
 def list_users() -> list[dict[str, str]]:
@@ -1427,7 +1464,7 @@ def audit_list() -> list[dict[str, Any]]:
         rows = cx.execute("SELECT id, at, ai, hanh, payload FROM audit ORDER BY id DESC").fetchall()
     out = []
     for row_id, at, ai, hanh, payload in rows:
-        details = json.loads(payload)
+        details = json.loads(payload) if payload else {}
         item = dict(details) if isinstance(details, dict) else {"value": details}
         item.update({"id": row_id, "at": at, "ai": ai, "hanh": hanh, "payload": details})
         out.append(item)
