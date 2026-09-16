@@ -28,7 +28,7 @@ from ca_agents.messaging import MessagePort, get_port
 from ca_ops import escalate, load_run
 
 from ca_api.orchestration import Clock
-from ca_api.persist import kv_get, kv_mutate, kv_set, list_users
+from ca_api.persist import kv_get, kv_mutate, kv_set, list_users, open_shift_escalate_due
 
 _VN_TZ = timezone(timedelta(hours=7))
 
@@ -37,6 +37,7 @@ log = logging.getLogger("ca_api.worker")
 
 NHAC_TEXT = "Phiếu {mau} ({id}) đang chờ bước tiếp theo — hoàn thành giúp quán nhé."
 BAO_TEXT = "Phiếu {mau} ({id}) quá hạn hai lần ngưỡng — cần chủ quán để mắt."
+OPEN_SHIFT_TEXT = "Ca trống {ca_id} tuần {tuan_iso} chưa có người nhận — cần quản lý xử lý."
 
 
 def _chu_quan_nv_id() -> str:
@@ -79,6 +80,18 @@ def _quet(clock: Clock, port: MessagePort, *, han_phut: int = 30) -> int:
 
         kv_mutate("worker_da_nhac", mut, {})
     return gui
+
+
+def _quet_open_shifts(clock: Clock, port: MessagePort, *, store_id: str = "quan_01") -> int:
+    """Escalate overdue open shifts once; the database owns the idempotency."""
+    now_iso = clock.now_iso()
+    due = open_shift_escalate_due(store_id, now_iso=now_iso)
+    manager = _chu_quan_nv_id()
+    for shift in due:
+        text = OPEN_SHIFT_TEXT.format(ca_id=shift["ca_id"], tuan_iso=shift["tuan_iso"])
+        res = port.send(manager, text)
+        log.info("worker open shift %s -> %s: ok=%s", shift["id"], manager, res.ok)
+    return len(due)
 
 # ── Việc định kỳ — mỗi job một khoá mốc, chạy đúng một lần mỗi ngày/tuần ──────
 
@@ -243,9 +256,11 @@ def main() -> None:
     )
     while True:
         try:
-            n = _quet(Clock(), port, han_phut=han_phut)
-            if n:
-                log.info("đã gửi %s tin nhắc", n)
+            clock = Clock()
+            n = _quet(clock, port, han_phut=han_phut)
+            open_shift_n = _quet_open_shifts(clock, port)
+            if n or open_shift_n:
+                log.info("đã gửi %s tin nhắc và %s cảnh báo ca trống", n, open_shift_n)
         except Exception:  # noqa: BLE001 — worker phải sống sót qua một lượt hỏng
             log.exception("luot quet that bai — thu lai o chu ky tiep")
         try:

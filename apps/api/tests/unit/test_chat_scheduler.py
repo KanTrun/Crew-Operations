@@ -14,6 +14,8 @@ from ca_api.services.chat_scheduler_agent import (
     build_schedule_plan,
     handle_scheduling_request,
     parse_availability_text,
+    submit_availability_confirmation,
+    update_availability_confirmation,
 )
 
 
@@ -66,7 +68,18 @@ def test_scheduler_agent_end_to_end() -> None:
         content="Em rảnh sáng T2, T4, T6 tuần sau nhé!",
     )
 
-    # Trigger agent
+    # Bước 2: bot tạo card xác nhận; dữ liệu chưa xác nhận không được xếp.
+    draft = submit_availability_confirmation(
+        conv_id=conv_id,
+        nv_id=nv_id,
+        display_name="Nhân Viên Sched",
+        text="Em rảnh sáng T2, T4, T6 tuần sau nhé!",
+    )
+    assert draft and draft["status"] == "cho_xac_nhan"
+    confirmation_id = str(draft["id"])
+    update_availability_confirmation(confirmation_id, nv_id=nv_id, status="da_xac_nhan")
+
+    # Bước 3: chỉ dữ liệu đã xác nhận mới được bot xếp.
     bot_msg = asyncio.run(
         handle_scheduling_request(
             conv_id=conv_id,

@@ -523,10 +523,26 @@ def init_db() -> None:
                 created_at TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_thong_bao_ca_user ON thong_bao_ca(store_id, nv_id, da_xem, created_at DESC);
+
+            CREATE TABLE IF NOT EXISTS thong_bao_lich (
+                id TEXT PRIMARY KEY,
+                store_id TEXT NOT NULL DEFAULT 'quan_01',
+                tuan_iso TEXT NOT NULL,
+                su_kien TEXT NOT NULL,
+                tieu_de TEXT NOT NULL,
+                noi_dung TEXT NOT NULL,
+                url TEXT NOT NULL,
+                nv_id TEXT NOT NULL,
+                da_xem INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                UNIQUE(store_id, tuan_iso, su_kien, nv_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_thong_bao_lich_user ON thong_bao_lich(store_id, nv_id, da_xem, created_at DESC);
             """
         )
         if not _database_url():
             _migrate_schema(cx)
+        _ensure_scheduling_schema(cx)
         # Production/fresh database không được tự nhồi tài khoản, menu hay bàn
         # minh họa. Chỉ seed khi operator bật NHIPQUAN_SEED_DEMO rõ ràng.
         if _demo_seed_enabled():
@@ -544,6 +560,438 @@ def init_db() -> None:
         _seed_chat_neu_trong(cx)
         _INITIALIZED_PATHS.add(p_str)
     _INITIALIZED = True
+
+
+def _ensure_scheduling_schema(cx: Any) -> None:
+    """Create the additive scheduling tables used by the authoritative flow."""
+    cx.execute(
+        """
+        CREATE TABLE IF NOT EXISTS availability_confirmations (
+            id TEXT PRIMARY KEY,
+            store_id TEXT NOT NULL,
+            nv_id TEXT NOT NULL,
+            tuan_iso TEXT NOT NULL,
+            availability TEXT NOT NULL,
+            status TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'chat',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(store_id, nv_id, tuan_iso)
+        )
+        """
+    )
+    cx.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_availability_week
+        ON availability_confirmations(store_id, tuan_iso, nv_id, status)
+        """
+    )
+    cx.execute(
+        """
+        CREATE TABLE IF NOT EXISTS schedule_runs (
+            id TEXT PRIMARY KEY,
+            store_id TEXT NOT NULL,
+            tuan_iso TEXT NOT NULL,
+            version INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            input_snapshot TEXT NOT NULL,
+            fingerprint TEXT NOT NULL,
+            result_snapshot TEXT NOT NULL DEFAULT '{}',
+            idempotency_key TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(store_id, tuan_iso, version),
+            UNIQUE(store_id, tuan_iso, idempotency_key)
+        )
+        """
+    )
+    cx.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_schedule_runs_week
+        ON schedule_runs(store_id, tuan_iso, version DESC)
+        """
+    )
+    cx.execute(
+        """
+        CREATE TABLE IF NOT EXISTS authoritative_assignments (
+            id TEXT PRIMARY KEY,
+            schedule_run_id TEXT NOT NULL,
+            store_id TEXT NOT NULL,
+            tuan_iso TEXT NOT NULL,
+            ca_id TEXT NOT NULL,
+            nv_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(schedule_run_id, ca_id, nv_id)
+        )
+        """
+    )
+    cx.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_authoritative_assignments_week
+        ON authoritative_assignments(store_id, tuan_iso, ca_id, nv_id)
+        """
+    )
+    cx.execute(
+        """
+        CREATE TABLE IF NOT EXISTS open_shifts (
+            id TEXT PRIMARY KEY,
+            store_id TEXT NOT NULL,
+            schedule_run_id TEXT NOT NULL,
+            tuan_iso TEXT NOT NULL,
+            ca_id TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'open',
+            deadline_at TEXT NOT NULL,
+            claimed_by TEXT,
+            claimed_at TEXT,
+            escalated_at TEXT,
+            created_at TEXT NOT NULL,
+            UNIQUE(store_id, schedule_run_id, ca_id)
+        )
+        """
+    )
+    cx.execute(
+        """
+        CREATE TABLE IF NOT EXISTS shift_applications (
+            id TEXT PRIMARY KEY,
+            open_shift_id TEXT NOT NULL,
+            store_id TEXT NOT NULL,
+            nv_id TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            decided_at TEXT,
+            UNIQUE(open_shift_id, nv_id)
+        )
+        """
+    )
+    cx.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_shift_applications_claim
+        ON shift_applications(open_shift_id, status, created_at)
+        """
+    )
+
+
+def availability_confirmed_list(store_id: str, tuan_iso: str) -> list[dict[str, Any]]:
+    """Return only confirmed availability for the exact employee/week key."""
+    init_db()
+    with _conn() as cx:
+        rows = cx.execute(
+            """
+            SELECT id, nv_id, tuan_iso, availability, source, created_at, updated_at
+            FROM availability_confirmations
+            WHERE store_id=? AND tuan_iso=? AND status='da_xac_nhan'
+            ORDER BY nv_id, updated_at DESC
+            """,
+            (store_id, tuan_iso),
+        ).fetchall()
+    return [
+        {
+            "id": str(row[0]),
+            "nv_id": str(row[1]),
+            "tuan_iso": str(row[2]),
+            "availability": json.loads(row[3]),
+            "source": str(row[4]),
+            "created_at": str(row[5]),
+            "updated_at": str(row[6]),
+        }
+        for row in rows
+    ]
+
+
+def availability_confirmation_upsert(
+    *,
+    item_id: str,
+    store_id: str,
+    nv_id: str,
+    tuan_iso: str,
+    availability: dict[str, Any],
+    status: str,
+    source: str = "chat",
+) -> None:
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        existing = cx.execute(
+            "SELECT id, created_at FROM availability_confirmations WHERE store_id=? AND nv_id=? AND tuan_iso=? ORDER BY updated_at DESC LIMIT 1",
+            (store_id, nv_id, tuan_iso),
+        ).fetchone()
+        if existing:
+            cx.execute(
+                """
+                UPDATE availability_confirmations
+                SET availability=?, status=?, source=?, updated_at=?
+                WHERE id=?
+                """,
+                (json.dumps(availability, ensure_ascii=False), status, source, now, str(existing[0])),
+            )
+        else:
+            cx.execute(
+                """
+                INSERT INTO availability_confirmations
+                    (id, store_id, nv_id, tuan_iso, availability, status, source, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?)
+                """,
+                (item_id, store_id, nv_id, tuan_iso, json.dumps(availability, ensure_ascii=False), status, source, now, now),
+            )
+
+
+def chat_get_or_create_scheduler_direct(store_id: str, nv_id: str) -> dict[str, Any]:
+    """Return the single private employee <-> scheduler conversation."""
+    init_db()
+    conv_id = f"conv_scheduler_{store_id}_{nv_id}"
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        cx.isolation_level = None
+        cx.execute("BEGIN IMMEDIATE")
+        try:
+            cx.execute(
+                """
+                INSERT INTO chat_conversations
+                    (id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING
+                """,
+                (conv_id, store_id, "direct", "AI Scheduler", "", 0, now, now),
+            )
+            for participant, role in ((nv_id, "member"), ("ai_scheduler", "admin")):
+                cx.execute(
+                    """
+                    INSERT INTO chat_participants(conversation_id, nv_id, role, status, joined_at)
+                    VALUES (?,?,?,?,?) ON CONFLICT(conversation_id, nv_id) DO NOTHING
+                    """,
+                    (conv_id, participant, role, "active", now),
+                )
+            cx.execute("COMMIT")
+        except Exception:
+            cx.execute("ROLLBACK")
+            raise
+    return chat_conversation_get(conv_id, nv_id) or {"id": conv_id, "type": "direct"}
+
+
+def schedule_run_create(
+    *,
+    store_id: str,
+    tuan_iso: str,
+    input_snapshot: dict[str, Any],
+    fingerprint: str,
+    idempotency_key: str,
+    created_by: str,
+    status: str = "computed",
+    result_snapshot: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    run_id = f"schedule_run_{uuid.uuid4().hex}"
+    with _conn() as cx:
+        cx.isolation_level = None
+        cx.execute("BEGIN IMMEDIATE")
+        try:
+            existing = cx.execute(
+                "SELECT id, version, status, fingerprint FROM schedule_runs WHERE store_id=? AND tuan_iso=? AND idempotency_key=?",
+                (store_id, tuan_iso, idempotency_key),
+            ).fetchone()
+            if existing:
+                cx.execute("COMMIT")
+                return {"id": str(existing[0]), "version": int(existing[1]), "status": str(existing[2]), "fingerprint": str(existing[3]), "reused": True}
+            version_row = cx.execute(
+                "SELECT COALESCE(MAX(version), 0) + 1 FROM schedule_runs WHERE store_id=? AND tuan_iso=?",
+                (store_id, tuan_iso),
+            ).fetchone()
+            version = int(version_row[0])
+            cx.execute(
+                "INSERT INTO schedule_runs(id, store_id, tuan_iso, version, status, input_snapshot, fingerprint, result_snapshot, idempotency_key, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (run_id, store_id, tuan_iso, version, status, json.dumps(input_snapshot, ensure_ascii=False, sort_keys=True), fingerprint, json.dumps(result_snapshot or {}, ensure_ascii=False, sort_keys=True), idempotency_key, created_by, now),
+            )
+            cx.execute("COMMIT")
+        except Exception:
+            cx.execute("ROLLBACK")
+            raise
+    return {"id": run_id, "version": version, "status": status, "fingerprint": fingerprint, "reused": False}
+
+
+def schedule_run_update_result(run_id: str, *, status: str, result_snapshot: dict[str, Any]) -> None:
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            "UPDATE schedule_runs SET status=?, result_snapshot=? WHERE id=?",
+            (status, json.dumps(result_snapshot, ensure_ascii=False, sort_keys=True), run_id),
+        )
+
+
+def schedule_run_get(run_id: str) -> dict[str, Any] | None:
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT id, store_id, tuan_iso, version, status, input_snapshot, fingerprint, result_snapshot, idempotency_key, created_by, created_at FROM schedule_runs WHERE id=?",
+            (run_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "id": str(row[0]), "store_id": str(row[1]), "tuan_iso": str(row[2]),
+        "version": int(row[3]), "status": str(row[4]),
+        "input_snapshot": json.loads(row[5]), "fingerprint": str(row[6]),
+        "result": json.loads(row[7]), "idempotency_key": str(row[8]),
+        "created_by": str(row[9]), "created_at": str(row[10]),
+    }
+
+
+def schedule_run_latest(store_id: str, tuan_iso: str) -> dict[str, Any] | None:
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT id FROM schedule_runs WHERE store_id=? AND tuan_iso=? ORDER BY version DESC LIMIT 1",
+            (store_id, tuan_iso),
+        ).fetchone()
+    return schedule_run_get(str(row[0])) if row else None
+
+
+def authoritative_assignments_list(schedule_run_id: str) -> list[dict[str, str]]:
+    init_db()
+    with _conn() as cx:
+        rows = cx.execute(
+            "SELECT ca_id, nv_id FROM authoritative_assignments WHERE schedule_run_id=? ORDER BY ca_id, nv_id",
+            (schedule_run_id,),
+        ).fetchall()
+    return [{"ca_id": str(row[0]), "nv_id": str(row[1])} for row in rows]
+
+
+def authoritative_assignments_replace(
+    *, schedule_run_id: str, store_id: str, tuan_iso: str, assignments: dict[str, list[str]]
+) -> None:
+    """Replace the assignment projection for one immutable solver run."""
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        cx.execute("DELETE FROM authoritative_assignments WHERE schedule_run_id=?", (schedule_run_id,))
+        for ca_id, nv_ids in assignments.items():
+            for nv_id in nv_ids:
+                cx.execute(
+                    """
+                    INSERT INTO authoritative_assignments
+                        (id, schedule_run_id, store_id, tuan_iso, ca_id, nv_id, created_at)
+                    VALUES (?,?,?,?,?,?,?)
+                    """,
+                    (f"assignment_{uuid.uuid4().hex}", schedule_run_id, store_id, tuan_iso, str(ca_id), str(nv_id), now),
+                )
+
+
+def shift_application_claim_first(
+    *, open_shift_id: str, store_id: str, nv_id: str, now: str | None = None
+) -> dict[str, Any] | None:
+    """Atomically claim an open shift; the first eligible claimant wins."""
+    init_db()
+    claimed_at = now or datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    application_id = f"shift_application_{uuid.uuid4().hex}"
+    with _conn() as cx:
+        cx.isolation_level = None
+        cx.execute("BEGIN IMMEDIATE")
+        try:
+            shift = cx.execute(
+                "SELECT id, status, deadline_at FROM open_shifts WHERE id=? AND store_id=?",
+                (open_shift_id, store_id),
+            ).fetchone()
+            if not shift or str(shift[1]) != "open":
+                cx.execute("ROLLBACK")
+                return None
+            cx.execute(
+                "INSERT INTO shift_applications(id, open_shift_id, store_id, nv_id, status, created_at, decided_at) VALUES (?,?,?,?,?,?,?)",
+                (application_id, open_shift_id, store_id, nv_id, "accepted", claimed_at, claimed_at),
+            )
+            cx.execute(
+                "UPDATE open_shifts SET status='claimed', claimed_by=?, claimed_at=? WHERE id=? AND status='open'",
+                (nv_id, claimed_at, open_shift_id),
+            )
+            if cx.execute("SELECT changes()").fetchone()[0] != 1:
+                cx.execute("ROLLBACK")
+                return None
+            cx.execute("COMMIT")
+        except _DB_INTEGRITY_ERRORS:
+            cx.execute("ROLLBACK")
+            return None
+        except Exception:
+            cx.execute("ROLLBACK")
+            raise
+    return {"id": application_id, "open_shift_id": open_shift_id, "nv_id": nv_id, "status": "accepted", "claimed_at": claimed_at}
+
+
+def open_shift_create(
+    *, store_id: str, schedule_run_id: str, tuan_iso: str, ca_id: str, deadline_at: str
+) -> dict[str, Any]:
+    init_db()
+    shift_id = f"open_shift_{uuid.uuid4().hex}"
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _conn() as cx:
+        cx.execute(
+            """
+            INSERT INTO open_shifts
+                (id, store_id, schedule_run_id, tuan_iso, ca_id, status, deadline_at, created_at)
+            VALUES (?,?,?,?,?,?,?,?)
+            ON CONFLICT(store_id, schedule_run_id, ca_id) DO NOTHING
+            """,
+            (shift_id, store_id, schedule_run_id, tuan_iso, ca_id, "open", deadline_at, now),
+        )
+        row = cx.execute(
+            "SELECT id, status, deadline_at, claimed_by, claimed_at FROM open_shifts WHERE store_id=? AND schedule_run_id=? AND ca_id=?",
+            (store_id, schedule_run_id, ca_id),
+        ).fetchone()
+    return {"id": str(row[0]), "status": str(row[1]), "deadline_at": str(row[2]), "claimed_by": row[3], "claimed_at": row[4]}
+
+
+def open_shift_list(store_id: str, *, tuan_iso: str | None = None, status: str = "open") -> list[dict[str, Any]]:
+    init_db()
+    with _conn() as cx:
+        query = "SELECT id, schedule_run_id, tuan_iso, ca_id, status, deadline_at, claimed_by, claimed_at, escalated_at FROM open_shifts WHERE store_id=? AND status=?"
+        params: list[Any] = [store_id, status]
+        if tuan_iso:
+            query += " AND tuan_iso=?"
+            params.append(tuan_iso)
+        rows = cx.execute(query + " ORDER BY deadline_at, created_at", params).fetchall()
+    return [
+        {"id": str(row[0]), "schedule_run_id": str(row[1]), "tuan_iso": str(row[2]), "ca_id": str(row[3]), "status": str(row[4]), "deadline_at": str(row[5]), "claimed_by": row[6], "claimed_at": row[7], "escalated_at": row[8]}
+        for row in rows
+    ]
+
+
+def open_shift_resolve_for_week(store_id: str, tuan_iso: str) -> int:
+    init_db()
+    with _conn() as cx:
+        result = cx.execute(
+            "UPDATE open_shifts SET status='resolved' WHERE store_id=? AND tuan_iso=? AND status='open'",
+            (store_id, tuan_iso),
+        )
+    return int(result.rowcount)
+
+
+def open_shift_escalate_due(store_id: str, *, now_iso: str) -> list[dict[str, Any]]:
+    init_db()
+    escalated_at = now_iso
+    with _conn() as cx:
+        rows = cx.execute(
+            """
+            SELECT id, tuan_iso, ca_id, deadline_at
+            FROM open_shifts
+            WHERE store_id=? AND status='open' AND escalated_at IS NULL AND deadline_at<=?
+            ORDER BY deadline_at, created_at
+            """,
+            (store_id, now_iso),
+        ).fetchall()
+        for row in rows:
+            cx.execute(
+                "UPDATE open_shifts SET escalated_at=? WHERE id=? AND status='open' AND escalated_at IS NULL",
+                (escalated_at, str(row[0])),
+            )
+    return [
+        {"id": str(row[0]), "tuan_iso": str(row[1]), "ca_id": str(row[2]), "deadline_at": str(row[3])}
+        for row in rows
+    ]
+
+
+def shift_application_claim_eligible(
+    *, open_shift_id: str, store_id: str, nv_id: str, eligible: bool
+) -> dict[str, Any] | None:
+    if not eligible:
+        return None
+    return shift_application_claim_first(open_shift_id=open_shift_id, store_id=store_id, nv_id=nv_id)
 
 
 def _migrate_schema(cx: sqlite3.Connection) -> None:
@@ -1168,6 +1616,51 @@ def list_users() -> list[dict[str, str]]:
         }
         for r in rows
     ]
+
+
+def thong_bao_lich_create_for_week(
+    *, tuan_iso: str, su_kien: str, tieu_de: str, noi_dung: str,
+    url: str, nv_ids: list[str], store_id: str = DEFAULT_STORE_ID,
+) -> int:
+    """Tạo thông báo lịch cho người dùng thật; lặp lại cùng sự kiện là no-op."""
+    init_db()
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    created = 0
+    with _conn() as cx:
+        for nv_id in sorted({str(value).strip() for value in nv_ids if str(value).strip()}):
+            cur = cx.execute(
+                """INSERT OR IGNORE INTO thong_bao_lich
+                   (id, store_id, tuan_iso, su_kien, tieu_de, noi_dung, url, nv_id, created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (f"tbl_{uuid.uuid4().hex[:12]}", store_id, tuan_iso, su_kien,
+                 tieu_de, noi_dung, url, nv_id, now),
+            )
+            created += int(cur.rowcount > 0)
+    return created
+
+
+def thong_bao_lich_list(
+    nv_id: str, *, unread_only: bool = False, store_id: str = DEFAULT_STORE_ID,
+) -> list[dict[str, Any]]:
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        sql = "SELECT * FROM thong_bao_lich WHERE store_id=? AND nv_id=?"
+        params: list[Any] = [store_id, nv_id]
+        if unread_only:
+            sql += " AND da_xem=0"
+        sql += " ORDER BY created_at DESC LIMIT 50"
+        return [dict(row) for row in cx.execute(sql, params).fetchall()]
+
+
+def thong_bao_lich_ack(notification_id: str, nv_id: str, *, store_id: str = DEFAULT_STORE_ID) -> bool:
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            "UPDATE thong_bao_lich SET da_xem=1 WHERE id=? AND store_id=? AND nv_id=?",
+            (notification_id, store_id, nv_id),
+        )
+        return cur.rowcount > 0
 
 
 def set_user_email(username: str, email: str) -> dict[str, str]:

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Alert, AuthGate, Btn, Loading, Summary } from "../../ui/kit";
 import { canEdit, clearSession, getNvId, getRole, getToken, isManager, lifeLabel } from "../../lib/session";
-import { ApiError, apiSend } from "../../lib/api";
+import { ApiError, apiGet, apiSend } from "../../lib/api";
 import { matchSearch } from "../../lib/list-filters";
 import { viError } from "../../lib/present";
 import type { KhungGio } from "../../lib/roster";
@@ -67,6 +67,16 @@ type LichData = {
     vf?: { applies_to_solver?: boolean; message?: string; gates?: string[] };
     coverage?: { passed?: boolean; filled?: number; total?: number };
   };
+};
+
+type ScheduleNotification = {
+  id: string;
+  tieu_de: string;
+  noi_dung: string;
+  url: string;
+  tuan_iso: string;
+  da_xem?: number;
+  created_at: string;
 };
 
 const KHUNG_TEN: Record<string, string> = {
@@ -188,6 +198,7 @@ export default function RosterPage() {
   const [filterViTri, setFilterViTri] = useState("all");
   const [showAllUnconfirmed, setShowAllUnconfirmed] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
+  const [scheduleNotifications, setScheduleNotifications] = useState<ScheduleNotification[]>([]);
   const rosterDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -200,6 +211,10 @@ export default function RosterPage() {
       setViewMode(isManager(r) ? "all" : "my_shifts");
     }
     if (nv) setCurrentNvId(nv);
+    const requestedWeek = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("tuan") ?? ""
+      : "";
+    if (/^\d{4}-W\d{2}$/.test(requestedWeek)) setBaseWeek(requestedWeek);
   }, []);
 
   const authHeader = useCallback(
@@ -252,6 +267,18 @@ export default function RosterPage() {
     window.addEventListener("nq:ops-changed", onOpsChanged);
     return () => window.removeEventListener("nq:ops-changed", onOpsChanged);
   }, [token, baseWeek, soTuan, loadLich]);
+
+  useEffect(() => {
+    if (!token) return;
+    void apiGet<{ notifications: ScheduleNotification[] }>("/api/v1/lich/thong-bao")
+      .then((payload) => setScheduleNotifications(payload.notifications ?? []))
+      .catch(() => setScheduleNotifications([]));
+  }, [token]);
+
+  async function acknowledgeScheduleNotification(notification: ScheduleNotification) {
+    setScheduleNotifications((items) => items.map((item) => item.id === notification.id ? { ...item, da_xem: 1 } : item));
+    await apiSend(`/api/v1/lich/thong-bao/${notification.id}/ack`, {}, "POST").catch(() => undefined);
+  }
 
   useEffect(() => {
     if (!selectedDay) return;
@@ -638,6 +665,34 @@ export default function RosterPage() {
           </span>
         </div>
       </header>
+
+      {scheduleNotifications.length > 0 && (
+        <section className="nq-item mb-5" aria-label="Thông báo cập nhật lịch">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--nq-copper)]">Thông báo cập nhật lịch</h2>
+            <span className="text-xs text-[var(--nq-dim)]">
+              {scheduleNotifications.filter((item) => !item.da_xem).length} chưa xem
+            </span>
+          </div>
+          <div className="space-y-2">
+            {scheduleNotifications.slice(0, 3).map((notification) => (
+              <div key={notification.id} className={`flex flex-wrap items-center justify-between gap-3 border-l-2 pl-3 ${notification.da_xem ? "border-[var(--nq-dim)] opacity-70" : "border-[var(--nq-copper)]"}`}>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{notification.tieu_de}</p>
+                  <p className="text-xs text-[var(--nq-dim)]">{notification.noi_dung}</p>
+                </div>
+                <a
+                  href={notification.url}
+                  onClick={() => void acknowledgeScheduleNotification(notification)}
+                  className="nq-btn-outline shrink-0 px-3 py-1 text-xs"
+                >
+                  Mở lịch {notification.tuan_iso}
+                </a>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {canWrite && (
         <section className="nq-workflow mb-4" aria-label="Quy trình lịch tuần">

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import uuid
 from dataclasses import asdict
@@ -57,14 +58,22 @@ from ca_api.orchestration import Clock
 from ca_api.persist import (
     audit_add,
     audit_list,
+    availability_confirmed_list,
     ghi_diem_danh,
     kv_get,
     kv_mutate,
     kv_set,
     list_users,
+    open_shift_create,
+    open_shift_list,
+    shift_application_claim_first,
+    thong_bao_lich_ack,
+    thong_bao_lich_create_for_week,
+    thong_bao_lich_list,
 )
 from ca_api.persist import session as auth_session
 from ca_api.services.chat_ws import notify_ops_changed
+from ca_api.services.scheduling_service import resolve_schedule_gaps, run_authoritative_schedule
 
 router = APIRouter()
 ROOT = Path(__file__).resolve().parents[6]
@@ -149,6 +158,44 @@ def _set_week_value(key: str, tuan_iso: str, value: Any) -> None:
     kv_mutate(key, mut, {})
 
 
+def _publish_schedule_notification(week: str) -> int:
+    """Persist one exact-week notification for each active real account."""
+    recipients = [
+        str(user.get("nv_id") or "")
+        for user in list_users()
+        if user.get("role") in {"nhan_vien", "quan_ly", "chu_quan"}
+        and str(user.get("status") or "active") == "active"
+        and str(user.get("nv_id") or "")
+    ]
+    return thong_bao_lich_create_for_week(
+        tuan_iso=week,
+        su_kien="da_cong_bo",
+        tieu_de=f"Lịch tuần {week} đã được công bố",
+        noi_dung="Lịch mới đã sẵn sàng. Mở để xem ca làm và xác nhận lịch của bạn.",
+        url=f"/lich-tuan?tuan={week}",
+        nv_ids=recipients,
+    )
+
+
+@router.get("/api/v1/lich/thong-bao")
+def lich_notifications(
+    unread_only: bool = False,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    session = _require_role_session(authorization)
+    items = thong_bao_lich_list(str(session.get("nv_id") or ""), unread_only=unread_only)
+    return {"ok": True, "notifications": items, "unread": sum(1 for item in items if not item.get("da_xem"))}
+
+
+@router.post("/api/v1/lich/thong-bao/{notification_id}/ack")
+def ack_lich_notification(
+    notification_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    session = _require_role_session(authorization)
+    return {"ok": thong_bao_lich_ack(notification_id, str(session.get("nv_id") or ""))}
+
+
 def _previous_week(tuan_iso: str) -> str | None:
     try:
         year, week = tuan_iso.split("-W")
@@ -163,6 +210,7 @@ def _run_solver(
     tuan_iso: str | None = None,
     *,
     extra_pin: tuple[str, str] | None = None,
+    confirmed_availability: dict[str, dict[str, list[str]]] | None = None,
 ) -> dict[str, Any]:
     from ca_solver import apply_luat, build_lich_input, solve_cpsat
 
@@ -170,6 +218,31 @@ def _run_solver(
 
     inp = build_lich_input(nhan_vien_ngoai=list_nhan_vien_ops())
     tuan_hien_tai = tuan_iso or _life().get("tuan_iso", "2026-W01")
+
+    if confirmed_availability is not None:
+        allowed_ids = set(confirmed_availability)
+        inp.nhan_vien_ids = [nv_id for nv_id in inp.nhan_vien_ids if nv_id in allowed_ids]
+        # CP-SAT treats TKB as unavailable time. Replace synthetic TKB with
+        # explicit blocks for every shift that was not confirmed available.
+        khung_gio_for_availability = kv_get("khung_gio", {})
+        shift_frames = {
+            "Sáng": ("06:30", "12:00"),
+            "Chiều": ("12:00", "17:30"),
+            "Tối": ("17:30", "22:30"),
+        }
+        for shift, frame in shift_frames.items():
+            configured = khung_gio_for_availability.get(shift) if isinstance(khung_gio_for_availability, dict) else None
+            if isinstance(configured, dict):
+                shift_frames[shift] = (str(configured.get("bat_dau") or frame[0]), str(configured.get("ket_thuc") or frame[1]))
+        inp.tkb = {
+            nv_id: [
+                (day, *shift_frames[shift])
+                for day in _THU_MAP.values()
+                for shift in shift_frames
+                if shift not in (confirmed_availability.get(nv_id) or {}).get(day, [])
+            ]
+            for nv_id in inp.nhan_vien_ids
+        }
 
     # Giờ ca do quản lý cấu hình phải là đầu vào thật của CP-SAT.
     khung_gio = kv_get("khung_gio", {})
@@ -221,7 +294,13 @@ def _run_solver(
                 if thu and start and end:
                     tuples.append((thu, start, end))
             if tuples:
-                inp.tkb[str(nv_id)] = tuples
+                if confirmed_availability is not None:
+                    existing_tkb = inp.tkb.setdefault(str(nv_id), [])
+                    for block in tuples:
+                        if block not in existing_tkb:
+                            existing_tkb.append(block)
+                else:
+                    inp.tkb[str(nv_id)] = tuples
 
     # Tôn trọng quyết định du_bi hoặc bo_ca của quản lý trong tuần hiện tại: không xếp ca cố định
     status_store = kv_get("roster_nv_status", {})
@@ -393,6 +472,8 @@ def _run_solver(
         "tong_so_o_ca": len(o_ca),
         "so_o_ca_da_xep": len(o_ca_da_xep & o_ca),
         "kiem_tra": payload["kiem_tra"],
+        "phan_cong": result.phan_cong,
+        "ca_meta": inp.ca_meta,
     }
 
 
@@ -497,6 +578,26 @@ class SwapBody(BaseModel):
     ca_id: str
 
 
+class OpenShiftBody(BaseModel):
+    schedule_run_id: str
+    tuan_iso: str
+    ca_id: str
+    deadline_at: str | None = None
+
+
+class ShiftClaimBody(BaseModel):
+    open_shift_id: str
+
+
+class ResolveScheduleBody(BaseModel):
+    schedule_run_id: str
+    tuan_iso: str
+    expected_fingerprint: str
+    idempotency_key: str = Field(min_length=1, max_length=200)
+    ca_id: str | None = None
+    nv_id: str | None = None
+
+
 class DuyetLuatBody(BaseModel):
     id: str
     ok: bool = True
@@ -536,16 +637,82 @@ async def lich_transition(
             raise HTTPException(status_code=400, detail="can_ly_do_mo_lai_lich")
         _audit("schedule.lifecycle_reopen", role, {"entity_type": "schedule", "entity_id": doc.get("tuan_iso", "2026-W01"), "from": cur, "to": body.to, "ly_do": body.ly_do.strip()})
 
+    session = auth_session(authorization) or {}
+    store_id = str(session.get("store_id") or "quan_01")
+    if body.to in {"da_duyet", "da_cong_bo"}:
+        _guard_authoritative_lifecycle(week, body.to, store_id)
+
     doc["tuan_iso"] = week
     doc["trang_thai"] = body.to
     if body.to == "dang_giai":
-        solver = _run_solver(week)
+        try:
+            authoritative = run_authoritative_schedule(
+                store_id=str((auth_session(authorization) or {}).get("store_id") or "quan_01"),
+                tuan_iso=week, actor_id=role, idempotency_key=f"lifecycle:{week}:solve",
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        solver = authoritative.get("result") or {}
         doc["solver"] = solver
+        doc["schedule_run"] = authoritative
         doc["trang_thai"] = "cho_duyet" if solver.get("ok") else "nhap"
     _save_life(doc)
     _audit("schedule.lifecycle", role, {"entity_type": "schedule", "entity_id": doc.get("tuan_iso", "2026-W01"), "from": cur, "to": body.to})
+    if body.to == "da_cong_bo":
+        _publish_schedule_notification(week)
     await notify_ops_changed("roster:lifecycle", doc.get("tuan_iso"))
     return doc
+
+
+def _guard_authoritative_lifecycle(week: str, target: str, store_id: str) -> dict[str, Any]:
+    from ca_api.persist import schedule_run_latest
+    from ca_api.services.scheduling_service import authoritative_input_fingerprint
+
+    run = schedule_run_latest(store_id, week)
+    if not run:
+        raise HTTPException(status_code=409, detail="authoritative_schedule_run_required")
+    _, current_fingerprint = authoritative_input_fingerprint(store_id, week)
+    if run.get("fingerprint") != current_fingerprint:
+        raise HTTPException(status_code=409, detail="stale_schedule_run")
+    if target == "da_cong_bo" and run.get("status") != "computed":
+        raise HTTPException(status_code=409, detail="schedule_has_unresolved_gaps")
+    if target == "da_duyet" and run.get("status") != "computed":
+        raise HTTPException(status_code=409, detail="invalid_schedule_run")
+    if target == "da_cong_bo":
+        from ca_api.persist import open_shift_list
+        if open_shift_list(store_id, tuan_iso=week):
+            raise HTTPException(status_code=409, detail="schedule_has_open_shifts")
+    return run
+
+
+@router.post("/api/v1/lich/resolve-gaps")
+async def resolve_gaps(
+    body: ResolveScheduleBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    role = _require_manager(authorization)
+    session = auth_session(authorization) or {}
+    try:
+        run = resolve_schedule_gaps(
+            store_id=str(session.get("store_id") or "quan_01"), tuan_iso=body.tuan_iso,
+            actor_id=str(session.get("nv_id") or role), schedule_run_id=body.schedule_run_id,
+            expected_fingerprint=body.expected_fingerprint, idempotency_key=body.idempotency_key,
+            ca_id=body.ca_id, nv_id=body.nv_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    result = run.get("result") or {}
+    if result.get("ok"):
+        doc = _life(body.tuan_iso)
+        doc["trang_thai"] = "cho_duyet"
+        doc["schedule_run"] = run
+        doc["solver"] = result
+        _save_life(doc)
+    _audit("schedule.resolve_gaps", role, {"entity_type": "schedule_run", "entity_id": body.schedule_run_id, "tuan_iso": body.tuan_iso, "ok": bool(result.get("ok"))})
+    await notify_ops_changed("roster:gap-resolution", body.tuan_iso)
+    return {"ok": bool(result.get("ok")), "schedule_run": run, "solver": result}
 
 
 def _export_rows(
@@ -599,6 +766,64 @@ def _export_rows(
         )
     rows.sort(key=lambda row: (row["date"], row["bat_dau"], row["vi_tri"]))
     return tuan_iso, s, rows
+
+
+@router.post("/api/v1/open-shifts")
+def create_open_shift(
+    body: OpenShiftBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    _require_manager(authorization)
+    store_id = str(auth_session(authorization).get("store_id") or "quan_01")
+    deadline_at = body.deadline_at
+    if not deadline_at:
+        sla_minutes = int(os.environ.get("OPEN_SHIFT_SLA_MINUTES", "120"))
+        deadline_at = (datetime.now(UTC) + timedelta(minutes=sla_minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return open_shift_create(
+        store_id=store_id,
+        schedule_run_id=body.schedule_run_id,
+        tuan_iso=body.tuan_iso,
+        ca_id=body.ca_id,
+        deadline_at=deadline_at,
+    )
+
+
+@router.get("/api/v1/open-shifts")
+def list_open_shifts(
+    authorization: Annotated[str | None, Header()] = None,
+    tuan_iso: str | None = Query(default=None),
+) -> dict[str, Any]:
+    _require_role(authorization)
+    store_id = str(auth_session(authorization).get("store_id") or "quan_01")
+    return {"items": open_shift_list(store_id, tuan_iso=tuan_iso)}
+
+
+@router.post("/api/v1/open-shifts/claim")
+def claim_open_shift(
+    body: ShiftClaimBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    session = auth_session(authorization)
+    if not session:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    if session.get("role") != "nhan_vien":
+        raise HTTPException(status_code=403, detail="chi_nhan_vien_duoc_nhan_ca")
+    store_id = str(session.get("store_id") or "quan_01")
+    shifts = [item for item in open_shift_list(store_id) if item["id"] == body.open_shift_id]
+    if not shifts:
+        raise HTTPException(status_code=404, detail="open_shift_khong_ton_tai")
+    shift = shifts[0]
+    confirmed = availability_confirmed_list(store_id, shift["tuan_iso"])
+    if not any(item["nv_id"] == session.get("nv_id") for item in confirmed):
+        raise HTTPException(status_code=409, detail="chua_xac_nhan_kha_dung_dung_tuan")
+    claimed = shift_application_claim_first(
+        open_shift_id=body.open_shift_id,
+        store_id=store_id,
+        nv_id=str(session["nv_id"]),
+    )
+    if claimed is None:
+        raise HTTPException(status_code=409, detail="ca_da_duoc_nhan")
+    return claimed
 
 
 @router.get("/api/v1/lich/ics")

@@ -64,6 +64,29 @@ def test_lifecycle_and_audit(_du_nhan_vien_xep_lich: None) -> None:
     assert log[0]["payload"]["to"] in {"dang_giai", "cho_duyet", "da_cong_bo"}
 
 
+def test_publish_creates_exact_week_notification_and_ack(_du_nhan_vien_xep_lich: None) -> None:
+    week = "2026-W44"
+    ql = headers(client, "lan")
+    kv_set("lich_tuan_lifecycle_by_week", {week: {"tuan_iso": week, "trang_thai": "da_duyet"}})
+
+    published = client.patch(
+        "/api/v1/lich-tuan/lifecycle",
+        json={"tuan_iso": week, "trang_thai": "da_cong_bo"},
+        headers=ql,
+    )
+    assert published.status_code == 200, published.text
+
+    notifications = client.get("/api/v1/lich/thong-bao", headers=headers(client, "minh"))
+    assert notifications.status_code == 200, notifications.text
+    items = [item for item in notifications.json()["notifications"] if item["tuan_iso"] == week]
+    assert len(items) == 1
+    assert items[0]["url"] == f"/lich-tuan?tuan={week}"
+
+    acked = client.post(f"/api/v1/lich/thong-bao/{items[0]['id']}/ack", headers=headers(client, "minh"))
+    assert acked.status_code == 200 and acked.json()["ok"] is True
+    assert client.get("/api/v1/lich/thong-bao?unread_only=true", headers=headers(client, "minh")).json()["notifications"] == []
+
+
 def test_inbox_ten_decisions() -> None:
     ql = headers(client, "lan")
     items = client.get("/api/v1/inbox/rang-buoc", headers=ql).json()["items"]

@@ -892,6 +892,7 @@ class LifecycleBody(BaseModel):
 async def patch_lifecycle(
     body: LifecycleBody,
     _role: Annotated[str, Depends(_require_write_role)],
+    authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Quản lý/Chủ quán cập nhật trạng thái và mốc tuần lịch.
 
@@ -907,7 +908,8 @@ async def patch_lifecycle(
         )
     if body.trang_thai == "da_dong" and _role != "chu_quan":
         raise HTTPException(status_code=403, detail="chi_chu_quan_dong_lich")
-    from ca_api.interfaces.http.sprint45 import _life, _run_solver, _save_life
+    from ca_api.interfaces.http.sprint45 import _guard_authoritative_lifecycle, _life, _publish_schedule_notification, _save_life
+    from ca_api.services.scheduling_service import run_authoritative_schedule
 
     week = body.tuan_iso or "2026-W36"
     doc = _life(week)
@@ -920,6 +922,11 @@ async def patch_lifecycle(
             detail=f"illegal:{cur}->{body.trang_thai}",
         )
 
+    session = auth_session(authorization)
+    store_id = str((session or {}).get("store_id") or "quan_01")
+    if body.trang_thai in {"da_duyet", "da_cong_bo"}:
+        _guard_authoritative_lifecycle(week, body.trang_thai, store_id)
+
     def chuyen(trang_thai: str) -> dict[str, Any]:
         doc["trang_thai"] = trang_thai
         doc["tuan_iso"] = week
@@ -928,7 +935,19 @@ async def patch_lifecycle(
         _save_life(doc)
         return doc
 
-    new_state = chuyen(body.trang_thai)
+    solver_ket_qua: dict[str, Any] | None = None
+    authoritative: dict[str, Any] | None = None
+    if body.trang_thai == "dang_giai":
+        authoritative = run_authoritative_schedule(
+            store_id=store_id, tuan_iso=week, actor_id=_role,
+            idempotency_key=f"lifecycle:{week}:solve",
+        )
+        solver_ket_qua = authoritative.get("result") or {}
+        if not solver_ket_qua.get("ok"):
+            new_state = chuyen("nhap")
+            return {"ok": True, **new_state, "solver": solver_ket_qua}
+
+    new_state = chuyen("cho_duyet" if body.trang_thai == "dang_giai" else body.trang_thai)
     record_sua(
         loai="lifecycle",
         truoc={},
@@ -937,20 +956,17 @@ async def patch_lifecycle(
         now_iso=datetime.now(UTC).isoformat(),
     )
 
-    solver_ket_qua: dict[str, Any] | None = None
+    if body.trang_thai == "da_cong_bo":
+        _publish_schedule_notification(week)
+
     if body.trang_thai == "dang_giai":
-        solver_ket_qua = _run_solver(week)
-        if solver_ket_qua.get("ok"):
-            new_state = chuyen("cho_duyet")
-            record_sua(
-                loai="lifecycle",
-                truoc={"trang_thai": "dang_giai"},
-                sau={"trang_thai": "cho_duyet", "tu_solver": True},
-                ai=_role,
-                now_iso=datetime.now(UTC).isoformat(),
-            )
-        else:
-            new_state = chuyen("nhap")
+        record_sua(
+            loai="lifecycle",
+            truoc={"trang_thai": "dang_giai"},
+            sau={"trang_thai": "cho_duyet", "tu_solver": True},
+            ai=_role,
+            now_iso=datetime.now(UTC).isoformat(),
+        )
 
     await notify_ops_changed("roster:lifecycle", body.tuan_iso)
     return {"ok": True, **new_state, "solver": solver_ket_qua}
