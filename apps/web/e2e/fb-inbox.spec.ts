@@ -9,7 +9,12 @@ type ReviewItem = {
 
 const API_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/page\/fb-(inbox|policy)/;
 
+// Mock các endpoints của chat nội bộ để FloatingChatHead không gọi API thật với e2e-token giả.
+// Nếu không mock, backend trả 401 → có thể gây race condition ảnh hưởng render.
+const CHAT_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/chat\//;
+
 test.beforeEach(async ({ page }) => {
+  // Mock WebSocket chat
   await page.routeWebSocket(/.*\/ws\/chat/, (ws) => {
     ws.onMessage((message) => {
       try {
@@ -22,6 +27,16 @@ test.beforeEach(async ({ page }) => {
       }
     });
   });
+
+  // Mock HTTP chat endpoints (conversations, online, messages)
+  await page.route(CHAT_PATTERN, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/online")) {
+      await route.fulfill({ json: { online_users: [] } });
+    } else {
+      await route.fulfill({ json: { items: [], unread_total: 0 } });
+    }
+  });
 });
 
 async function setSession(page: Page, role: "quan_ly" | "chu_quan" | "nhan_vien") {
@@ -30,6 +45,11 @@ async function setSession(page: Page, role: "quan_ly" | "chu_quan" | "nhan_vien"
     sessionStorage.setItem("nq_role", sessionRole);
     sessionStorage.setItem("nq_name", "E2E");
     sessionStorage.setItem("nq_nv", `e2e-${sessionRole}`);
+    // Cũng ghi vào localStorage để AppShell đọc role/name ngay khi mount
+    // (token không ghi localStorage theo session.ts:26-27).
+    localStorage.setItem("nq_role", sessionRole);
+    localStorage.setItem("nq_name", "E2E");
+    localStorage.setItem("nq_nv", `e2e-${sessionRole}`);
   }, role);
 }
 

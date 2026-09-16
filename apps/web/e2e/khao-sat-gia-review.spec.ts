@@ -123,8 +123,39 @@ async function setSession(page: Page, role: "quan_ly" | "chu_quan" | "nhan_vien"
     sessionStorage.setItem("nq_role", sessionRole);
     sessionStorage.setItem("nq_name", "E2E");
     sessionStorage.setItem("nq_nv", `e2e-${sessionRole}`);
+    // Ghi localStorage để AppShell đọc role ngay khi mount
+    localStorage.setItem("nq_role", sessionRole);
+    localStorage.setItem("nq_name", "E2E");
+    localStorage.setItem("nq_nv", `e2e-${sessionRole}`);
   }, role);
 }
+
+// Mock chat HTTP endpoints và WebSocket để FloatingChatHead không gọi API thật với e2e-token giả.
+const CHAT_HTTP_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/chat\//;
+
+test.beforeEach(async ({ page }) => {
+  await page.routeWebSocket(/.*\/ws\/chat/, (ws) => {
+    ws.onMessage((message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        if (data.event === "auth") {
+          ws.send(JSON.stringify({ event: "auth:ack" }));
+        }
+      } catch {
+        // Ignore malformed message
+      }
+    });
+  });
+  await page.route(CHAT_HTTP_PATTERN, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/online")) {
+      await route.fulfill({ json: { online_users: [] } });
+    } else {
+      await route.fulfill({ json: { items: [], unread_total: 0 } });
+    }
+  });
+});
+
 
 /**
  * Stub toàn bộ tuyến `/api/v1/market/catchment-survey*`.
@@ -138,6 +169,7 @@ async function mockKhaoSat(
   reviewRequests: Array<Record<string, unknown>>,
   statusAfterReview = "completed",
 ) {
+
   await page.route(API_PATTERN, async (route: Route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
