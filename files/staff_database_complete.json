@@ -1,0 +1,851 @@
+{
+  "metadata": {
+    "generated_at": "2026-09-16T09:20:51.803113+07:00",
+    "generator": "Claude Web",
+    "version": "2.0",
+    "store_id": "quan_01",
+    "tuan_iso": "2026-W37",
+    "total_staff": 13,
+    "total_shifts": 14,
+    "total_assignments": 30,
+    "fairness_axes": [
+      "cuoi_tuan",
+      "dem",
+      "gio",
+      "vun"
+    ],
+    "ghi_chu": "v2: cau truc ca thay doi tu 3 khung (sang/chieu/toi, 5h) sang 2 khung (sang 06:00-14:00, chieu 14:00-22:00, 8h moi ca)."
+  },
+  "staff": [
+    {
+      "id": "nv_01",
+      "ten": "Phạm Văn Đức",
+      "username": "duc_pham",
+      "display_name": "Phạm Đức",
+      "role": "chu_quan",
+      "ky_nang": [
+        "pha_che",
+        "thu_ngan",
+        "kho",
+        "phuc_vu",
+        "chay_ban"
+      ],
+      "la_sinh_vien": false,
+      "so_dien_thoai_hash": "hash_afb30c7c",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "full_time",
+      "max_hours_tuan": 48
+    },
+    {
+      "id": "nv_02",
+      "ten": "Nguyễn Thị Lan",
+      "username": "lan_nguyen",
+      "display_name": "Nguyễn Lan",
+      "role": "quan_ly",
+      "ky_nang": [
+        "pha_che",
+        "thu_ngan",
+        "kho",
+        "phuc_vu"
+      ],
+      "la_sinh_vien": false,
+      "so_dien_thoai_hash": "hash_8cdc7810",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "full_time",
+      "max_hours_tuan": 48
+    },
+    {
+      "id": "nv_03",
+      "ten": "Trần Văn Hùng",
+      "username": "hung_tran",
+      "display_name": "Trần Hùng",
+      "role": "quan_ly",
+      "ky_nang": [
+        "thu_ngan",
+        "phuc_vu",
+        "chay_ban",
+        "kho"
+      ],
+      "la_sinh_vien": false,
+      "so_dien_thoai_hash": "hash_e2967169",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "full_time",
+      "max_hours_tuan": 48
+    },
+    {
+      "id": "nv_04",
+      "ten": "Lê Thị Mai",
+      "username": "mai_le",
+      "display_name": "Lê Mai",
+      "role": "nhan_vien",
+      "ky_nang": [
+        "pha_che",
+        "thu_ngan",
+        "kho"
+      ],
+      "la_sinh_vien": false,
+      "so_dien_thoai_hash": "hash_409d6c8c",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "full_time",
+      "max_hours_tuan": 48
+    },
+    {
+      "id": "nv_05",
+      "ten": "Hoàng Văn Nam",
+      "username": "nam_hoang",
+      "display_name": "Hoàng Nam",
+      "role": "nhan_vien",
+      "ky_nang": [
+        "pha_che",
+        "phuc_vu",
+        "chay_ban"
+      ],
+      "la_sinh_vien": false,
+      "so_dien_thoai_hash": "hash_f982c1f8",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "full_time",
+      "max_hours_tuan": 48
+    },
+    {
+      "id": "nv_06",
+      "ten": "Vũ Thị Hoa",
+      "username": "hoa_vu",
+      "display_name": "Vũ Hoa",
+      "role": "nhan_vien",
+      "ky_nang": [
+        "thu_ngan",
+        "chay_ban",
+        "phuc_vu"
+      ],
+      "la_sinh_vien": false,
+      "so_dien_thoai_hash": "hash_05748ff7",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "full_time",
+      "max_hours_tuan": 48
+    },
+    {
+      "id": "nv_07",
+      "ten": "Bùi Thị Thu",
+      "username": "thu_bui",
+      "display_name": "Bùi Thu",
+      "role": "nhan_vien",
+      "ky_nang": [
+        "pha_che",
+        "thu_ngan"
+      ],
+      "la_sinh_vien": true,
+      "so_dien_thoai_hash": "hash_7ac6354e",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "part_time_co_dinh",
+      "max_hours_tuan": 16
+    },
+    {
+      "id": "nv_08",
+      "ten": "Ngô Thị Hương",
+      "username": "huong_ngo",
+      "display_name": "Ngô Hương",
+      "role": "nhan_vien",
+      "ky_nang": [
+        "thu_ngan",
+        "phuc_vu"
+      ],
+      "la_sinh_vien": true,
+      "so_dien_thoai_hash": "hash_97da23f3",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "part_time_co_dinh",
+      "max_hours_tuan": 16
+    },
+    {
+      "id": "nv_09",
+      "ten": "Phan Văn Kiên",
+      "username": "kien_phan",
+      "display_name": "Phan Kiên",
+      "role": "nhan_vien",
+      "ky_nang": [
+        "pha_che",
+        "chay_ban",
+        "thu_ngan"
+      ],
+      "la_sinh_vien": false,
+      "so_dien_thoai_hash": "hash_d3995a44",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "part_time_co_dinh",
+      "max_hours_tuan": 32
+    },
+    {
+      "id": "nv_10",
+      "ten": "Đỗ Thị Ngọc",
+      "username": "ngoc_do",
+      "display_name": "Đỗ Ngọc",
+      "role": "nhan_vien",
+      "ky_nang": [
+        "phuc_vu",
+        "chay_ban"
+      ],
+      "la_sinh_vien": false,
+      "so_dien_thoai_hash": "hash_dce6db91",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "flexible",
+      "max_hours_tuan": 16
+    },
+    {
+      "id": "nv_11",
+      "ten": "Lý Thị Yến",
+      "username": "yen_ly",
+      "display_name": "Lý Yến",
+      "role": "nhan_vien",
+      "ky_nang": [
+        "pha_che",
+        "thu_ngan",
+        "phuc_vu"
+      ],
+      "la_sinh_vien": false,
+      "so_dien_thoai_hash": "hash_0ff43932",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "weekend_only",
+      "max_hours_tuan": 16
+    },
+    {
+      "id": "nv_12",
+      "ten": "Cao Văn Phúc",
+      "username": "phuc_cao",
+      "display_name": "Cao Phúc",
+      "role": "nhan_vien",
+      "ky_nang": [
+        "phuc_vu",
+        "chay_ban",
+        "thu_ngan"
+      ],
+      "la_sinh_vien": false,
+      "so_dien_thoai_hash": "hash_75d76585",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "weekend_only",
+      "max_hours_tuan": 16
+    },
+    {
+      "id": "nv_13",
+      "ten": "Trịnh Văn Long",
+      "username": "long_trinh",
+      "display_name": "Trịnh Long",
+      "role": "nhan_vien",
+      "ky_nang": [
+        "thu_ngan",
+        "phuc_vu",
+        "chay_ban"
+      ],
+      "la_sinh_vien": false,
+      "so_dien_thoai_hash": "hash_2f469470",
+      "store_id": "quan_01",
+      "active": true,
+      "contract_type": "flexible",
+      "max_hours_tuan": 16
+    }
+  ],
+  "shifts": [
+    {
+      "id": "ca_01",
+      "thu": 1,
+      "ngay": "2026-09-07",
+      "khung": "sang",
+      "bat_dau": "06:00",
+      "ket_thuc": "14:00",
+      "vi_tri": "pha_che",
+      "so_nguoi_toi_thieu": 2
+    },
+    {
+      "id": "ca_02",
+      "thu": 1,
+      "ngay": "2026-09-07",
+      "khung": "chieu",
+      "bat_dau": "14:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "thu_ngan",
+      "so_nguoi_toi_thieu": 2
+    },
+    {
+      "id": "ca_03",
+      "thu": 2,
+      "ngay": "2026-09-08",
+      "khung": "sang",
+      "bat_dau": "06:00",
+      "ket_thuc": "14:00",
+      "vi_tri": "thu_ngan",
+      "so_nguoi_toi_thieu": 2
+    },
+    {
+      "id": "ca_04",
+      "thu": 2,
+      "ngay": "2026-09-08",
+      "khung": "chieu",
+      "bat_dau": "14:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "pha_che",
+      "so_nguoi_toi_thieu": 2
+    },
+    {
+      "id": "ca_05",
+      "thu": 3,
+      "ngay": "2026-09-09",
+      "khung": "sang",
+      "bat_dau": "06:00",
+      "ket_thuc": "14:00",
+      "vi_tri": "kho",
+      "so_nguoi_toi_thieu": 2
+    },
+    {
+      "id": "ca_06",
+      "thu": 3,
+      "ngay": "2026-09-09",
+      "khung": "chieu",
+      "bat_dau": "14:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "phuc_vu",
+      "so_nguoi_toi_thieu": 2
+    },
+    {
+      "id": "ca_07",
+      "thu": 4,
+      "ngay": "2026-09-10",
+      "khung": "sang",
+      "bat_dau": "06:00",
+      "ket_thuc": "14:00",
+      "vi_tri": "pha_che",
+      "so_nguoi_toi_thieu": 2
+    },
+    {
+      "id": "ca_08",
+      "thu": 4,
+      "ngay": "2026-09-10",
+      "khung": "chieu",
+      "bat_dau": "14:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "thu_ngan",
+      "so_nguoi_toi_thieu": 2
+    },
+    {
+      "id": "ca_09",
+      "thu": 5,
+      "ngay": "2026-09-11",
+      "khung": "sang",
+      "bat_dau": "06:00",
+      "ket_thuc": "14:00",
+      "vi_tri": "phuc_vu",
+      "so_nguoi_toi_thieu": 2
+    },
+    {
+      "id": "ca_10",
+      "thu": 5,
+      "ngay": "2026-09-11",
+      "khung": "chieu",
+      "bat_dau": "14:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "chay_ban",
+      "so_nguoi_toi_thieu": 3
+    },
+    {
+      "id": "ca_11",
+      "thu": 6,
+      "ngay": "2026-09-12",
+      "khung": "sang",
+      "bat_dau": "06:00",
+      "ket_thuc": "14:00",
+      "vi_tri": "thu_ngan",
+      "so_nguoi_toi_thieu": 2
+    },
+    {
+      "id": "ca_12",
+      "thu": 6,
+      "ngay": "2026-09-12",
+      "khung": "chieu",
+      "bat_dau": "14:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "pha_che",
+      "so_nguoi_toi_thieu": 3
+    },
+    {
+      "id": "ca_13",
+      "thu": 7,
+      "ngay": "2026-09-13",
+      "khung": "sang",
+      "bat_dau": "06:00",
+      "ket_thuc": "14:00",
+      "vi_tri": "kho",
+      "so_nguoi_toi_thieu": 2
+    },
+    {
+      "id": "ca_14",
+      "thu": 7,
+      "ngay": "2026-09-13",
+      "khung": "chieu",
+      "bat_dau": "14:00",
+      "ket_thuc": "22:00",
+      "vi_tri": "chay_ban",
+      "so_nguoi_toi_thieu": 2
+    }
+  ],
+  "assignments": {
+    "ca_11": [
+      "nv_01",
+      "nv_11"
+    ],
+    "ca_05": [
+      "nv_02",
+      "nv_03"
+    ],
+    "ca_13": [
+      "nv_03",
+      "nv_02"
+    ],
+    "ca_04": [
+      "nv_09",
+      "nv_04"
+    ],
+    "ca_01": [
+      "nv_07",
+      "nv_04"
+    ],
+    "ca_07": [
+      "nv_07",
+      "nv_09"
+    ],
+    "ca_12": [
+      "nv_09",
+      "nv_04",
+      "nv_05"
+    ],
+    "ca_02": [
+      "nv_06",
+      "nv_13"
+    ],
+    "ca_06": [
+      "nv_10",
+      "nv_06"
+    ],
+    "ca_08": [
+      "nv_13",
+      "nv_04"
+    ],
+    "ca_10": [
+      "nv_09",
+      "nv_03",
+      "nv_06"
+    ],
+    "ca_09": [
+      "nv_08",
+      "nv_10"
+    ],
+    "ca_14": [
+      "nv_12",
+      "nv_05"
+    ],
+    "ca_03": [
+      "nv_02",
+      "nv_08"
+    ]
+  },
+  "availability": [
+    {
+      "staff_id": "nv_01",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "max_hours": 48
+    },
+    {
+      "staff_id": "nv_02",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "max_hours": 48
+    },
+    {
+      "staff_id": "nv_03",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "max_hours": 48
+    },
+    {
+      "staff_id": "nv_04",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "max_hours": 48
+    },
+    {
+      "staff_id": "nv_05",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "max_hours": 48
+    },
+    {
+      "staff_id": "nv_06",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "max_hours": 48
+    },
+    {
+      "staff_id": "nv_07",
+      "days": [
+        1,
+        3,
+        5
+      ],
+      "max_hours": 16
+    },
+    {
+      "staff_id": "nv_08",
+      "days": [
+        2,
+        4,
+        6
+      ],
+      "max_hours": 16
+    },
+    {
+      "staff_id": "nv_09",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "max_hours": 32
+    },
+    {
+      "staff_id": "nv_10",
+      "days": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "max_hours": 16
+    },
+    {
+      "staff_id": "nv_11",
+      "days": [
+        6,
+        7
+      ],
+      "max_hours": 16
+    },
+    {
+      "staff_id": "nv_12",
+      "days": [
+        6,
+        7
+      ],
+      "max_hours": 16
+    },
+    {
+      "staff_id": "nv_13",
+      "days": [
+        1,
+        3,
+        4,
+        6,
+        7
+      ],
+      "max_hours": 16
+    }
+  ],
+  "leave_requests": [
+    {
+      "id": "nghi_01",
+      "staff_id": "nv_08",
+      "date": "2026-09-10",
+      "reason": "Kiem tra suc khoe dinh ky",
+      "status": "approved"
+    },
+    {
+      "id": "nghi_02",
+      "staff_id": "nv_10",
+      "date": "2026-09-13",
+      "reason": "Viec gia dinh",
+      "status": "pending"
+    },
+    {
+      "id": "nghi_03",
+      "staff_id": "nv_04",
+      "date": "2026-09-16",
+      "reason": "Du dam cuoi ban than",
+      "status": "approved"
+    },
+    {
+      "id": "nghi_04",
+      "staff_id": "nv_07",
+      "date": "2026-09-11",
+      "reason": "Lich thi giua ky",
+      "status": "approved"
+    },
+    {
+      "id": "nghi_05",
+      "staff_id": "nv_13",
+      "date": "2026-09-09",
+      "reason": "Bi cam, xin nghi dot xuat",
+      "status": "tu_choi"
+    }
+  ],
+  "swap_requests": [
+    {
+      "id": "doica_01",
+      "staff_id_xin": "nv_05",
+      "shift_id": "ca_09",
+      "nhan_xin": "nv_01",
+      "ly_do": "Trung lich hoc them buoi chieu",
+      "status": "approved",
+      "created_at": "2026-09-08T09:00:00+07:00",
+      "approved_by": "nv_02",
+      "approved_at": "2026-09-09T20:15:00+07:00"
+    },
+    {
+      "id": "doica_02",
+      "staff_id_xin": "nv_06",
+      "shift_id": "ca_12",
+      "nhan_xin": "nv_01",
+      "ly_do": "Muon doi ca de ve que",
+      "status": "cho_duyet",
+      "created_at": "2026-09-09T10:00:00+07:00"
+    },
+    {
+      "id": "doica_03",
+      "staff_id_xin": "nv_09",
+      "shift_id": "ca_10",
+      "nhan_xin": "nv_01",
+      "ly_do": "Bi met, can nghi som",
+      "status": "approved",
+      "created_at": "2026-09-10T11:00:00+07:00",
+      "approved_by": "nv_03",
+      "approved_at": "2026-09-12T09:00:00+07:00"
+    },
+    {
+      "id": "doica_04",
+      "staff_id_xin": "nv_13",
+      "shift_id": "ca_04",
+      "nhan_xin": "nv_01",
+      "ly_do": "Trung lich hop nhom o truong",
+      "status": "tu_choi",
+      "created_at": "2026-09-11T12:00:00+07:00",
+      "approved_by": "nv_02",
+      "approved_at": "2026-09-08T18:30:00+07:00"
+    },
+    {
+      "id": "doica_05",
+      "staff_id_xin": "nv_12",
+      "shift_id": "ca_14",
+      "nhan_xin": "nv_01",
+      "ly_do": "Co viec dot xuat cuoi tuan",
+      "status": "cho_duyet",
+      "created_at": "2026-09-12T13:00:00+07:00"
+    }
+  ],
+  "fairness_ledger": {
+    "nv_01": {
+      "ca_toi_tich_luy": 1,
+      "ca_cuoi_tuan_tich_luy": 3,
+      "diem_bap_cong_bang": -1.8
+    },
+    "nv_02": {
+      "ca_toi_tich_luy": 0,
+      "ca_cuoi_tuan_tich_luy": 2,
+      "diem_bap_cong_bang": 1.6
+    },
+    "nv_03": {
+      "ca_toi_tich_luy": 0,
+      "ca_cuoi_tuan_tich_luy": 4,
+      "diem_bap_cong_bang": -0.3
+    },
+    "nv_04": {
+      "ca_toi_tich_luy": 6,
+      "ca_cuoi_tuan_tich_luy": 3,
+      "diem_bap_cong_bang": -4.3
+    },
+    "nv_05": {
+      "ca_toi_tich_luy": 9,
+      "ca_cuoi_tuan_tich_luy": 3,
+      "diem_bap_cong_bang": -3.1
+    },
+    "nv_06": {
+      "ca_toi_tich_luy": 9,
+      "ca_cuoi_tuan_tich_luy": 3,
+      "diem_bap_cong_bang": 1.6
+    },
+    "nv_07": {
+      "ca_toi_tich_luy": 0,
+      "ca_cuoi_tuan_tich_luy": 1,
+      "diem_bap_cong_bang": 2.6
+    },
+    "nv_08": {
+      "ca_toi_tich_luy": 0,
+      "ca_cuoi_tuan_tich_luy": 1,
+      "diem_bap_cong_bang": -0.4
+    },
+    "nv_09": {
+      "ca_toi_tich_luy": 9,
+      "ca_cuoi_tuan_tich_luy": 3,
+      "diem_bap_cong_bang": 2.8
+    },
+    "nv_10": {
+      "ca_toi_tich_luy": 3,
+      "ca_cuoi_tuan_tich_luy": 7,
+      "diem_bap_cong_bang": 1.9
+    },
+    "nv_11": {
+      "ca_toi_tich_luy": 3,
+      "ca_cuoi_tuan_tich_luy": 9,
+      "diem_bap_cong_bang": -3.8
+    },
+    "nv_12": {
+      "ca_toi_tich_luy": 1,
+      "ca_cuoi_tuan_tich_luy": 10,
+      "diem_bap_cong_bang": -2.5
+    },
+    "nv_13": {
+      "ca_toi_tich_luy": 5,
+      "ca_cuoi_tuan_tich_luy": 3,
+      "diem_bap_cong_bang": -0.3
+    }
+  },
+  "handover_tasks": [
+    {
+      "id": "bangiao_01",
+      "ca_goc": "ca_02",
+      "nguoi_giao": "nv_04",
+      "nguoi_nhan": "nv_06",
+      "noi_dung": "Con 3 don giao hang GrabFood chua xac nhan, kho sua tuoi con it, can nhap them.",
+      "trang_thai": "cho_xu_ly",
+      "muc_do": "cao"
+    },
+    {
+      "id": "bangiao_02",
+      "ca_goc": "ca_09",
+      "nguoi_giao": "nv_05",
+      "nguoi_nhan": "nv_09",
+      "noi_dung": "May pha ca phe so 2 kieu keu, da bao ky thuat, chua den sua.",
+      "trang_thai": "dang_xu_ly",
+      "muc_do": "trung_binh"
+    },
+    {
+      "id": "bangiao_03",
+      "ca_goc": "ca_10",
+      "nguoi_giao": "nv_09",
+      "nguoi_nhan": "nv_13",
+      "noi_dung": "Khach ban 5 dat truoc cho tiec sinh nhat luc 19h30, da chuan bi banh kem.",
+      "trang_thai": "hoan_thanh",
+      "muc_do": "thap"
+    },
+    {
+      "id": "bangiao_04",
+      "ca_goc": "ca_12",
+      "nguoi_giao": "nv_06",
+      "nguoi_nhan": "nv_04",
+      "noi_dung": "Het xi-ro caramel, da dat hang nha cung cap, du kien giao sang mai.",
+      "trang_thai": "cho_xu_ly",
+      "muc_do": "trung_binh"
+    },
+    {
+      "id": "bangiao_05",
+      "ca_goc": "ca_08",
+      "nguoi_giao": "nv_09",
+      "nguoi_nhan": "nv_05",
+      "noi_dung": "Khach quen o ban 2 gui quen ao khoac, da cat vao tu do sau quay thu ngan.",
+      "trang_thai": "hoan_thanh",
+      "muc_do": "thap"
+    }
+  ],
+  "channel_bindings": [
+    {
+      "id": "kenh_01",
+      "staff_id": "nv_02",
+      "channel": "telegram",
+      "channel_user_id": "tg_88213045",
+      "display_name": "Lan Nguyễn",
+      "status": "active",
+      "bound_at": "2026-08-15T09:12:00+07:00"
+    },
+    {
+      "id": "kenh_02",
+      "staff_id": "nv_03",
+      "channel": "zalo",
+      "channel_user_id": "zl_00291837",
+      "display_name": "Hùng Trần",
+      "status": "active",
+      "bound_at": "2026-08-15T09:20:00+07:00"
+    },
+    {
+      "id": "kenh_03",
+      "staff_id": "nv_05",
+      "channel": "telegram",
+      "channel_user_id": "tg_77120456",
+      "display_name": "Nam Hoàng",
+      "status": "active",
+      "bound_at": "2026-08-20T14:05:00+07:00"
+    },
+    {
+      "id": "kenh_04",
+      "staff_id": "nv_01",
+      "channel": "zalo",
+      "channel_user_id": "zl_00100001",
+      "display_name": "Đức Phạm",
+      "status": "active",
+      "bound_at": "2026-08-10T08:00:00+07:00"
+    }
+  ],
+  "weekly_schedule": {
+    "tuan_iso": "2026-W37",
+    "trang_thai": "cho_duyet",
+    "solver_run_id": "claude_gen_002",
+    "nguon": "claude_web"
+  }
+}
