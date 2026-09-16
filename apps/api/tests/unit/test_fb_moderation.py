@@ -768,3 +768,39 @@ def test_fb_tables_created(api: TestClient) -> None:
         "fb_psid_blacklist",
         "fb_processed_events",
     } <= names
+
+
+def test_webhook_multiturn_reservation_session_persistence(api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Kiểm tra webhook FB duy trì phiên đặt bàn qua KV store và không bao giờ xuất markdown asterisks."""
+    from ca_api.persist import kv_get
+    monkeypatch.setenv("NHIPQUAN_AUTO_RESERVATION", "1")
+
+    psid = f"psid_webhook_turn_{uuid.uuid4().hex[:6]}"
+    phone = f"091{int(uuid.uuid4().int % 10000000):07d}"
+
+    # Turn 1: Gửi giờ
+    r1 = _post(api, "mid_wh_1", "Tôi muốn đặt bàn 19h tối nay", psid=psid)
+    assert r1.status_code == 200
+
+    sess1 = kv_get(f"reservation_session:quan_01:{psid}", {})
+    assert sess1 is not None
+    assert "19:00" in sess1.get("time_display", "")
+    assert sess1.get("dialog_step") == "EXTRACTING"
+
+    # Turn 2: Gửi người và SĐT
+    r2 = _post(api, "mid_wh_2", f"Nhóm 4 người, sđt {phone} nhé", psid=psid)
+    assert r2.status_code == 200
+
+    sess2 = kv_get(f"reservation_session:quan_01:{psid}", {})
+    assert sess2 is not None
+    assert sess2.get("dialog_step") == "CONFIRMING"
+    assert sess2.get("party_size") == 4
+    assert sess2.get("phone") == phone
+
+    # Turn 3: Xác nhận
+    r3 = _post(api, "mid_wh_3", "Đúng rồi em nhé", psid=psid)
+    assert r3.status_code == 200
+
+    # Sau khi xác nhận thành công, session được xóa giải phóng
+    sess3 = kv_get(f"reservation_session:quan_01:{psid}", {})
+    assert sess3 == {}

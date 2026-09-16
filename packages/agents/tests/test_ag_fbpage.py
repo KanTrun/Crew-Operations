@@ -144,3 +144,136 @@ def test_active_rules_are_injected_only_for_live_prompt(monkeypatch):
             active_rules=[{"rule": {"text": "Luôn mở đầu bằng Dạ."}}],
         ))
     assert "Luôn mở đầu bằng Dạ." in captured["system"]
+
+
+def test_markdown_asterisks_cleaned_from_dish_names():
+    from ca_agents.ag_supervisor import clean_robotic_phrasing, supervise_outgoing_response
+
+    raw_text = "Dạ quán em có món **Cà phê muối** và **Trà đào cam sả** cực kỳ ngon ạ! *Đặc biệt* hôm nay có giảm giá."
+    cleaned, modified = clean_robotic_phrasing(raw_text)
+    assert modified is True
+    assert "**" not in cleaned
+    assert "*" not in cleaned
+    assert "Cà phê muối" in cleaned
+    assert "Trà đào cam sả" in cleaned
+
+    sup = supervise_outgoing_response("Menu có gì?", "Dạ bên em có món **Bạc xỉu** ngon lắm ạ!")
+    assert sup.is_approved is True
+    assert "**" not in sup.sanitized_response
+    assert "Bạc xỉu" in sup.sanitized_response
+
+
+def test_multiturn_reservation_does_not_re_ask_time():
+    """Kiểm tra AI không hỏi lại giờ đặt bàn qua các lượt hội thoại."""
+    import uuid
+    from datetime import datetime, timedelta
+
+    suffix = uuid.uuid4().hex[:6]
+    psid = f"psid_multi_{suffix}"
+    phone = f"091{int(uuid.uuid4().int % 10000000):07d}"
+    target_dt = datetime.now() + timedelta(days=14)
+    date_str = target_dt.strftime("%d/%m/%Y")
+
+    # Turn 1: Khách cho giờ ("19h ngày DD/MM/YYYY"), chưa có số người và SĐT
+    msg1 = FBMessageInput(
+        psid=psid,
+        text=f"Tôi muốn đặt bàn 19h ngày {date_str} nha",
+        message_id="mid_turn_1",
+        timestamp=1700000000,
+    )
+    out1 = asyncio.run(process_fb_message(msg1, auto_respond_enabled=True))
+    assert out1.action == "auto_respond"
+    assert out1.intent == "dat_ban"
+    assert out1.reservation_state is not None
+    assert "19:00" in out1.reservation_state.get("time_display", "")
+    # Phải hỏi số người / SĐT, KHÔNG ĐƯỢC hỏi lại mấy giờ vì khách vừa nói xong
+    assert "mấy giờ" not in (out1.response or "").lower()
+    assert "số lượng khách" in (out1.response or "").lower() or "bao nhiêu người" in (out1.response or "").lower()
+
+    # Turn 2: Khách cung cấp số người và SĐT
+    msg2 = FBMessageInput(
+        psid=psid,
+        text=f"Nhóm 4 người, sđt {phone} nhé",
+        message_id="mid_turn_2",
+        timestamp=1700000010,
+    )
+    cust_prof = {"psid": psid, "reservation_state": out1.reservation_state}
+    out2 = asyncio.run(process_fb_message(msg2, auto_respond_enabled=True, customer_profile=cust_prof))
+    assert out2.action == "auto_respond"
+    assert out2.intent == "dat_ban"
+    assert out2.reservation_state is not None
+    assert out2.reservation_state.get("dialog_step") == "CONFIRMING"
+    assert out2.reservation_state.get("party_size") == 4
+    # Xác nhận lại thông tin đầy đủ, không hỏi lại giờ hay người
+    reply2 = (out2.response or "")
+    assert "mấy giờ" not in reply2.lower()
+    assert "19:00" in reply2
+    assert "4" in reply2
+    assert phone in reply2
+    # Không để ngoặc vuông quanh số/thông tin
+    assert "[4]" not in reply2
+    assert f"[{phone}]" not in reply2
+
+    # Turn 3: Khách xác nhận "Đúng rồi em"
+    msg3 = FBMessageInput(
+        psid=psid,
+        text="Đúng rồi em ơi",
+        message_id="mid_turn_3",
+        timestamp=1700000020,
+    )
+    cust_prof["reservation_state"] = out2.reservation_state
+    out3 = asyncio.run(process_fb_message(msg3, auto_respond_enabled=True, customer_profile=cust_prof))
+    assert out3.action == "auto_respond"
+    assert out3.intent == "dat_ban"
+    assert "xác nhận giữ bàn" in (out3.response or "").lower()
+    assert "**" not in (out3.response or "")
+
+
+def test_split_into_bubbles():
+    from ca_agents.facebook_page import split_into_bubbles
+
+    # Empty or whitespace
+    assert split_into_bubbles("") == []
+    assert split_into_bubbles("   \n\n  ") == []
+
+    # Single bubble (no double break)
+    assert split_into_bubbles("Dạ quán chào bạn nha!") == ["Dạ quán chào bạn nha!"]
+
+    # 2-3 bubbles separated by blank lines
+    text = "Dạ quán chào bạn nè ☕\n\nQuán mở từ 7:00 đến 22:30 nha bạn ơi.\n\nBạn ghé quán lúc mấy giờ á?"
+    bubbles = split_into_bubbles(text)
+    assert len(bubbles) == 3
+    assert bubbles[0] == "Dạ quán chào bạn nè ☕"
+    assert bubbles[1] == "Quán mở từ 7:00 đến 22:30 nha bạn ơi."
+    assert bubbles[2] == "Bạn ghé quán lúc mấy giờ á?"
+
+    # More than max_bubbles merges the tail
+    long_text = "Bubble 1\n\nBubble 2\n\nBubble 3\n\nBubble 4\n\nBubble 5\n\nBubble 6"
+    b4 = split_into_bubbles(long_text, max_bubbles=4)
+    assert len(b4) == 4
+    assert b4[0] == "Bubble 1"
+    assert b4[1] == "Bubble 2"
+    assert b4[2] == "Bubble 3"
+    assert b4[3] == "Bubble 4\n\nBubble 5\n\nBubble 6"
+
+
+def test_send_messenger_bubbles(monkeypatch):
+    import ca_agents.facebook_page as fb_page
+    from ca_agents.facebook_page import send_messenger_bubbles
+
+    sent = []
+    monkeypatch.setattr(
+        fb_page,
+        "send_messenger_text",
+        lambda psid, text, tag=None: sent.append((psid, text, tag)) or {"message_id": f"mid_{len(sent)}"},
+    )
+
+    text = "Dạ quán em chào bạn nha 🫶\n\nQuán có Bạc Xỉu 29k đậm đà lắm nè."
+    res = asyncio.run(send_messenger_bubbles("psid_123", text))
+
+    assert len(res) == 2
+    assert len(sent) == 2
+    assert sent[0] == ("psid_123", "Dạ quán em chào bạn nha 🫶", None)
+    assert sent[1] == ("psid_123", "Quán có Bạc Xỉu 29k đậm đà lắm nè.", None)
+
+

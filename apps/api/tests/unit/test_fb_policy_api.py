@@ -165,11 +165,12 @@ def test_flag_on_auto_sends_for_safe_intent(api: TestClient, monkeypatch) -> Non
     fm._RATE_LIMITER = type(fm._RATE_LIMITER)(now_fn=lambda: 2000.0)
     _post(api, "flag_on_1", "Cà phê muối bao nhiêu tiền vậy ạ?")
     calls = getattr(api, "sent_calls", [])
-    assert len(calls) == 1, f"flag ON nhưng không gửi: {calls}"
+    assert len(calls) >= 1, f"flag ON nhưng không gửi: {calls}"
     psid, text = calls[0]
     assert psid == "psid_flag"
     # Nội dung phản hồi chứa thông tin menu (không khớp cứng định dạng)
-    assert "menu" in text.lower() or "đ" in text
+    all_text = " ".join(t for _, t in calls)
+    assert "menu" in all_text.lower() or "đ" in all_text
 
 
 def test_flag_on_provider_failure_queues_manual_retry(api: TestClient, monkeypatch) -> None:

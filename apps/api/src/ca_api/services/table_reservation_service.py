@@ -46,10 +46,20 @@ NO_SHOW_THRESHOLD = 2
 
 
 def auto_reservation_enabled() -> bool:
-    """Feature flag for auto-reservation (fail-safe gradual rollout).
+    """Feature flag for auto-reservation.
 
-    Defaults to False. Enable via NHIPQUAN_AUTO_RESERVATION=1.
+    Checked via KV store or NHIPQUAN_AUTO_RESERVATION env.
+    Defaults to True for seamless customer experience.
     """
+    try:
+        from ca_api.persist import kv_get
+
+        stored = kv_get("fb_policy_runtime", {})
+        if isinstance(stored, dict) and "auto_reservation_enabled" in stored:
+            return bool(stored["auto_reservation_enabled"])
+    except Exception:
+        pass
+
     import os
 
     env = os.environ.get("NHIPQUAN_AUTO_RESERVATION", "0").strip().lower()

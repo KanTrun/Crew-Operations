@@ -312,6 +312,7 @@ def init_db() -> None:
             );
             CREATE TABLE IF NOT EXISTS fb_review_queue (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                store_id TEXT NOT NULL DEFAULT 'quan_01',
                 source TEXT NOT NULL CHECK (source IN ('messenger','comment')),
                 external_thread_id TEXT NOT NULL,
                 external_psid TEXT NOT NULL,
@@ -562,6 +563,8 @@ def _migrate_schema(cx: sqlite3.Connection) -> None:
         cx.execute("ALTER TABLE fb_review_queue ADD COLUMN ai_generation_id TEXT")
     if "event_at" not in review_cols:
         cx.execute("ALTER TABLE fb_review_queue ADD COLUMN event_at TEXT")
+    if "store_id" not in review_cols:
+        cx.execute("ALTER TABLE fb_review_queue ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
 
     ccols = {r[1] for r in cx.execute("PRAGMA table_info(chat_conversations)")}
     if ccols and "display_name" not in ccols:
@@ -1001,6 +1004,21 @@ def kv_mutate(key: str, fn: Callable[[Any], Any], default: Any) -> Any:
         except Exception:
             cx.execute("ROLLBACK")
             raise
+
+
+def page_store_map_list() -> list[dict[str, str]]:
+    raw = kv_get("page_store_map", [])
+    if not isinstance(raw, list):
+        return []
+    return [item for item in raw if isinstance(item, dict)]
+
+
+def resolve_store_id_from_page_id(page_id: str) -> str:
+    page_id = str(page_id or "").strip()
+    for item in page_store_map_list():
+        if str(item.get("page_id") or "").strip() == page_id:
+            return str(item.get("store_id") or "quan_01")
+    return "quan_01"
 
 
 def copilot_commit_internal_execution(
@@ -2102,13 +2120,14 @@ def fb_review_insert(item: dict[str, Any]) -> int:
         cur = cx.execute(
             """
             INSERT INTO fb_review_queue(
-                source, external_thread_id, external_psid, external_user_name,
+                store_id, source, external_thread_id, external_psid, external_user_name,
                 post_id, post_is_sensitive, message_text, detected_intent,
                 confidence, policy_action, assigned_role, proposed_response,
                 flagged_reasons, status, trace_id, created_at, event_at, expires_at
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """ + returning,
             (
+                item.get("store_id", "quan_01"),
                 item["source"],
                 item["external_thread_id"],
                 item["external_psid"],
@@ -2139,6 +2158,7 @@ def fb_review_list(
     *,
     status: str | None = None,
     assigned_role: str | None = None,
+    store_id: str | None = None,
     limit: int = 50,
 ) -> list[dict[str, Any]]:
     init_db()
@@ -2150,6 +2170,9 @@ def fb_review_list(
     if assigned_role:
         q += " AND assigned_role=?"
         params.append(assigned_role)
+    if store_id:
+        q += " AND store_id=?"
+        params.append(store_id)
     q += " ORDER BY created_at DESC LIMIT ?"
     params.append(max(1, min(int(limit), 200)))
     with _conn() as cx:
@@ -2329,14 +2352,17 @@ def fb_blacklist_bump(psid: str, *, strikes: int, blocked_until: str, reason: st
         )
 
 
-def fb_stats() -> dict[str, Any]:
+def fb_stats(store_id: str | None = None) -> dict[str, Any]:
     """Đếm theo status + auto rate (kế hoạch §5.4)."""
     init_db()
     with _conn() as cx:
         by_status = {
             str(r[0]): int(r[1])
             for r in cx.execute(
-                "SELECT status, COUNT(*) FROM fb_review_queue GROUP BY status"
+                "SELECT status, COUNT(*) FROM fb_review_queue"
+                + (" WHERE store_id=?" if store_id else "")
+                + " GROUP BY status",
+                (store_id,) if store_id else (),
             ).fetchall()
         }
         total = sum(by_status.values())
