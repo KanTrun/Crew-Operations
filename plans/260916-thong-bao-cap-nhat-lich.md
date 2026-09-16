@@ -55,3 +55,11 @@ dẫn đúng tới `/lich-tuan?tuan=YYYY-Www`, nơi lịch tuần tương ứng 
 - Frontend: typecheck/build và E2E lịch tuần.
 - Rollback: revert commit feature; bảng mới là additive và không ảnh hưởng dữ
   liệu lịch cũ.
+
+## Implementation status
+
+- Done: exact-week notification persistence and deduplication, lifecycle publish
+   hook, list/ack API, scheduler deep-link metadata, and `/lich-tuan?tuan=...`
+   query handling.
+- Remaining: dedicated frontend/E2E coverage for notification deep links and
+   the pre-existing Facebook replay failure outside scheduling scope.

@@ -46,5 +46,5 @@ Tự động hóa luồng availability đã xác nhận -> CP-SAT chính thức 
 
 ## Implementation status
 
-- Done: normalized exact-week availability, versioned/idempotent schedule runs, CP-SAT authority path, stable scheduler conversation route, open-shift persistence/API, atomic first claim, SLA escalation, focused backend tests, and frontend typecheck/build.
-- Remaining: dedicated authoritative assignment records, manager gap-resolution/revalidation endpoint, guarded approval-to-publication flow with exact-week notifications, open-shift/approval UI, and the full acceptance test matrix.
+- Done: normalized exact-week availability, versioned/idempotent schedule runs, CP-SAT authority path, stable scheduler conversation route, authoritative assignment records, manager gap-resolution/revalidation endpoint, guarded approval-to-publication flow with exact-week notifications, open-shift persistence/API, atomic first claim with run/week eligibility checks, SLA escalation, focused backend tests, and frontend typecheck/build.
+- Remaining: dedicated regression coverage for every acceptance scenario, neutral solver extraction from the legacy HTTP module, complete open-shift/approval controls in roster and doi-ca, and independent tester/code-reviewer delegation (runtime delegation currently fails with `Response contained no choices`).

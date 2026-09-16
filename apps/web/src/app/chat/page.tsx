@@ -54,6 +54,7 @@ export default function ChatPage() {
     muteConversation,
     uploadMedia,
     loadConversations,
+    mergeConversation,
   } = useChatClient(activeConvId);
 
   const pinnedMessages = useMemo(() => {
@@ -72,6 +73,7 @@ export default function ChatPage() {
     let cancelled = false;
     void apiGet<ChatConversation>("/api/v1/chat/scheduler").then((scheduler) => {
       if (cancelled) return;
+      mergeConversation(scheduler);
       setActiveConvId(scheduler.id);
     }).catch(() => {
       // The general chat remains available when the scheduler is disabled.
@@ -79,7 +81,7 @@ export default function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mergeConversation]);
 
   // Đánh dấu đã đọc khi mở hội thoại hoặc có tin nhắn mới
   useEffect(() => {

@@ -59,6 +59,7 @@ from ca_api.persist import (
     audit_add,
     audit_list,
     availability_confirmed_list,
+    authoritative_assignments_list,
     ghi_diem_danh,
     kv_get,
     kv_mutate,
@@ -66,6 +67,7 @@ from ca_api.persist import (
     list_users,
     open_shift_create,
     open_shift_list,
+    schedule_run_get,
     shift_application_claim_first,
     thong_bao_lich_ack,
     thong_bao_lich_create_for_week,
@@ -813,9 +815,24 @@ def claim_open_shift(
     if not shifts:
         raise HTTPException(status_code=404, detail="open_shift_khong_ton_tai")
     shift = shifts[0]
+    run = schedule_run_get(str(shift["schedule_run_id"]))
+    if (
+        not run
+        or run.get("store_id") != store_id
+        or run.get("tuan_iso") != shift["tuan_iso"]
+        or run.get("status") != "needs_gap_resolution"
+    ):
+        raise HTTPException(status_code=409, detail="open_shift_khong_thuoc_run_gap_hop_le")
     confirmed = availability_confirmed_list(store_id, shift["tuan_iso"])
     if not any(item["nv_id"] == session.get("nv_id") for item in confirmed):
         raise HTTPException(status_code=409, detail="chua_xac_nhan_kha_dung_dung_tuan")
+    assignments = authoritative_assignments_list(str(run["id"]))
+    if any(
+        item["nv_id"] == str(session["nv_id"])
+        and item["ca_id"] == str(shift["ca_id"])
+        for item in assignments
+    ):
+        raise HTTPException(status_code=409, detail="nhan_vien_da_duoc_xep_ca")
     claimed = shift_application_claim_first(
         open_shift_id=body.open_shift_id,
         store_id=store_id,

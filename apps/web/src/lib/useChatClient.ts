@@ -103,6 +103,16 @@ export function useChatClient(activeConvId?: string) {
     }
   }, []);
 
+  const mergeConversation = useCallback((conversation: ChatConversation) => {
+    setConversations((previous) => {
+      const existing = previous.some((item) => item.id === conversation.id);
+      if (existing) {
+        return previous.map((item) => item.id === conversation.id ? { ...item, ...conversation } : item);
+      }
+      return [conversation, ...previous];
+    });
+  }, []);
+
   // 2. Tải tin nhắn của hội thoại
   const loadMessages = useCallback(async (convId: string) => {
     if (!convId) return;
@@ -438,6 +448,7 @@ export function useChatClient(activeConvId?: string) {
     loadingConv,
     unreadTotal,
     loadConversations,
+    mergeConversation,
     loadMessages,
     sendMessage,
     editMessage,
