@@ -180,6 +180,7 @@ export default function RosterPage() {
   const [search, setSearch] = useState("");
   const [filterKhung, setFilterKhung] = useState("all");
   const [filterViTri, setFilterViTri] = useState("all");
+  const [showAllUnconfirmed, setShowAllUnconfirmed] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const rosterDialogRef = useRef<HTMLDivElement>(null);
 
@@ -294,7 +295,10 @@ export default function RosterPage() {
         bo_ca: "Đã gỡ ca tuần này",
         dat_lai: "Đã hoàn tác trạng thái",
       };
-      setLifecycleMsg(`${actionLabels[action]} cho nhân sự ${nvName(nvId)}.`);
+      const msg = nvId === "all"
+        ? (action === "xac_nhan" ? "Đã xác nhận giữ ca cho toàn bộ nhân sự tuần này." : `Đã cập nhật trạng thái (${actionLabels[action]}) cho tất cả nhân sự.`)
+        : `${actionLabels[action]} cho nhân sự ${nvName(nvId)}.`;
+      setLifecycleMsg(msg);
       await loadLich(baseWeek, soTuan);
     } catch {
       setError("Không cập nhật được trạng thái nhân sự.");
@@ -652,13 +656,34 @@ export default function RosterPage() {
                 Phát hiện {data?.chua_xac_nhan?.length} nhân sự chưa xác nhận lịch tuần {currentDisplayWeek}
               </span>
             </div>
-            <span className="text-xs text-neutral-400 italic">
-              Đã xếp dự thảo theo ca mẫu/lịch sử — Quản lý vui lòng xác nhận trước khi duyệt & công bố
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                disabled={nvStatusBusy}
+                onClick={() => void handleNvStatus("all", "xac_nhan")}
+                className="py-1.5 px-3 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                title="Xác nhận giữ ca cho toàn bộ nhân sự đang chờ"
+              >
+                ✓ Xác nhận giữ ca cho tất cả ({data?.chua_xac_nhan?.length} nhân sự)
+              </button>
+              {(data?.chua_xac_nhan?.length ?? 0) > 6 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllUnconfirmed(!showAllUnconfirmed)}
+                  className="py-1.5 px-3 rounded border border-amber-600/60 bg-amber-950/60 hover:bg-amber-900 text-amber-200 text-xs font-semibold transition-all cursor-pointer"
+                >
+                  {showAllUnconfirmed ? "▲ Thu gọn bớt" : `▼ Xem tất cả (${data?.chua_xac_nhan?.length})`}
+                </button>
+              )}
+            </div>
           </div>
 
+          <p className="text-xs text-neutral-400 italic">
+            Đã xếp dự thảo theo ca mẫu/lịch sử — Quản lý có thể bấm xác nhận giữ ca tất cả hoặc điều chỉnh từng người:
+          </p>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {data?.chua_xac_nhan?.map((nv) => (
+            {(showAllUnconfirmed ? data?.chua_xac_nhan : data?.chua_xac_nhan?.slice(0, 6))?.map((nv) => (
               <div
                 key={nv.id}
                 className="p-3 rounded-lg bg-neutral-900/90 border border-amber-800/40 flex flex-col justify-between gap-2.5 shadow-sm"
@@ -707,6 +732,18 @@ export default function RosterPage() {
               </div>
             ))}
           </div>
+
+          {!showAllUnconfirmed && (data?.chua_xac_nhan?.length ?? 0) > 6 && (
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => setShowAllUnconfirmed(true)}
+                className="text-xs text-amber-400 hover:text-amber-300 underline font-medium cursor-pointer"
+              >
+                ... và còn {(data?.chua_xac_nhan?.length ?? 0) - 6} nhân sự khác chưa chốt. Bấm để xem toàn bộ danh sách.
+              </button>
+            </div>
+          )}
         </div>
       )}
 

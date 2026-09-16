@@ -258,8 +258,10 @@ def tool_solve_weekly_schedule(
         for it in inbox_items:
             if not isinstance(it, dict) or it.get("trang_thai") != "duyet":
                 continue
-            hl = it.get("hieu_luc") or {}
-            rb = it.get("rang_buoc") or {}
+            # `hieu_luc`/`rang_buoc` có thể là chuỗi ngày (fixture) chứ không
+            # phải dict — guard isinstance giống main.py/_detect_staff_availability.
+            hl = it.get("hieu_luc") if isinstance(it.get("hieu_luc"), dict) else {}
+            rb = it.get("rang_buoc") if isinstance(it.get("rang_buoc"), dict) else {}
             it_tuan = rb.get("tuan_id") or hl.get("tuan_id")
             if it_tuan and it_tuan != tuan:
                 continue
@@ -384,6 +386,7 @@ def tool_solve_weekly_schedule(
             intent="SCHEDULE_SOLVE",
             data={
                 "tuan": tuan,
+                "tuan_iso": tuan,
                 "status": status,
                 "phan_cong": phan_cong,
                 "uu_tien": uu_tien_nhan_su,
@@ -1284,6 +1287,7 @@ def _tuan_hien_tai() -> str:
 
 def tool_get_schedule(
     store_id: str = "quan_01",
+    tuan: str | None = None,
     **kwargs: Any,
 ) -> ToolExecutionResult:
     """GET_SCHEDULE: lịch tuần hiệu lực — phân công ca + meta ca (R0_READ)."""
@@ -1295,15 +1299,103 @@ def tool_get_schedule(
             ca_meta = dict(ca_meta_fn() or {})
         except Exception:
             ca_meta = {}
-    tuan = _tuan_hien_tai()
+    tuan_iso = tuan or kwargs.get("tuan") or _tuan_hien_tai()
     so_ca = len(phan_cong)
     if not phan_cong:
         return _read_result(
             "GET_SCHEDULE", "tool_get_schedule",
-            {"tuan": tuan, "so_ca": 0, "phan_cong": {}, "co_du_lieu": False},
-            f"Chưa có phân công nào cho tuần {tuan}.",
+            {"tuan": tuan_iso, "so_ca": 0, "phan_cong": {}, "co_du_lieu": False},
+            f"Chưa có phân công nào cho tuần {tuan_iso}.",
             "Đọc KV phan_cong; lịch sẽ xuất hiện sau khi quản lý xếp lịch (solver) và duyệt.",
         )
+
+    # Đếm số ca phân công và tổng hợp nhân sự
+    assigned_counts: dict[str, int] = {}
+    for _ca_id, nvs in phan_cong.items():
+        if isinstance(nvs, list):
+            for n in nvs:
+                sn = str(n)
+                assigned_counts[sn] = assigned_counts.get(sn, 0) + 1
+
+    list_nv_fn = _src("list_nhan_vien_ops")
+    all_nv = list_nv_fn() if callable(list_nv_fn) else []
+
+    da_xep: list[str] = []
+    chua_co_ca: list[str] = []
+    for nv in all_nv:
+        if not isinstance(nv, dict):
+            continue
+        nvid = str(nv.get("id", ""))
+        ten = str(nv.get("ten") or nv.get("username") or nvid)
+        if nvid in assigned_counts and assigned_counts[nvid] > 0:
+            da_xep.append(ten)
+        else:
+            chua_co_ca.append(ten)
+
+    # Đọc trạng thái xác nhận từ KV roster_nv_status
+    roster_status_store = _kv_get("roster_nv_status", {}) or {}
+    week_status = roster_status_store.get(tuan_iso, {}) if isinstance(roster_status_store, dict) else {}
+
+    inbox_items = _kv_get("inbox_rang_buoc", []) or []
+    inbox_submitted_nv: set[str] = set()
+    if isinstance(inbox_items, list):
+        for it in inbox_items:
+            if isinstance(it, dict):
+                rb = it.get("rang_buoc") if isinstance(it.get("rang_buoc"), dict) else {}
+                hl = it.get("hieu_luc") if isinstance(it.get("hieu_luc"), dict) else {}
+                if (rb.get("tuan_id") or hl.get("tuan_id") or it.get("tuan_id")) == tuan_iso:
+                    nvid = it.get("nv_id") or hl.get("nv_id")
+                    if nvid:
+                        inbox_submitted_nv.add(str(nvid))
+
+    tkb_nv = _kv_get("tkb_nv", {}) or {}
+    tkb_confirmed_nv: set[str] = set()
+    if isinstance(tkb_nv, dict):
+        for nvid, entry in tkb_nv.items():
+            if isinstance(entry, dict) and entry.get("tuan_iso") == tuan_iso:
+                tkb_confirmed_nv.add(str(nvid))
+
+    chua_xac_nhan: list[str] = []
+    for nv in all_nv:
+        if not isinstance(nv, dict):
+            continue
+        nvid = str(nv.get("id", ""))
+        ten = str(nv.get("ten") or nv.get("username") or nvid)
+        if assigned_counts.get(nvid, 0) > 0:
+            dec = week_status.get(nvid)
+            if dec == "xac_nhan" or nvid in inbox_submitted_nv or nvid in tkb_confirmed_nv:
+                pass
+            else:
+                chua_xac_nhan.append(ten)
+
+    total_assignments = sum(assigned_counts.values())
+    lifecycle = _kv_get("lich_tuan_lifecycle", {}) or {}
+    trang_thai = lifecycle.get("trang_thai") or _kv_get("lich_tuan_status", "da_duyet" if phan_cong else "nhap")
+
+    trang_thai_label = {
+        "nhap": "Nháp",
+        "may_sinh": "Máy sinh",
+        "cho_duyet": "Chờ duyệt",
+        "da_duyet": "Đã duyệt",
+        "da_cong_bo": "Đã công bố",
+        "da_dong": "Đã đóng",
+    }.get(trang_thai, trang_thai)
+
+    parts = [f"Lịch tuần {tuan_iso} (Trạng thái: {trang_thai_label}): {so_ca} ca đã phân công ({total_assignments} lượt phân công cho {len(da_xep)}/{len(all_nv) if all_nv else len(da_xep)} nhân sự)."]
+    if chua_co_ca:
+        parts.append(f"Nhân sự chưa có ca ({len(chua_co_ca)} người): {', '.join(chua_co_ca)}.")
+    elif all_nv:
+        parts.append("Tất cả nhân sự đều đã được xếp ca.")
+
+    if chua_xac_nhan:
+        ten_chua_xn = ', '.join(chua_xac_nhan[:10])
+        them = f" và {len(chua_xac_nhan) - 10} người khác" if len(chua_xac_nhan) > 10 else ""
+        parts.append(f"Nhân sự chưa xác nhận lịch ({len(chua_xac_nhan)} người): {ten_chua_xn}{them}.")
+    elif all_nv and da_xep:
+        parts.append("Toàn bộ nhân sự đã được xác nhận ca.")
+
+    summary = " ".join(parts)
+
     # Tóm tắt gọn: mỗi ca hiển thị thứ + khung + số người, không tràn payload.
     ca_tom_tat = [
         {
@@ -1319,9 +1411,20 @@ def tool_get_schedule(
     ]
     return _read_result(
         "GET_SCHEDULE", "tool_get_schedule",
-        {"tuan": tuan, "so_ca": so_ca, "phan_cong": phan_cong, "ca": ca_tom_tat, "co_du_lieu": True},
-        f"Lịch tuần {tuan}: {so_ca} ca đã phân công.",
-        "Đọc KV phan_cong (tenant-scoped) + meta ca từ seed ca_mau_21.",
+        {
+            "tuan": tuan_iso,
+            "so_ca": so_ca,
+            "so_luot_phan_cong": total_assignments,
+            "trang_thai": trang_thai,
+            "da_xep": da_xep,
+            "chua_co_ca": chua_co_ca,
+            "chua_xac_nhan": chua_xac_nhan,
+            "phan_cong": phan_cong,
+            "ca": ca_tom_tat,
+            "co_du_lieu": True,
+        },
+        summary,
+        "Đọc KV phan_cong (tenant-scoped) + roster_nv_status + meta ca.",
     )
 
 

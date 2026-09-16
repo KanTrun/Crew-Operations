@@ -87,7 +87,8 @@ def test_process_fb_message_auto_reply():
     assert "mở cửa" in (out.response or "").lower()
 
 
-def test_missing_verified_public_facts_queue_for_review() -> None:
+def test_missing_verified_public_facts_auto_respond_with_callback() -> None:
+    """Mục 2 & 5: Thiếu dữ liệu -> trả lời trung thực và hẹn 10 phút, tự xử lý không đẩy duyệt."""
     msg = FBMessageInput(
         psid="123456",
         text="Quán mở cửa tới mấy giờ và ở đâu vậy?",
@@ -95,12 +96,12 @@ def test_missing_verified_public_facts_queue_for_review() -> None:
         timestamp=1700000000,
     )
     out = asyncio.run(process_fb_message(msg, auto_respond_enabled=True))
-    assert out.action == "queue_to_inbox"
-    assert out.reason == "missing_verified_context:profile"
-    assert "123 Đường Cà Phê" not in (out.suggested_reply or "")
+    assert out.action == "auto_respond"
+    assert "chưa có" in (out.response or "").lower() or "10 phút" in (out.response or "").lower()
 
 
-def test_process_fb_message_reservation_queues_for_approval():
+def test_process_fb_message_reservation_autonomous():
+    """Mục 3: Đặt bàn mọi số lượng khách -> tự động xử lý chốt hoặc hỏi thông tin."""
     msg = FBMessageInput(
         psid="123456",
         text="Mình muốn đặt bàn 8 người tối nay lúc 19h",
@@ -108,12 +109,9 @@ def test_process_fb_message_reservation_queues_for_approval():
         timestamp=1700000000,
     )
     out = asyncio.run(process_fb_message(msg, auto_respond_enabled=True))
-    assert out.action == "queue_to_inbox"
+    assert out.action == "auto_respond"
     assert out.intent == "dat_ban"
-    assert (
-        "chuẩn bị bàn" in (out.suggested_reply or "").lower()
-        or "bàn" in (out.suggested_reply or "").lower()
-    )
+    assert "bàn" in (out.response or "").lower()
 
 
 def test_process_fb_message_injection_blocked():

@@ -22,7 +22,10 @@ from ca_agents.ag_supervisor import supervise_outgoing_response
 from ca_agents.customer_memory import format_customer_greeting_context
 from ca_agents.guardrails import check_input_guardrail
 from ca_agents.llm import agent_mode, complete
-from ca_agents.prompts.ag_fbpage.system_prompt import build_fb_system_prompt
+from ca_agents.prompts.ag_fbpage.system_prompt import (
+    build_fb_comment_system_prompt,
+    build_fb_system_prompt,
+)
 
 CONFIDENCE_THRESHOLD_DEFAULT = 0.82
 
@@ -225,7 +228,9 @@ def _missing_verified_context(
         if not isinstance(menu, list) or not menu:
             return "menu"
     if emotion == "hesitant":
-        return "barista_review"
+        menu = ctx.get("menu")
+        if not isinstance(menu, list) or not menu:
+            return "barista_review"
     return None
 
 
@@ -271,10 +276,68 @@ def detect_customer_psychology(text: str) -> tuple[str, str, float]:
         return "inquiring", "hoi_menu_gia", 0.88
 
     # 7. Greeting (AG-FRONTDESK)
+    # 0.92 ≥ AUTO_THRESHOLD chao_hoi (0.90) — trước đây 0.85 khiến mọi "hi/xin chào"
+    # rơi xuống hộp thư QL dù đây là FAQ an toàn.
     if _has_any_keyword(t, _GREETING_WORDS):
-        return "friendly", "chao_hoi", 0.85
+        return "friendly", "chao_hoi", 0.92
 
     return "neutral", "khac", 0.50
+
+
+_PHONE_REGEX = re.compile(r"(?:(?:\+84)|0)[35789]\d{8}")
+_ADDRESS_KEYWORDS = (
+    "dia chi", "địa chỉ", "nha o", "nhà ở", "so nha", "số nhà",
+    "giao den", "giao đến", "ship den", "ship đến", "giao qua", "ship qua",
+)
+
+
+def classify_comment_action(text: str) -> dict[str, Any]:
+    """Phân loại hành vi xử lý bình luận công khai theo Mục 3 của System Prompt:
+
+    - Mục 3b: Chứa SĐT / địa chỉ riêng -> tự động ẩn ngay + trả lời công khai chuyển DM.
+    - Mục 3b: Phàn nàn thông thường -> 1 câu xin lỗi ngắn công khai + chuyển DM xử lý chi tiết.
+    - Mục 3b: Đặt bàn / đặt tiệc theo nhu cầu riêng -> chuyển DM tư vấn chu đáo.
+    - Mục 3a: Thắc mắc chung / khen ngợi -> trả lời công khai trực tiếp.
+    """
+    cleaned = text.replace(" ", "").replace(".", "").replace("-", "")
+    has_phone = bool(_PHONE_REGEX.search(cleaned))
+    low = _norm(text)
+    has_address = any(k in low for k in _ADDRESS_KEYWORDS)
+
+    # 1. Chứa thông tin cá nhân (SĐT / địa chỉ) -> ẩn ngay tránh đối thủ cướp khách + chuyển DM
+    if has_phone or has_address:
+        return {
+            "category": "hide_and_dm",
+            "should_hide": True,
+            "reply_public": "Dạ Nhịp Quán đã nhắn tin riêng hỗ trợ anh/chị rồi ạ! Mình kiểm tra hộp thư chờ giúp quán nhé ạ. ❤️",
+            "reason": "customer_pii_protected",
+        }
+
+    # 2. Phàn nàn thông thường -> xin lỗi ngắn 1 câu, không đàm phán bồi thường công khai -> chuyển DM
+    if _has_any_keyword(low, _COMPLAINT_WORDS):
+        return {
+            "category": "complaint_to_dm",
+            "should_hide": False,
+            "reply_public": "Dạ Nhịp Quán thật sự xin lỗi mình vì trải nghiệm chưa trọn vẹn ạ! Quán đã chủ động gửi tin nhắn riêng để hỗ trợ giải quyết ngay cho mình, anh/chị kiểm tra hộp thư giúp em nhé ạ.",
+            "reason": "complaint_moved_to_dm",
+        }
+
+    # 3. Đặt bàn / đặt tiệc / hỏi giá riêng -> chuyển DM
+    if _has_any_keyword(low, _BOOKING_WORDS):
+        return {
+            "category": "booking_to_dm",
+            "should_hide": False,
+            "reply_public": "Dạ Nhịp Quán rất vui được đón tiếp nhóm mình ạ! Em đã gửi tin nhắn riêng để lấy thông tin giữ bàn chu đáo, anh/chị check tin nhắn giúp em nha! 🎉",
+            "reason": "booking_moved_to_dm",
+        }
+
+    # 4. Trả lời công khai trực tiếp (FAQ / menu / giờ mở cửa / khen ngợi)
+    return {
+        "category": "public_reply",
+        "should_hide": False,
+        "reply_public": None,
+        "reason": "standard_public_inquiry",
+    }
 
 
 def build_human_response(
@@ -299,7 +362,12 @@ def build_human_response(
     promos: list[Any] = promos_raw if isinstance(promos_raw, list) else []
 
     # Ưu tiên áp dụng bài học mẫu Quản lý đã dạy nếu trùng ý định
-    if golden_examples and intent in ("hoi_gio_dia_chi", "hoi_khuyen_mai", "hoi_menu_gia"):
+    if golden_examples and intent in (
+        "chao_hoi",
+        "hoi_gio_dia_chi",
+        "hoi_khuyen_mai",
+        "hoi_menu_gia",
+    ):
         for g in golden_examples:
             if g.get("intent") == intent and g.get("manager_reply"):
                 return g["manager_reply"], False, "AG-FRONTDESK"
@@ -307,7 +375,7 @@ def build_human_response(
     # Case A: AG-CONCIERGE (Complaint)
     if intent == "khieu_nai_gop_y" or emotion == "complaining":
         ticket = handle_complaint(text)
-        return ticket.suggested_reply, True, "AG-CONCIERGE"
+        return ticket.suggested_reply, ticket.requires_human_approval, "AG-CONCIERGE"
 
     # Case B: AG-CONCIERGE (Booking)
     if intent == "dat_ban" or emotion == "booking":
@@ -366,7 +434,10 @@ def build_human_response(
         if lines:
             lines.append("Mời mình ghé quán trải nghiệm không gian và thưởng thức cà phê nhé ạ!")
         else:
-            lines.append("Dạ em cần kiểm tra lại thông tin quán trước khi phản hồi mình ạ.")
+            lines.append(
+                "Dạ hiện em chưa có thông tin giờ/địa chỉ trên hệ thống. "
+                "Anh/chị để lại SĐT, em xác nhận lại trong 10 phút ạ!"
+            )
         reply = "\n".join(lines)
         return reply, False, "AG-FRONTDESK"
 
@@ -392,8 +463,11 @@ def build_human_response(
             reply = "Dạ hiện tại quán đang phục vụ menu tiêu chuẩn với giá cực kỳ yêu thương mỗi ngày. Mời mình ghé quán thưởng thức nhé ạ!"
         return reply, False, "AG-FRONTDESK"
 
-    reply = "Dạ em đã nhận được tin nhắn của mình rồi ạ. Mình đợi em một xíu em kiểm tra và phản hồi ngay nhé!"
-    return reply, True, "AG-FRONTDESK"
+    reply = (
+        "Dạ em nhận tin rồi ạ! Mình cần xem menu, giờ mở cửa, đặt bàn hay tư vấn món — "
+        "cứ nhắn em xử lý ngay giúp mình nha."
+    )
+    return reply, False, "AG-FRONTDESK"
 
 
 async def draft_llm_reply(
@@ -431,7 +505,11 @@ async def draft_llm_reply(
             f"Menu & Giá: {menu_str}\n"
             f"Khuyến mãi: {', '.join([p.get('tieu_de', '') for p in promos])}"
         )
-        sys_prompt = build_fb_system_prompt(ctx_summary)
+        sys_prompt = (
+            build_fb_comment_system_prompt(ctx_summary)
+            if is_comment
+            else build_fb_system_prompt(ctx_summary)
+        )
 
         extra_instructions = []
         if customer_profile:
@@ -448,13 +526,6 @@ async def draft_llm_reply(
 
         if extra_instructions:
             sys_prompt += "\n\n" + "\n\n".join(extra_instructions)
-
-        if is_comment:
-            sys_prompt += (
-                "\n\nLƯU Ý: Đây là COMMENT công khai trên bài viết Facebook của quán "
-                "(không phải tin nhắn riêng). Hãy trả lời ngắn gọn, tự nhiên, phù hợp "
-                "thể loại comment công khai (3-5 câu), tránh hỏi thông tin cá nhân."
-            )
 
         llm_res = await asyncio.wait_for(
             asyncio.to_thread(
@@ -513,13 +584,16 @@ async def process_fb_message(
         customer_profile=customer_profile,
         golden_examples=golden_examples,
     )
-    if missing_context:
-        requires_approval = True
+    # Thiếu dữ liệu: vẫn tự trả lời trung thực — không đẩy duyệt (Mục 5).
+    if missing_context and "hiện chưa có thông tin" not in (reply_text or "").lower():
+        reply_text = (
+            "Dạ hiện em chưa có đủ thông tin này trên hệ thống. "
+            "Anh/chị để lại SĐT, em xác nhận lại trong 10 phút — hoặc mình hỏi menu/đặt bàn em hỗ trợ ngay ạ!"
+        )
+        requires_approval = False
 
     # 4. Live LLM execution if enabled
-    # Sinh bản nháp LLM cho MỌI intent (kể cả "khac") — tin tự do vẫn cần câu
-    # trả lời tự nhiên thay vì template cứng. Với intent ngoài whitelist auto,
-    # bản nháp chỉ dùng làm suggested_reply cho QL duyệt, KHÔNG TỰ GỬI (ADR-008).
+    # Sinh bản nháp LLM cho mọi intent; policy Mục 4 mới được phép chặn tự gửi.
     llm_drafted = False
     if agent_mode() == "live" and auto_respond_enabled:
         llm_draft = await draft_llm_reply(
@@ -539,10 +613,8 @@ async def process_fb_message(
         reply_text = sup_check.sanitized_response
         requires_approval = True
 
-    # 6. Action decision
-    # Intent ngoài whitelist auto (vd "khac") hoặc confidence thấp → queue duyệt,
-    # nhưng suggested_reply là bản nháp LLM tự nhiên (nếu có) để QL duyệt nhanh.
-    if not requires_approval and confidence >= confidence_threshold and auto_respond_enabled:
+    # 6. Action decision — tự gửi trừ khi supervisor/an toàn bắt buộc duyệt.
+    if not requires_approval and auto_respond_enabled:
         return FBMessageOutput(
             action="auto_respond",
             response=reply_text,

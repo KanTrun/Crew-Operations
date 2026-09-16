@@ -1,0 +1,106 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /app/packages/agents
+configfile: pyproject.toml
+plugins: cov-7.1.0, hypothesis-6.168.0, anyio-4.15.1
+collected 960 items
+
+packages/agents/tests/test_ag_brief.py ......................            [  2%]
+packages/agents/tests/test_ag_copilot.py ............................... [  5%]
+........................                                                 [  8%]
+packages/agents/tests/test_ag_copilot_market.py ...................      [ 10%]
+packages/agents/tests/test_ag_copilot_rule_tool.py ..                    [ 10%]
+packages/agents/tests/test_ag_explain.py ...................             [ 12%]
+packages/agents/tests/test_ag_fbpage.py ........                         [ 13%]
+packages/agents/tests/test_ag_fbpage_psychology.py .....                 [ 13%]
+packages/agents/tests/test_ag_fbpage_reflection.py ..                    [ 13%]
+packages/agents/tests/test_ag_handover.py .......                        [ 14%]
+packages/agents/tests/test_ag_mail.py ........                           [ 15%]
+packages/agents/tests/test_ag_mailwriter.py ............                 [ 16%]
+packages/agents/tests/test_ag_meeting.py .....                           [ 17%]
+packages/agents/tests/test_ag_msg.py ........                            [ 17%]
+packages/agents/tests/test_ag_rule.py .............                      [ 19%]
+packages/agents/tests/test_ag_s45.py ..                                  [ 19%]
+packages/agents/tests/test_ag_sop.py ..........                          [ 20%]
+packages/agents/tests/test_ag_sop_ops.py .....                           [ 21%]
+packages/agents/tests/test_ag_squad.py ....                              [ 21%]
+packages/agents/tests/test_ag_tkb.py ........                            [ 22%]
+packages/agents/tests/test_ag_trend.py ...                               [ 22%]
+packages/agents/tests/test_ag_voc.py ..............................      [ 25%]
+packages/agents/tests/test_ag_waste.py .......                           [ 26%]
+packages/agents/tests/test_architecture.py ....                          [ 26%]
+packages/agents/tests/test_camoufox_client.py ................           [ 28%]
+packages/agents/tests/test_cskh_self_improvement.py .....                [ 29%]
+packages/agents/tests/test_delivery_camoufox_source.py ....              [ 29%]
+packages/agents/tests/test_dish_name_normalizer.py ..................... [ 31%]
+......                                                                   [ 32%]
+packages/agents/tests/test_fb_policy.py ................................ [ 35%]
+..............                                                           [ 37%]
+packages/agents/tests/test_fb_rate_limiter.py ..........                 [ 38%]
+packages/agents/tests/test_gmaps_serpapi_source.py .........             [ 39%]
+packages/agents/tests/test_gtrends_serpapi_source.py .....               [ 39%]
+packages/agents/tests/test_llm_bai.py ...                                [ 39%]
+packages/agents/tests/test_llm_cooldown.py ..                            [ 40%]
+packages/agents/tests/test_messaging_inbound.py ....                     [ 40%]
+packages/agents/tests/test_no_network.py .                               [ 40%]
+packages/agents/tests/test_pricing_config.py ........................... [ 43%]
+...........................................                              [ 47%]
+packages/agents/tests/test_pricing_cost_dashboard.py ................... [ 49%]
+.......                                                                  [ 50%]
+packages/agents/tests/test_pricing_job_manager.py ...................... [ 52%]
+...                                                                      [ 53%]
+packages/agents/tests/test_pricing_math_layer.py ....................... [ 55%]
+..........................................                               [ 60%]
+packages/agents/tests/test_pricing_math_properties.py .................. [ 61%]
+....                                                                     [ 62%]
+packages/agents/tests/test_pricing_orchestrator.py ....                  [ 62%]
+packages/agents/tests/test_pricing_orchestrator_v2.py .................. [ 64%]
+..                                                                       [ 64%]
+packages/agents/tests/test_pricing_qualifier.py ......                   [ 65%]
+packages/agents/tests/test_router.py ........                            [ 66%]
+packages/agents/tests/test_runtime.py .                                  [ 66%]
+packages/agents/tests/test_scraper_selectors.py ........................ [ 68%]
+.............                                                            [ 70%]
+packages/agents/tests/test_serpapi_client.py ................            [ 71%]
+packages/agents/tests/test_serpapi_deep_resilience.py .................. [ 73%]
+...................                                                      [ 75%]
+packages/agents/tests/test_shopeefood_serpapi_source.py ................ [ 77%]
+.........                                                                [ 78%]
+packages/agents/tests/test_shopeefood_v2_parser.py ..............        [ 79%]
+packages/agents/tests/test_skill_loader.py ....                          [ 80%]
+packages/agents/tests/test_smart_swap.py ....                            [ 80%]
+packages/agents/tests/test_substitute_matrix.py ....                     [ 81%]
+packages/agents/tests/test_substitute_taxonomy.py ...................... [ 83%]
+................................................................         [ 90%]
+packages/agents/tests/test_threads_camoufox_source.py .................. [ 91%]
+........                                                                 [ 92%]
+packages/agents/tests/test_threads_official_api_source.py .............. [ 94%]
+..                                                                       [ 94%]
+packages/agents/tests/test_threads_trending_source.py ....F..F.          [ 95%]
+packages/agents/tests/test_tiktok_camoufox_source.py ................... [ 97%]
+.......                                                                  [ 98%]
+packages/agents/tests/test_vision_menu_extractor.py ...................  [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_fetch_trending_page_login_wall ______________________
+packages/agents/tests/test_threads_trending_source.py:117: in test_fetch_trending_page_login_wall
+    fetch_threads_trending_page(mock_page)
+packages/agents/src/ca_agents/sources/threads_trending_source.py:202: in fetch_threads_trending_page
+    checkpoint = _detect_checkpoint(current_url, content)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/agents/src/ca_agents/sources/threads_trending_source.py:123: in _detect_checkpoint
+    if _CHECKPOINT_URL_RE.search(url or ""):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: expected string or bytes-like object, got 'MagicMock'
+_____________ test_scrape_threads_trending_forwards_user_data_dir ______________
+packages/agents/tests/test_threads_trending_source.py:172: in test_scrape_threads_trending_forwards_user_data_dir
+    items = scrape_threads_trending(user_data_dir="/custom/profile", count=3)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/agents/src/ca_agents/sources/threads_trending_source.py:487: in scrape_threads_trending
+    snapshot_items, _lifecycle_history, _lifecycle_last_seen
+                    ^^^^^^^^^^^^^^^^^^
+E   UnboundLocalError: cannot access local variable '_lifecycle_history' where it is not associated with a value
+=========================== short test summary info ============================
+FAILED packages/agents/tests/test_threads_trending_source.py::test_fetch_trending_page_login_wall
+FAILED packages/agents/tests/test_threads_trending_source.py::test_scrape_threads_trending_forwards_user_data_dir
+======================== 2 failed, 958 passed in 22.49s ========================

@@ -808,6 +808,7 @@ def copilot_execute_action(
 
     internal_mutations: dict[str, tuple[Callable[[Any], Any], Any]] = {}
     if intent == "SCHEDULE_SOLVE":
+        tuan_ap_dung = diff.get("tuan_iso") or diff.get("tuan") or _life_tuan_hien_tai()
         phan_cong_moi = diff.get("phan_cong", {})
         # Ghi đúng nơi /roster đọc: file lich_tuan.json (nguồn GET /api/v1/lich-tuan)
         # + kv phan_cong (nguồn /toi, đổi ca, công bằng) + lifecycle trạng thái mới.
@@ -817,7 +818,7 @@ def copilot_execute_action(
             payload_file = {
                 "nguon": "quan",
                 "adr": "ADR-012",
-                "tuan_iso": diff.get("tuan_iso") or _life_tuan_hien_tai(),
+                "tuan_iso": tuan_ap_dung,
                 "status": str(diff.get("status") or "OPTIMAL"),
                 "ok": bool(diff.get("ok", True)),
                 "elapsed_s": diff.get("elapsed_s"),
@@ -835,8 +836,6 @@ def copilot_execute_action(
         except Exception:
             pass  # File system read-only (vài môi trường Docker) — kv vẫn là nguồn dự phòng.
 
-        tuan_ap_dung = diff.get("tuan_iso") or _life_tuan_hien_tai()
-
         def mut_life(cur: dict[str, Any]) -> dict[str, Any]:
             life = dict(cur or {})
             # Giữ chuỗi duyệt chuẩn: đề xuất đã được quản lý duyệt ở bước
@@ -849,12 +848,31 @@ def copilot_execute_action(
             life["nguon"] = "copilot"
             return life
 
+        def mut_roster_status(cur: dict[str, Any]) -> dict[str, Any]:
+            st = dict(cur or {})
+            week_st = dict(st.get(tuan_ap_dung) or {})
+            # Quản lý đã duyệt lịch trên Copilot -> tự động xác nhận giữ ca cho tất cả nhân sự có ca
+            for _cid, nvs in phan_cong_moi.items():
+                if isinstance(nvs, list):
+                    for nid in nvs:
+                        week_st[str(nid)] = "xac_nhan"
+            st[tuan_ap_dung] = week_st
+            return st
+
         internal_mutations = {
             "phan_cong": (lambda _current: phan_cong_moi, {}),
             "lich_tuan": (lambda _current: phan_cong_moi, {}),
             "lich_tuan_status": (lambda _current: "da_duyet", ""),
             "lich_tuan_lifecycle": (mut_life, {}),
+            "roster_nv_status": (mut_roster_status, {}),
         }
+
+        try:
+            from ca_api.services.chat_ws import notify_ops_changed
+            background_tasks.add_task(notify_ops_changed, "roster:lifecycle", tuan_ap_dung)
+            background_tasks.add_task(notify_ops_changed, "roster:nv-status", tuan_ap_dung)
+        except Exception:
+            pass
     elif intent == "APPROVE_SHIFT_SWAP":
         swap_id = diff.get("swap_id")
         # UI + tool hiện dùng KV "swap" (swap-market 3 nhánh, khóa "id").

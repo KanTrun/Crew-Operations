@@ -9,3 +9,4 @@ import pytest
 def _default_to_replay(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prevent a developer's live .env from changing test behavior."""
     monkeypatch.setenv("CA_AGENT_MODE", "replay")
+    monkeypatch.setenv("NHIPQUAN_AUTO_RESERVATION", "1")

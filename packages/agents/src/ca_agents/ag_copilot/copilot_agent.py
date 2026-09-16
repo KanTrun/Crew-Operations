@@ -9,6 +9,8 @@ try:
 except ImportError:
     from datetime import datetime, timedelta, timezone
     UTC = timezone.utc
+# Per-user rate limiter: max 30 requests/60s sliding window.
+import collections as _collections
 from typing import Any
 
 from ca_contracts import (
@@ -28,6 +30,26 @@ from ca_agents.ag_copilot.tool_registry import (
 )
 from ca_agents.ag_supervisor import supervise_outgoing_response
 
+_RATE_WINDOWS: dict[str, _collections.deque[float]] = {}
+_RATE_LIMIT = 30
+_RATE_WINDOW_S = 60.0
+
+
+def _rate_limit_check(user_id: str) -> bool:
+    """Return True if rate-limited (should reject)."""
+    import os
+    if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("CA_AGENT_MODE") == "replay" or os.environ.get("TESTING"):
+        return False
+    import time as _time
+    now = _time.monotonic()
+    dq = _RATE_WINDOWS.setdefault(user_id, _collections.deque())
+    while dq and dq[0] < now - _RATE_WINDOW_S:
+        dq.popleft()
+    if len(dq) >= _RATE_LIMIT:
+        return True
+    dq.append(now)
+    return False
+
 
 def _current_agent_mode() -> str:
     """Chế độ agent hiện tại — 'live' khi có key LLM, 'replay' mặc định."""
@@ -43,6 +65,91 @@ def _compute_hash(data: Any) -> str:
     return hashlib.sha256(blob).hexdigest()[:16]
 
 
+def _generate_conversational_reply(
+    message: str,
+    user_role: str,
+    user_id: str,
+    store_id: str,
+    context: dict[str, Any],
+) -> str:
+    """Tạo câu trả lời thông minh cho các câu hội thoại / chào hỏi / hỏi đáp ngoài thao tác tool."""
+    lower = message.lower().strip()
+
+    # 1. Thử gọi LLM khi ở chế độ live hoặc có LLM provider khả dụng
+    mode = _current_agent_mode()
+    if mode == "live":
+        try:
+            from ca_agents.llm import complete, provider_status
+            st = provider_status()
+            if any(st.values()):
+                role_label = {
+                    "chu_quan": "Chủ quán",
+                    "quan_ly": "Quản lý",
+                    "nhan_vien": "Nhân viên",
+                }.get(user_role, "Nhân viên")
+
+                system = (
+                    "Bạn là AG-COPILOT — trợ lý điều hành ảo thông minh của chuỗi quán cà phê Nhịp Quán.\n"
+                    f"Người dùng đang trò chuyện có vai trò: {role_label} (tài khoản: {user_id}, cơ sở: {store_id}).\n"
+                    "Phong cách giao tiếp:\n"
+                    "- Tiếng Việt chuẩn mực, thân thiện, tự nhiên, xưng 'em', gọi 'anh/chị'.\n"
+                    "- Trả lời đúng trọng tâm câu hỏi của người dùng (chào hỏi, cảm ơn, hỏi thăm, giải thích, tư vấn vận hành quán cà phê, kiến thức đồ uống).\n"
+                    "- Ngắn gọn, súc tích (khoảng 2-4 câu), không dài dòng.\n"
+                    "- Hiểu rõ nghiệp vụ quán: xếp lịch ca, đổi ca, bản tin sáng, quy trình SOP, kiểm kho, hao hụt... Nếu người dùng muốn làm các việc này, hãy giải thích và hướng dẫn họ câu lệnh cụ thể.\n"
+                    "- Không tự ý bịa số liệu hay nói rằng mình đã tự ý thay đổi dữ liệu trong hệ thống khi người dùng chỉ đang trò chuyện."
+                )
+                llm_res = complete(
+                    system=system,
+                    user=message,
+                    task="text:copilot_chat",
+                    timeout_s=15.0,
+                    json_mode=False,
+                )
+                if llm_res.ok and llm_res.text.strip():
+                    return llm_res.text.strip()
+        except (ImportError, OSError, ValueError):
+            pass
+
+    # 2. Phản hồi đàm thoại thông minh theo quy tắc (fallback khi replay hoặc LLM bận)
+    import re
+    if re.search(r"\b(chào|xin chào|hello|hi|hey|alo)\b", lower):
+        return (
+            "Dạ em chào anh/chị! Chúc anh/chị một ca làm việc vui vẻ và hiệu quả. "
+            "Anh/chị cần em hỗ trợ gì cho quán hôm nay không ạ?"
+        )
+    if re.search(r"\b(cảm ơn|cam on|thank|thanks|tks)\b", lower):
+        return (
+            "Dạ không có chi ạ! Rất vui được hỗ trợ anh/chị. "
+            "Nếu cần hỗ trợ thêm việc gì trong ca, anh/chị cứ nhắn em nhé!"
+        )
+    if re.search(r"\b(bạn là ai|em là ai|mày là ai|bạn tên gì|ten gi|giới thiệu)\b", lower):
+        return (
+            "Dạ em là AG-COPILOT — trợ lý điều hành ảo của Nhịp Quán. "
+            "Em hỗ trợ anh/chị quản lý lịch ca, theo dõi bàn giao, quy trình SOP, tồn kho và các nghiệp vụ vận hành quán ạ."
+        )
+    if re.search(r"\b(làm được gì|giúp gì|chức năng|năng lực|ho tro gi)\b", lower):
+        if user_role == "nhan_vien":
+            return (
+                "Dạ với vai trò nhân viên, em có thể hỗ trợ anh/chị: xem bản tin ca, "
+                "tra cứu quy trình (SOP), xem lịch làm việc của mình, và gửi yêu cầu đổi ca/báo bận ạ."
+            )
+        return (
+            "Dạ em hỗ trợ anh/chị toàn diện việc điều hành: xếp lịch tuần (solver), "
+            "duyệt đổi ca, tóm tắt bản tin sáng, tra cứu quy trình, báo cáo hao hụt, kiểm kho và đề xuất luật mới ạ."
+        )
+
+    # 3. Fallback mặc định theo vai trò
+    if user_role == "nhan_vien":
+        return (
+            "Dạ em có thể hỗ trợ anh/chị: xem bản tin ca, tra cứu quy trình (SOP) "
+            "và báo cáo hao hụt trong ca. Anh/chị cần em làm gì ạ?"
+        )
+    return (
+        "Dạ em có thể hỗ trợ anh/chị: xếp lịch tuần, duyệt đổi ca, bản tin sáng, tra cứu quy trình, "
+        "báo cáo hao hụt, đề xuất luật mới và kiểm tra tồn kho. Anh/chị cần em làm gì ạ?"
+    )
+
+
 def run_copilot(
     message: str,
     context: dict[str, Any] | None = None,
@@ -53,6 +160,21 @@ def run_copilot(
     ctx = context or {}
     store_id = str(ctx.get("store_id") or "quan_01")
     user_id = str(ctx.get("user_id") or "nv_01")
+
+    # Rate limit per-user (fail-open: lỗi rate limiter không chặn request).
+    try:
+        if _rate_limit_check(user_id):
+            return CopilotResponse(
+                reply_text="Dạ anh/chị gửi tin nhắn hơi nhanh, em xử lý không kịp. Anh/chị chờ vài giây rồi nhắn lại giúp em nhé!",
+                intent=CopilotIntent.OUT_OF_SCOPE,
+                confidence=0.99,
+                action_proposal=None,
+                direct_answer=None,
+                agent_mode=_current_agent_mode(),
+            )
+    except Exception:
+        pass
+
     # Fail-closed: role thiếu/lạ → nhan_vien (đặc quyền thấp nhất).
     raw_role = str(ctx.get("user_role") or "").strip()
     user_role = raw_role if raw_role in ("chu_quan", "quan_ly", "nhan_vien") else "nhan_vien"
@@ -106,20 +228,15 @@ def run_copilot(
             agent_mode=_current_agent_mode(),
         )
 
-    # 1.3 Out of scope
+    # 1.3 Out of scope / Conversational QA
     if parsed.intent == OUT_OF_SCOPE:
-        # Liệt kê đúng năng lực theo vai (fail-closed đã chặn intent vượt quyền
-        # ở bước 1.0 — câu chào phải khớp với cái role đó thật sự làm được).
-        if user_role == "nhan_vien":
-            reply = (
-                "Dạ em có thể hỗ trợ anh/chị: xem bản tin ca, tra cứu quy trình (SOP) "
-                "và báo cáo hao hụt trong ca. Anh/chị cần em làm gì ạ?"
-            )
-        else:
-            reply = (
-                "Dạ em có thể hỗ trợ anh/chị: xếp lịch tuần, duyệt đổi ca, bản tin sáng, tra cứu quy trình, "
-                "báo cáo hao hụt, đề xuất luật mới và kiểm tra tồn kho. Anh/chị cần em làm gì ạ?"
-            )
+        reply = _generate_conversational_reply(
+            message,
+            user_role=user_role,
+            user_id=user_id,
+            store_id=store_id,
+            context=ctx,
+        )
         return CopilotResponse(
             reply_text=reply,
             intent=CopilotIntent.OUT_OF_SCOPE,

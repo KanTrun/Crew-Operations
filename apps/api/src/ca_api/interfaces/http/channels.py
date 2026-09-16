@@ -1305,13 +1305,18 @@ def fb_policy_set(
     if s.get("role") != "chu_quan":
         raise HTTPException(status_code=403, detail="chi_chu_quan")
     changes: dict[str, Any] = {}
+    from ca_api.services.fb_moderation import set_fb_policy_runtime
+
+    if body.auto_price_cap_vnd is not None and body.auto_price_cap_vnd < 0:
+        raise HTTPException(status_code=400, detail="price_cap_am")
+    if body.auto_send_enabled is not None or body.auto_price_cap_vnd is not None:
+        set_fb_policy_runtime(
+            auto_send_enabled=body.auto_send_enabled,
+            auto_price_cap_vnd=body.auto_price_cap_vnd,
+        )
     if body.auto_send_enabled is not None:
-        os.environ["NHIPQUAN_FB_AUTO_SEND"] = "1" if body.auto_send_enabled else "0"
         changes["auto_send_enabled"] = body.auto_send_enabled
     if body.auto_price_cap_vnd is not None:
-        if body.auto_price_cap_vnd < 0:
-            raise HTTPException(status_code=400, detail="price_cap_am")
-        os.environ["NHIPQUAN_FB_AUTO_PRICE_CAP_VND"] = str(int(body.auto_price_cap_vnd))
         changes["auto_price_cap_vnd"] = int(body.auto_price_cap_vnd)
     _audit(
         s["nv_id"],
