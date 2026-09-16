@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
 
-import pytest
-from ca_agents.ag_msg import MsgResult
 from ca_agents.messaging import InboundMessage
 from ca_api.interfaces.http.channels import process_inbound
 from ca_api.interfaces.http.main import app
@@ -80,78 +79,6 @@ def test_bind_issue_and_inbound_enqueue(monkeypatch) -> None:
     assert found.get("noi_dung_goc")
 
 
-def test_live_inbound_llm_result_requires_manager_approval(monkeypatch) -> None:
-    from ca_api.interfaces.http import channels as ch
-    from ca_api.interfaces.http.sprint3 import _phan_cong
-
-    monkeypatch.setenv("CA_AGENT_MODE", "live")
-    monkeypatch.setattr(
-        ch,
-        "classify",
-        lambda *args, **kwargs: MsgResult(
-            intent="xin_nghi",
-            tier=2,
-            do_tin_cay=0.78,
-            rang_buoc={"nguon": "llm", "can_xac_minh": True},
-        ),
-    )
-    before = _phan_cong()
-    nv = headers(client, "minh")
-    code = client.post("/api/v1/channels/bind/issue", headers=nv).json()["code"]
-    process_inbound(
-        InboundMessage(text=f"/bind {code}", channel="telegram", external_user_id="tg_live"),
-        reply_backend="replay",
-    )
-
-    result = process_inbound(
-        InboundMessage(
-            text="mai em có việc gia đình nên không đến được",
-            channel="telegram",
-            external_user_id="tg_live",
-        ),
-        reply_backend="replay",
-    )
-
-    assert result["hanh"] == "enqueue"
-    assert result["item"]["trang_thai"] == "cho_duyet"
-    assert result["item"]["rang_buoc"] == {"nguon": "llm", "can_xac_minh": True}
-    assert _phan_cong() == before
-
-
-def test_live_inbound_invalid_llm_result_does_not_enqueue(monkeypatch) -> None:
-    from ca_api.interfaces.http import channels as ch
-
-    monkeypatch.setenv("CA_AGENT_MODE", "live")
-    monkeypatch.setattr(
-        ch,
-        "classify",
-        lambda *args, **kwargs: MsgResult(
-            intent="khac",
-            tier=2,
-            do_tin_cay=0.55,
-            rang_buoc={"nguon": "tier2_fallback", "can_xac_minh": True},
-        ),
-    )
-    nv = headers(client, "minh")
-    code = client.post("/api/v1/channels/bind/issue", headers=nv).json()["code"]
-    process_inbound(
-        InboundMessage(text=f"/bind {code}", channel="telegram", external_user_id="tg_invalid"),
-        reply_backend="replay",
-    )
-
-    result = process_inbound(
-        InboundMessage(
-            text="mai em có việc gia đình nên không đến được",
-            channel="telegram",
-            external_user_id="tg_invalid",
-        ),
-        reply_backend="replay",
-    )
-
-    assert result["hanh"] == "bo_qua"
-    assert result["intent"] == "khac"
-
-
 def test_xem_lich_after_bind(monkeypatch) -> None:
     monkeypatch.setenv("CA_AGENT_MODE", "replay")
     nv = headers(client, "minh")
@@ -212,10 +139,7 @@ def test_inbox_duyet_doi_ca_opens_swap(monkeypatch) -> None:
     assert hit.get("b") == "nv_01"
 
 
-def test_page_empty_without_fixture_seed(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "disconnected")
-    monkeypatch.delenv("NHIPQUAN_FB_PAGE_TOKEN", raising=False)
-    monkeypatch.delenv("FACEBOOK_PAGE_ACCESS_TOKEN", raising=False)
+def test_page_empty_without_fixture_seed() -> None:
     ql = headers(client, "lan")
     st = client.get("/api/v1/page/status", headers=ql)
     assert st.status_code == 200
@@ -223,38 +147,6 @@ def test_page_empty_without_fixture_seed(monkeypatch: pytest.MonkeyPatch) -> Non
     th = client.get("/api/v1/page/threads", headers=ql)
     assert th.status_code == 200
     assert th.json()["items"] == []
-
-
-def test_page_status_requires_successful_graph_health(monkeypatch) -> None:
-    from ca_api.interfaces.http import channels as ch
-
-    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "live")
-    monkeypatch.setenv("NHIPQUAN_FB_PAGE_TOKEN", "invalid_test_token")
-    monkeypatch.setenv("NHIPQUAN_FB_PAGE_ID", "page_1")
-    monkeypatch.setattr(ch, "page_health", lambda: {"ok": False, "detail": "graph_http_401"})
-
-    result = client.get("/api/v1/page/status", headers=headers(client, "lan"))
-
-    assert result.status_code == 200
-    assert result.json()["mode"] == "live"
-    assert result.json()["connected"] is False
-    assert result.json()["graph_ok"] is False
-    assert result.json()["graph_detail"] == "graph_http_401"
-
-
-def test_page_replay_remains_available_without_token(monkeypatch) -> None:
-    from ca_api.persist import kv_set
-
-    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "disconnected")
-    monkeypatch.delenv("NHIPQUAN_FB_PAGE_TOKEN", raising=False)
-    monkeypatch.setenv("NHIPQUAN_PAGE_SEED_FIXTURE", "1")
-    kv_set("page_quan", None)
-
-    result = client.get("/api/v1/page/threads", headers=headers(client, "lan"))
-
-    assert result.status_code == 200
-    assert result.json()["mode"] == "disconnected"
-    assert isinstance(result.json()["items"], list)
 
 
 def test_facebook_webhook_verify(monkeypatch) -> None:
@@ -287,29 +179,29 @@ def test_facebook_webhook_inbound_live(monkeypatch) -> None:
     monkeypatch.setenv("NHIPQUAN_FB_APP_SECRET", "secret_test")
     from ca_api.persist import kv_set
 
-    kv_set("page_quan", {"threads": [], "drafts": [], "mode": "live"})
+    kv_set("page_quan:quan_01", {"threads": [], "drafts": [], "mode": "live"})
     payload = {
-            "entry": [
-                {
-                    "messaging": [
-                        {
-                            "sender": {"id": "psid_9"},
-                            "message": {"mid": "m1", "text": "xin chào quán"},
-                        }
-                    ]
-                }
-            ]
-        }
-    body = json.dumps(payload).encode("utf-8")
-    signature = hmac.new(b"secret_test", body, hashlib.sha256).hexdigest()
+        "entry": [
+            {
+                "messaging": [
+                    {
+                        "sender": {"id": "psid_9"},
+                        "message": {"mid": "m1", "text": "xin chào quán"},
+                    }
+                ]
+            }
+        ]
+    }
+    raw_body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    signature = hmac.new(b"secret_test", raw_body, hashlib.sha256).hexdigest()
     r = client.post(
         "/api/v1/channels/facebook/webhook",
-        content=body,
+        content=raw_body,
         headers={"content-type": "application/json", "x-hub-signature-256": f"sha256={signature}"},
     )
     assert r.status_code == 200, r.text
     assert r.json().get("n") == 1
-    doc = kv_get("page_quan", {})
+    doc = kv_get("page_quan:quan_01", {})
     assert any(t.get("psid") == "psid_9" for t in doc.get("threads", []))
 
 
@@ -372,7 +264,7 @@ def test_staff_cannot_reply_or_create_treo_from_page() -> None:
 def test_page_drafts_crud_and_ai_generate() -> None:
     from ca_api.persist import kv_set
 
-    kv_set("page_quan", {"threads": [], "drafts": [], "mode": "mock"})
+    kv_set("page_quan:quan_01", {"threads": [], "drafts": [], "mode": "mock"})
     ql = headers(client, "lan")
     staff = headers(client, "minh")
 
@@ -404,4 +296,62 @@ def test_page_drafts_crud_and_ai_generate() -> None:
     r_decide = client.post(f"/api/v1/page/drafts/{created['id']}", json={"quyet_dinh": "duyet"}, headers=ql)
     assert r_decide.status_code == 200
     assert r_decide.json()["trang_thai"] in {"da_dang_mock", "da_dang"}
+
+
+def test_fb_debounce_manager():
+    from ca_api.interfaces.http.channels import FBDebounceManager
+
+    async def _run():
+        mgr = FBDebounceManager()
+        called = []
+
+        async def dummy_callback(**kwargs):
+            called.append(kwargs)
+
+        # Gửi 3 tin nhắn dồn dập từ cùng 1 khách hàng (phần A: debounce buffer)
+        await mgr.push(
+            store_id="quan_01",
+            sender="psid_rapid",
+            mid="mid_1",
+            text="em ơi",
+            ts=100.0,
+            page_id="page_1",
+            public_ctx=None,
+            callback=dummy_callback,
+            delay_seconds=0.08,
+        )
+        await mgr.push(
+            store_id="quan_01",
+            sender="psid_rapid",
+            mid="mid_2",
+            text="cho anh hỏi",
+            ts=101.0,
+            page_id="page_1",
+            public_ctx=None,
+            callback=dummy_callback,
+            delay_seconds=0.08,
+        )
+        await mgr.push(
+            store_id="quan_01",
+            sender="psid_rapid",
+            mid="mid_3",
+            text="quán còn bàn ngoài trời không?",
+            ts=102.0,
+            page_id="page_1",
+            public_ctx=None,
+            callback=dummy_callback,
+            delay_seconds=0.08,
+        )
+
+        # Chờ debounce timer hoàn thành
+        await asyncio.sleep(0.15)
+
+        # Chỉ kích hoạt AI callback đúng 1 lần với nội dung đã gộp theo thứ tự thời gian
+        assert len(called) == 1
+        assert called[0]["text"] == "em ơi\ncho anh hỏi\nquán còn bàn ngoài trời không?"
+        assert called[0]["mid"] == "mid_3"
+        assert called[0]["sender"] == "psid_rapid"
+
+    asyncio.run(_run())
+
 

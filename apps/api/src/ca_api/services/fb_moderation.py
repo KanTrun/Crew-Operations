@@ -46,6 +46,58 @@ from ca_api.persist import (
 _RATE_LIMITER = SlidingWindowRateLimiter()
 _FB_POLICY_KV = "fb_policy_runtime"
 
+_POSITIVE_KEYWORDS = (
+    "cảm ơn",
+    "hài lòng",
+    "tuyệt vời",
+    "tốt quá",
+    "rất tốt",
+    "ưng ý",
+)
+_NEGATIVE_KEYWORDS = (
+    "không hài lòng",
+    "thất vọng",
+    "tệ quá",
+    "quá tệ",
+    "bực mình",
+    "không đúng",
+    "lừa đảo",
+)
+_COMMENT_ACTION_KEYWORDS = {
+    "hide": ("spam", "quảng cáo", "link lạ"),
+    "escalate": ("khiếu nại", "bồi thường", "lừa đảo", "luật sư"),
+}
+
+
+def analyze_comment_sentiment(text: str) -> str:
+    """Classify public-comment sentiment with a deterministic vocabulary."""
+    normalized = normalize_text(text)
+    if any(keyword in normalized for keyword in _NEGATIVE_KEYWORDS):
+        return "negative"
+    if any(keyword in normalized for keyword in _POSITIVE_KEYWORDS):
+        return "positive"
+    return "neutral"
+
+
+def classify_comment_action(
+    text: str,
+    sentiment: str,
+    post_is_sensitive: bool = False,
+) -> tuple[str, list[str]]:
+    """Return a review hint; the policy engine remains authoritative."""
+    normalized = normalize_text(text)
+    reasons: list[str] = []
+    if any(keyword in normalized for keyword in _COMMENT_ACTION_KEYWORDS["hide"]):
+        reasons.append("spam_or_advertising")
+        return "hide", reasons
+    if sentiment == "negative":
+        reasons.append("negative_sentiment")
+    if post_is_sensitive:
+        reasons.append("sensitive_post")
+    if any(keyword in normalized for keyword in _COMMENT_ACTION_KEYWORDS["escalate"]):
+        reasons.append("escalation_keyword")
+    return ("escalate" if reasons else "reply"), reasons
+
 
 def _policy_runtime() -> dict[str, Any]:
     raw = kv_get(_FB_POLICY_KV, {})
@@ -137,7 +189,15 @@ def _event_time_iso(timestamp: float) -> str | None:
         return None
 
 
-def queue_fb_non_text(*, psid: str, event_id: str, description: str) -> int:
+def queue_fb_non_text(
+    *,
+    psid: str,
+    event_id: str,
+    description: str,
+    attachment_type: str | None = None,
+    attachment_url: str | None = None,
+    store_id: str | None = None,
+) -> int:
     """Đưa attachment/postback vào hàng duyệt mà không suy đoán ý định."""
     review_id = fb_review_insert(
         {
@@ -154,6 +214,9 @@ def queue_fb_non_text(*, psid: str, event_id: str, description: str) -> int:
             "trace_id": event_id or uuid.uuid4().hex[:12],
             "created_at": _now_iso(),
             "expires_at": _sla_expiry(10),
+            "store_id": store_id,
+            "attachment_type": attachment_type,
+            "attachment_url": attachment_url,
         }
     )
     audit_add(
@@ -205,6 +268,7 @@ def moderate_fb_message(
     post_id: str | None = None,
     post_is_sensitive: bool = False,
     external_user_name: str | None = None,
+    store_id: str | None = None,
 ) -> dict[str, Any]:
     """Xử lý 1 tin Messenger qua 5 lớp cổng; ghi queue khi cần con người.
 
@@ -331,6 +395,7 @@ def moderate_fb_message(
     ):
         review_id = fb_review_insert(
             {
+                "store_id": store_id or "quan_01",
                 "source": source,
                 "external_thread_id": message_id if source == "comment" else f"fb_{psid}",
                 "external_psid": psid,
@@ -362,6 +427,7 @@ def moderate_fb_message(
             # Claim giao tin; webhook chỉ đánh dấu auto_sent sau khi Graph xác nhận.
             review_id = fb_review_insert(
                 {
+                    "store_id": store_id or "quan_01",
                     "source": source,
                     "external_thread_id": message_id if source == "comment" else f"fb_{psid}",
                     "external_psid": psid,

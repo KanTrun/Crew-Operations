@@ -7,6 +7,7 @@ import hmac
 import json
 import os
 import pathlib
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -243,6 +244,78 @@ def send_messenger_text(psid: str, text: str, *, tag: str | None = None) -> dict
         data["messaging_type"] = "RESPONSE"
 
     return graph_post("me/messages", data)
+
+
+def send_messenger_action(psid: str, action: str = "typing_on") -> dict[str, Any]:
+    """
+    Gửi sender_action tới Graph API (typing_on, typing_off, mark_seen).
+    Hiển thị hiệu ứng 'Quán đang nhập...' chân thật trên Messenger.
+    """
+    data = {
+        "recipient": json.dumps({"id": psid}),
+        "sender_action": action,
+    }
+    return graph_post("me/messages", data)
+
+
+def split_into_bubbles(text: str, max_bubbles: int = 4) -> list[str]:
+    """
+    Tách câu trả lời của AI thành các bong bóng chat (bubbles) tự nhiên theo dòng trống (\n\n).
+    Giữ tối đa max_bubbles; nếu thừa thì gộp phần dư vào bubble cuối để không mất nội dung.
+    """
+    if not text:
+        return []
+    raw_chunks = [c.strip() for c in re.split(r"\n\s*\n+", text) if c.strip()]
+    if not raw_chunks:
+        return [text.strip()] if text.strip() else []
+    if len(raw_chunks) <= max_bubbles:
+        return raw_chunks
+    head = raw_chunks[: max_bubbles - 1]
+    tail = "\n\n".join(raw_chunks[max_bubbles - 1 :])
+    head.append(tail)
+    return head
+
+
+async def send_messenger_bubbles(
+    psid: str,
+    text: str,
+    *,
+    tag: str | None = None,
+    enable_typing: bool = True,
+    min_delay: float = 0.5,
+    max_delay: float = 2.0,
+    typing_delay_per_char: float = 0.03,
+    send_fn: Any = None,
+) -> list[dict[str, Any]]:
+    """
+    Gửi câu trả lời chia nhỏ thành nhiều bubbles kèm typing indicator mô phỏng nhân viên đang gõ.
+    Trong chế độ replay hoặc test, delay được bỏ qua (0s) để đảm bảo tốc độ.
+    """
+    import asyncio
+
+    bubbles = split_into_bubbles(text)
+    if not bubbles:
+        return []
+    is_replay = (
+        os.environ.get("CA_AGENT_MODE", "").strip().lower() == "replay"
+        or bool(os.environ.get("PYTEST_CURRENT_TEST"))
+    )
+    results: list[dict[str, Any]] = []
+    dispatcher = send_fn or send_messenger_text
+
+    for bubble in bubbles:
+        if enable_typing and not is_replay:
+            try:
+                send_messenger_action(psid, "typing_on")
+            except Exception:
+                pass
+            delay = min(max_delay, max(min_delay, len(bubble) * typing_delay_per_char))
+            await asyncio.sleep(delay)
+
+        res = dispatcher(psid, bubble, tag=tag)
+        results.append(res)
+
+    return results
 
 
 def reply_to_comment(comment_id: str, text: str) -> dict[str, Any]:
