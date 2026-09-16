@@ -208,8 +208,16 @@ def _lich_tuan_out() -> Path:
 # Pins persist in SQLite kv
 
 
-def _pin_map() -> dict[tuple[str, str], bool]:
-    raw = kv_get("pins", {})
+def _week_value(key: str, week: str, default: Any) -> Any:
+    raw = kv_get(key, None)
+    if isinstance(raw, dict) and raw:
+        return raw.get(week, default)
+    legacy = kv_get(key.removesuffix("_by_week"), None) if key.endswith("_by_week") else None
+    return legacy if legacy is not None else default
+
+
+def _pin_map(tuan_iso: str) -> dict[tuple[str, str], bool]:
+    raw = _week_value("pins_by_week", tuan_iso, {})
     out: dict[tuple[str, str], bool] = {}
     for key, val in raw.items():
         if "|" in str(key):
@@ -218,16 +226,20 @@ def _pin_map() -> dict[tuple[str, str], bool]:
     return out
 
 
-def _set_pin(ca_id: str, nv_id: str, pinned: bool) -> bool:
+def _set_pin(tuan_iso: str, ca_id: str, nv_id: str, pinned: bool) -> bool:
     state: dict[str, bool] = {"prev": False}
 
-    def mut(raw: dict[str, bool]) -> dict[str, bool]:
+    def mut_all(all_weeks: dict[str, Any]) -> dict[str, Any]:
+        raw = all_weeks.setdefault(tuan_iso, {})
         key = f"{ca_id}|{nv_id}"
         state["prev"] = bool(raw.get(key, False))
-        raw[key] = pinned
-        return raw
+        if pinned:
+            raw[key] = True
+        else:
+            raw.pop(key, None)
+        return all_weeks
 
-    kv_mutate("pins", mut, {})
+    kv_mutate("pins_by_week", mut_all, {})
     return state["prev"]
 
 
@@ -254,6 +266,8 @@ class PinBody(BaseModel):
     ca_id: str
     nv_id: str
     pinned: bool
+    tuan_iso: str = "2026-W36"
+    xep_lai: bool = True
 
 
 class NvStatusBody(BaseModel):
@@ -548,9 +562,9 @@ def _build_lich_tuan_from_seed(
     tuan_iso = tuan or "2026-W36"
     phan_cong: dict[str, list[str]] = {
         str(ca_id): list(nv_ids)
-        for ca_id, nv_ids in (kv_get("phan_cong", {}) or {}).items()
+        for ca_id, nv_ids in (_week_value("phan_cong_by_week", tuan_iso, {}) or {}).items()
     }
-    for (ca_id, nv_id), pinned in _pin_map().items():
+    for (ca_id, nv_id), pinned in _pin_map(tuan_iso).items():
         if pinned:
             if nv_id not in phan_cong.setdefault(ca_id, []):
                 phan_cong[ca_id].append(nv_id)
@@ -603,14 +617,18 @@ def get_lich_tuan(
     _require_write_role(authorization)
     tuan_iso = tuan or "2026-W36"
 
-    # Try data/out/lich_tuan.json first (solver output)
-    lich_out = _lich_tuan_out()
-    if lich_out.exists():
-        data = json.loads(lich_out.read_text(encoding="utf-8"))
+    data = _week_value("lich_tuan_results_by_week", tuan_iso, None)
+    if not isinstance(data, dict):
+        lich_out = _lich_tuan_out()
+        if lich_out.exists():
+            candidate = json.loads(lich_out.read_text(encoding="utf-8"))
+            candidate_week = candidate.get("tuan_iso")
+            data = candidate if not candidate_week or candidate_week == tuan_iso else None
+    if isinstance(data, dict):
         seed = _seed()
         ca_list = _format_ca_list(seed.get("ca_mau_21", []))
         solver_assignments = data.get("phan_cong", {})
-        seeded_assignments = dict(kv_get("phan_cong", {}) or {})
+        seeded_assignments = dict(_week_value("phan_cong_by_week", tuan_iso, {}) or {})
         valid_ca_ids = {str(shift.get("id")) for shift in ca_list}
         phan_cong = {
             str(ca_id): list(nv_ids)
@@ -622,11 +640,9 @@ def get_lich_tuan(
                 phan_cong[str(ca_id)] = list(nv_ids)
         if not phan_cong:
             phan_cong = _seeded_history_assignments(seed, tuan_iso)
-        for (ca_id, nv_id), pinned in _pin_map().items():
+        for (ca_id, nv_id), pinned in _pin_map(tuan_iso).items():
             if pinned and nv_id not in phan_cong.get(ca_id, []):
                 phan_cong.setdefault(ca_id, []).append(nv_id)
-            elif not pinned and nv_id in phan_cong.get(ca_id, []):
-                phan_cong[ca_id].remove(nv_id)
 
         status_store = kv_get("roster_nv_status", {})
         week_decisions = status_store.get(tuan_iso, {}) if isinstance(status_store, dict) else {}
@@ -636,14 +652,14 @@ def get_lich_tuan(
         nhan_vien = list_nhan_vien_ops()
         chua_xac_nhan, du_bi, nv_status_map = _detect_staff_availability(tuan_iso, phan_cong, nhan_vien)
 
-        lifecycle = kv_get("lich_tuan_lifecycle", {})
+        lifecycle = _week_value("lich_tuan_lifecycle_by_week", tuan_iso, {})
         return {
             "nguon": "quan",
             "nguon_lich": "solver",
             "tuan_iso": tuan_iso,
             "so_tuan": so_tuan,
             "danh_sach_tuan": _tuan_list(tuan_iso, so_tuan),
-            "trang_thai": lifecycle.get("trang_thai", "may_sinh"),
+            "trang_thai": lifecycle.get("trang_thai", "nhap"),
             "nhan_vien": nhan_vien,
             "ca": ca_list,
             "phan_cong": phan_cong,
@@ -653,11 +669,17 @@ def get_lich_tuan(
                 "elapsed_s": data.get("elapsed_s"),
                 "status": data.get("status"),
             },
+            "pins": [
+                {"ca_id": ca_id, "nv_id": nv_id}
+                for (ca_id, nv_id), pinned in _pin_map(tuan_iso).items()
+                if pinned
+            ],
+            "kiem_tra": data.get("kiem_tra"),
             "chua_xac_nhan": chua_xac_nhan,
             "du_bi": du_bi,
             "nv_status_map": nv_status_map,
         }
-    lifecycle = kv_get("lich_tuan_lifecycle", {})
+    lifecycle = _week_value("lich_tuan_lifecycle_by_week", tuan_iso, {})
     result = _build_lich_tuan_from_seed(_seed(), tuan_iso, so_tuan)
     result["trang_thai"] = lifecycle.get("trang_thai", result.get("trang_thai", "nhap"))
     result["khung_gio"] = _khung_template()
@@ -739,16 +761,51 @@ async def pin_assignment(
             status_code=422,
             detail=f"nv_thieu_ky_nang — ca cần {vi_tri}, NV chỉ có {', '.join(sorted(ky_nang)) or 'không rõ'}",
         )
-    prev = _set_pin(body.ca_id, body.nv_id, body.pinned)
+    from ca_api.interfaces.http.sprint45 import _life, _run_solver
+
+    life = _life(body.tuan_iso)
+    if life.get("trang_thai") not in {"nhap", "cho_duyet"}:
+        raise HTTPException(status_code=409, detail="chi_ghim_khi_lich_nhap_hoac_cho_duyet")
+
+    solver_result: dict[str, Any] | None = None
+    if body.pinned:
+        # Chạy thử với pin mới: đây là kiểm tra đồng thời C01–C06, không chỉ kỹ năng.
+        solver_result = _run_solver(body.tuan_iso, extra_pin=(body.ca_id, body.nv_id))
+        if not solver_result.get("ok"):
+            baseline = _run_solver(body.tuan_iso)
+            if baseline.get("ok"):
+                detail = solver_result.get("danh_sach_xung_dot") or [
+                    "Ghim làm lịch vi phạm ràng buộc cứng"
+                ]
+                raise HTTPException(
+                    status_code=422,
+                    detail={"code": "pin_xung_dot", "reasons": detail},
+                )
+
+    prev = _set_pin(body.tuan_iso, body.ca_id, body.nv_id, body.pinned)
+    if body.xep_lai and not body.pinned:
+        solver_result = _run_solver(body.tuan_iso)
     record_sua(
         loai="pin_ca",
         truoc={"ca_id": body.ca_id, "nv_id": body.nv_id, "pinned": prev},
-        sau={"ca_id": body.ca_id, "nv_id": body.nv_id, "pinned": body.pinned},
+        sau={
+            "tuan_iso": body.tuan_iso,
+            "ca_id": body.ca_id,
+            "nv_id": body.nv_id,
+            "pinned": body.pinned,
+        },
         ai=_role,
         now_iso=datetime.now(UTC).isoformat(),
     )
-    await notify_ops_changed("roster:pin")
-    return {"ok": True, "ca_id": body.ca_id, "nv_id": body.nv_id, "pinned": body.pinned}
+    await notify_ops_changed("roster:pin", body.tuan_iso)
+    return {
+        "ok": True,
+        "tuan_iso": body.tuan_iso,
+        "ca_id": body.ca_id,
+        "nv_id": body.nv_id,
+        "pinned": body.pinned,
+        "solver": solver_result,
+    }
 
 
 _LIFECYCLE_STATES = ("nhap", "dang_giai", "cho_duyet", "da_duyet", "da_cong_bo", "da_dong")
@@ -790,9 +847,13 @@ async def patch_lifecycle(
         )
     if body.trang_thai == "da_dong" and _role != "chu_quan":
         raise HTTPException(status_code=403, detail="chi_chu_quan_dong_lich")
-    if body.tuan_iso and _role != "chu_quan":
-        raise HTTPException(status_code=403, detail="chi_chu_quan_doi_tuan_iso")
-    cur = kv_get("lich_tuan_lifecycle", {}).get("trang_thai", "may_sinh")
+    from ca_api.interfaces.http.sprint45 import _life, _run_solver, _save_life
+
+    week = body.tuan_iso or "2026-W36"
+    doc = _life(week)
+    cur = doc.get("trang_thai", "nhap")
+    if cur == "da_dong" and body.trang_thai == "nhap":
+        raise HTTPException(status_code=409, detail="mo_lai_phai_co_ly_do")
     if body.trang_thai not in _LIFECYCLE_ALLOWED.get(cur, set()):
         raise HTTPException(
             status_code=409,
@@ -800,14 +861,12 @@ async def patch_lifecycle(
         )
 
     def chuyen(trang_thai: str) -> dict[str, Any]:
-        def m(cur: dict[str, Any]) -> dict[str, Any]:
-            cur["trang_thai"] = trang_thai
-            if body.tuan_iso:
-                cur["tuan_iso"] = body.tuan_iso
-            cur["cap_nhat_luc"] = datetime.now(UTC).isoformat()
-            cur["cap_nhat_boi"] = _role
-            return cur
-        return cast(dict[str, Any], kv_mutate("lich_tuan_lifecycle", m, {}))
+        doc["trang_thai"] = trang_thai
+        doc["tuan_iso"] = week
+        doc["cap_nhat_luc"] = datetime.now(UTC).isoformat()
+        doc["cap_nhat_boi"] = _role
+        _save_life(doc)
+        return doc
 
     new_state = chuyen(body.trang_thai)
     record_sua(
@@ -820,18 +879,18 @@ async def patch_lifecycle(
 
     solver_ket_qua: dict[str, Any] | None = None
     if body.trang_thai == "dang_giai":
-        from ca_api.interfaces.http.sprint45 import _run_solver
-
-        solver_ket_qua = _run_solver()
-        # Solver đã ghi phan_cong — sau giải là chờ duyệt, đúng chuỗi demo.
-        new_state = chuyen("cho_duyet")
-        record_sua(
-            loai="lifecycle",
-            truoc={"trang_thai": "dang_giai"},
-            sau={"trang_thai": "cho_duyet", "tu_solver": True},
-            ai=_role,
-            now_iso=datetime.now(UTC).isoformat(),
-        )
+        solver_ket_qua = _run_solver(week)
+        if solver_ket_qua.get("ok"):
+            new_state = chuyen("cho_duyet")
+            record_sua(
+                loai="lifecycle",
+                truoc={"trang_thai": "dang_giai"},
+                sau={"trang_thai": "cho_duyet", "tu_solver": True},
+                ai=_role,
+                now_iso=datetime.now(UTC).isoformat(),
+            )
+        else:
+            new_state = chuyen("nhap")
 
     await notify_ops_changed("roster:lifecycle", body.tuan_iso)
     return {"ok": True, **new_state, "solver": solver_ket_qua}
@@ -886,7 +945,12 @@ async def post_nv_status(
                         cur[cid] = [x for x in nv_ids if x != body.nv_id]
             return cur
 
-        kv_mutate("phan_cong", mut_pc, {})
+        def mut_pc_weeks(all_weeks: dict[str, Any]) -> dict[str, Any]:
+            week_pc = all_weeks.setdefault(body.tuan_iso, {})
+            all_weeks[body.tuan_iso] = mut_pc(week_pc)
+            return all_weeks
+
+        kv_mutate("phan_cong_by_week", mut_pc_weeks, {})
 
         lich_out = _lich_tuan_out()
         if lich_out.exists():
@@ -912,12 +976,13 @@ async def post_nv_status(
                 pass
 
         def mut_pins(cur: dict[str, Any]) -> dict[str, Any]:
-            for k in list(cur.keys()):
+            week_pins = cur.setdefault(body.tuan_iso, {})
+            for k in list(week_pins.keys()):
                 if body.nv_id == "all" or f"|{body.nv_id}" in str(k):
-                    cur[k] = False
+                    week_pins.pop(k, None)
             return cur
 
-        kv_mutate("pins", mut_pins, {})
+        kv_mutate("pins_by_week", mut_pins, {})
 
     record_sua(
         loai="roster_nv_status",

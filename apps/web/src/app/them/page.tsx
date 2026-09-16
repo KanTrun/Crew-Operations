@@ -21,7 +21,7 @@ const LINKS: Array<[string, string]> = [
   ["/phieu", "Phiếu"],
   ["/toi", "Ca của tôi"],
   ["/treo", "Việc treo"],
-  ["/roster", "Lịch tuần"],
+  ["/lich-tuan", "Lịch tuần"],
   ["/inbox", "Hộp thư"],
   ["/cam-nang", "Cẩm nang"],
 ];

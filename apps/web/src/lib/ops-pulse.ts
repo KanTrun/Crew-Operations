@@ -51,7 +51,7 @@ export function computeOpsPulse(input: OpsPulseInput): OpsPulseModel {
       aiActive: true,
       aiLabel,
       insight: "Bộ giải CP-SAT đang tối ưu lịch tuần. Kiểm tra kết quả trước khi công bố.",
-      href: "/roster",
+      href: "/lich-tuan",
       cta: "Mở lịch tuần",
       ariaLabel: `AI đang xếp lịch. ${input.treo} việc treo. Bấm để mở lịch tuần.`,
       severity: "warn",

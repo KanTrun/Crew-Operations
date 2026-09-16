@@ -40,7 +40,9 @@ class Ca(BaseModel):
 
 class LichTuan(BaseModel):
     tuan_iso: str
-    trang_thai: Literal["nhap", "dang_giai", "cho_duyet", "da_cong_bo", "da_dong"] = "nhap"
+    trang_thai: Literal[
+        "may_sinh", "nhap", "dang_giai", "cho_duyet", "da_duyet", "da_cong_bo", "da_dong"
+    ] = "nhap"
     phan_cong: dict[str, list[str]] = Field(
         default_factory=dict,
         description="ca_id -> danh sách nhan_vien_id",

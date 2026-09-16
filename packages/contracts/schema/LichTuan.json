@@ -7,9 +7,11 @@
     "trang_thai": {
       "default": "nhap",
       "enum": [
+        "may_sinh",
         "nhap",
         "dang_giai",
         "cho_duyet",
+        "da_duyet",
         "da_cong_bo",
         "da_dong"
       ],

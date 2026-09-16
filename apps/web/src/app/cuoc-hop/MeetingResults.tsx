@@ -920,7 +920,7 @@ export function MeetingResults({
         <div className="flex items-center gap-2">
           {meeting.trang_thai === "da_duyet" && (
             <a
-              href="/roster"
+              href="/lich-tuan"
               className="px-3 py-1.5 text-xs rounded font-medium bg-neutral-800 hover:bg-neutral-700 text-amber-300 border border-amber-500/40 transition-colors inline-flex items-center gap-1.5 no-underline"
             >
               📅 Sang Lịch tuần xếp ca (Solver)

@@ -9,6 +9,7 @@ export type RosterShift = {
   bat_dau?: string;
   ket_thuc?: string;
   vi_tri?: string;
+  so_nguoi_toi_thieu?: number;
 };
 
 const KHUNG_ORDER = ["sang", "chieu", "toi"] as const;
