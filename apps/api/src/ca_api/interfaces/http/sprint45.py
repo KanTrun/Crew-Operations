@@ -58,6 +58,7 @@ from ca_api.persist import (
     audit_add,
     audit_list,
     ghi_diem_danh,
+    ghi_diem_danh_ca,
     kv_get,
     kv_mutate,
     kv_set,
@@ -1618,6 +1619,15 @@ def qr_use(
 
     # Khoá theo ngày {ngay: [nv_id, ...]} — đồng bộ với /api/v1/diem-danh.
     ghi_diem_danh(used["nv_id"])
+    seed = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
+    shift = next((x for x in seed.get("ca_mau_21", []) if x.get("id") == used.get("ca_id")), {})
+    thu = shift.get("thu") or _THU_MAP.get(int(shift.get("ngay_offset") or 1), "T2")
+    ghi_diem_danh_ca(
+        store_id=str(caller.get("store_id") or "quan_01"),
+        occurrence_id=f"{thu}|{shift.get('khung', '')}",
+        nv_id=str(used["nv_id"]),
+        at_ms=_clock.now_ms(),
+    )
     _audit("qr_diem_danh", used["nv_id"], {"token": token, "ca_id": used.get("ca_id")})
     return {"ok": True, "nv_id": used["nv_id"]}
 

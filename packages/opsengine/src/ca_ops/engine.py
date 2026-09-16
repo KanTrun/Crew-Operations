@@ -37,6 +37,15 @@ class PhieuRun:
     timing_ms: list[int] = field(default_factory=list)
     anti_fake: list[str] = field(default_factory=list)
     closed: bool = False
+    store_id: str = ""
+    tuan_iso: str = ""
+    occurrence_id: str = ""
+    event_type: str = ""
+    responsible_nv_id: str = ""
+    receiver_nv_id: str = ""
+    policy_version: int = 0
+    opens_at_ms: int = 0
+    closes_at_ms: int = 0
 
     def current(self) -> BuocState | None:
         for b in self.buoc:
@@ -62,7 +71,10 @@ def load_phieu_catalog(store_id: str, path: Path | None = None) -> list[dict[str
     venues = data.get("quan", {})
     if not isinstance(venues, dict):
         raise ValueError("quy-trinh-phieu.yaml quan must be a mapping")
-    catalog = venues.get(store_id, data["mac_dinh"])
+    venue = venues.get(store_id)
+    catalog = venue.get("phieu", data["mac_dinh"]) if isinstance(venue, dict) else (
+        venue if isinstance(venue, list) else data["mac_dinh"]
+    )
     if not isinstance(catalog, list):
         raise ValueError("quy-trinh-phieu.yaml venue catalog must be a list")
     items: list[dict[str, Any]] = []
@@ -88,6 +100,15 @@ def start_phieu(
     ca_id: str,
     now_ms: int,
     diem_danh: bool,
+    store_id: str = "",
+    tuan_iso: str = "",
+    occurrence_id: str = "",
+    event_type: str = "",
+    responsible_nv_id: str = "",
+    receiver_nv_id: str = "",
+    policy_version: int = 0,
+    opens_at_ms: int = 0,
+    closes_at_ms: int = 0,
 ) -> PhieuRun:
     tpl = load_template(mau)
     if tpl.get("mo_khi") == "nhan_vien_da_diem_danh" and not diem_danh:
@@ -108,6 +129,15 @@ def start_phieu(
         ca_id=ca_id,
         buoc=buoc,
         started_at_ms=now_ms,
+        store_id=store_id,
+        tuan_iso=tuan_iso,
+        occurrence_id=occurrence_id,
+        event_type=event_type,
+        responsible_nv_id=responsible_nv_id,
+        receiver_nv_id=receiver_nv_id,
+        policy_version=policy_version,
+        opens_at_ms=opens_at_ms,
+        closes_at_ms=closes_at_ms,
     )
 
 
@@ -199,6 +229,15 @@ def run_to_dict(run: PhieuRun) -> dict[str, Any]:
         "mau": run.mau,
         "nv_id": run.nv_id,
         "ca_id": run.ca_id,
+        "store_id": run.store_id,
+        "tuan_iso": run.tuan_iso,
+        "occurrence_id": run.occurrence_id,
+        "event_type": run.event_type,
+        "responsible_nv_id": run.responsible_nv_id,
+        "receiver_nv_id": run.receiver_nv_id,
+        "policy_version": run.policy_version,
+        "opens_at_ms": run.opens_at_ms,
+        "closes_at_ms": run.closes_at_ms,
         "closed": run.closed,
         "trang_thai": "hoan_thanh" if run.closed else "dang_lam",
         "treo": list(run.treo),
@@ -242,6 +281,15 @@ def dump_run(run: PhieuRun) -> dict[str, Any]:
         "mau": run.mau,
         "nv_id": run.nv_id,
         "ca_id": run.ca_id,
+        "store_id": run.store_id,
+        "tuan_iso": run.tuan_iso,
+        "occurrence_id": run.occurrence_id,
+        "event_type": run.event_type,
+        "responsible_nv_id": run.responsible_nv_id,
+        "receiver_nv_id": run.receiver_nv_id,
+        "policy_version": run.policy_version,
+        "opens_at_ms": run.opens_at_ms,
+        "closes_at_ms": run.closes_at_ms,
         "started_at_ms": run.started_at_ms,
         "treo": list(run.treo),
         "timing_ms": list(run.timing_ms),
@@ -286,5 +334,14 @@ def load_run(data: dict[str, Any]) -> PhieuRun:
         timing_ms=list(data.get("timing_ms") or []),
         anti_fake=list(data.get("anti_fake") or []),
         closed=bool(data.get("closed")),
+        store_id=str(data.get("store_id") or ""),
+        tuan_iso=str(data.get("tuan_iso") or ""),
+        occurrence_id=str(data.get("occurrence_id") or ""),
+        event_type=str(data.get("event_type") or ""),
+        responsible_nv_id=str(data.get("responsible_nv_id") or ""),
+        receiver_nv_id=str(data.get("receiver_nv_id") or ""),
+        policy_version=int(data.get("policy_version") or 0),
+        opens_at_ms=int(data.get("opens_at_ms") or 0),
+        closes_at_ms=int(data.get("closes_at_ms") or 0),
     )
     return run

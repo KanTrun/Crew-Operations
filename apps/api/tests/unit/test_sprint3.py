@@ -9,6 +9,7 @@ from ca_api.persist import kv_get, kv_set
 from fastapi.testclient import TestClient
 
 from unit.auth_util import headers
+from unit.test_phieu_deterministic import TZ, _snapshot
 
 client = TestClient(app)
 PHOTO = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
@@ -16,6 +17,26 @@ PHOTO = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
 
 def _hom_nay() -> str:
     return datetime.now(timezone(timedelta(hours=7))).date().isoformat()
+
+
+def _start_opening(auth: dict[str, str]) -> dict:
+    now = datetime.now(TZ).replace(second=0, microsecond=0)
+    _snapshot(
+        [{
+            "id": "T2|sang",
+            "start": now,
+            "end": now + timedelta(hours=4),
+            "staff": ["nv_03"],
+            "responsible": "nv_03",
+        }]
+    )
+    checked = client.post(
+        "/api/v1/diem-danh",
+        json={"occurrence_id": "T2|sang"},
+        headers=auth,
+    )
+    assert checked.status_code == 200, checked.text
+    return cast(dict, client.post("/api/v1/phieu/resolve", headers=auth).json()["item"]["run"])
 
 
 def test_diem_danh_tuong_thich_nguoc_du_lieu_list_cu() -> None:
@@ -50,10 +71,7 @@ def test_diem_danh_khong_loi_khi_kv_hong() -> None:
 
 def test_phieu_twenty_steps_and_treo() -> None:
     auth = headers(client, "minh")
-    client.post("/api/v1/diem-danh", headers=auth)
-    r = client.post("/api/v1/phieu/start", json={"mau": "mo_quan"}, headers=auth)
-    assert r.status_code == 200
-    body = r.json()
+    body = _start_opening(auth)
     assert body["so_buoc"] >= 20
     pid = body["id"]
     for b in body["buocs"]:
@@ -88,11 +106,10 @@ def test_phieu_twenty_steps_and_treo() -> None:
 
 def test_photo_rejected_without_payload() -> None:
     auth = headers(client, "minh")
-    client.post("/api/v1/diem-danh", headers=auth)
-    r = client.post("/api/v1/phieu/start", json={"mau": "mo_quan"}, headers=auth)
-    pid = r.json()["id"]
-    first_photo = next(b for b in r.json()["buocs"] if b["loai"] == "photo")
-    for b in r.json()["buocs"]:
+    body = _start_opening(auth)
+    pid = body["id"]
+    first_photo = next(b for b in body["buocs"] if b["loai"] == "photo")
+    for b in body["buocs"]:
         if b["ma"] == first_photo["ma"]:
             break
         client.post(
@@ -117,7 +134,8 @@ def test_start_requires_diem_danh() -> None:
 def test_ban_giao_ca_khong_can_diem_danh() -> None:
     chu = headers(client, "hung")
     r = client.post("/api/v1/phieu/start", json={"mau": "ban_giao_ca"}, headers=chu)
-    assert r.status_code == 200, r.text
+    assert r.status_code == 403
+    assert r.json()["detail"] == "khong_co_phieu_den_han"
 
 
 def test_mau_phieu_tat_khong_hien_va_khong_mo_duoc(monkeypatch, tmp_path: Path) -> None:
@@ -185,13 +203,13 @@ def test_phieu_seq_unique_under_parallel() -> None:
     from concurrent.futures import ThreadPoolExecutor
 
     auth = headers(client, "minh")
-    client.post("/api/v1/diem-danh", headers=auth)
+    first = _start_opening(auth)
 
     def start() -> str:
-        r = client.post("/api/v1/phieu/start", json={"mau": "mo_quan"}, headers=auth)
+        r = client.post("/api/v1/phieu/resolve", headers=auth)
         assert r.status_code == 200, r.text
-        return cast(str, r.json()["id"])
+        return cast(str, r.json()["item"]["run"]["id"])
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         ids = list(pool.map(lambda _: start(), range(8)))
-    assert len(ids) == len(set(ids))
+    assert set(ids) == {first["id"]}

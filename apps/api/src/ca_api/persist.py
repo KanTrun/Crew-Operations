@@ -1431,6 +1431,41 @@ def ghi_diem_danh(nv_id: str) -> None:
     kv_mutate("diem_danh", mut, {})
 
 
+def ghi_diem_danh_ca(
+    *,
+    store_id: str,
+    occurrence_id: str,
+    nv_id: str,
+    at_ms: int,
+) -> None:
+    """Strict attendance evidence scoped to venue, date and shift occurrence."""
+    ngay = datetime.fromtimestamp(at_ms / 1000, _VN_TZ).date().isoformat()
+    key = f"{store_id}|{ngay}|{occurrence_id}|{nv_id}"
+
+    def mut(rows: dict[str, Any]) -> dict[str, Any]:
+        rows[key] = {
+            "store_id": store_id,
+            "ngay": ngay,
+            "occurrence_id": occurrence_id,
+            "nv_id": nv_id,
+            "at_ms": at_ms,
+        }
+        return rows
+
+    kv_mutate("diem_danh_ca", mut, {})
+
+
+def da_diem_danh_ca(
+    *,
+    store_id: str,
+    ngay: str,
+    occurrence_id: str,
+    nv_id: str,
+) -> bool:
+    rows = kv_get("diem_danh_ca", {})
+    return isinstance(rows, dict) and f"{store_id}|{ngay}|{occurrence_id}|{nv_id}" in rows
+
+
 def audit_list() -> list[dict[str, Any]]:
     init_db()
     with _conn() as cx:

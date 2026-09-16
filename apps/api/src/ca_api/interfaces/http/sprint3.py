@@ -17,6 +17,7 @@ except ImportError:
     UTC = timezone.utc
 from pathlib import Path
 from typing import Annotated, Any, cast
+from zoneinfo import ZoneInfo
 
 from ca_agents.ag_msg import classify
 from ca_agents.ag_tkb.extract import extract_tkb
@@ -40,9 +41,10 @@ from pydantic import BaseModel, Field
 
 from ca_api.orchestration import Clock, IdempotencyStore, StateMachine, dispatch_parallel
 from ca_api.persist import (
+    da_diem_danh_ca,
     db_path,
-    diem_danh_hom_nay,
     ghi_diem_danh,
+    ghi_diem_danh_ca,
     kv_get,
     kv_mutate,
     kv_set,
@@ -96,9 +98,23 @@ def _can_touch(run: Any, authorization: str | None) -> str:
     role = _require_role(authorization)
     if role in {"quan_ly", "chu_quan"}:
         return nv
-    if run.nv_id != nv:
+    if run.nv_id != nv and getattr(run, "receiver_nv_id", "") != nv:
         raise HTTPException(status_code=403, detail="khong_phai_chu_phieu")
     return nv
+
+
+def _can_operate(run: PhieuRun, authorization: str | None) -> str:
+    nv = _nv_from_token(authorization)
+    current = run.current()
+    if current and current.ma == "nguoi_nhan_xac_nhan":
+        if not run.receiver_nv_id or nv != run.receiver_nv_id:
+            raise HTTPException(status_code=403, detail="chi_nguoi_nhan_duoc_xac_nhan")
+        return nv
+    if run.responsible_nv_id:
+        if nv != run.responsible_nv_id:
+            raise HTTPException(status_code=403, detail="chi_nguoi_phu_trach_duoc_lam")
+        return nv
+    return _can_touch(run, authorization)
 
 
 def _require_chu_quan(authorization: str | None) -> str:
@@ -173,7 +189,12 @@ def _signals(run: Any, extra: dict[str, Any] | None = None) -> dict[str, Any]:
 
 class StartBody(BaseModel):
     mau: str = Field(min_length=1)
-    ca_id: str = "w1_c01"
+    ca_id: str = ""
+    event_id: str = ""
+
+
+class DiemDanhBody(BaseModel):
+    occurrence_id: str = ""
 
 
 class BuocBody(BaseModel):
@@ -244,13 +265,178 @@ class DispatchBody(BaseModel):
     key: str = "orc-8"
 
 
+def _published_events() -> list[dict[str, Any]]:
+    from ca_api.services.shift_events import event_rows
+
+    snapshots = kv_get("lich_van_hanh_by_week", {})
+    out: list[dict[str, Any]] = []
+    if isinstance(snapshots, dict):
+        for snapshot in snapshots.values():
+            if isinstance(snapshot, dict):
+                out.extend(event_rows(snapshot))
+    return out
+
+
+def _find_occurrence(store_id: str, occurrence_id: str, ngay: str) -> dict[str, Any] | None:
+    snapshots = kv_get("lich_van_hanh_by_week", {})
+    if not isinstance(snapshots, dict):
+        return None
+    for snapshot in snapshots.values():
+        if not isinstance(snapshot, dict) or snapshot.get("store_id") != store_id:
+            continue
+        for row in snapshot.get("occurrences", []):
+            if row.get("id") == occurrence_id and row.get("date") == ngay:
+                return {**cast(dict[str, Any], row), "mui_gio": snapshot.get("mui_gio")}
+    return None
+
+
 @router.post("/api/v1/diem-danh")
 def diem_danh(
+    body: DiemDanhBody | None = None,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, str]:
     nv = _nv_from_token(authorization)
+    occurrence_id = body.occurrence_id if body else ""
+    if occurrence_id:
+        store_id = _store_from_token(authorization)
+        now_ms = _clock.now_ms()
+        today = datetime.fromtimestamp(now_ms / 1000, ZoneInfo("Asia/Ho_Chi_Minh")).date().isoformat()
+        occurrence = _find_occurrence(store_id, occurrence_id, today)
+        if not occurrence or nv not in set(occurrence.get("nhan_vien") or []):
+            raise HTTPException(status_code=403, detail="khong_thuoc_o_ca")
+        ghi_diem_danh_ca(
+            store_id=store_id,
+            occurrence_id=occurrence_id,
+            nv_id=nv,
+            at_ms=now_ms,
+        )
     ghi_diem_danh(nv)
-    return {"ok": "true", "nv_id": nv}
+    return {"ok": "true", "nv_id": nv, "occurrence_id": occurrence_id}
+
+
+def _task_for(authorization: str | None) -> dict[str, Any]:
+    from ca_ops import evaluate_phieu_access
+
+    nv = _nv_from_token(authorization)
+    store_id = _store_from_token(authorization)
+    now_ms = _clock.now_ms()
+    runs = kv_get("phieu", {})
+    indexes = kv_get("phieu_event_index", {})
+
+    if isinstance(runs, dict):
+        for raw in runs.values():
+            if not isinstance(raw, dict) or raw.get("store_id") != store_id or raw.get("closed"):
+                continue
+            run = load_run(raw)
+            current = run.current()
+            if run.receiver_nv_id == nv and current and current.ma == "nguoi_nhan_xac_nhan":
+                if run.opens_at_ms and not run.opens_at_ms <= now_ms <= run.closes_at_ms:
+                    continue
+                return {"status": "ready", "item": {"role": "receiver", "run": run_to_dict(run)}}
+            if run.responsible_nv_id == nv or run.nv_id == nv:
+                status = "waiting_receiver" if current and current.ma == "nguoi_nhan_xac_nhan" else "ready"
+                return {"status": status, "item": {"role": "actor", "run": run_to_dict(run)}}
+
+    catalog = {x["ma"] for x in load_phieu_catalog(store_id)}
+    templates_by_event = {
+        str(template.get("gan_voi")): (ma, template)
+        for ma in catalog
+        if (template := load_template(ma)).get("gan_voi")
+    }
+    fallback: dict[str, Any] | None = None
+    for event in sorted(_published_events(), key=lambda x: x["opens_at_ms"]):
+        if event.get("store_id") != store_id or event.get("responsible_nv_id") != nv:
+            continue
+        resolved_template = templates_by_event.get(str(event["event_type"]))
+        if not resolved_template:
+            continue
+        mau, template = resolved_template
+        checked = da_diem_danh_ca(
+            store_id=store_id,
+            ngay=str(event["id"]).split("|", 1)[0],
+            occurrence_id=str(event["occurrence_id"]),
+            nv_id=nv,
+        )
+        decision = evaluate_phieu_access(
+            nv_id=nv,
+            expected_nv_id=str(event["responsible_nv_id"]),
+            checked_in=checked,
+            requires_checkin=template.get("mo_khi") == "nhan_vien_da_diem_danh",
+            now_ms=now_ms,
+            opens_at_ms=int(event["opens_at_ms"]),
+            closes_at_ms=int(event["closes_at_ms"]),
+        )
+        run_id = indexes.get(event["id"]) if isinstance(indexes, dict) else None
+        if run_id and isinstance(runs, dict) and run_id in runs:
+            run = load_run(runs[run_id])
+            if run.closed:
+                continue
+            return {"status": "ready", "item": {"role": "actor", "run": run_to_dict(run)}}
+        item = {
+            "mau": mau,
+            "ten": str(template.get("ten") or mau),
+            "ca_id": event["ca_id"],
+            "occurrence_id": event["occurrence_id"],
+            "event_id": event["id"],
+            "event_type": event["event_type"],
+            "role": "actor",
+        }
+        if decision.allowed:
+            return {"status": "ready", "item": item}
+        if decision.reason == "chua_diem_danh_ca":
+            return {"status": "needs_checkin", "item": item, "message": decision.reason}
+        if fallback is None and decision.reason == "chua_den_cua_so":
+            fallback = {"status": "not_due", "item": item, "message": decision.reason}
+    return fallback or {"status": "done", "message": "khong_co_phieu_den_han"}
+
+
+@router.get("/api/v1/phieu/current")
+def phieu_current(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    return _task_for(authorization)
+
+
+@router.post("/api/v1/phieu/resolve")
+def phieu_resolve(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    task = _task_for(authorization)
+    item = task.get("item") if isinstance(task.get("item"), dict) else {}
+    if task.get("status") != "ready" or item.get("run") or item.get("role") == "receiver":
+        return task
+    event = next((x for x in _published_events() if x["id"] == item.get("event_id")), None)
+    if event is None:
+        raise HTTPException(status_code=409, detail="su_kien_khong_con_hieu_luc")
+    nv = _nv_from_token(authorization)
+    seq = kv_mutate("phieu_seq", lambda value: int(value) + 1, 0)
+    proposed_id = f"ph_{seq}"
+
+    def claim(indexes: dict[str, Any]) -> dict[str, Any]:
+        indexes.setdefault(str(event["id"]), proposed_id)
+        return indexes
+
+    claimed = kv_mutate("phieu_event_index", claim, {})
+    run_id = str(claimed[str(event["id"])])
+    persisted = kv_get("phieu", {})
+    if isinstance(persisted, dict) and isinstance(persisted.get(run_id), dict):
+        existing = load_run(persisted[run_id])
+        return {"status": "ready", "item": {"role": "actor", "run": run_to_dict(existing)}}
+    run = start_phieu(
+        run_id=run_id,
+        mau=str(item["mau"]),
+        nv_id=nv,
+        ca_id=str(event["ca_id"]),
+        now_ms=_clock.now_ms(),
+        diem_danh=True,
+        store_id=str(event["store_id"]),
+        tuan_iso=str(event["tuan_iso"]),
+        occurrence_id=str(event["occurrence_id"]),
+        event_type=str(event["event_type"]),
+        responsible_nv_id=str(event["responsible_nv_id"]),
+        receiver_nv_id=str(event.get("receiver_nv_id") or ""),
+        policy_version=int(event["policy_version"]),
+        opens_at_ms=int(event["opens_at_ms"]),
+        closes_at_ms=int(event["closes_at_ms"]),
+    )
+    _save_run(run)
+    return {"status": "ready", "item": {"role": "actor", "run": run_to_dict(run)}}
 
 
 @router.get("/api/v1/phieu/mau")
@@ -284,33 +470,27 @@ def phieu_start(
     body: StartBody,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    nv = _nv_from_token(authorization)
     catalog = {entry["ma"] for entry in load_phieu_catalog(_store_from_token(authorization))}
     if body.mau not in catalog:
         raise HTTPException(status_code=404, detail="mau_phieu_khong_bat")
-    da_diem_danh = nv in set(diem_danh_hom_nay())
-
-    def next_seq(seq: int) -> int:
-        return int(seq) + 1
-
-    seq = kv_mutate("phieu_seq", next_seq, 0)
-    run_id = f"ph_{seq}"
-    try:
-        run = start_phieu(
-            run_id=run_id,
-            mau=body.mau,
-            nv_id=nv,
-            ca_id=body.ca_id,
-            now_ms=_clock.now_ms(),
-            diem_danh=da_diem_danh,
-        )
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    _save_run(run)
-    sm = StateMachine()
-    sm.transition("dang_chay")
-    _sm_by_phieu[run_id] = sm
-    return run_to_dict(run)
+    task = _task_for(authorization)
+    item = task.get("item") if isinstance(task.get("item"), dict) else {}
+    if task.get("status") != "ready":
+        raise HTTPException(status_code=403, detail=task.get("message") or task.get("status"))
+    if item.get("run"):
+        run = cast(dict[str, Any], item["run"])
+        if run.get("mau") != body.mau or (body.event_id and run.get("event_id") != body.event_id):
+            raise HTTPException(status_code=403, detail="phieu_khong_dung_su_kien")
+        return run
+    if item.get("mau") != body.mau or item.get("ca_id") != body.ca_id:
+        raise HTTPException(status_code=403, detail="phieu_khong_dung_su_kien")
+    if body.event_id and item.get("event_id") != body.event_id:
+        raise HTTPException(status_code=403, detail="phieu_khong_dung_su_kien")
+    resolved = phieu_resolve(authorization)
+    resolved_item = cast(dict[str, Any], resolved.get("item") or {})
+    if not isinstance(resolved_item.get("run"), dict):
+        raise HTTPException(status_code=409, detail="khong_tao_duoc_phieu")
+    return cast(dict[str, Any], resolved_item["run"])
 
 
 @router.get("/api/v1/phieu/{phieu_id}")
@@ -330,7 +510,14 @@ def phieu_buoc(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     run = _get_run(phieu_id)
-    _can_touch(run, authorization)
+    if (
+        run.current()
+        and run.current().ma == "nguoi_nhan_xac_nhan"
+        and run.opens_at_ms
+        and not run.opens_at_ms <= _clock.now_ms() <= run.closes_at_ms
+    ):
+        raise HTTPException(status_code=409, detail="ngoai_cua_so_xac_nhan_ban_giao")
+    _can_operate(run, authorization)
     try:
         complete_buoc(run, body.ma, body.gia_tri, _clock.now_ms())
     except ValueError as exc:
@@ -352,7 +539,7 @@ def phieu_chung(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     run = _get_run(phieu_id)
-    _can_touch(run, authorization)
+    _can_operate(run, authorization)
     if not body.data_url.strip().startswith("data:image/"):
         raise HTTPException(status_code=400, detail="thieu_minh_chung_anh")
     if len(body.data_url) > 400_000:
@@ -378,7 +565,7 @@ def phieu_treo(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     run = _get_run(phieu_id)
-    _can_touch(run, authorization)
+    _can_operate(run, authorization)
     try:
         add_treo(run, body.noi_dung)
     except ValueError as exc:

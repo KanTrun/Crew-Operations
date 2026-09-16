@@ -270,6 +270,54 @@ class PinBody(BaseModel):
     xep_lai: bool = True
 
 
+class PhuTrachCaBody(BaseModel):
+    tuan_iso: str
+    occurrence_id: str
+    nv_id: str
+
+
+def _phu_trach_ca(tuan_iso: str, store_id: str = "quan_01") -> dict[str, str]:
+    all_values = kv_get("phu_trach_ca_by_week", {})
+    raw = all_values.get(f"{store_id}|{tuan_iso}", all_values.get(tuan_iso, {})) if isinstance(
+        all_values, dict
+    ) else {}
+    return {str(k): str(v) for k, v in raw.items()} if isinstance(raw, dict) else {}
+
+
+def _occurrence_staff(
+    occurrence_id: str,
+    shifts: list[dict[str, Any]],
+    assignments: dict[str, list[str]],
+) -> set[str]:
+    return {
+        str(nv_id)
+        for shift in shifts
+        if f"{shift.get('thu')}|{shift.get('khung')}" == occurrence_id
+        for nv_id in assignments.get(str(shift.get("id")), [])
+    }
+
+
+def _prune_invalid_duties(tuan_iso: str, store_id: str = "quan_01") -> list[str]:
+    from ca_api.interfaces.http.sprint45 import _phan
+
+    shifts = _format_ca_list(_seed().get("ca_mau_21", []))
+    duties = _phu_trach_ca(tuan_iso, store_id)
+    removed = [
+        occurrence_id
+        for occurrence_id, nv_id in duties.items()
+        if nv_id not in _occurrence_staff(occurrence_id, shifts, _phan(tuan_iso))
+    ]
+    if removed:
+        def mut(all_weeks: dict[str, Any]) -> dict[str, Any]:
+            week = all_weeks.setdefault(f"{store_id}|{tuan_iso}", {})
+            for occurrence_id in removed:
+                week.pop(occurrence_id, None)
+            return all_weeks
+
+        kv_mutate("phu_trach_ca_by_week", mut, {})
+    return removed
+
+
 class NvStatusBody(BaseModel):
     tuan_iso: str
     nv_id: str
@@ -616,6 +664,7 @@ def get_lich_tuan(
     """Lịch tuần đang hiệu lực của quán. Yêu cầu đăng nhập (quan_ly trở lên)."""
     _require_write_role(authorization)
     tuan_iso = tuan or "2026-W36"
+    store_id = (auth_session(authorization) or {}).get("store_id", "quan_01")
 
     data = _week_value("lich_tuan_results_by_week", tuan_iso, None)
     if not isinstance(data, dict):
@@ -663,6 +712,7 @@ def get_lich_tuan(
             "nhan_vien": nhan_vien,
             "ca": ca_list,
             "phan_cong": phan_cong,
+            "phu_trach_ca": _phu_trach_ca(tuan_iso, store_id),
             "khung_gio": _khung_template(),
             "solver": {
                 "ok": data.get("ok"),
@@ -683,7 +733,42 @@ def get_lich_tuan(
     result = _build_lich_tuan_from_seed(_seed(), tuan_iso, so_tuan)
     result["trang_thai"] = lifecycle.get("trang_thai", result.get("trang_thai", "nhap"))
     result["khung_gio"] = _khung_template()
+    result["phu_trach_ca"] = _phu_trach_ca(tuan_iso, store_id)
     return result
+
+
+@app.post("/api/v1/lich-tuan/phu-trach")
+def set_phu_trach_ca(
+    body: PhuTrachCaBody,
+    _role: Annotated[str, Depends(_require_write_role)],
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    from ca_api.interfaces.http.sprint45 import _life, _phan
+
+    state = str(_life(body.tuan_iso).get("trang_thai") or "nhap")
+    if state in {"da_cong_bo", "da_dong"}:
+        raise HTTPException(status_code=409, detail="lich_da_khoa_phu_trach")
+    shifts = _format_ca_list(_seed().get("ca_mau_21", []))
+    valid_occurrences = {f"{row.get('thu')}|{row.get('khung')}" for row in shifts}
+    if body.occurrence_id not in valid_occurrences:
+        raise HTTPException(status_code=404, detail="o_ca_khong_tim_thay")
+    if body.nv_id not in _occurrence_staff(body.occurrence_id, shifts, _phan(body.tuan_iso)):
+        raise HTTPException(status_code=422, detail="phu_trach_phai_thuoc_o_ca")
+
+    store_id = (auth_session(authorization) or {}).get("store_id", "quan_01")
+
+    def mut(all_weeks: dict[str, Any]) -> dict[str, Any]:
+        week = all_weeks.setdefault(f"{store_id}|{body.tuan_iso}", {})
+        week[body.occurrence_id] = body.nv_id
+        return all_weeks
+
+    kv_mutate("phu_trach_ca_by_week", mut, {})
+    return {
+        "ok": True,
+        "tuan_iso": body.tuan_iso,
+        "occurrence_id": body.occurrence_id,
+        "nv_id": body.nv_id,
+    }
 
 
 class KhungSlotBody(BaseModel):
@@ -743,6 +828,7 @@ def patch_khung_gio(
 async def pin_assignment(
     body: PinBody,
     _role: Annotated[str, Depends(_require_write_role)],
+    authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Pin or unpin a nhan_vien to a ca. Requires quan_ly or chu_quan token."""
     # NV hợp lệ = pool xếp lịch (users thật + seed nếu bật) — không chỉ seed:
@@ -797,6 +883,8 @@ async def pin_assignment(
         ai=_role,
         now_iso=datetime.now(UTC).isoformat(),
     )
+    store_id = (auth_session(authorization) or {}).get("store_id", "quan_01")
+    removed_duties = _prune_invalid_duties(body.tuan_iso, store_id)
     await notify_ops_changed("roster:pin", body.tuan_iso)
     return {
         "ok": True,
@@ -805,6 +893,7 @@ async def pin_assignment(
         "nv_id": body.nv_id,
         "pinned": body.pinned,
         "solver": solver_result,
+        "phu_trach_can_chon_lai": removed_duties,
     }
 
 
@@ -832,6 +921,7 @@ class LifecycleBody(BaseModel):
 async def patch_lifecycle(
     body: LifecycleBody,
     _role: Annotated[str, Depends(_require_write_role)],
+    authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Quản lý/Chủ quán cập nhật trạng thái và mốc tuần lịch.
 
@@ -847,7 +937,7 @@ async def patch_lifecycle(
         )
     if body.trang_thai == "da_dong" and _role != "chu_quan":
         raise HTTPException(status_code=403, detail="chi_chu_quan_dong_lich")
-    from ca_api.interfaces.http.sprint45 import _life, _run_solver, _save_life
+    from ca_api.interfaces.http.sprint45 import _life, _phan, _run_solver, _save_life
 
     week = body.tuan_iso or "2026-W36"
     doc = _life(week)
@@ -859,6 +949,40 @@ async def patch_lifecycle(
             status_code=409,
             detail=f"illegal:{cur}->{body.trang_thai}",
         )
+    if body.trang_thai == "da_cong_bo":
+        from ca_ops import load_phieu_policy
+
+        from ca_api.services.shift_events import build_operational_snapshot, invalid_duties
+
+        store_id = (auth_session(authorization) or {}).get("store_id", "quan_01")
+        policy_path = Path(
+            os.environ.get("NHIPQUAN_PHIEU_CONFIG")
+            or ROOT / "config" / "quy-trinh-phieu.yaml"
+        )
+        policy = load_phieu_policy(
+            store_id,
+            policy_path,
+        )
+        snapshot = build_operational_snapshot(
+            store_id=store_id,
+            tuan_iso=week,
+            shifts=_format_ca_list(_seed().get("ca_mau_21", [])),
+            assignments=_phan(week),
+            duties=_phu_trach_ca(week, store_id),
+            policy=policy,
+        )
+        missing = invalid_duties(snapshot)
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "thieu_phu_trach_ca", "occurrence_ids": missing},
+            )
+
+        def save_snapshot(all_weeks: dict[str, Any]) -> dict[str, Any]:
+            all_weeks[f"{store_id}|{week}"] = snapshot
+            return all_weeks
+
+        kv_mutate("lich_van_hanh_by_week", save_snapshot, {})
 
     def chuyen(trang_thai: str) -> dict[str, Any]:
         doc["trang_thai"] = trang_thai

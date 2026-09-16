@@ -6,7 +6,6 @@ import {
   AuthGate,
   Btn,
   BtnLink,
-  Empty,
   FixedBottomBar,
   Hint,
   inputClassName,
@@ -20,16 +19,6 @@ import { CopilotPane } from "../../ui/copilot/CopilotPane";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const PHIEU_ID_KEY = "nq_phieu_dang_lam";
-
-type MauPhieu = {
-  ma: string;
-  ten: string;
-  so_buoc?: number;
-  mo_khi?: string;
-  han_hoan_thanh_phut?: number;
-  gan_voi?: string;
-  bat_buoc?: boolean;
-};
 
 type BuocState = {
   ma: string;
@@ -78,19 +67,22 @@ function nenAnh(file: File): Promise<string> {
   });
 }
 
-const MO_KHI_VI: Record<string, string> = {
-  nhan_vien_da_diem_danh: "sau khi có mặt",
-  ca_ket_thuc: "cuối ca",
-};
-const GAN_VOI_VI: Record<string, string> = {
-  ca_dau_ngay: "đầu ngày",
-  ca_cuoi_ngay: "cuối ngày",
-  giao_ca: "lúc giao ca",
+type CurrentTask = {
+  status: "ready" | "needs_checkin" | "waiting_receiver" | "not_due" | "done";
+  message?: string;
+  item?: {
+    mau?: string;
+    ten?: string;
+    ca_id?: string;
+    occurrence_id?: string;
+    role?: "actor" | "receiver";
+    run?: PhieuData;
+  };
 };
 
 export default function PhieuPage() {
   const [token, setToken] = useState("");
-  const [mauList, setMauList] = useState<MauPhieu[]>([]);
+  const [task, setTask] = useState<CurrentTask | null>(null);
   const [phieu, setPhieu] = useState<PhieuData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
@@ -100,7 +92,6 @@ export default function PhieuPage() {
   const [inputVal, setInputVal] = useState("");
   const [done, setDone] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
-  const [daCoMat, setDaCoMat] = useState(false);
   const [anhPreview, setAnhPreview] = useState<string | null>(null);
   const [anhChoGui, setAnhChoGui] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -109,6 +100,29 @@ export default function PhieuPage() {
     () => ({ Authorization: `Bearer ${token}` }),
     [token],
   );
+
+  const loadCurrentTask = useCallback(async () => {
+    if (!token) return;
+    const response = await fetch(`${API}/api/v1/phieu/current`, { headers: authHeader() });
+    if (!response.ok) throw new Error("load_task");
+    let current = (await response.json()) as CurrentTask;
+    if (current.status === "ready" && !current.item?.run) {
+      const resolved = await fetch(`${API}/api/v1/phieu/resolve`, {
+        method: "POST",
+        headers: authHeader(),
+      });
+      if (!resolved.ok) throw new Error("resolve_task");
+      current = (await resolved.json()) as CurrentTask;
+    }
+    setTask(current);
+    if (current.item?.run) {
+      setPhieu(current.item.run);
+      setDone(current.item.run.trang_thai === "hoan_thanh");
+      if (current.item.run.trang_thai === "dang_lam") {
+        sessionStorage.setItem(PHIEU_ID_KEY, current.item.run.id);
+      }
+    }
+  }, [token, authHeader]);
 
   useEffect(() => {
     const t = sessionStorage.getItem("nq_token");
@@ -129,16 +143,9 @@ export default function PhieuPage() {
       .catch(() => sessionStorage.removeItem(PHIEU_ID_KEY));
   }, [token, authHeader]);
 
-  // Load danh sách mẫu — không còn fallback hard-code.
   useEffect(() => {
-    fetch(`${API}/api/v1/phieu/mau`, { headers: authHeader() })
-      .then(async (r) => {
-        if (!r.ok) throw new Error("load_mau");
-        return r.json() as Promise<MauPhieu[] | { items: MauPhieu[] }>;
-      })
-      .then((d) => setMauList(Array.isArray(d) ? d : d.items ?? []))
-      .catch(() => setMauList([]));
-  }, [authHeader]);
+    loadCurrentTask().catch(() => setError("Không tải được nhiệm vụ ca hiện tại."));
+  }, [loadCurrentTask]);
 
   async function xacNhanCoMat() {
     setBusy(true);
@@ -146,43 +153,14 @@ export default function PhieuPage() {
     try {
       const r = await fetch(`${API}/api/v1/diem-danh`, {
         method: "POST",
-        headers: authHeader(),
+        headers: { "Content-Type": "application/json", ...authHeader() },
+        body: JSON.stringify({ occurrence_id: task?.item?.occurrence_id ?? "" }),
       });
       if (!r.ok) throw new Error("diem_danh");
-      setDaCoMat(true);
-      setOkMsg("Đã ghi có mặt — chọn phiếu để bắt đầu ca.");
+      setOkMsg("Đã ghi có mặt đúng ca. Hệ thống đang mở phiếu được phân công.");
+      await loadCurrentTask();
     } catch {
       setError("Không ghi được điểm danh. Thử lại giúp quán.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function startPhieu(ma: string) {
-    setBusy(true);
-    setError(null);
-    setOkMsg(null);
-    try {
-      const r = await fetch(`${API}/api/v1/phieu/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify({ mau: ma }),
-      });
-      if (!r.ok) {
-        const d = (await r.json().catch(() => null)) as { detail?: string } | null;
-        if (d?.detail === "chua_diem_danh") {
-          setError("Chưa có mặt hôm nay — bấm «Tôi đã có mặt» trước đã nha.");
-          setDaCoMat(false);
-          return;
-        }
-        throw new Error("start_failed");
-      }
-      const data = (await r.json()) as PhieuData;
-      setPhieu(data);
-      setDone(false);
-      sessionStorage.setItem(PHIEU_ID_KEY, data.id);
-    } catch {
-      setError("Không mở được phiếu. Thử lại.");
     } finally {
       setBusy(false);
     }
@@ -210,6 +188,8 @@ export default function PhieuPage() {
       if (updated.trang_thai === "hoan_thanh") {
         setDone(true);
         sessionStorage.removeItem(PHIEU_ID_KEY);
+      } else if (updated.buoc_hien_tai === "nguoi_nhan_xac_nhan") {
+        await loadCurrentTask();
       } else {
         const af = updated.signals?.anti_fake ?? [];
         if (af.length > 0) setOkMsg(null);
@@ -292,13 +272,6 @@ export default function PhieuPage() {
     }
   }
 
-  function boPhieu() {
-    sessionStorage.removeItem(PHIEU_ID_KEY);
-    setPhieu(null);
-    setDone(false);
-    setOkMsg(null);
-  }
-
   const currentBuocIndex = phieu
     ? phieu.buocs.findIndex((b) => !b.hoan_thanh)
     : -1;
@@ -326,8 +299,15 @@ export default function PhieuPage() {
           <BtnLink href="/hom-nay" variant="primary">
             Về Hôm nay
           </BtnLink>
-          <Btn variant="ghost" onClick={() => { setPhieu(null); setDone(false); }}>
-            Làm phiếu khác
+          <Btn
+            variant="ghost"
+            onClick={() => {
+              setPhieu(null);
+              setDone(false);
+              void loadCurrentTask();
+            }}
+          >
+            Kiểm tra nhiệm vụ tiếp theo
           </Btn>
         </div>
         <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
@@ -343,12 +323,15 @@ export default function PhieuPage() {
         meta={
           phieu
             ? `Bước ${Math.min(completed + 1, total)} / ${total}`
-            : "Chọn phiếu cho ca hôm nay rồi đi từng bước."
+            : "Hệ thống tự trình đúng phiếu theo lịch, trách nhiệm và thời điểm."
         }
       />
       <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
         Hỏi trợ lý vận hành
       </Btn>
+      <p className="text-xs text-[var(--nq-dim)]">
+        Trợ lý chỉ giải thích SOP; quyền mở phiếu do lịch công bố và core policy quyết định.
+      </p>
 
       {error ? <Alert>{error}</Alert> : null}
       {okMsg ? <Alert kind="ok">{okMsg}</Alert> : null}
@@ -357,48 +340,26 @@ export default function PhieuPage() {
       ) : null}
 
       {!phieu ? (
-        <>
-          {!daCoMat && mauList.some((m) => m.mo_khi === "nhan_vien_da_diem_danh") ? (
-            <OpsCard eyebrow="Tùy theo phiếu" title="Xác nhận có mặt">
+        <OpsCard eyebrow="Nhiệm vụ ca hiện tại" title={task?.item?.ten ?? "Chưa có phiếu cần làm"}>
+          {task?.status === "needs_checkin" ? (
+            <>
               <p className="mb-3 text-sm text-[var(--nq-dim)]">
-                Chỉ các phiếu cần có mặt mới yêu cầu bước này. Bàn giao ca vẫn có thể mở khi cần.
+                Bạn là người phụ trách ô ca này. Xác nhận có mặt để mở đúng phiếu được giao.
               </p>
               <Btn variant="ghost" busy={busy} onClick={xacNhanCoMat}>
                 Tôi đã có mặt
               </Btn>
-            </OpsCard>
-          ) : null}
-          <OpsCard eyebrow="Theo cấu hình quán" title="Chọn phiếu cho ca" count={mauList.length} countLabel="mẫu">
-              {mauList.length === 0 ? (
-                <Empty title="Chưa tải được danh sách phiếu">
-                  Kiểm tra kết nối rồi bấm thử lại.
-                  <Btn className="mt-3" variant="ghost" onClick={() => location.reload()}>
-                    Thử lại
-                  </Btn>
-                </Empty>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {mauList.map((m) => (
-                    <button
-                      key={m.ma}
-                      type="button"
-                      disabled={busy}
-                      onClick={() => startPhieu(m.ma)}
-                      className="border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 text-left transition-colors hover:border-[var(--nq-copper)] disabled:opacity-50"
-                    >
-                      <span className="block text-base font-black text-[var(--nq-fg)]">{m.ten || m.ma}</span>
-                      <span className="mt-1 block text-xs text-[var(--nq-dim)]">
-                        {m.so_buoc ? `${m.so_buoc} bước · ` : ""}
-                        {m.mo_khi ? `mở ${MO_KHI_VI[m.mo_khi] ?? m.mo_khi} · ` : ""}
-                        {m.bat_buoc ? "bắt buộc · " : "tùy chọn · "}
-                        {m.han_hoan_thanh_phut ? `nên xong trong ${m.han_hoan_thanh_phut} phút` : ""}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-          </OpsCard>
-        </>
+            </>
+          ) : task?.status === "not_due" ? (
+            <p className="text-sm text-[var(--nq-dim)]">Chưa đến cửa sổ thực hiện. Trang sẽ chỉ mở phiếu khi đúng mốc ca.</p>
+          ) : task?.status === "waiting_receiver" ? (
+            <p className="text-sm text-[var(--nq-dim)]">Đang chờ người phụ trách ca sau xác nhận bàn giao.</p>
+          ) : task?.status === "done" ? (
+            <p className="text-sm text-[var(--nq-dim)]">Bạn không có phiếu đến hạn ở thời điểm này.</p>
+          ) : (
+            <p className="text-sm text-[var(--nq-dim)]">Đang đối chiếu lịch công bố và cửa sổ vận hành…</p>
+          )}
+        </OpsCard>
       ) : null}
 
       {phieu && !done ? (
@@ -427,7 +388,13 @@ export default function PhieuPage() {
             ) : null}
           </OpsCard>
 
-          {currentBuoc ? (
+          {task?.status === "waiting_receiver" ? (
+            <OpsCard eyebrow="Bàn giao đã gửi" title="Chờ người nhận ca xác nhận">
+              <p className="text-sm text-[var(--nq-dim)]">
+                Người giao không thể tự xác nhận thay người nhận. Phiếu sẽ hoàn tất khi người phụ trách ca sau đăng nhập và xác nhận.
+              </p>
+            </OpsCard>
+          ) : currentBuoc ? (
             <OpsCard
               eyebrow={`Bước ${completed + 1}`}
               title={currentBuoc.ten}
@@ -563,8 +530,8 @@ export default function PhieuPage() {
           <Btn variant="ghost" onClick={() => setShowTreo((s) => !s)} title="Để lại việc khó cho quản lý">
             Để lại việc khó
           </Btn>
-          <Btn variant="ghost" onClick={boPhieu} title="Bỏ phiếu này, về chọn mẫu">
-            Bỏ phiếu
+          <Btn variant="ghost" onClick={() => loadCurrentTask()} title="Đồng bộ lại nhiệm vụ từ lịch công bố">
+            Đồng bộ nhiệm vụ
           </Btn>
         </FixedBottomBar>
       ) : null}
