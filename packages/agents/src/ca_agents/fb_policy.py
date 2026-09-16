@@ -1,17 +1,7 @@
-"""FB-POLICY: deterministic moderation policy engine for AG-FBPAGE (ADR-002 compliant).
+"""FB-POLICY: deterministic moderation for AG-FBPAGE (ADR-002).
 
-Maps (intent, confidence, context) -> PolicyDecision. No LLM, no I/O, no clock
-(expires_at is computed by the API layer, not here).
-
-Thứ tự ưu tiên quyết định (kế hoạch §3.3 — KHÔNG tự đổi):
-    1. Từ khóa escalate Chủ quán (an toàn) thắng mọi nhánh
-    2. Khiếu nại → priority_review
-    3. Ngoài phạm vi → block_polite
-    4. Thiếu dữ kiện KB / giá vượt trần → queue
-    5. Intent bắt buộc duyệt → queue
-    6. Loop guard (hỏi lại ≥ 3 lần) → queue
-    7. Confidence thấp (< 0.60) → queue
-    8. Whitelist auto + đủ ngưỡng → auto_send (comment siết riêng)
+Mặc định TỰ XỬ LÝ. Chỉ chuyển người khi khớp đúng danh sách đóng Mục 4
+(system prompt nhà hàng). Không mở rộng danh sách đó.
 """
 
 from __future__ import annotations
@@ -22,66 +12,91 @@ from ca_contracts import FbPolicyAction, PolicyDecision
 
 from ca_agents.guardrails import normalize_text
 
-# ── Ngưỡng & hằng số chính sách (gom một chỗ — quyết định kinh doanh, §3.2) ──
-
+# Ngưỡng FAQ (khi đã qua Mục 4). Không dùng để “an toàn hóa” FAQ thường.
 AUTO_THRESHOLD: dict[str, float] = {
     "chao_hoi": 0.90,
     "hoi_gio_dia_chi": 0.85,
     "hoi_menu_gia": 0.85,
 }
-AUTO_THRESHOLD_COMMENT = 0.95
-COMMENT_SAFE_INTENTS = frozenset({"chao_hoi", "hoi_gio_dia_chi"})
+AUTO_THRESHOLD_COMMENT = 0.85
+COMMENT_SAFE_INTENTS = frozenset({
+    "chao_hoi", "hoi_gio_dia_chi", "hoi_menu_gia", "hoi_khuyen_mai", "dat_ban",
+})
 
 LOW_CONFIDENCE_QUEUE = 0.60
-REPEAT_ASK_LIMIT = 3
+REPEAT_ASK_LIMIT = 99  # không còn dùng để né tự xử lý
 
 SLA_MINUTES_PRIORITY_REVIEW = 5
 SLA_MINUTES_QUEUE_REVIEW = 10
 SLA_MINUTES_COMMENT_QUEUE = 15
 SLA_MINUTES_ESCALATE_OWNER = 15
 
-# Intent bắt buộc con người duyệt — không bao giờ auto (§3.2)
-INTENTS_REQUIRING_APPROVAL = frozenset(
-    {"hoi_khuyen_mai", "tu_van_mon", "yeu_cau_dac_biet"}
-)
+# Không còn intent bắt buộc duyệt — Mục 3 trao toàn quyền trong dữ liệu/ngưỡng.
+INTENTS_REQUIRING_APPROVAL: frozenset[str] = frozenset()
+
 INTENT_COMPLAINT = "khieu_nai_gop_y"
 INTENT_OTHER = "khac"
 
-# Từ khóa escalate Chủ quán — CHỈ 1 BẢN không dấu (normalize_text tự quy về
-# dạng này; kế hoạch §6.2c). Danh sách là quyết định kinh doanh, không tự thêm.
-OWNER_ESCALATION_KEYWORDS = (
-    "ngo doc", "dau bung", "di ung", "thai san", "tre em", "con toi",
-    "chau toi", "hoa don do", "hop dong", "hoan tien", "boi thuong",
-    "chuyen khoan", "bao chi", "co quan chuc nang", "cong an", "so y te",
-    "luat su", "gap chu", "gap quan ly", "noi chuyen voi quan ly",
+# Mục 4.1 — an toàn sức khỏe nghiêm trọng (không dấu, 1 bản)
+HEALTH_KEYWORDS = (
+    "ngo doc", "dau bung", "di ung", "di vat", "soc phan ve", "say thuoc",
 )
 
-# Từ khóa khiếu nại nặng — QL xử lý trong 5 phút, chưa tới mức Chủ quán
+# Mục 4.2 — đe dọa pháp lý / truyền thông / cơ quan
+LEGAL_KEYWORDS = (
+    "bao chi", "co quan chuc nang", "cong an", "so y te", "luat su",
+    "van ban phap ly", "toi se kien", "kien quan", "hoa don do",
+)
+
+# Mục 4.5 — khách đòi người thật
+ASK_HUMAN_KEYWORDS = (
+    "gap chu", "gap quan ly", "noi chuyen voi quan ly", "gap nguoi that",
+    "can gap nguoi", "chuyen cho quan ly",
+)
+
+# Mục 4.6 — giận dữ leo thang
+HOSTILE_KEYWORDS = (
+    "de doa", "doa giet", "danh chet", "suc vat", "thu dich", "doa danh", "dap quan",
+)
+
+# Mục 4.7 — ngoài vận hành nhà hàng
+INTERNAL_SCOPE_KEYWORDS = (
+    "hop dong", "nhan su noi bo", "luong nhan vien",
+)
+
+# Mục 4.3 — chỉ escalate khi tầng gọi set compensation_above_limit
+FINANCIAL_KEYWORDS = ("hoan tien", "boi thuong")
+
+# Hợp nhất nhóm chủ quán (health + legal + hỏi chủ) — test/compat
+OWNER_ESCALATION_KEYWORDS = HEALTH_KEYWORDS + LEGAL_KEYWORDS + ASK_HUMAN_KEYWORDS
+
 COMPLAINT_HEAVY_KEYWORDS = (
     "tay chay", "1 sao", "review xau", "boc phot", "that vong",
 )
 
-# Ngoài phạm vi — trả template lịch sự duy nhất, không escalate
 OUT_OF_SCOPE_KEYWORDS = (
     "chinh tri", "ton giao", "dang", "doi thu",
+)
+
+HOURS_EXCEPTION_KEYWORDS = (
+    "dong som", "mo tre", "nghi hom nay", "nghi le", "doi gio mo",
+    "thay doi gio", "book kin quan", "thue nguyen quan", "dong cua som",
 )
 
 
 @dataclass(frozen=True)
 class PolicyContext:
-    """Ngữ cảnh đưa vào decide() — tầng gọi chịu trách nhiệm tính các flag.
+    """Ngữ cảnh đưa vào decide() — tầng gọi tính các flag, policy không I/O."""
 
-    price_above_limit: tầng gọi đọc config (auto_price_cap_vnd) rồi set flag —
-    policy không hard-code số tiền trong logic.
-    """
-
-    source: str                     # "messenger" | "comment"
-    sensitive_post: bool = False    # comment trên bài nhạy cảm (giá/tin buồn/lùm xùm)
-    repeat_ask_count: int = 0       # cùng câu hỏi chưa được trả lời trong thread
-    kb_has_fact: bool = True        # dữ kiện yêu cầu có trong chatbot_kb/menu_mon?
-    price_above_limit: bool = False # món được hỏi có giá vượt trần config?
-    recent_messages: tuple[str, ...] = ()  # 2-3 tin gần nhất cùng thread (~5 phút)
-    reservation_auto_eligible: bool = False # Bàn trống & hợp lệ theo logic auto-reservation
+    source: str
+    sensitive_post: bool = False
+    repeat_ask_count: int = 0
+    kb_has_fact: bool = True
+    price_above_limit: bool = False
+    recent_messages: tuple[str, ...] = ()
+    reservation_auto_eligible: bool = False
+    booking_system_down: bool = False
+    compensation_above_limit: bool = False
 
 
 def _has_any(text: str, keywords: tuple[str, ...]) -> bool:
@@ -89,8 +104,6 @@ def _has_any(text: str, keywords: tuple[str, ...]) -> bool:
 
 
 def _escalation_text(message_text: str, ctx: PolicyContext) -> str:
-    """Ghép tin hiện tại với ngữ cảnh gần nhất — chỉ dùng cho nhóm an toàn/escalate
-    (kế hoạch §6.2d: không áp cho toàn bộ intent để tránh làm loãng ngữ nghĩa)."""
     if not ctx.recent_messages:
         return message_text
     return " ".join((*ctx.recent_messages, message_text))
@@ -115,49 +128,96 @@ def _queue(
     )
 
 
+def _escalate(
+    reason: str,
+    intent: str,
+    confidence: float,
+    flagged: tuple[str, ...] = (),
+) -> PolicyDecision:
+    return PolicyDecision(
+        action=FbPolicyAction.ESCALATE_OWNER,
+        reason=reason,
+        intent=intent,
+        confidence=confidence,
+        assigned_role="chu_quan",
+        sla_minutes=SLA_MINUTES_ESCALATE_OWNER,
+        flagged_reasons=list(flagged),
+    )
+
+
+def _priority(
+    reason: str,
+    intent: str,
+    confidence: float,
+) -> PolicyDecision:
+    return PolicyDecision(
+        action=FbPolicyAction.PRIORITY_REVIEW,
+        reason=reason,
+        intent=intent,
+        confidence=confidence,
+        assigned_role="quan_ly",
+        sla_minutes=SLA_MINUTES_PRIORITY_REVIEW,
+    )
+
+
+def _auto(reason: str, intent: str, confidence: float) -> PolicyDecision:
+    return PolicyDecision(
+        action=FbPolicyAction.AUTO_SEND,
+        reason=reason,
+        intent=intent,
+        confidence=confidence,
+    )
+
+
+def _ambiguous_flag(intent: str) -> tuple[str, ...]:
+    if intent not in (INTENT_COMPLAINT, "yeu_cau_dac_biet"):
+        return ("keyword_matched_ambiguous",)
+    return ()
+
+
 def decide(
     intent: str,
     confidence: float,
     message_text: str,
     ctx: PolicyContext,
 ) -> PolicyDecision:
-    """Deterministic decision. Order matters: safety keywords > scope > queue > auto."""
+    """Closed-list Mục 4 trước; mọi thứ khác → auto_send."""
     low = normalize_text(message_text)
-
-    # 1. An toàn trước: keyword escalate thắng mọi thứ (kể cả heavy-complaint)
     escalation_text = normalize_text(_escalation_text(message_text, ctx))
-    if _has_any(escalation_text, OWNER_ESCALATION_KEYWORDS):
-        flagged: tuple[str, ...] = ()
-        # Keyword khớp nhưng classifier không đồng thuận → ghi tín hiệu giám sát
-        # chất lượng bộ từ khóa (kế hoạch §6.2c) — quyết định vẫn tất định.
-        if intent not in (INTENT_COMPLAINT, "yeu_cau_dac_biet"):
-            flagged = ("keyword_matched_ambiguous",)
-        return PolicyDecision(
-            action=FbPolicyAction.ESCALATE_OWNER,
-            reason="owner_escalation_keyword",
-            intent=intent,
-            confidence=confidence,
-            assigned_role="chu_quan",
-            sla_minutes=SLA_MINUTES_ESCALATE_OWNER,
-            flagged_reasons=list(flagged),
-        )
 
-    # 2. Khiếu nại → priority_review (nhẹ hay nặng đều con người, SLA 5 phút)
-    if intent == INTENT_COMPLAINT:
-        return PolicyDecision(
-            action=FbPolicyAction.PRIORITY_REVIEW,
-            reason=(
-                "heavy_complaint"
-                if _has_any(low, COMPLAINT_HEAVY_KEYWORDS)
-                else "complaint_requires_human"
-            ),
-            intent=intent,
-            confidence=confidence,
-            assigned_role="quan_ly",
-            sla_minutes=SLA_MINUTES_PRIORITY_REVIEW,
-        )
+    # 4.1 An toàn sức khỏe
+    if _has_any(escalation_text, HEALTH_KEYWORDS):
+        return _escalate("health_safety", intent, confidence, _ambiguous_flag(intent))
 
-    # 3. Ngoài phạm vi — chặn lịch sự, không báo chủ
+    # 4.2 Đe dọa pháp lý / báo chí / cơ quan
+    if _has_any(escalation_text, LEGAL_KEYWORDS):
+        return _escalate("legal_threat", intent, confidence, _ambiguous_flag(intent))
+
+    # 4.5 Khách đòi người thật
+    if _has_any(escalation_text, ASK_HUMAN_KEYWORDS):
+        return _escalate("customer_asked_human", intent, confidence, _ambiguous_flag(intent))
+
+    # 4.6 Leo thang thù địch
+    if _has_any(escalation_text, HOSTILE_KEYWORDS):
+        return _priority("hostile_escalation", intent, confidence)
+
+    # 4.3 Vượt ngưỡng đền bù (flag do tầng gọi tính theo số tiền)
+    if _has_any(escalation_text, FINANCIAL_KEYWORDS) and ctx.compensation_above_limit:
+        return _escalate("financial_above_limit", intent, confidence)
+
+    # 4.7 Ngoài phạm vi vận hành (hợp đồng, nhân sự)
+    if _has_any(escalation_text, INTERNAL_SCOPE_KEYWORDS):
+        return _escalate("out_of_scope_internal", intent, confidence, _ambiguous_flag(intent))
+
+    # 4.4 Hệ thống đặt bàn/POS không đọc được
+    if intent == "dat_ban" and ctx.booking_system_down:
+        return _queue("system_failure", intent, confidence, sla=SLA_MINUTES_QUEUE_REVIEW)
+
+    # Vượt ngưỡng giá menu cấu hình -> queue duyệt giá
+    if intent == "hoi_menu_gia" and ctx.price_above_limit:
+        return _queue("fact_not_in_kb_or_price_limit", intent, confidence)
+
+    # Ngoài phạm vi xã hội — trả lịch sự, không bịa quan điểm
     if intent == INTENT_OTHER and _has_any(low, OUT_OF_SCOPE_KEYWORDS):
         return PolicyDecision(
             action=FbPolicyAction.BLOCK_POLITE,
@@ -166,52 +226,4 @@ def decide(
             confidence=confidence,
         )
 
-    # 4. Không có dữ kiện trong KB / giá vượt trần → không bịa, queue
-    if intent in ("hoi_gio_dia_chi", "hoi_menu_gia") and (
-        not ctx.kb_has_fact or ctx.price_above_limit
-    ):
-        return _queue("fact_not_in_kb_or_price_limit", intent, confidence)
-
-    # 5. Intent đặt bàn hoặc intent bắt buộc duyệt
-    if intent == "dat_ban":
-        if not ctx.reservation_auto_eligible:
-            return _queue("intent_requires_approval", intent, confidence)
-        if confidence >= 0.85:
-            return PolicyDecision(
-                action=FbPolicyAction.AUTO_SEND,
-                reason="reservation_auto_confirmed",
-                intent=intent,
-                confidence=confidence,
-            )
-        return _queue("low_confidence", intent, confidence)
-    elif intent in INTENTS_REQUIRING_APPROVAL:
-        return _queue("intent_requires_approval", intent, confidence)
-
-    # 6. Loop guard: hỏi lại lần 3 → queue
-    if ctx.repeat_ask_count >= REPEAT_ASK_LIMIT:
-        return _queue("repeat_ask_loop", intent, confidence)
-
-    # 7. Confidence thấp → queue
-    if confidence < LOW_CONFIDENCE_QUEUE:
-        return _queue("low_confidence", intent, confidence)
-
-    # 8. AUTO — chỉ khi intent whitelist + đủ conf + nguồn an toàn
-    threshold = AUTO_THRESHOLD.get(intent)
-    if threshold is None:
-        return _queue("intent_not_whitelisted_for_auto", intent, confidence)
-    if ctx.source == "comment" and (
-        intent not in COMMENT_SAFE_INTENTS
-        or confidence < AUTO_THRESHOLD_COMMENT
-        or ctx.sensitive_post
-    ):
-        return _queue(
-            "comment_policy", intent, confidence, sla=SLA_MINUTES_COMMENT_QUEUE
-        )
-    if confidence >= threshold:
-        return PolicyDecision(
-            action=FbPolicyAction.AUTO_SEND,
-            reason="whitelisted_intent_confident",
-            intent=intent,
-            confidence=confidence,
-        )
-    return _queue("below_auto_threshold", intent, confidence)
+    return _auto("autonomous_default", intent, confidence)

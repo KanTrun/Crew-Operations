@@ -96,6 +96,19 @@ def test_policy_put_chu_quan_only(api: TestClient) -> None:
     assert ok.json()["auto_send_enabled"] is True
 
 
+def test_policy_put_survives_env_off(api: TestClient, monkeypatch) -> None:
+    """Chủ quán bật trên UI được ghi KV — env Docker = 0 không tắt lại."""
+    ok = api.put(
+        "/api/v1/page/fb-policy",
+        json={"auto_send_enabled": True, "note": "persist"},
+        headers=headers(api, "hung"),
+    )
+    assert ok.status_code == 200
+    monkeypatch.setenv("NHIPQUAN_FB_AUTO_SEND", "0")
+    body = api.get("/api/v1/page/fb-policy", headers=headers(api, "lan")).json()
+    assert body["auto_send_enabled"] is True
+
+
 def test_policy_put_negative_price_rejected(api: TestClient) -> None:
     r = api.put(
         "/api/v1/page/fb-policy",
@@ -183,6 +196,18 @@ def test_flag_on_provider_failure_queues_manual_retry(api: TestClient, monkeypat
         "/api/v1/page/fb-inbox/stats", headers=headers(api, "lan")
     ).json()
     assert stats["auto_sent"] == 0
+
+
+def test_flag_on_greeting_auto_sends(api: TestClient, monkeypatch) -> None:
+    """Chào hỏi 'hi' phải tự gửi khi flag ON — không đẩy hộp thư QL."""
+    monkeypatch.setenv("NHIPQUAN_FB_AUTO_SEND", "1")
+    from ca_api.services import fb_moderation as fm
+
+    fm._RATE_LIMITER = type(fm._RATE_LIMITER)(now_fn=lambda: 2800.0)
+    _post(api, "flag_on_hi", "hi", psid="psid_hi")
+    calls = getattr(api, "sent_calls", [])
+    assert len(calls) == 1, f"chào hỏi không tự gửi: {calls}"
+    assert calls[0][0] == "psid_hi"
 
 
 def test_flag_on_escalate_still_not_auto(api: TestClient, monkeypatch) -> None:

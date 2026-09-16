@@ -252,6 +252,13 @@ def reply_to_comment(comment_id: str, text: str) -> dict[str, Any]:
     return graph_post(f"{comment_id}/comments", {"message": text})
 
 
+def hide_comment(comment_id: str) -> dict[str, Any]:
+    """Ẩn một comment công khai trên Fanpage qua Graph API (Mục 3b & Mục 6)."""
+    if not comment_id.strip():
+        raise RuntimeError("thieu_comment_id")
+    return graph_post(comment_id, {"is_hidden": "true"})
+
+
 def publish_page_post(message: str) -> dict[str, Any]:
     pid = _page_id()
     if not pid:

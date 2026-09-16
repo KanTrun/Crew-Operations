@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import pytest
 from ca_agents.fb_policy import (
-    AUTO_THRESHOLD,
     PolicyContext,
     decide,
 )
@@ -28,86 +27,47 @@ def ctx(**overrides: object) -> PolicyContext:
     return PolicyContext(**base)  # type: ignore[arg-type]
 
 
-# ── 1. AUTO whitelist ────────────────────────────────────────────────────────
+# ── 1. Trao toàn quyền xử lý (Mục 3) ─────────────────────────────────────────
 
 
 @pytest.mark.parametrize(
     ("intent", "conf"),
-    [("chao_hoi", 0.90), ("hoi_gio_dia_chi", 0.85), ("hoi_menu_gia", 0.85)],
+    [
+        ("chao_hoi", 0.90),
+        ("hoi_gio_dia_chi", 0.85),
+        ("hoi_menu_gia", 0.85),
+        ("hoi_khuyen_mai", 0.80),
+        ("dat_ban", 0.70),
+        ("tu_van_mon", 0.75),
+        ("yeu_cau_dac_biet", 0.80),
+    ],
 )
-def test_auto_at_exact_threshold(intent: str, conf: float) -> None:
-    """Confidence == threshold (boundary) → auto_send."""
+def test_autonomous_default_intents_auto_send(intent: str, conf: float) -> None:
+    """Mọi intent hợp lệ thông thường đều tự xử lý trước (Mục 3) → auto_send."""
     d = decide(intent, conf, "xin chào quán ơi", ctx())
     assert d.action == FbPolicyAction.AUTO_SEND
-    assert d.reason == "whitelisted_intent_confident"
+    assert d.reason == "autonomous_default"
 
 
-@pytest.mark.parametrize(
-    ("intent", "conf"),
-    [("chao_hoi", 0.91), ("hoi_gio_dia_chi", 0.86), ("hoi_menu_gia", 0.90)],
-)
-def test_auto_above_threshold(intent: str, conf: float) -> None:
-    d = decide(intent, conf, "quán mấy giờ đóng cửa ạ", ctx())
+def test_dat_ban_large_group_auto_send() -> None:
+    """Mục 3: Đặt bàn mọi số lượng khách miễn còn chỗ trống trong hệ thống."""
+    d = decide("dat_ban", 0.95, "đặt bàn 20 người tiệc sinh nhật tối nay", ctx())
     assert d.action == FbPolicyAction.AUTO_SEND
+    assert d.reason == "autonomous_default"
 
 
-@pytest.mark.parametrize(
-    ("intent", "conf"),
-    [("chao_hoi", 0.8999), ("hoi_gio_dia_chi", 0.8499), ("hoi_menu_gia", 0.8499)],
-)
-def test_queue_just_below_threshold(intent: str, conf: float) -> None:
-    d = decide(intent, conf, "quán mấy giờ đóng cửa ạ", ctx())
-    assert d.action == FbPolicyAction.QUEUE_REVIEW
-    assert d.reason == "below_auto_threshold"
-    assert d.assigned_role == "quan_ly"
-    assert d.sla_minutes == 10
+def test_complaint_light_auto_send() -> None:
+    """Mục 3: Phàn nàn thông thường (chờ lâu, phục vụ chậm) → tự xử lý tặng ưu đãi <= 200k."""
+    d = decide("khieu_nai_gop_y", 0.90, "hôm nay phục vụ hơi chậm quá ạ", ctx())
+    assert d.action == FbPolicyAction.AUTO_SEND
+    assert d.reason == "autonomous_default"
 
 
-def test_auto_threshold_table_matches_plan() -> None:
-    """Threshold constants pinned to plan §3.2 — business decision, do not drift."""
-    assert AUTO_THRESHOLD == {
-        "chao_hoi": 0.90,
-        "hoi_gio_dia_chi": 0.85,
-        "hoi_menu_gia": 0.85,
-    }
-
-
-# ── 2. Mandatory-review intents ──────────────────────────────────────────────
-
-
-@pytest.mark.parametrize(
-    "intent",
-    ["hoi_khuyen_mai", "dat_ban", "tu_van_mon", "yeu_cau_dac_biet"],
-)
-def test_intent_requires_approval_even_high_confidence(intent: str) -> None:
-    d = decide(intent, 0.99, "cho mình xem khuyến mãi với", ctx())
-    assert d.action == FbPolicyAction.QUEUE_REVIEW
-    assert d.reason == "intent_requires_approval"
-    assert d.assigned_role == "quan_ly"
-
-
-def test_dat_ban_high_confidence_still_queue() -> None:
-    d = decide("dat_ban", 0.95, "đặt bàn 10 người tối nay", ctx())
-    assert d.action == FbPolicyAction.QUEUE_REVIEW
-
-
-# ── 3. Complaints ────────────────────────────────────────────────────────────
-
-
-def test_complaint_light_priority_review() -> None:
-    d = decide("khieu_nai_gop_y", 0.90, "phục vụ chậm quá ạ", ctx())
-    assert d.action == FbPolicyAction.PRIORITY_REVIEW
-    assert d.assigned_role == "quan_ly"
-    assert d.sla_minutes == 5
-
-
-# ── 4. KB / price guards ─────────────────────────────────────────────────────
-
-
-def test_fact_not_in_kb_queue() -> None:
+def test_fact_not_in_kb_still_auto_send() -> None:
+    """Mục 2 & 5: Thiếu dữ liệu → trả lời thẳng thắn và hẹn 10 phút, vẫn tính là tự xử lý."""
     d = decide("hoi_gio_dia_chi", 0.95, "quán mở cửa mấy giờ", ctx(kb_has_fact=False))
-    assert d.action == FbPolicyAction.QUEUE_REVIEW
-    assert d.reason == "fact_not_in_kb_or_price_limit"
+    assert d.action == FbPolicyAction.AUTO_SEND
+    assert d.reason == "autonomous_default"
 
 
 def test_price_above_cap_queue() -> None:
@@ -121,82 +81,150 @@ def test_price_cap_not_applied_to_other_intents() -> None:
     assert d.action == FbPolicyAction.AUTO_SEND
 
 
-# ── 5. Loop guard / low confidence / not whitelisted ─────────────────────────
-
-
-def test_repeat_ask_loop_queues() -> None:
+def test_repeat_ask_loop_still_auto_send() -> None:
+    """Không dùng repeat ask để né tự xử lý."""
     d = decide("chao_hoi", 0.95, "hello", ctx(repeat_ask_count=3))
+    assert d.action == FbPolicyAction.AUTO_SEND
+    assert d.reason == "autonomous_default"
+
+
+# ── 2. Danh sách bất khả kháng (Mục 4 — 7 trường hợp đóng) ────────────────────
+
+
+# 4.1 An toàn sức khỏe nghiêm trọng
+@pytest.mark.parametrize(
+    "text",
+    [
+        "uống nước hôm qua về bị ngộ độc phải nhập viện",
+        "món này có dị vật nguy hiểm bên trong",
+        "khách bị dị ứng nặng sốc phản vệ",
+        "uống xong đau bụng dữ dội",
+    ],
+)
+def test_mục_4_1_health_safety_escalates(text: str) -> None:
+    d = decide("khieu_nai_gop_y", 0.95, text, ctx())
+    assert d.action == FbPolicyAction.ESCALATE_OWNER
+    assert d.reason == "health_safety"
+    assert d.assigned_role == "chu_quan"
+    assert d.sla_minutes == 15
+
+
+# 4.2 Đe dọa pháp lý / báo chí / cơ quan chức năng / văn bản pháp lý
+@pytest.mark.parametrize(
+    "text",
+    [
+        "tôi sẽ kiện quán ra tòa",
+        "tôi sẽ báo công an và sở y tế vào kiểm tra",
+        "liên hệ báo chí để phản ánh vụ này",
+        "cho xin hóa đơn đỏ công ty",
+        "yêu cầu cung cấp văn bản pháp lý",
+    ],
+)
+def test_mục_4_2_legal_threat_escalates(text: str) -> None:
+    d = decide("chao_hoi", 0.90, text, ctx())
+    assert d.action == FbPolicyAction.ESCALATE_OWNER
+    assert d.reason == "legal_threat"
+    assert d.assigned_role == "chu_quan"
+    assert d.sla_minutes == 15
+
+
+# 4.3 Vượt ngưỡng tài chính (> 500.000đ)
+def test_mục_4_3_financial_above_limit_escalates() -> None:
+    d = decide(
+        "khieu_nai_gop_y",
+        0.90,
+        "yêu cầu hoàn tiền đơn hàng này",
+        ctx(compensation_above_limit=True),
+    )
+    assert d.action == FbPolicyAction.ESCALATE_OWNER
+    assert d.reason == "financial_above_limit"
+    assert d.assigned_role == "chu_quan"
+    assert d.sla_minutes == 15
+
+
+def test_mục_4_3_financial_within_limit_auto_send() -> None:
+    d = decide(
+        "khieu_nai_gop_y",
+        0.90,
+        "yêu cầu hoàn tiền đơn 100k",
+        ctx(compensation_above_limit=False),
+    )
+    assert d.action == FbPolicyAction.AUTO_SEND
+    assert d.reason == "autonomous_default"
+
+
+# 4.4 Sự cố hệ thống đặt bàn / POS
+def test_mục_4_4_system_failure_queues() -> None:
+    d = decide("dat_ban", 0.95, "đặt bàn tối nay", ctx(booking_system_down=True))
     assert d.action == FbPolicyAction.QUEUE_REVIEW
-    assert d.reason == "repeat_ask_loop"
+    assert d.reason == "system_failure"
+    assert d.assigned_role == "quan_ly"
+    assert d.sla_minutes == 10
 
 
-def test_low_confidence_queues() -> None:
-    d = decide("khac", 0.59, "ừ ừ được đấy", ctx())
-    assert d.action == FbPolicyAction.QUEUE_REVIEW
-    assert d.reason == "low_confidence"
+# 4.5 Khách chủ động đòi gặp người thật
+@pytest.mark.parametrize(
+    "text",
+    [
+        "muốn gặp chủ quán trực tiếp",
+        "cho tôi nói chuyện với quản lý",
+        "tôi cần gặp người thật",
+        "chuyển cho quản lý đi",
+    ],
+)
+def test_mục_4_5_customer_asked_human_escalates(text: str) -> None:
+    d = decide("chao_hoi", 0.90, text, ctx())
+    assert d.action == FbPolicyAction.ESCALATE_OWNER
+    assert d.reason == "customer_asked_human"
+    assert d.assigned_role == "chu_quan"
+    assert d.sla_minutes == 15
 
 
-def test_confidence_boundary_060_exact_still_eligible_for_auto() -> None:
-    """conf == 0.60 is NOT 'low' — falls through to whitelist check."""
-    d = decide("khac", 0.60, "gì đó", ctx())
-    assert d.action == FbPolicyAction.QUEUE_REVIEW
-    assert d.reason == "intent_not_whitelisted_for_auto"
+# 4.6 Khách giận dữ leo thang rõ rệt (đe dọa, thù địch)
+@pytest.mark.parametrize(
+    "text",
+    [
+        "tao sẽ đến đập quán",
+        "đe dọa hành hung nhân viên",
+        "đồ súc vật làm ăn lừa đảo",
+    ],
+)
+def test_mục_4_6_hostile_escalation_priority(text: str) -> None:
+    d = decide("khieu_nai_gop_y", 0.90, text, ctx())
+    assert d.action == FbPolicyAction.PRIORITY_REVIEW
+    assert d.reason == "hostile_escalation"
+    assert d.assigned_role == "quan_ly"
+    assert d.sla_minutes == 5
 
 
-def test_intent_not_whitelisted_for_auto() -> None:
-    d = decide("khac", 0.80, "hôm nay trời đẹp nhỉ", ctx())
-    assert d.action == FbPolicyAction.QUEUE_REVIEW
-    assert d.reason == "intent_not_whitelisted_for_auto"
+# 4.7 Ngoài phạm vi vận hành quán (hợp đồng đối tác, nhân sự nội bộ)
+@pytest.mark.parametrize(
+    "text",
+    [
+        "tôi muốn trao đổi về hợp đồng đối tác đầu tư",
+        "cho hỏi chính sách nhân sự nội bộ và lương nhân viên quán thế nào",
+    ],
+)
+def test_mục_4_7_internal_scope_escalates(text: str) -> None:
+    d = decide("chao_hoi", 0.90, text, ctx())
+    assert d.action == FbPolicyAction.ESCALATE_OWNER
+    assert d.reason == "out_of_scope_internal"
+    assert d.assigned_role == "chu_quan"
+    assert d.sla_minutes == 15
 
 
-# ── 6. Out of scope → block_polite ───────────────────────────────────────────
-
-
+# Ngoài phạm vi xã hội (chính trị, tôn giáo) → chặn lịch sự
 def test_out_of_scope_block_polite() -> None:
     d = decide("khac", 0.80, "quán ủng hộ chính trị đảng nào", ctx())
     assert d.action == FbPolicyAction.BLOCK_POLITE
     assert d.reason == "out_of_scope"
 
 
-def test_out_of_scope_only_for_khac_intent() -> None:
-    """Same keywords but complaint intent → complaint wins (priority order)."""
-    d = decide("khieu_nai_gop_y", 0.80, "quán ủng hộ chính trị đảng nào", ctx())
-    assert d.action == FbPolicyAction.PRIORITY_REVIEW
-
-
-# ── 7. Owner escalation keywords (safety first — wins everything) ────────────
-
-
-@pytest.mark.parametrize(
-    "text",
-    [
-        "uống nước hôm qua bị ngộ độc quá",
-        "cho xin hóa đơn đỏ công ty",
-        "muốn gặp chủ quán trực tiếp",
-        "bị dị ứng với nguyên liệu",
-    ],
-)
-def test_owner_escalation_keyword_wins(text: str) -> None:
-    d = decide("chao_hoi", 0.99, text, ctx())
-    assert d.action == FbPolicyAction.ESCALATE_OWNER
-    assert d.assigned_role == "chu_quan"
-    assert d.sla_minutes == 15
-    assert d.reason == "owner_escalation_keyword"
-
-
-def test_owner_escalation_beats_heavy_complaint() -> None:
-    """Two signals at once: 'ngộ độc' + '1 sao' → escalate wins (plan §6.4)."""
-    d = decide(
-        "khieu_nai_gop_y",
-        0.85,
-        "ngộ độc luôn rồi, tôi sẽ đánh 1 sao",
-        ctx(),
-    )
-    assert d.action == FbPolicyAction.ESCALATE_OWNER
+# ── 3. Evasion-resistance & Ngữ cảnh hội thoại ────────────────────────────────
 
 
 def test_owner_escalation_from_recent_messages() -> None:
-    """Keyword split across messages in the same thread (plan §6.2d)."""
+    """Keyword xuất hiện ở tin nhắn liền kề trong thread (plan §6.2d)."""
     d = decide(
         "khac",
         0.70,
@@ -204,9 +232,7 @@ def test_owner_escalation_from_recent_messages() -> None:
         ctx(recent_messages=("nước bị ngộ độc trong người quá",)),
     )
     assert d.action == FbPolicyAction.ESCALATE_OWNER
-
-
-# ── 8. Evasion-resistance (normalize_text, plan §6.2c) ───────────────────────
+    assert d.reason == "health_safety"
 
 
 @pytest.mark.parametrize(
@@ -225,7 +251,7 @@ def test_keyword_match_survives_evasion_and_case(text: str) -> None:
 
 
 def test_no_accents_duplicate_keyword_list() -> None:
-    """Plan §6.2c: keyword list must be single non-accented — assert a few."""
+    """Các keyword an toàn phải là chuỗi không dấu, ascii chuẩn."""
     from ca_agents.fb_policy import OWNER_ESCALATION_KEYWORDS
 
     for kw in OWNER_ESCALATION_KEYWORDS:
@@ -233,9 +259,8 @@ def test_no_accents_duplicate_keyword_list() -> None:
         assert kw.isascii(), f"keyword should be non-accented ascii: {kw}"
 
 
-def test_ambiguous_keyword_match_flagged(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keyword matches but classifier disagrees (intent=chao_hoi, kw='bao chi')
-    → still escalate (deterministic) AND flag for quality review (plan §6.2c)."""
+def test_ambiguous_keyword_match_flagged() -> None:
+    """Keyword khớp nhưng intent là chào hỏi → vẫn escalate và gắn flag giám sát."""
     d = decide("chao_hoi", 0.90, "cho quán lên báo chí quảng bá đi ạ", ctx())
     assert d.action == FbPolicyAction.ESCALATE_OWNER
     assert "keyword_matched_ambiguous" in d.flagged_reasons
@@ -245,34 +270,6 @@ def test_unambiguous_escalation_not_flagged_ambiguous() -> None:
     d = decide("khieu_nai_gop_y", 0.85, "bị ngộ độc quá", ctx())
     assert d.action == FbPolicyAction.ESCALATE_OWNER
     assert "keyword_matched_ambiguous" not in d.flagged_reasons
-
-
-# ── 9. Comment source — stricter gate ────────────────────────────────────────
-
-
-def test_comment_safe_intent_high_conf_auto() -> None:
-    d = decide("hoi_gio_dia_chi", 0.95, "quán ở đâu vậy ạ", ctx(source="comment"))
-    assert d.action == FbPolicyAction.AUTO_SEND
-
-
-def test_comment_below_comment_threshold_queues() -> None:
-    d = decide("hoi_gio_dia_chi", 0.90, "quán ở đâu vậy ạ", ctx(source="comment"))
-    assert d.action == FbPolicyAction.QUEUE_REVIEW
-    assert d.reason == "comment_policy"
-    assert d.sla_minutes == 15
-
-
-def test_comment_unsafe_intent_never_auto() -> None:
-    """hoi_menu_gia is whitelisted for messenger but NOT comment-safe."""
-    d = decide("hoi_menu_gia", 0.99, "cà phê muối bao nhiêu tiền", ctx(source="comment"))
-    assert d.action == FbPolicyAction.QUEUE_REVIEW
-    assert d.reason == "comment_policy"
-
-
-def test_comment_sensitive_post_never_auto() -> None:
-    d = decide("chao_hoi", 0.99, "chào quán", ctx(source="comment", sensitive_post=True))
-    assert d.action == FbPolicyAction.QUEUE_REVIEW
-    assert d.reason == "comment_policy"
 
 
 # ── 10. Determinism & purity (ADR-002) ───────────────────────────────────────

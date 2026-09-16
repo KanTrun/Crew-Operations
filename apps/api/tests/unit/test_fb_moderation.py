@@ -247,9 +247,9 @@ def test_escalate_owner_keyword_creates_review(api: TestClient) -> None:
 
 
 def test_complaint_creates_priority_review(api: TestClient) -> None:
-    _post(api, "cmp_1", "phục vụ chậm quá ạ thất vọng")
+    _post(api, "cmp_1", "quán phục vụ kiểu gì tôi đến đập quán bây giờ")
     hit = next(
-        (i for i in _pending(api) if "phục vụ chậm" in str(i["message_text"])), None
+        (i for i in _pending(api) if "đập quán" in str(i["message_text"])), None
     )
     assert hit is not None
     assert hit["policy_action"] == "priority_review"

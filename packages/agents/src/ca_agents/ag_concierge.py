@@ -39,18 +39,18 @@ def handle_complaint(text: str, customer_name: str | None = None) -> ConciergeTi
     """
     name = customer_name or "mình"
     reply = (
-        f"Dạ em thật sự xin lỗi {name} vì trải nghiệm chưa được trọn vẹn hôm nay ạ! 🥺\n"
-        "Nhịp Quán rất trân trọng mọi góp ý của khách hàng và em đã chuyển phản ánh này ngay cho Quản lý quán để kiểm điểm quy trình phục vụ.\n"
-        "Anh/chị cho em xin số điện thoại để Quản lý liên hệ hỗ trợ và gửi lời xin lỗi trực tiếp đến mình được không ạ?"
+        f"Dạ em thật sự xin lỗi {name} vì trải nghiệm chưa được trọn vẹn hôm nay ạ!\n"
+        "Em ghi nhận góp ý này để bếp/quầy rút kinh nghiệm ngay. Lần tới ghé quán em mời mình một ly Trà đào (trong ngưỡng chăm sóc ≤ 200.000đ) để lấy lại cảm giác dễ chịu nha!\n"
+        "Anh/chị cho em xin số điện thoại để quán gửi ưu đãi và kiểm tra đơn nếu cần ạ."
     )
     return ConciergeTicket(
         ticket_type="complaint",
         customer_message=text,
         extracted_data={"issue_summary": text[:160]},
         suggested_reply=reply,
-        urgency="high",
-        action_type="needs_manager_review",
-        requires_human_approval=True,
+        urgency="medium",
+        action_type="ask_info",
+        requires_human_approval=False,
     )
 
 
@@ -207,7 +207,7 @@ def handle_reservation(
             extracted_data={"request_summary": text[:160]},
             suggested_reply=(
                 f"Dạ {store_name} rất vui được đón tiếp nhóm mình ạ! 🎉\n"
-                "Anh/chị dự kiến ghé quán lúc mấy giờ và nhóm mình đi khoảng bao nhiêu người để em chuẩn bị bàn chu đáo trước cho mình nha?"
+                "Anh/chị dự kiến ghé lúc mấy giờ và nhóm mình đi khoảng bao nhiêu người để em chuẩn bị bàn chu đáo trước cho mình nha?"
             ),
             urgency="medium",
             action_type="needs_manager_review",
@@ -315,22 +315,22 @@ def handle_reservation(
         except Exception as e:
             if type(e).__name__ == "NoTableAvailableError":
                 reply = (
-                    f"Dạ em rất tiếc vì khung giờ {state.get('time_display')} hiện tại vừa kín bàn mất rồi ạ! 🥺\n"
-                    f"Quán hiện còn bàn vào các khung giờ lân cận hoặc để em chuyển cho bạn Quản lý kiểm tra và sắp xếp vị trí phù hợp nhất cho mình nhé ạ!"
+                    f"Dạ khung giờ {state.get('time_display')} vừa kín bàn ạ.\n"
+                    "Em gợi ý mình lệch 30–60 phút hoặc đổi ngày gần nhất — anh/chị chọn khung nào em giữ bàn ngay giúp mình nha!"
                 )
                 return ConciergeTicket(
                     ticket_type="reservation",
                     customer_message=text,
                     extracted_data=state,
                     suggested_reply=reply,
-                    urgency="high",
-                    action_type="needs_manager_review",
-                    requires_human_approval=True,
+                    urgency="medium",
+                    action_type="ask_info",
+                    requires_human_approval=False,
                 )
-            # Fail-closed
+            # Hệ thống lỗi — Mục 4.4, không đoán bàn trống
             reply = (
-                "Dạ em đã ghi nhận thông tin đặt bàn của mình và đang chuyển cho Quản lý ca trực kiểm tra nhanh sơ đồ bàn. "
-                "Bạn Quản lý sẽ nhắn tin xác nhận với mình ngay sau vài phút nhé ạ!"
+                "Dạ hệ thống sơ đồ bàn đang gián đoạn nên em chưa chốt được chỗ. "
+                "Em đã chuyển quản lý ca — mình sẽ nhận xác nhận trong khoảng 15 phút, không để mình chờ không ạ!"
             )
             return ConciergeTicket(
                 ticket_type="reservation",
@@ -342,23 +342,7 @@ def handle_reservation(
                 requires_human_approval=True,
             )
 
-    # ── CASE 3: Large Group (> 8 people) -> Escalate to Management ────────────
-    if state.get("party_size") and state["party_size"] > 8:
-        reply = (
-            f"Dạ với nhóm đông ({state['party_size']} người), {store_name} có khu vực không gian tầng 2 rất phù hợp ạ! 🎉\n"
-            "Em xin phép chuyển yêu cầu này cho Quản lý quán để liên hệ sắp xếp và giữ vị trí đẹp nhất cho nhóm mình nhé ạ!"
-        )
-        return ConciergeTicket(
-            ticket_type="reservation",
-            customer_message=text,
-            extracted_data=state,
-            suggested_reply=reply,
-            urgency="high",
-            action_type="needs_manager_review",
-            requires_human_approval=True,
-        )
-
-    # ── CASE 4: Missing Information -> Natural Clarification ──────────────────
+    # ── CASE 3: Missing Information -> Natural Clarification ──────────────────
     missing = []
     if not state.get("booking_datetime"):
         missing.append("thời gian đến (mấy giờ, ngày nào)")
@@ -404,22 +388,22 @@ def handle_reservation(
     if not allowed:
         if abuse_reason == "active_booking_exists":
             reply = (
-                "Dạ hiện tại trên hệ thống đang có một lịch đặt bàn đang hiệu lực của mình rồi ạ. "
-                "Nếu mình cần thay đổi giờ, hủy bàn hoặc đặt thêm bàn khác, em chuyển ngay cho bạn Quản lý hỗ trợ mình nhé ạ!"
+                "Dạ trên hệ thống đang có một lịch đặt bàn còn hiệu lực của mình rồi ạ. "
+                "Anh/chị muốn đổi giờ, hủy, hay giữ nguyên — em xử lý giúp ngay trên tin này nha!"
             )
         else:
             reply = (
-                "Dạ em đã ghi nhận thông tin đặt bàn của mình và chuyển cho bạn Quản lý quán. "
-                "Quản lý sẽ liên hệ xác nhận trực tiếp với mình qua số điện thoại sớm nhất nhé ạ!"
+                "Dạ em đã ghi nhận thông tin đặt bàn. "
+                "Anh/chị xác nhận giúp SĐT và giờ đến để em chốt bàn, không cần chờ thêm bước nào khác ạ!"
             )
         return ConciergeTicket(
             ticket_type="reservation",
             customer_message=text,
             extracted_data={"abuse_reason": abuse_reason, **state},
             suggested_reply=reply,
-            urgency="high",
-            action_type="needs_manager_review",
-            requires_human_approval=True,
+            urgency="medium",
+            action_type="ask_info",
+            requires_human_approval=False,
         )
 
     # Ask 2-Phase Confirmation
