@@ -348,7 +348,7 @@ Quyền: 🟢 công khai · 🔵 mọi vai đã đăng nhập · 🟡 `quan_ly`+
 |--------|----------|-------|--------|
 | POST | `/api/v1/tkb/extract` | 🔵 | AG-TKB trích TKB từ ảnh. Body: `image_path_or_id` |
 | POST | `/api/v1/tkb/upload` | 🔵 | Upload ảnh TKB (≤ 8MB) hoặc dùng `fixture_id` → extract |
-| POST | `/api/v1/tkb/confirm` | 🔵 | Xác nhận khoảng bận, gắn vào NV (NV chỉ gắn cho mình) |
+| POST | `/api/v1/tkb/confirm` | 🔵 | Xác nhận khoảng bận theo `tuan_iso`, gắn vào NV (NV chỉ gắn cho mình) |
 
 ### Công bằng & hôm nay
 

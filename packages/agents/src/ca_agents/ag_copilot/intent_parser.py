@@ -1011,6 +1011,20 @@ def parse_intent(message: str, context: dict[str, Any] | None = None) -> IntentP
         ):
             thu = m.group(1).upper()
             khoang_ban.append((thu, m.group(2), m.group(3)))
+        active_date = _active_date(context)
+        combined_lower = f"{recent_text} {lower}"
+        explicit_week = re.search(r"\b(\d{4})-w(\d{1,2})\b", combined_lower, re.IGNORECASE)
+        short_week = re.search(r"\bw(\d{1,2})\b", combined_lower, re.IGNORECASE)
+        if explicit_week:
+            params["tuan_iso"] = (
+                f"{int(explicit_week.group(1)):04d}-W{int(explicit_week.group(2)):02d}"
+            )
+        elif short_week:
+            params["tuan_iso"] = f"{active_date.year}-W{int(short_week.group(1)):02d}"
+        elif "tuần sau" in combined_lower or "tuan sau" in combined_lower:
+            params["tuan_iso"] = _iso_week(_add_week(active_date, 1))
+        else:
+            params["tuan_iso"] = _iso_week(active_date)
         # nv_id: mặc định người nói (executor sẽ chốt ownership); cho phép
         # nv_XX hoặc tên nhân viên nếu quản lý xác nhận hộ.
         m_nv = re.search(r"\b(nv_\d+)\b", text, re.IGNORECASE)

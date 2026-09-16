@@ -199,6 +199,10 @@ def _run_solver(
         for nv_id, entry in stored.items():
             if not isinstance(entry, dict):
                 continue
+            # TKB là ràng buộc theo tuần. Bản ghi legacy không có tuần không
+            # được phép rò sang mọi lịch tương lai; nhân viên cần xác nhận lại.
+            if entry.get("tuan_iso") != tuan_hien_tai:
+                continue
             blocks = entry.get("khoang_ban") or []
             tuples: list[tuple[str, str, str]] = []
             for b in blocks:

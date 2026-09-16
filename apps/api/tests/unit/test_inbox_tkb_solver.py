@@ -104,6 +104,39 @@ def test_duyet_cap_nhat_tkb_wires_into_solver_tkb(monkeypatch: pytest.MonkeyPatc
             assert "nv_02" not in nvs, f"nv_02 bị xếp vào ca sáng T3 {ca_id} dù bận TKB!"
 
 
+def test_solver_only_loads_confirmed_tkb_for_target_week(
+    monkeypatch: pytest.MonkeyPatch,
+    _du_nhan_vien_xep_lich: None,
+) -> None:
+    """TKB W39 không được rò sang lần giải W40."""
+    from ca_solver.model import LichInput, SolveResult
+
+    block = ("T4", "12:00", "17:00")
+    kv_set(
+        "tkb_nv",
+        {
+            "nv_02": {
+                "tuan_iso": "2026-W39",
+                "khoang_ban": [{"thu": block[0], "start": block[1], "end": block[2]}],
+            }
+        },
+    )
+    captured: list[list[tuple[str, str, str]]] = []
+
+    def capture_tkb(data: LichInput, *, time_limit_s: float) -> SolveResult:
+        del time_limit_s
+        captured.append(list(data.tkb.get("nv_02", [])))
+        return SolveResult(ok=False, status="CAPTURED")
+
+    monkeypatch.setattr("ca_solver.solve_cpsat", capture_tkb)
+
+    _run_solver("2026-W39")
+    _run_solver("2026-W40")
+
+    assert block in captured[0]
+    assert block not in captured[1]
+
+
 def test_duyet_rang_buoc_co_the_tu_dong_xep_du_21_o_ca(
     monkeypatch: pytest.MonkeyPatch,
     _du_nhan_vien_xep_lich: None,

@@ -204,8 +204,17 @@ class TkbExtractBody(BaseModel):
     image_path_or_id: str
 
 
+def _current_iso_week() -> str:
+    iso = datetime.now(UTC).isocalendar()
+    return f"{iso.year}-W{iso.week:02d}"
+
+
 class TkbConfirmBody(BaseModel):
     nv_id: str | None = None
+    tuan_iso: str = Field(
+        default_factory=_current_iso_week,
+        pattern=r"^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$",
+    )
     khoang_ban: list[dict[str, str]]
     source_id: str = ""
     upload_id: str = ""
@@ -599,6 +608,7 @@ def tkb_confirm(
         raise HTTPException(status_code=400, detail="khoang_rong")
 
     entry = {
+        "tuan_iso": body.tuan_iso,
         "khoang_ban": khoang,
         "source_id": body.source_id,
         "upload_id": body.upload_id,
@@ -614,11 +624,17 @@ def tkb_confirm(
     record_sua(
         loai="tkb_xac_nhan",
         truoc={},
-        sau={"nv_id": nv, "n": len(khoang)},
+        sau={"nv_id": nv, "tuan_iso": body.tuan_iso, "n": len(khoang)},
         ai=s["nv_id"],
         now_iso=datetime.now(UTC).isoformat(),
     )
-    return {"ok": True, "nv_id": nv, "khoang_ban": khoang, "n": len(khoang)}
+    return {
+        "ok": True,
+        "nv_id": nv,
+        "tuan_iso": body.tuan_iso,
+        "khoang_ban": khoang,
+        "n": len(khoang),
+    }
 
 
 @router.get("/api/v1/tkb/mine")

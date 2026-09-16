@@ -1033,8 +1033,11 @@ def copilot_execute_action(
         internal_mutations["pins"] = (mut_pins, {})
     elif intent == "PROPOSE_TKB_CONFIRM":
         # Cùng key/schema với route web POST /api/v1/tkb/confirm (sprint3.py):
-        # tkb_nv[nv] = {khoang_ban, source_id, upload_id, xac_nhan_boi, vai}.
+        # tkb_nv[nv] = {tuan_iso, khoang_ban, source_id, upload_id, xac_nhan_boi, vai}.
         nv_tkb = str(diff.get("nv_id") or user["user_id"])
+        tuan_iso = str(diff.get("tuan_iso") or "").strip()
+        if not tuan_iso:
+            raise RuntimeError("thieu_tuan_iso")
         khoang = [
             {"thu": str(k.get("thu") or ""), "start": str(k.get("start") or ""), "end": str(k.get("end") or "")}
             for k in (diff.get("khoang_ban") or []) if isinstance(k, dict)
@@ -1047,6 +1050,7 @@ def copilot_execute_action(
 
         def mut_tkb_nv(tkb_nv: dict[str, Any]) -> dict[str, Any]:
             tkb_nv[nv_tkb] = {
+                "tuan_iso": tuan_iso,
                 "khoang_ban": khoang,
                 "source_id": str(diff.get("source_id") or "copilot"),
                 "upload_id": str(diff.get("upload_id") or ""),
@@ -1063,7 +1067,7 @@ def copilot_execute_action(
             record_sua(
                 loai="tkb_xac_nhan",
                 truoc={},
-                sau={"nv_id": nv_tkb, "khoang_ban": khoang},
+                sau={"nv_id": nv_tkb, "tuan_iso": tuan_iso, "khoang_ban": khoang},
                 ai=user["user_id"],
                 now_iso=now_iso,
             )

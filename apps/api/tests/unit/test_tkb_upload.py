@@ -28,15 +28,21 @@ def test_tkb_upload_fixture_and_confirm() -> None:
     ]
     conf = client.post(
         "/api/v1/tkb/confirm",
-        json={"khoang_ban": khoang, "source_id": body.get("source_id", "tkb_01")},
+        json={
+            "tuan_iso": "2026-W39",
+            "khoang_ban": khoang,
+            "source_id": body.get("source_id", "tkb_01"),
+        },
         headers=nv,
     )
     assert conf.status_code == 200, conf.text
     assert conf.json()["n"] >= 1
+    assert conf.json()["tuan_iso"] == "2026-W39"
 
     mine = client.get("/api/v1/tkb/mine", headers=nv)
     assert mine.status_code == 200
     assert mine.json()["item"]["khoang_ban"]
+    assert mine.json()["item"]["tuan_iso"] == "2026-W39"
 
     stored = kv_get("tkb_nv", {})
     assert mine.json()["nv_id"] in stored
@@ -46,6 +52,19 @@ def test_tkb_confirm_empty_rejected() -> None:
     nv = headers(client, "minh")
     r = client.post("/api/v1/tkb/confirm", json={"khoang_ban": []}, headers=nv)
     assert r.status_code == 400
+
+
+def test_tkb_confirm_invalid_week_rejected() -> None:
+    nv = headers(client, "minh")
+    r = client.post(
+        "/api/v1/tkb/confirm",
+        json={
+            "tuan_iso": "2026-W00",
+            "khoang_ban": [{"thu": "T2", "start": "07:00", "end": "12:00"}],
+        },
+        headers=nv,
+    )
+    assert r.status_code == 422
 
 
 def test_tkb_upload_svg_rejected() -> None:

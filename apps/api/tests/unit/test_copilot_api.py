@@ -1473,7 +1473,10 @@ def test_pr10_tkb_confirm_proposal_and_execute() -> None:
     token = _login_manager()  # lan -> nv_01, quan_ly
     res = client.post(
         "/api/v1/copilot/message",
-        json={"message": "Xác nhận TKB T2 07:00-12:00, T4 18:00-22:00", "channel": "web"},
+        json={
+            "message": "Xác nhận TKB W39 T2 07:00-12:00, T4 18:00-22:00",
+            "channel": "web",
+        },
         headers={"Authorization": f"Bearer {token}"},
     )
     assert res.status_code == 200
@@ -1493,6 +1496,7 @@ def test_pr10_tkb_confirm_proposal_and_execute() -> None:
 
     tkb = kv_get("tkb_nv", {})
     entry = tkb["nv_01"]
+    assert entry["tuan_iso"] == "2026-W39"
     assert entry["khoang_ban"] == [
         {"thu": "T2", "start": "07:00", "end": "12:00"},
         {"thu": "T4", "start": "18:00", "end": "22:00"},

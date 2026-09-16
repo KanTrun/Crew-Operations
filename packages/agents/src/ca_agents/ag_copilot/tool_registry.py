@@ -239,6 +239,8 @@ def tool_solve_weekly_schedule(
         for nv_id, entry in stored_tkb.items():
             if not isinstance(entry, dict):
                 continue
+            if entry.get("tuan_iso") != tuan:
+                continue
             blocks = entry.get("khoang_ban") or []
             tuples: list[tuple[str, str, str]] = []
             for b in blocks:
@@ -2125,6 +2127,7 @@ def tool_propose_tkb_confirm(
     user_id: str = "",
     user_role: str = "",
     nv_id: str = "",
+    tuan_iso: str = "",
     khoang_ban: list[Any] | None = None,
     thieu_khoang_ban: bool = False,
     **kwargs: Any,
@@ -2198,6 +2201,7 @@ def tool_propose_tkb_confirm(
     payload = {
         "snapshot_version": "live-v1",
         "nv_id": target_nv,
+        "tuan_iso": tuan_iso or _tuan_hien_tai(),
         "khoang_ban": cleaned,
         "source_id": "copilot",
         "upload_id": upload_id,
