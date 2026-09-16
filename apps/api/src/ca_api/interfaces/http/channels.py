@@ -457,11 +457,15 @@ def _page_store(store_id: str = "quan_01") -> dict[str, Any]:
 
     Chỉ seed file golden khi `NHIPQUAN_PAGE_SEED_FIXTURE=1` (CI).
     Multi-page: mỗi store có key riêng (page_quan:{store_id}).
+    Tương thích ngược: nếu page_quan:{store_id} chưa có nhưng "page_quan" có dữ liệu thì dùng.
     """
     key = f"page_quan:{store_id}"
     stored = kv_get(key, None)
-    if stored:
+    if stored and isinstance(stored, dict):
         return cast(dict[str, Any], stored)
+    legacy = kv_get("page_quan", None)
+    if legacy and isinstance(legacy, dict) and (legacy.get("threads") or legacy.get("drafts")):
+        return cast(dict[str, Any], legacy)
     seed = os.environ.get("NHIPQUAN_PAGE_SEED_FIXTURE", "").strip() in {"1", "true", "yes"}
     if seed and PAGE_FIXTURE.exists():
         data = json.loads(PAGE_FIXTURE.read_text(encoding="utf-8"))
@@ -833,7 +837,7 @@ async def _execute_fb_pipeline(
         delivered = _page_mode() != "live"
         if _page_mode() == "live":
             try:
-                await send_messenger_bubbles(sender, out.response)
+                await send_messenger_bubbles(sender, out.response, send_fn=send_messenger_text)
                 delivered = True
             except Exception:
                 delivered = False

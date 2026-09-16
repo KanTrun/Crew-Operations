@@ -281,10 +281,11 @@ async def send_messenger_bubbles(
     text: str,
     *,
     tag: str | None = None,
-    typing_delay_per_char: float = 0.015,
-    min_delay: float = 0.6,
-    max_delay: float = 2.0,
     enable_typing: bool = True,
+    min_delay: float = 0.5,
+    max_delay: float = 2.0,
+    typing_delay_per_char: float = 0.03,
+    send_fn: Any = None,
 ) -> list[dict[str, Any]]:
     """
     Gửi câu trả lời chia nhỏ thành nhiều bubbles kèm typing indicator mô phỏng nhân viên đang gõ.
@@ -295,11 +296,14 @@ async def send_messenger_bubbles(
     bubbles = split_into_bubbles(text)
     if not bubbles:
         return []
-
-    is_replay = os.environ.get("CA_AGENT_MODE", "").strip().lower() == "replay"
+    is_replay = (
+        os.environ.get("CA_AGENT_MODE", "").strip().lower() == "replay"
+        or bool(os.environ.get("PYTEST_CURRENT_TEST"))
+    )
     results: list[dict[str, Any]] = []
+    dispatcher = send_fn or send_messenger_text
 
-    for _i, bubble in enumerate(bubbles):
+    for bubble in bubbles:
         if enable_typing and not is_replay:
             try:
                 send_messenger_action(psid, "typing_on")
@@ -308,7 +312,7 @@ async def send_messenger_bubbles(
             delay = min(max_delay, max(min_delay, len(bubble) * typing_delay_per_char))
             await asyncio.sleep(delay)
 
-        res = send_messenger_text(psid, bubble, tag=tag)
+        res = dispatcher(psid, bubble, tag=tag)
         results.append(res)
 
     return results

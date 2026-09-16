@@ -208,11 +208,6 @@ def _resolve_backend() -> dict[str, Any]:
         import sys
 
         mod = sys.modules.get("ca_api.services.table_reservation_service")
-        if mod is None:
-            try:
-                import ca_api.services.table_reservation_service as mod
-            except Exception:
-                mod = None
         if mod is not None:
             register_reservation_backend(
                 book_fn=getattr(mod, "atomic_hold_or_book_table", None),
