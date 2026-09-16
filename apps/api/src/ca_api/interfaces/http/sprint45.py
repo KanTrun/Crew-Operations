@@ -266,6 +266,21 @@ def _run_solver() -> dict[str, Any]:
         "luat_ap_dung": applied,
         "danh_sach_xung_dot": danh_sach_xung_dot,
     }
+    o_ca = {
+        (str(meta.get("thu") or ""), str(meta.get("khung") or ""))
+        for meta in inp.ca_meta.values()
+        if meta.get("thu") and meta.get("khung")
+    }
+    o_ca_da_xep = {
+        (
+            str(inp.ca_meta.get(ca_id, {}).get("thu") or ""),
+            str(inp.ca_meta.get(ca_id, {}).get("khung") or ""),
+        )
+        for ca_id, nhan_vien_ids in result.phan_cong.items()
+        if nhan_vien_ids
+    }
+    payload["tong_so_o_ca"] = len(o_ca)
+    payload["so_o_ca_da_xep"] = len(o_ca_da_xep & o_ca)
     out = _lich_out()
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -278,6 +293,8 @@ def _run_solver() -> dict[str, Any]:
         "luat_ap_dung": applied,
         "violations": len(result.violations),
         "danh_sach_xung_dot": danh_sach_xung_dot,
+        "tong_so_o_ca": len(o_ca),
+        "so_o_ca_da_xep": len(o_ca_da_xep & o_ca),
     }
 
 
@@ -342,6 +359,7 @@ class InboxBody(BaseModel):
     ca_id: str | None = None
     doi_tac_nv_id: str | None = None
     ap_dat: bool = False
+    tu_dong_xep_lich: bool = False
     ly_do: str | None = Field(default=None, max_length=500)
 
 
@@ -672,7 +690,50 @@ def inbox_decide(
     if not found:
         raise HTTPException(status_code=404, detail="inbox_item")
     _audit("inbox", role, {"id": item_id, "q": body.quyet_dinh, "y": found.get("y_dinh")})
-    return found
+
+    response = dict(found)
+    if (
+        body.quyet_dinh == "duyet"
+        and body.tu_dong_xep_lich
+        and found.get("hieu_luc", {}).get("loai") == "rang_buoc_cho_solver"
+    ):
+        life = _life()
+        current_state = str(life.get("trang_thai") or "may_sinh")
+        if current_state in {"da_duyet", "da_cong_bo", "da_dong"}:
+            solver_result = {
+                "ok": False,
+                "skipped": True,
+                "status": "LIFECYCLE_LOCKED",
+                "detail": f"lich_{current_state}_khong_tu_dong_xep_lai",
+            }
+        else:
+            try:
+                solver_result = _run_solver()
+            except Exception:
+                solver_result = {
+                    "ok": False,
+                    "status": "ERROR",
+                    "detail": "khong_the_chay_solver",
+                }
+            if solver_result.get("ok"):
+                life["trang_thai"] = "cho_duyet"
+                life["solver"] = solver_result
+                life["cap_nhat_luc"] = _clock.now_iso()
+                life["cap_nhat_boi"] = role
+                _save_life(life)
+        response["tu_dong_xep_lich"] = solver_result
+        _audit(
+            "inbox_auto_schedule",
+            role,
+            {
+                "id": item_id,
+                "ok": solver_result.get("ok"),
+                "status": solver_result.get("status"),
+                "so_o_ca_da_xep": solver_result.get("so_o_ca_da_xep"),
+                "tong_so_o_ca": solver_result.get("tong_so_o_ca"),
+            },
+        )
+    return response
 
 
 @router.get("/api/v1/inbox/candidates/{item_id}")
