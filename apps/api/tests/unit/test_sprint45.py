@@ -42,7 +42,7 @@ def _seed_three_nha_ca() -> None:
         )
 
 
-def test_lifecycle_and_audit() -> None:
+def test_lifecycle_and_audit(_du_nhan_vien_xep_lich: None) -> None:
     ql = headers(client, "lan")
     chu = headers(client, "hung")
     # Đúng chuỗi: may_sinh → nhap → dang_giai (solver) → cho_duyet → da_cong_bo.
@@ -50,9 +50,8 @@ def test_lifecycle_and_audit() -> None:
     r = client.post("/api/v1/lich/lifecycle", json={"to": "dang_giai"}, headers=ql)
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["trang_thai"] == "dang_giai"
+    assert body["trang_thai"] == "cho_duyet"
     assert body.get("solver", {}).get("status")
-    client.post("/api/v1/lich/lifecycle", json={"to": "cho_duyet"}, headers=ql)
     client.post("/api/v1/lich/lifecycle", json={"to": "da_duyet"}, headers=ql)
     client.post("/api/v1/lich/lifecycle", json={"to": "da_cong_bo"}, headers=ql)
     ics = client.get("/api/v1/lich/ics", headers=ql).json()
@@ -354,8 +353,8 @@ def test_lich_ics_event_fields_rfc5545() -> None:
     ics = client.get("/api/v1/lich/ics", headers=ql).json()
     assert "BEGIN:VCALENDAR" in ics["ics"]
     assert "BEGIN:VEVENT" in ics["ics"]
-    assert "DTSTART:" in ics["ics"]
-    assert "DTEND:" in ics["ics"]
+    assert "DTSTART;TZID=Asia/Ho_Chi_Minh:" in ics["ics"]
+    assert "DTEND;TZID=Asia/Ho_Chi_Minh:" in ics["ics"]
     assert "DTSTAMP:" in ics["ics"]
     assert "END:VEVENT" in ics["ics"]
 

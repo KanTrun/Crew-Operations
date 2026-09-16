@@ -162,17 +162,54 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
             if data.ca_meta[ca].get("khung") == "sang" and nv.endswith(("0", "2", "4", "6", "8")):
                 obj_terms.append(x[nv, ca] * (-soft_mod.W_S01_NGUYEN_VONG))
 
-    # s05: prefer pairing experienced (even) with newbie (odd) on same ca — soft bonus
+    # s03: thưởng các ngày làm liền nhau ở cùng khung để tránh lịch tuần bị vụn.
+    if "s03" in soft_ids:
+        for nv in nvs:
+            active_days: dict[int, cp_model.IntVar] = {}
+            for day_name, day_index in _THU_ORD.items():
+                day_vars = [
+                    x[nv, ca]
+                    for ca in cas
+                    if (nv, ca) in x and data.ca_meta[ca]["thu"] == day_name
+                ]
+                if not day_vars:
+                    continue
+                active = model.new_bool_var(f"active_day_{nv}_{day_index}")
+                model.add(active <= sum(day_vars))
+                for var in day_vars:
+                    model.add(active >= var)
+                active_days[day_index] = active
+            for day_index in range(6):
+                if day_index not in active_days or day_index + 1 not in active_days:
+                    continue
+                together = model.new_bool_var(f"contiguous_{nv}_{day_index}")
+                model.add(together <= active_days[day_index])
+                model.add(together <= active_days[day_index + 1])
+                model.add(
+                    together >= active_days[day_index] + active_days[day_index + 1] - 1
+                )
+                obj_terms.append(together * (-soft_mod.W_S03_CONTIGUOUS))
+
+    # s04: giữ ổn định phân công tuần trước khi các phương án khác tương đương.
+    if "s04" in soft_ids:
+        for ca, previous_nvs in data.phan_cong_tuan_truoc.items():
+            for nv in previous_nvs:
+                if (nv, ca) in x:
+                    obj_terms.append(x[nv, ca] * (-soft_mod.W_S04_STABILITY))
+
+    # s05: ưu tiên mỗi ca có cả người kinh nghiệm và người mới.
     if "s05" in soft_ids:
         for ca in cas:
-            odds = [x[nv, ca] for nv in nvs if (nv, ca) in x and nv[-1] in "13579"]
-            evens = [x[nv, ca] for nv in nvs if (nv, ca) in x and nv[-1] in "02468"]
-            if odds and evens:
+            experienced_ids = data.nhan_vien_kinh_nghiem or {
+                nv for nv in nvs if nv and nv[-1] in "02468"
+            }
+            experienced = [x[nv, ca] for nv in nvs if (nv, ca) in x and nv in experienced_ids]
+            new_staff = [x[nv, ca] for nv in nvs if (nv, ca) in x and nv not in experienced_ids]
+            if experienced and new_staff:
                 both = model.new_bool_var(f"pair_{ca}")
-                # both => at least one odd and one even (approx via sum)
-                # Maximize both: add negative cost when both active — use hint via sums
-                # Simplified: penalize all-odd or all-even via linear proxy skipped for KISS
-                _ = both  # reserved for future
+                model.add(both <= sum(experienced))
+                model.add(both <= sum(new_staff))
+                obj_terms.append(both * (-soft_mod.W_S05_NEWBIE_PAIR))
 
     # Fairness: minimize max over axes of (prior + new load) — scaled integers
     scale = 10
@@ -209,7 +246,8 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
     model.minimize(max_d * 1000 + sum(obj_terms) if obj_terms else max_d * 1000)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = time_limit_s
+    # Chừa biên cho thời gian dựng/đọc model để SLA tổng không vượt time_limit_s.
+    solver.parameters.max_time_in_seconds = max(0.01, time_limit_s - 0.5)
     solver.parameters.num_search_workers = 8
     t0 = time.perf_counter()
     status = solver.Solve(model)
@@ -246,6 +284,8 @@ def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
         tran_gio_tuan=data.tran_gio_tuan,
         khoang_nghi_gio=data.khoang_nghi_gio,
         debt=data.debt,
+        phan_cong_tuan_truoc=data.phan_cong_tuan_truoc,
+        nhan_vien_kinh_nghiem=data.nhan_vien_kinh_nghiem,
     )
     check = solve_hard_only(assigned)
     debt_after = update_debt_from_assignment(data.debt, dict(phan_cong), data.ca_meta)

@@ -53,7 +53,7 @@ export const HUBS: MapHub[] = [
         roles: ["nv", "ql"],
       },
       {
-        href: "/roster",
+        href: "/lich-tuan",
         label: "Lịch tuần",
         desc: "Lưới ca — ghim, chạy solver CP-SAT, công bố lịch.",
         roles: ["ql"],
@@ -233,7 +233,7 @@ export const FLOW: FlowStep[] = [
     title: "Xếp lịch tuần",
     who: "Quản lý",
     what: "Lịch tuần → ghim ca → chạy solver → công bố. Lõi CP-SAT, không LLM.",
-    href: "/roster",
+    href: "/lich-tuan",
     roles: ["ql"],
   },
   {

@@ -273,7 +273,7 @@ export default function HomNayPage() {
                 </>
               ) : manager ? (
                 <>
-                  <BtnLink href="/roster">Xếp lịch tuần</BtnLink>
+                  <BtnLink href="/lich-tuan">Xếp lịch tuần</BtnLink>
                   <BtnLink href="/inbox">Duyệt hộp thư</BtnLink>
                   <BtnLink href="/cam-nang" variant="ghost">
                     Chạy cẩm nang

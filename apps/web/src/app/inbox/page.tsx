@@ -426,7 +426,7 @@ export default function InboxPage() {
             <strong>
               {autoScheduleResult.so_o_ca_da_xep ?? 0}/{autoScheduleResult.tong_so_o_ca ?? 21} ô ca tuần
             </strong>
-            . Lịch đang chờ quản lý duyệt. <Link href="/roster" className="underline">Mở lịch tuần →</Link>
+            . Lịch đang chờ quản lý duyệt. <Link href="/lich-tuan" className="underline">Mở lịch tuần →</Link>
           </Notice>
         ) : (
           <Alert>

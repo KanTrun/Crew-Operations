@@ -255,7 +255,7 @@ export default function HomePage() {
             </button>
             <button
               type="button"
-              onClick={() => router.push("/roster")}
+              onClick={() => router.push("/lich-tuan")}
               className="text-neutral-400 hover:text-amber-400 underline"
             >
               Lịch tuần

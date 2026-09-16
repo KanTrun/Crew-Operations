@@ -139,29 +139,28 @@ def test_pin_reflected_in_lich_tuan() -> None:
     assert nv_that in phan_cong.get("w1_c02", []), f"pin {nv_that} phải hiện trong w1_c02"
 
 
-def test_lifecycle_quanly_can_set() -> None:
-    # Quản lý đặt trạng thái được, nhưng đổi tuan_iso là việc của chủ quán.
+def test_lifecycle_quanly_can_set(_du_nhan_vien_xep_lich: None) -> None:
+    # tuan_iso là phạm vi lịch độc lập; quản lý được vận hành tuần được chọn.
+    from ca_api.persist import kv_set
+
     ql = headers(client, "lan")
+    kv_set(
+        "lich_tuan_lifecycle_by_week",
+        {"2026-W36": {"tuan_iso": "2026-W36", "trang_thai": "may_sinh"}},
+    )
     r = client.patch(
         "/api/v1/lich-tuan/lifecycle",
         json={"trang_thai": "nhap", "tuan_iso": "2026-W36"},
         headers=ql,
     )
-    assert r.status_code == 403
-    assert r.json()["detail"] == "chi_chu_quan_doi_tuan_iso"
+    assert r.status_code == 200
+    assert r.json()["tuan_iso"] == "2026-W36"
 
-    # Đi đúng chuỗi với chủ quán: may_sinh → nhap → dang_giai (solver chạy, tự sang cho_duyet).
-    cq = headers(client, "hung")
-    r0 = client.patch(
-        "/api/v1/lich-tuan/lifecycle",
-        json={"trang_thai": "nhap", "tuan_iso": "2026-W36"},
-        headers=cq,
-    )
-    assert r0.status_code == 200, r0.text
+    # Nháp → đang giải; solver đạt thì tự chuyển sang chờ duyệt.
     r1 = client.patch(
         "/api/v1/lich-tuan/lifecycle",
-        json={"trang_thai": "dang_giai"},
-        headers=cq,
+        json={"trang_thai": "dang_giai", "tuan_iso": "2026-W36"},
+        headers=ql,
     )
     assert r1.status_code == 200, r1.text
     # dang_giai chạy solver xong tự chuyển cho_duyet — PATCH trả trạng thái mới.
@@ -199,7 +198,7 @@ def test_lifecycle_nhanvien_forbidden() -> None:
     assert r.status_code == 403
 
 
-def test_lifecycle_da_dong_requires_chu_quan() -> None:
+def test_lifecycle_da_dong_requires_chu_quan(_du_nhan_vien_xep_lich: None) -> None:
     # Quản lý (lan) không được phép đóng lịch
     r_lan = client.patch(
         "/api/v1/lich-tuan/lifecycle",
@@ -211,7 +210,6 @@ def test_lifecycle_da_dong_requires_chu_quan() -> None:
 
     # Chủ quán (hung) được phép đóng lịch — đi đúng chuỗi tới da_cong_bo rồi đóng.
     cq = headers(client, "hung")
-    client.patch("/api/v1/lich-tuan/lifecycle", json={"trang_thai": "nhap"}, headers=cq)
     client.patch("/api/v1/lich-tuan/lifecycle", json={"trang_thai": "dang_giai"}, headers=cq)
     client.patch("/api/v1/lich-tuan/lifecycle", json={"trang_thai": "da_duyet"}, headers=cq)
     client.patch("/api/v1/lich-tuan/lifecycle", json={"trang_thai": "da_cong_bo"}, headers=cq)
