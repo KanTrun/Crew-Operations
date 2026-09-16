@@ -1862,6 +1862,53 @@ a:focus-visible {
   outline: none;
 }
 
+/* Hộp thoại INBOX luôn bám viewport thật.
+   z-index cao hơn shell/header và widget nổi; 100dvh tránh flex căn giữa theo
+   chiều cao trang dài khiến người dùng chỉ thấy backdrop khi đang cuộn. */
+.nq-inbox-dialog-layer {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 400;
+  isolation: isolate;
+  display: grid;
+  width: 100vw;
+  height: 100dvh;
+  place-items: center;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  padding: clamp(0.75rem, 2vw, 1.5rem);
+  background: color-mix(in srgb, var(--nq-bg) 38%, rgba(0, 0, 0, 0.82));
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.nq-inbox-dialog-panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 42rem);
+  max-height: calc(100dvh - clamp(1.5rem, 4vw, 3rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 2px solid color-mix(in srgb, var(--nq-green) 72%, var(--nq-line-strong));
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-bg-elevated);
+  box-shadow: var(--nq-shadow-float), var(--nq-inner-hi);
+  animation: nq-rise var(--nq-dur-t1) var(--nq-ease-out) both;
+}
+
+.nq-inbox-dialog-panel--compact {
+  width: min(100%, 32rem);
+}
+
+.nq-inbox-dialog-panel--danger {
+  border-color: color-mix(in srgb, var(--nq-red) 72%, var(--nq-line-strong));
+}
+
+.nq-inbox-dialog-panel--accent {
+  border-color: color-mix(in srgb, var(--nq-copper) 72%, var(--nq-line-strong));
+}
+
 @media (max-width: 639px) {
   .nq-roster-dialog-layer {
     align-items: end;
@@ -1872,10 +1919,21 @@ a:focus-visible {
     max-height: calc(100dvh - var(--nq-s4));
     border-radius: var(--nq-radius-bubble) var(--nq-radius-bubble) 0 0;
   }
+
+  .nq-inbox-dialog-layer {
+    align-items: end;
+    padding: var(--nq-s2);
+  }
+
+  .nq-inbox-dialog-panel {
+    max-height: calc(100dvh - var(--nq-s4));
+    border-radius: var(--nq-radius-bubble) var(--nq-radius-bubble) 0 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nq-roster-dialog-panel {
+  .nq-roster-dialog-panel,
+  .nq-inbox-dialog-panel {
     animation: none;
   }
 }

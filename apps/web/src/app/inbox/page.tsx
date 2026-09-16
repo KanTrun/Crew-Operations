@@ -255,6 +255,28 @@ export default function InboxPage() {
     if (token) load();
   }, [token, load]);
 
+  useEffect(() => {
+    const hasOpenDialog = Boolean(duyetModalItem || tuChoiModalItem || swapModalItem || showReopenModal);
+    if (!hasOpenDialog) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function closeDialog(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setDuyetModalItem(null);
+      setTuChoiModalItem(null);
+      setSwapModalItem(null);
+      setShowReopenModal(false);
+    }
+
+    document.addEventListener("keydown", closeDialog);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeDialog);
+    };
+  }, [duyetModalItem, showReopenModal, swapModalItem, tuChoiModalItem]);
+
   const personOptions = useMemo(
     () => [{ value: "all", label: "Mọi người" }, ...uniqueSorted(items.map((i) => i.nv_id)).map((v) => ({ value: v, label: v }))],
     [items],
@@ -624,15 +646,17 @@ export default function InboxPage() {
 
       {duyetModalItem && typeof document !== "undefined" ? createPortal(
         <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          className="nq-inbox-dialog-layer"
           onClick={() => setDuyetModalItem(null)}
-          onKeyDown={(e) => e.key === 'Escape' && setDuyetModalItem(null)}
         >
           <div
-            className="bg-[var(--nq-surface)] border-2 border-emerald-500/70 p-6 max-w-lg w-full shadow-2xl rounded max-h-[85vh] overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inbox-approve-dialog-title"
+            className="nq-inbox-dialog-panel"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold uppercase tracking-wider mb-2 text-emerald-300">
+            <h3 id="inbox-approve-dialog-title" className="text-lg font-bold uppercase tracking-wider mb-2 text-emerald-300">
               Duyệt ràng buộc — xem chi tiết trước khi chốt
             </h3>
             <p className="text-sm opacity-80 mb-4 text-[var(--nq-fg)]">
@@ -706,15 +730,17 @@ export default function InboxPage() {
 
       {tuChoiModalItem && typeof document !== "undefined" ? createPortal(
         <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          className="nq-inbox-dialog-layer"
           onClick={() => setTuChoiModalItem(null)}
-          onKeyDown={(e) => e.key === 'Escape' && setTuChoiModalItem(null)}
         >
           <div
-            className="bg-[var(--nq-surface)] border-2 border-rose-500/70 p-6 max-w-md w-full shadow-2xl rounded"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inbox-reject-dialog-title"
+            className="nq-inbox-dialog-panel nq-inbox-dialog-panel--compact nq-inbox-dialog-panel--danger"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold uppercase tracking-wider mb-2 text-rose-300">
+            <h3 id="inbox-reject-dialog-title" className="text-lg font-bold uppercase tracking-wider mb-2 text-rose-300">
               Từ chối ràng buộc
             </h3>
             <p className="text-sm opacity-80 mb-4 text-[var(--nq-fg)]">
@@ -769,15 +795,17 @@ export default function InboxPage() {
 
       {swapModalItem && typeof document !== "undefined" ? createPortal(
         <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          className="nq-inbox-dialog-layer"
           onClick={() => setSwapModalItem(null)}
-          onKeyDown={(e) => e.key === 'Escape' && setSwapModalItem(null)}
         >
           <div
-            className="bg-[var(--nq-surface)] border-2 border-[var(--nq-copper)] p-6 max-w-md w-full shadow-2xl rounded"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inbox-swap-dialog-title"
+            className="nq-inbox-dialog-panel nq-inbox-dialog-panel--compact nq-inbox-dialog-panel--accent"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold uppercase tracking-wider mb-2 text-[var(--nq-fg)]">
+            <h3 id="inbox-swap-dialog-title" className="text-lg font-bold uppercase tracking-wider mb-2 text-[var(--nq-fg)]">
               Chỉ định ca & đối tác đổi ca
             </h3>
             <p className="text-sm opacity-80 mb-4 text-[var(--nq-fg)]">
@@ -832,9 +860,14 @@ export default function InboxPage() {
       ) : null}
 
       {showReopenModal && typeof document !== "undefined" ? createPortal(
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nq-panel-bg,#222)] border-2 border-[var(--nq-copper)] p-6 max-w-md w-full shadow-2xl rounded">
-            <h3 className="text-lg font-bold uppercase tracking-wider mb-2 text-[var(--nq-fg)]">
+        <div className="nq-inbox-dialog-layer">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inbox-reopen-dialog-title"
+            className="nq-inbox-dialog-panel nq-inbox-dialog-panel--compact nq-inbox-dialog-panel--accent"
+          >
+            <h3 id="inbox-reopen-dialog-title" className="text-lg font-bold uppercase tracking-wider mb-2 text-[var(--nq-fg)]">
               Mở lại đợt xếp lịch tuần mới
             </h3>
             <p className="text-sm opacity-80 mb-4 text-[var(--nq-fg)]">
