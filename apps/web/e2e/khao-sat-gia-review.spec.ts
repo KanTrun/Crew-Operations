@@ -117,17 +117,42 @@ const KET_QUA = {
   generated_at: "2026-09-13T08:06:00Z",
 };
 
-async function setSession(page: Page, role: "quan_ly" | "chu_quan" | "nhan_vien") {
-  await page.addInitScript((sessionRole) => {
-    sessionStorage.setItem("nq_token", "e2e-token");
-    sessionStorage.setItem("nq_role", sessionRole);
-    sessionStorage.setItem("nq_name", "E2E");
-    sessionStorage.setItem("nq_nv", `e2e-${sessionRole}`);
-    // Ghi localStorage để AppShell đọc role ngay khi mount
-    localStorage.setItem("nq_role", sessionRole);
-    localStorage.setItem("nq_name", "E2E");
-    localStorage.setItem("nq_nv", `e2e-${sessionRole}`);
-  }, role);
+/**
+ * Mock /api/v1/auth/login để trả token giả + role cụ thể,
+ * rồi đăng nhập qua UI bình thường.
+ *
+ * Lý do không dùng addInitScript + sessionStorage.setItem trực tiếp:
+ *   useState("") trong các page React luôn khởi tạo token="",
+ *   chỉ sau useEffect(() => setToken(getToken()), []) mới đọc storage.
+ *   Nếu có AuthGate hoặc redirect trong khoảng thời gian giữa render
+ *   đầu và useEffect, test flake. Flow login thực sự gọi setSession()
+ *   bên trong React (sau response từ API), đảm bảo state nhất quán.
+ */
+async function loginAs(
+  page: Page,
+  role: "quan_ly" | "chu_quan" | "nhan_vien",
+) {
+  // Mock auth endpoint — không cần DB thật, không cần demo_api trả đúng user
+  await page.route(
+    /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/auth\/login/,
+    async (route: Route) => {
+      await route.fulfill({
+        json: {
+          token: "e2e-token",
+          role,
+          display_name: `E2E-${role}`,
+          nv_id: `e2e-${role}`,
+        },
+      });
+    },
+  );
+
+  await page.goto("/login");
+  await page.getByLabel("Tài khoản").fill("e2e");
+  await page.getByLabel("Mật khẩu").fill("e2e");
+  await page.getByRole("button", { name: "Vào hệ thống" }).click();
+  // Sau login, app navigate đến /hom-nay
+  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
 }
 
 // Mock chat HTTP endpoints và WebSocket để FloatingChatHead không gọi API thật với e2e-token giả.
@@ -217,7 +242,7 @@ async function moTaoJob(page: Page) {
 test.describe("Khảo sát giá — luồng review NEEDS_REVIEW (ADR-008)", () => {
   test("Job DỪNG ở needs_review và không tự duyệt; thiếu giá thì chặn, không gọi API", async ({ page }) => {
     const reviewRequests: Array<Record<string, unknown>> = [];
-    await setSession(page, "quan_ly");
+    await loginAs(page, "quan_ly");
     await mockKhaoSat(page, reviewRequests);
 
     await moTaoJob(page);
@@ -253,7 +278,7 @@ test.describe("Khảo sát giá — luồng review NEEDS_REVIEW (ADR-008)", () =
 
   test("Sửa giá một dòng, loại dòng không đọc được → gửi đúng payload → ra dashboard", async ({ page }) => {
     const reviewRequests: Array<Record<string, unknown>> = [];
-    await setSession(page, "chu_quan");
+    await loginAs(page, "chu_quan");
     await mockKhaoSat(page, reviewRequests);
 
     await moTaoJob(page);
@@ -310,7 +335,7 @@ test.describe("Khảo sát giá — luồng review NEEDS_REVIEW (ADR-008)", () =
 
   test("Nhân viên không mở được màn review — tính năng tốn chi phí thật", async ({ page }) => {
     const reviewRequests: Array<Record<string, unknown>> = [];
-    await setSession(page, "nhan_vien");
+    await loginAs(page, "nhan_vien");
     await mockKhaoSat(page, reviewRequests);
 
     await page.goto("/khao-sat-gia");

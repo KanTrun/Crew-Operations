@@ -8,10 +8,45 @@ type ReviewItem = {
 };
 
 const API_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/page\/fb-(inbox|policy)/;
-
-// Mock các endpoints của chat nội bộ để FloatingChatHead không gọi API thật với e2e-token giả.
-// Nếu không mock, backend trả 401 → có thể gây race condition ảnh hưởng render.
 const CHAT_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/chat\//;
+
+/**
+ * Mock /api/v1/auth/login để trả token giả + role cụ thể,
+ * rồi đăng nhập qua UI bình thường.
+ *
+ * Lý do không dùng addInitScript + sessionStorage.setItem trực tiếp:
+ *   useState("") trong các page React luôn khởi tạo token="",
+ *   chỉ sau useEffect(() => setToken(getToken()), []) mới đọc storage.
+ *   Nếu có AuthGate hoặc redirect trong khoảng thời gian giữa render
+ *   đầu và useEffect, test flake. Flow login thực sự gọi setSession()
+ *   bên trong React (sau response từ API), đảm bảo state nhất quán.
+ */
+async function loginAs(
+  page: Page,
+  role: "quan_ly" | "chu_quan" | "nhan_vien",
+) {
+  // Mock auth endpoint — không cần DB thật, không cần demo_api trả đúng user
+  await page.route(
+    /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/auth\/login/,
+    async (route: Route) => {
+      await route.fulfill({
+        json: {
+          token: "e2e-token",
+          role,
+          display_name: `E2E-${role}`,
+          nv_id: `e2e-${role}`,
+        },
+      });
+    },
+  );
+
+  await page.goto("/login");
+  await page.getByLabel("Tài khoản").fill("e2e");
+  await page.getByLabel("Mật khẩu").fill("e2e");
+  await page.getByRole("button", { name: "Vào hệ thống" }).click();
+  // Sau login, app navigate đến /hom-nay
+  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
+}
 
 test.beforeEach(async ({ page }) => {
   // Mock WebSocket chat
@@ -23,12 +58,12 @@ test.beforeEach(async ({ page }) => {
           ws.send(JSON.stringify({ event: "auth:ack" }));
         }
       } catch {
-        // Ignore malformed message in test mock
+        // ignore
       }
     });
   });
 
-  // Mock HTTP chat endpoints (conversations, online, messages)
+  // Mock HTTP chat endpoints để FloatingChatHead không gọi API thật
   await page.route(CHAT_PATTERN, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith("/online")) {
@@ -38,20 +73,6 @@ test.beforeEach(async ({ page }) => {
     }
   });
 });
-
-async function setSession(page: Page, role: "quan_ly" | "chu_quan" | "nhan_vien") {
-  await page.addInitScript((sessionRole) => {
-    sessionStorage.setItem("nq_token", "e2e-token");
-    sessionStorage.setItem("nq_role", sessionRole);
-    sessionStorage.setItem("nq_name", "E2E");
-    sessionStorage.setItem("nq_nv", `e2e-${sessionRole}`);
-    // Cũng ghi vào localStorage để AppShell đọc role/name ngay khi mount
-    // (token không ghi localStorage theo session.ts:26-27).
-    localStorage.setItem("nq_role", sessionRole);
-    localStorage.setItem("nq_name", "E2E");
-    localStorage.setItem("nq_nv", `e2e-${sessionRole}`);
-  }, role);
-}
 
 function fixture(item: ReviewItem) {
   return {
@@ -95,7 +116,7 @@ async function mockInbox(page: Page, items: ReviewItem[], decisions: unknown[]) 
 
 test("Quản lý duyệt, sửa, từ chối và thấy SLA hợp lệ", async ({ page }) => {
   const decisions: unknown[] = [];
-  await setSession(page, "quan_ly");
+  await loginAs(page, "quan_ly");
   await mockInbox(
     page,
     [
@@ -132,7 +153,7 @@ test("Quản lý duyệt, sửa, từ chối và thấy SLA hợp lệ", async (
 });
 
 test("Quản lý không thể xử lý escalation dành cho chủ quán", async ({ page }) => {
-  await setSession(page, "quan_ly");
+  await loginAs(page, "quan_ly");
   await mockInbox(
     page,
     [{ id: 4, message_text: "Cần gặp chủ quán", assigned_role: "chu_quan", proposed_response: "Dạ chủ quán sẽ phản hồi." }],
@@ -147,7 +168,7 @@ test("Quản lý không thể xử lý escalation dành cho chủ quán", async 
 
 test("Bộ lọc tải đúng trạng thái và khóa mục đã xử lý", async ({ page }) => {
   const requestedStatuses: Array<string | null> = [];
-  await setSession(page, "quan_ly");
+  await loginAs(page, "quan_ly");
   await page.route(API_PATTERN, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith("/fb-policy")) {
@@ -179,7 +200,7 @@ test("Bộ lọc tải đúng trạng thái và khóa mục đã xử lý", asyn
 
 test("Chủ quán có thể xử lý escalation", async ({ page }) => {
   const decisions: unknown[] = [];
-  await setSession(page, "chu_quan");
+  await loginAs(page, "chu_quan");
   await mockInbox(
     page,
     [{ id: 5, message_text: "Cần gặp chủ quán", assigned_role: "chu_quan", proposed_response: "Dạ chủ quán sẽ phản hồi." }],
@@ -193,7 +214,7 @@ test("Chủ quán có thể xử lý escalation", async ({ page }) => {
 });
 
 test("Nhân viên bị chặn khỏi hộp thư Fanpage", async ({ page }) => {
-  await setSession(page, "nhan_vien");
+  await loginAs(page, "nhan_vien");
   await page.goto("/page-quan/fb-inbox");
   await expect(page.getByRole("heading", { name: /Không đủ quyền|Trang này dành cho vai trò khác/ })).toBeVisible();
 });
