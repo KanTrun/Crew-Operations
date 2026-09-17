@@ -132,6 +132,19 @@ async function loginAs(
   page: Page,
   role: "quan_ly" | "chu_quan" | "nhan_vien",
 ) {
+  await page.route(
+    /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/me/,
+    async (route: Route) => {
+      await route.fulfill({
+        json: {
+          role,
+          nv_id: `e2e-${role}`,
+          display_name: `E2E-${role}`,
+        },
+      });
+    },
+  );
+
   // Mock auth endpoint — không cần DB thật, không cần demo_api trả đúng user
   await page.route(
     /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/auth\/login/,

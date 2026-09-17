@@ -65,8 +65,16 @@ def test_lifecycle_and_audit(_du_nhan_vien_xep_lich: None) -> None:
 
 
 def test_publish_creates_exact_week_notification_and_ack(_du_nhan_vien_xep_lich: None) -> None:
+    from ca_api.services.scheduling_service import run_authoritative_schedule
+
     week = "2026-W44"
     ql = headers(client, "lan")
+    run_authoritative_schedule(
+        store_id="quan_01",
+        tuan_iso=week,
+        actor_id="lan",
+        idempotency_key=f"test:{week}",
+    )
     kv_set("lich_tuan_lifecycle_by_week", {week: {"tuan_iso": week, "trang_thai": "da_duyet"}})
 
     published = client.patch(
