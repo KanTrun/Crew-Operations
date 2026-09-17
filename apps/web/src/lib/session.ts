@@ -70,9 +70,9 @@ const STAFF_ACCESS = new Set([
   "/them",
   "/contracts",
   "/chat",
+  "/lich-tuan",
 ]);
 const MANAGER_ONLY = new Set([
-  "/lich-tuan",
   "/roster",
   "/inbox",
   "/page-quan",
