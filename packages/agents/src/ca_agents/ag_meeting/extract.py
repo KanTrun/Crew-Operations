@@ -408,6 +408,9 @@ def _extract_rule_or_fixture(
                 "Giảm định lượng syrup đào từ 30ml xuống 20ml (áp dụng ngay từ ca này)",
             ],
             "action_items": items,
+            "de_xuat_phe_duyet": [],
+            "dieu_chinh_lich": [],
+            "gop_y_luu_y": [],
             "de_xuat_sop": [
                 {
                     "quy_trinh_lien_quan": "Pha chế Trà Đào",

@@ -63,6 +63,7 @@ from ca_api.interfaces.http.ai_learning import router as ai_learning_router
 from ca_api.interfaces.http.channels import router as channels_router
 from ca_api.interfaces.http.chat import router as chat_router
 from ca_api.interfaces.http.copilot import router as copilot_router
+from ca_api.interfaces.http.copilot_voice import router as copilot_voice_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.pos import router as pos_router
@@ -234,6 +235,7 @@ app.include_router(sprint3_router)
 app.include_router(sprint45_router)
 app.include_router(channels_router)
 app.include_router(copilot_router)
+app.include_router(copilot_voice_router)
 app.include_router(pos_router)
 app.include_router(meeting_router)
 app.include_router(trends_router)

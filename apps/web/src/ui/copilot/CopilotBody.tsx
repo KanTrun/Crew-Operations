@@ -14,8 +14,10 @@ import { Icon } from "../icons";
 import { ActionProposalCard } from "./ActionProposalCard";
 import { ChatText } from "./ChatText";
 import type { ChatMessage, Mode } from "./useCopilotChat";
+import { useCopilotVoice } from "./useCopilotVoice";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const VOICE_ENABLED = process.env.NEXT_PUBLIC_GEMINI_LIVE_VOICE_ENABLED === "true";
 
 function resolveMediaUrl(url: string): string {
   if (!url) return "";
@@ -50,6 +52,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const voice = useCopilotVoice();
 
   const [attachedFile, setAttachedFile] = useState<{
     file: File;
@@ -368,6 +371,18 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             {uploadError && (
               <p className="mb-2 text-[11px] text-rose-400">{uploadError}</p>
             )}
+            {VOICE_ENABLED && voice.state !== "idle" && (
+              <p
+                className={`mb-2 text-[11px] ${voice.state === "error" ? "text-rose-400" : "text-[var(--nq-copper)]"}`}
+                role="status"
+              >
+                {voice.state === "connecting" && "Đang kết nối voice…"}
+                {voice.state === "listening" && "Đang nghe…"}
+                {voice.state === "processing" && "Đang xử lý…"}
+                {voice.state === "speaking" && "Trợ lý đang nói…"}
+                {voice.state === "error" && "Voice chưa sẵn sàng. Anh/chị có thể tiếp tục dùng chat text."}
+              </p>
+            )}
 
             <form
               onSubmit={handleFormSubmit}
@@ -399,6 +414,21 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 className="flex-1 border-2 bg-[var(--nq-bg)] px-3.5 py-2 text-xs text-[var(--nq-fg)] placeholder:text-[var(--nq-dim)] focus:outline-none disabled:opacity-50"
                 style={{ borderColor: "var(--accent)" }}
               />
+              {VOICE_ENABLED && (
+                <button
+                  type="button"
+                  onClick={voice.state === "idle" || voice.state === "error" ? voice.start : voice.stop}
+                  disabled={loading || Boolean(streamingId) || uploading || voice.state === "connecting"}
+                  className={`border-2 p-2 transition disabled:opacity-40 ${
+                    voice.state === "listening" || voice.state === "speaking" || voice.state === "processing"
+                      ? "border-rose-500 bg-rose-500 text-white"
+                      : "border-[var(--nq-dim)] bg-[var(--nq-bg)] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
+                  }`}
+                  title={voice.state === "idle" || voice.state === "error" ? "Bắt đầu nói với trợ lý" : "Dừng phiên voice"}
+                >
+                  <Icon name="microphone" size={16} />
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={loading || Boolean(streamingId) || uploading || (!input.trim() && !attachedFile)}

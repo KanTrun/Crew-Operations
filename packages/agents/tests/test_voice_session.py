@@ -1,0 +1,147 @@
+from __future__ import annotations
+
+import asyncio
+import json
+
+import pytest
+from ca_agents.ag_copilot.voice_session import (
+    GEMINI_LIVE_MODEL,
+    GeminiLiveSession,
+    VerifiedVoiceContext,
+    VoiceSessionUnavailable,
+)
+
+
+class FakeConnection:
+    def __init__(self, response: dict[str, object] | None = None) -> None:
+        self.sent: list[str | bytes] = []
+        self.closed = False
+        self.response = response or {"setupComplete": {}}
+
+    async def send(self, message: str | bytes) -> None:
+        self.sent.append(message)
+
+    async def recv(self) -> str:
+        return json.dumps(self.response)
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+def _context() -> VerifiedVoiceContext:
+    return VerifiedVoiceContext(
+        user_id="nv_01",
+        user_role="quan_ly",
+        store_id="quan_01",
+    )
+
+
+def test_replay_mode_never_opens_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    async def connector(url: str) -> FakeConnection:
+        calls.append(url)
+        return FakeConnection()
+
+    monkeypatch.setenv("CA_AGENT_MODE", "replay")
+    monkeypatch.setenv("GEMINI_LIVE_VOICE_ENABLED", "true")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    async def exercise() -> None:
+        with pytest.raises(VoiceSessionUnavailable, match="disabled_in_replay"):
+            await GeminiLiveSession(_context(), connector=connector).open()
+
+    asyncio.run(exercise())
+
+    assert calls == []
+
+
+def test_live_session_uses_only_extended_thinking_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = FakeConnection()
+    urls: list[str] = []
+
+    async def connector(url: str) -> FakeConnection:
+        urls.append(url)
+        return connection
+
+    monkeypatch.setenv("CA_AGENT_MODE", "live")
+    monkeypatch.setenv("GEMINI_LIVE_VOICE_ENABLED", "true")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    async def exercise() -> None:
+        session = GeminiLiveSession(_context(), connector=connector)
+        await session.open()
+
+    asyncio.run(exercise())
+
+    assert urls and "test-key" in urls[0]
+    setup = json.loads(str(connection.sent[0]))
+    assert setup["setup"]["model"] == f"models/{GEMINI_LIVE_MODEL}"
+    assert GEMINI_LIVE_MODEL == "gemini-3.8-live-extended-thinking"
+    assert "gemini-3.8-live\"" not in str(connection.sent[0])
+
+
+def test_live_session_rejects_missing_setup_complete(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = FakeConnection({"serverContent": {"turnComplete": True}})
+
+    async def connector(_url: str) -> FakeConnection:
+        return connection
+
+    monkeypatch.setenv("CA_AGENT_MODE", "live")
+    monkeypatch.setenv("GEMINI_LIVE_VOICE_ENABLED", "true")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    async def exercise() -> None:
+        with pytest.raises(VoiceSessionUnavailable, match="setup_failed"):
+            await GeminiLiveSession(_context(), connector=connector).open()
+
+    asyncio.run(exercise())
+
+    assert connection.closed is True
+
+
+def test_live_session_forwards_audio_text_and_upstream_events(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = FakeConnection()
+
+    async def connector(_url: str) -> FakeConnection:
+        return connection
+
+    monkeypatch.setenv("CA_AGENT_MODE", "live")
+    monkeypatch.setenv("GEMINI_LIVE_VOICE_ENABLED", "true")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    async def exercise() -> dict[str, object]:
+        session = GeminiLiveSession(_context(), connector=connector)
+        await session.open()
+        await session.send_audio(b"\x00\x01")
+        await session.send_text("Tra cứu ca hôm nay")
+        connection.response = {"serverContent": {"turnComplete": True}}
+        event = await session.receive()
+        await session.close()
+        return event
+
+    event = asyncio.run(exercise())
+    audio = json.loads(str(connection.sent[1]))
+    text = json.loads(str(connection.sent[2]))
+
+    assert audio == {
+        "realtimeInput": {
+            "audio": {"mimeType": "audio/pcm;rate=16000", "data": "AAE="}
+        }
+    }
+    assert text == {
+        "clientContent": {
+            "turns": [
+                {"role": "user", "parts": [{"text": "Tra cứu ca hôm nay"}]}
+            ],
+            "turnComplete": True,
+        }
+    }
+    assert event == {"serverContent": {"turnComplete": True}}
+    assert connection.closed is True
