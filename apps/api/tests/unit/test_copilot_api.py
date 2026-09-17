@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import time
 import pytest
 from ca_gates import compute_snapshot_hash
@@ -45,6 +46,82 @@ def _login_staff() -> str:
     res = login("minh", "nhipquan")
     assert res is not None
     return res["token"]
+
+
+def test_copilot_voice_replay_fails_closed_without_network() -> None:
+    token = _login_manager()
+    with client.websocket_connect("/api/v1/copilot/voice") as websocket:
+        websocket.send_text(json.dumps({
+            "event": "auth",
+            "token": token,
+            "user_id": "attacker",
+            "role": "chu_quan",
+            "store_id": "quan_khac",
+        }))
+        error = websocket.receive_json()
+
+    assert error == {
+        "event": "voice:error",
+        "data": {"code": "gemini_live_disabled_in_replay", "fallback": "text_chat"},
+    }
+
+
+def test_copilot_voice_rejects_non_object_auth_frame() -> None:
+    with client.websocket_connect("/api/v1/copilot/voice") as websocket:
+        websocket.send_text("[]")
+        close = websocket.receive()
+
+    assert close == {
+        "type": "websocket.close",
+        "code": 4001,
+        "reason": "auth_invalid",
+    }
+
+
+def test_copilot_voice_uses_server_verified_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    import ca_api.interfaces.http.copilot_voice as voice_module
+
+    contexts: list[object] = []
+
+    class FakeLiveSession:
+        def __init__(self, context: object) -> None:
+            contexts.append(context)
+
+        async def open(self) -> None:
+            return None
+
+        async def receive(self) -> dict[str, object]:
+            await __import__("asyncio").sleep(60)
+            return {}
+
+        async def send_audio(self, audio: bytes) -> None:
+            return None
+
+        async def send_text(self, text: str) -> None:
+            return None
+
+        async def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(voice_module, "GeminiLiveSession", FakeLiveSession)
+    token = _login_manager()
+    with client.websocket_connect("/api/v1/copilot/voice") as websocket:
+        websocket.send_text(json.dumps({
+            "event": "auth",
+            "token": token,
+            "user_id": "attacker",
+            "role": "chu_quan",
+            "store_id": "quan_khac",
+        }))
+        ready = websocket.receive_json()
+        websocket.send_text(json.dumps({"event": "stop"}))
+
+    assert ready["event"] == "voice:ready"
+    assert contexts
+    context = contexts[0]
+    assert context.user_id == "nv_01"
+    assert context.user_role == "quan_ly"
+    assert context.store_id == "quan_01"
 
 
 def test_copilot_execution_receipt_lifecycle_and_isolation() -> None:

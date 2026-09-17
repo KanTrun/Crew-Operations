@@ -1,0 +1,163 @@
+"""Gemini Live voice session transport for AG-COPILOT."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Any, Protocol
+
+GEMINI_LIVE_MODEL = "gemini-3.8-live-extended-thinking"
+GEMINI_LIVE_ENDPOINT = (
+    "wss://generativelanguage.googleapis.com/ws/"
+    "google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+)
+SETUP_TIMEOUT_SECONDS = 10.0
+
+
+class VoiceSessionUnavailable(RuntimeError):
+    """Raised when voice cannot start without violating fail-closed policy."""
+
+
+class LiveConnection(Protocol):
+    async def send(self, message: str | bytes) -> None: ...
+
+    async def recv(self) -> str | bytes: ...
+
+    async def close(self) -> None: ...
+
+
+Connector = Callable[[str], Awaitable[LiveConnection]]
+
+
+@dataclass(frozen=True)
+class VerifiedVoiceContext:
+    user_id: str
+    user_role: str
+    store_id: str
+
+
+def voice_enabled() -> bool:
+    return os.environ.get("GEMINI_LIVE_VOICE_ENABLED", "false").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+
+def build_setup_message(context: VerifiedVoiceContext) -> str:
+    """Build the immutable setup frame without exposing identity to the client."""
+    system_instruction = (
+        "Bạn là AG-COPILOT của NHỊP QUÁN. Chỉ hỗ trợ hỏi đáp, tra cứu và tạo "
+        "ActionProposal qua pipeline nghiệp vụ; không tự thực thi mutation. "
+        f"Người dùng đã xác thực: {context.user_id}; vai trò: {context.user_role}; "
+        f"cơ sở: {context.store_id}. Trả lời tiếng Việt ngắn gọn, rõ ràng."
+    )
+    return json.dumps(
+        {
+            "setup": {
+                "model": f"models/{GEMINI_LIVE_MODEL}",
+                "generationConfig": {"responseModalities": ["AUDIO"]},
+                "systemInstruction": {"parts": [{"text": system_instruction}]},
+                "inputAudioTranscription": {},
+                "outputAudioTranscription": {},
+            }
+        },
+        ensure_ascii=False,
+    )
+
+
+async def _default_connector(url: str) -> LiveConnection:
+    try:
+        from websockets.asyncio.client import connect
+    except ImportError as exc:
+        raise VoiceSessionUnavailable("gemini_live_transport_unavailable") from exc
+    return await connect(url, max_size=4 * 1024 * 1024)
+
+
+class GeminiLiveSession:
+    """One authenticated server-to-server Gemini Live connection."""
+
+    def __init__(
+        self,
+        context: VerifiedVoiceContext,
+        *,
+        connector: Connector | None = None,
+    ) -> None:
+        self.context = context
+        self._connector = connector or _default_connector
+        self._connection: LiveConnection | None = None
+
+    async def open(self) -> None:
+        if os.environ.get("CA_AGENT_MODE", "replay").strip().lower() != "live":
+            raise VoiceSessionUnavailable("gemini_live_disabled_in_replay")
+        if not voice_enabled():
+            raise VoiceSessionUnavailable("gemini_live_voice_disabled")
+        api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+        if not api_key:
+            raise VoiceSessionUnavailable("gemini_live_api_key_missing")
+
+        self._connection = await self._connector(f"{GEMINI_LIVE_ENDPOINT}?key={api_key}")
+        await self._connection.send(build_setup_message(self.context))
+        try:
+            message = await asyncio.wait_for(
+                self._connection.recv(), timeout=SETUP_TIMEOUT_SECONDS
+            )
+            if isinstance(message, bytes):
+                message = message.decode("utf-8")
+            setup_response = json.loads(message)
+        except (TimeoutError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            await self.close()
+            raise VoiceSessionUnavailable("gemini_live_setup_failed") from exc
+        if not isinstance(setup_response, dict) or "setupComplete" not in setup_response:
+            await self.close()
+            raise VoiceSessionUnavailable("gemini_live_setup_failed")
+
+    async def send_audio(self, pcm16_16khz: bytes) -> None:
+        if self._connection is None:
+            raise VoiceSessionUnavailable("gemini_live_session_not_open")
+        import base64
+
+        await self._connection.send(
+            json.dumps(
+                {
+                    "realtimeInput": {
+                        "audio": {
+                            "mimeType": "audio/pcm;rate=16000",
+                            "data": base64.b64encode(pcm16_16khz).decode("ascii"),
+                        }
+                    }
+                }
+            )
+        )
+
+    async def send_text(self, text: str) -> None:
+        if self._connection is None:
+            raise VoiceSessionUnavailable("gemini_live_session_not_open")
+        await self._connection.send(
+            json.dumps(
+                {
+                    "clientContent": {
+                        "turns": [{"role": "user", "parts": [{"text": text}]}],
+                        "turnComplete": True,
+                    }
+                },
+                ensure_ascii=False,
+            )
+        )
+
+    async def receive(self) -> dict[str, Any]:
+        if self._connection is None:
+            raise VoiceSessionUnavailable("gemini_live_session_not_open")
+        message = await self._connection.recv()
+        if isinstance(message, bytes):
+            message = message.decode("utf-8")
+        data = json.loads(message)
+        return data if isinstance(data, dict) else {"error": "invalid_upstream_event"}
+
+    async def close(self) -> None:
+        if self._connection is not None:
+            connection, self._connection = self._connection, None
+            await connection.close()

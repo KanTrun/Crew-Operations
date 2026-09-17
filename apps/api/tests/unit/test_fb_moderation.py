@@ -31,6 +31,7 @@ def api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("NHIPQUAN_FB_PAGE_TOKEN", "tok_test")
     monkeypatch.setenv("NHIPQUAN_FB_PAGE_ID", "page_1")
     monkeypatch.setenv("NHIPQUAN_FB_APP_SECRET", "secret_test")
+    monkeypatch.setenv("NHIPQUAN_AUTO_RESERVATION", "0")
     monkeypatch.setenv("NHIPQUAN_DB", str(tmp_path / f"t_{uuid.uuid4().hex[:8]}.db"))
 
     # init_db() gate bằng cờ toàn cục — DB temp mới cần reset để tạo bảng

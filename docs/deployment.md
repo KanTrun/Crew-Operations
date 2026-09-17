@@ -40,6 +40,8 @@ Tren EC2, file `/opt/nhipquan/.env` can toi thieu:
 ```bash
 DOMAIN=nhipquan.duckdns.org
 CA_AGENT_MODE=live
+GEMINI_LIVE_VOICE_ENABLED=false
+NEXT_PUBLIC_GEMINI_LIVE_VOICE_ENABLED=false
 NHIPQUAN_CORS_ORIGINS=https://nhipquan.duckdns.org
 NHIPQUAN_SEED_DEMO=false
 NHIPQUAN_INBOX_SEED_FIXTURE=0
