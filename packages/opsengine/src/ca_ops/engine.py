@@ -187,7 +187,7 @@ def _timing_by_ma(run: PhieuRun) -> dict[str, int]:
 def _loai(minh_chung: str) -> str:
     if minh_chung == "anh":
         return "photo"
-    if minh_chung in {"so", "kiem_ke"}:
+    if minh_chung in {"so", "kiem_ke", "van_ban", "danh_sach"}:
         return "text"
     return "confirm"
 
