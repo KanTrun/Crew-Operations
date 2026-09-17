@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { canAccess, clearSession, getName, getRole, getToken, isChuQuan, isManager, roleLabel } from "../lib/session";
+import { apiGet } from "../lib/api";
+import { canAccess, clearSession, getName, getToken, isChuQuan, isManager, roleLabel } from "../lib/session";
 import { Icon, iconForHref } from "../ui/icons";
 import { Tour } from "../ui/tour";
 import { Logo } from "../ui/Logo";
@@ -100,10 +101,43 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [token, setToken] = useState("");
 
   useEffect(() => {
-    setToken(getToken());
-    setRole(getRole());
-    setName(getName());
-    setReady(true);
+    let cancelled = false;
+    const storedToken = getToken();
+    const storedName = getName();
+    setToken(storedToken);
+    setName(storedName);
+    setReady(false);
+
+    if (!storedToken) {
+      setRole("");
+      setReady(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    apiGet<{ role: string; nv_id: string }>("/api/v1/me")
+      .then((me) => {
+        if (cancelled) return;
+        // Quyền từ máy chủ là nguồn sự thật. Không dùng vai trò cũ trong
+        // localStorage để mở một trang quản trị.
+        setRole(me.role);
+        sessionStorage.setItem("nq_role", me.role);
+        sessionStorage.setItem("nq_nv", me.nv_id);
+        localStorage.setItem("nq_role", me.role);
+        localStorage.setItem("nq_nv", me.nv_id);
+      })
+      .catch(() => {
+        // Không xác minh được thì đóng quyền, không tin dữ liệu vai trò cũ.
+        if (!cancelled) setRole("__unverified__");
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [path]);
 
   useEffect(() => {
@@ -211,10 +245,18 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className={`flex-1 px-4 md:px-8 pt-16 ${wide ? "w-full max-w-none" : "max-w-[1280px] mx-auto w-full"}`} id="nq-content">
-        {token && role && !canAccess(role, path) ? (
+        {!ready ? (
+          <div className="nq-page nq-page--center py-16 text-center" role="status">
+            <p className="text-sm text-neutral-400">Đang kiểm tra quyền truy cập…</p>
+          </div>
+        ) : token && role && !canAccess(role, path) ? (
           <div className="nq-page nq-page--center py-16 text-center">
-            <h1 className="text-2xl font-black uppercase text-amber-500">Trang này dành cho vai trò khác</h1>
-            <p className="text-sm text-neutral-400 mt-2">Bạn không đủ quyền truy cập trang này với vai trò hiện tại.</p>
+            <h1 className="text-2xl font-black uppercase text-amber-500">Không đủ quyền truy cập</h1>
+            <p className="text-sm text-neutral-400 mt-2">
+              {path === "/vet"
+                ? "Bạn không được uỷ quyền để xem vết hệ thống. Chỉ Quản lý và Chủ quán được phép truy cập."
+                : "Tài khoản hiện tại không có quyền truy cập trang này."}
+            </p>
           </div>
         ) : (
           children

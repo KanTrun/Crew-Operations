@@ -40,6 +40,7 @@ from pydantic import BaseModel, Field
 
 from ca_api.orchestration import Clock, IdempotencyStore, StateMachine, dispatch_parallel
 from ca_api.persist import (
+    audit_add,
     db_path,
     diem_danh_hom_nay,
     ghi_diem_danh,
@@ -203,8 +204,17 @@ class TkbExtractBody(BaseModel):
     image_path_or_id: str
 
 
+def _current_iso_week() -> str:
+    iso = datetime.now(UTC).isocalendar()
+    return f"{iso.year}-W{iso.week:02d}"
+
+
 class TkbConfirmBody(BaseModel):
     nv_id: str | None = None
+    tuan_iso: str = Field(
+        default_factory=_current_iso_week,
+        pattern=r"^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$",
+    )
     khoang_ban: list[dict[str, str]]
     source_id: str = ""
     upload_id: str = ""
@@ -250,6 +260,17 @@ def diem_danh(
 ) -> dict[str, str]:
     nv = _nv_from_token(authorization)
     ghi_diem_danh(nv)
+    audit_add(
+        _clock.now_iso(),
+        nv,
+        "attendance.check_in",
+        {
+            "entity_type": "attendance",
+            "entity_id": nv,
+            "nv_id": nv,
+            "source": "manual",
+        },
+    )
     return {"ok": "true", "nv_id": nv}
 
 
@@ -587,6 +608,7 @@ def tkb_confirm(
         raise HTTPException(status_code=400, detail="khoang_rong")
 
     entry = {
+        "tuan_iso": body.tuan_iso,
         "khoang_ban": khoang,
         "source_id": body.source_id,
         "upload_id": body.upload_id,
@@ -595,31 +617,52 @@ def tkb_confirm(
     }
 
     def mut(doc: dict[str, Any]) -> dict[str, Any]:
-        doc[nv] = entry
+        week_doc = doc.setdefault(body.tuan_iso, {})
+        if not isinstance(week_doc, dict):
+            week_doc = {}
+            doc[body.tuan_iso] = week_doc
+        week_doc[nv] = entry
         return doc
 
-    kv_mutate("tkb_nv", mut, {})
+    kv_mutate("tkb_nv_by_week", mut, {})
     record_sua(
         loai="tkb_xac_nhan",
         truoc={},
-        sau={"nv_id": nv, "n": len(khoang)},
+        sau={"nv_id": nv, "tuan_iso": body.tuan_iso, "n": len(khoang)},
         ai=s["nv_id"],
         now_iso=datetime.now(UTC).isoformat(),
     )
-    return {"ok": True, "nv_id": nv, "khoang_ban": khoang, "n": len(khoang)}
+    return {
+        "ok": True,
+        "nv_id": nv,
+        "tuan_iso": body.tuan_iso,
+        "khoang_ban": khoang,
+        "n": len(khoang),
+    }
 
 
 @router.get("/api/v1/tkb/mine")
-def tkb_mine(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+def tkb_mine(
+    tuan_iso: str | None = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
     nv = _nv_from_token(authorization)
-    doc = kv_get("tkb_nv", {})
-    item = doc.get(nv) if isinstance(doc, dict) else None
-    return {"nv_id": nv, "item": item, "nguon": "quan"}
+    week = tuan_iso or _current_iso_week()
+    by_week = kv_get("tkb_nv_by_week", {})
+    week_doc = by_week.get(week, {}) if isinstance(by_week, dict) else {}
+    item = week_doc.get(nv) if isinstance(week_doc, dict) else None
+    if item is None:
+        legacy = kv_get("tkb_nv", {})
+        candidate = legacy.get(nv) if isinstance(legacy, dict) else None
+        if isinstance(candidate, dict) and candidate.get("tuan_iso") == week:
+            item = candidate
+    return {"nv_id": nv, "tuan_iso": week, "item": item, "nguon": "quan"}
 
 
 @router.get("/api/v1/tkb/{nv_id}")
 def tkb_get(
     nv_id: str,
+    tuan_iso: str | None = None,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     s = auth_session(authorization)
@@ -627,9 +670,16 @@ def tkb_get(
         raise HTTPException(status_code=401, detail="thieu_token")
     if s["role"] not in {"quan_ly", "chu_quan"} and s["nv_id"] != nv_id:
         raise HTTPException(status_code=403, detail="cam")
-    doc = kv_get("tkb_nv", {})
-    item = doc.get(nv_id) if isinstance(doc, dict) else None
-    return {"nv_id": nv_id, "item": item, "nguon": "quan"}
+    week = tuan_iso or _current_iso_week()
+    by_week = kv_get("tkb_nv_by_week", {})
+    week_doc = by_week.get(week, {}) if isinstance(by_week, dict) else {}
+    item = week_doc.get(nv_id) if isinstance(week_doc, dict) else None
+    if item is None:
+        legacy = kv_get("tkb_nv", {})
+        candidate = legacy.get(nv_id) if isinstance(legacy, dict) else None
+        if isinstance(candidate, dict) and candidate.get("tuan_iso") == week:
+            item = candidate
+    return {"nv_id": nv_id, "tuan_iso": week, "item": item, "nguon": "quan"}
 
 
 @router.get("/api/v1/toi/lich")

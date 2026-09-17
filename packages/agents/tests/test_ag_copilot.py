@@ -961,6 +961,45 @@ def test_tool_solve_weekly_schedule_integrates_meeting_constraints() -> None:
             tool_registry._SOURCES.clear()
 
 
+def test_tool_solve_weekly_schedule_filters_tkb_by_week(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Đường giải lịch qua Copilot không được nạp TKB của tuần khác."""
+    from ca_agents.ag_copilot.tool_registry import tool_solve_weekly_schedule
+    from ca_solver.model import LichInput, SolveResult
+
+    block = ("T4", "12:00", "17:00")
+    captured: list[list[tuple[str, str, str]]] = []
+
+    def mock_kv(key: str, default: Any) -> Any:
+        if key == "tkb_nv_by_week":
+            return {
+                "2026-W39": {
+                    "nv_02": {
+                        "tuan_iso": "2026-W39",
+                        "khoang_ban": [
+                            {"thu": block[0], "start": block[1], "end": block[2]}
+                        ],
+                    }
+                }
+            }
+        return default
+
+    def capture_tkb(data: LichInput, *, time_limit_s: float | None = None) -> SolveResult:
+        del time_limit_s
+        captured.append(list(data.tkb.get("nv_02", [])))
+        return SolveResult(ok=False, status="CAPTURED")
+
+    tool_registry.configure_data_sources(kv_get=mock_kv)
+    monkeypatch.setattr("ca_solver.solve_cpsat", capture_tkb)
+
+    tool_solve_weekly_schedule(tuan="2026-W39")
+    tool_solve_weekly_schedule(tuan="2026-W40")
+
+    assert block in captured[0]
+    assert block not in captured[1]
+
+
 def test_unaccented_time_off_parsing() -> None:
     """Regression: kiểm tra trích xuất thứ và lý do với tiếng Việt không dấu."""
     res = parse_intent("tôi xin nghỉ thu 6 vì có việc bận")

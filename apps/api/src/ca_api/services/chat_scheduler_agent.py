@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+from datetime import date
 import re
+import uuid
 from typing import Any
 
 try:
@@ -14,9 +16,13 @@ except ImportError:
     UTC = timezone.utc
 
 from ca_api.persist import (
+    availability_confirmation_upsert,
     chat_message_create,
     chat_messages_list,
+    kv_get,
+    kv_mutate,
 )
+from ca_api.services.scheduling_service import run_authoritative_schedule
 from ca_api.services.chat_ws import chat_ws_manager
 
 logger = logging.getLogger(__name__)
@@ -137,6 +143,92 @@ def collect_recent_availabilities(conv_id: str) -> dict[str, dict[str, list[str]
     return user_avail
 
 
+def submit_availability_confirmation(
+    *, conv_id: str, nv_id: str, display_name: str, text: str, tuan_iso: str | None = None,
+) -> dict[str, Any] | None:
+    """Create a pending confirmation card; unconfirmed data never reaches the solver."""
+    parsed = parse_availability_text(text)
+    if not parsed:
+        return None
+    iso = date.today().isocalendar()
+    week = tuan_iso if tuan_iso and re.fullmatch(r"\d{4}-W\d{2}", tuan_iso) else f"{iso.year}-W{iso.week:02d}"
+    item = {
+        "id": f"av_{uuid.uuid4().hex[:10]}",
+        "conv_id": conv_id,
+        "nv_id": nv_id,
+        "display_name": display_name or nv_id,
+        "tuan_iso": week,
+        "availability": parsed,
+        "source_text": text,
+        "status": "cho_xac_nhan",
+        "created_at": f"{date.today().isoformat()}T00:00:00Z",
+    }
+
+    def add(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        # Một draft mới của cùng nhân viên/tuần thay draft cũ, không tạo bản ghi rác.
+        items = [x for x in items if not (x.get("conv_id") == conv_id and x.get("nv_id") == nv_id and x.get("tuan_iso") == week and x.get("status") == "cho_xac_nhan")]
+        items.append(item)
+        return items[-200:]
+
+    kv_mutate("lich_ban_confirmations", add, [])
+    availability_confirmation_upsert(
+        item_id=str(item["id"]),
+        store_id=str(kv_get("chat_store_by_conversation", {}).get(conv_id, "quan_01")),
+        nv_id=nv_id,
+        tuan_iso=week,
+        availability=parsed,
+        status="cho_xac_nhan",
+    )
+    return item
+
+
+def availability_confirmations(conv_id: str = "", *, confirmed_only: bool = False) -> list[dict[str, Any]]:
+    rows = kv_get("lich_ban_confirmations", [])
+    return [
+        x for x in rows if isinstance(x, dict)
+        and (not conv_id or x.get("conv_id") == conv_id)
+        and (not confirmed_only or x.get("status") == "da_xac_nhan")
+    ]
+
+
+def update_availability_confirmation(item_id: str, *, nv_id: str, status: str, correction: str = "") -> dict[str, Any]:
+    found: dict[str, Any] | None = None
+
+    def mutate(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        nonlocal found
+        for raw in items:
+            if raw.get("id") != item_id:
+                continue
+            if raw.get("nv_id") != nv_id:
+                raise PermissionError("khong_phai_nguoi_gui")
+            item = dict(raw)
+            if status == "cho_xac_nhan":
+                parsed = parse_availability_text(correction)
+                if not parsed:
+                    raise ValueError("khong_doc_duoc_lich_ban")
+                item["availability"] = parsed
+                item["source_text"] = correction
+            item["status"] = status
+            found = item
+            raw.clear()
+            raw.update(item)
+            break
+        return items
+
+    kv_mutate("lich_ban_confirmations", mutate, [])
+    if not found:
+        raise KeyError("lich_ban_khong_ton_tai")
+    availability_confirmation_upsert(
+        item_id=str(found["id"]),
+        store_id=str(kv_get("chat_store_by_conversation", {}).get(found.get("conv_id", ""), "quan_01")),
+        nv_id=nv_id,
+        tuan_iso=str(found.get("tuan_iso") or ""),
+        availability=found.get("availability") or {},
+        status=str(found.get("status") or status),
+    )
+    return found
+
+
 def build_schedule_plan(
     availabilities: dict[str, dict[str, list[str]]],
     min_per_shift: int = 1,
@@ -175,6 +267,15 @@ def build_schedule_plan(
                 daily_worked[name].add(day)
 
     return schedule, shift_counts
+
+
+def uncovered_shifts(schedule: dict[str, dict[str, list[str]]]) -> list[dict[str, str]]:
+    return [
+        {"thu": day, "khung": shift}
+        for day, shifts in schedule.items()
+        for shift, assigned in shifts.items()
+        if not assigned
+    ]
 
 
 def format_schedule_report(
@@ -219,19 +320,50 @@ def format_schedule_report(
 
 async def handle_scheduling_request(conv_id: str, trigger_msg: str, user_sess: dict[str, Any]) -> dict[str, Any]:
     """Xử lý yêu cầu xếp lịch và gửi phản hồi vào cuộc trò chuyện."""
-    availabilities = collect_recent_availabilities(conv_id)
+    confirmations = availability_confirmations(conv_id, confirmed_only=True)
+    availabilities: dict[str, dict[str, list[str]]] = {}
+    for item in confirmations:
+        nv_id = str(item.get("nv_id") or "").strip()
+        if nv_id:
+            availabilities[nv_id] = item.get("availability") or {}
 
-    # Nếu chưa có ai nhắn thời gian rảnh trong đoạn chat gần đây, cung cấp hướng dẫn hoặc mẫu mặc định
+    # Production không được tự sinh nhân sự mẫu. Chờ dữ liệu thật từ cuộc chat.
     if not availabilities:
-        # Fallback mẫu dữ liệu chuẩn của chi nhánh để demo khả năng xếp lịch
-        availabilities = {
-            "Hoa Barista": {"T2": ["Sáng"], "T4": ["Sáng"], "T6": ["Sáng"], "CN": ["Sáng"]},
-            "Tuấn Phục Vụ": {"T2": ["Tối"], "T3": ["Tối"], "T5": ["Tối"], "T7": ["Tối"], "CN": ["Tối"]},
-            "Minh Order": {"T3": ["Chiều"], "T4": ["Chiều"], "T5": ["Chiều"], "T6": ["Chiều"], "T7": ["Sáng"]},
-            "Lan Quản Lý": {"T2": ["Sáng"], "T3": ["Sáng"], "T5": ["Sáng"], "T6": ["Sáng"]},
-        }
+        bot_msg = chat_message_create(
+            conv_id=conv_id,
+            sender_id="ai_scheduler",
+            content="Chưa có dữ liệu đăng ký ca thật trong cuộc trò chuyện. Mọi người gửi thời gian rảnh (ví dụ: rảnh sáng T2, T4) rồi mình xếp tiếp nhé.",
+            msg_type="text",
+            metadata={"intent": "SCHEDULE_SOLVE", "needs_availability": True, "workflow_step": 1},
+        )
+        await chat_ws_manager.broadcast_to_conversation(conv_id, {"event": "message:new", "data": bot_msg})
+        return bot_msg
 
-    schedule, shift_counts = build_schedule_plan(availabilities)
+    requested_week = str(user_sess.get("tuan_iso") or "").strip()
+    if re.fullmatch(r"\d{4}-W\d{2}", requested_week):
+        week = requested_week
+    else:
+        iso = date.today().isocalendar()
+        week = f"{iso.year}-W{iso.week:02d}"
+
+    solver_run = run_authoritative_schedule(
+        store_id=str(user_sess.get("store_id") or "quan_01"),
+        tuan_iso=week,
+        actor_id=str(user_sess.get("nv_id") or "chat"),
+        idempotency_key=f"chat:{conv_id}:{week}",
+    )
+    solver_result = solver_run.get("result") or {}
+    assignment = solver_result.get("phan_cong", {})
+    schedule: dict[str, dict[str, list[str]]] = {d: {s: [] for s in SHIFTS} for d in ALL_DAYS}
+    shift_names = {"sang": "Sáng", "chieu": "Chiều", "toi": "Tối", "Sáng": "Sáng", "Chiều": "Chiều", "Tối": "Tối"}
+    for ca_id, nv_ids in assignment.items():
+        ca_meta = (solver_result.get("ca_meta") or {}).get(ca_id) or {}
+        day = str(ca_meta.get("thu") or "")
+        shift = shift_names.get(str(ca_meta.get("khung") or ""))
+        if day in schedule and shift:
+            schedule[day][shift].extend(str(nv_id) for nv_id in nv_ids)
+    shift_counts = {nv_id: sum(nv_id in assigned for day in schedule.values() for assigned in day.values()) for nv_id in availabilities}
+    uncovered = uncovered_shifts(schedule)
     report_text = format_schedule_report(schedule, shift_counts, availabilities)
 
     total_shifts = sum(shift_counts.values())
@@ -242,6 +374,11 @@ async def handle_scheduling_request(conv_id: str, trigger_msg: str, user_sess: d
         "action_type": "apply_schedule",
         "schedule": schedule,
         "shift_counts": shift_counts,
+        "tuan_iso": week,
+        "url": f"/lich-tuan?tuan={week}",
+        "workflow_step": 3,
+        "uncovered_shifts": uncovered,
+        "recovery_status": "cho_doi_ca" if uncovered else "du_dieu_kien",
     }
 
     # Tạo tin nhắn trong nhóm chat từ ai_scheduler
@@ -250,7 +387,7 @@ async def handle_scheduling_request(conv_id: str, trigger_msg: str, user_sess: d
         sender_id="ai_scheduler",
         content=report_text,
         msg_type="ops_card",
-        metadata={"proposal": ops_proposal},
+        metadata={"proposal": ops_proposal, "workflow_step": 3},
     )
 
     # Broadcast tới các client đang kết nối WebSocket

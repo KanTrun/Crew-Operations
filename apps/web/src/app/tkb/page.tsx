@@ -54,12 +54,30 @@ const THU_TEN: Record<string, string> = {
   CN: "Chủ Nhật",
 };
 
+function nextISOWeek(): string {
+  const now = new Date();
+  now.setDate(now.getDate() + 7);
+  now.setHours(0, 0, 0, 0);
+  now.setDate(now.getDate() + 3 - ((now.getDay() + 6) % 7));
+  const week1 = new Date(now.getFullYear(), 0, 4);
+  const week =
+    1 +
+    Math.round(
+      ((now.getTime() - week1.getTime()) / 86400000 -
+        3 +
+        ((week1.getDay() + 6) % 7)) /
+        7,
+    );
+  return `${now.getFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
 export default function TkbPage() {
   const [token, setToken] = useState("");
   const [manager, setManager] = useState(false);
   const [myNv, setMyNv] = useState("");
   const [staff, setStaff] = useState<Nv[]>([]);
   const [nvId, setNvId] = useState("");
+  const [tuanIso, setTuanIso] = useState(nextISOWeek);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [result, setResult] = useState<ExtractOut | null>(null);
@@ -86,7 +104,9 @@ export default function TkbPage() {
     // /lich-tuan (chỉ quản lý) kèm tuần hardcode cũ đã gây lỗi tải → nút
     // duyệt TKB không chạy sau khi lọc.
     Promise.all([
-      apiGet<{ nv_id: string; item: { khoang_ban?: Khoang[] } | null }>("/api/v1/tkb/mine"),
+      apiGet<{ nv_id: string; item: { tuan_iso?: string; khoang_ban?: Khoang[] } | null }>(
+        `/api/v1/tkb/mine?tuan_iso=${encodeURIComponent(tuanIso)}`,
+      ),
       apiGet<{ nhan_vien?: Nv[] }>("/api/v1/ops/pickers").catch(() => ({ nhan_vien: [] })),
     ])
       .then(([mine, lich]) => {
@@ -98,7 +118,7 @@ export default function TkbPage() {
       })
       .catch((e) => setError(viError(e, { doing: "mở được trang thời khoá biểu" })))
       .finally(() => setLoading(false));
-  }, []);
+  }, [tuanIso]);
 
   useEffect(() => {
     if (token) loadMine();
@@ -156,6 +176,7 @@ export default function TkbPage() {
       const target = manager ? nvId || myNv : myNv;
       await apiSend("/api/v1/tkb/confirm", {
         nv_id: target,
+        tuan_iso: tuanIso,
         khoang_ban: rows,
         source_id: result?.source_id || "",
         upload_id: result?.upload_id || "",
@@ -246,6 +267,14 @@ export default function TkbPage() {
       ) : null}
 
       <OpsCard eyebrow="Bước 1" title="Tải ảnh & đọc">
+        <Field label="Tuần áp dụng">
+          <input
+            className={inputClassName}
+            type="week"
+            value={tuanIso}
+            onChange={(e) => setTuanIso(e.target.value)}
+          />
+        </Field>
         <div className="mb-4">
           <span className="mb-2 block text-sm font-bold uppercase tracking-widest text-[var(--nq-dim)]">
             Ảnh thời khoá biểu

@@ -215,6 +215,12 @@ Dừng: `make docker-down` · Xóa volume: `make docker-reset`
 - `solver_tuan` 22:00 Chủ nhật — CP-SAT tuần sau → kv `worker_de_xuat_lich` **chờ quản lý duyệt** (worker không tự công bố).
 - `tong_ket_ngay` 23:00 — gom tiêu thụ/hao phí trong ngày.
 - Nhắc phiếu quá hạn 2 cấp (nhắc NV → báo chủ quán), mỗi cặp (phiếu, cấp) chỉ nhắn một lần.
+- Ca thiếu sau CP-SAT được lưu thành `open_shift`; nhân viên nhận qua `POST /api/v1/open-shifts/claim` với xác nhận availability đúng tuần. Claim đầu tiên được bảo vệ bằng transaction.
+- Mỗi lần chạy lịch tạo một `schedule_run` có version, snapshot input, fingerprint và idempotency key; chạy lại cùng key với input khác sẽ bị từ chối.
+- Quản lý xử lý ca thiếu bằng `POST /api/v1/lich/resolve-gaps`; hệ thống revalidate ràng buộc, chạy lại CP-SAT và lưu assignment authoritative trước khi chuyển sang chờ duyệt.
+- Chỉ run authoritative còn mới và đầy đủ mới được chuyển `da_duyet` hoặc `da_cong_bo`; khi công bố, thông báo được gửi tới nhân viên của đúng tuần.
+- `GET /api/v1/chat/scheduler` trả về hội thoại riêng duy nhất giữa nhân viên và `ai_scheduler`.
+- Worker đánh dấu và báo quản lý các open shift quá hạn; SLA mặc định 120 phút, cấu hình bằng `OPEN_SHIFT_SLA_MINUTES`.
 
 ---
 
@@ -261,6 +267,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 | `NHIPQUAN_SMTP_*` | Gửi Gmail qua SMTP (App Password) |
 | `NHIPQUAN_LOI_GIAI_SEED` | Thêm 21 NV mẫu vào pool xếp lịch (chỉ dev/demo) |
 | `NHIPQUAN_ALLOW_MSG_REPLAY` | Chỉ bật khi pytest kênh tin |
+| `OPEN_SHIFT_SLA_MINUTES` | SLA mặc định trước khi escalates open shift, mặc định `120` |
 
 Runbook kết nối: [Telegram](./docs/runbooks/telegram-bot-connect.md) · [Zalo](./docs/runbooks/zalo-oa-connect.md) · [Facebook Page](./docs/runbooks/facebook-page-connect.md)
 
@@ -348,7 +355,7 @@ Quyền: 🟢 công khai · 🔵 mọi vai đã đăng nhập · 🟡 `quan_ly`+
 |--------|----------|-------|--------|
 | POST | `/api/v1/tkb/extract` | 🔵 | AG-TKB trích TKB từ ảnh. Body: `image_path_or_id` |
 | POST | `/api/v1/tkb/upload` | 🔵 | Upload ảnh TKB (≤ 8MB) hoặc dùng `fixture_id` → extract |
-| POST | `/api/v1/tkb/confirm` | 🔵 | Xác nhận khoảng bận, gắn vào NV (NV chỉ gắn cho mình) |
+| POST | `/api/v1/tkb/confirm` | 🔵 | Xác nhận khoảng bận theo `tuan_iso`, gắn vào NV (NV chỉ gắn cho mình) |
 
 ### Công bằng & hôm nay
 

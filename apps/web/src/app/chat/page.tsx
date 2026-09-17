@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { API, apiSend, mediaUrl } from "../../lib/api";
+import { API, apiGet, apiSend, mediaUrl } from "../../lib/api";
 import { ChatConversation, ChatMessage, useChatClient } from "../../lib/useChatClient";
 import { getName, getNvId, getRole } from "../../lib/session";
 import { VoicePlayer, VoiceRecorder } from "../../ui/chat/VoiceRecorder";
@@ -28,6 +28,8 @@ export default function ChatPage() {
   const [showMemberDrawer, setShowMemberDrawer] = useState(false);
   const [mediaBusy, setMediaBusy] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [availabilityCorrection, setAvailabilityCorrection] = useState<Record<string, string>>({});
+  const [availabilityBusy, setAvailabilityBusy] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -41,6 +43,7 @@ export default function ChatPage() {
     receipts,
     isConnected,
     loadingConv,
+    loadMessages,
     sendMessage,
     editMessage,
     deleteMessage,
@@ -51,6 +54,7 @@ export default function ChatPage() {
     muteConversation,
     uploadMedia,
     loadConversations,
+    mergeConversation,
   } = useChatClient(activeConvId);
 
   const pinnedMessages = useMemo(() => {
@@ -64,6 +68,20 @@ export default function ChatPage() {
       setActiveConvId(general ? general.id : conversations[0].id);
     }
   }, [conversations, activeConvId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void apiGet<ChatConversation>("/api/v1/chat/scheduler").then((scheduler) => {
+      if (cancelled) return;
+      mergeConversation(scheduler);
+      setActiveConvId(scheduler.id);
+    }).catch(() => {
+      // The general chat remains available when the scheduler is disabled.
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [mergeConversation]);
 
   // Đánh dấu đã đọc khi mở hội thoại hoặc có tin nhắn mới
   useEffect(() => {
@@ -118,6 +136,29 @@ export default function ChatPage() {
     sendTyping(activeConvId, false);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
+
+  async function confirmAvailability(confirmationId: string) {
+    setAvailabilityBusy(confirmationId);
+    try {
+      await apiSend(`/api/v1/chat/availability/${confirmationId}/confirm`, {});
+      await loadMessages(activeConvId);
+    } finally {
+      setAvailabilityBusy(null);
+    }
+  }
+
+  async function correctAvailability(confirmationId: string) {
+    const text = availabilityCorrection[confirmationId]?.trim();
+    if (!text) return;
+    setAvailabilityBusy(confirmationId);
+    try {
+      await apiSend(`/api/v1/chat/availability/${confirmationId}/correct`, { text });
+      setAvailabilityCorrection((prev) => ({ ...prev, [confirmationId]: "" }));
+      await loadMessages(activeConvId);
+    } finally {
+      setAvailabilityBusy(null);
+    }
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -557,13 +598,45 @@ export default function ChatPage() {
                               <span className="text-[var(--nq-muted)] italic">Tệp đính kèm không khả dụng</span>
                             )}
 
-                            {msg.type === "ops_card" && (
+                            {msg.type === "ops_card" && (() => {
+                              const confirmation = msg.metadata?.workflow === "availability_confirmation"
+                                ? msg.metadata.availability_confirmation as { id: string; tuan_iso: string; availability?: Record<string, string[]>; status?: string }
+                                : null;
+                              return (
                               <div className="my-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2 max-w-sm text-left">
                                 <div className="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase tracking-wider">
                                   <Icon name="zap" size={15} />
                                   <span>{msg.metadata?.proposal?.title || "Đề xuất tác vụ vận hành"}</span>
                                 </div>
                                 <p className="text-xs opacity-90">{msg.metadata?.proposal?.summary || msg.content}</p>
+                                {confirmation && (
+                                  <div className="space-y-2 border-t border-amber-500/20 pt-2">
+                                    <p className="text-xs font-semibold">
+                                      Tuần {confirmation.tuan_iso} · {Object.entries(confirmation.availability || {}).map(([day, shifts]) => `${day}: ${shifts.join(", ")}`).join(" · ")}
+                                    </p>
+                                    {confirmation.status === "cho_xac_nhan" ? (
+                                      <>
+                                        <div className="flex gap-2">
+                                          <button type="button" disabled={availabilityBusy === confirmation.id} onClick={() => void confirmAvailability(confirmation.id)} className="rounded bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white disabled:opacity-50">
+                                            {availabilityBusy === confirmation.id ? "Đang lưu…" : "Đồng ý"}
+                                          </button>
+                                          <span className="self-center text-[11px] opacity-75">Sai lịch? Nhập lại bên dưới.</span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <input
+                                            value={availabilityCorrection[confirmation.id] || ""}
+                                            onChange={(event) => setAvailabilityCorrection((prev) => ({ ...prev, [confirmation.id]: event.target.value }))}
+                                            placeholder="Ví dụ: Em rảnh sáng T2, T4 và tối T6"
+                                            className="min-w-0 flex-1 rounded border border-amber-500/30 bg-black/10 px-2 py-1 text-xs"
+                                          />
+                                          <button type="button" disabled={!availabilityCorrection[confirmation.id]?.trim() || availabilityBusy === confirmation.id} onClick={() => void correctAvailability(confirmation.id)} className="rounded border border-amber-500/40 px-2.5 py-1 text-xs font-bold disabled:opacity-50">
+                                            Gửi chỗ sai
+                                          </button>
+                                        </div>
+                                      </>
+                                    ) : <p className="text-xs text-emerald-700">Đã xác nhận</p>}
+                                  </div>
+                                )}
                                 <div className="flex items-center gap-2 pt-1 border-t border-amber-500/20 text-[11px]">
                                   <Link
                                     href="/contracts"
@@ -573,7 +646,8 @@ export default function ChatPage() {
                                   </Link>
                                 </div>
                               </div>
-                            )}
+                              );
+                            })()}
 
                             {msg.content && (
                               <p className="nq-chat-message__content leading-relaxed whitespace-pre-wrap">

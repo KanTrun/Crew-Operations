@@ -14,9 +14,10 @@
 | PostgreSQL | Docker volume tren AWS EC2 | Du lieu ben vung |
 | Redis | Docker volume tren AWS EC2 | Du lieu ben vung |
 
-Docker Compose production nam tai `infra/oracle/compose.prod.yml`. Workflow
-`.github/workflows/docker-ghcr.yml` build image `linux/amd64` va day len GHCR
-khi code production thay doi.
+Docker Compose production nam tai `infra/oracle/compose.prod.yml`. Sau khi
+workflow `ci` xanh, `.github/workflows/docker-ghcr.yml` build hai image
+`linux/amd64` theo dung commit SHA. Workflow deploy sau do dong bo Compose,
+backup PostgreSQL, chay migration, doi container va kiem tra health tren HTTPS.
 
 ## URL
 
@@ -28,8 +29,11 @@ khi code production thay doi.
 
 ```bash
 git push origin main
-ssh ubuntu@<EC2_IP> "cd /opt/nhipquan && sudo docker compose pull && sudo docker compose up -d"
 ```
+
+Deploy AWS tu dong chi chay khi CI va build image deu xanh. Neu container moi
+khong healthy, workflow tra API/web ve image `rollback` cua lan chay truoc va
+giu ban backup database tai `/opt/nhipquan/backups`.
 
 Tren EC2, file `/opt/nhipquan/.env` can toi thieu:
 
@@ -37,6 +41,10 @@ Tren EC2, file `/opt/nhipquan/.env` can toi thieu:
 DOMAIN=nhipquan.duckdns.org
 CA_AGENT_MODE=live
 NHIPQUAN_CORS_ORIGINS=https://nhipquan.duckdns.org
+NHIPQUAN_SEED_DEMO=false
+NHIPQUAN_INBOX_SEED_FIXTURE=0
+NHIPQUAN_PAGE_SEED_FIXTURE=0
+NHIPQUAN_LOI_GIAI_SEED=0
 ```
 
 Them cac API key va cau hinh kenh tin theo nhu cau. Khong commit `.env`, token,

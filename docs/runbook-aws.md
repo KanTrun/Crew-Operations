@@ -63,7 +63,8 @@ EC2 console → **Network & Security → Key Pairs → Create key pair** → nam
 
 ## 5. Duyệt workflow build image
 
-Workflow `.github/workflows/docker-ghcr.yml` build image (amd64+arm64) push GHCR khi push main.
+Sau khi workflow `ci` xanh, `.github/workflows/docker-ghcr.yml` build image
+`linux/amd64` và push GHCR theo đúng commit SHA trên `main`.
 Lần đầu chạy vào GitHub repo → tab **Actions** → nếu hiển thị chờ duyệt workflow mới →
 **Approve and run**. Chờ build xong (~3-5 phút, 2 jobs xanh).
 
@@ -89,7 +90,10 @@ DOMAIN=nhipquan.duckdns.org
 CA_AGENT_MODE=live            # AI thật (điền GROQ_API_KEY bên dưới) hoặc replay
 GROQ_API_KEY=sk-...
 NHIPQUAN_CORS_ORIGINS=https://nhipquan.duckdns.org
-NHIPQUAN_SEED_DEMO=true       # chỉ bật khi nạp nền dữ liệu lần đầu
+NHIPQUAN_SEED_DEMO=false
+NHIPQUAN_INBOX_SEED_FIXTURE=0
+NHIPQUAN_PAGE_SEED_FIXTURE=0
+NHIPQUAN_LOI_GIAI_SEED=0
 # kênh tin FB/Telegram/Zalo/SMTP nếu dùng — copy từ .env máy dev
 ```
 
@@ -129,10 +133,9 @@ curl -fsS https://nhipquan.duckdns.org/health
 
 ## 7. Deploy lại khi code đổi
 
-```bash
-git push origin main            # CI build image mới
-ssh ubuntu@<EC2_IP> "cd /opt/nhipquan && sudo docker compose pull && sudo docker compose up -d"
-```
+`git push origin main` sẽ chạy chuỗi tự động: CI → build hai image GHCR theo
+SHA → backup PostgreSQL → migration → deploy → health check HTTPS. Workflow
+không deploy nếu CI đỏ hoặc phát hiện bất kỳ cờ demo/fixture nào đang bật.
 
 ## 8. Hết 6 tháng Free Plan — 3 lựa chọn
 

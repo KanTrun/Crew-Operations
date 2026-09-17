@@ -198,7 +198,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Prepare env
-        run: cp .env.example .env || touch .env
+        run: |
+          cp .env.example .env || touch .env
+          sed -i 's/^NHIPQUAN_SEED_DEMO=.*/NHIPQUAN_SEED_DEMO=true/' .env
       - run: docker compose -f infra/docker/compose.yml build
       - name: Stack lên và smoke toàn tuyến
         run: |
