@@ -1,7 +1,7 @@
 ---
 title: "Hoàn thiện scheduling và thông báo lịch"
 description: "Hoàn thiện luồng xếp lịch, chợ ca, thông báo deep-link và bàn giao an toàn lên main."
-status: in_progress
+status: done
 priority: P1
 effort: "2-3 ngày"
 tags: [scheduling, notifications, open-shift, e2e]
