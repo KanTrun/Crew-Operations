@@ -8,11 +8,11 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from ca_playbook import list_luat
+from ca_solver import apply_luat, build_lich_input, solve_cpsat
+
 from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import kv_get, kv_mutate, kv_set
-from ca_playbook import list_luat
-from ca_solver import apply_luat, build_lich_input
-import ca_solver
 
 _ROOT = Path(__file__).resolve().parents[5]
 _DAYS = ("T2", "T3", "T4", "T5", "T6", "T7", "CN")
@@ -190,7 +190,7 @@ def run_solver(
             input_data.phan_cong[ca_id].append(nv_id)
 
     input_data, applied = apply_luat(input_data, list_luat())
-    result = ca_solver.solve_cpsat(input_data, time_limit_s=60.0)
+    result = solve_cpsat(input_data, time_limit_s=60.0)
     gaps: list[str] = []
     if not result.ok or "INFEASIBLE" in result.status:
         for ca_id in input_data.ca_ids:
