@@ -111,7 +111,7 @@ export function vanDeTone(trang_thai: string): "ok" | "warn" | "danger" | "defau
 
 export function vanDeLabel(trang_thai: string): string {
   if (trang_thai === "da_giai_quyet") return "Đã giải quyết trong họp";
-  if (trang_thai === "theo_doi") return "Cần theo đội thêm";
+  if (trang_thai === "theo_doi") return "Cần theo dõi thêm";
   return "Cần hành động sau họp";
 }
 
