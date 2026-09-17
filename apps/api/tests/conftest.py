@@ -55,3 +55,19 @@ def _du_nhan_vien_xep_lich() -> None:
     init_db()
     for i in range(13):
         register(f"nv_xep{i}", f"matkhautot{i}9x", f"NV Xếp {i}")
+
+
+@pytest.fixture
+def _xac_nhan_kha_dung_tuan() -> None:
+    """Seed explicit confirmed availability for tests of authoritative scheduling."""
+    from ca_api.persist import availability_confirmation_upsert, list_users
+
+    availability = {day: ["Sáng", "Chiều", "Tối"] for day in ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]}
+    for user in list_users():
+        if user.get("role") != "nhan_vien":
+            continue
+        for week in ("2026-W01", "2026-W36", "2026-W44"):
+            availability_confirmation_upsert(
+                item_id=f"test-av-{user['nv_id']}-{week}", store_id="quan_01", nv_id=str(user["nv_id"]),
+                tuan_iso=week, availability=availability, status="da_xac_nhan", source="test",
+            )
