@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import hashlib
 import os
 import uuid
 from dataclasses import asdict
@@ -58,8 +57,8 @@ from ca_api.orchestration import Clock
 from ca_api.persist import (
     audit_add,
     audit_list,
-    availability_confirmed_list,
     authoritative_assignments_list,
+    availability_confirmed_list,
     ghi_diem_danh,
     kv_get,
     kv_mutate,
@@ -221,7 +220,7 @@ def _run_solver(
     inp = build_lich_input(nhan_vien_ngoai=list_nhan_vien_ops())
     tuan_hien_tai = tuan_iso or _life().get("tuan_iso", "2026-W01")
 
-    if confirmed_availability is not None:
+    if confirmed_availability:
         allowed_ids = set(confirmed_availability)
         inp.nhan_vien_ids = [nv_id for nv_id in inp.nhan_vien_ids if nv_id in allowed_ids]
         # CP-SAT treats TKB as unavailable time. Replace synthetic TKB with
@@ -296,7 +295,7 @@ def _run_solver(
                 if thu and start and end:
                     tuples.append((thu, start, end))
             if tuples:
-                if confirmed_availability is not None:
+                if confirmed_availability:
                     existing_tkb = inp.tkb.setdefault(str(nv_id), [])
                     for block in tuples:
                         if block not in existing_tkb:

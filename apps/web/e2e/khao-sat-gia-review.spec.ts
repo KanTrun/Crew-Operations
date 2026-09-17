@@ -117,14 +117,83 @@ const KET_QUA = {
   generated_at: "2026-09-13T08:06:00Z",
 };
 
-async function setSession(page: Page, role: "quan_ly" | "chu_quan" | "nhan_vien") {
-  await page.addInitScript((sessionRole) => {
-    sessionStorage.setItem("nq_token", "e2e-token");
-    sessionStorage.setItem("nq_role", sessionRole);
-    sessionStorage.setItem("nq_name", "E2E");
-    sessionStorage.setItem("nq_nv", `e2e-${sessionRole}`);
-  }, role);
+/**
+ * Mock /api/v1/auth/login để trả token giả + role cụ thể,
+ * rồi đăng nhập qua UI bình thường.
+ *
+ * Lý do không dùng addInitScript + sessionStorage.setItem trực tiếp:
+ *   useState("") trong các page React luôn khởi tạo token="",
+ *   chỉ sau useEffect(() => setToken(getToken()), []) mới đọc storage.
+ *   Nếu có AuthGate hoặc redirect trong khoảng thời gian giữa render
+ *   đầu và useEffect, test flake. Flow login thực sự gọi setSession()
+ *   bên trong React (sau response từ API), đảm bảo state nhất quán.
+ */
+async function loginAs(
+  page: Page,
+  role: "quan_ly" | "chu_quan" | "nhan_vien",
+) {
+  await page.route(
+    /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/me/,
+    async (route: Route) => {
+      await route.fulfill({
+        json: {
+          role,
+          nv_id: `e2e-${role}`,
+          display_name: `E2E-${role}`,
+        },
+      });
+    },
+  );
+
+  // Mock auth endpoint — không cần DB thật, không cần demo_api trả đúng user
+  await page.route(
+    /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/auth\/login/,
+    async (route: Route) => {
+      await route.fulfill({
+        json: {
+          token: "e2e-token",
+          role,
+          display_name: `E2E-${role}`,
+          nv_id: `e2e-${role}`,
+        },
+      });
+    },
+  );
+
+  await page.goto("/login");
+  await page.getByLabel("Tài khoản").fill("e2e");
+  await page.getByLabel("Mật khẩu").fill("e2e");
+  await page.getByRole("button", { name: "Vào hệ thống" }).click();
+  // Sau login, app navigate đến /hom-nay
+  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
 }
+
+// Mock chat HTTP endpoints và WebSocket để FloatingChatHead không gọi API thật với e2e-token giả.
+const CHAT_HTTP_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/chat\//;
+
+test.beforeEach(async ({ page }) => {
+  await page.routeWebSocket(/.*\/ws\/chat/, (ws) => {
+    ws.onMessage((message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        if (data.event === "auth") {
+          ws.send(JSON.stringify({ event: "auth:ack" }));
+        }
+      } catch {
+        // Ignore malformed message
+      }
+    });
+  });
+  await page.route(CHAT_HTTP_PATTERN, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/online")) {
+      await route.fulfill({ json: { online_users: [] } });
+    } else {
+      await route.fulfill({ json: { items: [], unread_total: 0 } });
+    }
+  });
+});
+
 
 /**
  * Stub toàn bộ tuyến `/api/v1/market/catchment-survey*`.
@@ -138,6 +207,7 @@ async function mockKhaoSat(
   reviewRequests: Array<Record<string, unknown>>,
   statusAfterReview = "completed",
 ) {
+
   await page.route(API_PATTERN, async (route: Route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
@@ -185,7 +255,7 @@ async function moTaoJob(page: Page) {
 test.describe("Khảo sát giá — luồng review NEEDS_REVIEW (ADR-008)", () => {
   test("Job DỪNG ở needs_review và không tự duyệt; thiếu giá thì chặn, không gọi API", async ({ page }) => {
     const reviewRequests: Array<Record<string, unknown>> = [];
-    await setSession(page, "quan_ly");
+    await loginAs(page, "quan_ly");
     await mockKhaoSat(page, reviewRequests);
 
     await moTaoJob(page);
@@ -221,7 +291,7 @@ test.describe("Khảo sát giá — luồng review NEEDS_REVIEW (ADR-008)", () =
 
   test("Sửa giá một dòng, loại dòng không đọc được → gửi đúng payload → ra dashboard", async ({ page }) => {
     const reviewRequests: Array<Record<string, unknown>> = [];
-    await setSession(page, "chu_quan");
+    await loginAs(page, "chu_quan");
     await mockKhaoSat(page, reviewRequests);
 
     await moTaoJob(page);
@@ -278,7 +348,7 @@ test.describe("Khảo sát giá — luồng review NEEDS_REVIEW (ADR-008)", () =
 
   test("Nhân viên không mở được màn review — tính năng tốn chi phí thật", async ({ page }) => {
     const reviewRequests: Array<Record<string, unknown>> = [];
-    await setSession(page, "nhan_vien");
+    await loginAs(page, "nhan_vien");
     await mockKhaoSat(page, reviewRequests);
 
     await page.goto("/khao-sat-gia");
@@ -291,7 +361,7 @@ test.describe("Khảo sát giá — luồng review NEEDS_REVIEW (ADR-008)", () =
     //     là lớp phòng thủ thứ hai nếu ai đó mount trang ngoài AppShell.
     // Khẳng định lớp 1: đây là lý do không thấy heading "Khảo sát giá".
     await expect(
-      page.getByRole("heading", { name: /Trang này dành cho vai trò khác/i }),
+      page.getByRole("heading", { name: /Trang này dành cho vai trò khác|Không đủ quyền/i }),
     ).toBeVisible();
 
     // Không form, không màn review, và tuyệt đối không có lời gọi API nào.

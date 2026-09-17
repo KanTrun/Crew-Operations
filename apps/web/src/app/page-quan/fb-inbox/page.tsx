@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiGet, apiSend } from "../../../lib/api";
 import { safeText, viError } from "../../../lib/present";
 import { getToken, isChuQuan, isManager } from "../../../lib/session";
+import { subscribeRealtime } from "../../../lib/realtime";
 import {
   Alert,
   AuthGate,
@@ -35,6 +36,17 @@ type FbItem = {
   status: string;
   created_at: string;
   expires_at?: string | null;
+  // Comment-specific fields
+  sentiment?: {
+    sentiment: "positive" | "negative" | "neutral";
+    score: number;
+    keywords_found: string[];
+    confidence: number;
+  };
+  comment_action?: "reply_public" | "hide_and_dm" | "hide_silent" | "escalate_owner";
+  // Attachment-specific fields
+  attachment_type?: string;
+  attachment_url?: string | null;
 };
 
 type Stats = {
@@ -129,6 +141,45 @@ export default function FbInboxPage() {
   useEffect(() => {
     if (token) load();
   }, [token, load]);
+
+  const statusFilterRef = useRef(statusFilter);
+  statusFilterRef.current = statusFilter;
+
+  // Real-time subscription for fb-inbox updates
+  useEffect(() => {
+    if (!token) return;
+    const unsubscribe = subscribeRealtime((packet) => {
+      if (packet.event === "fb_inbox:new") {
+        const newItem = packet.data as FbItem;
+        const currentFilter = statusFilterRef.current;
+        // Only add if matches current filter
+        if (currentFilter === "all" || currentFilter === newItem.status) {
+          setItems((prev) => {
+            // Avoid duplicates
+            if (prev.some((it) => it.id === newItem.id)) return prev;
+            return [newItem, ...prev];
+          });
+        }
+        // Refresh stats
+        apiGet<Stats>("/api/v1/page/fb-inbox/stats").then((s) => setStats(s)).catch(() => {});
+      } else if (packet.event === "fb_inbox:update") {
+        const update = packet.data as { id: number; status?: string; final_response?: string; decided_by?: string; decided_at?: string; sent?: boolean };
+        setItems((prev) =>
+          prev.map((it) => {
+            if (it.id !== update.id) return it;
+            return {
+              ...it,
+              status: update.status ?? it.status,
+              proposed_response: update.final_response ?? it.proposed_response,
+            };
+          })
+        );
+        // Refresh stats
+        apiGet<Stats>("/api/v1/page/fb-inbox/stats").then((s) => setStats(s)).catch(() => {});
+      }
+    });
+    return () => unsubscribe();
+  }, [token]);
 
   async function decide(item: FbItem, quyet_dinh: string, noi_dung?: string, ly_do?: string) {
     setBusy(item.id);
@@ -311,6 +362,70 @@ export default function FbInboxPage() {
 
               {Array.isArray(it.flagged_reasons) && it.flagged_reasons.length > 0 ? (
                 <Notice>Cờ kiểm duyệt: {it.flagged_reasons.join(", ")}</Notice>
+              ) : null}
+
+              {/* Comment sentiment & action */}
+              {it.source === "comment" && (it.sentiment || it.comment_action) ? (
+                <div className="mb-4 p-3 bg-[var(--nq-bg)] border border-[var(--nq-dim)] rounded">
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    {it.sentiment ? (
+                      <>
+                        <span className="font-mono uppercase tracking-widest text-[var(--nq-dim)]">Sentiment:</span>
+                        <StatusChip tone={
+                          it.sentiment.sentiment === "positive" ? "default" :
+                          it.sentiment.sentiment === "negative" ? "danger" : "warn"
+                        }>
+                          {it.sentiment.sentiment === "positive" ? "Tích cực" :
+                           it.sentiment.sentiment === "negative" ? "Tiêu cực" : "Trung tính"}
+                          ({it.sentiment.score > 0 ? "+" : ""}{it.sentiment.score})
+                        </StatusChip>
+                        {Array.isArray(it.sentiment.keywords_found) && it.sentiment.keywords_found.length > 0 && (
+                          <span className="text-xs text-[var(--nq-dim)]">
+                            Từ khóa: {it.sentiment.keywords_found.slice(0, 5).join(", ")}
+                            {it.sentiment.keywords_found.length > 5 ? "..." : ""}
+                          </span>
+                        )}
+                      </>
+                    ) : null}
+                    {it.comment_action ? (
+                      <StatusChip tone={
+                        it.comment_action === "escalate_owner" ? "danger" :
+                        it.comment_action === "hide_silent" ? "warn" :
+                        it.comment_action === "hide_and_dm" ? "warn" : "default"
+                      }>
+                        {it.comment_action === "reply_public" ? "Trả lời công khai" :
+                         it.comment_action === "hide_and_dm" ? "Ẩn + nhắn tin riêng" :
+                         it.comment_action === "hide_silent" ? "Ẩn im lặng" :
+                         it.comment_action === "escalate_owner" ? "Báo chủ quán" : it.comment_action}
+                      </StatusChip>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Attachment info */}
+              {it.attachment_type && it.attachment_type !== "unknown" ? (
+                <div className="mb-4 p-3 bg-[var(--nq-bg)] border border-[var(--nq-dim)] rounded">
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    <span className="font-mono uppercase tracking-widest text-[var(--nq-dim)]">Đính kèm:</span>
+                    <StatusChip tone="default">
+                      {it.attachment_type === "image" ? "🖼️ Ảnh" :
+                       it.attachment_type === "audio" ? "🎵 Âm thanh" :
+                       it.attachment_type === "video" ? "🎬 Video" :
+                       it.attachment_type === "file" ? "📄 Tệp" : it.attachment_type}
+                    </StatusChip>
+                    {it.attachment_url ? (
+                      <a
+                        href={it.attachment_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[var(--nq-copper)] underline hover:text-[var(--nq-copper)]"
+                      >
+                        Xem đính kèm
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
               ) : null}
 
               {editing === it.id ? (

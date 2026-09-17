@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import date
 import re
 import uuid
+from datetime import date
 from typing import Any
 
 try:
@@ -22,8 +22,8 @@ from ca_api.persist import (
     kv_get,
     kv_mutate,
 )
-from ca_api.services.scheduling_service import run_authoritative_schedule
 from ca_api.services.chat_ws import chat_ws_manager
+from ca_api.services.scheduling_service import run_authoritative_schedule
 
 logger = logging.getLogger(__name__)
 

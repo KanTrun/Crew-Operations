@@ -995,40 +995,46 @@ def shift_application_claim_eligible(
 
 
 def _migrate_schema(cx: sqlite3.Connection) -> None:
+    def _safe_alter(sql: str) -> None:
+        try:
+            cx.execute(sql)
+        except sqlite3.OperationalError:
+            pass
+
     cols = {r[1] for r in cx.execute("PRAGMA table_info(menu_mon)")}
     if "hinh_url" not in cols:
-        cx.execute("ALTER TABLE menu_mon ADD COLUMN hinh_url TEXT NOT NULL DEFAULT ''")
+        _safe_alter("ALTER TABLE menu_mon ADD COLUMN hinh_url TEXT NOT NULL DEFAULT ''")
     ucols = {r[1] for r in cx.execute("PRAGMA table_info(users)")}
     if "email" not in ucols:
-        cx.execute("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''")
+        _safe_alter("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''")
     if "store_id" not in ucols:
-        cx.execute("ALTER TABLE users ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
+        _safe_alter("ALTER TABLE users ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
     if "status" not in ucols:
-        cx.execute("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
+        _safe_alter("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
     cx.execute("UPDATE users SET store_id=? WHERE TRIM(store_id)=''", (DEFAULT_STORE_ID,))
     scols = {r[1] for r in cx.execute("PRAGMA table_info(sessions)")}
     if "store_id" not in scols:
-        cx.execute("ALTER TABLE sessions ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
+        _safe_alter("ALTER TABLE sessions ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
     if "created_at" not in scols:
         # Phiên cũ không có mốc tạo → TTL coi như chưa từng hết hạn nhưng vẫn
         # được ghi mốc mới từ lần đăng nhập kế tiếp (migration an toàn, idempotent).
-        cx.execute("ALTER TABLE sessions ADD COLUMN created_at TEXT NOT NULL DEFAULT ''")
+        _safe_alter("ALTER TABLE sessions ADD COLUMN created_at TEXT NOT NULL DEFAULT ''")
     cx.execute("UPDATE sessions SET store_id=(SELECT store_id FROM users WHERE users.username=sessions.username) WHERE store_id='quan_01' AND EXISTS (SELECT 1 FROM users WHERE users.username=sessions.username)")
     evaluation_cols = {r[1] for r in cx.execute("PRAGMA table_info(ai_evaluations)")}
     if "idempotency_key" not in evaluation_cols:
-        cx.execute("ALTER TABLE ai_evaluations ADD COLUMN idempotency_key TEXT NOT NULL DEFAULT ''")
-        cx.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_evaluation_store_idem ON ai_evaluations(store_id, idempotency_key)")
+        _safe_alter("ALTER TABLE ai_evaluations ADD COLUMN idempotency_key TEXT NOT NULL DEFAULT ''")
+        _safe_alter("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_evaluation_store_idem ON ai_evaluations(store_id, idempotency_key)")
     proposal_cols = {r[1] for r in cx.execute("PRAGMA table_info(ai_rule_proposals)")}
     if "idempotency_key" not in proposal_cols:
-        cx.execute("ALTER TABLE ai_rule_proposals ADD COLUMN idempotency_key TEXT NOT NULL DEFAULT ''")
-        cx.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_rule_proposal_store_idem ON ai_rule_proposals(store_id, idempotency_key)")
+        _safe_alter("ALTER TABLE ai_rule_proposals ADD COLUMN idempotency_key TEXT NOT NULL DEFAULT ''")
+        _safe_alter("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_rule_proposal_store_idem ON ai_rule_proposals(store_id, idempotency_key)")
     review_cols = {r[1] for r in cx.execute("PRAGMA table_info(fb_review_queue)")}
     if "ai_generation_id" not in review_cols:
-        cx.execute("ALTER TABLE fb_review_queue ADD COLUMN ai_generation_id TEXT")
+        _safe_alter("ALTER TABLE fb_review_queue ADD COLUMN ai_generation_id TEXT")
     if "event_at" not in review_cols:
-        cx.execute("ALTER TABLE fb_review_queue ADD COLUMN event_at TEXT")
+        _safe_alter("ALTER TABLE fb_review_queue ADD COLUMN event_at TEXT")
     if "store_id" not in review_cols:
-        cx.execute("ALTER TABLE fb_review_queue ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
+        _safe_alter("ALTER TABLE fb_review_queue ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
 
     ccols = {r[1] for r in cx.execute("PRAGMA table_info(chat_conversations)")}
     if ccols and "display_name" not in ccols:

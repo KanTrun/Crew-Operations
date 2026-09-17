@@ -60,9 +60,23 @@ def find_python() -> str:
     return sys.executable
 
 
+def _has_xdist(python_cmd: str) -> bool:
+    try:
+        res = subprocess.run(
+            [python_cmd, "-c", "import xdist"],
+            capture_output=True,
+        )
+        return res.returncode == 0
+    except Exception:
+        return False
+
+
 def main() -> int:
     python_cmd = find_python()
     print(f"🐍 Sử dụng Python runtime: {python_cmd}")
+
+    fast_mode = "--fast" in sys.argv or os.environ.get("FAST_CI", "0").lower() in ("1", "true", "yes")
+    has_xdist = _has_xdist(python_cmd)
 
     steps = [
         (
@@ -75,21 +89,53 @@ def main() -> int:
             [python_cmd, "scripts/scan_secrets_before_commit.py"],
             None,
         ),
-        (
-            "3. Unit Test Suite (Replay mode)",
+    ]
+
+    if fast_mode:
+        steps.append((
+            "3. Fast Sanity & Architecture Tests",
             [
                 python_cmd,
                 "-m",
                 "pytest",
-                "apps/api/tests",
-                "packages/agents/tests",
+                "packages/agents/tests/test_architecture.py",
+                "packages/agents/tests/test_no_network.py",
                 "packages/contracts/tests",
                 "-q",
-                "--ignore=packages/agents/tests/test_camoufox_source.py",
             ],
             {"CA_AGENT_MODE": "replay"},
-        ),
-    ]
+        ))
+    else:
+        agents_cmd = [
+            python_cmd,
+            "-m",
+            "pytest",
+            "packages/agents/tests",
+            "-q",
+            "--ignore=packages/agents/tests/test_camoufox_source.py",
+        ]
+        if has_xdist:
+            agents_cmd.extend(["-n", "auto"])
+
+        steps.extend([
+            (
+                "3. Agents Test Suite (Parallel)" if has_xdist else "3. Agents Test Suite",
+                agents_cmd,
+                {"CA_AGENT_MODE": "replay"},
+            ),
+            (
+                "4. API & Contracts Suite",
+                [
+                    python_cmd,
+                    "-m",
+                    "pytest",
+                    "apps/api/tests",
+                    "packages/contracts/tests",
+                    "-q",
+                ],
+                {"CA_AGENT_MODE": "replay"},
+            ),
+        ])
 
     for name, cmd, env_extra in steps:
         if not run_step(name, cmd, env_extra):

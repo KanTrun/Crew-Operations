@@ -10,3 +10,24 @@ def _default_to_replay(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prevent a developer's live .env from changing test behavior."""
     monkeypatch.setenv("CA_AGENT_MODE", "replay")
     monkeypatch.setenv("NHIPQUAN_AUTO_RESERVATION", "1")
+
+    import ca_agents.ag_concierge as concierge_mod
+
+    monkeypatch.setattr(
+        concierge_mod,
+        "_RESERVATION_BACKEND",
+        {
+            "book": lambda **kwargs: {
+                "id": "res_test_mock",
+                "table_ids": ["B105"],
+                "status": "confirmed",
+                "booking_time": kwargs.get("booking_time"),
+                "party_size": kwargs.get("party_size"),
+                "dialog_step": "CONFIRMED",
+            },
+            "anti_abuse": lambda **kwargs: (True, None),
+            "cancel": lambda *args: True,
+            "notify": lambda *args: None,
+            "is_enabled": lambda: True,
+        },
+    )

@@ -7,16 +7,85 @@ type ReviewItem = {
   proposed_response: string;
 };
 
-const API_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/page\/fb-inbox/;
+const API_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/page\/fb-(inbox|policy)/;
+const CHAT_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/chat\//;
 
-async function setSession(page: Page, role: "quan_ly" | "chu_quan" | "nhan_vien") {
-  await page.addInitScript((sessionRole) => {
-    sessionStorage.setItem("nq_token", "e2e-token");
-    sessionStorage.setItem("nq_role", sessionRole);
-    sessionStorage.setItem("nq_name", "E2E");
-    sessionStorage.setItem("nq_nv", `e2e-${sessionRole}`);
-  }, role);
+/**
+ * Mock /api/v1/auth/login để trả token giả + role cụ thể,
+ * rồi đăng nhập qua UI bình thường.
+ *
+ * Lý do không dùng addInitScript + sessionStorage.setItem trực tiếp:
+ *   useState("") trong các page React luôn khởi tạo token="",
+ *   chỉ sau useEffect(() => setToken(getToken()), []) mới đọc storage.
+ *   Nếu có AuthGate hoặc redirect trong khoảng thời gian giữa render
+ *   đầu và useEffect, test flake. Flow login thực sự gọi setSession()
+ *   bên trong React (sau response từ API), đảm bảo state nhất quán.
+ */
+async function loginAs(
+  page: Page,
+  role: "quan_ly" | "chu_quan" | "nhan_vien",
+) {
+  await page.route(
+    /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/me/,
+    async (route: Route) => {
+      await route.fulfill({
+        json: {
+          role,
+          nv_id: `e2e-${role}`,
+          display_name: `E2E-${role}`,
+        },
+      });
+    },
+  );
+
+  // Mock auth endpoint — không cần DB thật, không cần demo_api trả đúng user
+  await page.route(
+    /^http:\/\/(localhost|127\.0\.0\.1):8000\/api\/v1\/auth\/login/,
+    async (route: Route) => {
+      await route.fulfill({
+        json: {
+          token: "e2e-token",
+          role,
+          display_name: `E2E-${role}`,
+          nv_id: `e2e-${role}`,
+        },
+      });
+    },
+  );
+
+  await page.goto("/login");
+  await page.getByLabel("Tài khoản").fill("e2e");
+  await page.getByLabel("Mật khẩu").fill("e2e");
+  await page.getByRole("button", { name: "Vào hệ thống" }).click();
+  // Sau login, app navigate đến /hom-nay
+  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
 }
+
+test.beforeEach(async ({ page }) => {
+  // Mock WebSocket chat
+  await page.routeWebSocket(/.*\/ws\/chat/, (ws) => {
+    ws.onMessage((message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        if (data.event === "auth") {
+          ws.send(JSON.stringify({ event: "auth:ack" }));
+        }
+      } catch {
+        // ignore
+      }
+    });
+  });
+
+  // Mock HTTP chat endpoints để FloatingChatHead không gọi API thật
+  await page.route(CHAT_PATTERN, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/online")) {
+      await route.fulfill({ json: { online_users: [] } });
+    } else {
+      await route.fulfill({ json: { items: [], unread_total: 0 } });
+    }
+  });
+});
 
 function fixture(item: ReviewItem) {
   return {
@@ -35,20 +104,14 @@ function fixture(item: ReviewItem) {
 }
 
 async function mockInbox(page: Page, items: ReviewItem[], decisions: unknown[]) {
-  await page.routeWebSocket(/.*\/ws\/chat/, (ws) => {
-    ws.onMessage((message) => {
-      try {
-        const data = JSON.parse(message.toString());
-        if (data.event === "auth") {
-          ws.send(JSON.stringify({ event: "auth:ack" }));
-        }
-      } catch {
-        // Ignore malformed message in test mock
-      }
-    });
-  });
   await page.route(API_PATTERN, async (route: Route) => {
     const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/fb-policy")) {
+      await route.fulfill({
+        json: { auto_send_enabled: true },
+      });
+      return;
+    }
     if (url.pathname.endsWith("/stats")) {
       await route.fulfill({
         json: { by_status: { pending: items.length }, total: items.length, auto_sent: 0, auto_rate: 0, escalation_unacked: 0 },
@@ -66,7 +129,7 @@ async function mockInbox(page: Page, items: ReviewItem[], decisions: unknown[]) 
 
 test("Quản lý duyệt, sửa, từ chối và thấy SLA hợp lệ", async ({ page }) => {
   const decisions: unknown[] = [];
-  await setSession(page, "quan_ly");
+  await loginAs(page, "quan_ly");
   await mockInbox(
     page,
     [
@@ -103,7 +166,7 @@ test("Quản lý duyệt, sửa, từ chối và thấy SLA hợp lệ", async (
 });
 
 test("Quản lý không thể xử lý escalation dành cho chủ quán", async ({ page }) => {
-  await setSession(page, "quan_ly");
+  await loginAs(page, "quan_ly");
   await mockInbox(
     page,
     [{ id: 4, message_text: "Cần gặp chủ quán", assigned_role: "chu_quan", proposed_response: "Dạ chủ quán sẽ phản hồi." }],
@@ -118,9 +181,13 @@ test("Quản lý không thể xử lý escalation dành cho chủ quán", async 
 
 test("Bộ lọc tải đúng trạng thái và khóa mục đã xử lý", async ({ page }) => {
   const requestedStatuses: Array<string | null> = [];
-  await setSession(page, "quan_ly");
+  await loginAs(page, "quan_ly");
   await page.route(API_PATTERN, async (route) => {
     const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/fb-policy")) {
+      await route.fulfill({ json: { auto_send_enabled: true } });
+      return;
+    }
     if (url.pathname.endsWith("/stats")) {
       await route.fulfill({ json: { by_status: {}, total: 1, auto_sent: 0, auto_rate: 0, escalation_unacked: 0 } });
       return;
@@ -146,7 +213,7 @@ test("Bộ lọc tải đúng trạng thái và khóa mục đã xử lý", asyn
 
 test("Chủ quán có thể xử lý escalation", async ({ page }) => {
   const decisions: unknown[] = [];
-  await setSession(page, "chu_quan");
+  await loginAs(page, "chu_quan");
   await mockInbox(
     page,
     [{ id: 5, message_text: "Cần gặp chủ quán", assigned_role: "chu_quan", proposed_response: "Dạ chủ quán sẽ phản hồi." }],
@@ -154,12 +221,13 @@ test("Chủ quán có thể xử lý escalation", async ({ page }) => {
   );
 
   await page.goto("/page-quan/fb-inbox");
+  await expect(page.getByRole("heading", { name: "Hộp thư Fanpage chờ duyệt" })).toBeVisible();
   await page.getByRole("button", { name: "Duyệt & gửi" }).click();
   await expect.poll(() => decisions).toEqual([{ quyet_dinh: "duyet" }]);
 });
 
 test("Nhân viên bị chặn khỏi hộp thư Fanpage", async ({ page }) => {
-  await setSession(page, "nhan_vien");
+  await loginAs(page, "nhan_vien");
   await page.goto("/page-quan/fb-inbox");
   await expect(page.getByRole("heading", { name: /Không đủ quyền|Trang này dành cho vai trò khác/ })).toBeVisible();
 });
