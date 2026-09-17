@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import hashlib
 import os
 import uuid
 from dataclasses import asdict
@@ -58,8 +57,8 @@ from ca_api.orchestration import Clock
 from ca_api.persist import (
     audit_add,
     audit_list,
-    availability_confirmed_list,
     authoritative_assignments_list,
+    availability_confirmed_list,
     ghi_diem_danh,
     kv_get,
     kv_mutate,

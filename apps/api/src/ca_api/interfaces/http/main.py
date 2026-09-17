@@ -908,7 +908,12 @@ async def patch_lifecycle(
         )
     if body.trang_thai == "da_dong" and _role != "chu_quan":
         raise HTTPException(status_code=403, detail="chi_chu_quan_dong_lich")
-    from ca_api.interfaces.http.sprint45 import _guard_authoritative_lifecycle, _life, _publish_schedule_notification, _save_life
+    from ca_api.interfaces.http.sprint45 import (
+        _guard_authoritative_lifecycle,
+        _life,
+        _publish_schedule_notification,
+        _save_life,
+    )
     from ca_api.services.scheduling_service import run_authoritative_schedule
 
     week = body.tuan_iso or "2026-W36"
