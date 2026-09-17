@@ -18,21 +18,20 @@ import {
   StatusChip,
 } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
-import { PersonSelect, ShiftSelect } from "../../ui/ops-pickers";
+import { ShiftSelect } from "../../ui/ops-pickers";
 import { CopilotPane } from "../../ui/copilot/CopilotPane";
 
 type Swap = {
   id: string;
   a: string;
   b: string;
-  c: string;
   ca_id: string;
   trang_thai: string;
   dong_y?: string[];
 };
 
 function swapHaystack(it: Swap): string {
-  return [it.id, it.a, it.b, it.c, it.ca_id, swapLabel(it.trang_thai), nvLabel(it.a), nvLabel(it.b), nvLabel(it.c)].join(" ");
+  return [it.id, it.a, it.b, it.ca_id, swapLabel(it.trang_thai), nvLabel(it.a), nvLabel(it.b)].join(" ");
 }
 
 export default function DoiCaPage() {
@@ -40,9 +39,7 @@ export default function DoiCaPage() {
   const [items, setItems] = useState<Swap[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [a, setA] = useState("");
   const [b, setB] = useState("");
-  const [c, setC] = useState("");
   const [ca, setCa] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -80,18 +77,23 @@ export default function DoiCaPage() {
   }, [items]);
 
   const personOptions = useMemo(() => {
-    const people = uniqueSorted(items.flatMap((i) => [i.a, i.b, i.c]));
+    const people = uniqueSorted(items.flatMap((i) => [i.a, i.b]));
     return [{ value: "all", label: "Mọi người" }, ...people.map((p) => ({ value: p, label: nvLabel(p) }))];
   }, [items]);
 
+  const available = useMemo(() => {
+    if (!meNv) return [];
+    return items.filter((it) => it.trang_thai !== "dong_y" && (it.b === meNv || it.b === "all"));
+  }, [items, meNv]);
+
   const filtered = useMemo(() => {
-    return items.filter((it) => {
+    return available.filter((it) => {
       if (!matchSearch(swapHaystack(it), search)) return false;
       if (!matchExact(it.trang_thai, statusF)) return false;
-      if (personF !== "all" && ![it.a, it.b, it.c].includes(personF)) return false;
+      if (personF !== "all" && ![it.a, it.b].includes(personF)) return false;
       return true;
     });
-  }, [items, search, statusF, personF]);
+  }, [available, search, statusF, personF]);
 
   const filterActive = search.length > 0 || statusF !== "all" || personF !== "all";
 
@@ -101,23 +103,21 @@ export default function DoiCaPage() {
     setPersonF("all");
   }
 
-  const dayDu = a.trim() && b.trim() && c.trim() && ca.trim();
+  const dayDu = meNv && b.trim() && ca.trim();
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setMsg(null);
     if (!dayDu) {
-      setError("Chọn đủ ba người và một ca rồi mới mở được lệnh đổi.");
+      setError("Chọn người nhận và ca rồi mới mở được lệnh đổi.");
       return;
     }
     setBusy(true);
     try {
-      await apiSend("/api/v1/cho-doi-ca", { a: a.trim(), b: b.trim(), c: c.trim(), ca_id: ca.trim() });
-      setA("");
+      await apiSend("/api/v1/cho-doi-ca", { a: meNv, b: b.trim(), ca_id: ca.trim() });
       setB("");
-      setC("");
-      setMsg("Đã mở lệnh đổi. Lệnh chỉ chốt khi cả ba nhánh đồng ý.");
+      setMsg("Đã mở phiếu đổi ca.");
       load();
     } catch (e) {
       setError(
@@ -174,9 +174,9 @@ export default function DoiCaPage() {
   return (
     <div className="nq-page nq-page--run">
       <PageHeader
-        kicker="Ba nhánh phải đồng ý"
+        kicker="Đổi ca giữa hai người"
         title="Chợ đổi ca"
-        meta="Chọn người nhả, người nhận, người xác nhận và ca — mỗi nhánh bấm đồng ý trên lệnh."
+        meta="Bạn nhả ca, một người nhận ca chốt phiếu."
       />
       <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
         Hỏi trợ lý vận hành
@@ -186,15 +186,15 @@ export default function DoiCaPage() {
 
       <OpsCard eyebrow="Khu vực 1" title="Mở lệnh mới">
         <form onSubmit={onSubmit}>
-          <PersonSelect value={a} onChange={setA} label="Người nhả ca" staff={pickers?.nhan_vien} />
-          <PersonSelect value={b} onChange={setB} label="Người nhận ca" staff={pickers?.nhan_vien} />
-          <PersonSelect value={c} onChange={setC} label="Người xác nhận" staff={pickers?.nhan_vien} />
+          <p className="nq-muted mb-3">Người nhả ca: {meNv ? personLabel(meNv) : "Đang tải tài khoản…"}</p>
+          <select className="nq-select mb-3" value={b} onChange={(e) => setB(e.target.value)} aria-label="Người nhận ca">
+            <option value="">Chọn người nhận…</option>
+            <option value="all">Mọi người</option>
+            {(pickers?.nhan_vien ?? []).map((n) => (
+              <option key={n.id} value={n.id}>{nvTenHienThi(n.ten, n.id)}</option>
+            ))}
+          </select>
           <ShiftSelect value={ca} onChange={setCa} label="Ca cần đổi" shifts={pickers?.ca} />
-          {meNv ? (
-            <p className="nq-muted text-sm mb-3">
-              Gợi ý: bạn có thể chọn mình làm một trong ba nhánh nếu tham gia đổi ca.
-            </p>
-          ) : null}
           <Btn type="submit" variant="primary" disabled={busy}>
             {busy ? "Đang mở lệnh…" : "Mở lệnh đổi ca"}
           </Btn>
@@ -213,23 +213,23 @@ export default function DoiCaPage() {
           onPersonChange={setPersonF}
           personOptions={personOptions}
           shown={filtered.length}
-          total={items.length}
+          total={available.length}
           filtered={filterActive}
         />
         {loading ? <Loading skeleton="list">Đang tải lệnh đổi ca…</Loading> : null}
-        {!loading && !error && items.length === 0 ? (
+        {!loading && !error && available.length === 0 ? (
           <Empty title="Chưa có lệnh">Chưa có lệnh đổi ca nào đang mở.</Empty>
         ) : null}
-        {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
+        {!loading && available.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
         <div className="nq-list">
           {filtered.map((it) => {
             const agreed = new Set(it.dong_y ?? []);
-            const parties = [it.a, it.b, it.c];
-            const canAgree = meNv && parties.includes(meNv) && !agreed.has(meNv) && it.trang_thai !== "dong_y";
+            const recipient = it.b === "all" || it.b === meNv;
+            const canAgree = meNv && recipient && it.a !== meNv && !agreed.has(meNv);
             return (
               <article key={it.id} className="nq-item">
                 <p className="nq-item-title">
-                  {personLabel(it.a)} nhả · {personLabel(it.b)} nhận · {personLabel(it.c)} xác nhận
+                  {personLabel(it.a)} nhả · {it.b === "all" ? "Mọi người" : `${personLabel(it.b)} nhận`}
                 </p>
                 <p className="nq-item-sub">
                   <StatusChip tone={it.trang_thai === "dong_y" ? "ok" : "warn"}>
@@ -238,12 +238,14 @@ export default function DoiCaPage() {
                   {it.ca_id ? ` · ${caLabel(it.ca_id)}` : ""}
                 </p>
                 <p className="nq-item-sub text-xs mt-2">
-                  Đồng ý: {parties.map((p) => (agreed.has(p) ? `✓ ${personLabel(p)}` : `○ ${personLabel(p)}`)).join(" · ")}
+                  {agreed.size > 0 ? `Đã có người nhận: ${[...agreed].map(personLabel).join(", ")}` : "Chưa có ai nhận ca"}
                 </p>
                 {canAgree ? (
                   <div className="flex gap-2 mt-2">
-                    <Btn variant="primary" busy={busy} onClick={() => void dongY(it.id)}>
-                      Tôi đồng ý
+                    <Btn variant="primary" busy={busy} onClick={() => {
+                      if (window.confirm(`Bạn nhận ca do ${personLabel(it.a)} nhả ra không?`)) void dongY(it.id);
+                    }}>
+                      Tôi nhận ca
                     </Btn>
                     <Btn variant="danger" disabled={busy} onClick={() => void tuChoi(it.id)}>
                       Từ chối
@@ -256,12 +258,10 @@ export default function DoiCaPage() {
         </div>
       </OpsCard>
 
-      <OpsCard eyebrow="Ba nhánh là gì" title="Vì sao cần đủ 3 người đồng ý?">
+      <OpsCard eyebrow="Đổi ca giữa hai người" title="Phiếu được chốt thế nào?">
         <p className="mb-3 text-sm text-[var(--nq-dim)]">
-          Người <strong>nhả</strong> và người <strong>nhận</strong> đổi trực tiếp với nhau, còn người
-          <strong> xác nhận</strong> (thường là quản lý ca) chốt cho đủ trách nhiệm. Sau khi chốt, lịch
-          tuần cập nhật và sổ công bằng ghi lại. Nếu đổi ca qua tin nhắn Zalo/Telegram thì AI tách thành
-          yêu cầu nằm trong Hộp thư chờ quản lý duyệt.
+          Người <strong>nhả</strong> mở phiếu cho một người nhận hoặc mọi người. Người nhận xem tên người
+          nhả ca trước khi nhận. Phiếu đã có người nhận sẽ không còn hiện trong chợ.
         </p>
         <div className="flex flex-wrap gap-3">
           <BtnLink href="/inbox">Hộp thư duyệt →</BtnLink>

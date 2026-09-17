@@ -575,7 +575,6 @@ class SopBody(BaseModel):
 class SwapBody(BaseModel):
     a: str
     b: str
-    c: str
     ca_id: str
 
 
@@ -1132,12 +1131,11 @@ def inbox_decide(
                             )
                         is_ap_dat = bool(body.ap_dat)
                         swap_status = "dong_y" if is_ap_dat else "cho_xac_nhan"
-                        dong_y_list = [it.get("nv_id") or "unknown", doi_tac_nv_id, role] if is_ap_dat else [it.get("nv_id") or "unknown"]
+                        dong_y_list = [it.get("nv_id") or "unknown", doi_tac_nv_id] if is_ap_dat else [it.get("nv_id") or "unknown"]
                         pending_swap = {
                             "id": f"sw_inbox_{uuid.uuid4().hex[:6]}",
                             "a": it.get("nv_id") or "unknown",
                             "b": doi_tac_nv_id,
-                            "c": role,
                             "ca_id": ca_id,
                             "trang_thai": swap_status,
                             "dong_y": dong_y_list,
@@ -1919,19 +1917,18 @@ async def swap_open(
     caller = auth_session(authorization)
     if not caller:
         raise HTTPException(status_code=401, detail="thieu_token")
-    if len({body.a, body.b, body.c}) != 3 or not _known_ca(body.ca_id):
+    if body.a == body.b or not _known_ca(body.ca_id):
         raise HTTPException(status_code=422, detail="doi_ca_khong_hop_le")
-    if caller["role"] == "nhan_vien" and caller["nv_id"] not in {body.a, body.b, body.c}:
+    if caller["role"] == "nhan_vien" and caller["nv_id"] != body.a:
         raise HTTPException(status_code=403, detail="khong_phai_nguoi_tham_gia")
-    if not _known_nv(body.a) or not _known_nv(body.b) or not _known_nv(body.c):
+    if not _known_nv(body.a) or (body.b != "all" and not _known_nv(body.b)):
         raise HTTPException(status_code=422, detail="nhan_vien_khong_hop_le")
     item = {
         "id": f"sw_{uuid.uuid4().hex[:8]}",
         "a": body.a,
         "b": body.b,
-        "c": body.c,
         "ca_id": body.ca_id,
-        "trang_thai": "cho_3_nhanh",
+        "trang_thai": "cho_xac_nhan",
         "nguon": "quan",
     }
 
@@ -1947,7 +1944,6 @@ async def swap_open(
         "entity_id": item["id"],
         "a": body.a,
         "b": body.b,
-        "c": body.c,
         "ca_id": body.ca_id,
         "trang_thai": item["trang_thai"],
     }
@@ -1985,15 +1981,16 @@ async def swap_dong_y(
             # Swap đã bị từ chối thì không ai "đồng ý" hồi sinh được nữa.
             if it.get("trang_thai") == "tu_choi":
                 raise HTTPException(status_code=409, detail="swap_da_tu_choi")
-            parties = {it.get("a"), it.get("b"), it.get("c")} - {None, ""}
+            parties = {it.get("a"), it.get("b")} - {None, "", "all"}
             caller_ids = {caller.get("nv_id"), caller.get("username")} - {None, ""}
-            if not (caller_ids & parties) and caller.get("role") not in {"quan_ly", "chu_quan"}:
+            is_open_to_all = it.get("b") == "all"
+            if not (caller_ids & parties) and not is_open_to_all and caller.get("role") not in {"quan_ly", "chu_quan"}:
                 raise HTTPException(status_code=403, detail="khong_phai_nguoi_tham_gia")
             agreed = set(it.get("dong_y", []))
-            if nv and (nv in parties or caller.get("role") in {"quan_ly", "chu_quan"}):
+            if nv and (nv in parties or is_open_to_all or caller.get("role") in {"quan_ly", "chu_quan"}):
                 agreed.add(nv)
             it["dong_y"] = sorted(agreed)
-            if {it["a"], it["b"]} <= agreed:
+            if (is_open_to_all and nv != it["a"]) or (it["b"] != "all" and nv == it["b"]):
                 it["trang_thai"] = "dong_y"
             found = dict(it)
             return items
@@ -2036,9 +2033,9 @@ async def swap_tu_choi(
         for it in items:
             if it.get("id") != swap_id:
                 continue
-            parties = {it.get("a"), it.get("b"), it.get("c")} - {None, ""}
+            parties = {it.get("a"), it.get("b")} - {None, "", "all"}
             caller_ids = {caller.get("nv_id"), caller.get("username")} - {None, ""}
-            if not (caller_ids & parties) and caller.get("role") not in {"quan_ly", "chu_quan"}:
+            if it.get("b") != "all" and not (caller_ids & parties) and caller.get("role") not in {"quan_ly", "chu_quan"}:
                 raise HTTPException(status_code=403, detail="khong_phai_nguoi_tham_gia")
             it["trang_thai"] = "tu_choi"
             found = dict(it)
