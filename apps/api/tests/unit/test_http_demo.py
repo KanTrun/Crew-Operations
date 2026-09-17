@@ -139,7 +139,7 @@ def test_pin_reflected_in_lich_tuan() -> None:
     assert nv_that in phan_cong.get("w1_c02", []), f"pin {nv_that} phải hiện trong w1_c02"
 
 
-def test_lifecycle_quanly_can_set(_du_nhan_vien_xep_lich: None) -> None:
+def test_lifecycle_quanly_can_set(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_dung_tuan: None) -> None:
     # tuan_iso là phạm vi lịch độc lập; quản lý được vận hành tuần được chọn.
     from ca_api.persist import kv_set
 
@@ -198,7 +198,7 @@ def test_lifecycle_nhanvien_forbidden() -> None:
     assert r.status_code == 403
 
 
-def test_lifecycle_da_dong_requires_chu_quan(_du_nhan_vien_xep_lich: None) -> None:
+def test_lifecycle_da_dong_requires_chu_quan(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_dung_tuan: None) -> None:
     # Quản lý (lan) không được phép đóng lịch
     r_lan = client.patch(
         "/api/v1/lich-tuan/lifecycle",

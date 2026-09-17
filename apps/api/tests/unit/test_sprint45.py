@@ -7,6 +7,7 @@ from ca_agents.ag_rule import RuleDraft
 from ca_api.interfaces.http import sprint45
 from ca_api.interfaces.http.main import app
 from ca_api.persist import da_diem_danh, kv_get, kv_set
+from ca_api.services.scheduling_service import run_authoritative_schedule
 from ca_playbook import record_sua
 from fastapi.testclient import TestClient
 
@@ -42,7 +43,7 @@ def _seed_three_nha_ca() -> None:
         )
 
 
-def test_lifecycle_and_audit(_du_nhan_vien_xep_lich: None) -> None:
+def test_lifecycle_and_audit(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_dung_tuan: None) -> None:
     ql = headers(client, "lan")
     chu = headers(client, "hung")
     # Đúng chuỗi: may_sinh → nhap → dang_giai (solver) → cho_duyet → da_cong_bo.
@@ -64,9 +65,13 @@ def test_lifecycle_and_audit(_du_nhan_vien_xep_lich: None) -> None:
     assert log[0]["payload"]["to"] in {"dang_giai", "cho_duyet", "da_cong_bo"}
 
 
-def test_publish_creates_exact_week_notification_and_ack(_du_nhan_vien_xep_lich: None) -> None:
+def test_publish_creates_exact_week_notification_and_ack(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_dung_tuan: None) -> None:
     week = "2026-W44"
     ql = headers(client, "lan")
+    run = run_authoritative_schedule(
+        store_id="quan_01", tuan_iso=week, actor_id="lan", idempotency_key="test-publish-w44",
+    )
+    assert run["status"] == "computed", run
     kv_set("lich_tuan_lifecycle_by_week", {week: {"tuan_iso": week, "trang_thai": "da_duyet"}})
 
     published = client.patch(
