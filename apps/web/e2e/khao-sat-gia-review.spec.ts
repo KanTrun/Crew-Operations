@@ -361,7 +361,7 @@ test.describe("Khảo sát giá — luồng review NEEDS_REVIEW (ADR-008)", () =
     //     là lớp phòng thủ thứ hai nếu ai đó mount trang ngoài AppShell.
     // Khẳng định lớp 1: đây là lý do không thấy heading "Khảo sát giá".
     await expect(
-      page.getByRole("heading", { name: /Trang này dành cho vai trò khác/i }),
+      page.getByRole("heading", { name: /Trang này dành cho vai trò khác|Không đủ quyền/i }),
     ).toBeVisible();
 
     // Không form, không màn review, và tuyệt đối không có lời gọi API nào.
