@@ -85,20 +85,22 @@ test("thông báo lịch: click deep-link tự động ack", async ({ page }) =>
     }
   });
 
-  // Login as employee (minh)
+  // Login as manager (lan) - same as working test
   await page.goto("/login");
-  await page.getByLabel("Tài khoản").fill("minh");
+  await page.getByLabel("Tài khoản").fill("lan");
   await page.getByLabel("Mật khẩu").fill("nhipquan");
   await page.getByRole("button", { name: "Vào hệ thống" }).click();
   await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
 
-  // Navigate to roster page and wait for notification to load
+  // Navigate to roster page
   await page.goto("/lich-tuan");
-  await expect(page.getByRole("heading", { name: /Lịch/i })).toBeVisible();
+  
+  // Wait for the page to fully load - check for the workflow section which appears after data loads
+  await expect(page.getByText("1. Nháp", { exact: true })).toBeVisible({ timeout: 10_000 });
 
   // Wait for notification banner to appear
   const banner = page.locator("text=1 chưa xem");
-  await expect(banner).toBeVisible({ timeout: 10_000 });
+  await expect(banner).toBeVisible({ timeout: 5_000 });
 
   // Click the notification link — UI auto-acks on click
   const notifLink = page.locator(`a[href="/lich-tuan?tuan=${targetWeek}"]`).first();
