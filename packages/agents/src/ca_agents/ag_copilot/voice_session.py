@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import os
 from collections.abc import Awaitable, Callable
@@ -118,7 +119,6 @@ class GeminiLiveSession:
     async def send_audio(self, pcm16_16khz: bytes) -> None:
         if self._connection is None:
             raise VoiceSessionUnavailable("gemini_live_session_not_open")
-        import base64
 
         await self._connection.send(
             json.dumps(

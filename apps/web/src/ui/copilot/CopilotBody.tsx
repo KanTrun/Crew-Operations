@@ -9,7 +9,7 @@
 
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../icons";
 import { ActionProposalCard } from "./ActionProposalCard";
 import { ChatText } from "./ChatText";
@@ -18,6 +18,7 @@ import { useCopilotVoice } from "./useCopilotVoice";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const VOICE_ENABLED = process.env.NEXT_PUBLIC_GEMINI_LIVE_VOICE_ENABLED === "true";
+const VOICE_CONSENT_KEY = "ag_voice_consent_v1";
 
 function resolveMediaUrl(url: string): string {
   if (!url) return "";
@@ -39,6 +40,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
   const {
     profile,
     messages,
+    setMessages,
     input,
     setInput,
     loading,
@@ -52,7 +54,66 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const voice = useCopilotVoice();
+  const activeVoiceTurnRef = useRef<{ id: string; role: "user" | "copilot" } | null>(null);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+
+  const handleTranscript = useCallback(
+    (role: "user" | "copilot", chunk: string, isFinal: boolean) => {
+      if (!chunk.trim()) return;
+      const now = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      setMessages((prev) => {
+        const active = activeVoiceTurnRef.current;
+        if (active && active.role === role) {
+          const updated = prev.map((m) => {
+            if (m.id === active.id) {
+              const currentText = m.text || "";
+              const nextText = currentText
+                ? (chunk.startsWith(" ") || currentText.endsWith(" ") ? currentText + chunk : currentText + " " + chunk)
+                : chunk;
+              return {
+                ...m,
+                text: nextText,
+              };
+            }
+            return m;
+          });
+          if (isFinal) {
+            activeVoiceTurnRef.current = null;
+          }
+          return updated;
+        } else {
+          const newId = `voice_${role}_${Date.now()}`;
+          if (!isFinal) {
+            activeVoiceTurnRef.current = { id: newId, role };
+          } else {
+            activeVoiceTurnRef.current = null;
+          }
+          const newMsg: ChatMessage = {
+            id: newId,
+            sender: role,
+            text: chunk.trim(),
+            agent_mode: role === "copilot" ? "live" : undefined,
+            timestamp: now,
+          };
+          return [...prev, newMsg];
+        }
+      });
+    },
+    [setMessages]
+  );
+
+  const handleInterrupted = useCallback(() => {
+    activeVoiceTurnRef.current = null;
+  }, []);
+
+  const voice = useCopilotVoice({
+    onTranscript: handleTranscript,
+    onInterrupted: handleInterrupted,
+  });
 
   const [attachedFile, setAttachedFile] = useState<{
     file: File;
@@ -113,11 +174,90 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
     return () => window.clearTimeout(t);
   }, []);
 
+  const isVoiceActive =
+    voice.state === "connecting" ||
+    voice.state === "listening" ||
+    voice.state === "processing" ||
+    voice.state === "speaking";
+
+  const isVoiceError =
+    voice.state === "error" ||
+    voice.state === "mic_denied" ||
+    voice.state === "mic_not_found" ||
+    voice.state === "superseded" ||
+    voice.state === "idle_timeout";
+
+  const handleVoiceToggle = () => {
+    if (isVoiceActive) {
+      voice.stop();
+      activeVoiceTurnRef.current = null;
+      return;
+    }
+    try {
+      if (typeof window !== "undefined" && window.localStorage.getItem(VOICE_CONSENT_KEY) === "true") {
+        void voice.start();
+      } else {
+        setShowConsentModal(true);
+      }
+    } catch {
+      void voice.start();
+    }
+  };
+
   return (
     <div
-      className="flex h-full flex-col bg-[var(--nq-bg)] text-[var(--nq-fg)]"
+      className="relative flex h-full flex-col bg-[var(--nq-bg)] text-[var(--nq-fg)]"
       style={{ ["--accent" as any]: profile.accent }}
     >
+      {/* Consent Modal for Decree 13/2023/ND-CP */}
+      {showConsentModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm border-2 border-[var(--nq-copper)] bg-[var(--nq-surface)] p-5 shadow-2xl">
+            <div className="flex items-center gap-2 text-[var(--nq-copper)]">
+              <Icon name="microphone" size={18} />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--nq-fg)]">
+                Bảo vệ quyền riêng tư giọng nói
+              </h4>
+            </div>
+            <div className="mt-3 space-y-2.5 text-[11px] leading-relaxed text-[var(--nq-dim)]">
+              <p>
+                Theo <strong>Nghị định 13/2023/NĐ-CP</strong>, AG-COPILOT cần sự đồng thuận của anh/chị trước khi tiếp nhận âm thanh từ micro để hỗ trợ tra cứu và điều hành qua giọng nói.
+              </p>
+              <div className="border border-[var(--nq-dim)]/40 bg-[var(--nq-bg)] p-2.5 text-[10px] text-[var(--nq-fg)]">
+                <p className="font-semibold text-emerald-400">Cam kết an toàn dữ liệu:</p>
+                <ul className="mt-1 list-disc pl-4 space-y-0.5 text-[var(--nq-dim)]">
+                  <li>Không lưu trữ tệp ghi âm giọng nói thô trên hệ thống.</li>
+                  <li>Chỉ lưu bản ghi văn bản (transcript) trong lịch sử hội thoại.</li>
+                  <li>Có thể dừng phiên voice bất kỳ lúc nào để chuyển sang chat text.</li>
+                </ul>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowConsentModal(false)}
+                className="border border-[var(--nq-dim)] px-3 py-1.5 text-[10px] font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-fg)] hover:text-[var(--nq-fg)]"
+              >
+                Để sau
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    window.localStorage.setItem(VOICE_CONSENT_KEY, "true");
+                  } catch {}
+                  setShowConsentModal(false);
+                  void voice.start();
+                }}
+                className="border border-[var(--nq-copper)] bg-[var(--nq-copper)] px-3.5 py-1.5 text-[10px] font-bold uppercase text-[#0e0c0a] transition hover:brightness-110"
+              >
+                Đồng ý & Bắt đầu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4">
         <div className="flex items-center gap-2.5">
@@ -372,16 +512,33 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
               <p className="mb-2 text-[11px] text-rose-400">{uploadError}</p>
             )}
             {VOICE_ENABLED && voice.state !== "idle" && (
-              <p
-                className={`mb-2 text-[11px] ${voice.state === "error" ? "text-rose-400" : "text-[var(--nq-copper)]"}`}
+              <div
+                className={`mb-2 flex items-center gap-2 rounded border px-2.5 py-1.5 text-[11px] ${
+                  isVoiceError
+                    ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
+                    : "border-[var(--nq-copper)]/30 bg-[var(--nq-copper)]/10 text-[var(--nq-copper)]"
+                }`}
                 role="status"
               >
-                {voice.state === "connecting" && "Đang kết nối voice…"}
-                {voice.state === "listening" && "Đang nghe…"}
-                {voice.state === "processing" && "Đang xử lý…"}
-                {voice.state === "speaking" && "Trợ lý đang nói…"}
-                {voice.state === "error" && "Voice chưa sẵn sàng. Anh/chị có thể tiếp tục dùng chat text."}
-              </p>
+                <div className="shrink-0">
+                  {voice.state === "connecting" && <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--nq-copper)]" />}
+                  {voice.state === "listening" && <span className="inline-block h-2 w-2 animate-ping rounded-full bg-emerald-400" />}
+                  {voice.state === "processing" && <span className="inline-block h-2 w-2 animate-spin rounded-full border-2 border-[var(--nq-copper)] border-t-transparent" />}
+                  {voice.state === "speaking" && <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-amber-400" />}
+                  {isVoiceError && <span className="inline-block h-2 w-2 rounded-full bg-rose-400" />}
+                </div>
+                <p className="flex-1">
+                  {voice.state === "connecting" && "Đang kết nối voice trực tiếp…"}
+                  {voice.state === "listening" && "Đang nghe… Anh/chị có thể nói hoặc gõ bất cứ lúc nào."}
+                  {voice.state === "processing" && "Đang xử lý yêu cầu…"}
+                  {voice.state === "speaking" && "Trợ lý đang nói… Có thể nói chen ngang để ngắt lời."}
+                  {voice.state === "mic_denied" && "Trình duyệt chưa cấp quyền micro. Vui lòng mở quyền micro trong cài đặt trình duyệt."}
+                  {voice.state === "mic_not_found" && "Không tìm thấy thiết bị micro. Vui lòng kiểm tra cổng cắm hoặc cài đặt micro."}
+                  {voice.state === "superseded" && "Phiên voice đã được chuyển sang tab/thiết bị khác của anh/chị."}
+                  {voice.state === "idle_timeout" && "Phiên voice tạm ngưng sau 60 giây im lặng. Bấm micro để nói lại."}
+                  {voice.state === "error" && "Voice chưa sẵn sàng. Anh/chị có thể thử lại hoặc tiếp tục dùng chat text."}
+                </p>
+              </div>
             )}
 
             <form
@@ -417,14 +574,14 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
               {VOICE_ENABLED && (
                 <button
                   type="button"
-                  onClick={voice.state === "idle" || voice.state === "error" ? voice.start : voice.stop}
+                  onClick={handleVoiceToggle}
                   disabled={loading || Boolean(streamingId) || uploading || voice.state === "connecting"}
                   className={`border-2 p-2 transition disabled:opacity-40 ${
-                    voice.state === "listening" || voice.state === "speaking" || voice.state === "processing"
-                      ? "border-rose-500 bg-rose-500 text-white"
+                    isVoiceActive
+                      ? "border-rose-500 bg-rose-500 text-white animate-pulse"
                       : "border-[var(--nq-dim)] bg-[var(--nq-bg)] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
                   }`}
-                  title={voice.state === "idle" || voice.state === "error" ? "Bắt đầu nói với trợ lý" : "Dừng phiên voice"}
+                  title={isVoiceActive ? "Dừng phiên voice" : "Bắt đầu nói với trợ lý"}
                 >
                   <Icon name="microphone" size={16} />
                 </button>

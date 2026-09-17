@@ -124,6 +124,61 @@ def test_copilot_voice_uses_server_verified_identity(monkeypatch: pytest.MonkeyP
     assert context.store_id == "quan_01"
 
 
+def test_copilot_voice_rejects_binary_auth_frame() -> None:
+    with client.websocket_connect("/api/v1/copilot/voice") as websocket:
+        websocket.send_bytes(b"\x00\x01\x02")
+        close = websocket.receive()
+
+    assert close == {
+        "type": "websocket.close",
+        "code": 4001,
+        "reason": "auth_invalid",
+    }
+
+
+def test_copilot_voice_concurrency_superseded(monkeypatch: pytest.MonkeyPatch) -> None:
+    import ca_api.interfaces.http.copilot_voice as voice_module
+
+    class FakeLiveSession:
+        def __init__(self, context: object) -> None:
+            pass
+
+        async def open(self) -> None:
+            return None
+
+        async def receive(self) -> dict[str, object]:
+            await __import__("asyncio").sleep(60)
+            return {}
+
+        async def send_audio(self, audio: bytes) -> None:
+            return None
+
+        async def send_text(self, text: str) -> None:
+            return None
+
+        async def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(voice_module, "GeminiLiveSession", FakeLiveSession)
+    token = _login_manager()
+
+    with client.websocket_connect("/api/v1/copilot/voice") as ws1:
+        ws1.send_text(json.dumps({"event": "auth", "token": token}))
+        assert ws1.receive_json()["event"] == "voice:ready"
+
+        with client.websocket_connect("/api/v1/copilot/voice") as ws2:
+            ws2.send_text(json.dumps({"event": "auth", "token": token}))
+            assert ws2.receive_json()["event"] == "voice:ready"
+
+            # ws1 should receive close frame with code 4002 session_superseded
+            close1 = ws1.receive()
+            assert close1["type"] == "websocket.close"
+            assert close1["code"] == 4002
+            assert close1["reason"] == "session_superseded"
+
+            ws2.send_text(json.dumps({"event": "stop"}))
+
+
 def test_copilot_execution_receipt_lifecycle_and_isolation() -> None:
     request_hash = compute_snapshot_hash({"decision": "approve"})
     outcome = {"ok": True, "status": "executed"}

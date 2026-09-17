@@ -7,7 +7,22 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
 
-export type VoiceState = "idle" | "connecting" | "listening" | "processing" | "speaking" | "error";
+export type VoiceState =
+  | "idle"
+  | "connecting"
+  | "listening"
+  | "processing"
+  | "speaking"
+  | "error"
+  | "mic_denied"
+  | "mic_not_found"
+  | "superseded"
+  | "idle_timeout";
+
+export interface UseCopilotVoiceOptions {
+  onTranscript?: (role: "user" | "copilot", text: string, isFinal: boolean) => void;
+  onInterrupted?: () => void;
+}
 
 function voiceUrl(): string {
   return `${API_BASE.replace(/^http/, "ws")}/api/v1/copilot/voice`;
@@ -54,8 +69,10 @@ function playPcm16(
   nextTime.value += buffer.duration;
 }
 
-export function useCopilotVoice() {
+export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
   const [state, setState] = useState<VoiceState>("idle");
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
   const socketRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const inputContextRef = useRef<AudioContext | null>(null);
@@ -65,8 +82,31 @@ export function useCopilotVoice() {
   const outputSourcesRef = useRef(new Set<AudioBufferSourceNode>());
   const turnCompleteRef = useRef(false);
   const failedRef = useRef(false);
+  const userStoppedRef = useRef(false);
+  const tabHiddenRef = useRef(false);
+
+  // Pause audio sending when tab is hidden for > 15s to save quota
+  useEffect(() => {
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        hideTimer = setTimeout(() => {
+          tabHiddenRef.current = true;
+        }, 15000);
+      } else {
+        if (hideTimer) clearTimeout(hideTimer);
+        tabHiddenRef.current = false;
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      if (hideTimer) clearTimeout(hideTimer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   const stop = useCallback(() => {
+    userStoppedRef.current = true;
     if (socketRef.current) {
       socketRef.current.onclose = null;
       socketRef.current.onmessage = null;
@@ -94,12 +134,22 @@ export function useCopilotVoice() {
   }, []);
 
   const start = useCallback(async () => {
-    if (state !== "idle" && state !== "error") return;
+    if (
+      state !== "idle" &&
+      state !== "error" &&
+      state !== "mic_denied" &&
+      state !== "mic_not_found" &&
+      state !== "superseded" &&
+      state !== "idle_timeout"
+    ) {
+      return;
+    }
     const token = getToken();
     if (!token) {
       setState("error");
       return;
     }
+    userStoppedRef.current = false;
     failedRef.current = false;
     setState("connecting");
     try {
@@ -138,6 +188,10 @@ export function useCopilotVoice() {
             resolve();
           } else if (payload.event === "voice:error") {
             fail(payload.data?.code || "voice_error");
+          } else if (payload.event === "voice:ended") {
+            if (payload.data?.code === "max_duration_reached") {
+              stop();
+            }
           } else if (payload.event === "voice:upstream") {
             const event = payload.data || {};
             const serverContent = event.serverContent || {};
@@ -147,8 +201,24 @@ export function useCopilotVoice() {
               nextOutputTimeRef.current.value = outputContext.currentTime;
               turnCompleteRef.current = false;
               setState("listening");
+              optionsRef.current?.onInterrupted?.();
               return;
             }
+
+            const isTurnComplete = Boolean(serverContent.turnComplete);
+
+            // User speech transcript from Gemini Live
+            const inputTranscription = serverContent.inputAudioTranscription?.text;
+            if (inputTranscription && optionsRef.current?.onTranscript) {
+              optionsRef.current.onTranscript("user", inputTranscription, isTurnComplete);
+            }
+
+            // Assistant speech transcript
+            const outputTranscription = serverContent.outputAudioTranscription?.text;
+            if (outputTranscription && optionsRef.current?.onTranscript) {
+              optionsRef.current.onTranscript("copilot", outputTranscription, isTurnComplete);
+            }
+
             const status =
               serverContent.interactionStatus ||
               serverContent.interaction_status ||
@@ -169,6 +239,9 @@ export function useCopilotVoice() {
             }
             const parts = serverContent.modelTurn?.parts || [];
             for (const part of parts) {
+              if (part.text && !outputTranscription && optionsRef.current?.onTranscript) {
+                optionsRef.current.onTranscript("copilot", part.text, isTurnComplete);
+              }
               const audio = part.inlineData?.data || part.inline_data?.data;
               if (audio) {
                 setState("speaking");
@@ -186,8 +259,14 @@ export function useCopilotVoice() {
           }
         };
         socket.onerror = () => fail("voice_connection_failed");
-        socket.onclose = () => {
-          if (!ready) {
+        socket.onclose = (ev) => {
+          if (userStoppedRef.current) {
+            setState("idle");
+          } else if (ev.code === 4002) {
+            setState("superseded");
+          } else if (ev.code === 4005) {
+            setState("idle_timeout");
+          } else if (!ready) {
             reject(new Error("voice_connection_closed"));
           } else if (!failedRef.current) {
             stop();
@@ -195,7 +274,15 @@ export function useCopilotVoice() {
         };
       });
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 16000,
+        },
+      });
       if (socketRef.current !== socket || socket.readyState !== WebSocket.OPEN) {
         stream.getTracks().forEach((track) => track.stop());
         return;
@@ -205,17 +292,28 @@ export function useCopilotVoice() {
       const source = inputContext.createMediaStreamSource(stream);
       const processor = inputContext.createScriptProcessor(4096, 1, 1);
       processor.onaudioprocess = (event) => {
-        if (socket.readyState === WebSocket.OPEN) {
+        if (socket.readyState === WebSocket.OPEN && !tabHiddenRef.current) {
           socket.send(pcm16AtRate(event.inputBuffer.getChannelData(0), inputContext.sampleRate, INPUT_RATE));
         }
       };
       source.connect(processor);
-      processor.connect(inputContext.destination);
+      // Mute node to prevent microphone feedback loop back into speakers
+      const muteNode = inputContext.createGain();
+      muteNode.gain.value = 0;
+      processor.connect(muteNode);
+      muteNode.connect(inputContext.destination);
       processorRef.current = processor;
-    } catch {
+    } catch (err: any) {
+      if (userStoppedRef.current) return;
       failedRef.current = true;
       stop();
-      setState("error");
+      if (err instanceof DOMException && err.name === "NotAllowedError") {
+        setState("mic_denied");
+      } else if (err instanceof DOMException && err.name === "NotFoundError") {
+        setState("mic_not_found");
+      } else {
+        setState("error");
+      }
     }
   }, [state, stop]);
 
