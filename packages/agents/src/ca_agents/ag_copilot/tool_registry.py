@@ -291,10 +291,15 @@ def tool_solve_weekly_schedule(
 
     # 4. Trích xuất trực tiếp các quyết định từ cuộc họp gần nhất
     meeting_adjustments_used: list[str] = []
-    # 4. Trích xuất trực tiếp các điều chỉnh ca từ cuộc họp gần nhất (đã duyệt)
     meetings = _kv_get("meetings", [])
     if isinstance(meetings, list) and meetings:
-        recent_meetings = meetings[-1:]  # Chỉ lấy cuộc họp gần nhất
+        # Sắp xếp theo thời gian giảm dần để đảm bảo luôn lấy đúng cuộc họp mới nhất
+        sorted_meetings = sorted(
+            [m for m in meetings if isinstance(m, dict)],
+            key=lambda x: str(x.get("duyet_luc") or x.get("last_modified_at") or x.get("thoi_gian") or ""),
+            reverse=True,
+        )
+        recent_meetings = sorted_meetings[:1]
         for m in recent_meetings:
             if not isinstance(m, dict):
                 continue

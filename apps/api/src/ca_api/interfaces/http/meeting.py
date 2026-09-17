@@ -455,7 +455,7 @@ def apply_meeting_decisions(
 
     if sched_items:
         life = kv_get("lich_tuan_lifecycle", {}) or kv_get("lifecycle", {}) or {}
-        current_week = life.get("tuan_iso") or "2026-W36"
+        current_week = life.get("tuan_iso") or datetime.now(UTC).strftime("%G-W%V")
 
         # Apply leaves to inbox_rang_buoc
         leaves_to_apply = [s for s in sched_items if s.get("loai") == "xin_nghi"]
