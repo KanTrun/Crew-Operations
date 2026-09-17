@@ -141,6 +141,12 @@ async def _receive_client(
         elif event == "interrupt":
             tracker.touch()
             await websocket.send_json({"event": "voice:interrupted"})
+        elif event == "activity_start":
+            tracker.touch()
+            await live.send_activity_start()
+        elif event == "activity_end":
+            tracker.touch()
+            await live.send_activity_end()
 
 
 async def _receive_upstream(websocket: WebSocket, live: GeminiLiveSession) -> None:

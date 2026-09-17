@@ -19,13 +19,74 @@ export type VoiceState =
   | "superseded"
   | "idle_timeout";
 
+export type VoiceInputMode = "open_mic" | "push_to_talk";
+
+export interface MicDeviceInfo {
+  deviceId: string;
+  label: string;
+}
+
 export interface UseCopilotVoiceOptions {
   onTranscript?: (role: "user" | "copilot", text: string, isFinal: boolean) => void;
   onInterrupted?: () => void;
+  inputMode?: VoiceInputMode;
+  deviceId?: string;
+  noiseFloor?: number;
 }
+
+export const DEFAULT_NOISE_FLOOR = 0.01;
 
 function voiceUrl(): string {
   return `${API_BASE.replace(/^http/, "ws")}/api/v1/copilot/voice`;
+}
+
+function rms(frame: Float32Array): number {
+  let sum = 0;
+  for (let i = 0; i < frame.length; i += 1) {
+    sum += frame[i] * frame[i];
+  }
+  return Math.sqrt(sum / frame.length);
+}
+
+async function acquireMicStream(deviceId?: string): Promise<MediaStream> {
+  const baseConstraints: MediaTrackConstraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    channelCount: 1,
+    sampleRate: 16000,
+    ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+  };
+
+  const chromeExtraConstraints = {
+    ...baseConstraints,
+    googNoiseSuppression: true,
+    googHighpassFilter: true, // Cut AC hum, fan rumble
+    googEchoCancellation: true,
+  } as MediaTrackConstraints;
+
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: chromeExtraConstraints });
+  } catch {
+    return await navigator.mediaDevices.getUserMedia({ audio: baseConstraints });
+  }
+}
+
+async function enumerateMics(): Promise<MicDeviceInfo[]> {
+  if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) {
+    return [];
+  }
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices
+      .filter((d) => d.kind === "audioinput")
+      .map((d, index) => ({
+        deviceId: d.deviceId,
+        label: d.label || `Microphone ${index + 1}`,
+      }));
+  } catch {
+    return [];
+  }
 }
 
 function pcm16AtRate(input: Float32Array, sourceRate: number, targetRate: number): ArrayBuffer {
@@ -73,6 +134,22 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
   const [state, setState] = useState<VoiceState>("idle");
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const inputModeRef = useRef<VoiceInputMode>(options?.inputMode || "open_mic");
+  inputModeRef.current = options?.inputMode || "open_mic";
+  const deviceIdRef = useRef<string | undefined>(options?.deviceId);
+  deviceIdRef.current = options?.deviceId;
+  const noiseFloorRef = useRef<number>(options?.noiseFloor ?? DEFAULT_NOISE_FLOOR);
+  noiseFloorRef.current = options?.noiseFloor ?? DEFAULT_NOISE_FLOOR;
+  const isPttSpeakingRef = useRef(false);
+  const [availableMics, setAvailableMics] = useState<MicDeviceInfo[]>([]);
+  const [isPttSpeaking, setIsPttSpeaking] = useState(false);
+
+  useEffect(() => {
+    void enumerateMics().then((mics) => {
+      if (mics.length > 0) setAvailableMics(mics);
+    });
+  }, []);
+
   const socketRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const inputContextRef = useRef<AudioContext | null>(null);
@@ -130,6 +207,8 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
     void outputContextRef.current?.close();
     inputContextRef.current = null;
     outputContextRef.current = null;
+    isPttSpeakingRef.current = false;
+    setIsPttSpeaking(false);
     setState("idle");
   }, []);
 
@@ -274,14 +353,9 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
         };
       });
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-          sampleRate: 16000,
-        },
+      const stream = await acquireMicStream(deviceIdRef.current);
+      void enumerateMics().then((mics) => {
+        if (mics.length > 0) setAvailableMics(mics);
       });
       if (socketRef.current !== socket || socket.readyState !== WebSocket.OPEN) {
         stream.getTracks().forEach((track) => track.stop());
@@ -292,9 +366,19 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
       const source = inputContext.createMediaStreamSource(stream);
       const processor = inputContext.createScriptProcessor(4096, 1, 1);
       processor.onaudioprocess = (event) => {
-        if (socket.readyState === WebSocket.OPEN && !tabHiddenRef.current) {
-          socket.send(pcm16AtRate(event.inputBuffer.getChannelData(0), inputContext.sampleRate, INPUT_RATE));
+        if (socket.readyState !== WebSocket.OPEN || tabHiddenRef.current) {
+          return;
         }
+        // In push_to_talk mode, only stream audio when user is actively holding the button
+        if (inputModeRef.current === "push_to_talk" && !isPttSpeakingRef.current) {
+          return;
+        }
+        const channelData = event.inputBuffer.getChannelData(0);
+        // Noise gate: skip near-silent / background hum frames
+        if (rms(channelData) < noiseFloorRef.current) {
+          return;
+        }
+        socket.send(pcm16AtRate(channelData, inputContext.sampleRate, INPUT_RATE));
       };
       source.connect(processor);
       // Mute node to prevent microphone feedback loop back into speakers
@@ -317,7 +401,47 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
     }
   }, [state, stop]);
 
+  const startPttTalk = useCallback(() => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      isPttSpeakingRef.current = true;
+      setIsPttSpeaking(true);
+      socketRef.current.send(JSON.stringify({ event: "activity_start" }));
+    }
+  }, []);
+
+  const stopPttTalk = useCallback(() => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      isPttSpeakingRef.current = false;
+      setIsPttSpeaking(false);
+      socketRef.current.send(JSON.stringify({ event: "activity_end" }));
+    }
+  }, []);
+
+  const changeMic = useCallback(async (newDeviceId: string) => {
+    deviceIdRef.current = newDeviceId;
+    if (streamRef.current && inputContextRef.current && processorRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      try {
+        const newStream = await acquireMicStream(newDeviceId);
+        streamRef.current = newStream;
+        const newSource = inputContextRef.current.createMediaStreamSource(newStream);
+        newSource.connect(processorRef.current);
+      } catch {
+        // Leave existing if failed
+      }
+    }
+  }, []);
+
   useEffect(() => stop, [stop]);
 
-  return { state, start, stop };
+  return {
+    state,
+    start,
+    stop,
+    startPttTalk,
+    stopPttTalk,
+    isPttSpeaking,
+    availableMics,
+    changeMic,
+  };
 }

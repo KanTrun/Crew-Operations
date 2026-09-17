@@ -81,6 +81,11 @@ def test_live_session_uses_only_extended_thinking_model(
     assert setup["setup"]["model"] == f"models/{GEMINI_LIVE_MODEL}"
     assert GEMINI_LIVE_MODEL == "gemini-3.8-live-extended-thinking"
     assert "gemini-3.8-live\"" not in str(connection.sent[0])
+    vad = setup["setup"]["realtimeInputConfig"]["automaticActivityDetection"]
+    assert vad["startOfSpeechSensitivity"] == "START_SENSITIVITY_LOW"
+    assert vad["endOfSpeechSensitivity"] == "END_SENSITIVITY_LOW"
+    assert vad["prefixPaddingMs"] == 300
+    assert vad["silenceDurationMs"] == 800
 
 
 def test_live_session_rejects_missing_setup_complete(
@@ -121,6 +126,8 @@ def test_live_session_forwards_audio_text_and_upstream_events(
         await session.open()
         await session.send_audio(b"\x00\x01")
         await session.send_text("Tra cứu ca hôm nay")
+        await session.send_activity_start()
+        await session.send_activity_end()
         connection.response = {"serverContent": {"turnComplete": True}}
         event = await session.receive()
         await session.close()
@@ -129,6 +136,8 @@ def test_live_session_forwards_audio_text_and_upstream_events(
     event = asyncio.run(exercise())
     audio = json.loads(str(connection.sent[1]))
     text = json.loads(str(connection.sent[2]))
+    act_start = json.loads(str(connection.sent[3]))
+    act_end = json.loads(str(connection.sent[4]))
 
     assert audio == {
         "realtimeInput": {
@@ -143,5 +152,7 @@ def test_live_session_forwards_audio_text_and_upstream_events(
             "turnComplete": True,
         }
     }
+    assert act_start == {"realtimeInput": {"activityStart": {}}}
+    assert act_end == {"realtimeInput": {"activityEnd": {}}}
     assert event == {"serverContent": {"turnComplete": True}}
     assert connection.closed is True

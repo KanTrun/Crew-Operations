@@ -179,6 +179,51 @@ def test_copilot_voice_concurrency_superseded(monkeypatch: pytest.MonkeyPatch) -
             ws2.send_text(json.dumps({"event": "stop"}))
 
 
+def test_copilot_voice_handles_activity_start_and_end(monkeypatch: pytest.MonkeyPatch) -> None:
+    from ca_api.interfaces.http import copilot_voice as voice_module
+
+    activity_events = []
+
+    class FakeLiveSession:
+        def __init__(self, context: object) -> None:
+            self.context = context
+
+        async def open(self) -> None:
+            return None
+
+        async def receive(self) -> dict[str, object]:
+            await __import__("asyncio").sleep(60)
+            return {}
+
+        async def send_audio(self, audio: bytes) -> None:
+            return None
+
+        async def send_text(self, text: str) -> None:
+            return None
+
+        async def send_activity_start(self) -> None:
+            activity_events.append("start")
+
+        async def send_activity_end(self) -> None:
+            activity_events.append("end")
+
+        async def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(voice_module, "GeminiLiveSession", FakeLiveSession)
+    token = _login_manager()
+
+    with client.websocket_connect("/api/v1/copilot/voice") as ws:
+        ws.send_text(json.dumps({"event": "auth", "token": token}))
+        assert ws.receive_json()["event"] == "voice:ready"
+
+        ws.send_text(json.dumps({"event": "activity_start"}))
+        ws.send_text(json.dumps({"event": "activity_end"}))
+        ws.send_text(json.dumps({"event": "stop"}))
+
+    assert activity_events == ["start", "end"]
+
+
 def test_copilot_execution_receipt_lifecycle_and_isolation() -> None:
     request_hash = compute_snapshot_hash({"decision": "approve"})
     outcome = {"ok": True, "status": "executed"}

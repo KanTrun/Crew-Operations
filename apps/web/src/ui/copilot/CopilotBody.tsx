@@ -14,11 +14,13 @@ import { Icon } from "../icons";
 import { ActionProposalCard } from "./ActionProposalCard";
 import { ChatText } from "./ChatText";
 import type { ChatMessage, Mode } from "./useCopilotChat";
-import { useCopilotVoice } from "./useCopilotVoice";
+import { useCopilotVoice, type VoiceInputMode } from "./useCopilotVoice";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const VOICE_ENABLED = process.env.NEXT_PUBLIC_GEMINI_LIVE_VOICE_ENABLED === "true";
 const VOICE_CONSENT_KEY = "ag_voice_consent_v1";
+const VOICE_MODE_KEY = "ag_voice_input_mode";
+const VOICE_MIC_KEY = "ag_voice_mic_device_id";
 
 function resolveMediaUrl(url: string): string {
   if (!url) return "";
@@ -56,6 +58,21 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeVoiceTurnRef = useRef<{ id: string; role: "user" | "copilot" } | null>(null);
   const [showConsentModal, setShowConsentModal] = useState(false);
+  const [voiceMode, setVoiceMode] = useState<VoiceInputMode>("open_mic");
+  const [selectedMicId, setSelectedMicId] = useState<string>("");
+
+  useEffect(() => {
+    try {
+      const savedMode = window.localStorage.getItem(VOICE_MODE_KEY);
+      if (savedMode === "open_mic" || savedMode === "push_to_talk") {
+        setVoiceMode(savedMode);
+      }
+      const savedMic = window.localStorage.getItem(VOICE_MIC_KEY);
+      if (savedMic) {
+        setSelectedMicId(savedMic);
+      }
+    } catch {}
+  }, []);
 
   const handleTranscript = useCallback(
     (role: "user" | "copilot", chunk: string, isFinal: boolean) => {
@@ -113,6 +130,8 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
   const voice = useCopilotVoice({
     onTranscript: handleTranscript,
     onInterrupted: handleInterrupted,
+    inputMode: voiceMode,
+    deviceId: selectedMicId || undefined,
   });
 
   const [attachedFile, setAttachedFile] = useState<{
@@ -202,6 +221,21 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
     } catch {
       void voice.start();
     }
+  };
+
+  const handleModeChange = (newMode: VoiceInputMode) => {
+    setVoiceMode(newMode);
+    try {
+      window.localStorage.setItem(VOICE_MODE_KEY, newMode);
+    } catch {}
+  };
+
+  const handleMicChange = (newMicId: string) => {
+    setSelectedMicId(newMicId);
+    void voice.changeMic(newMicId);
+    try {
+      window.localStorage.setItem(VOICE_MIC_KEY, newMicId);
+    } catch {}
   };
 
   return (
@@ -511,33 +545,115 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             {uploadError && (
               <p className="mb-2 text-[11px] text-rose-400">{uploadError}</p>
             )}
-            {VOICE_ENABLED && voice.state !== "idle" && (
-              <div
-                className={`mb-2 flex items-center gap-2 rounded border px-2.5 py-1.5 text-[11px] ${
-                  isVoiceError
-                    ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
-                    : "border-[var(--nq-copper)]/30 bg-[var(--nq-copper)]/10 text-[var(--nq-copper)]"
-                }`}
-                role="status"
-              >
-                <div className="shrink-0">
-                  {voice.state === "connecting" && <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--nq-copper)]" />}
-                  {voice.state === "listening" && <span className="inline-block h-2 w-2 animate-ping rounded-full bg-emerald-400" />}
-                  {voice.state === "processing" && <span className="inline-block h-2 w-2 animate-spin rounded-full border-2 border-[var(--nq-copper)] border-t-transparent" />}
-                  {voice.state === "speaking" && <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-amber-400" />}
-                  {isVoiceError && <span className="inline-block h-2 w-2 rounded-full bg-rose-400" />}
+            {VOICE_ENABLED && (
+              <div className="mb-2 space-y-1.5">
+                {/* Audio controls: Mode switcher & Mic dropdown */}
+                <div className="flex items-center justify-between gap-2 px-1 text-[10px]">
+                  <div className="inline-flex rounded border border-[var(--nq-dim)] bg-[var(--nq-bg)] p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleModeChange("open_mic")}
+                      className={`px-2 py-0.5 font-bold uppercase transition rounded-sm ${
+                        voiceMode === "open_mic"
+                          ? "bg-[var(--nq-copper)] text-[#0e0c0a]"
+                          : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"
+                      }`}
+                      title="Thu âm liên tục rảnh tay"
+                    >
+                      Mic mở
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleModeChange("push_to_talk")}
+                      className={`px-2 py-0.5 font-bold uppercase transition rounded-sm ${
+                        voiceMode === "push_to_talk"
+                          ? "bg-[var(--nq-copper)] text-[#0e0c0a]"
+                          : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"
+                      }`}
+                      title="Giữ nút khi nói, chống nhiễu quán ăn"
+                    >
+                      Giữ để nói (PTT)
+                    </button>
+                  </div>
+
+                  {voice.availableMics.length > 1 && (
+                    <select
+                      value={selectedMicId}
+                      onChange={(e) => handleMicChange(e.target.value)}
+                      className="max-w-[160px] truncate rounded border border-[var(--nq-dim)] bg-[var(--nq-bg)] px-1.5 py-0.5 text-[10px] text-[var(--nq-dim)] hover:text-[var(--nq-fg)] focus:text-[var(--nq-fg)] focus:outline-none"
+                      title="Chọn thiết bị micro"
+                    >
+                      <option value="">Micro mặc định</option>
+                      {voice.availableMics.map((mic) => (
+                        <option key={mic.deviceId} value={mic.deviceId}>
+                          {mic.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
-                <p className="flex-1">
-                  {voice.state === "connecting" && "Đang kết nối voice trực tiếp…"}
-                  {voice.state === "listening" && "Đang nghe… Anh/chị có thể nói hoặc gõ bất cứ lúc nào."}
-                  {voice.state === "processing" && "Đang xử lý yêu cầu…"}
-                  {voice.state === "speaking" && "Trợ lý đang nói… Có thể nói chen ngang để ngắt lời."}
-                  {voice.state === "mic_denied" && "Trình duyệt chưa cấp quyền micro. Vui lòng mở quyền micro trong cài đặt trình duyệt."}
-                  {voice.state === "mic_not_found" && "Không tìm thấy thiết bị micro. Vui lòng kiểm tra cổng cắm hoặc cài đặt micro."}
-                  {voice.state === "superseded" && "Phiên voice đã được chuyển sang tab/thiết bị khác của anh/chị."}
-                  {voice.state === "idle_timeout" && "Phiên voice tạm ngưng sau 60 giây im lặng. Bấm micro để nói lại."}
-                  {voice.state === "error" && "Voice chưa sẵn sàng. Anh/chị có thể thử lại hoặc tiếp tục dùng chat text."}
-                </p>
+
+                {/* Status banner */}
+                {voice.state !== "idle" && (
+                  <div
+                    className={`flex items-center justify-between gap-2 rounded border px-2.5 py-1.5 text-[11px] ${
+                      isVoiceError
+                        ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
+                        : voice.isPttSpeaking
+                        ? "border-rose-500/60 bg-rose-500/20 text-rose-200 animate-pulse"
+                        : "border-[var(--nq-copper)]/30 bg-[var(--nq-copper)]/10 text-[var(--nq-copper)]"
+                    }`}
+                    role="status"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="shrink-0">
+                        {voice.state === "connecting" && <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--nq-copper)]" />}
+                        {voice.state === "listening" && (
+                          voice.isPttSpeaking ? (
+                            <span className="inline-block h-2 w-2 animate-ping rounded-full bg-rose-500" />
+                          ) : (
+                            <span className="inline-block h-2 w-2 animate-ping rounded-full bg-emerald-400" />
+                          )
+                        )}
+                        {voice.state === "processing" && <span className="inline-block h-2 w-2 animate-spin rounded-full border-2 border-[var(--nq-copper)] border-t-transparent" />}
+                        {voice.state === "speaking" && <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-amber-400" />}
+                        {isVoiceError && <span className="inline-block h-2 w-2 rounded-full bg-rose-400" />}
+                      </div>
+                      <p className="flex-1">
+                        {voice.state === "connecting" && "Đang kết nối voice trực tiếp…"}
+                        {voice.state === "listening" && (
+                          voiceMode === "push_to_talk" ? (
+                            voice.isPttSpeaking
+                              ? "Đang ghi âm giọng nói… Thả nút để gửi đi."
+                              : "Sẵn sàng. Nhấn giữ nút micro bên dưới để nói."
+                          ) : (
+                            "Đang nghe… Anh/chị có thể nói hoặc gõ bất cứ lúc nào."
+                          )
+                        )}
+                        {voice.state === "processing" && "Đang xử lý yêu cầu…"}
+                        {voice.state === "speaking" && "Trợ lý đang nói… Có thể nói chen ngang để ngắt lời."}
+                        {voice.state === "mic_denied" && "Trình duyệt chưa cấp quyền micro. Vui lòng mở quyền micro trong cài đặt trình duyệt."}
+                        {voice.state === "mic_not_found" && "Không tìm thấy thiết bị micro. Vui lòng kiểm tra cổng cắm hoặc cài đặt micro."}
+                        {voice.state === "superseded" && "Phiên voice đã được chuyển sang tab/thiết bị khác của anh/chị."}
+                        {voice.state === "idle_timeout" && "Phiên voice tạm ngưng sau 60 giây im lặng. Bấm micro để nói lại."}
+                        {voice.state === "error" && "Voice chưa sẵn sàng. Anh/chị có thể thử lại hoặc tiếp tục dùng chat text."}
+                      </p>
+                    </div>
+                    {isVoiceActive && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          voice.stop();
+                          activeVoiceTurnRef.current = null;
+                        }}
+                        className="shrink-0 border border-transparent px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--nq-dim)] hover:border-rose-400 hover:text-rose-400 transition"
+                        title="Dừng phiên voice"
+                      >
+                        Đóng
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -574,14 +690,58 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
               {VOICE_ENABLED && (
                 <button
                   type="button"
-                  onClick={handleVoiceToggle}
+                  onClick={voiceMode === "open_mic" || !isVoiceActive ? handleVoiceToggle : undefined}
+                  onPointerDown={
+                    voiceMode === "push_to_talk" && isVoiceActive
+                      ? (e) => {
+                          e.preventDefault();
+                          voice.startPttTalk();
+                        }
+                      : undefined
+                  }
+                  onPointerUp={
+                    voiceMode === "push_to_talk" && isVoiceActive
+                      ? (e) => {
+                          e.preventDefault();
+                          voice.stopPttTalk();
+                        }
+                      : undefined
+                  }
+                  onPointerLeave={
+                    voiceMode === "push_to_talk" && isVoiceActive
+                      ? () => {
+                          if (voice.isPttSpeaking) voice.stopPttTalk();
+                        }
+                      : undefined
+                  }
+                  onPointerCancel={
+                    voiceMode === "push_to_talk" && isVoiceActive
+                      ? () => {
+                          if (voice.isPttSpeaking) voice.stopPttTalk();
+                        }
+                      : undefined
+                  }
                   disabled={loading || Boolean(streamingId) || uploading || voice.state === "connecting"}
-                  className={`border-2 p-2 transition disabled:opacity-40 ${
-                    isVoiceActive
+                  className={`border-2 p-2 transition select-none disabled:opacity-40 ${
+                    voiceMode === "push_to_talk" && isVoiceActive
+                      ? voice.isPttSpeaking
+                        ? "border-rose-500 bg-rose-500 text-white animate-pulse scale-105"
+                        : "border-amber-500/80 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30"
+                      : isVoiceActive
                       ? "border-rose-500 bg-rose-500 text-white animate-pulse"
                       : "border-[var(--nq-dim)] bg-[var(--nq-bg)] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
                   }`}
-                  title={isVoiceActive ? "Dừng phiên voice" : "Bắt đầu nói với trợ lý"}
+                  title={
+                    voiceMode === "push_to_talk"
+                      ? isVoiceActive
+                        ? voice.isPttSpeaking
+                          ? "Đang giữ để nói (thả ra để gửi)"
+                          : "Nhấn và giữ để nói (Push-to-Talk)"
+                        : "Bật phiên Voice Push-to-Talk"
+                      : isVoiceActive
+                      ? "Dừng phiên voice"
+                      : "Bắt đầu nói với trợ lý"
+                  }
                 >
                   <Icon name="microphone" size={16} />
                 </button>

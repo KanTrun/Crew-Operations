@@ -62,6 +62,14 @@ def build_setup_message(context: VerifiedVoiceContext) -> str:
                 "model": f"models/{GEMINI_LIVE_MODEL}",
                 "generationConfig": {"responseModalities": ["AUDIO"]},
                 "systemInstruction": {"parts": [{"text": system_instruction}]},
+                "realtimeInputConfig": {
+                    "automaticActivityDetection": {
+                        "startOfSpeechSensitivity": "START_SENSITIVITY_LOW",
+                        "endOfSpeechSensitivity": "END_SENSITIVITY_LOW",
+                        "prefixPaddingMs": 300,
+                        "silenceDurationMs": 800,
+                    }
+                },
                 "inputAudioTranscription": {},
                 "outputAudioTranscription": {},
             }
@@ -146,6 +154,20 @@ class GeminiLiveSession:
                 },
                 ensure_ascii=False,
             )
+        )
+
+    async def send_activity_start(self) -> None:
+        if self._connection is None:
+            raise VoiceSessionUnavailable("gemini_live_session_not_open")
+        await self._connection.send(
+            json.dumps({"realtimeInput": {"activityStart": {}}})
+        )
+
+    async def send_activity_end(self) -> None:
+        if self._connection is None:
+            raise VoiceSessionUnavailable("gemini_live_session_not_open")
+        await self._connection.send(
+            json.dumps({"realtimeInput": {"activityEnd": {}}})
         )
 
     async def receive(self) -> dict[str, Any]:
