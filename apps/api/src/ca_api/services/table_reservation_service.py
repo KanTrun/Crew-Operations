@@ -62,8 +62,9 @@ def auto_reservation_enabled() -> bool:
 
     import os
 
-    env = os.environ.get("NHIPQUAN_AUTO_RESERVATION", "0").strip().lower()
+    env = os.environ.get("NHIPQUAN_AUTO_RESERVATION", "1").strip().lower()
     return env in {"1", "true", "yes", "on"}
+
 
 
 
@@ -156,6 +157,7 @@ def atomic_hold_or_book_table(
     psid: str = "",
     customer_name: str,
     phone: str,
+    email: str = "",
     booking_time: str,
     party_size: int,
     duration_minutes: int = DEFAULT_DURATION_MINUTES,
@@ -293,6 +295,8 @@ def atomic_hold_or_book_table(
         res_id = f"res_{uuid.uuid4().hex[:10]}"
         now_iso = format_ict_iso(now_dt)
 
+        effective_notes = f"Email: {email}. {notes}".strip() if email and f"Email: {email}" not in notes else notes
+
         cx.execute(
             """
             INSERT INTO dat_ban(
@@ -313,7 +317,7 @@ def atomic_hold_or_book_table(
                 json.dumps(assigned_table_ids),
                 status,
                 source,
-                notes,
+                effective_notes,
                 idempotency_key,
                 primary_manager,
                 now_iso,
@@ -345,13 +349,14 @@ def atomic_hold_or_book_table(
         "psid": psid,
         "customer_name": customer_name,
         "phone": phone,
+        "email": email,
         "booking_time": start_iso,
         "duration_minutes": duration_minutes,
         "party_size": party_size,
         "table_ids": assigned_table_ids,
         "status": status,
         "source": source,
-        "notes": notes,
+        "notes": effective_notes,
         "idempotency_key": idempotency_key,
         "notified_nv_id": primary_manager,
         "created_at": now_iso,
@@ -496,6 +501,122 @@ def dispatch_reservation_notification(
     return {"notification_id": tb_id, "dispatch_status": dispatch_status}
 
 
+def send_reservation_confirmation_email(
+    reservation: dict[str, Any],
+    to_email: str | None = None,
+    store_profile: dict[str, Any] | None = None,
+) -> bool:
+    """Send table reservation confirmation ticket / email to customer's Gmail."""
+    email = (to_email or reservation.get("email") or "").strip()
+    if not email or "@" not in email:
+        LOG.warning("No valid email provided for reservation confirmation.")
+        return False
+
+    customer_name = reservation.get("customer_name") or "Quý khách"
+    phone = reservation.get("phone") or "Chưa cung cấp"
+    party_size = reservation.get("party_size", 2)
+    table_ids = ", ".join(reservation.get("table_ids") or ["Khu vực đón tiếp"])
+    booking_time = reservation.get("booking_time", "")
+    res_id = reservation.get("id", "")
+
+    try:
+        dt = parse_booking_datetime(booking_time)
+        time_display = dt.strftime("%H:%M ngày %d/%m/%Y")
+    except Exception:
+        time_display = booking_time
+
+    profile = store_profile or {}
+    store_name = profile.get("ten_quan") or "Nhịp Quán"
+    store_address = profile.get("dia_chi") or "Hồ Chí Minh, Việt Nam"
+    store_hotline = profile.get("hotline") or "0901 234 567"
+
+    subject = f"[{store_name}] PHIẾU XÁC NHẬN ĐẶT BÀN - {customer_name} ({time_display})"
+
+    # Plain text version
+    body = (
+        f"Kính gửi {customer_name},\n\n"
+        f"{store_name} xin trân trọng thông báo yêu cầu đặt bàn của Quý khách đã được xác nhận thành công!\n\n"
+        f"--- THÔNG TIN PHIẾU ĐẶT BÀN ---\n"
+        f"• Mã đặt bàn: {res_id}\n"
+        f"• Thời gian đón khách: {time_display}\n"
+        f"• Số lượng khách: {party_size} người\n"
+        f"• Bàn xếp chỗ: {table_ids}\n"
+        f"• Người đặt: {customer_name}\n"
+        f"• Số điện thoại: {phone}\n"
+        f"• Địa chỉ quán: {store_address}\n"
+        f"• Hotline hỗ trợ: {store_hotline}\n\n"
+        f"Quán sẽ chuẩn bị chỗ ngồi chu đáo và giữ bàn cho Quý khách tối đa 15 phút so với giờ hẹn.\n"
+        f"Nếu Quý khách có bất kỳ thay đổi nào, vui lòng liên hệ hotline hoặc phản hồi tin nhắn Messenger.\n\n"
+        f"Trân trọng cảm ơn và rất hân hạnh được đón tiếp Quý khách!\n"
+        f"---\n"
+        f"{store_name}\n"
+    )
+
+    # Rich HTML version with ticket-card style
+    html_body = f"""
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background-color: #f8fafc; border-radius: 12px; color: #1e293b;">
+        <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 24px; border-radius: 10px 10px 0 0; text-align: center; color: #ffffff;">
+            <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">XÁC NHẬN ĐẶT BÀN THÀNH CÔNG</h1>
+            <p style="margin: 6px 0 0 0; opacity: 0.95; font-size: 14px;">{store_name} hân hạnh chào đón Quý khách</p>
+        </div>
+        <div style="background: #ffffff; padding: 28px; border-radius: 0 0 10px 10px; border: 1px solid #e2e8f0; border-top: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <p style="font-size: 16px; line-height: 1.5; margin-top: 0;">Xin chào <strong>{customer_name}</strong>,</p>
+            <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+                Yêu cầu đặt bàn của Quý khách đã được hệ thống tự động kiểm tra và chốt giữ bàn thành công. Dưới đây là thông tin chi tiết phiếu đặt bàn của Quý khách:
+            </p>
+            <div style="background-color: #f1f5f9; border-left: 4px solid #10b981; padding: 18px 20px; margin: 20px 0; border-radius: 6px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b; width: 140px;">Mã phiếu đặt bàn:</td>
+                        <td style="padding: 6px 0; font-weight: 600; color: #0f172a; font-family: monospace;">{res_id}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;">Thời gian đến:</td>
+                        <td style="padding: 6px 0; font-weight: 700; color: #059669; font-size: 15px;">{time_display}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;">Số lượng khách:</td>
+                        <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">{party_size} người</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;">Bàn xếp trước:</td>
+                        <td style="padding: 6px 0; font-weight: 700; color: #0f172a;">Bàn {table_ids}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;">Số điện thoại:</td>
+                        <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">{phone}</td>
+                    </tr>
+                </table>
+            </div>
+            <div style="background-color: #fffbeb; border: 1px solid #fef3c7; padding: 14px 16px; border-radius: 6px; font-size: 13px; color: #92400e; margin-bottom: 20px;">
+                📌 <strong>Lưu ý từ quán:</strong> Bàn sẽ được giữ tối đa <strong>15 phút</strong> so với giờ hẹn. Quý khách vui lòng đến đúng giờ để có trải nghiệm phục vụ tốt nhất.
+            </div>
+            <div style="border-top: 1px dashed #cbd5e1; padding-top: 16px; font-size: 13px; color: #64748b;">
+                <p style="margin: 4px 0;">📍 <strong>Địa chỉ:</strong> {store_address}</p>
+                <p style="margin: 4px 0;">📞 <strong>Hotline hỗ trợ:</strong> {store_hotline}</p>
+            </div>
+            <p style="margin-top: 24px; font-size: 14px; color: #334155; text-align: center;">
+                <em>Hân hạnh được phục vụ Quý khách tại {store_name}!</em>
+            </p>
+        </div>
+    </div>
+    """
+
+    try:
+        from ca_agents.ag_mail import send_mail
+
+        result = send_mail(
+            to_emails=[email],
+            subject=subject,
+            body=body,
+            html_body=html_body,
+        )
+        return result.ok
+    except Exception as e:
+        LOG.warning(f"Could not send reservation confirmation email to {email}: {e}")
+        return False
+
+
 def customer_cancel_reservation(
     psid: str,
     reason: str = "Khách yêu cầu hủy qua chat",
@@ -544,6 +665,7 @@ try:
         anti_abuse_fn=check_anti_abuse,
         cancel_fn=customer_cancel_reservation,
         notify_fn=dispatch_reservation_notification,
+        send_mail_fn=send_reservation_confirmation_email,
         is_enabled_fn=auto_reservation_enabled,
     )
 except Exception:

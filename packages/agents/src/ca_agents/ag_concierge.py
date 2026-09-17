@@ -12,10 +12,13 @@ Specialized in:
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
+
+LOG = logging.getLogger(__name__)
 
 ICT = timezone(timedelta(hours=7))
 
@@ -86,14 +89,24 @@ def extract_reservation_entities(text: str) -> dict[str, Any]:
     if phone_m:
         data["phone"] = re.sub(r"[\s.-]", "", phone_m.group(0))
 
-    # 5. Customer name
+    # 5. Email extraction (Gmail / Email)
+    email_m = re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", text)
+    if email_m:
+        data["email"] = email_m.group(0).strip().lower()
+
+    # 6. Customer name
     name_m = re.search(r"(?:tên|tên là|mình là|anh|chị)\s+([A-ZÀ-Ỹa-zà-ỹ]+(?:\s+[A-ZÀ-Ỹa-zà-ỹ]+)*)", text)
     if name_m:
         cand_name = name_m.group(1).strip()
+        particles = {"nhé", "nhe", "nha", "ạ", "a", "ơi", "oi", "nhá"}
+        words = cand_name.split()
+        while len(words) > 1 and words[-1].lower() in particles:
+            words.pop()
+        cand_name = " ".join(words)
         if cand_name.lower() not in ("quán", "em", "nhịp quán", "bàn", "người", "hôm nay", "tối nay", "mai"):
             data["customer_name"] = cand_name
 
-    # 6. Date extraction
+    # 7. Date extraction
     now_ict = datetime.now(ICT)
     target_date = None
 
@@ -188,6 +201,7 @@ def register_reservation_backend(
     anti_abuse_fn: Any = None,
     cancel_fn: Any = None,
     notify_fn: Any = None,
+    send_mail_fn: Any = None,
     is_enabled_fn: Any = None,
 ) -> None:
     """Register backend persistence & service handlers from application layer."""
@@ -199,21 +213,30 @@ def register_reservation_backend(
         _RESERVATION_BACKEND["cancel"] = cancel_fn
     if notify_fn is not None:
         _RESERVATION_BACKEND["notify"] = notify_fn
+    if send_mail_fn is not None:
+        _RESERVATION_BACKEND["send_mail"] = send_mail_fn
     if is_enabled_fn is not None:
         _RESERVATION_BACKEND["is_enabled"] = is_enabled_fn
 
 
 def _resolve_backend() -> dict[str, Any]:
     if not _RESERVATION_BACKEND:
+        import importlib
         import sys
 
         mod = sys.modules.get("ca_api.services.table_reservation_service")
+        if mod is None:
+            try:
+                mod = importlib.import_module("ca_api.services.table_reservation_service")
+            except Exception:
+                pass
         if mod is not None:
             register_reservation_backend(
                 book_fn=getattr(mod, "atomic_hold_or_book_table", None),
                 anti_abuse_fn=getattr(mod, "check_anti_abuse", None),
                 cancel_fn=getattr(mod, "customer_cancel_reservation", None),
                 notify_fn=getattr(mod, "dispatch_reservation_notification", None),
+                send_mail_fn=getattr(mod, "send_reservation_confirmation_email", None),
                 is_enabled_fn=getattr(mod, "auto_reservation_enabled", None),
             )
     return _RESERVATION_BACKEND
@@ -231,13 +254,13 @@ def handle_reservation(
     """
     backend = _resolve_backend()
     is_enabled_fn = backend.get("is_enabled")
-    is_auto = is_enabled_fn() if callable(is_enabled_fn) else False
+    is_auto = is_enabled_fn() if callable(is_enabled_fn) else True
 
     state = dict(session_state or {})
     extracted = extract_reservation_entities(text)
 
     # Merge extracted details into state
-    for k in ("party_size", "phone", "customer_name", "booking_datetime", "booking_time_iso", "time_display", "target_date_iso"):
+    for k in ("party_size", "phone", "email", "customer_name", "booking_datetime", "booking_time_iso", "time_display", "target_date_iso"):
         if extracted.get(k) is not None:
             state[k] = extracted[k]
 
@@ -276,7 +299,109 @@ def handle_reservation(
     cancel_fn = backend.get("cancel")
     book_fn = backend.get("book")
     notify_fn = backend.get("notify")
+    send_mail_fn = backend.get("send_mail")
     anti_abuse_fn = backend.get("anti_abuse")
+
+    def _do_book_and_confirm(current_state: dict[str, Any]) -> ConciergeTicket:
+        party_size = int(current_state.get("party_size", 2))
+        booking_time_iso = str(current_state.get("booking_time_iso") or "")
+        if not booking_time_iso:
+            reply = (
+                "Dạ em chưa lưu được giờ mình muốn đặt bàn. "
+                "Anh/chị nhắn lại giúp em giờ và ngày cụ thể (ví dụ: 19h tối thứ Bảy) nhé ạ!"
+            )
+            return ConciergeTicket(
+                ticket_type="reservation",
+                customer_message=text,
+                extracted_data={"action": "ask_time"},
+                suggested_reply=reply,
+                urgency="low",
+                action_type="ask_info",
+                requires_human_approval=False,
+            )
+        phone = current_state.get("phone", "")
+        customer_name = current_state.get("customer_name") or "Quý khách"
+        email = current_state.get("email", "")
+
+        try:
+            if not callable(book_fn):
+                raise RuntimeError("Booking handler not available")
+            res = book_fn(
+                psid=psid,
+                customer_name=customer_name,
+                phone=phone,
+                email=email,
+                booking_time=booking_time_iso,
+                party_size=party_size,
+                status="confirmed",
+                source="ai_auto",
+            )
+            res["dialog_step"] = "CONFIRMED"
+
+            # Gửi phiếu xác nhận qua Gmail nếu khách có cung cấp email
+            if email and callable(send_mail_fn):
+                try:
+                    send_mail_fn(res, to_email=email)
+                except Exception as ex:
+                    LOG.warning(f"Error calling send_mail_fn for reservation: {ex}")
+
+            # Dispatch notifications to shift manager / Telegram
+            if callable(notify_fn):
+                notify_fn(res)
+
+            tables_str = ", ".join(res.get("table_ids") or [])
+            table_info = f"bàn {tables_str} " if tables_str else "bàn "
+            time_display = current_state.get("time_display") or booking_time_iso
+            email_note = (
+                f"\n📧 Phiếu xác nhận đặt bàn chi tiết đã được gửi tới Gmail ({email}) của mình rồi ạ!"
+                if email
+                else ""
+            )
+            reply = (
+                f"Dạ {store_name} đã xác nhận giữ {table_info}cho nhóm mình ({party_size} người) "
+                f"vào lúc {time_display} rồi ạ! 🎉"
+                f"{email_note}\n"
+                f"Quán sẽ chuẩn bị chỗ ngồi chu đáo trước giờ đón mình. Nếu có thay đổi gì, anh/chị cứ nhắn lại tin nhắn này nhé ạ! ❤️"
+            )
+            return ConciergeTicket(
+                ticket_type="reservation",
+                customer_message=text,
+                extracted_data=res,
+                suggested_reply=reply,
+                urgency="medium",
+                action_type="confirmed",
+                requires_human_approval=False,
+                reservation_record=res,
+            )
+        except Exception as e:
+            if type(e).__name__ == "NoTableAvailableError":
+                reply = (
+                    f"Dạ khung giờ {current_state.get('time_display')} hiện tại quán đã hết bàn trống phù hợp cho nhóm {party_size} người rồi ạ. 🥺\n"
+                    "Em gợi ý mình lệch 30–60 phút hoặc đổi ngày gần nhất — anh/chị chọn khung nào em giữ bàn ngay giúp mình nha!"
+                )
+                return ConciergeTicket(
+                    ticket_type="reservation",
+                    customer_message=text,
+                    extracted_data=current_state,
+                    suggested_reply=reply,
+                    urgency="medium",
+                    action_type="ask_info",
+                    requires_human_approval=False,
+                )
+            # Hệ thống lỗi — Mục 4.4, không đoán bàn trống
+            reply = (
+                "Dạ hệ thống sơ đồ bàn đang gián đoạn nên em chưa chốt được chỗ. "
+                "Em đã chuyển quản lý ca — mình sẽ nhận xác nhận trong khoảng 15 phút, không để mình chờ không ạ!"
+            )
+            return ConciergeTicket(
+                ticket_type="reservation",
+                customer_message=text,
+                extracted_data={"error": str(e)},
+                suggested_reply=reply,
+                urgency="high",
+                action_type="needs_manager_review",
+                requires_human_approval=True,
+            )
 
     # ── CASE 1: Customer Cancellation Request ────────────────────────────────
     if extracted.get("is_cancellation"):
@@ -310,91 +435,47 @@ def handle_reservation(
 
     dialog_step = state.get("dialog_step", "EXTRACTING")
 
-    # ── CASE 2: Customer Confirming Previous Summary (State: CONFIRMING -> CONFIRMED) ──
-    if dialog_step == "CONFIRMING" and (extracted.get("is_confirmation") or "đúng" in text.lower()):
-        party_size = int(state.get("party_size", 2))
-        booking_time_iso = str(state.get("booking_time_iso") or "")
-        if not booking_time_iso:
-            reply = (
-                "Dạ em chưa lưu được giờ mình muốn đặt bàn. "
-                "Anh/chị nhắn lại giúp em giờ và ngày cụ thể (ví dụ: 19h tối thứ Bảy) nhé ạ!"
-            )
+    # ── CASE 2: Customer Confirming Previous Summary OR All 4 Info Provided ──
+    is_confirming_turn = dialog_step == "CONFIRMING" and (
+        extracted.get("is_confirmation")
+        or "đúng" in text.lower()
+        or bool(extracted.get("email"))
+    )
+    has_all_info = bool(
+        (state.get("booking_datetime") or state.get("booking_time_iso"))
+        and state.get("party_size")
+        and state.get("phone")
+        and state.get("email")
+    )
+
+    if is_confirming_turn or has_all_info:
+        # Run anti-abuse check
+        allowed, abuse_reason = (
+            anti_abuse_fn(store_id="quan_01", psid=psid, phone=state.get("phone", ""))
+            if callable(anti_abuse_fn)
+            else (True, None)
+        )
+        if not allowed:
+            if abuse_reason == "active_booking_exists":
+                reply = (
+                    "Dạ trên hệ thống đang có một lịch đặt bàn còn hiệu lực của mình rồi ạ. "
+                    "Anh/chị muốn đổi giờ, hủy, hay giữ nguyên — em xử lý giúp ngay trên tin này nha!"
+                )
+            else:
+                reply = (
+                    "Dạ em đã ghi nhận thông tin đặt bàn. "
+                    "Anh/chị xác nhận giúp SĐT và giờ đến để em chốt bàn, không cần chờ thêm bước nào khác ạ!"
+                )
             return ConciergeTicket(
                 ticket_type="reservation",
                 customer_message=text,
-                extracted_data={"action": "ask_time"},
+                extracted_data={"abuse_reason": abuse_reason, **state},
                 suggested_reply=reply,
-                urgency="low",
+                urgency="medium",
                 action_type="ask_info",
                 requires_human_approval=False,
             )
-        phone = state.get("phone", "")
-        customer_name = state.get("customer_name") or "Quý khách"
-
-        try:
-            if not callable(book_fn):
-                raise RuntimeError("Booking handler not available")
-            res = book_fn(
-                psid=psid,
-                customer_name=customer_name,
-                phone=phone,
-                booking_time=booking_time_iso,
-                party_size=party_size,
-                status="confirmed",
-                source="ai_auto",
-            )
-            res["dialog_step"] = "CONFIRMED"
-            # Dispatch notifications to shift manager
-            if callable(notify_fn):
-                notify_fn(res)
-
-            tables_str = ", ".join(res.get("table_ids") or [])
-            table_info = f"bàn {tables_str} " if tables_str else "bàn "
-            time_display = state.get("time_display") or booking_time_iso
-            reply = (
-                f"Dạ {store_name} đã xác nhận giữ {table_info}cho nhóm mình ({party_size} người) "
-                f"vào lúc {time_display} rồi ạ! 🎉\n"
-                f"Quán sẽ chuẩn bị chỗ ngồi chu đáo trước giờ đón mình. Nếu có thay đổi gì, anh/chị cứ nhắn lại tin nhắn này nhé ạ! ❤️"
-            )
-            return ConciergeTicket(
-                ticket_type="reservation",
-                customer_message=text,
-                extracted_data=res,
-                suggested_reply=reply,
-                urgency="medium",
-                action_type="confirmed",
-                requires_human_approval=False,
-                reservation_record=res,
-            )
-        except Exception as e:
-            if type(e).__name__ == "NoTableAvailableError":
-                reply = (
-                    f"Dạ khung giờ {state.get('time_display')} vừa kín bàn ạ.\n"
-                    "Em gợi ý mình lệch 30–60 phút hoặc đổi ngày gần nhất — anh/chị chọn khung nào em giữ bàn ngay giúp mình nha!"
-                )
-                return ConciergeTicket(
-                    ticket_type="reservation",
-                    customer_message=text,
-                    extracted_data=state,
-                    suggested_reply=reply,
-                    urgency="medium",
-                    action_type="ask_info",
-                    requires_human_approval=False,
-                )
-            # Hệ thống lỗi — Mục 4.4, không đoán bàn trống
-            reply = (
-                "Dạ hệ thống sơ đồ bàn đang gián đoạn nên em chưa chốt được chỗ. "
-                "Em đã chuyển quản lý ca — mình sẽ nhận xác nhận trong khoảng 15 phút, không để mình chờ không ạ!"
-            )
-            return ConciergeTicket(
-                ticket_type="reservation",
-                customer_message=text,
-                extracted_data={"error": str(e)},
-                suggested_reply=reply,
-                urgency="high",
-                action_type="needs_manager_review",
-                requires_human_approval=True,
-            )
+        return _do_book_and_confirm(state)
 
     # ── CASE 3: Missing Information -> Natural Clarification ──────────────────
     missing = []
@@ -409,14 +490,14 @@ def handle_reservation(
         if len(missing) == 3:
             reply = (
                 f"Dạ {store_name} rất vui được đón tiếp mình ạ! 🎉\n"
-                "Anh/chị dự kiến ghé quán lúc mấy giờ, nhóm mình đi khoảng bao nhiêu người và cho em xin số điện thoại để em hỗ trợ giữ bàn chu đáo nhé ạ!"
+                "Anh/chị dự kiến ghé quán lúc mấy giờ, nhóm mình đi khoảng bao nhiêu người và cho em xin số điện thoại cùng địa chỉ Gmail để em hỗ trợ giữ bàn chu đáo nhé ạ!"
             )
         elif "thời gian đến (mấy giờ, ngày nào)" in missing and "số lượng khách" in missing:
             reply = "Dạ anh/chị dự kiến ghé quán lúc mấy giờ và nhóm mình đi khoảng bao nhiêu người để em kiểm tra bàn trống ạ?"
         elif "số điện thoại liên hệ" in missing and len(missing) == 1:
             reply = (
                 f"Dạ em đã kiểm tra khung giờ {state.get('time_display')} cho nhóm {state.get('party_size')} người rồi ạ. "
-                "Anh/chị cho em xin thêm số điện thoại liên hệ để em hoàn tất giữ bàn cho mình nha!"
+                "Anh/chị cho em xin thêm số điện thoại liên hệ và địa chỉ Gmail để em hoàn tất giữ bàn cho mình nha!"
             )
         else:
             missing_text = " và ".join(missing)
@@ -433,7 +514,7 @@ def handle_reservation(
             requires_human_approval=False,
         )
 
-    # ── CASE 5: All details present -> Check Anti-Abuse & Ask 2-Phase Confirmation ──
+    # ── CASE 4: All details present -> Check Anti-Abuse & Ask 2-Phase Confirmation + Gmail ──
     allowed, abuse_reason = (
         anti_abuse_fn(store_id="quan_01", psid=psid, phone=state.get("phone", ""))
         if callable(anti_abuse_fn)
@@ -460,12 +541,12 @@ def handle_reservation(
             requires_human_approval=False,
         )
 
-    # Ask 2-Phase Confirmation
+    # Ask 2-Phase Confirmation and prompt for Gmail
     state["dialog_step"] = "CONFIRMING"
     reply = (
         f"Dạ em xin xác nhận lại thông tin đặt bàn của mình ạ: "
         f"Bàn {state.get('party_size')} người, vào lúc {state.get('time_display')}, SĐT liên hệ {state.get('phone')}.\n"
-        f"Anh/chị kiểm tra đúng thông tin giúp em để em chốt giữ bàn cho mình nhé ạ! 😊"
+        f"Anh/chị cho em xin thêm địa chỉ Gmail để hệ thống chốt duyệt giữ bàn và gửi phiếu xác nhận đặt bàn kèm thông tin chi tiết qua email cho mình nhé ạ! 😊"
     )
     return ConciergeTicket(
         ticket_type="reservation",

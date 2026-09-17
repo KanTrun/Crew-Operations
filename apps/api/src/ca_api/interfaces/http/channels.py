@@ -55,6 +55,7 @@ from ca_contracts import AIEvaluation, AIFeedbackEvent, AIGenerationRecord
 from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
+import ca_api.services.table_reservation_service  # noqa: F401
 from ca_api.ai_learning.operations import circuit_breaker_open
 from ca_api.ai_learning.repository import AILearningRepository
 from ca_api.ai_learning.rollout import select_active_rules
