@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
@@ -8,7 +9,7 @@ from ca_contracts import ActionProposalStatus, CopilotIntent
 
 
 @pytest.fixture(autouse=True)
-def _reset_tool_sources() -> None:
+def _reset_tool_sources() -> Iterator[None]:
     """Đảm bảo _SOURCES rỗng khi test bắt đầu để solver dùng seed default.
 
     Vì `ca_api.interfaces.http.main.configure_data_sources(...)` chạy ở
