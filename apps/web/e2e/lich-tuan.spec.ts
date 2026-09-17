@@ -15,11 +15,12 @@ test("lịch tuần hiển thị đủ 21 ô và không trắng trang", async ({
   await expect(page.locator("body")).not.toBeEmpty();
 });
 
-test("thông báo lịch: nhận, click deep-link, và xác nhận đã xem", async ({ page }) => {
+test("thông báo lịch: click deep-link tự động ack", async ({ page }) => {
   const targetWeek = "2026-W44";
   const notificationId = "notif-test-001";
-  
-  // Intercept notification API to provide test data
+  let ackCalled = false;
+
+  // Intercept notification API to supply test data
   await page.route("**/api/v1/lich/thong-bao", async (route) => {
     if (route.request().method() === "GET") {
       await route.fulfill({
@@ -31,6 +32,8 @@ test("thông báo lịch: nhận, click deep-link, và xác nhận đã xem", as
               id: notificationId,
               tuan_iso: targetWeek,
               url: `/lich-tuan?tuan=${targetWeek}`,
+              tieu_de: "Lịch tuần đã công bố",
+              noi_dung: "Lịch tuần " + targetWeek + " đã được cập nhật.",
               da_xem: 0,
               created_at: new Date().toISOString(),
             },
@@ -42,9 +45,10 @@ test("thông báo lịch: nhận, click deep-link, và xác nhận đã xem", as
     }
   });
 
-  // Intercept ack endpoint
+  // Intercept ack endpoint and track the call
   await page.route(`**/api/v1/lich/thong-bao/${notificationId}/ack`, async (route) => {
     if (route.request().method() === "POST") {
+      ackCalled = true;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -85,23 +89,19 @@ test("thông báo lịch: nhận, click deep-link, và xác nhận đã xem", as
   await page.goto("/lich-tuan");
   await expect(page.getByRole("heading", { name: /Lịch/i })).toBeVisible();
 
-  // Notification banner should appear
+  // Notification banner should show unread count
   const banner = page.locator("text=1 chưa xem");
   await expect(banner).toBeVisible({ timeout: 5_000 });
 
-  // Click the notification link
+  // Click the notification link — UI auto-acks on click
   const notifLink = page.locator(`a[href="/lich-tuan?tuan=${targetWeek}"]`).first();
   await expect(notifLink).toBeVisible();
   await notifLink.click();
 
-  // URL should contain the target week
+  // URL should navigate to the target week
   await expect(page).toHaveURL(new RegExp(`tuan=${targetWeek}`), { timeout: 5_000 });
 
-  // Acknowledge the notification
-  const ackButton = page.getByRole("button", { name: /Đã xem/i });
-  if (await ackButton.isVisible()) {
-    await ackButton.click();
-    // After ack, the notification should be marked as seen
-    await expect(page.locator("text=1 chưa xem")).not.toBeVisible({ timeout: 3_000 });
-  }
+  // Ack fires in the background after link click; wait briefly then verify
+  await page.waitForTimeout(1_000);
+  expect(ackCalled).toBe(true);
 });

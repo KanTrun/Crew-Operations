@@ -39,10 +39,10 @@ push trực tiếp lên `main` theo yêu cầu.
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: Tách solver adapter](./phase-01-start.md) | Pending |
-| 2 | [Phase 2: UI open shift và approval](./phase-02-ui-open-shift-v-approval.md) | Pending |
-| 3 | [Phase 3: E2E notification và regression](./phase-03-e2e-notification-v-regression.md) | Pending |
-| 4 | [Phase 4: Review đồng bộ và phát hành](./phase-04-review-ng-b-v-pht-hnh.md) | Pending |
+| 1 | [Phase 1: Tách solver adapter](./phase-01-start.md) | Done |
+| 2 | [Phase 2: UI open shift và approval](./phase-02-ui-open-shift-v-approval.md) | Done |
+| 3 | [Phase 3: E2E notification và regression](./phase-03-e2e-notification-v-regression.md) | Done |
+| 4 | [Phase 4: Review đồng bộ và phát hành](./phase-04-review-ng-b-v-pht-hnh.md) | Done |
 
 ## File Inventory
 

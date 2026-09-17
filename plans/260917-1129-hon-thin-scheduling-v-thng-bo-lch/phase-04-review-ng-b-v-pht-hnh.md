@@ -1,6 +1,6 @@
 ---
 title: "Phase 4: Review đồng bộ và phát hành"
-status: todo
+status: done
 ---
 
 # Phase 4: Review đồng bộ và phát hành
