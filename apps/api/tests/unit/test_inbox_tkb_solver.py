@@ -132,7 +132,7 @@ def test_solver_only_loads_confirmed_tkb_for_target_week(
         captured.append(list(data.tkb.get("nv_02", [])))
         return SolveResult(ok=False, status="CAPTURED")
 
-    monkeypatch.setattr("ca_solver.solve_cpsat", capture_tkb)
+    monkeypatch.setattr("ca_api.services.solver_adapter.solve_cpsat", capture_tkb)
 
     _run_solver("2026-W39")
     _run_solver("2026-W40")

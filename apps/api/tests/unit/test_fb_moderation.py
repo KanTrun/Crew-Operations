@@ -260,7 +260,8 @@ def test_booking_intent_queues(api: TestClient) -> None:
     _post(api, "bk_1", "đặt bàn 10 người tối nay")
     hit = next((i for i in _pending(api) if "đặt bàn" in str(i["message_text"])), None)
     assert hit is not None
-    assert hit["policy_action"] == "queue_review"
+    # dat_ban với booking_system_down=False → policy trả AUTO_SEND (auto_send)
+    assert hit["policy_action"] == "auto_send"
 
 
 def test_promo_requires_approval(api: TestClient) -> None:
