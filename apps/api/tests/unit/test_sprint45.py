@@ -16,6 +16,32 @@ from unit.auth_util import headers
 client = TestClient(app)
 
 
+def test_successful_week_resolves_claimed_shifts_without_touching_other_weeks() -> None:
+    from ca_api.persist import (
+        open_shift_create, open_shift_list, open_shift_resolve_for_week,
+        shift_application_claim_first,
+    )
+
+    shift = open_shift_create(
+        store_id="quan_01", schedule_run_id="claim-regression", tuan_iso="2026-W44",
+        ca_id="w1_c01", deadline_at="2026-11-01T00:00:00Z",
+    )
+    open_shift_create(
+        store_id="quan_01", schedule_run_id="other-week", tuan_iso="2026-W45",
+        ca_id="w1_c01", deadline_at="2026-11-08T00:00:00Z",
+    )
+    assert shift_application_claim_first(
+        open_shift_id=shift["id"], store_id="quan_01", nv_id="nv_01",
+    ) is not None
+    assert shift_application_claim_first(
+        open_shift_id=shift["id"], store_id="quan_01", nv_id="nv_02",
+    ) is None
+    assert open_shift_list("quan_01", tuan_iso="2026-W44", status="claimed")[0]["claimed_by"] == "nv_01"
+    assert open_shift_resolve_for_week("quan_01", "2026-W44") == 1
+    assert open_shift_list("quan_01", tuan_iso="2026-W44", status="claimed") == []
+    assert len(open_shift_list("quan_01", tuan_iso="2026-W45")) == 1
+
+
 def _hom_nay() -> str:
     return datetime.now(timezone(timedelta(hours=7))).date().isoformat()
 
@@ -405,3 +431,179 @@ def test_handover_history_list() -> None:
     )
     items = client.get("/api/v1/handover", headers=nv).json()["items"]
     assert len(items) >= 1
+
+
+def test_publication_guard_blocks_claimed_shifts(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_dung_tuan: None) -> None:
+    """Cannot publish when claimed shifts exist."""
+    from ca_api.persist import open_shift_create, shift_application_claim_first
+    from ca_api.services.scheduling_service import run_authoritative_schedule
+    
+    week = "2026-W44"
+    ql = headers(client, "lan")
+    
+    # Create a valid schedule run
+    run = run_authoritative_schedule(
+        store_id="quan_01", tuan_iso=week, actor_id="lan", idempotency_key="pub-guard-test",
+    )
+    assert run["status"] == "computed"
+    
+    # Create and claim an open shift
+    shift = open_shift_create(
+        store_id="quan_01", schedule_run_id=str(run["id"]), tuan_iso=week,
+        ca_id="w1_c01", deadline_at="2026-11-01T00:00:00Z",
+    )
+    shift_application_claim_first(
+        open_shift_id=shift["id"], store_id="quan_01", nv_id="nv_03",
+    )
+    
+    # Set lifecycle to da_duyet
+    from ca_api.persist import kv_set
+    kv_set("lich_tuan_lifecycle_by_week", {week: {"tuan_iso": week, "trang_thai": "da_duyet"}})
+    
+    # Attempt to publish should fail
+    r = client.patch(
+        "/api/v1/lich-tuan/lifecycle",
+        json={"tuan_iso": week, "trang_thai": "da_cong_bo"},
+        headers=ql,
+    )
+    assert r.status_code == 409
+    assert r.json()["detail"] == "schedule_has_open_shifts"
+
+
+def test_manager_sees_claimed_shifts_employee_does_not(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_dung_tuan: None) -> None:
+    """Manager sees both open and claimed shifts; employee sees only open."""
+    from ca_api.persist import open_shift_create, shift_application_claim_first
+    
+    week = "2026-W44"
+    ql = headers(client, "lan")
+    nv = headers(client, "minh")
+    
+    # Create two open shifts
+    shift1 = open_shift_create(
+        store_id="quan_01", schedule_run_id="vis-test-1", tuan_iso=week,
+        ca_id="w1_c01", deadline_at="2026-11-01T00:00:00Z",
+    )
+    shift2 = open_shift_create(
+        store_id="quan_01", schedule_run_id="vis-test-2", tuan_iso=week,
+        ca_id="w1_c02", deadline_at="2026-11-01T00:00:00Z",
+    )
+    
+    # Claim one shift
+    shift_application_claim_first(
+        open_shift_id=shift1["id"], store_id="quan_01", nv_id="nv_03",
+    )
+    
+    # Manager sees both
+    manager_items = client.get(f"/api/v1/open-shifts?tuan_iso={week}", headers=ql).json()["items"]
+    assert len(manager_items) == 2
+    statuses = {item["status"] for item in manager_items}
+    assert statuses == {"open", "claimed"}
+    
+    # Employee sees only open
+    employee_items = client.get(f"/api/v1/open-shifts?tuan_iso={week}", headers=nv).json()["items"]
+    assert len(employee_items) == 1
+    assert employee_items[0]["status"] == "open"
+
+
+def test_claim_requires_employee_role(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_dung_tuan: None) -> None:
+    """Manager cannot claim shifts."""
+    from ca_api.persist import open_shift_create, schedule_run_create
+    
+    week = "2026-W44"
+    ql = headers(client, "lan")
+    
+    run = schedule_run_create(
+        store_id="quan_01", tuan_iso=week, input_snapshot={}, fingerprint="fp-role",
+        idempotency_key="claim-role-test", created_by="lan", status="needs_gap_resolution",
+    )
+    shift = open_shift_create(
+        store_id="quan_01", schedule_run_id=str(run["id"]), tuan_iso=week,
+        ca_id="w1_c01", deadline_at="2026-11-01T00:00:00Z",
+    )
+    
+    r = client.post(
+        "/api/v1/open-shifts/claim",
+        json={"open_shift_id": shift["id"]},
+        headers=ql,
+    )
+    assert r.status_code == 403
+    assert r.json()["detail"] == "chi_nhan_vien_duoc_nhan_ca"
+
+
+def test_claim_requires_confirmed_availability(_du_nhan_vien_xep_lich: None) -> None:
+    """Employee without confirmed availability cannot claim."""
+    from ca_api.persist import open_shift_create, schedule_run_create
+    
+    week = "2026-W44"
+    nv = headers(client, "minh")
+    
+    run = schedule_run_create(
+        store_id="quan_01", tuan_iso=week, input_snapshot={}, fingerprint="fp-avail",
+        idempotency_key="claim-avail-test", created_by="lan", status="needs_gap_resolution",
+    )
+    shift = open_shift_create(
+        store_id="quan_01", schedule_run_id=str(run["id"]), tuan_iso=week,
+        ca_id="w1_c01", deadline_at="2026-11-01T00:00:00Z",
+    )
+    
+    r = client.post(
+        "/api/v1/open-shifts/claim",
+        json={"open_shift_id": shift["id"]},
+        headers=nv,
+    )
+    assert r.status_code == 409
+    assert r.json()["detail"] == "chua_xac_nhan_kha_dung_dung_tuan"
+
+
+def test_claim_first_claimant_wins(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_dung_tuan: None) -> None:
+    """First claimant wins; second gets 409."""
+    from ca_api.persist import open_shift_create, schedule_run_create
+    
+    week = "2026-W44"
+    
+    run = schedule_run_create(
+        store_id="quan_01", tuan_iso=week, input_snapshot={}, fingerprint="fp-race",
+        idempotency_key="claim-race-test", created_by="lan", status="needs_gap_resolution",
+    )
+    shift = open_shift_create(
+        store_id="quan_01", schedule_run_id=str(run["id"]), tuan_iso=week,
+        ca_id="w1_c01", deadline_at="2026-11-01T00:00:00Z",
+    )
+    
+    # Register second employee with unique name
+    import uuid
+    uname = f"nv_race_{uuid.uuid4().hex[:8]}"
+    reg = client.post(
+        "/api/v1/auth/register",
+        json={"username": uname, "password": "matkhautot123", "display_name": "Race"},
+    )
+    assert reg.status_code == 201, reg.text
+    nv2 = {"Authorization": f"Bearer {reg.json()['token']}"}
+    
+    # Confirm availability for second employee
+    from ca_api.persist import availability_confirmation_upsert
+    nv2_id = reg.json()["nv_id"]
+    availability = {day: ["Sáng", "Chiều", "Tối"] for day in ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]}
+    availability_confirmation_upsert(
+        item_id=f"test-av-{uname}", store_id="quan_01", nv_id=nv2_id,
+        tuan_iso=week, availability=availability, status="da_xac_nhan", source="test",
+    )
+    
+    minh = headers(client, "minh")
+    
+    # First claim succeeds
+    r1 = client.post(
+        "/api/v1/open-shifts/claim",
+        json={"open_shift_id": shift["id"]},
+        headers=minh,
+    )
+    assert r1.status_code == 200
+    
+    # Second claim fails — shift no longer appears as open, so 404
+    r2 = client.post(
+        "/api/v1/open-shifts/claim",
+        json={"open_shift_id": shift["id"]},
+        headers=nv2,
+    )
+    assert r2.status_code == 404
+    assert r2.json()["detail"] == "open_shift_khong_ton_tai"

@@ -956,7 +956,7 @@ def open_shift_resolve_for_week(store_id: str, tuan_iso: str) -> int:
     init_db()
     with _conn() as cx:
         result = cx.execute(
-            "UPDATE open_shifts SET status='resolved' WHERE store_id=? AND tuan_iso=? AND status='open'",
+            "UPDATE open_shifts SET status='resolved' WHERE store_id=? AND tuan_iso=? AND status IN ('open', 'claimed')",
             (store_id, tuan_iso),
         )
     return int(result.rowcount)

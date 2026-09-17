@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
-import { getToken } from "../../lib/session";
+import { getRole, getToken } from "../../lib/session";
 import { caHumanLabel, nvLabel, nvTenHienThi, safeText, swapLabel, viError } from "../../lib/present";
 import { matchExact, matchSearch, uniqueSorted } from "../../lib/list-filters";
 import { useOpsPickers } from "../../lib/ops-context";
@@ -30,6 +30,23 @@ type Swap = {
   dong_y?: string[];
 };
 
+type OpenShift = {
+  id: string;
+  tuan_iso: string;
+  ca_id: string;
+  deadline_at: string;
+};
+
+function currentISOWeek(): string {
+  const now = new Date();
+  const date = new Date(now);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
+  const weekOne = new Date(date.getFullYear(), 0, 4);
+  const week = 1 + Math.round(((date.getTime() - weekOne.getTime()) / 86400000 - 3 + ((weekOne.getDay() + 6) % 7)) / 7);
+  return `${date.getFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
 function swapHaystack(it: Swap): string {
   return [it.id, it.a, it.b, it.ca_id, swapLabel(it.trang_thai), nvLabel(it.a), nvLabel(it.b)].join(" ");
 }
@@ -37,6 +54,9 @@ function swapHaystack(it: Swap): string {
 export default function DoiCaPage() {
   const [token, setToken] = useState("");
   const [items, setItems] = useState<Swap[]>([]);
+  const [openShifts, setOpenShifts] = useState<OpenShift[]>([]);
+  const [openShiftWeek, setOpenShiftWeek] = useState(currentISOWeek());
+  const [claimingShift, setClaimingShift] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [b, setB] = useState("");
@@ -49,6 +69,7 @@ export default function DoiCaPage() {
   const [copilotOpen, setCopilotOpen] = useState(false);
   const { data: pickers } = useOpsPickers(!!token);
   const meNv = pickers?.me_nv_id ?? null;
+  const employeeMode = getRole() === "nhan_vien";
 
   useEffect(() => {
     setToken(getToken());
@@ -70,6 +91,17 @@ export default function DoiCaPage() {
   useEffect(() => {
     if (token) load();
   }, [token, load]);
+
+  const loadOpenShifts = useCallback(() => {
+    if (!getToken()) return;
+    apiGet<{ items: OpenShift[] }>(`/api/v1/open-shifts?tuan_iso=${encodeURIComponent(openShiftWeek)}`)
+      .then((payload) => setOpenShifts(payload.items ?? []))
+      .catch((e) => setError(viError(e, { doing: "tải ca đang cần người" })));
+  }, [openShiftWeek]);
+
+  useEffect(() => {
+    if (token) loadOpenShifts();
+  }, [token, loadOpenShifts]);
 
   const statusOptions = useMemo(() => {
     const statuses = uniqueSorted(items.map((i) => i.trang_thai));
@@ -159,6 +191,21 @@ export default function DoiCaPage() {
     }
   }
 
+  async function claimOpenShift(openShift: OpenShift) {
+    setClaimingShift(openShift.id);
+    setError(null);
+    setMsg(null);
+    try {
+      await apiSend("/api/v1/open-shifts/claim", { open_shift_id: openShift.id });
+      setMsg("Bạn đã nhận ca thành công. Quản lý sẽ thấy thay đổi khi chạy lại lịch.");
+      loadOpenShifts();
+    } catch (e) {
+      setError(viError(e, { doing: "nhận ca mở" }));
+    } finally {
+      setClaimingShift(null);
+    }
+  }
+
   function caLabel(caId: string) {
     const hit = pickers?.ca.find((x) => x.id === caId);
     return caHumanLabel(hit, caId);
@@ -183,6 +230,39 @@ export default function DoiCaPage() {
       </Btn>
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
+
+      <OpsCard eyebrow="Ca mở" title="Ca đang cần người" count={openShifts.length} countLabel="ca">
+        <label className="mb-4 block max-w-xs text-sm text-[var(--nq-dim)]">
+          Tuần ISO
+          <input
+            type="week"
+            value={openShiftWeek}
+            onChange={(event) => setOpenShiftWeek(event.target.value)}
+            className="mt-1 block min-h-10 w-full border border-[var(--nq-line)] bg-[var(--nq-panel)] px-3 text-[var(--nq-text)]"
+          />
+        </label>
+        {openShifts.length === 0 ? <Empty title="Không có ca mở">Tuần này chưa có ca nào đang chờ nhận.</Empty> : null}
+        <div className="nq-list">
+          {openShifts.map((openShift) => (
+            <article key={openShift.id} className="nq-item">
+              <p className="nq-item-title">{caLabel(openShift.ca_id)}</p>
+              <p className="nq-item-sub">Hạn nhận: {new Date(openShift.deadline_at).toLocaleString("vi-VN")}</p>
+              {employeeMode ? (
+                <div className="mt-2">
+                  <Btn
+                    variant="primary"
+                    busy={claimingShift === openShift.id}
+                    disabled={claimingShift !== null}
+                    onClick={() => void claimOpenShift(openShift)}
+                  >
+                    Nhận ca này
+                  </Btn>
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      </OpsCard>
 
       <OpsCard eyebrow="Khu vực 1" title="Mở lệnh mới">
         <form onSubmit={onSubmit}>

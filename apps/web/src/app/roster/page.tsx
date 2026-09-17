@@ -58,6 +58,13 @@ type LichData = {
   phan_cong?: Record<string, string[]>;
   khung_gio?: KhungGio;
   solver?: { ok?: boolean | null; status?: string | null; elapsed_s?: number | null };
+  schedule_run?: {
+    id: string;
+    status: string;
+    fingerprint: string;
+    version: number;
+  } | null;
+  open_shifts?: OpenShift[];
   chua_xac_nhan?: UnconfirmedStaff[];
   du_bi?: OnCallStaff[];
   nv_status_map?: Record<string, string>;
@@ -67,6 +74,16 @@ type LichData = {
     vf?: { applies_to_solver?: boolean; message?: string; gates?: string[] };
     coverage?: { passed?: boolean; filled?: number; total?: number };
   };
+};
+
+type OpenShift = {
+  id: string;
+  schedule_run_id: string;
+  tuan_iso: string;
+  ca_id: string;
+  status: string;
+  deadline_at: string;
+  claimed_by?: string | null;
 };
 
 type ScheduleNotification = {
@@ -191,6 +208,8 @@ export default function RosterPage() {
   const [pinBusy, setPinBusy] = useState(false);
   const [nvStatusBusy, setNvStatusBusy] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
+  const [gapBusy, setGapBusy] = useState<string | null>(null);
+  const [gapStaff, setGapStaff] = useState<Record<string, string>>({});
   const [lifecycleMsg, setLifecycleMsg] = useState<string | null>(null);
   const [icsBusy, setIcsBusy] = useState(false);
   const [search, setSearch] = useState("");
@@ -445,6 +464,34 @@ export default function RosterPage() {
       setError(viError(e, { doing: "cập nhật trạng thái lịch" }));
     } finally {
       setLifecycleBusy(false);
+    }
+  }
+
+  async function resolveGap(openShift: OpenShift) {
+    const run = data?.schedule_run;
+    const nvId = gapStaff[openShift.id] ?? openShift.claimed_by;
+    if (!run || !nvId) {
+      setError("Chọn nhân sự trước khi chạy lại ca thiếu.");
+      return;
+    }
+    setGapBusy(openShift.id);
+    setError(null);
+    setLifecycleMsg(null);
+    try {
+      await apiSend("/api/v1/lich/resolve-gaps", {
+        schedule_run_id: run.id,
+        tuan_iso: openShift.tuan_iso,
+        expected_fingerprint: run.fingerprint,
+        idempotency_key: `roster:${run.id}:${openShift.ca_id}:${nvId}`,
+        ca_id: openShift.ca_id,
+        nv_id: nvId,
+      });
+      setLifecycleMsg("Đã ghim nhân sự và chạy lại lịch. Kiểm tra các ca còn thiếu trước khi duyệt.");
+      await loadLich(baseWeek, soTuan);
+    } catch (e) {
+      setError(viError(e, { doing: "xử lý ca còn thiếu" }));
+    } finally {
+      setGapBusy(null);
     }
   }
 
@@ -1060,6 +1107,51 @@ export default function RosterPage() {
               { n: lifeLabel(trangThai), k: "Trạng thái lịch" },
             ]}
           />
+
+          {canWrite && (data?.open_shifts?.length ?? 0) > 0 ? (
+            <section className="border border-amber-700/50 bg-amber-950/20 p-4">
+              <div className="mb-3">
+                <h3 className="text-sm font-bold text-amber-300">Ca còn thiếu người</h3>
+                <p className="mt-1 text-xs text-neutral-400">
+                  Lịch chưa thể duyệt khi còn ca mở. Chọn một nhân sự phù hợp để ghim và chạy lại lịch.
+                </p>
+              </div>
+              <div className="space-y-2">
+                {data?.open_shifts?.map((openShift) => {
+                  const shift = shifts.find((item) => item.id === openShift.ca_id);
+                  return (
+                    <div key={openShift.id} className="grid gap-2 border-t border-amber-900/50 pt-3 sm:grid-cols-[1fr_minmax(12rem,18rem)_auto] sm:items-center">
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-100">
+                          {shift ? shiftRowLabel(shift, shift.khung, khungGio) : openShift.ca_id}
+                        </p>
+                        <p className="text-xs text-neutral-500">Hạn nhận: {new Date(openShift.deadline_at).toLocaleString("vi-VN")}</p>
+                      </div>
+                      <select
+                        aria-label={`Nhân sự cho ${openShift.ca_id}`}
+                        value={gapStaff[openShift.id] ?? openShift.claimed_by ?? ""}
+                        onChange={(event) => setGapStaff((current) => ({ ...current, [openShift.id]: event.target.value }))}
+                        className="min-h-10 border border-neutral-700 bg-neutral-950 px-3 text-sm text-neutral-100"
+                      >
+                        <option value="">Chọn nhân sự</option>
+                        {data?.nhan_vien?.map((employee) => (
+                          <option key={employee.id} value={employee.id}>{employee.ten}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={gapBusy !== null || !(gapStaff[openShift.id] ?? openShift.claimed_by) || !data?.schedule_run}
+                        onClick={() => void resolveGap(openShift)}
+                        className="min-h-10 bg-amber-500 px-4 text-xs font-bold text-neutral-950 hover:bg-amber-400 disabled:opacity-50"
+                      >
+                        {gapBusy === openShift.id ? "Đang chạy…" : openShift.claimed_by ? "Duyệt và chạy lại" : "Ghim và chạy lại"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
 
           {canWrite ? (
             <KhungConfigPanel

@@ -207,7 +207,7 @@ def _previous_week(tuan_iso: str) -> str | None:
         return None
 
 
-def _run_solver(
+def _legacy_run_solver_reference(
     tuan_iso: str | None = None,
     *,
     extra_pin: tuple[str, str] | None = None,
@@ -478,6 +478,22 @@ def _run_solver(
     }
 
 
+def _run_solver(
+    tuan_iso: str | None = None,
+    *,
+    extra_pin: tuple[str, str] | None = None,
+    confirmed_availability: dict[str, dict[str, list[str]]] | None = None,
+) -> dict[str, Any]:
+    """Compatibility entrypoint for older imports and focused solver tests."""
+    from ca_api.services.solver_adapter import run_solver
+
+    return run_solver(
+        tuan_iso,
+        extra_pin=extra_pin,
+        confirmed_availability=confirmed_availability,
+    )
+
+
 def _life(tuan_iso: str | None = None) -> dict[str, Any]:
     """Trạng thái lịch tuần — SSOT là kv `lich_tuan_lifecycle` (giờ main.py,
     copilot và sprint45 cùng một nguồn). Fallback đọc kv `lifecycle` cũ cho
@@ -680,7 +696,10 @@ def _guard_authoritative_lifecycle(week: str, target: str, store_id: str) -> dic
         raise HTTPException(status_code=409, detail="invalid_schedule_run")
     if target == "da_cong_bo":
         from ca_api.persist import open_shift_list
-        if open_shift_list(store_id, tuan_iso=week):
+        if (
+            open_shift_list(store_id, tuan_iso=week)
+            or open_shift_list(store_id, tuan_iso=week, status="claimed")
+        ):
             raise HTTPException(status_code=409, detail="schedule_has_open_shifts")
     return run
 
@@ -793,9 +812,12 @@ def list_open_shifts(
     authorization: Annotated[str | None, Header()] = None,
     tuan_iso: str | None = Query(default=None),
 ) -> dict[str, Any]:
-    _require_role(authorization)
+    role = _require_role(authorization)
     store_id = str(auth_session(authorization).get("store_id") or "quan_01")
-    return {"items": open_shift_list(store_id, tuan_iso=tuan_iso)}
+    items = open_shift_list(store_id, tuan_iso=tuan_iso)
+    if role in {"quan_ly", "chu_quan"}:
+        items.extend(open_shift_list(store_id, tuan_iso=tuan_iso, status="claimed"))
+    return {"items": items}
 
 
 @router.post("/api/v1/open-shifts/claim")

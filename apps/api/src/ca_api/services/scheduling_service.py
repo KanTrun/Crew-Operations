@@ -45,9 +45,9 @@ def run_authoritative_schedule(
 
     # Lazy import keeps the legacy input adapter isolated while this service
     # remains the only authoritative scheduling application boundary.
-    from ca_api.interfaces.http.sprint45 import _run_solver
+    from ca_api.services.solver_adapter import run_solver
 
-    result = _run_solver(tuan_iso, confirmed_availability=availability, extra_pin=extra_pin)
+    result = run_solver(tuan_iso, confirmed_availability=availability, extra_pin=extra_pin)
     final_status = "computed" if result.get("ok") else "needs_gap_resolution"
     schedule_run_update_result(
         str(run["id"]), status=final_status, result_snapshot=result,
