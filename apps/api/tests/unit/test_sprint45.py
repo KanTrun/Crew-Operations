@@ -200,15 +200,16 @@ def test_qr_one_shot() -> None:
     assert client.post(f"/api/v1/qr/{tok}", headers=nv).status_code == 409
 
 
-def test_swap_three_way() -> None:
+def test_swap_uses_requester_and_any_recipient() -> None:
     nv = headers(client, "minh")
     r = client.post(
         "/api/v1/cho-doi-ca",
-        json={"a": "nv_03", "b": "nv_04", "c": "nv_05", "ca_id": "w1_c01"},
+        json={"a": "nv_03", "b": "all", "ca_id": "w1_c01"},
         headers=nv,
     )
     assert r.status_code == 200
-    assert r.json()["trang_thai"] == "cho_3_nhanh"
+    assert r.json()["trang_thai"] == "cho_xac_nhan"
+    assert "c" not in r.json()
 
 
 def test_fairness_scoped_to_self_for_nv() -> None:
@@ -289,9 +290,9 @@ def test_diem_danh_nang_cap_kv_list_cu_thanh_dict() -> None:
 
 def test_swap_requires_valid_shift_and_staff_participation() -> None:
     staff = headers(client, "minh")
-    outsider = {"a": "nv_01", "b": "nv_02", "c": "nv_04", "ca_id": "w1_c01"}
+    outsider = {"a": "nv_01", "b": "all", "ca_id": "w1_c01"}
     assert client.post("/api/v1/cho-doi-ca", json=outsider, headers=staff).status_code == 403
-    invalid = {"a": "nv_03", "b": "nv_04", "c": "nv_05", "ca_id": "missing"}
+    invalid = {"a": "nv_03", "b": "missing", "ca_id": "missing"}
     assert client.post("/api/v1/cho-doi-ca", json=invalid, headers=staff).status_code == 422
 
 
@@ -306,18 +307,16 @@ def test_ops_pickers_for_staff() -> None:
     assert body["me_nv_id"] == "nv_03"
 
 
-def test_swap_consent_three_branches() -> None:
+def test_swap_consent_by_any_recipient() -> None:
     opened = client.post(
         "/api/v1/cho-doi-ca",
-        json={"a": "nv_03", "b": "nv_02", "c": "nv_01", "ca_id": "w1_c01"},
+        json={"a": "nv_03", "b": "all", "ca_id": "w1_c01"},
         headers=headers(client, "minh"),
     ).json()
     swap_id = opened["id"]
-    client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "minh"))
-    client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "hung"))
-    done = client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "lan")).json()
+    done = client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "hung")).json()
     assert done["trang_thai"] == "dong_y"
-    assert len(done.get("dong_y", [])) == 3
+    assert done["dong_y"] == ["nv_02"]
 
 
 def test_swap_tu_choi_idor_protection() -> None:
