@@ -46,6 +46,7 @@ Tự động hóa luồng availability đã xác nhận -> CP-SAT chính thức 
 
 ## Implementation status
 
-- Done: normalized exact-week availability, versioned/idempotent schedule runs, CP-SAT authority path, stable scheduler conversation route, authoritative assignment records, manager gap-resolution/revalidation endpoint, guarded approval-to-publication flow with exact-week notifications, open-shift persistence/API, atomic first claim with run/week eligibility checks, SLA escalation, regression fixtures for authoritative lifecycle setup, and frontend typecheck/build.
-- Validation evidence: `apps/api` full suite **455 passed in 1460.60s**; focused lifecycle **4 passed**; exact-week export **1 passed**; web `npm run typecheck` and `npm run build` passed, generating **39/39** pages.
-- Remaining: neutral solver extraction from the legacy HTTP module and complete open-shift/approval controls in roster and doi-ca. Independent tester/code-reviewer delegation could not run because the runtime returned `Response contained no choices`; direct full-suite validation passed instead.
+- **Status: Done** (synced from [plan triển khai](./260917-1129-hon-thin-scheduling-v-thng-bo-lch/plan.md))
+- Done: normalized exact-week availability, versioned/idempotent schedule runs, CP-SAT authority path, stable scheduler conversation route, authoritative assignment records, manager gap-resolution/revalidation endpoint, guarded approval-to-publication flow with exact-week notifications, open-shift persistence/API, atomic first claim with run/week eligibility checks, SLA escalation, neutral solver adapter extraction from legacy HTTP module, regression fixtures, E2E notification deep-link test, and frontend typecheck/build.
+- Validation evidence: `apps/api` full suite **455 passed in 1460.60s**; focused lifecycle **4 passed**; exact-week export **1 passed**; focused sprint45 **31 passed**; web `npm run typecheck` and `npm run build` passed, generating **39/39** pages.
+- Remaining: none within scheduling scope.

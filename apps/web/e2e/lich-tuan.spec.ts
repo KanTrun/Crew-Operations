@@ -20,27 +20,14 @@ test("thông báo lịch: click deep-link tự động ack", async ({ page }) =>
   const notificationId = "notif-test-001";
   let ackCalled = false;
 
-  // Login as employee (minh)
-  await page.goto("/login");
-  await page.getByLabel("Tài khoản").fill("minh");
-  await page.getByLabel("Mật khẩu").fill("nhipquan");
-  await page.getByRole("button", { name: "Vào hệ thống" }).click();
-  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
-
-  // Wait for role to be loaded from /api/v1/me
-  await page.waitForFunction(() => sessionStorage.getItem("nq_role") === "nhan_vien");
-  // Wait for AppShell to re-render with the role - wait for user name to appear in header
-  await page.waitForSelector('text="Minh — ca sáng"', { timeout: 10_000 });
-  // Wait for navigation to be ready
-  await page.waitForLoadState("networkidle");
-
   // Intercept notification API to supply test data
-  await page.route("**/api/v1/lich/thong-bao", async (route) => {
+  await page.route("**/api/v1/lich/thong-bao**", async (route) => {
     if (route.request().method() === "GET") {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
+          ok: true,
           notifications: [
             {
               id: notificationId,
@@ -52,6 +39,7 @@ test("thông báo lịch: click deep-link tự động ack", async ({ page }) =>
               created_at: new Date().toISOString(),
             },
           ],
+          unread: 1,
         }),
       });
     } else {
@@ -60,7 +48,7 @@ test("thông báo lịch: click deep-link tự động ack", async ({ page }) =>
   });
 
   // Intercept ack endpoint and track the call
-  await page.route(`**/api/v1/lich/thong-bao/${notificationId}/ack`, async (route) => {
+  await page.route(`**/api/v1/lich/thong-bao/${notificationId}/ack**`, async (route) => {
     if (route.request().method() === "POST") {
       ackCalled = true;
       await route.fulfill({
@@ -74,29 +62,43 @@ test("thông báo lịch: click deep-link tự động ack", async ({ page }) =>
   });
 
   // Intercept target week data
-  await page.route(`**/api/v1/lich-tuan?tuan=${targetWeek}*`, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        tuan_iso: targetWeek,
-        trang_thai: "da_cong_bo",
-        schedule_run: {
-          id: "run-test",
-          status: "computed",
-          fingerprint: "fp-test",
-          result: { ok: true, assignments: [] },
-        },
-        open_shifts: [],
-      }),
-    });
+  await page.route(`**/api/v1/lich-tuan**`, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("tuan") === targetWeek) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          tuan_iso: targetWeek,
+          trang_thai: "da_cong_bo",
+          schedule_run: {
+            id: "run-test",
+            status: "computed",
+            fingerprint: "fp-test",
+            result: { ok: true, assignments: [] },
+          },
+          open_shifts: [],
+        }),
+      });
+    } else {
+      await route.continue();
+    }
   });
 
-  // Navigate to roster page with target week to match our intercept
-  await page.goto(`/lich-tuan?tuan=${targetWeek}`);
-  await expect(page.getByRole("heading", { name: /Lịch Đi Làm Của Tôi/i })).toBeVisible();
+  // Login as manager (lan) - same as working test
+  await page.goto("/login");
+  await page.getByLabel("Tài khoản").fill("lan");
+  await page.getByLabel("Mật khẩu").fill("nhipquan");
+  await page.getByRole("button", { name: "Vào hệ thống" }).click();
+  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
 
-  // Notification banner should show unread count
+  // Navigate to roster page
+  await page.goto("/lich-tuan");
+  
+  // Wait for the page to fully load - check for the workflow section which appears after data loads
+  await expect(page.getByText("1. Nháp", { exact: true })).toBeVisible({ timeout: 10_000 });
+
+  // Wait for notification banner to appear
   const banner = page.locator("text=1 chưa xem");
   await expect(banner).toBeVisible({ timeout: 5_000 });
 

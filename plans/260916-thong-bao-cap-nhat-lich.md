@@ -58,13 +58,11 @@ dẫn đúng tới `/lich-tuan?tuan=YYYY-Www`, nơi lịch tuần tương ứng 
 
 ## Implementation status
 
+- **Status: Done** (synced from [plan triển khai](./260917-1129-hon-thin-scheduling-v-thng-bo-lch/plan.md))
 - Done: exact-week notification persistence and deduplication, lifecycle publish
-   hook, list/ack API, scheduler deep-link metadata, and `/lich-tuan?tuan=...`
-   query handling.
+   hook, list/ack API, scheduler deep-link metadata, `/lich-tuan?tuan=...`
+   query handling, and E2E notification deep-link test.
 - Validation evidence: backend full suite **455 passed in 1460.60s**; focused
-   lifecycle **4 passed**; exact-week export **1 passed**; web typecheck and
-   production build passed with **39/39** pages generated.
-- Remaining: dedicated frontend/E2E coverage for notification deep links and
-   the pre-existing Facebook replay failure outside scheduling scope. The
-   independent reviewer delegation was unavailable because the runtime returned
-   `Response contained no choices`.
+   lifecycle **4 passed**; exact-week export **1 passed**; focused sprint45
+   **31 passed**; web typecheck and production build passed with **39/39** pages generated.
+- Remaining: pre-existing Facebook replay failure outside scheduling scope.

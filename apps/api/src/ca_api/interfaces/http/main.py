@@ -98,6 +98,8 @@ from ca_api.persist import (
     kv_set,
     list_users,
     menu_list,
+    open_shift_list,
+    schedule_run_latest,
 )
 from ca_api.persist import login as persist_login
 from ca_api.persist import logout as persist_logout
@@ -678,6 +680,13 @@ def get_lich_tuan(
     """Lịch tuần đang hiệu lực của quán. Yêu cầu đăng nhập (quan_ly trở lên)."""
     _require_write_role(authorization)
     tuan_iso = tuan or "2026-W36"
+    current_session = auth_session(authorization) or {}
+    store_id = str(current_session.get("store_id") or "quan_01")
+    schedule_run = schedule_run_latest(store_id, tuan_iso)
+    open_shifts = [
+        *open_shift_list(store_id, tuan_iso=tuan_iso),
+        *open_shift_list(store_id, tuan_iso=tuan_iso, status="claimed"),
+    ]
 
     data = _week_value("lich_tuan_results_by_week", tuan_iso, None)
     if not isinstance(data, dict):
@@ -731,6 +740,8 @@ def get_lich_tuan(
                 "elapsed_s": data.get("elapsed_s"),
                 "status": data.get("status"),
             },
+            "schedule_run": schedule_run,
+            "open_shifts": open_shifts,
             "pins": [
                 {"ca_id": ca_id, "nv_id": nv_id}
                 for (ca_id, nv_id), pinned in _pin_map(tuan_iso).items()
@@ -745,6 +756,8 @@ def get_lich_tuan(
     result = _build_lich_tuan_from_seed(_seed(), tuan_iso, so_tuan)
     result["trang_thai"] = lifecycle.get("trang_thai", result.get("trang_thai", "nhap"))
     result["khung_gio"] = _khung_template()
+    result["schedule_run"] = schedule_run
+    result["open_shifts"] = open_shifts
     return result
 
 
@@ -823,7 +836,8 @@ async def pin_assignment(
             status_code=422,
             detail=f"nv_thieu_ky_nang — ca cần {vi_tri}, NV chỉ có {', '.join(sorted(ky_nang)) or 'không rõ'}",
         )
-    from ca_api.interfaces.http.sprint45 import _life, _run_solver
+    from ca_api.interfaces.http.sprint45 import _life
+    from ca_api.services.solver_adapter import run_solver
 
     life = _life(body.tuan_iso)
     if life.get("trang_thai") not in {"nhap", "cho_duyet"}:
@@ -832,9 +846,9 @@ async def pin_assignment(
     solver_result: dict[str, Any] | None = None
     if body.pinned:
         # Chạy thử với pin mới: đây là kiểm tra đồng thời C01–C06, không chỉ kỹ năng.
-        solver_result = _run_solver(body.tuan_iso, extra_pin=(body.ca_id, body.nv_id))
+        solver_result = run_solver(body.tuan_iso, extra_pin=(body.ca_id, body.nv_id))
         if not solver_result.get("ok"):
-            baseline = _run_solver(body.tuan_iso)
+            baseline = run_solver(body.tuan_iso)
             if baseline.get("ok"):
                 detail = solver_result.get("danh_sach_xung_dot") or [
                     "Ghim làm lịch vi phạm ràng buộc cứng"
@@ -846,7 +860,7 @@ async def pin_assignment(
 
     prev = _set_pin(body.tuan_iso, body.ca_id, body.nv_id, body.pinned)
     if body.xep_lai and not body.pinned:
-        solver_result = _run_solver(body.tuan_iso)
+        solver_result = run_solver(body.tuan_iso)
     record_sua(
         loai="pin_ca",
         truoc={"ca_id": body.ca_id, "nv_id": body.nv_id, "pinned": prev},
