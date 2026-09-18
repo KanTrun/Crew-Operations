@@ -99,6 +99,7 @@ def parse_gmaps_results_to_candidates(
             continue
 
         store_id = str(item.get("place_id") or item.get("data_id") or "")
+        data_id = str(item.get("data_id") or "")
         name = str(item.get("title") or "").strip()
         if not name or not store_id:
             continue
@@ -131,6 +132,7 @@ def parse_gmaps_results_to_candidates(
             StoreCandidate(
                 id=store_id,
                 place_id=store_id,
+                data_id=data_id,
                 name=name,
                 address=address,
                 lat=dest_lat,
@@ -206,13 +208,21 @@ def fetch_gmaps_menu_photos_serpapi(
     cache_dir: Path | None = None,
     quota_path: Path | None = None,
     circuit_breaker: CircuitBreaker | None = None,
+    data_id: str = "",
 ) -> list[str]:
-    """Lấy danh sách ảnh album thực đơn (Menu) của quán đối thủ qua SerpApi."""
-    if not place_id:
+    """Lấy danh sách ảnh album thực đơn (Menu) của quán đối thủ qua SerpApi.
+
+    SerpApi engine `google_maps_photos` yêu cầu tham số `data_id` (mã định danh
+    quán trong Google Maps), KHÔNG phải `place_id`. Nếu không có `data_id`,
+    SerpApi trả 400 "Missing query `data_id` parameter".
+    """
+    # Ưu tiên data_id (bắt buộc cho google_maps_photos); fallback place_id.
+    lookup_id = data_id or place_id
+    if not lookup_id:
         return []
 
     params = {
-        "place_id": place_id,
+        "data_id": lookup_id,
         "hl": "vi",
         "gl": "vn",
     }

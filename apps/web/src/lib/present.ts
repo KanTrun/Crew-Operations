@@ -57,6 +57,10 @@ export function viError(err: unknown, copy: ErrorCopy): string {
     );
   }
   if (status === 409) {
+    // Nếu là ApiError có detail, dịch mã 409 cụ thể của lịch tuần
+    if (err instanceof ApiError && err.detail !== undefined) {
+      return lich409Loi(err.detail);
+    }
     return copy.conflict ?? "Dữ liệu vừa đổi ở nơi khác. Tải lại trang rồi làm lại từ đầu.";
   }
   if (status === 400 || status === 422) {
@@ -96,6 +100,37 @@ export function nvTenHienThi(ten: unknown, id?: string | null): string {
   return nvLabel(id);
 }
 
+/** Nhãn hiển thị cho tên agent (ag_copilot → "AG-COPILOT"). */
+const AGENT_LABELS: Record<string, string> = {
+  ag_copilot: "AG-COPILOT",
+  ag_scheduler: "AG-SCHEDULER",
+  ag_mailwriter: "AG-MAILWRITER",
+  ag_pricing: "AG-PRICING",
+  ag_sop: "AG-SOP",
+  ag_tkb: "AG-TKB",
+  ag_waste: "AG-WASTE",
+  ag_barista: "AG-BARISTA",
+  ag_concierge: "AG-CONCIERGE",
+  ag_supervisor: "AG-SUPERVISOR",
+  ag_meeting: "AG-MEETING",
+  ag_msg: "AG-MSG",
+  ag_brief: "AG-BRIEF",
+  ag_explain: "AG-EXPLAIN",
+  ag_handover: "AG-HANDOVER",
+  ag_fbpage: "AG-FBPAGE",
+  ag_trend: "AG-TREND",
+  ag_mail: "AG-MAIL",
+  ag_rule: "AG-RULE",
+  ag_voc: "AG-VOC",
+};
+
+/** Nhãn hiển thị thân thiện cho tên agent; trả về chính tên nếu không biết. */
+export function agentNameLabel(agentName?: string | null): string | null {
+  const raw = safeText(agentName, "");
+  if (!raw) return null;
+  return AGENT_LABELS[raw] ?? raw;
+}
+
 /** Người thực hiện trong sổ vết: vai trò hoặc nhân viên, không tên riêng. */
 export function actorLabel(ai?: string | null): string {
   const raw = safeText(ai, "");
@@ -103,7 +138,11 @@ export function actorLabel(ai?: string | null): string {
   if (raw === "quan_ly") return "Quản lý";
   if (raw === "chu_quan") return "Chủ quán";
   if (raw === "nhan_vien") return "Nhân viên";
-  return nvLabel(raw);
+  if (raw === "system" || raw === "unknown") return "Hệ thống";
+  if (raw === "guest" || raw === "nv_guest") return "Khách";
+  if (raw === "fb_policy_engine") return "Hệ thống chính sách Facebook";
+  if (raw === "fb_moderation_block") return "Hệ thống kiểm duyệt Facebook";
+  return agentNameLabel(raw) ?? nvLabel(raw);
 }
 
 /* ── Vị trí / chức vụ ca ── */
@@ -397,6 +436,185 @@ export function dangKyLoi(detail: unknown): { o: ODangKy; cau: string } {
    tên bước / câu luật. Không tra được thì in loại nguồn, vẫn không in mã. */
 
 export type TrichDan = { loai: "phieu" | "luat" | "khac"; ma: string; nguon: string };
+
+/* ── Lỗi 409 cụ thể của lịch tuần (roster/lifecycle) ──
+   Máy chủ trả `detail` là mã kỹ thuật. Đổi thành câu tiếng Việt người vận hành hiểu. */
+
+export type Lich409Code =
+  | "stale_schedule_run"
+  | "authoritative_schedule_run_required"
+  | "schedule_has_unresolved_gaps"
+  | "invalid_schedule_run"
+  | "schedule_has_open_shifts"
+  | "illegal:may_sinh->nhap"
+  | "illegal:nhap->dang_giai"
+  | "illegal:dang_giai->cho_duyet"
+  | "illegal:dang_giai->nhap"
+  | "illegal:cho_duyet->da_duyet"
+  | "illegal:cho_duyet->nhap"
+  | "illegal:da_duyet->da_cong_bo"
+  | "illegal:da_cong_bo->da_dong"
+  | "illegal:da_dong->nhap"
+  | "chi_ghim_khi_lich_nhap_hoac_cho_duyet"
+  | "mo_lai_phai_co_ly_do"
+  | "lich_chua_cong_bo"
+  | "open_shift_khong_thuoc_run_gap_hop_le"
+  | "chua_xac_nhan_kha_dung_dung_tuan"
+  | "nhan_vien_da_duoc_xep_ca"
+  | "ca_da_duoc_nhan"
+  | "chua_du_mau"
+  | "luat_chua_cho_chu_quan"
+  | "luat_chua_hieu_luc"
+  | "thieu_golden_sop"
+  | "qr_da_dung"
+  | "swap_da_tu_choi"
+  | "idempotency_conflict"
+  | "action_retry_not_safe"
+  | "action_decision_conflict"
+  | "action_execution_in_progress"
+  | "action_execution_conflict"
+  | "stale_rejected"
+  | "da_quyet_truoc_do"
+  | "qua_cua_so_24h"
+  | "mail_delivery_in_progress"
+  | "mail_idempotency_conflict"
+  | "khong_the_vo_hieu_hoa_chinh_minh"
+  | "vo_hieu_hoa_that_bai"
+  | "chuyen_khong_hop_le"
+  | "don_da_ket_thuc"
+  | "SCHEMA_VERSION_MISMATCH"
+  | string; // fallback cho mã chưa biết
+
+const LICH_409: Record<string, string> = {
+  // Lifecycle / schedule run
+  stale_schedule_run:
+    "Lịch đã được tính toán lại bởi người khác. Tải lại trang để xem phiên bản mới nhất.",
+  authoritative_schedule_run_required:
+    "Chưa có lịch đã tính toán (chưa chạy solver). Bấm «Xếp lịch tự động» trước.",
+  schedule_has_unresolved_gaps:
+    "Vẫn còn ca thiếu nhân chưa xử lý. Điền đủ ca thiếu rồi mới duyệt/công bố.",
+  invalid_schedule_run:
+    "Trạng thái lịch không hợp lệ để duyệt. Chạy lại solver hoặc kiểm tra ca thiếu.",
+  schedule_has_open_shifts:
+    "Vẫn còn ca mở (chưa ai nhận). Điền hoặc gán nhân sự trước khi công bố.",
+
+  // Chuyển trạng thái không hợp lệ
+  "illegal:may_sinh->nhap":
+    "Lịch mới sinh ra, chỉ được chuyển sang «Nháp».",
+  "illegal:nhap->dang_giai":
+    "Từ nháp chỉ được bấm «Xếp lịch tự động».",
+  "illegal:dang_giai->cho_duyet":
+    "Solver đang chạy, đợi xong sẽ tự chuyển sang «Chờ duyệt».",
+  "illegal:dang_giai->nhap":
+    "Solver đang chạy, không thể quay về nháp ngay.",
+  "illegal:cho_duyet->da_duyet":
+    "Từ chờ duyệt chỉ được «Duyệt lịch» hoặc quay về «Nháp».",
+  "illegal:cho_duyet->nhap":
+    "Quay về nháp được, nhưng hãy chắc chắn muốn hủy duyệt.",
+  "illegal:da_duyet->da_cong_bo":
+    "Đã duyệt → công bố cho nhân viên.",
+  "illegal:da_cong_bo->da_dong":
+    "Đã công bố → đóng tuần.",
+  "illegal:da_dong->nhap":
+    "Đã đóng → chỉ chủ quán mở lại được (cần lý do).",
+
+  // Pin / ghim
+  chi_ghim_khi_lich_nhap_hoac_cho_duyet:
+    "Chỉ ghim được khi lịch ở trạng thái «Nháp» hoặc «Chờ duyệt».",
+
+  // Mở lại lịch
+  mo_lai_phai_co_ly_do:
+    "Mở lại lịch đã đóng cần ghi lý do. Nhập lý do rồi thử lại.",
+
+  // Xuất lịch / quyền nhân viên
+  lich_chua_cong_bo:
+    "Lịch chưa công bố, nhân viên không tải được. Nhờ quản lý công bố trước.",
+
+  // Resolve gaps / open shifts
+  open_shift_khong_thuoc_run_gap_hop_le:
+    "Ca thiếu này không thuộc lần chạy lịch hiện tại. Tải lại trang.",
+  chua_xac_nhan_kha_dung_dung_tuan:
+    "Nhân sự này chưa xác nhận giữ ca tuần này.",
+  nhan_vien_da_duoc_xep_ca:
+    "Nhân viên đã được xếp ca khác trong tuần này.",
+  ca_da_duoc_nhan:
+    "Ca này đã có người nhận.",
+
+  // Cam nang / SOP
+  chua_du_mau:
+    "Chưa đủ mẫu phiếu (golden) để chạy cam nang. Cần ít nhất 1 mẫu hoàn chỉnh.",
+  luat_chua_cho_chu_quan:
+    "Luật này chưa cho phép chủ quán thực hiện.",
+  luat_chua_hieu_luc:
+    "Luật chưa có hiệu lực.",
+  thieu_golden_sop:
+    "Thiếu mẫu phiếu chuẩn (golden SOP) để tham chiếu.",
+
+  // QR / check-in
+  qr_da_dung:
+    "Mã QR này đã được dùng. Yêu cầu mã mới.",
+
+  // Swap ca
+  swap_da_tu_choi:
+    "Yêu cầu đổi ca đã bị từ chối.",
+
+  // Copilot / actions
+  idempotency_conflict:
+    "Yêu cầu trùng lặp (idempotency). Đã xử lý trước đó.",
+  action_retry_not_safe:
+    "Không thể thử lại hành động này an toàn.",
+  action_decision_conflict:
+    "Quyết định xung đột (người khác đã quyết định). Tải lại trang.",
+  action_execution_in_progress:
+    "Hành động đang được thực thi. Đợi xong rồi thử lại.",
+  action_execution_conflict:
+    "Xung đột khi thực thi hành động. Tải lại trang.",
+  stale_rejected:
+    "Phiên bản cũ bị từ chối. Tải lại trang để lấy phiên bản mới.",
+
+  // Channels / moderation
+  da_quyet_truoc_do:
+    "Đã quyết định trước đó. Không thể quyết định lại.",
+  qua_cua_so_24h:
+    "Quá cửa sổ 24h để xử lý.",
+
+  // Mail
+  mail_delivery_in_progress:
+    "Đang gửi thư, đợi xong rồi thử lại.",
+  mail_idempotency_conflict:
+    "Thư này đã được gửi (idempotency).",
+
+  // POS
+  khong_the_vo_hieu_hoa_chinh_minh:
+    "Không thể vô hiệu hóa chính mình.",
+  vo_hieu_hoa_that_bai:
+    "Vô hiệu hóa thất bại.",
+  chuyen_khong_hop_le:
+    "Chuyển trạng thái không hợp lệ.",
+  don_da_ket_thuc:
+    "Đơn đã kết thúc.",
+
+  // Pricing radar
+  SCHEMA_VERSION_MISMATCH:
+    "Phiên bản schema khảo sát không khớp. Cập nhật ứng dụng rồi thử lại.",
+};
+
+/**
+ * Đổi `detail` của lỗi 409 (lịch tuần / lifecycle / solver / cam nang / QR / POS / mail / channels)
+ * thành câu tiếng Việt người vận hành hiểu.
+ * Mã lạ rơi vào nhánh chung: "Dữ liệu vừa đổi ở nơi khác. Tải lại trang rồi làm lại từ đầu."
+ */
+export function lich409Loi(detail: unknown): string {
+  const raw = safeText(detail, "");
+  // Thử khớp chính xác trước
+  if (LICH_409[raw]) return LICH_409[raw];
+  // Thử khớp prefix cho các mã dạng "illegal:cur->next" hoặc "chuyen_khong_hop_le:..."
+  for (const [code, msg] of Object.entries(LICH_409)) {
+    if (raw.startsWith(code)) return msg;
+  }
+  // Fallback chung
+  return "Dữ liệu vừa đổi ở nơi khác. Tải lại trang rồi làm lại từ đầu.";
+}
 
 export function trichDanTach(raw: unknown): TrichDan {
   const s = safeText(raw, "");

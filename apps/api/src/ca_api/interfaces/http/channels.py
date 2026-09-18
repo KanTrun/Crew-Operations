@@ -24,6 +24,9 @@ from ca_agents.ag_fbpage import (
     draft_llm_reply,
     process_fb_message,
 )
+from ca_agents.ag_fbpage import (
+    classify_comment_action as classify_comment_pii_action,
+)
 from ca_agents.ag_fbpage_memory import extract_cskh_golden_pair
 from ca_agents.ag_msg import classify
 from ca_agents.ag_supervisor import run_nightly_cskh_reflection, supervise_outgoing_response
@@ -33,6 +36,7 @@ from ca_agents.customer_memory import (
 )
 from ca_agents.facebook_page import (
     fetch_conversations,
+    hide_comment,
     is_within_24h_window,
     page_health,
     publish_page_post,
@@ -1134,11 +1138,79 @@ async def facebook_webhook(request: Request) -> Any:
             moderation["comment_action"] = comment_action
             moderation["flagged_reasons"] = list(set((moderation.get("flagged_reasons") or []) + flagged_reasons))
 
+            # Mục 3b: comment chứa SĐT/địa chỉ riêng → ẩn ngay (bảo vệ PII,
+            # không để lộ cho đối thủ) + trả lời công khai chuyển DM. Ẩn là
+            # toàn quyền, không cần duyệt (Mục 6). Không auto-send nội dung
+            # nhạy cảm.
+            pii_action = classify_comment_pii_action(text)
+            if pii_action.get("should_hide"):
+                try:
+                    hide_comment(comment_id)
+                except Exception:
+                    pass
+                if moderation.get("action") not in {"block_silent", "block_polite"}:
+                    public_reply = pii_action.get("reply_public")
+                    if public_reply:
+                        try:
+                            reply_to_comment(comment_id, public_reply)
+                        except Exception:
+                            pass
+                    review_id = moderation.get("review_id")
+                    if review_id is not None:
+                        final_resp = public_reply or "Đã ẩn comment chứa thông tin cá nhân."
+                        fb_review_decide(
+                            int(review_id), status="auto_sent", decided_by="fb_auto",
+                            final_response=final_resp,
+                        )
+                n += 1
+                continue
+
             if moderation.get("action") not in {"block_silent", "block_polite"}:
-                # Comment công khai: LLM sinh bản nháp thông minh thay cho template
-                # cứng, nhưng vẫn 100% qua QL duyệt tay (AUTO_THRESHOLD_COMMENT=0.95,
-                # policy comment luôn queue_review — ADR-008).
-                if agent_mode() == "live" and "review_id" in moderation and moderation.get("review_id"):
+                # Comment công khai.
+                # - Nếu policy cho auto_send (intent an toàn + confidence cao,
+                #   COMMENT_SAFE_INTENTS + AUTO_THRESHOLD_COMMENT) VÀ cờ
+                #   auto_send bật: gửi trả lời công khai ngay, không cần QL
+                #   duyệt. Ưu tiên LLM draft thông minh, fallback về response
+                #   template đã qua supervisor.
+                # - Ngược lại: sinh LLM draft cho QL duyệt tay (ADR-008).
+                if (
+                    moderation.get("action") == "auto_send"
+                    and moderation.get("response")
+                    and _fb_auto_send_enabled()
+                ):
+                    final_text = str(moderation["response"]).strip()
+                    if agent_mode() == "live":
+                        try:
+                            comment_draft = await draft_llm_reply(
+                                text=text,
+                                public_context=public_ctx,
+                                is_comment=True,
+                            )
+                            if comment_draft:
+                                sup = supervise_outgoing_response(text, comment_draft)
+                                if sup.is_approved and sup.sanitized_response.strip():
+                                    final_text = sup.sanitized_response.strip()
+                        except Exception:
+                            pass
+                    delivered = _page_mode() != "live"
+                    if _page_mode() == "live":
+                        try:
+                            reply_to_comment(comment_id, final_text)
+                            delivered = True
+                        except Exception:
+                            delivered = False
+                    review_id = moderation.get("review_id")
+                    if review_id is not None:
+                        if delivered:
+                            fb_review_finalize_claim(
+                                int(review_id),
+                                status="auto_sent",
+                                decided_by="fb_auto",
+                                final_response=final_text,
+                            )
+                        else:
+                            fb_review_release_claim(int(review_id))
+                elif agent_mode() == "live" and "review_id" in moderation and moderation.get("review_id"):
                     try:
                         comment_draft = await draft_llm_reply(
                             text=text,
@@ -1555,7 +1627,7 @@ def _fb_policy_get() -> dict[str, Any]:
             "hoi_gio_dia_chi": 0.85,
             "hoi_menu_gia": 0.85,
         },
-        "comment_threshold": 0.95,
+        "comment_threshold": 0.85,
         "sla_minutes": {
             "priority_review": 5,
             "queue_review": 10,

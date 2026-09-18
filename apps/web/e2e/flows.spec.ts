@@ -110,7 +110,7 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
     // Vào đường dẫn chính /lich-tuan
     await page.goto("/lich-tuan");
     await expect(page.getByRole("heading", { name: /Lịch/i })).toBeVisible();
-    await expect(page.getByText("1. Nháp", { exact: true })).toBeVisible();
+    await expect(page.getByText("1. Chuẩn bị lịch", { exact: true })).toBeVisible();
     await expect(page.getByText("Ràng buộc & kiểm tra lần xếp này")).toBeVisible();
     await expect(page.locator(".nq-roster-slot-btn")).toHaveCount(21);
 

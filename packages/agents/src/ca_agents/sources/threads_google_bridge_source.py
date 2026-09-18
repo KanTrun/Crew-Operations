@@ -9,10 +9,12 @@ Mechanism:
 
 from __future__ import annotations
 
+import hashlib
 import html
 import logging
 import re
 import ssl
+import time
 import urllib.parse
 import urllib.request
 from datetime import datetime
@@ -45,6 +47,43 @@ _FNB_KEYWORDS = [
 _MEME_KEYWORDS = [
     "meme", "câu nói", "drama", "hài", "trend", "flex", "overthinking", "cửa miệng", "đi làm"
 ]
+
+
+# ── Circuit breaker cho Google News RSS Bridge ──────────────────────────────
+# Google News RSS có thể rate-limit. Nếu fail >=3 lần/60s → mở mạch 5 phút,
+# bỏ qua nguồn này để chuỗi rớt tầng nhanh (không chờ timeout 8s mỗi lần).
+_CB_FAILURE_THRESHOLD = 3
+_CB_OPEN_SECONDS = 300.0
+_CB_WINDOW_SECONDS = 60.0
+
+
+class _SourceCircuitBreaker:
+    """Circuit breaker đơn giản cho một nguồn cào free."""
+
+    def __init__(self) -> None:
+        self._failures: list[float] = []
+        self._open_until: float = 0.0
+
+    def allow(self) -> bool:
+        return time.monotonic() >= self._open_until
+
+    def record_failure(self) -> None:
+        now = time.monotonic()
+        self._failures = [t for t in self._failures if now - t <= _CB_WINDOW_SECONDS]
+        self._failures.append(now)
+        if len(self._failures) >= _CB_FAILURE_THRESHOLD:
+            self._open_until = now + _CB_OPEN_SECONDS
+            logger.warning(
+                "google_bridge_circuit_breaker_opened failures=%d open_seconds=%.0f",
+                len(self._failures),
+                _CB_OPEN_SECONDS,
+            )
+
+    def record_success(self) -> None:
+        self._failures = []
+
+
+_CB_GOOGLE_BRIDGE = _SourceCircuitBreaker()
 
 
 def _detect_category(title: str, text: str) -> str:
@@ -143,14 +182,20 @@ def scrape_threads_google_bridge(
     raw_posts: list[dict[str, Any]] = []
     now_str = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
-    try:
-        req = urllib.request.Request(rss_url, headers=_HEADERS)
-        with urllib.request.urlopen(req, timeout=8, context=_SSL_CTX) as resp:
-            xml_data = resp.read().decode("utf-8", errors="ignore")
-            raw_posts = parse_google_rss_xml(xml_data)
-            logger.info("google_threads_rss_fetched items=%d", len(raw_posts))
-    except Exception as e:
-        logger.warning("Lỗi fetch Google Threads RSS: %s", e)
+    # Circuit breaker: nếu Google Bridge đang mở mạch → bỏ qua, rớt tầng.
+    if _CB_GOOGLE_BRIDGE.allow():
+        try:
+            req = urllib.request.Request(rss_url, headers=_HEADERS)
+            with urllib.request.urlopen(req, timeout=8, context=_SSL_CTX) as resp:
+                xml_data = resp.read().decode("utf-8", errors="ignore")
+                raw_posts = parse_google_rss_xml(xml_data)
+                _CB_GOOGLE_BRIDGE.record_success()
+                logger.info("google_threads_rss_fetched items=%d", len(raw_posts))
+        except Exception as e:
+            logger.warning("Lỗi fetch Google Threads RSS: %s", e)
+            _CB_GOOGLE_BRIDGE.record_failure()
+    else:
+        logger.info("google_threads_rss_circuit_open_skipping")
 
     # Fallback dữ liệu chuyên sâu tuyển chọn nếu Google RSS tạm thời rỗng
     if not raw_posts:
@@ -180,19 +225,21 @@ def scrape_threads_google_bridge(
 
         vong_doi, growth, viral_score, forecast = _assess_lifecycle(clean_title, snippet, pub_date)
         category = _detect_category(clean_title, snippet)
-        
-        simulated_likes = 1200 + (idx * 310) % 1800
-        simulated_replies = 80 + (idx * 23) % 120
-        reach_str = f"{simulated_likes:,} tim | {simulated_replies:,} phản hồi"
 
-        cmts = [
-            f'@{author}: "{snippet[:110]}..."',
-            f'Cộng đồng Threads đang bàn luận sôi nổi về "#{short_kw}" ({pub_date})',
-        ]
+        # ADR-008: Google News RSS KHÔNG trả số like/reply thật. Không bịa số
+        # tương tác — đánh dấu is_live_scraped=False để downstream phân biệt
+        # được dữ liệu không có số liệu thật.
+        reach_str = "Không có số liệu tương tác (nguồn RSS)"
+
+        # ADR-008: KHÔNG bịa comment. RSS không trả comment thật → để rỗng.
+        cmts: list[str] = []
+
+        # id ổn định giữa các lần chạy (hashlib thay vì hash() randomized).
+        stable_id = hashlib.sha1(clean_title.encode("utf-8")).hexdigest()[:12]
 
         items_out.append(
             TrendItem(
-                id=f"threads_google_bridge_{idx}_{abs(hash(clean_title)) % 1000000}",
+                id=f"threads_google_bridge_{idx}_{stable_id}",
                 tieu_de=f"🧵 [THREADS REALTIME] {title_display}",
                 cum_tu_khoa_viral=short_kw or "Tâm sự Threads",
                 nguon_goc=nguon_goc,
@@ -215,7 +262,7 @@ def scrape_threads_google_bridge(
                 binh_luan_that_tiktok=cmts,
                 nen_tang_lan_toa=["Meta Threads"],
                 tu_khoa_hashtag=[f"#{clean_tag}", "#threads", "#fnbvietnam", "#trend"],
-                is_live_scraped=True,
+                is_live_scraped=False,
             )
         )
 

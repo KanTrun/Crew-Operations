@@ -72,6 +72,19 @@ def extract_reservation_entities(text: str) -> dict[str, Any]:
     if any(k in low for k in ("đúng rồi", "dung roi", "ok em", "ok nha", "chốt nha", "chot nha", "xác nhận", "xac nhan", "chuẩn rồi", "chuan roi", "đặt đi", "chốt đi", "ok")):
         data["is_confirmation"] = True
 
+    # 2b. "No email" signal — customer explicitly says they don't have Gmail/email.
+    #     We still book the table (don't lose the customer), but note that the
+    #     confirmation ticket is delivered via chat instead of email.
+    if any(k in low for k in (
+        "không có gmail", "khong co gmail", "không có email", "khong co email",
+        "không có mail", "khong co mail", "không dùng gmail", "khong dung gmail",
+        "không dùng email", "khong dung email", "chưa có gmail", "chua co gmail",
+        "chưa có email", "chua co email", "không có địa chỉ gmail", "khong co dia chi gmail",
+        "không có địa chỉ email", "khong co dia chi email", "không có mail", "khong co mail",
+        "mình không có", "em không có", "tôi không có", "không có gmail ạ", "khong co gmail a",
+    )):
+        data["no_email"] = True
+
     # 3. Party size (e.g. "4 người", "nhóm 6 bạn", "2 ng", "10 người")
     size_m = re.search(r"(\d+)\s*(?:người|ng|khách|bạn|chỗ|pax)", low)
     if size_m:
@@ -260,7 +273,7 @@ def handle_reservation(
     extracted = extract_reservation_entities(text)
 
     # Merge extracted details into state
-    for k in ("party_size", "phone", "email", "customer_name", "booking_datetime", "booking_time_iso", "time_display", "target_date_iso"):
+    for k in ("party_size", "phone", "email", "customer_name", "booking_datetime", "booking_time_iso", "time_display", "target_date_iso", "no_email"):
         if extracted.get(k) is not None:
             state[k] = extracted[k]
 
@@ -347,16 +360,23 @@ def handle_reservation(
 
             # Dispatch notifications to shift manager / Telegram
             if callable(notify_fn):
-                notify_fn(res)
+                try:
+                    notify_fn(res)
+                except Exception as ex:
+                    LOG.warning(f"Error calling notify_fn for reservation: {ex}")
 
             tables_str = ", ".join(res.get("table_ids") or [])
             table_info = f"bàn {tables_str} " if tables_str else "bàn "
             time_display = current_state.get("time_display") or booking_time_iso
-            email_note = (
-                f"\n📧 Phiếu xác nhận đặt bàn chi tiết đã được gửi tới Gmail ({email}) của mình rồi ạ!"
-                if email
-                else ""
-            )
+            if email:
+                email_note = (
+                    f"\n📧 Phiếu xác nhận đặt bàn chi tiết đã được gửi tới Gmail ({email}) của mình rồi ạ!"
+                )
+            else:
+                email_note = (
+                    "\n📋 Phiếu xác nhận đặt bàn của mình đang ở ngay trong tin nhắn này. "
+                    "Nếu sau này mình có Gmail, cứ nhắn lại để em gửi phiếu chi tiết qua email cho mình nhé ạ!"
+                )
             reply = (
                 f"Dạ {store_name} đã xác nhận giữ {table_info}cho nhóm mình ({party_size} người) "
                 f"vào lúc {time_display} rồi ạ! 🎉"
@@ -436,16 +456,21 @@ def handle_reservation(
     dialog_step = state.get("dialog_step", "EXTRACTING")
 
     # ── CASE 2: Customer Confirming Previous Summary OR All 4 Info Provided ──
+    # Email is strongly preferred (for care + confirmation ticket), but a customer
+    # who explicitly says they have no Gmail must NOT be stuck in a loop — we still
+    # book the table and deliver the ticket via chat instead.
+    no_email = bool(extracted.get("no_email") or state.get("no_email"))
     is_confirming_turn = dialog_step == "CONFIRMING" and (
         extracted.get("is_confirmation")
         or "đúng" in text.lower()
         or bool(extracted.get("email"))
+        or no_email
     )
     has_all_info = bool(
         (state.get("booking_datetime") or state.get("booking_time_iso"))
         and state.get("party_size")
         and state.get("phone")
-        and state.get("email")
+        and (state.get("email") or no_email)
     )
 
     if is_confirming_turn or has_all_info:
@@ -543,11 +568,19 @@ def handle_reservation(
 
     # Ask 2-Phase Confirmation and prompt for Gmail
     state["dialog_step"] = "CONFIRMING"
-    reply = (
-        f"Dạ em xin xác nhận lại thông tin đặt bàn của mình ạ: "
-        f"Bàn {state.get('party_size')} người, vào lúc {state.get('time_display')}, SĐT liên hệ {state.get('phone')}.\n"
-        f"Anh/chị cho em xin thêm địa chỉ Gmail để hệ thống chốt duyệt giữ bàn và gửi phiếu xác nhận đặt bàn kèm thông tin chi tiết qua email cho mình nhé ạ! 😊"
-    )
+    if no_email:
+        # Customer already said they have no Gmail — just ask for confirmation.
+        reply = (
+            f"Dạ em xin xác nhận lại thông tin đặt bàn của mình ạ: "
+            f"Bàn {state.get('party_size')} người, vào lúc {state.get('time_display')}, SĐT liên hệ {state.get('phone')}.\n"
+            f"Anh/chị xác nhận giúp em để em chốt giữ bàn ngay nhé ạ! 😊"
+        )
+    else:
+        reply = (
+            f"Dạ em xin xác nhận lại thông tin đặt bàn của mình ạ: "
+            f"Bàn {state.get('party_size')} người, vào lúc {state.get('time_display')}, SĐT liên hệ {state.get('phone')}.\n"
+            f"Anh/chị cho em xin thêm địa chỉ Gmail để hệ thống chốt duyệt giữ bàn và gửi phiếu xác nhận đặt bàn kèm thông tin chi tiết qua email cho mình nhé ạ! 😊"
+        )
     return ConciergeTicket(
         ticket_type="reservation",
         customer_message=text,

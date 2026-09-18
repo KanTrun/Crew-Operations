@@ -1,0 +1,38 @@
+{
+  "patterns": [
+    {
+      "pattern_id": "pat_ca_T6_toi",
+      "loai": "ca_doanh_thu",
+      "mo_ta": "Ca T6_toi doanh thu 500 vượt trội",
+      "do_tin_cay": 0.8,
+      "bang_chung": ["T6_toi"],
+      "nguon": "lich_su_doanh_thu"
+    },
+    {
+      "pattern_id": "pat_mon_matcha",
+      "loai": "mon_ban_chay",
+      "mo_ta": "Món matcha doanh thu 500 bán chạy",
+      "do_tin_cay": 0.8,
+      "bang_chung": ["matcha"],
+      "nguon": "lich_su_ban"
+    }
+  ],
+  "suggestions": [
+    {
+      "id": "pos_rule_1",
+      "cau": "Tăng cường nhân sự cho ca T6_toi do doanh thu vượt trội",
+      "dieu_kien": {"ca": "T6_toi"},
+      "bang_chung": ["T6_toi"],
+      "do_tin_cay": 0.8,
+      "trang_thai": "de_xuat"
+    },
+    {
+      "id": "pos_rule_2",
+      "cau": "Ưu tiên nguyên liệu và quảng bá món matcha do doanh thu cao",
+      "dieu_kien": {"mon": "matcha"},
+      "bang_chung": ["matcha"],
+      "do_tin_cay": 0.8,
+      "trang_thai": "de_xuat"
+    }
+  ]
+}

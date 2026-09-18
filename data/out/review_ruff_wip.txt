@@ -1,0 +1,2158 @@
+UP017 [*] Use `datetime.UTC` alias
+  --> apps\api\src\ca_api\interfaces\http\channels.py:17:11
+   |
+15 | except ImportError:
+16 |     from datetime import datetime, timezone
+17 |     UTC = timezone.utc
+   |           ^^^^^^^^^^^^
+18 | from pathlib import Path
+19 | from typing import Annotated, Any, cast
+   |
+help: Convert to `datetime.UTC` alias
+   |
+16 |     from datetime import datetime, timezone
+   -     UTC = timezone.utc
+17 +     UTC = UTC
+18 | from pathlib import Path
+   |
+
+E501 Line too long (107 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:134:101
+    |
+132 |     *, store_id: str, conversation_id: str, feedback_type: str, original: str = "",
+133 |     final: str = "", actor_user_id: str | None = None, actor_role: str = "quan_ly",
+134 |     send_status: str = "not_applicable", failure_code: str | None = None, generation_id: str | None = None,
+    |                                                                                                     ^^^^^^^
+135 | ) -> None:
+136 |     """Persist feedback only when the source generation is explicitly known."""
+    |
+
+E501 Line too long (126 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:147:101
+    |
+145 |         repository = AILearningRepository()
+146 |         generation = next(
+147 |             (item for item in repository.list("generation", store_id=store_id, limit=200) if item.get("id") == generation_id),
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+148 |             None,
+149 |         )
+    |
+
+E501 Line too long (105 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:156:101
+    |
+154 |         ).hexdigest()
+155 |         repository.save(AIFeedbackEvent(
+156 |             id=f"fb-feedback-{fingerprint[:24]}", store_id=store_id, generation_id=str(generation["id"]),
+    |                                                                                                     ^^^^^
+157 |             channel="facebook", type=feedback_type, original={"body": original} if original else None,
+158 |             final={"body": final} if final else None,
+    |
+
+E501 Line too long (102 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:157:101
+    |
+155 |         repository.save(AIFeedbackEvent(
+156 |             id=f"fb-feedback-{fingerprint[:24]}", store_id=store_id, generation_id=str(generation["id"]),
+157 |             channel="facebook", type=feedback_type, original={"body": original} if original else None,
+    |                                                                                                     ^^
+158 |             final={"body": final} if final else None,
+159 |             edited_fields=["body"] if original and final and original != final else [],
+    |
+
+E501 Line too long (106 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:160:101
+    |
+158 |             final={"body": final} if final else None,
+159 |             edited_fields=["body"] if original and final and original != final else [],
+160 |             materially_edited=bool(original and final and original != final), actor_user_id=actor_user_id,
+    |                                                                                                     ^^^^^^
+161 |             actor_role=actor_role, send_status=send_status, failure_code=failure_code,
+162 |             idempotency_key=f"fb-feedback:{fingerprint}", created_at=_now(),
+    |
+
+E501 Line too long (124 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:171:101
+    |
+169 |     """Use a deliberately small, explainable negative-signal vocabulary."""
+170 |     normalized = " ".join(text.lower().split())
+171 |     return any(term in normalized for term in ("không hài lòng", "that vong", "tệ quá", "quá tệ", "bực mình", "không đúng"))
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+E501 Line too long (156 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:303:101
+    |
+301 | …
+302 | …
+303 | … rồi ạ. Anh/chị vui lòng lấy mã mới trong mục «Ca của tôi» trên web rồi gửi lại giúp em nhé.",
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+304 | …
+305 | …e": sent.__dict__}
+    |
+
+E501 Line too long (185 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:308:101
+    |
+306 | …
+307 | …
+308 | …xem lịch» để biết ca của mình, hoặc nhắn xin nghỉ, đổi ca, báo trễ — em sẽ chuyển thẳng cho quản lý duyệt.",
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+309 | …
+310 | …ct__}
+    |
+
+E501 Line too long (237 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:316:101
+    |
+314 | …
+315 | …
+316 | …của tôi», bấm «Lấy mã kết nối» rồi nhắn lại đúng dòng «/bind <mã>» ở đây ạ. Sau đó em hỗ trợ xem lịch và nhận các yêu cầu nghỉ, đổi ca ngay.",
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+317 | …
+318 | …
+    |
+
+E501 Line too long (133 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:324:101
+    |
+322 |         sent = port.send(
+323 |             msg.external_user_id,
+324 |             f"Dạ đây là lịch ca tuần này của anh/chị ạ:\n{body}\nNếu cần xin nghỉ hay đổi ca, anh/chị cứ nhắn trực tiếp cho em nhé.",
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+325 |         )
+326 |         return {"ok": True, "hanh": "xem_lich", "nv_id": nv_id, "message": sent.__dict__}
+    |
+
+E501 Line too long (244 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:346:101
+    |
+344 | …
+345 | …
+346 | …m việc, nên tạm chưa cần quản lý duyệt. Nếu anh/chị muốn xin nghỉ, đổi ca, nhận thêm ca, báo đến trễ hay cập nhật lịch học, cứ nhắn rõ giúp em nhé.",
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+347 | …
+348 | …
+    |
+
+E501 Line too long (217 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:374:101
+    |
+372 | …
+373 | …
+374 | …lý sẽ xem và quyết trong thời gian sớm nhất; quyết định xong em sẽ thông báo lại ngay. Anh/chị cần thêm gì cứ nhắn em nhé.",
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+375 | …
+376 | …
+    |
+
+E501 Line too long (104 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:729:101
+    |
+728 |     prior_thread = next(
+729 |         (thread for thread in _page_store(store_id).get("threads", []) if thread.get("psid") == sender),
+    |                                                                                                     ^^^^
+730 |         None,
+731 |     )
+    |
+
+E501 Line too long (134 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:753:101
+    |
+751 |     )
+752 |
+753 |     if circuit_breaker_open(store_id=store_id, channel="facebook") or action in {"queue_review", "priority_review", "escalate_owner"}:
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+754 |         out = FBMessageOutput(
+755 |             action="queue_to_inbox",
+    |
+
+E501 Line too long (153 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:762:101
+    |
+760 | ….get("response"),
+761 | …
+762 | …er_open(store_id=store_id, channel="facebook") else f"fb_policy:{moderation.get('reason')}",
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+763 | …
+764 | …
+    |
+
+E501 Line too long (141 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:790:101
+    |
+788 | …
+789 | …
+790 | …:{mid}:{out.action}:{out.suggested_reply or out.response or ''}".encode()).hexdigest()
+    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+791 | …respond" else "queue_review"
+792 | …
+    |
+
+E501 Line too long (126 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:795:101
+    |
+793 |     learning_repository.save(AIGenerationRecord(
+794 |         id=generation_id, store_id=store_id, channel="facebook",
+795 |         conversation_id=sender, request_kind="facebook_message", external_event_hash=hashlib.sha256(mid.encode()).hexdigest(),
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+796 |         draft={"body": out.suggested_reply or out.response or "Đã chuyển quản lý xử lý."}, context_snapshot_hash=fingerprint,
+797 |         agent_version="ag-fbpage", prompt_version="fb-messenger-v1",
+    |
+
+E501 Line too long (125 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:796:101
+    |
+794 |         id=generation_id, store_id=store_id, channel="facebook",
+795 |         conversation_id=sender, request_kind="facebook_message", external_event_hash=hashlib.sha256(mid.encode()).hexdigest(),
+796 |         draft={"body": out.suggested_reply or out.response or "Đã chuyển quản lý xử lý."}, context_snapshot_hash=fingerprint,
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+797 |         agent_version="ag-fbpage", prompt_version="fb-messenger-v1",
+798 |         rule_version=",".join(str(rule.get("id")) for rule in active_rules) or "none",
+    |
+
+E501 Line too long (149 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:799:101
+    |
+797 | …nger-v1",
+798 | …in active_rules) or "none",
+799 | …gent_mode(), "model_id": "ag-fbpage", "temperature": 0, "tool_context_hash": fingerprint},
+    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+800 | …ration:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
+801 | …
+    |
+
+E501 Line too long (123 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:800:101
+    |
+798 |         rule_version=",".join(str(rule.get("id")) for rule in active_rules) or "none",
+799 |         rollout_bucket=rollout_bucket, model={"provider": agent_mode(), "model_id": "ag-fbpage", "temperature": 0, "tool_context_hash…
+800 |         policy_action=policy_action, idempotency_key=f"generation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^
+801 |     ))
+802 |     if moderation.get("review_id"):
+    |
+
+E501 Line too long (138 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:805:101
+    |
+803 | …iew_id"]), generation_id=generation_id)
+804 | …
+805 | … store_id=store_id, generation_id=f"facebook-{fingerprint[:24]}", channel="facebook",
+    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+806 | … 1.0}, aggregate_score=out.confidence,
+807 | …olicy_action,
+    |
+
+E501 Line too long (122 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:808:101
+    |
+806 |         scores={"accuracy": out.confidence, "safety": 1.0}, aggregate_score=out.confidence,
+807 |         passed=out.action == "auto_respond", action=policy_action,
+808 |         flags=[] if out.action == "auto_respond" else ["manager_review_required"], threshold_version="facebook-policy-v1",
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^
+809 |         calibration_version="deterministic-v1", sample_count=0, evaluation_window="per_messenger_event",
+810 |         evaluator="ag-fbpage-policy", idempotency_key=f"evaluation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
+    |
+
+E501 Line too long (104 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:809:101
+    |
+807 |         passed=out.action == "auto_respond", action=policy_action,
+808 |         flags=[] if out.action == "auto_respond" else ["manager_review_required"], threshold_version="facebook-policy-v1",
+809 |         calibration_version="deterministic-v1", sample_count=0, evaluation_window="per_messenger_event",
+    |                                                                                                     ^^^^
+810 |         evaluator="ag-fbpage-policy", idempotency_key=f"evaluation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
+811 |     ))
+    |
+
+E501 Line too long (124 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:810:101
+    |
+808 |         flags=[] if out.action == "auto_respond" else ["manager_review_required"], threshold_version="facebook-policy-v1",
+809 |         calibration_version="deterministic-v1", sample_count=0, evaluation_window="per_messenger_event",
+810 |         evaluator="ag-fbpage-policy", idempotency_key=f"evaluation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^
+811 |     ))
+    |
+
+E501 Line too long (104 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:814:101
+    |
+813 |     new_prefs = extract_customer_preferences([text])
+814 |     if new_prefs.get("ten_khach") or new_prefs.get("favorite_drinks") or new_prefs.get("special_notes"):
+    |                                                                                                     ^^^^
+815 |         def mut_prof(cur: dict[str, Any] | None, _p: dict[str, Any] = new_prefs) -> dict[str, Any]:
+816 |             return merge_customer_profile(cur, _p)
+    |
+
+E501 Line too long (107 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:950:101
+    |
+948 |         if not isinstance(entry, dict):
+949 |             continue
+950 |         # L0a — chỉ nhận entry đúng Page cấu hình (kế hoạch §6.3.5); thiếu id → cho qua (tương thích ngược)
+    |                                                                                                     ^^^^^^^
+951 |         if page_id_cfg and entry.get("id") and str(entry.get("id")) != page_id_cfg:
+952 |             continue
+    |
+
+E501 Line too long (127 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:983:101
+    |
+981 |                     title = str(postback.get("title") or "lựa chọn nhanh").strip()
+982 |                     text = f"[Khách chọn: {title}]"
+983 |                     event_id = str(postback.get("mid") or f"postback:{sender}:{ev.get('timestamp')}:{postback.get('payload')}")
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+984 |                 else:
+985 |                     first = attachments[0] if attachments else {}
+    |
+
+E501 Line too long (110 > 100)
+   --> apps\api\src\ca_api\interfaces\http\channels.py:990:101
+    |
+988 |                     attachment_type = str(first.get("type") or "tệp")
+989 |                     attachment_url = str(first.get("payload", {}).get("url") or "") or None
+990 |                     attachment_labels = {"image": "ảnh", "audio": "âm thanh", "video": "video", "file": "tệp"}
+    |                                                                                                     ^^^^^^^^^^
+991 |                     text = f"[Khách gửi {attachment_labels.get(attachment_type, 'tệp đính kèm')}]"
+992 |                     event_id = str(msg.get("mid") or f"attachment:{sender}:{ev.get('timestamp')}")
+    |
+
+E501 Line too long (106 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1017:101
+     |
+1015 |                         )
+1016 |                     except Exception as e:
+1017 |                         logger.warning("Attachment processing failed, falling back to basic queue: %s", e)
+     |                                                                                                     ^^^^^^
+1018 |                         queue_fb_non_text(
+1019 |                             psid=sender,
+     |
+
+E501 Line too long (105 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1121:101
+     |
+1119 |             # Analyze sentiment and classify action for comment
+1120 |             sentiment = analyze_comment_sentiment(text)
+1121 |             comment_action, flagged_reasons = classify_comment_action(text, sentiment, post_is_sensitive)
+     |                                                                                                     ^^^^^
+1122 |
+1123 |             moderation = moderate_fb_message(
+     |
+
+E501 Line too long (114 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1139:101
+     |
+1137 |             moderation["sentiment"] = sentiment
+1138 |             moderation["comment_action"] = comment_action
+1139 |             moderation["flagged_reasons"] = list(set((moderation.get("flagged_reasons") or []) + flagged_reasons))
+     |                                                                                                     ^^^^^^^^^^^^^^
+1140 |
+1141 |             # Mục 3b: comment chứa SĐT/địa chỉ riêng → ẩn ngay (bảo vệ PII,
+     |
+
+E501 Line too long (106 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1213:101
+     |
+1211 |                         else:
+1212 |                             fb_review_release_claim(int(review_id))
+1213 |                 elif agent_mode() == "live" and "review_id" in moderation and moderation.get("review_id"):
+     |                                                                                                     ^^^^^^
+1214 |                     try:
+1215 |                         comment_draft = await draft_llm_reply(
+     |
+
+E501 Line too long (108 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1307:101
+     |
+1305 |         s["nv_id"],
+1306 |         "page_reply",
+1307 |         {"thread_id": thread_id, "text": body.text.strip(), "graph_sent": graph_sent, "store_id": store_id},
+     |                                                                                                     ^^^^^^^^
+1308 |     )
+1309 |     return {"ok": True, "thread": found, "mode": _page_mode(), "graph_sent": graph_sent, "store_id": store_id}
+     |
+
+E501 Line too long (110 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1309:101
+     |
+1307 |         {"thread_id": thread_id, "text": body.text.strip(), "graph_sent": graph_sent, "store_id": store_id},
+1308 |     )
+1309 |     return {"ok": True, "thread": found, "mode": _page_mode(), "graph_sent": graph_sent, "store_id": store_id}
+     |                                                                                                     ^^^^^^^^^^
+
+E501 Line too long (114 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1391:101
+     |
+1389 |         )
+1390 |         if pair:
+1391 |             def mut_golden(items: list[dict[str, Any]] | None, _p: dict[str, Any] = pair) -> list[dict[str, Any]]:
+     |                                                                                                     ^^^^^^^^^^^^^^
+1392 |                 lst = [x for x in (items or []) if x.get("customer_msg") != _p["customer_msg"]]
+1393 |                 lst.insert(0, _p)
+     |
+
+E501 Line too long (112 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1399:101
+     |
+1398 |     conversation_id = str(found.get("psid") or found.get("sender_id") or thread_id)
+1399 |     manager_feedback = "manager_edit" if suggested_orig and clean_final != suggested_orig else "manager_approve"
+     |                                                                                                     ^^^^^^^^^^^^
+1400 |     _record_fb_feedback(
+1401 |         store_id=store_id, conversation_id=conversation_id, feedback_type=manager_feedback,
+     |
+
+E501 Line too long (104 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1402:101
+     |
+1400 |     _record_fb_feedback(
+1401 |         store_id=store_id, conversation_id=conversation_id, feedback_type=manager_feedback,
+1402 |         original=suggested_orig, final=clean_final, actor_user_id=s["nv_id"], actor_role=str(s["role"]),
+     |                                                                                                     ^^^^
+1403 |         generation_id=str(found.get("ai_generation_id") or "") or None,
+1404 |     )
+     |
+
+E501 Line too long (107 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1418:101
+     |
+1416 |         prefs = extract_customer_preferences([cust_msg])
+1417 |         psid = str(found.get("psid") or found.get("sender_id") or "")
+1418 |         if psid and (prefs.get("ten_khach") or prefs.get("favorite_drinks") or prefs.get("special_notes")):
+     |                                                                                                     ^^^^^^^
+1419 |             def mut_cust(cur: dict[str, Any] | None) -> dict[str, Any]:
+1420 |                 return merge_customer_profile(cur, prefs)
+     |
+
+E501 Line too long (101 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1465:101
+     |
+1463 |     page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+1464 |     store_id = resolve_store_id_from_page_id(page_id_cfg)
+1465 |     items = fb_review_list(status=status, assigned_role=visible_role, limit=limit, store_id=store_id)
+     |                                                                                                     ^
+1466 |     for it in items:
+1467 |         it["flagged_reasons"] = json.loads(it.get("flagged_reasons") or "[]")
+     |
+
+E501 Line too long (103 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1539:101
+     |
+1537 |             reason=body.ly_do or "chuyen_cap", notified_channel="in_app",
+1538 |         )
+1539 |         _audit(s["nv_id"], "fb_inbox_decide", {"id": item_id, "q": "chuyen_cap", "reason": body.ly_do})
+     |                                                                                                     ^^^
+1540 |         return {"ok": True, "item": fb_review_get(item_id), "sent": False}
+     |
+
+E501 Line too long (102 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1581:101
+     |
+1579 |         store_id=store_id, conversation_id=str(item.get("external_psid") or item_id),
+1580 |         feedback_type="send_success" if graph_sent else "send_failure", final=final_text,
+1581 |         actor_user_id=s["nv_id"], actor_role="system", send_status="sent" if graph_sent else "failed",
+     |                                                                                                     ^^
+1582 |         failure_code=None if graph_sent else "not_sent_or_replay",
+1583 |         generation_id=str(item.get("ai_generation_id") or "") or None,
+     |
+
+E501 Line too long (134 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1712:101
+     |
+1710 | …port)
+1711 | …
+1712 | …csat": report["csat_score"], "proposals": len(report["playbook_rule_proposals"])})
+     |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1713 | …
+     |
+
+E501 Line too long (101 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1762:101
+     |
+1760 |     kv_mutate(f"playbook_rules:{store_id}", mut_rules, [])
+1761 |
+1762 |     _audit(s["nv_id"], "apply_cskh_proposal", {"proposal_id": body.proposal_id, "title": body.title})
+     |                                                                                                     ^
+1763 |     return {"ok": True, "message": f"Đã bổ sung '{body.title}' vào cẩm nang quán thành công!"}
+     |
+
+E501 Line too long (105 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1807:101
+     |
+1805 |     page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
+1806 |     store_id = resolve_store_id_from_page_id(page_id_cfg)
+1807 |     return {"items": _page_store(store_id).get("drafts", []), "mode": _page_mode(), "store_id": store_id}
+     |                                                                                                     ^^^^^
+
+E501 Line too long (107 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1872:101
+     |
+1870 |                 "Ban la quan ly truyen thong cho quan ca phe 'Nhip Quan'. "
+1871 |                 "Hay viet mot bai dang Facebook tieng Viet 3-4 doan ngan, co emoji sinh dong, "
+1872 |                 "gioi thieu chu de theo yeu cau, ket thuc bang loi moi den quan (CTA), khong dung hashtag."
+     |                                                                                                     ^^^^^^^
+1873 |             )
+1874 |             user_p = f"Chu de: {topic}. Giong: {tone}."
+     |
+
+E501 Line too long (102 > 100)
+    --> apps\api\src\ca_api\interfaces\http\channels.py:1884:101
+     |
+1882 |         noi_dung = (
+1883 |             f"☕ Chào cả nhà! Hôm nay Nhịp Quán có gợi ý mới về '{topic}'. "
+1884 |             f"Ghé quán thưởng thức cùng không gian yên tĩnh và wifi mạnh nhé! Hẹn gặp bạn hôm nay! ✨"
+     |                                                                                                      ^
+1885 |         )
+     |
+
+UP017 [*] Use `datetime.UTC` alias
+  --> apps\api\src\ca_api\persist.py:19:11
+   |
+17 | except ImportError:
+18 |     from datetime import datetime, timedelta, timezone
+19 |     UTC = timezone.utc
+   |           ^^^^^^^^^^^^
+20 | from pathlib import Path
+21 | from typing import Any
+   |
+help: Convert to `datetime.UTC` alias
+   |
+18 |     from datetime import datetime, timedelta, timezone
+   -     UTC = timezone.utc
+19 +     UTC = UTC
+20 | from pathlib import Path
+   |
+
+E501 Line too long (104 > 100)
+  --> apps\api\src\ca_api\persist.py:35:101
+   |
+33 | try:
+34 |     import psycopg
+35 |     _DB_INTEGRITY_ERRORS: tuple[type[Exception], ...] = (sqlite3.IntegrityError, psycopg.IntegrityError)
+   |                                                                                                     ^^^^
+36 | except ImportError:
+37 |     _DB_INTEGRITY_ERRORS = (sqlite3.IntegrityError,)
+   |
+
+E501 Line too long (119 > 100)
+   --> apps\api\src\ca_api\persist.py:346:101
+    |
+344 |                 flagged_reasons TEXT NOT NULL DEFAULT '[]',
+345 |                 status TEXT NOT NULL DEFAULT 'pending'
+346 |                     CHECK (status IN ('pending','approved','edited_approved','rejected','sent','expired','auto_sent')),
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^
+347 |                 decided_by TEXT,
+348 |                 decided_at TEXT,
+    |
+
+E501 Line too long (106 > 100)
+   --> apps\api\src\ca_api\persist.py:358:101
+    |
+356 |             CREATE INDEX IF NOT EXISTS idx_fbrq_status ON fb_review_queue(status, created_at);
+357 |             CREATE INDEX IF NOT EXISTS idx_fbrq_role ON fb_review_queue(assigned_role, status);
+358 |             CREATE INDEX IF NOT EXISTS idx_fbrq_thread ON fb_review_queue(external_thread_id, created_at);
+    |                                                                                                     ^^^^^^
+359 |             CREATE TABLE IF NOT EXISTS fb_escalation_log (
+360 |                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+    |
+
+E501 Line too long (123 > 100)
+   --> apps\api\src\ca_api\persist.py:393:101
+    |
+391 |                 UNIQUE(store_id, idempotency_key)
+392 |             );
+393 |             CREATE INDEX IF NOT EXISTS idx_ai_generation_store_created ON ai_generation_records(store_id, created_at DESC);
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^
+394 |             CREATE TABLE IF NOT EXISTS ai_feedback_events (
+395 |                 id TEXT PRIMARY KEY, store_id TEXT NOT NULL, generation_id TEXT NOT NULL,
+    |
+
+E501 Line too long (118 > 100)
+   --> apps\api\src\ca_api\persist.py:396:101
+    |
+394 |             CREATE TABLE IF NOT EXISTS ai_feedback_events (
+395 |                 id TEXT PRIMARY KEY, store_id TEXT NOT NULL, generation_id TEXT NOT NULL,
+396 |                 channel TEXT NOT NULL, idempotency_key TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL,
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^
+397 |                 UNIQUE(store_id, idempotency_key)
+398 |             );
+    |
+
+E501 Line too long (136 > 100)
+   --> apps\api\src\ca_api\persist.py:399:101
+    |
+397 | …
+398 | …
+399 | …ck_store_generation ON ai_feedback_events(store_id, generation_id, created_at DESC);
+    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+400 | …s (
+401 | …OT NULL, generation_id TEXT NOT NULL,
+    |
+
+E501 Line too long (118 > 100)
+   --> apps\api\src\ca_api\persist.py:402:101
+    |
+400 |             CREATE TABLE IF NOT EXISTS ai_evaluations (
+401 |                 id TEXT PRIMARY KEY, store_id TEXT NOT NULL, generation_id TEXT NOT NULL,
+402 |                 channel TEXT NOT NULL, idempotency_key TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL,
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^
+403 |                 UNIQUE(store_id, idempotency_key)
+404 |             );
+    |
+
+E501 Line too long (134 > 100)
+   --> apps\api\src\ca_api\persist.py:405:101
+    |
+403 |                 UNIQUE(store_id, idempotency_key)
+404 |             );
+405 |             CREATE INDEX IF NOT EXISTS idx_ai_evaluation_store_generation ON ai_evaluations(store_id, generation_id, created_at DESC);
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+406 |             CREATE TABLE IF NOT EXISTS ai_rule_proposals (
+407 |                 id TEXT PRIMARY KEY, store_id TEXT NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL,
+    |
+
+E501 Line too long (105 > 100)
+   --> apps\api\src\ca_api\persist.py:407:101
+    |
+405 | …     CREATE INDEX IF NOT EXISTS idx_ai_evaluation_store_generation ON ai_evaluations(store_id, generation_id, created_at DESC);
+406 | …     CREATE TABLE IF NOT EXISTS ai_rule_proposals (
+407 | …         id TEXT PRIMARY KEY, store_id TEXT NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL,
+    |                                                                                               ^^^^^
+408 | …         version INTEGER NOT NULL, idempotency_key TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT N…
+409 | …         UNIQUE(store_id, idempotency_key)
+    |
+
+E501 Line too long (147 > 100)
+   --> apps\api\src\ca_api\persist.py:408:101
+    |
+406 | …
+407 | …L, channel TEXT NOT NULL, status TEXT NOT NULL,
+408 | …TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+409 | …
+410 | …
+    |
+
+E501 Line too long (129 > 100)
+   --> apps\api\src\ca_api\persist.py:411:101
+    |
+409 |                 UNIQUE(store_id, idempotency_key)
+410 |             );
+411 |             CREATE INDEX IF NOT EXISTS idx_ai_rule_proposal_store_status ON ai_rule_proposals(store_id, status, updated_at DESC);
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+412 |
+413 |             CREATE TABLE IF NOT EXISTS chat_conversations (
+    |
+
+E501 Line too long (108 > 100)
+   --> apps\api\src\ca_api\persist.py:423:101
+    |
+421 |                 updated_at TEXT NOT NULL
+422 |             );
+423 |             CREATE INDEX IF NOT EXISTS idx_chat_conv_store ON chat_conversations(store_id, updated_at DESC);
+    |                                                                                                     ^^^^^^^^
+424 |
+425 |             CREATE TABLE IF NOT EXISTS chat_participants (
+    |
+
+E501 Line too long (108 > 100)
+   --> apps\api\src\ca_api\persist.py:450:101
+    |
+448 |                 created_at TEXT NOT NULL
+449 |             );
+450 |             CREATE INDEX IF NOT EXISTS idx_chat_msg_conv ON chat_messages(conversation_id, created_at DESC);
+    |                                                                                                     ^^^^^^^^
+451 |
+452 |             CREATE TABLE IF NOT EXISTS chat_reactions (
+    |
+
+E501 Line too long (161 > 100)
+   --> apps\api\src\ca_api\persist.py:500:101
+    |
+498 | …
+499 | …
+500 | …dat_ban(idempotency_key) WHERE status NOT IN ('cancelled', 'no_show') AND idempotency_key != '';
+    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+501 | …n(store_id, booking_time, status);
+502 | …n(store_id, psid, status);
+    |
+
+E501 Line too long (119 > 100)
+   --> apps\api\src\ca_api\persist.py:527:101
+    |
+525 |                 created_at TEXT NOT NULL
+526 |             );
+527 |             CREATE INDEX IF NOT EXISTS idx_thong_bao_ca_user ON thong_bao_ca(store_id, nv_id, da_xem, created_at DESC);
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^
+528 |
+529 |             CREATE TABLE IF NOT EXISTS thong_bao_lich (
+    |
+
+E501 Line too long (123 > 100)
+   --> apps\api\src\ca_api\persist.py:542:101
+    |
+540 |                 UNIQUE(store_id, tuan_iso, su_kien, nv_id)
+541 |             );
+542 |             CREATE INDEX IF NOT EXISTS idx_thong_bao_lich_user ON thong_bao_lich(store_id, nv_id, da_xem, created_at DESC);
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^
+543 |             """
+544 |         )
+    |
+
+E501 Line too long (106 > 100)
+   --> apps\api\src\ca_api\persist.py:554:101
+    |
+552 |                 cx.execute(
+553 |                     """
+554 |                     INSERT INTO users(username, password_sha, role, nv_id, display_name, store_id, status)
+    |                                                                                                     ^^^^^^
+555 |                     VALUES (?,?,?,?,?,?,'active')
+556 |                     ON CONFLICT(username) DO NOTHING
+    |
+
+E501 Line too long (145 > 100)
+   --> apps\api\src\ca_api\persist.py:717:101
+    |
+715 | …
+716 | …
+717 | …irmations WHERE store_id=? AND nv_id=? AND tuan_iso=? ORDER BY updated_at DESC LIMIT 1",
+    |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+718 | …
+719 | …
+    |
+
+E501 Line too long (102 > 100)
+   --> apps\api\src\ca_api\persist.py:727:101
+    |
+725 |                 WHERE id=?
+726 |                 """,
+727 |                 (json.dumps(availability, ensure_ascii=False), status, source, now, str(existing[0])),
+    |                                                                                                     ^^
+728 |             )
+729 |         else:
+    |
+
+E501 Line too long (105 > 100)
+   --> apps\api\src\ca_api\persist.py:733:101
+    |
+731 |                 """
+732 |                 INSERT INTO availability_confirmations
+733 |                     (id, store_id, nv_id, tuan_iso, availability, status, source, created_at, updated_at)
+    |                                                                                                     ^^^^^
+734 |                 VALUES (?,?,?,?,?,?,?,?,?)
+735 |                 """,
+    |
+
+E501 Line too long (125 > 100)
+   --> apps\api\src\ca_api\persist.py:736:101
+    |
+734 |                 VALUES (?,?,?,?,?,?,?,?,?)
+735 |                 """,
+736 |                 (item_id, store_id, nv_id, tuan_iso, json.dumps(availability, ensure_ascii=False), status, source, now, now),
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+737 |             )
+    |
+
+E501 Line too long (101 > 100)
+   --> apps\api\src\ca_api\persist.py:752:101
+    |
+750 |                 """
+751 |                 INSERT INTO chat_conversations
+752 |                     (id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+    |                                                                                                     ^
+753 |                 VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING
+754 |                 """,
+    |
+
+E501 Line too long (131 > 100)
+   --> apps\api\src\ca_api\persist.py:791:101
+    |
+789 |         try:
+790 |             existing = cx.execute(
+791 |                 "SELECT id, version, status, fingerprint FROM schedule_runs WHERE store_id=? AND tuan_iso=? AND idempotency_key=?",
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+792 |                 (store_id, tuan_iso, idempotency_key),
+793 |             ).fetchone()
+    |
+
+E501 Line too long (153 > 100)
+   --> apps\api\src\ca_api\persist.py:796:101
+    |
+794 | …
+795 | …
+796 | …t(existing[1]), "status": str(existing[2]), "fingerprint": str(existing[3]), "reused": True}
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+797 | …
+798 | …hedule_runs WHERE store_id=? AND tuan_iso=?",
+    |
+
+E501 Line too long (106 > 100)
+   --> apps\api\src\ca_api\persist.py:798:101
+    |
+796 | …         return {"id": str(existing[0]), "version": int(existing[1]), "status": str(existing[2]), "fingerprint": str(existing[3]), "…
+797 | …     version_row = cx.execute(
+798 | …         "SELECT COALESCE(MAX(version), 0) + 1 FROM schedule_runs WHERE store_id=? AND tuan_iso=?",
+    |                                                                                               ^^^^^^
+799 | …         (store_id, tuan_iso),
+800 | …     ).fetchone()
+    |
+
+E501 Line too long (203 > 100)
+   --> apps\api\src\ca_api\persist.py:803:101
+    |
+801 | …
+802 | …
+803 | …put_snapshot, fingerprint, result_snapshot, idempotency_key, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+804 | …t, ensure_ascii=False, sort_keys=True), fingerprint, json.dumps(result_snapshot or {}, ensure_ascii=False, sort_keys=True), idempote…
+805 | …
+    |
+
+E501 Line too long (244 > 100)
+   --> apps\api\src\ca_api\persist.py:804:101
+    |
+802 | …
+803 | …hot, fingerprint, result_snapshot, idempotency_key, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+804 | …_ascii=False, sort_keys=True), fingerprint, json.dumps(result_snapshot or {}, ensure_ascii=False, sort_keys=True), idempotency_key, created_by, now),
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+805 | …
+806 | …
+    |
+
+E501 Line too long (108 > 100)
+   --> apps\api\src\ca_api\persist.py:810:101
+    |
+808 |             cx.execute("ROLLBACK")
+809 |             raise
+810 |     return {"id": run_id, "version": version, "status": status, "fingerprint": fingerprint, "reused": False}
+    |                                                                                                     ^^^^^^^^
+
+E501 Line too long (101 > 100)
+   --> apps\api\src\ca_api\persist.py:813:101
+    |
+813 | def schedule_run_update_result(run_id: str, *, status: str, result_snapshot: dict[str, Any]) -> None:
+    |                                                                                                     ^
+814 |     init_db()
+815 |     with _conn() as cx:
+    |
+
+E501 Line too long (178 > 100)
+   --> apps\api\src\ca_api\persist.py:826:101
+    |
+824 | …
+825 | …
+826 | …ot, fingerprint, result_snapshot, idempotency_key, created_by, created_at FROM schedule_runs WHERE id=?",
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+827 | …
+828 | …
+    |
+
+E501 Line too long (105 > 100)
+   --> apps\api\src\ca_api\persist.py:844:101
+    |
+842 |     with _conn() as cx:
+843 |         row = cx.execute(
+844 |             "SELECT id FROM schedule_runs WHERE store_id=? AND tuan_iso=? ORDER BY version DESC LIMIT 1",
+    |                                                                                                     ^^^^^
+845 |             (store_id, tuan_iso),
+846 |         ).fetchone()
+    |
+
+E501 Line too long (111 > 100)
+   --> apps\api\src\ca_api\persist.py:854:101
+    |
+852 |     with _conn() as cx:
+853 |         rows = cx.execute(
+854 |             "SELECT ca_id, nv_id FROM authoritative_assignments WHERE schedule_run_id=? ORDER BY ca_id, nv_id",
+    |                                                                                                     ^^^^^^^^^^^
+855 |             (schedule_run_id,),
+856 |         ).fetchall()
+    |
+
+E501 Line too long (103 > 100)
+   --> apps\api\src\ca_api\persist.py:867:101
+    |
+865 |     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+866 |     with _conn() as cx:
+867 |         cx.execute("DELETE FROM authoritative_assignments WHERE schedule_run_id=?", (schedule_run_id,))
+    |                                                                                                     ^^^
+868 |         for ca_id, nv_ids in assignments.items():
+869 |             for nv_id in nv_ids:
+    |
+
+E501 Line too long (121 > 100)
+   --> apps\api\src\ca_api\persist.py:876:101
+    |
+874 |                     VALUES (?,?,?,?,?,?,?)
+875 |                     """,
+876 |                     (f"assignment_{uuid.uuid4().hex}", schedule_run_id, store_id, tuan_iso, str(ca_id), str(nv_id), now),
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^
+877 |                 )
+    |
+
+E501 Line too long (140 > 100)
+   --> apps\api\src\ca_api\persist.py:899:101
+    |
+897 | …
+898 | …
+899 | …en_shift_id, store_id, nv_id, status, created_at, decided_at) VALUES (?,?,?,?,?,?,?)",
+    |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+900 | …id, nv_id, "accepted", claimed_at, claimed_at),
+901 | …
+    |
+
+E501 Line too long (101 > 100)
+   --> apps\api\src\ca_api\persist.py:900:101
+    |
+898 | …     cx.execute(
+899 | …         "INSERT INTO shift_applications(id, open_shift_id, store_id, nv_id, status, created_at, decided_at) VALUES (?,?,?,?,?,?,?)",
+900 | …         (application_id, open_shift_id, store_id, nv_id, "accepted", claimed_at, claimed_at),
+    |                                                                                               ^
+901 | …     )
+902 | …     cx.execute(
+    |
+
+E501 Line too long (115 > 100)
+   --> apps\api\src\ca_api\persist.py:903:101
+    |
+901 |             )
+902 |             cx.execute(
+903 |                 "UPDATE open_shifts SET status='claimed', claimed_by=?, claimed_at=? WHERE id=? AND status='open'",
+    |                                                                                                     ^^^^^^^^^^^^^^^
+904 |                 (nv_id, claimed_at, open_shift_id),
+905 |             )
+    |
+
+E501 Line too long (129 > 100)
+   --> apps\api\src\ca_api\persist.py:916:101
+    |
+914 |             cx.execute("ROLLBACK")
+915 |             raise
+916 |     return {"id": application_id, "open_shift_id": open_shift_id, "nv_id": nv_id, "status": "accepted", "claimed_at": claimed_at}
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+E501 Line too long (137 > 100)
+   --> apps\api\src\ca_api\persist.py:936:101
+    |
+934 | …
+935 | …
+936 | …by, claimed_at FROM open_shifts WHERE store_id=? AND schedule_run_id=? AND ca_id=?",
+    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+937 | …
+938 | …
+    |
+
+E501 Line too long (125 > 100)
+   --> apps\api\src\ca_api\persist.py:939:101
+    |
+937 |             (store_id, schedule_run_id, ca_id),
+938 |         ).fetchone()
+939 |     return {"id": str(row[0]), "status": str(row[1]), "deadline_at": str(row[2]), "claimed_by": row[3], "claimed_at": row[4]}
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+E501 Line too long (113 > 100)
+   --> apps\api\src\ca_api\persist.py:942:101
+    |
+942 | def open_shift_list(store_id: str, *, tuan_iso: str | None = None, status: str = "open") -> list[dict[str, Any]]:
+    |                                                                                                     ^^^^^^^^^^^^^
+943 |     init_db()
+944 |     with _conn() as cx:
+    |
+
+E501 Line too long (167 > 100)
+   --> apps\api\src\ca_api\persist.py:945:101
+    |
+943 | …
+944 | …
+945 | …, deadline_at, claimed_by, claimed_at, escalated_at FROM open_shifts WHERE store_id=? AND status=?"
+    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+946 | …
+947 | …
+    |
+
+E501 Line too long (225 > 100)
+   --> apps\api\src\ca_api\persist.py:952:101
+    |
+950 | …
+951 | …
+952 | …tr(row[3]), "status": str(row[4]), "deadline_at": str(row[5]), "claimed_by": row[6], "claimed_at": row[7], "escalated_at": row[8]}
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+953 | …
+954 | …
+    |
+
+E501 Line too long (121 > 100)
+   --> apps\api\src\ca_api\persist.py:961:101
+    |
+959 |     with _conn() as cx:
+960 |         result = cx.execute(
+961 |             "UPDATE open_shifts SET status='resolved' WHERE store_id=? AND tuan_iso=? AND status IN ('open', 'claimed')",
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^
+962 |             (store_id, tuan_iso),
+963 |         )
+    |
+
+E501 Line too long (110 > 100)
+   --> apps\api\src\ca_api\persist.py:982:101
+    |
+980 |         for row in rows:
+981 |             cx.execute(
+982 |                 "UPDATE open_shifts SET escalated_at=? WHERE id=? AND status='open' AND escalated_at IS NULL",
+    |                                                                                                     ^^^^^^^^^^
+983 |                 (escalated_at, str(row[0])),
+984 |             )
+    |
+
+E501 Line too long (102 > 100)
+   --> apps\api\src\ca_api\persist.py:986:101
+    |
+984 |             )
+985 |     return [
+986 |         {"id": str(row[0]), "tuan_iso": str(row[1]), "ca_id": str(row[2]), "deadline_at": str(row[3])}
+    |                                                                                                     ^^
+987 |         for row in rows
+988 |     ]
+    |
+
+E501 Line too long (101 > 100)
+   --> apps\api\src\ca_api\persist.py:996:101
+    |
+994 |     if not eligible:
+995 |         return None
+996 |     return shift_application_claim_first(open_shift_id=open_shift_id, store_id=store_id, nv_id=nv_id)
+    |                                                                                                     ^
+
+E501 Line too long (211 > 100)
+    --> apps\api\src\ca_api\persist.py:1024:101
+     |
+1022 | …
+1023 | …
+1024 | …ame=sessions.username) WHERE store_id='quan_01' AND EXISTS (SELECT 1 FROM users WHERE users.username=sessions.username)")
+     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1025 | …
+1026 | …
+     |
+
+E501 Line too long (101 > 100)
+    --> apps\api\src\ca_api\persist.py:1027:101
+     |
+1025 |     evaluation_cols = {r[1] for r in cx.execute("PRAGMA table_info(ai_evaluations)")}
+1026 |     if "idempotency_key" not in evaluation_cols:
+1027 |         _safe_alter("ALTER TABLE ai_evaluations ADD COLUMN idempotency_key TEXT NOT NULL DEFAULT ''")
+     |                                                                                                     ^
+1028 |         _safe_alter("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_evaluation_store_idem ON ai_evaluations(store_id, idempotency_key)")
+1029 |     proposal_cols = {r[1] for r in cx.execute("PRAGMA table_info(ai_rule_proposals)")}
+     |
+
+E501 Line too long (130 > 100)
+    --> apps\api\src\ca_api\persist.py:1028:101
+     |
+1026 |     if "idempotency_key" not in evaluation_cols:
+1027 |         _safe_alter("ALTER TABLE ai_evaluations ADD COLUMN idempotency_key TEXT NOT NULL DEFAULT ''")
+1028 |         _safe_alter("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_evaluation_store_idem ON ai_evaluations(store_id, idempotency_key)")
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1029 |     proposal_cols = {r[1] for r in cx.execute("PRAGMA table_info(ai_rule_proposals)")}
+1030 |     if "idempotency_key" not in proposal_cols:
+     |
+
+E501 Line too long (104 > 100)
+    --> apps\api\src\ca_api\persist.py:1031:101
+     |
+1029 |     proposal_cols = {r[1] for r in cx.execute("PRAGMA table_info(ai_rule_proposals)")}
+1030 |     if "idempotency_key" not in proposal_cols:
+1031 |         _safe_alter("ALTER TABLE ai_rule_proposals ADD COLUMN idempotency_key TEXT NOT NULL DEFAULT ''")
+     |                                                                                                     ^^^^
+1032 |         _safe_alter("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_rule_proposal_store_idem ON ai_rule_proposals(store_id, idempotency_ke…
+1033 |     review_cols = {r[1] for r in cx.execute("PRAGMA table_info(fb_review_queue)")}
+     |
+
+E501 Line too long (136 > 100)
+    --> apps\api\src\ca_api\persist.py:1032:101
+     |
+1030 | …
+1031 | …D COLUMN idempotency_key TEXT NOT NULL DEFAULT ''")
+1032 | …S idx_ai_rule_proposal_store_idem ON ai_rule_proposals(store_id, idempotency_key)")
+     |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1033 | …able_info(fb_review_queue)")}
+1034 | …
+     |
+
+E501 Line too long (102 > 100)
+    --> apps\api\src\ca_api\persist.py:1039:101
+     |
+1037 |         _safe_alter("ALTER TABLE fb_review_queue ADD COLUMN event_at TEXT")
+1038 |     if "store_id" not in review_cols:
+1039 |         _safe_alter("ALTER TABLE fb_review_queue ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
+     |                                                                                                     ^^
+1040 |
+1041 |     ccols = {r[1] for r in cx.execute("PRAGMA table_info(chat_conversations)")}
+     |
+
+E501 Line too long (108 > 100)
+    --> apps\api\src\ca_api\persist.py:1060:101
+     |
+1058 |                 updated_at TEXT NOT NULL
+1059 |             );
+1060 |             CREATE INDEX IF NOT EXISTS idx_chat_conv_store ON chat_conversations(store_id, updated_at DESC);
+     |                                                                                                     ^^^^^^^^
+1061 |             CREATE TABLE IF NOT EXISTS chat_participants (
+1062 |                 conversation_id TEXT NOT NULL,
+     |
+
+E501 Line too long (108 > 100)
+    --> apps\api\src\ca_api\persist.py:1085:101
+     |
+1083 |                 created_at TEXT NOT NULL
+1084 |             );
+1085 |             CREATE INDEX IF NOT EXISTS idx_chat_msg_conv ON chat_messages(conversation_id, created_at DESC);
+     |                                                                                                     ^^^^^^^^
+1086 |             CREATE TABLE IF NOT EXISTS chat_reactions (
+1087 |                 message_id TEXT NOT NULL,
+     |
+
+E501 Line too long (104 > 100)
+    --> apps\api\src\ca_api\persist.py:1119:101
+     |
+1117 |         _safe_alter("ALTER TABLE copilot_audit_log ADD COLUMN controller_user_id TEXT")
+1118 |     _safe_alter(
+1119 |         "CREATE INDEX IF NOT EXISTS idx_copilot_audit_agent ON copilot_audit_log(agent_name, timestamp)"
+     |                                                                                                     ^^^^
+1120 |     )
+     |
+
+E501 Line too long (175 > 100)
+    --> apps\api\src\ca_api\persist.py:1276:101
+     |
+1274 | …
+1275 | …?)",
+1276 | …iled", json.dumps({"entity_type": "user", "entity_id": username.strip().lower()}, ensure_ascii=False)),
+     |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1277 | …
+1278 | …
+     |
+
+E501 Line too long (108 > 100)
+    --> apps\api\src\ca_api\persist.py:1281:101
+     |
+1279 |         token = uuid.uuid4().hex
+1280 |         cx.execute(
+1281 |             "INSERT INTO sessions(token, username, role, nv_id, store_id, created_at) VALUES (?,?,?,?,?,?)",
+     |                                                                                                     ^^^^^^^^
+1282 |             (token, row[0], row[1], row[2], row[5], datetime.now(UTC).isoformat()),
+1283 |         )
+     |
+
+E501 Line too long (166 > 100)
+    --> apps\api\src\ca_api\persist.py:1286:101
+     |
+1284 | …
+1285 | …?)",
+1286 | …on.dumps({"entity_type": "session", "entity_id": token, "username": row[0]}, ensure_ascii=False)),
+     |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1287 | …
+1288 | …
+     |
+
+E501 Line too long (102 > 100)
+    --> apps\api\src\ca_api\persist.py:1353:101
+     |
+1351 |             cx.execute(
+1352 |                 """
+1353 |                 INSERT INTO users(username, password_sha, role, nv_id, display_name, store_id, status)
+     |                                                                                                     ^^
+1354 |                 VALUES (?,?,?,?,?,?,'active')
+1355 |                 """,
+     |
+
+E501 Line too long (112 > 100)
+    --> apps\api\src\ca_api\persist.py:1360:101
+     |
+1358 |             token = uuid.uuid4().hex
+1359 |             cx.execute(
+1360 |                 "INSERT INTO sessions(token, username, role, nv_id, store_id, created_at) VALUES (?,?,?,?,?,?)",
+     |                                                                                                     ^^^^^^^^^^^^
+1361 |                 (token, u, VAI_TU_DANG_KY, nv, store_id, datetime.now(UTC).isoformat()),
+1362 |             )
+     |
+
+E501 Line too long (127 > 100)
+    --> apps\api\src\ca_api\persist.py:1369:101
+     |
+1367 |             cx.execute(
+1368 |                 """
+1369 |                 INSERT INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1370 |                 VALUES (?,?,?,?,?,TRUE,?,?)
+1371 |                 ON CONFLICT(id) DO NOTHING
+     |
+
+E501 Line too long (110 > 100)
+    --> apps\api\src\ca_api\persist.py:1373:100
+     |
+1371 |                 ON CONFLICT(id) DO NOTHING
+1372 |                 """,
+1373 |                 (conv_general_id, store_id, "general", "☕ NHỊP QUÁN · Hội Quán Chung", "", now_iso, now_iso),
+     |                                                                                                     ^^^^^^^^^^
+1374 |             )
+1375 |             cx.execute(
+     |
+
+E501 Line too long (111 > 100)
+    --> apps\api\src\ca_api\persist.py:1387:101
+     |
+1385 |             cx.execute(
+1386 |                 """
+1387 |                 INSERT INTO chat_messages(id, conversation_id, sender_id, type, content, is_unsent, created_at)
+     |                                                                                                     ^^^^^^^^^^^
+1388 |                 VALUES (?,?,'system','system',?,FALSE,?)
+1389 |                 ON CONFLICT(id) DO NOTHING
+     |
+
+E501 Line too long (107 > 100)
+    --> apps\api\src\ca_api\persist.py:1407:101
+     |
+1405 |             cx.execute("ROLLBACK")
+1406 |             raise
+1407 |     return {"token": token, "role": VAI_TU_DANG_KY, "nv_id": nv, "display_name": ten, "store_id": store_id}
+     |                                                                                                     ^^^^^^^
+
+E501 Line too long (116 > 100)
+    --> apps\api\src\ca_api\persist.py:1444:101
+     |
+1442 |             cx.execute("DELETE FROM sessions WHERE token=?", (raw,))
+1443 |             return None
+1444 |         return {"username": row[0], "role": row[1], "nv_id": row[2], "email": str(row[3] or ""), "store_id": row[4]}
+     |                                                                                                     ^^^^^^^^^^^^^^^^
+
+E501 Line too long (102 > 100)
+    --> apps\api\src\ca_api\persist.py:1711:101
+     |
+1711 | def thong_bao_lich_ack(notification_id: str, nv_id: str, *, store_id: str = DEFAULT_STORE_ID) -> bool:
+     |                                                                                                     ^^
+1712 |     init_db()
+1713 |     with _conn() as cx:
+     |
+
+UP017 [*] Use `datetime.UTC` alias
+    --> apps\api\src\ca_api\persist.py:2424:15
+     |
+2422 |     except ImportError:
+2423 |         from datetime import datetime, timezone
+2424 |         UTC = timezone.utc
+     |               ^^^^^^^^^^^^
+2425 |
+2426 |     init_db()
+     |
+help: Convert to `datetime.UTC` alias
+     |
+2423 |         from datetime import datetime, timezone
+     -         UTC = timezone.utc
+2424 +         UTC = UTC
+2425 |
+     |
+
+E501 Line too long (111 > 100)
+    --> apps\api\src\ca_api\persist.py:2522:101
+     |
+2522 | def fb_try_claim_scoped_event(*, store_id: str, page_id: str, event_type: str, external_event_id: str) -> bool:
+     |                                                                                                     ^^^^^^^^^^^
+2523 |     """Atomically claim one Facebook event in its tenant/Page/type scope."""
+2524 |     if not all(value.strip() for value in (store_id, page_id, event_type, external_event_id)):
+     |
+
+E501 Line too long (115 > 100)
+    --> apps\api\src\ca_api\persist.py:2526:101
+     |
+2524 |     if not all(value.strip() for value in (store_id, page_id, event_type, external_event_id)):
+2525 |         return False
+2526 |     idempotency_key = hashlib.sha256(f"{store_id}:{page_id}:{event_type}:{external_event_id}".encode()).hexdigest()
+     |                                                                                                     ^^^^^^^^^^^^^^^
+2527 |     init_db()
+2528 |     with _conn() as cx:
+     |
+
+E501 Line too long (186 > 100)
+    --> apps\api\src\ca_api\persist.py:2530:101
+     |
+2528 | …
+2529 | …
+2530 | … event_type, external_event_id, processed_at) VALUES (?,?,?,?,?,?) ON CONFLICT(idempotency_key) DO NOTHING",
+     |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2531 | …, _iso_now()),
+2532 | …
+     |
+
+E501 Line too long (165 > 100)
+    --> apps\api\src\ca_api\persist.py:2536:101
+     |
+2536 | …back": "ai_feedback_events", "evaluation": "ai_evaluations", "rule_proposal": "ai_rule_proposals"}
+     |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+E501 Line too long (136 > 100)
+    --> apps\api\src\ca_api\persist.py:2540:101
+     |
+2539 | …store_id: str, generation_id: str) -> bool:
+2540 | …cords WHERE store_id=? AND id=?", (store_id, generation_id)).fetchone() is not None
+     |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+E501 Line too long (132 > 100)
+    --> apps\api\src\ca_api\persist.py:2548:101
+     |
+2546 |         raise ValueError("ai_learning_record_invalid")
+2547 |     try:
+2548 |         store_id, record_id, channel, created_at = (str(record[key]).strip() for key in ("store_id", "id", "channel", "created_at"))
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2549 |     except (KeyError, TypeError):
+2550 |         raise ValueError("ai_learning_record_invalid") from None
+     |
+
+E501 Line too long (282 > 100)
+    --> apps\api\src\ca_api\persist.py:2557:101
+     |
+2555 | …
+2556 | …
+2557 | …ncy_key, payload, created_at) VALUES (?,?,?,?,?,?) ON CONFLICT(store_id, idempotency_key) DO NOTHING", (record_id, store_id, channel, str(record["idempotency_key"]), payload, created_at))
+     |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2558 | …
+2559 | …ation_id"])):
+     |
+
+E501 Line too long (108 > 100)
+    --> apps\api\src\ca_api\persist.py:2559:101
+     |
+2557 | …         cur = cx.execute("INSERT INTO ai_generation_records(id, store_id, channel, idempotency_key, payload, created_at) VALUES (?…
+2558 | …     elif kind == "feedback":
+2559 | …         if not _ai_generation_exists(cx, store_id=store_id, generation_id=str(record["generation_id"])):
+     |                                                                                                   ^^^^^^^^
+2560 | …             raise ValueError("ai_learning_cross_tenant_generation")
+2561 | …         cur = cx.execute("INSERT INTO ai_feedback_events(id, store_id, generation_id, channel, idempotency_key, payload, created_a…
+     |
+
+E501 Line too long (326 > 100)
+    --> apps\api\src\ca_api\persist.py:2561:101
+     |
+2559 | …ation_id"])):
+2560 | …
+2561 | …el, idempotency_key, payload, created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(store_id, idempotency_key) DO NOTHING", (record_id, store_id, str(record["generation_id"]), channel, str(record["idempotency_key"]), payload, created_at))
+     |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2562 | …
+2563 | …ation_id"])):
+     |
+
+E501 Line too long (108 > 100)
+    --> apps\api\src\ca_api\persist.py:2563:101
+     |
+2561 | …         cur = cx.execute("INSERT INTO ai_feedback_events(id, store_id, generation_id, channel, idempotency_key, payload, created_a…
+2562 | …     elif kind == "evaluation":
+2563 | …         if not _ai_generation_exists(cx, store_id=store_id, generation_id=str(record["generation_id"])):
+     |                                                                                                   ^^^^^^^^
+2564 | …             raise ValueError("ai_learning_cross_tenant_generation")
+2565 | …         cur = cx.execute("INSERT INTO ai_evaluations(id, store_id, generation_id, channel, idempotency_key, payload, created_at) V…
+     |
+
+E501 Line too long (322 > 100)
+    --> apps\api\src\ca_api\persist.py:2565:101
+     |
+2563 | …ation_id"])):
+2564 | …
+2565 | …idempotency_key, payload, created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(store_id, idempotency_key) DO NOTHING", (record_id, store_id, str(record["generation_id"]), channel, str(record["idempotency_key"]), payload, created_at))
+     |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2566 | …
+2567 | …
+     |
+
+E501 Line too long (149 > 100)
+    --> apps\api\src\ca_api\persist.py:2571:101
+     |
+2569 | …ing")
+2570 | …ds)
+2571 | …events WHERE store_id=? AND id IN ({placeholders})", [store_id, *evidence_ids]).fetchall()
+     |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2572 | …e_ids):
+2573 | …evidence")
+     |
+
+E501 Line too long (402 > 100)
+    --> apps\api\src\ca_api\persist.py:2574:101
+     |
+2572 | …
+2573 | …
+2574 | …ion, idempotency_key, payload, created_at, update…oad, created_at, str(record["updated_at"])))
+     |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^…^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2575 | …
+     |
+
+E501 Line too long (175 > 100)
+    --> apps\api\src\ca_api\persist.py:2584:101
+     |
+2582 | …
+2583 | …
+2584 | …d]} WHERE store_id=? ORDER BY created_at DESC LIMIT ?", (store_id, max(1, min(limit, 200)))).fetchall()
+     |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2585 | …
+     |
+
+E501 Line too long (104 > 100)
+    --> apps\api\src\ca_api\persist.py:2637:101
+     |
+2635 | ) -> dict[str, Any] | None:
+2636 |     """Atomically apply a legal, tenant-scoped human rule lifecycle transition."""
+2637 |     if not all(value.strip() for value in (store_id, proposal_id, target_status, actor_id, updated_at)):
+     |                                                                                                     ^^^^
+2638 |         raise ValueError("ai_learning_transition_invalid")
+2639 |     init_db()
+     |
+
+E501 Line too long (116 > 100)
+    --> apps\api\src\ca_api\persist.py:2661:101
+     |
+2659 |         payload = json.dumps(proposal, ensure_ascii=False, separators=(",", ":"))
+2660 |         cur = cx.execute(
+2661 |             "UPDATE ai_rule_proposals SET status=?, payload=?, updated_at=? WHERE store_id=? AND id=? AND status=?",
+     |                                                                                                     ^^^^^^^^^^^^^^^^
+2662 |             (target_status, payload, updated_at, store_id, proposal_id, current_status),
+2663 |         )
+     |
+
+E501 Line too long (135 > 100)
+    --> apps\api\src\ca_api\persist.py:2672:101
+     |
+2670 | …
+2671 | …
+2672 | …{}).get("priority", 0)), str(rule.get("created_at", "")), str(rule.get("id", ""))),
+     |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2673 | …
+     |
+
+E501 Line too long (221 > 100)
+    --> apps\api\src\ca_api\persist.py:2685:101
+     |
+2683 | …
+2684 | …
+2685 | …OM {table} WHERE store_id=? ORDER BY created_at, id", (store_id,)).fetchall()] for kind, table in _AI_LEARNING_TABLES.items()}
+     |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2686 | …
+2687 | …
+     |
+
+E501 Line too long (102 > 100)
+    --> apps\api\src\ca_api\persist.py:2691:101
+     |
+2689 |             raise
+2690 |     snapshot = {"schema_version": 1, "store_id": store_id, "records": records}
+2691 |     payload = json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+     |                                                                                                     ^^
+2692 |     return {"snapshot": snapshot, "checksum_sha256": hashlib.sha256(payload).hexdigest()}
+     |
+
+E501 Line too long (112 > 100)
+    --> apps\api\src\ca_api\persist.py:2700:101
+     |
+2699 |     backup = ai_learning_snapshot(store_id=store_id)
+2700 |     output_dir = directory or Path(os.environ.get("NHIPQUAN_AI_LEARNING_BACKUP_DIR", ROOT / "data" / "backups"))
+     |                                                                                                     ^^^^^^^^^^^^
+2701 |     require_encrypted_data_path(output_dir)
+2702 |     output_dir.mkdir(parents=True, exist_ok=True)
+     |
+
+E501 Line too long (105 > 100)
+    --> apps\api\src\ca_api\persist.py:2714:101
+     |
+2712 |         "store_id": store_id,
+2713 |         "store_coverage": [store_id],
+2714 |         "record_counts": {kind: len(records) for kind, records in backup["snapshot"]["records"].items()},
+     |                                                                                                     ^^^^^
+2715 |         "checksum_sha256": backup["checksum_sha256"],
+2716 |         "snapshot_file": snapshot_path.name,
+     |
+
+E501 Line too long (126 > 100)
+    --> apps\api\src\ca_api\persist.py:2718:101
+     |
+2716 |         "snapshot_file": snapshot_path.name,
+2717 |     }
+2718 |     for path, content in ((snapshot_path, snapshot_payload), (manifest_path, json.dumps(manifest, indent=2, sort_keys=True))):
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2719 |         temporary = path.with_suffix(f"{path.suffix}.tmp")
+2720 |         temporary.write_text(content, encoding="utf-8")
+     |
+
+E501 Line too long (129 > 100)
+    --> apps\api\src\ca_api\persist.py:2729:101
+     |
+2727 |     snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+2728 |     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+2729 |     digest = hashlib.sha256(json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2730 |     return bool(
+2731 |         manifest.get("backup_format_version") == 1
+     |
+
+E501 Line too long (114 > 100)
+    --> apps\api\src\ca_api\persist.py:2931:101
+     |
+2929 |     with _conn() as cx:
+2930 |         cx.execute(
+2931 |             "INSERT INTO fb_escalation_log(review_queue_id, escalated_to, reason, notified_channel, notified_at) "
+     |                                                                                                     ^^^^^^^^^^^^^^
+2932 |             "VALUES (?,?,?,?,?)",
+2933 |             (review_queue_id, escalated_to, reason, notified_channel, _iso_now()),
+     |
+
+E501 Line too long (118 > 100)
+    --> apps\api\src\ca_api\persist.py:3005:100
+     |
+3004 | def _seed_chat_neu_trong(cx: sqlite3.Connection) -> None:
+3005 |     """Tạo phòng chat chung mặc định '☕ NHỊP QUÁN · Hội Quán Chung' (is_locked=1) và mời toàn bộ nhân viên active."""
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^
+3006 |     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+3007 |     conv_id = f"conv_general_{DEFAULT_STORE_ID}"
+     |
+
+E501 Line too long (119 > 100)
+    --> apps\api\src\ca_api\persist.py:3010:101
+     |
+3008 |     cx.execute(
+3009 |         """
+3010 |         INSERT INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^
+3011 |         VALUES (?,?,?,?,?,TRUE,?,?)
+3012 |         ON CONFLICT(id) DO NOTHING
+     |
+
+E501 Line too long (112 > 100)
+    --> apps\api\src\ca_api\persist.py:3016:101
+     |
+3014 |         (conv_id, DEFAULT_STORE_ID, "general", "☕ NHỊP QUÁN · Hội Quán Chung", "", now, now),
+3015 |     )
+3016 |     users = cx.execute("SELECT nv_id, role, status FROM users WHERE store_id=?", (DEFAULT_STORE_ID,)).fetchall()
+     |                                                                                                     ^^^^^^^^^^^^
+3017 |     for nv, role, st in users:
+3018 |         if st == "inactive":
+     |
+
+E501 Line too long (110 > 100)
+    --> apps\api\src\ca_api\persist.py:3029:101
+     |
+3027 |             (conv_id, nv, part_role, "active", now),
+3028 |         )
+3029 |     has_msg = cx.execute("SELECT 1 FROM chat_messages WHERE conversation_id=? LIMIT 1", (conv_id,)).fetchone()
+     |                                                                                                     ^^^^^^^^^^
+3030 |     if not has_msg:
+3031 |         msg_id = f"msg_{uuid.uuid4().hex[:12]}"
+     |
+
+E501 Line too long (107 > 100)
+    --> apps\api\src\ca_api\persist.py:3034:101
+     |
+3032 |         cx.execute(
+3033 |             """
+3034 |             INSERT INTO chat_messages(id, conversation_id, sender_id, type, content, is_unsent, created_at)
+     |                                                                                                     ^^^^^^^
+3035 |             VALUES (?,?,'system','system',?,FALSE,?)
+3036 |             ON CONFLICT(id) DO NOTHING
+     |
+
+E501 Line too long (147 > 100)
+    --> apps\api\src\ca_api\persist.py:3041:99
+     |
+3039 | …
+3040 | …
+3041 | …án NHỊP QUÁN! ☕✨ Trao đổi ca làm việc, hỗ trợ quầy, pha chế và thông báo tại đây nhé.",
+     |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3042 | …
+3043 | …
+     |
+
+E501 Line too long (104 > 100)
+    --> apps\api\src\ca_api\persist.py:3082:101
+     |
+3080 |     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+3081 |     with _conn() as cx:
+3082 |         user = cx.execute("SELECT username, display_name FROM users WHERE nv_id=?", (nv_id,)).fetchone()
+     |                                                                                                     ^^^^
+3083 |         if not user:
+3084 |             return False
+     |
+
+E501 Line too long (113 > 100)
+    --> apps\api\src\ca_api\persist.py:3098:101
+     |
+3096 |         cx.execute(
+3097 |             "INSERT INTO audit(at, ai, hanh, payload) VALUES (?,?,?,?)",
+3098 |             (now, "system", "user_deactivate", json.dumps({"nv_id": nv_id, "username": u_name, "name": d_name})),
+     |                                                                                                     ^^^^^^^^^^^^^
+3099 |         )
+3100 |     return True
+     |
+
+E501 Line too long (123 > 100)
+    --> apps\api\src\ca_api\persist.py:3118:101
+     |
+3116 |         cx.execute(
+3117 |             """
+3118 |             INSERT INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^
+3119 |             VALUES (?,?,?,?,?,?,?,?)
+3120 |             """,
+     |
+
+E501 Line too long (123 > 100)
+    --> apps\api\src\ca_api\persist.py:3263:101
+     |
+3261 |         cx.execute(
+3262 |             """
+3263 |             INSERT INTO chat_conversations(id, store_id, type, display_name, avatar_url, is_locked, created_at, updated_at)
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^
+3264 |             VALUES (?,?,?,?,?,TRUE,?,?)
+3265 |             ON CONFLICT(id) DO NOTHING
+     |
+
+E501 Line too long (106 > 100)
+    --> apps\api\src\ca_api\persist.py:3267:100
+     |
+3265 |             ON CONFLICT(id) DO NOTHING
+3266 |             """,
+3267 |             (conv_general_id, store_id, "general", "☕ NHỊP QUÁN · Hội Quán Chung", "", now_iso, now_iso),
+     |                                                                                                     ^^^^^^
+3268 |         )
+3269 |         cx.execute(
+     |
+
+E501 Line too long (117 > 100)
+    --> apps\api\src\ca_api\persist.py:3280:101
+     |
+3278 |             """
+3279 |             INSERT INTO users(username, password_sha, role, nv_id, display_name, store_id, status)
+3280 |             VALUES ('ai_scheduler', 'bot_internal', 'ai_assistant', 'ai_scheduler', 'Agent Xếp Lịch 📅', ?, 'active')
+     |                                                                                                     ^^^^^^^^^^^^^^^^^
+3281 |             ON CONFLICT(username) DO NOTHING
+3282 |             """,
+     |
+
+E501 Line too long (119 > 100)
+    --> apps\api\src\ca_api\persist.py:3357:101
+     |
+3355 |             # Đếm số tin chưa đọc dựa trên chat_read_receipts
+3356 |             receipt = cx.execute(
+3357 |                 "SELECT last_read_message_id, read_at FROM chat_read_receipts WHERE conversation_id = ? AND nv_id = ?",
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^
+3358 |                 (conv_id, nv_id),
+3359 |             ).fetchone()
+     |
+
+E501 Line too long (105 > 100)
+    --> apps\api\src\ca_api\persist.py:3365:101
+     |
+3363 |                     """
+3364 |                     SELECT COUNT(*) FROM chat_messages
+3365 |                     WHERE conversation_id = ? AND sender_id != ? AND created_at > ? AND is_unsent = FALSE
+     |                                                                                                     ^^^^^
+3366 |                     """,
+3367 |                     (conv_id, nv_id, read_at),
+     |
+
+E501 Line too long (105 > 100)
+    --> apps\api\src\ca_api\persist.py:3467:101
+     |
+3465 |     init_db()
+3466 |     with _conn() as cx:
+3467 |         locked = cx.execute("SELECT is_locked FROM chat_conversations WHERE id=?", (conv_id,)).fetchone()
+     |                                                                                                     ^^^^^
+3468 |         if locked and bool(locked[0]):
+3469 |             return False
+     |
+
+E501 Line too long (124 > 100)
+    --> apps\api\src\ca_api\persist.py:3486:101
+     |
+3484 | ) -> dict[str, Any]:
+3485 |     init_db()
+3486 |     # Kiểm tra quyền: nếu không phải system/copilot/ai_scheduler thì tài khoản phải active và participant status phải active
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^
+3487 |     if sender_id not in ("system", "copilot", "ai_scheduler"):
+3488 |         if not user_is_active(sender_id):
+     |
+
+E501 Line too long (130 > 100)
+    --> apps\api\src\ca_api\persist.py:3507:101
+     |
+3505 |         cx.execute(
+3506 |             """
+3507 |             INSERT INTO chat_messages(id, conversation_id, sender_id, type, content, reply_to_id, is_unsent, metadata, created_at)
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3508 |             VALUES (?,?,?,?,?,?,FALSE,?,?)
+3509 |             """,
+     |
+
+E501 Line too long (101 > 100)
+    --> apps\api\src\ca_api\persist.py:3520:101
+     |
+3518 | …     cx.execute(
+3519 | …         """
+3520 | …         INSERT INTO chat_read_receipts(conversation_id, nv_id, last_read_message_id, read_at)
+     |                                                                                               ^
+3521 | …         VALUES (?,?,?,?)
+3522 | …         ON CONFLICT(conversation_id, nv_id) DO UPDATE SET last_read_message_id = excluded.last_read_message_id, read_at = excluded…
+     |
+
+E501 Line too long (146 > 100)
+    --> apps\api\src\ca_api\persist.py:3522:101
+     |
+3520 | …n_id, nv_id, last_read_message_id, read_at)
+3521 | …
+3522 | …ATE SET last_read_message_id = excluded.last_read_message_id, read_at = excluded.read_at
+     |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3523 | …
+3524 | …
+     |
+
+E501 Line too long (104 > 100)
+    --> apps\api\src\ca_api\persist.py:3527:101
+     |
+3525 |             )
+3526 |             cx.execute(
+3527 |                 "UPDATE chat_participants SET last_read_at = ? WHERE conversation_id = ? AND nv_id = ?",
+     |                                                                                                     ^^^^
+3528 |                 (now, conv_id, sender_id),
+3529 |             )
+     |
+
+E501 Line too long (101 > 100)
+    --> apps\api\src\ca_api\persist.py:3530:101
+     |
+3528 |                 (now, conv_id, sender_id),
+3529 |             )
+3530 |     return chat_message_get(msg_id) or {"id": msg_id, "conversation_id": conv_id, "content": content}
+     |                                                                                                     ^
+
+E501 Line too long (195 > 100)
+    --> apps\api\src\ca_api\persist.py:3540:100
+     |
+3538 | …
+3539 | …at,
+3540 | … 'AG-Copilot 🤖' WHEN m.sender_id = 'ai_scheduler' THEN 'Agent Xếp Lịch 📅' ELSE m.sender_id END) as sender_name,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3541 | …uler') THEN 'ai_assistant' ELSE 'nhan_vien' END) as sender_role
+3542 | …
+     |
+
+E501 Line too long (145 > 100)
+    --> apps\api\src\ca_api\persist.py:3541:101
+     |
+3539 | …t, m.metadata, m.created_at,
+3540 | …ender_id = 'copilot' THEN 'AG-Copilot 🤖' WHEN m.sender_id = 'ai_scheduler' THEN 'Agent Xếp Lịch 📅' ELSE m.sender_id END) as sende…
+3541 | … IN ('copilot', 'ai_scheduler') THEN 'ai_assistant' ELSE 'nhan_vien' END) as sender_role
+     |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3542 | …
+3543 | …
+     |
+
+E501 Line too long (117 > 100)
+    --> apps\api\src\ca_api\persist.py:3688:101
+     |
+3686 |                 INSERT INTO chat_reactions(message_id, nv_id, emoji, created_at)
+3687 |                 VALUES (?,?,?,?)
+3688 |                 ON CONFLICT(message_id, nv_id) DO UPDATE SET emoji = excluded.emoji, created_at = excluded.created_at
+     |                                                                                                     ^^^^^^^^^^^^^^^^^
+3689 |                 """,
+3690 |                 (message_id, nv_id, emoji, now),
+     |
+
+E501 Line too long (108 > 100)
+    --> apps\api\src\ca_api\persist.py:3695:101
+     |
+3695 | def chat_messages_list(conv_id: str, limit: int = 50, before_id: str | None = None) -> list[dict[str, Any]]:
+     |                                                                                                     ^^^^^^^^
+3696 |     init_db()
+3697 |     with _conn() as cx:
+     |
+
+E501 Line too long (108 > 100)
+    --> apps\api\src\ca_api\persist.py:3699:101
+     |
+3697 |     with _conn() as cx:
+3698 |         if before_id:
+3699 |             b_row = cx.execute("SELECT created_at FROM chat_messages WHERE id = ?", (before_id,)).fetchone()
+     |                                                                                                     ^^^^^^^^
+3700 |             if b_row:
+3701 |                 before_time = str(b_row[0])
+     |
+
+E501 Line too long (112 > 100)
+    --> apps\api\src\ca_api\persist.py:3738:101
+     |
+3736 |                 SELECT m.id FROM chat_messages m
+3737 |                 JOIN chat_participants p ON m.conversation_id = p.conversation_id AND p.nv_id = ?
+3738 |                 WHERE m.conversation_id = ? AND m.content LIKE ? AND m.is_unsent = FALSE AND p.status = 'active'
+     |                                                                                                     ^^^^^^^^^^^^
+3739 |                 ORDER BY m.created_at DESC LIMIT 50
+3740 |                 """,
+     |
+
+E501 Line too long (105 > 100)
+    --> apps\api\src\ca_api\persist.py:3749:101
+     |
+3747 |                 JOIN chat_conversations c ON m.conversation_id = c.id
+3748 |                 JOIN chat_participants p ON m.conversation_id = p.conversation_id AND p.nv_id = ?
+3749 |                 WHERE c.store_id = ? AND m.content LIKE ? AND m.is_unsent = FALSE AND p.status = 'active'
+     |                                                                                                     ^^^^^
+3750 |                 ORDER BY m.created_at DESC LIMIT 50
+3751 |                 """,
+     |
+
+E501 Line too long (142 > 100)
+    --> apps\api\src\ca_api\persist.py:3766:101
+     |
+3764 | …id, nv_id, last_read_message_id, read_at)
+3765 | …
+3766 | …E SET last_read_message_id = excluded.last_read_message_id, read_at = excluded.read_at
+     |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3767 | …
+3768 | …
+     |
+
+E501 Line too long (126 > 100)
+    --> apps\api\src\ca_api\persist.py:3940:101
+     |
+3938 |         cx.execute(
+3939 |             """
+3940 |             INSERT INTO dat_ban_lich_su(dat_ban_id, hanh_dong, trang_thai_cu, trang_thai_moi, thuc_hien_boi, ly_do, thoi_gian)
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+3941 |             VALUES (?,?,?,?,?,?,?)
+3942 |             """,
+     |
+
+E501 Line too long (102 > 100)
+    --> apps\api\src\ca_api\persist.py:3971:101
+     |
+3971 | def reservation_get_by_idempotency(idem_key: str, store_id: str = "quan_01") -> dict[str, Any] | None:
+     |                                                                                                     ^^
+3972 |     if not idem_key:
+3973 |         return None
+     |
+
+E501 Line too long (118 > 100)
+    --> apps\api\src\ca_api\persist.py:3978:101
+     |
+3976 |         cx.row_factory = sqlite3.Row
+3977 |         r = cx.execute(
+3978 |             "SELECT * FROM dat_ban WHERE store_id=? AND idempotency_key=? AND status NOT IN ('cancelled', 'no_show')",
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^
+3979 |             (store_id, idem_key),
+3980 |         ).fetchone()
+     |
+
+E501 Line too long (126 > 100)
+    --> apps\api\src\ca_api\persist.py:4058:101
+     |
+4056 |         cx.execute(
+4057 |             """
+4058 |             INSERT INTO dat_ban_lich_su(dat_ban_id, hanh_dong, trang_thai_cu, trang_thai_moi, thuc_hien_boi, ly_do, thoi_gian)
+     |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+4059 |             VALUES (?,?,?,?,?,?,?)
+4060 |             """,
+     |
+
+E501 Line too long (110 > 100)
+    --> apps\api\src\ca_api\persist.py:4129:101
+     |
+4127 |         if not conds:
+4128 |             return 0
+4129 |         sql = f"SELECT COUNT(*) FROM dat_ban WHERE store_id=? AND status='no_show' AND ({' OR '.join(conds)})"
+     |                                                                                                     ^^^^^^^^^^
+4130 |         row = cx.execute(sql, params).fetchone()
+4131 |         return int(row[0]) if row else 0
+     |
+
+E501 Line too long (115 > 100)
+    --> apps\api\src\ca_api\persist.py:4141:101
+     |
+4139 |         cx.execute(
+4140 |             """
+4141 |             INSERT INTO thong_bao_ca(id, store_id, dat_ban_id, ca_id, nv_id, tieu_de, noi_dung, da_xem, created_at)
+     |                                                                                                     ^^^^^^^^^^^^^^^
+4142 |             VALUES (?,?,?,?,?,?,?,?,?)
+4143 |             """,
+     |
+
+E501 Line too long (112 > 100)
+    --> apps\api\src\ca_api\persist.py:4159:101
+     |
+4159 | def thong_bao_ca_list(nv_id: str, unread_only: bool = False, store_id: str = "quan_01") -> list[dict[str, Any]]:
+     |                                                                                                     ^^^^^^^^^^^^
+4160 |     init_db()
+4161 |     with _conn() as cx:
+     |
+
+E501 Line too long (105 > 100)
+    --> apps\api\src\ca_api\persist.py:4182:101
+     |
+4180 |         if res.rowcount > 0:
+4181 |             # Also update dat_ban notification_acked_at
+4182 |             tb = cx.execute("SELECT dat_ban_id FROM thong_bao_ca WHERE id=?", (thong_bao_id,)).fetchone()
+     |                                                                                                     ^^^^^
+4183 |             if tb and tb[0]:
+4184 |                 cx.execute(
+     |
+
+E501 Line too long (110 > 100)
+    --> apps\api\src\ca_api\persist.py:4185:101
+     |
+4183 |             if tb and tb[0]:
+4184 |                 cx.execute(
+4185 |                     "UPDATE dat_ban SET notification_acked_at=? WHERE id=? AND notification_acked_at IS NULL",
+     |                                                                                                     ^^^^^^^^^^
+4186 |                     (now, tb[0]),
+4187 |                 )
+     |
+
+UP017 [*] Use `datetime.UTC` alias
+  --> apps\api\src\ca_api\services\fb_moderation.py:27:11
+   |
+25 | except ImportError:
+26 |     from datetime import datetime, timezone
+27 |     UTC = timezone.utc
+   |           ^^^^^^^^^^^^
+28 |
+29 | from ca_agents.ag_fbpage import build_human_response, detect_customer_psychology
+   |
+help: Convert to `datetime.UTC` alias
+   |
+26 |     from datetime import datetime, timezone
+   -     UTC = timezone.utc
+27 +     UTC = UTC
+28 |
+   |
+
+E501 Line too long (126 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:317:101
+    |
+315 | …     low_clean = t.replace(" ", "").replace(".", "").replace("-", "")
+316 | …     has_phone = bool(_PHONE_REGEX.search(low_clean))
+317 | …     is_confirm = any(k in t for k in ("đúng", "dung", "ok", "chốt", "chot", "xác nhận", "xac nhan", "chuẩn", "chuan"))
+    |                                                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+318 | …     is_cancel = any(k in t for k in ("hủy", "huy", "không đến", "khong den", "bận", "ban"))
+319 | …     has_time_or_date = bool(re.search(r"\d{1,2}\s*(?:h|:|giờ|g|pm|am)", t) or any(k in t for k in ("mai", "hôm nay", "tối", "trưa",…
+    |
+
+E501 Line too long (158 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:319:101
+    |
+317 | …ok", "chốt", "chot", "xác nhận", "xac nhan", "chuẩn", "chuan"))
+318 | …ng đến", "khong den", "bận", "ban"))
+319 | …:|giờ|g|pm|am)", t) or any(k in t for k in ("mai", "hôm nay", "tối", "trưa", "chiều", "rưỡi")))
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+320 | …|bạn|chỗ|pax)", t) or any(k in t for k in ("một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín", "mười")))
+321 | …_or_date or has_size or len(t.split()) <= 5:
+    |
+
+E501 Line too long (178 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:320:101
+    |
+318 | …khong den", "bận", "ban"))
+319 | …|am)", t) or any(k in t for k in ("mai", "hôm nay", "tối", "trưa", "chiều", "rưỡi")))
+320 | …ax)", t) or any(k in t for k in ("một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín", "mười")))
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+321 | …r has_size or len(t.split()) <= 5:
+322 | …
+    |
+
+E501 Line too long (107 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:321:101
+    |
+319 | …     has_time_or_date = bool(re.search(r"\d{1,2}\s*(?:h|:|giờ|g|pm|am)", t) or any(k in t for k in ("mai", "hôm nay", "tối", "trưa",…
+320 | …     has_size = bool(re.search(r"\d+\s*(?:người|ng|khách|bạn|chỗ|pax)", t) or any(k in t for k in ("một", "hai", "ba", "bốn", "năm",…
+321 | …     if is_confirm or is_cancel or has_phone or has_time_or_date or has_size or len(t.split()) <= 5:
+    |                                                                                               ^^^^^^^
+322 | …         return "booking", "dat_ban", 0.95
+    |
+
+E501 Line too long (128 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:371:101
+    |
+369 |             "category": "hide_and_dm",
+370 |             "should_hide": True,
+371 |             "reply_public": "Dạ Nhịp Quán đã nhắn tin riêng hỗ trợ anh/chị rồi ạ! Mình kiểm tra hộp thư chờ giúp quán nhé ạ. ❤️",
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+372 |             "reason": "customer_pii_protected",
+373 |         }
+    |
+
+E501 Line too long (102 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:375:101
+    |
+373 |         }
+374 |
+375 |     # 2. Phàn nàn thông thường -> xin lỗi ngắn 1 câu, không đàm phán bồi thường công khai -> chuyển DM
+    |                                                                                                     ^^
+376 |     if _has_any_keyword(low, _COMPLAINT_WORDS):
+377 |         return {
+    |
+
+E501 Line too long (208 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:380:101
+    |
+378 | …
+379 | …
+380 | …vẹn ạ! Quán đã chủ động gửi tin nhắn riêng để hỗ trợ giải quyết ngay cho mình, anh/chị kiểm tra hộp thư giúp em nhé ạ.",
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+381 | …
+382 | …
+    |
+
+E501 Line too long (176 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:389:101
+    |
+387 | …
+388 | …
+389 | …h ạ! Em đã gửi tin nhắn riêng để lấy thông tin giữ bàn chu đáo, anh/chị check tin nhắn giúp em nha! 🎉",
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+390 | …
+391 | …
+    |
+
+E501 Line too long (115 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:464:101
+    |
+462 |         if cust_name and customer.get("is_vip_or_regular") and favs:
+463 |             return (
+464 |                 f"Dạ Nhịp Quán chào anh/chị {cust_name} ạ! Hôm nay mình vẫn dùng món quen {favs[0]} đúng không ạ?",
+    |                                                                                                     ^^^^^^^^^^^^^^^
+465 |                 False,
+466 |                 "AG-FRONTDESK",
+    |
+
+E501 Line too long (121 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:470:101
+    |
+468 |         if cust_name:
+469 |             return (
+470 |                 f"Dạ Nhịp Quán chào anh/chị {cust_name} ạ! Em có thể gửi mình xem menu hoặc tư vấn đồ uống hôm nay nha!",
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^
+471 |                 False,
+472 |                 "AG-FRONTDESK",
+    |
+
+E501 Line too long (105 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:475:101
+    |
+473 |             )
+474 |         return (
+475 |             "Dạ Nhịp Quán xin chào mình ạ! Em có thể gửi mình xem menu hoặc tư vấn đồ uống hôm nay nha!",
+    |                                                                                                     ^^^^^
+476 |             False,
+477 |             "AG-FRONTDESK",
+    |
+
+E501 Line too long (104 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:485:101
+    |
+483 |         lines = []
+484 |         if profile.get("gio_mo_cua"):
+485 |             lines.append(f"Dạ {profile.get('ten_quan') or 'quán'} mở cửa từ {profile['gio_mo_cua']} ạ.")
+    |                                                                                                     ^^^^
+486 |         if profile.get("dia_chi"):
+487 |             lines.append(f"📍 Địa chỉ: {profile['dia_chi']}")
+    |
+
+E501 Line too long (130 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:522:101
+    |
+520 | …     if promos:
+521 | …         promos_str = "\n".join([f"🎉 {p['tieu_de']}: {p['chi_tiet']}" for p in promos])
+522 | …         reply = f"Dạ hôm nay quán đang có chương trình ưu đãi nè mình ơi:\n{promos_str}\n\nMời mình ghé quán nhận ưu đãi nha!"
+    |                                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+523 | …     else:
+524 | …         reply = "Dạ hiện tại quán đang phục vụ menu tiêu chuẩn với giá cực kỳ yêu thương mỗi ngày. Mời mình ghé quán thưởng thức nh…
+    |
+
+E501 Line too long (140 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:524:101
+    |
+522 | …rình ưu đãi nè mình ơi:\n{promos_str}\n\nMời mình ghé quán nhận ưu đãi nha!"
+523 | …
+524 | …u tiêu chuẩn với giá cực kỳ yêu thương mỗi ngày. Mời mình ghé quán thưởng thức nhé ạ!"
+    |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+525 | …
+    |
+
+E501 Line too long (140 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:562:101
+    |
+560 | …
+561 | …
+562 | …sid')}" + (f" (Pass: {profile.get('wifi_pass')})" if profile.get("wifi_pass") else "")
+    |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+563 | …
+564 | …n')}, Địa chỉ: {profile.get('dia_chi', '')}, "
+    |
+
+E501 Line too long (110 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:565:101
+    |
+563 |         ctx_summary = (
+564 |             f"Quán: {profile.get('ten_quan', 'Nhịp Quán')}, Địa chỉ: {profile.get('dia_chi', '')}, "
+565 |             f"Giờ mở cửa: {profile.get('gio_mo_cua', '')}, Hotline: {profile.get('hotline', '')}{wifi_info}\n"
+    |                                                                                                     ^^^^^^^^^^
+566 |             f"Menu & Giá: {menu_str}\n"
+567 |             f"Khuyến mãi: {', '.join([p.get('tieu_de', '') for p in promos])}"
+    |
+
+E501 Line too long (109 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:584:101
+    |
+582 |             if gold_ctx:
+583 |                 extra_instructions.append(gold_ctx)
+584 |         rule_texts = [str((rule.get("rule") or {}).get("text") or "").strip() for rule in active_rules or []]
+    |                                                                                                     ^^^^^^^^^
+585 |         if rule_texts:
+586 |             extra_instructions.append("QUY TẮC ĐÃ ĐƯỢC CHỦ QUÁN DUYỆT:\n" + "\n".join(f"- {text}" for text in rule_texts if text))
+    |
+
+E501 Line too long (130 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:586:101
+    |
+584 |         rule_texts = [str((rule.get("rule") or {}).get("text") or "").strip() for rule in active_rules or []]
+585 |         if rule_texts:
+586 |             extra_instructions.append("QUY TẮC ĐÃ ĐƯỢC CHỦ QUÁN DUYỆT:\n" + "\n".join(f"- {text}" for text in rule_texts if text))
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+587 |
+588 |         if extra_instructions:
+    |
+
+E501 Line too long (117 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:627:101
+    |
+625 |         return FBMessageOutput(
+626 |             action="auto_respond" if auto_respond_enabled else "queue_to_inbox",
+627 |             response="Dạ em không thể hỗ trợ yêu cầu này được ạ. Mình cần em tư vấn thêm món gì trong menu không ạ?",
+    |                                                                                                     ^^^^^^^^^^^^^^^^^
+628 |             intent="blocked_injection",
+629 |             confidence=1.0,
+    |
+
+E501 Line too long (110 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:659:101
+    |
+657 |         reply_text = (
+658 |             "Dạ hiện em chưa có đủ thông tin này trên hệ thống. "
+659 |             "Anh/chị để lại SĐT, em xác nhận lại trong 10 phút — hoặc mình hỏi menu/đặt bàn em hỗ trợ ngay ạ!"
+    |                                                                                                     ^^^^^^^^^^
+660 |         )
+661 |         requires_approval = False
+    |
+
+E501 Line too long (103 > 100)
+   --> packages\agents\src\ca_agents\ag_fbpage.py:711:101
+    |
+709 |                 f"missing_verified_context:{missing_context}"
+710 |                 if missing_context
+711 |                 else ("llm_draft_for_manager_review" if llm_drafted else "Queued for manager approval")
+    |                                                                                                     ^^^
+712 |             ),
+713 |             reservation_state=updated_res_state,
+    |
+
+Found 200 errors.
+[*] 4 fixable with the `--fix` option.

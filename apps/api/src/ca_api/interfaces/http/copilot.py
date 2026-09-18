@@ -299,6 +299,8 @@ def _recover_execution_failure(  # noqa: UP047 - keep Python 3.10 compatibility 
                         decision="execution_failed",
                         payload_diff={"error_type": type(exc).__name__},
                         channel="web",
+                        agent_name="ag_copilot",
+                        controller_user_id=None,
                     )
                 if isinstance(exc, HTTPException):
                     raise
@@ -349,6 +351,8 @@ def _record_copilot_response(
             payload_diff={"message": message[:200]},
             channel=channel,
             latency_ms=latency_ms,
+            agent_name="ag_copilot",
+            controller_user_id=user["user_id"],
         )
 
     if response.action_proposal:
@@ -363,6 +367,8 @@ def _record_copilot_response(
             payload_diff=response.action_proposal.payload_diff,
             channel=channel,
             latency_ms=latency_ms,
+            agent_name="ag_copilot",
+            controller_user_id=user["user_id"],
         )
 
 
@@ -528,6 +534,8 @@ def copilot_message_stream(
             payload_diff=response.action_proposal.payload_diff,
             channel=body.channel,
             latency_ms=0,
+            agent_name="ag_copilot",
+            controller_user_id=user["user_id"],
         )
 
     # 2. Xây generator SSE
@@ -610,6 +618,8 @@ def copilot_execute_action(
             payload_diff={"reason": scope_res.reason},
             channel="web",
             latency_ms=int((time.time() - t0) * 1000),
+            agent_name="ag_copilot",
+            controller_user_id=user["user_id"],
         )
         raise HTTPException(status_code=403, detail=f"scope_blocked:{scope_res.reason}")
 
@@ -675,6 +685,8 @@ def copilot_execute_action(
                 decision="invalid_expiry",
                 channel="web",
                 latency_ms=int((time.time() - t0) * 1000),
+                agent_name="ag_copilot",
+                controller_user_id=user["user_id"],
             )
             raise HTTPException(status_code=400, detail="invalid_action_expiry") from None
         if is_expired:
@@ -687,6 +699,8 @@ def copilot_execute_action(
                 decision="expired",
                 channel="web",
                 latency_ms=int((time.time() - t0) * 1000),
+                agent_name="ag_copilot",
+                controller_user_id=user["user_id"],
             )
             raise HTTPException(status_code=400, detail="action_proposal_expired")
 
@@ -707,6 +721,8 @@ def copilot_execute_action(
             payload_diff={"reason": body.reason},
             channel="web",
             latency_ms=int((time.time() - t0) * 1000),
+            agent_name="ag_copilot",
+            controller_user_id=user["user_id"],
         )
         return {
             "ok": True,
@@ -755,6 +771,8 @@ def copilot_execute_action(
             payload_diff={"reason": stale_res.reason},
             channel="web",
             latency_ms=int((time.time() - t0) * 1000),
+            agent_name="ag_copilot",
+            controller_user_id=user["user_id"],
         )
         copilot_execution_fail(
             user["store_id"],
@@ -1306,6 +1324,8 @@ def copilot_execute_action(
             store_id=user["store_id"], intent=draft["intent"], decision="approve",
             payload_diff=diff, channel="web",
             latency_ms=int((time.time() - t0) * 1000),
+            agent_name="ag_copilot",
+            controller_user_id=user["user_id"],
         )
         copilot_execution_complete(
             user["store_id"], body.action_id, body.idempotency_key, outcome,
@@ -1392,6 +1412,8 @@ def copilot_amend_action(
         payload_diff={"amended_from": action_id, "reason": body.reason, "diff": correction_diff},
         channel="web",
         latency_ms=int((time.time() - t0) * 1000),
+        agent_name="ag_copilot",
+        controller_user_id=user["user_id"],
     )
 
     return {

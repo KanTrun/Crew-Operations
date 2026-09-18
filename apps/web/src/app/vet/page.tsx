@@ -15,6 +15,9 @@ type Row = {
   ai?: string;
   hanh?: string;
   payload?: Record<string, unknown> | unknown;
+  actor_type?: string;
+  agent_name?: string;
+  controller_user_id?: string;
   [key: string]: unknown;
 };
 
@@ -26,6 +29,8 @@ function actorLabelEx(ai?: string | null): string {
   if (ai === "fb_moderation_block") return "Hệ thống kiểm duyệt Facebook";
   return actorLabel(ai);
 }
+
+
 
 const ENTITY_TYPES: Record<string, string> = {
   schedule: "Lịch tuần",
@@ -432,6 +437,25 @@ export default function VetPage() {
                       </p>
                       <p className="nq-item-sub" style={{ margin: 0 }}>
                         <strong style={{ color: "var(--nq-fg)", fontWeight: 600 }}>{actorLabelEx(it.ai)}</strong>
+                        {it.actor_type === "agent" ? (
+                          <span style={{
+                            display: "inline-flex", alignItems: "center", gap: "0.25rem",
+                            marginLeft: "0.4rem", padding: "0.05rem 0.4rem", borderRadius: "999px",
+                            fontSize: "0.62rem", fontWeight: 600, letterSpacing: "0.03em",
+                            background: "color-mix(in srgb, var(--nq-copper) 16%, transparent)",
+                            color: "var(--nq-copper)",
+                          }}>
+                            AGENT
+                          </span>
+                        ) : null}
+                        {it.controller_user_id && it.controller_user_id !== it.ai ? (
+                          <span style={{
+                            display: "inline-flex", alignItems: "center", gap: "0.25rem",
+                            marginLeft: "0.4rem", fontSize: "0.68rem", color: "var(--nq-ink-muted)",
+                          }}>
+                            {"· do "}{actorLabel(it.controller_user_id)}
+                          </span>
+                        ) : null}
                         {" · "}
                         <time className="font-mono" dateTime={it.at}>{formatAuditTime(it.at)}</time>
                       </p>

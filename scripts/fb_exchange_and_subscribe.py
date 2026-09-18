@@ -7,7 +7,9 @@ import urllib.request
 
 USER_TOKEN = sys.argv[1].strip()
 PAGE_ID = "1367177249801969"
-FIELDS = "messages,messaging_postbacks,message_deliveries,message_reads,message_echoes"
+# `feed` bắt buộc để nhận sự kiện comment trên bài viết (item == "comment").
+# Thiếu `feed` → Meta không gửi comment → bot không bao giờ trả lời comment.
+FIELDS = "messages,messaging_postbacks,message_deliveries,message_reads,message_echoes,feed"
 
 
 def get(url: str) -> dict:

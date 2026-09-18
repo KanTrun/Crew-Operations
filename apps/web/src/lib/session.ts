@@ -82,6 +82,10 @@ const MANAGER_ONLY = new Set([
   // ở `apps/api/src/ca_api/interfaces/http/pricing_radar.py`.
   "/khao-sat-gia",
   "/vet",
+  // Hệ sinh thái AI agent (Self-Explaining, Predictive Playbook, Digital Twin)
+  "/giai-thich",
+  "/de-xuat-thong-minh",
+  "/thu-nghiem-an-toan",
 ]);
 const OWNER_ONLY = new Set(["/menu", "/nguoi"]);
 

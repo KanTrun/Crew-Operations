@@ -189,9 +189,6 @@ export default function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Feature 1 */}
             <div className="p-5 rounded-xl bg-neutral-900/60 border border-neutral-800/80 space-y-2.5">
-              <div className="w-9 h-9 rounded-lg bg-amber-950/60 border border-amber-700/50 flex items-center justify-center text-lg">
-                🎙️
-              </div>
               <h3 className="font-bold text-sm text-neutral-100">AG-Meeting (Họp Ca AI)</h3>
               <p className="text-xs text-neutral-400 leading-relaxed">
                 Bóc băng giọng nói, chấm điểm tuân thủ 5 tiêu chuẩn SOP, lọc Bàn VIP / Dị ứng & Huấn luyện Quản lý.
@@ -211,9 +208,6 @@ export default function HomePage() {
 
             {/* Feature 3 */}
             <div className="p-5 rounded-xl bg-neutral-900/60 border border-neutral-800/80 space-y-2.5">
-              <div className="w-9 h-9 rounded-lg bg-blue-950/60 border border-blue-700/50 flex items-center justify-center text-lg">
-                ☕
-              </div>
               <h3 className="font-bold text-sm text-neutral-100">POS & KDS Quầy Bar</h3>
               <p className="text-xs text-neutral-400 leading-relaxed">
                 Màn hình bán hàng cảm ứng, điều phối phiếu gọi món bar/bếp và cảnh báo món hết 86 tức thời.
@@ -222,9 +216,6 @@ export default function HomePage() {
 
             {/* Feature 4 */}
             <div className="p-5 rounded-xl bg-neutral-900/60 border border-neutral-800/80 space-y-2.5">
-              <div className="w-9 h-9 rounded-lg bg-purple-950/60 border border-purple-700/50 flex items-center justify-center text-lg">
-                📖
-              </div>
               <h3 className="font-bold text-sm text-neutral-100">Cẩm Nang Sống (SOP Patch)</h3>
               <p className="text-xs text-neutral-400 leading-relaxed">
                 Tự động ghi nhận và cập nhật công thức pha chế, quy trình phục vụ từ các đề xuất đã duyệt trong ca.

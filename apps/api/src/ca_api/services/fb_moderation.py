@@ -28,7 +28,13 @@ except ImportError:
 
 from ca_agents.ag_fbpage import build_human_response, detect_customer_psychology
 from ca_agents.ag_supervisor import supervise_outgoing_response
-from ca_agents.fb_policy import FINANCIAL_KEYWORDS, PolicyContext, decide
+from ca_agents.fb_policy import (
+    AUTO_THRESHOLD_COMMENT,
+    COMMENT_SAFE_INTENTS,
+    FINANCIAL_KEYWORDS,
+    PolicyContext,
+    decide,
+)
 from ca_agents.fb_rate_limiter import SlidingWindowRateLimiter
 from ca_agents.guardrails import check_input_guardrail, normalize_text
 from ca_contracts import FbPolicyAction, PolicyDecision
@@ -224,6 +230,8 @@ def queue_fb_non_text(
         "fb_policy_engine",
         FbPolicyAction.QUEUE_REVIEW.value,
         {"psid": psid, "reason": "non_text_event", "review_id": review_id},
+        actor_type="system",
+        agent_name="ag_fbpage",
     )
     return review_id
 
@@ -350,6 +358,22 @@ def moderate_fb_message(
     decision = decide(intent, confidence, guard.sanitized_text, ctx)
     flagged = list(decision.flagged_reasons)
 
+    # Comment công khai: chỉ auto-send khi intent an toàn + confidence cao
+    # (COMMENT_SAFE_INTENTS + AUTO_THRESHOLD_COMMENT). Ngoài ra hạ xuống queue
+    # cho QL duyệt tay (ADR-008) — không để action auto_send lọt ra ngoài.
+    if source == "comment" and decision.action == FbPolicyAction.AUTO_SEND:
+        if not (intent in COMMENT_SAFE_INTENTS and confidence >= AUTO_THRESHOLD_COMMENT):
+            decision = PolicyDecision(
+                action=FbPolicyAction.QUEUE_REVIEW,
+                reason="comment_not_safe_auto",
+                intent=intent,
+                confidence=confidence,
+                assigned_role="quan_ly",
+                sla_minutes=15,
+                flagged_reasons=flagged + ["comment_requires_manager"],
+            )
+            flagged = decision.flagged_reasons
+
     # L5 — Supervisor gate cho nhánh auto; hạ xuống queue nếu flag
     response: str | None = None
     if decision.action == FbPolicyAction.AUTO_SEND:
@@ -423,7 +447,9 @@ def moderate_fb_message(
                 notified_channel="in_app",
             )
     elif decision.action == FbPolicyAction.AUTO_SEND:
-        if fb_auto_send_enabled() and source == "messenger":
+        # Đến đây: messenger (flag ON) hoặc comment an toàn + confidence cao.
+        # Comment không an toàn đã bị hạ QUEUE_REVIEW ở trên.
+        if fb_auto_send_enabled() and (source == "messenger" or source == "comment"):
             # Claim giao tin; webhook chỉ đánh dấu auto_sent sau khi Graph xác nhận.
             review_id = fb_review_insert(
                 {
@@ -483,6 +509,8 @@ def moderate_fb_message(
             "psid": psid, "intent": intent, "confidence": confidence,
             "reason": decision.reason, "review_id": review_id,
         },
+        actor_type="system",
+        agent_name="ag_fbpage",
     )
     return {
         "action": decision.action.value,
@@ -498,4 +526,4 @@ def moderate_fb_message(
 def _audit_block(psid: str, text: str, loai: str, reason: str) -> None:
     audit_add(_now_iso(), "fb_moderation_block", loai, {
         "psid": psid, "reason": reason, "text_len": len(text),
-    })
+    }, actor_type="system", agent_name="ag_fbpage")

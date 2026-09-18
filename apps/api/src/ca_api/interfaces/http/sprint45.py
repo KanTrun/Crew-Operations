@@ -208,277 +208,6 @@ def _previous_week(tuan_iso: str) -> str | None:
         return None
 
 
-def _legacy_run_solver_reference(
-    tuan_iso: str | None = None,
-    *,
-    extra_pin: tuple[str, str] | None = None,
-    confirmed_availability: dict[str, dict[str, list[str]]] | None = None,
-) -> dict[str, Any]:
-    from ca_solver import apply_luat, build_lich_input, solve_cpsat
-
-    from ca_api.nhan_vien import list_nhan_vien_ops
-
-    inp = build_lich_input(nhan_vien_ngoai=list_nhan_vien_ops())
-    tuan_hien_tai = tuan_iso or _life().get("tuan_iso", "2026-W01")
-
-    if confirmed_availability:
-        allowed_ids = set(confirmed_availability)
-        inp.nhan_vien_ids = [nv_id for nv_id in inp.nhan_vien_ids if nv_id in allowed_ids]
-        # CP-SAT treats TKB as unavailable time. Replace synthetic TKB with
-        # explicit blocks for every shift that was not confirmed available.
-        khung_gio_for_availability = kv_get("khung_gio", {})
-        shift_frames = {
-            "Sáng": ("06:30", "12:00"),
-            "Chiều": ("12:00", "17:30"),
-            "Tối": ("17:30", "22:30"),
-        }
-        for shift, frame in shift_frames.items():
-            configured = khung_gio_for_availability.get(shift) if isinstance(khung_gio_for_availability, dict) else None
-            if isinstance(configured, dict):
-                shift_frames[shift] = (str(configured.get("bat_dau") or frame[0]), str(configured.get("ket_thuc") or frame[1]))
-        inp.tkb = {
-            nv_id: [
-                (day, *shift_frames[shift])
-                for day in _THU_MAP.values()
-                for shift in shift_frames
-                if shift not in (confirmed_availability.get(nv_id) or {}).get(day, [])
-            ]
-            for nv_id in inp.nhan_vien_ids
-        }
-
-    # Giờ ca do quản lý cấu hình phải là đầu vào thật của CP-SAT.
-    khung_gio = kv_get("khung_gio", {})
-    if isinstance(khung_gio, dict):
-        for meta in inp.ca_meta.values():
-            frame = khung_gio.get(meta.get("khung", ""))
-            if isinstance(frame, dict):
-                meta["bat_dau"] = str(frame.get("bat_dau") or meta["bat_dau"])
-                meta["ket_thuc"] = str(frame.get("ket_thuc") or meta["ket_thuc"])
-
-    debt = _week_value("fairness_debt_by_week", tuan_hien_tai, {})
-    if isinstance(debt, dict) and debt:
-        inp.debt = debt
-    previous_week = _previous_week(str(tuan_hien_tai))
-    if previous_week:
-        previous_assignments = _week_value("phan_cong_by_week", previous_week, {})
-        if isinstance(previous_assignments, dict):
-            inp.phan_cong_tuan_truoc = {
-                str(ca_id): list(nv_ids)
-                for ca_id, nv_ids in previous_assignments.items()
-                if isinstance(nv_ids, list)
-            }
-
-    # TKB đã xác nhận từ ảnh đè lên (hoặc bổ sung) TKB synthetic của fixture.
-    by_week = kv_get("tkb_nv_by_week", {})
-    stored = by_week.get(tuan_hien_tai, {}) if isinstance(by_week, dict) else {}
-    legacy = kv_get("tkb_nv", {})
-    if isinstance(legacy, dict):
-        stored = dict(stored) if isinstance(stored, dict) else {}
-        for nv_id, entry in legacy.items():
-            if (
-                nv_id not in stored
-                and isinstance(entry, dict)
-                and entry.get("tuan_iso") == tuan_hien_tai
-            ):
-                stored[nv_id] = entry
-    if isinstance(stored, dict):
-        for nv_id, entry in stored.items():
-            if not isinstance(entry, dict):
-                continue
-            blocks = entry.get("khoang_ban") or []
-            tuples: list[tuple[str, str, str]] = []
-            for b in blocks:
-                if not isinstance(b, dict):
-                    continue
-                thu = str(b.get("thu") or "")
-                start = str(b.get("start") or "")
-                end = str(b.get("end") or "")
-                if thu and start and end:
-                    tuples.append((thu, start, end))
-            if tuples:
-                if confirmed_availability:
-                    existing_tkb = inp.tkb.setdefault(str(nv_id), [])
-                    for block in tuples:
-                        if block not in existing_tkb:
-                            existing_tkb.append(block)
-                else:
-                    inp.tkb[str(nv_id)] = tuples
-
-    # Tôn trọng quyết định du_bi hoặc bo_ca của quản lý trong tuần hiện tại: không xếp ca cố định
-    status_store = kv_get("roster_nv_status", {})
-    week_decisions = status_store.get(tuan_hien_tai, {}) if isinstance(status_store, dict) else {}
-    for d_nvid, st in week_decisions.items():
-        if st in {"du_bi", "bo_ca"}:
-            for d_thu in ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]:
-                inp.nghi_phep.add((str(d_nvid), d_thu))
-
-    # Đọc các ràng buộc từ inbox_rang_buoc đã được duyệt khớp tuần hiện tại
-    inbox_items = kv_get("inbox_rang_buoc", [])
-    added_nghi: set[tuple[str, str]] = set()
-    added_tkb: set[tuple[str, str, str, str]] = set()
-
-    if isinstance(inbox_items, list):
-        for it in inbox_items:
-            if not isinstance(it, dict) or it.get("trang_thai") != "duyet":
-                continue
-            hl = it.get("hieu_luc")
-            if not isinstance(hl, dict) or hl.get("loai") != "rang_buoc_cho_solver":
-                continue
-
-            # Ngữ cảnh tuần: chỉ nạp item khớp tuần đang giải
-            rb_raw = it.get("rang_buoc")
-            rb = rb_raw if isinstance(rb_raw, dict) else {}
-            it_tuan = rb.get("tuan_id") or hl.get("tuan_id")
-            if it_tuan and it_tuan != tuan_hien_tai:
-                continue
-
-            nv_id = str(it.get("nv_id") or hl.get("nv_id") or "")
-            if not nv_id or nv_id == "unknown":
-                continue
-
-            y = str(it.get("y_dinh") or "")
-            # rb đã chuẩn hóa dict ở trên (dòng 148) — không gán lại.
-            thu = str(rb.get("thu") or hl.get("thu") or "")
-
-            if y == "xin_nghi" and thu:
-                pair = (nv_id, thu)
-                if pair not in added_nghi:
-                    added_nghi.add(pair)
-                    inp.nghi_phep.add(pair)
-            elif y in {"cap_nhat_tkb", "bao_tre"} and thu:
-                start = str(rb.get("start") or hl.get("start") or "07:00")
-                end = str(rb.get("end") or hl.get("end") or "12:00")
-                key = (nv_id, thu, start, end)
-                if key not in added_tkb:
-                    added_tkb.add(key)
-                    inp.tkb.setdefault(nv_id, []).append((thu, start, end))
-
-    # Ghim ca từ KV "pins"
-    raw_pins = _week_value("pins_by_week", tuan_hien_tai, {})
-    if isinstance(raw_pins, dict):
-        for pin_key, is_pinned in raw_pins.items():
-            if is_pinned and "|" in str(pin_key):
-                ca_id, nv_id = str(pin_key).split("|", 1)
-                if ca_id in inp.ca_ids and nv_id in inp.nhan_vien_ids:
-                    inp.phan_cong.setdefault(ca_id, [])
-                    if nv_id not in inp.phan_cong[ca_id]:
-                        inp.phan_cong[ca_id].append(nv_id)
-    if extra_pin:
-        ca_id, nv_id = extra_pin
-        inp.phan_cong.setdefault(ca_id, [])
-        if nv_id not in inp.phan_cong[ca_id]:
-            inp.phan_cong[ca_id].append(nv_id)
-
-    inp, applied = apply_luat(inp, list_luat())
-    result = solve_cpsat(inp, time_limit_s=60.0)
-
-    # Phân tích danh sách xung đột cụ thể nếu INFEASIBLE hoặc không ok
-    danh_sach_xung_dot: list[str] = []
-    if not result.ok or "INFEASIBLE" in result.status:
-        for ca_id in inp.ca_ids:
-            meta = inp.ca_meta.get(ca_id, {})
-            thu_ca = meta.get("thu", "")
-            req = inp.so_nguoi_toi_thieu.get(ca_id, 1)
-            c_start = meta.get("bat_dau", "07:00")
-            c_end = meta.get("ket_thuc", "12:00")
-            available = 0
-            for nv in inp.nhan_vien_ids:
-                if (nv, thu_ca) in inp.nghi_phep:
-                    continue
-                nv_tkb = inp.tkb.get(nv, [])
-                overlap = False
-                for (b_thu, b_start, b_end) in nv_tkb:
-                    if b_thu == thu_ca:
-                        try:
-                            h_cs, m_cs = map(int, c_start.split(":"))
-                            h_ce, m_ce = map(int, c_end.split(":"))
-                            h_bs, m_bs = map(int, b_start.split(":"))
-                            h_be, m_be = map(int, b_end.split(":"))
-                            if max(h_cs * 60 + m_cs, h_bs * 60 + m_bs) < min(h_ce * 60 + m_ce, h_be * 60 + m_be):
-                                overlap = True
-                                break
-                        except Exception:
-                            pass
-                if not overlap:
-                    available += 1
-            if available < req:
-                danh_sach_xung_dot.append(
-                    f"Ca {ca_id} ({thu_ca} {c_start}-{c_end}) cần tối thiểu {req} người nhưng chỉ còn {available} nhân viên khả dụng do ràng buộc nghỉ phép/TKB."
-                )
-
-    payload = {
-        "nguon": "quan",
-        "adr": "ADR-012",
-        "tuan_iso": tuan_hien_tai,
-        "status": result.status,
-        "ok": result.ok,
-        "elapsed_s": round(result.elapsed_s, 3),
-        "objective": result.objective,
-        "violations": result.violations,
-        "phan_cong": result.phan_cong,
-        "debt_after": result.debt_after,
-        "luat_ap_dung": applied,
-        "danh_sach_xung_dot": danh_sach_xung_dot,
-    }
-    o_ca = {
-        (str(meta.get("thu") or ""), str(meta.get("khung") or ""))
-        for meta in inp.ca_meta.values()
-        if meta.get("thu") and meta.get("khung")
-    }
-    o_ca_da_xep = {
-        (
-            str(inp.ca_meta.get(ca_id, {}).get("thu") or ""),
-            str(inp.ca_meta.get(ca_id, {}).get("khung") or ""),
-        )
-        for ca_id, nhan_vien_ids in result.phan_cong.items()
-        if nhan_vien_ids
-    }
-    payload["tong_so_o_ca"] = len(o_ca)
-    payload["so_o_ca_da_xep"] = len(o_ca_da_xep & o_ca)
-    payload["kiem_tra"] = {
-        "hard": {
-            "passed": result.ok and not result.violations,
-            "gates": ["C01", "C02", "C03", "C04", "C05", "C06"],
-            "violations": result.violations,
-        },
-        "vf": {
-            "applies_to_solver": False,
-            "message": (
-                "VF kiểm dữ liệu do agent trích xuất và lời giải thích; "
-                "CP-SAT được hậu kiểm bằng C01–C06."
-            ),
-            "gates": ["VF-SCHEMA", "VF-TRACE", "VF-CONF", "VF-CONFLICT", "VF-NUM", "VF-RULE"],
-        },
-        "coverage": {
-            "passed": len(o_ca_da_xep & o_ca) == len(o_ca),
-            "filled": len(o_ca_da_xep & o_ca),
-            "total": len(o_ca),
-        },
-    }
-    out = _lich_out()
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    if result.ok:
-        _set_week_value("phan_cong_by_week", tuan_hien_tai, result.phan_cong)
-        _set_week_value("lich_tuan_results_by_week", tuan_hien_tai, payload)
-        _set_week_value("fairness_debt_by_week", tuan_hien_tai, result.debt_after)
-        # Latest-week mirror for older workers/tests; week-scoped stores remain authoritative.
-        kv_set("phan_cong", result.phan_cong)
-    return {
-        "status": result.status,
-        "ok": result.ok,
-        "best_effort": result.ok,
-        "luat_ap_dung": applied,
-        "violations": len(result.violations),
-        "danh_sach_xung_dot": danh_sach_xung_dot,
-        "tong_so_o_ca": len(o_ca),
-        "so_o_ca_da_xep": len(o_ca_da_xep & o_ca),
-        "kiem_tra": payload["kiem_tra"],
-        "phan_cong": result.phan_cong,
-        "ca_meta": inp.ca_meta,
-    }
-
-
 def _run_solver(
     tuan_iso: str | None = None,
     *,
@@ -1034,9 +763,12 @@ def lich_pdf(
 
 
 @router.get("/api/v1/audit")
-def audit_get(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+def audit_get(
+    limit: Annotated[int, Query(ge=1, le=1000)] = 200,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
     _require_manager(authorization)
-    return {"items": audit_list(), "nguon": "quan"}
+    return {"items": audit_list(limit=limit), "nguon": "quan"}
 
 
 def _ics_escape(text: str) -> str:
@@ -1276,8 +1008,24 @@ def inbox_decide(
                 "detail": f"lich_{current_state}_khong_tu_dong_xep_lai",
             }
         else:
+            # Đi qua application service authoritative để mọi trigger dùng chung
+            # một đường CP-SAT (schedule_run/fingerprint/audit/open_shift).
+            rb = found.get("rang_buoc") or {}
+            week = str(rb.get("tuan_id") or life.get("tuan_iso") or "2026-W01")
+            session = auth_session(authorization) or {}
+            store_id = str(session.get("store_id") or "quan_01")
             try:
-                solver_result = _run_solver(store_id=store_id)
+                authoritative = run_authoritative_schedule(
+                    store_id=store_id,
+                    tuan_iso=week,
+                    actor_id=str(session.get("nv_id") or role),
+                    idempotency_key=f"inbox:{item_id}:{week}:solve",
+                )
+                solver_result = authoritative.get("result") or {}
+                # KHÔNG gán toàn bộ `authoritative` vào `result` (gây tham chiếu vòng
+                # khi serialize JSON). Chỉ giữ metadata run ở mức solver_result.
+                solver_result["schedule_run_id"] = authoritative.get("id")
+                solver_result["schedule_run_status"] = authoritative.get("status")
             except Exception:
                 solver_result = {
                     "ok": False,
@@ -1287,6 +1035,7 @@ def inbox_decide(
             if solver_result.get("ok"):
                 life["trang_thai"] = "cho_duyet"
                 life["solver"] = solver_result
+                life["schedule_run_id"] = solver_result.get("schedule_run_id")
                 life["cap_nhat_luc"] = _clock.now_iso()
                 life["cap_nhat_boi"] = role
                 _save_life(life, store_id=store_id)

@@ -9,6 +9,7 @@ Methods:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 import ssl
@@ -56,6 +57,43 @@ HOT_SEEDS = [
     "menu mới fnb",
     "trào lưu gen z",
 ]
+
+
+# ── Circuit breaker cho Jina Reader ─────────────────────────────────────────
+# Jina có thể rate-limit/chặn IP. Nếu fail >=3 lần/60s → mở mạch 5 phút, bỏ qua
+# nguồn này để chuỗi rớt tầng nhanh (không chờ timeout 8s mỗi lần).
+_CB_FAILURE_THRESHOLD = 3
+_CB_OPEN_SECONDS = 300.0
+_CB_WINDOW_SECONDS = 60.0
+
+
+class _SourceCircuitBreaker:
+    """Circuit breaker đơn giản cho một nguồn cào free."""
+
+    def __init__(self) -> None:
+        self._failures: list[float] = []
+        self._open_until: float = 0.0
+
+    def allow(self) -> bool:
+        return time.monotonic() >= self._open_until
+
+    def record_failure(self) -> None:
+        now = time.monotonic()
+        self._failures = [t for t in self._failures if now - t <= _CB_WINDOW_SECONDS]
+        self._failures.append(now)
+        if len(self._failures) >= _CB_FAILURE_THRESHOLD:
+            self._open_until = now + _CB_OPEN_SECONDS
+            logger.warning(
+                "jina_circuit_breaker_opened failures=%d open_seconds=%.0f",
+                len(self._failures),
+                _CB_OPEN_SECONDS,
+            )
+
+    def record_success(self) -> None:
+        self._failures = []
+
+
+_CB_JINA = _SourceCircuitBreaker()
 
 
 def _detect_category(title: str, text: str) -> str:
@@ -108,41 +146,50 @@ def scrape_threads_direct(
     posts_raw: list[dict[str, Any]] = []
     now_str = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
-    try:
-        req = urllib.request.Request(jina_url, headers=_HEADERS)
-        with urllib.request.urlopen(req, timeout=8, context=_get_ssl_context()) as resp:
-            content = resp.read().decode("utf-8")
-            
-            # Bóc tách các đoạn post từ Markdown
-            # Cấu trúc markdown thường có: [@username](...) hoặc [Post text](...)
-            blocks = content.split("\n\n")
-            for block in blocks:
-                clean_b = block.strip()
-                if len(clean_b) > 40 and not clean_b.startswith("Title:") and not clean_b.startswith("URL Source:"):
-                    # Trích xuất username nếu có
-                    u_match = re.search(r"@([a-zA-Z0-9_\.]+)", clean_b)
-                    username = u_match.group(1) if u_match else "threads_creator"
-                    
-                    # Trích xuất URL post nếu có
-                    url_match = re.search(r"https://www\.threads\.net/@[\w\.]+/post/(\w+)", clean_b)
-                    post_url = url_match.group(0) if url_match else f"https://www.threads.net/search?q={encoded_query}"
-                    post_id = url_match.group(1) if url_match else f"th_{len(posts_raw)}_{int(time.time())}"
-                    
-                    # Trích xuất nội dung bài
-                    text = re.sub(r"\[.*?\]\(.*?\)", "", clean_b).replace("###", "").strip()
-                    if text and len(text) > 30:
-                        posts_raw.append({
-                            "id": post_id,
-                            "username": username,
-                            "text": text,
-                            "url": post_url,
-                            "likes": max(150, 1800 - len(posts_raw) * 150),
-                            "replies": max(12, 110 - len(posts_raw) * 10),
-                        })
-                if len(posts_raw) >= count:
-                    break
-    except Exception as e:
-        logger.warning("Lỗi cào Threads direct qua Jina engine: %s", e)
+    # Circuit breaker: nếu Jina đang mở mạch (fail >=3 lần/60s) → bỏ qua, rớt tầng.
+    if _CB_JINA.allow():
+        try:
+            req = urllib.request.Request(jina_url, headers=_HEADERS)
+            with urllib.request.urlopen(req, timeout=8, context=_get_ssl_context()) as resp:
+                content = resp.read().decode("utf-8")
+                _CB_JINA.record_success()
+                
+                # Bóc tách các đoạn post từ Markdown
+                # Cấu trúc markdown thường có: [@username](...) hoặc [Post text](...)
+                blocks = content.split("\n\n")
+                for block in blocks:
+                    clean_b = block.strip()
+                    if len(clean_b) > 40 and not clean_b.startswith("Title:") and not clean_b.startswith("URL Source:"):
+                        # Trích xuất username nếu có
+                        u_match = re.search(r"@([a-zA-Z0-9_\.]+)", clean_b)
+                        username = u_match.group(1) if u_match else "threads_creator"
+                        
+                        # Trích xuất URL post nếu có
+                        url_match = re.search(r"https://www\.threads\.net/@[\w\.]+/post/(\w+)", clean_b)
+                        post_url = url_match.group(0) if url_match else f"https://www.threads.net/search?q={encoded_query}"
+                        post_id = url_match.group(1) if url_match else f"th_{len(posts_raw)}_{int(time.time())}"
+                        
+                        # Trích xuất nội dung bài
+                        text = re.sub(r"\[.*?\]\(.*?\)", "", clean_b).replace("###", "").strip()
+                        if text and len(text) > 30:
+                            # ADR-008: Jina Reader chỉ trả text, KHÔNG có số like/reply thật.
+                            # Không bịa số tương tác — để 0 và đánh dấu is_live_scraped=False
+                            # để downstream phân biệt được dữ liệu không có số liệu thật.
+                            posts_raw.append({
+                                "id": post_id,
+                                "username": username,
+                                "text": text,
+                                "url": post_url,
+                                "likes": 0,
+                                "replies": 0,
+                            })
+                    if len(posts_raw) >= count:
+                        break
+        except Exception as e:
+            logger.warning("Lỗi cào Threads direct qua Jina engine: %s", e)
+            _CB_JINA.record_failure()
+    else:
+        logger.info("threads_direct_jina_circuit_open_skipping")
 
     # 2. KHÔNG fallback hardcode giả mạo dữ liệu thật (plan §3.4 — cùng lỗi
     # tier-blocking đã fix cho TikTok): Jina fail → trả [] để chuỗi smart
@@ -174,21 +221,22 @@ def scrape_threads_direct(
         category = _detect_category(title_display, text)
         reach_str = f"{likes:,} tim | {replies:,} phản hồi"
 
-        cmts = p.get("sample_cmts", [
-            f'@{username}: "{text[:100]}..." (❤️ {likes})',
-            f'Cộng đồng Threads đang bàn luận sôi nổi về "#{short_kw}"',
-        ])
+        # ADR-008: KHÔNG bịa comment. Jina không trả comment thật → để rỗng.
+        cmts: list[str] = []
+
+        # id ổn định giữa các lần chạy (hashlib thay vì hash() randomized).
+        stable_id = hashlib.sha1(f"{post_id}:{text[:80]}".encode()).hexdigest()[:12]
 
         items_out.append(
             TrendItem(
-                id=f"live_threads_direct_{idx}_{post_id}",
+                id=f"live_threads_direct_{idx}_{stable_id}",
                 tieu_de=f"🧵 [THREADS VIRAL] {title_display}",
                 cum_tu_khoa_viral=short_kw or "Tâm sự Threads",
                 nguon_goc=nguon_goc,
                 loai_xu_huong="breaking_vn_24h",
                 danh_muc=category,
                 vong_doi=vong_doi,
-                diem_nhan_dac_biet=f"Tài khoản: @{username}. Tương tác thật: {reach_str}. Trạng thái: {forecast}",
+                diem_nhan_dac_biet=f"Tài khoản: @{username}. Trạng thái: {forecast}",
                 nguon_goc_chi_tiet=f"Cào dữ liệu trực tiếp 100% thời gian thực từ Threads.net lúc {now_str}.",
                 ngu_canh_su_dung=f"Ý tưởng đổi mới đồ uống, nâng cao trải nghiệm không gian hoặc sáng tạo bài đăng theo xu hướng #{short_kw}.",
                 tam_ly_gioi_tre="Tâm lý tiêu dùng, trải nghiệm không gian và gu thưởng thức đồ uống mới của Gen Z.",
@@ -204,7 +252,7 @@ def scrape_threads_direct(
                 binh_luan_that_tiktok=cmts,
                 nen_tang_lan_toa=["Meta Threads"],
                 tu_khoa_hashtag=[f"#{clean_tag}", "#threads", "#fnbvietnam", "#genz"],
-                is_live_scraped=True,
+                is_live_scraped=False,
             )
         )
 

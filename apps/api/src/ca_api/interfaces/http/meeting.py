@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
+import json
 import re
 
 try:
@@ -16,15 +18,27 @@ from typing import Annotated, Any, cast
 
 from ca_agents.ag_meeting import (
     clarify_meeting_actions,
+    create_meeting_stream_session,
     extract_meeting,
-    transcribe_audio,
+    transcribe_audio_live,
+    transcribe_audio_live_async,
 )
 from ca_contracts import CuocHop
-from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
+from fastapi import (
+    APIRouter,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from pydantic import BaseModel, Field
 
 from ca_api.interfaces.http.sprint3 import _nv_from_token, _require_manager, _require_role
 from ca_api.persist import audit_add, kv_get, kv_mutate, list_users
+from ca_api.persist import session as auth_session
 
 router = APIRouter(tags=["meeting"])
 ROOT = Path(__file__).resolve().parents[6]
@@ -146,7 +160,7 @@ def transcribe_audio_endpoint(
     if len(audio_bytes) > AUDIO_TOI_DA_BYTES:
         raise HTTPException(status_code=413, detail="audio_qua_lon_toi_da_25mb")
 
-    res = transcribe_audio(audio_bytes=audio_bytes, mime_type=_clean_audio_mime(body.mime_type))
+    res = transcribe_audio_live(audio_bytes=audio_bytes, mime_type=_clean_audio_mime(body.mime_type))
     return {
         "ok": res.ok,
         "raw_text": res.raw_text,
@@ -218,7 +232,9 @@ async def process_audio_upload(
             detail="Không thể đọc file âm thanh, vui lòng kiểm tra lại định dạng.",
         )
 
-    trans_res = transcribe_audio(audio_bytes=audio_bytes, mime_type=_clean_audio_mime(file.content_type))
+    trans_res = await transcribe_audio_live_async(
+        audio_bytes=audio_bytes, mime_type=_clean_audio_mime(file.content_type)
+    )
     if not trans_res.ok and not live_transcript.strip():
         raise HTTPException(
             status_code=400,
@@ -769,3 +785,125 @@ def update_meeting_draft_endpoint(
 
     kv_mutate("meetings", mut_meet, [])
     return {"ok": True, "meeting_id": meeting_id, "phien_ban": new_ver, "last_modified_at": now_iso}
+
+
+# ── Streaming realtime (Google Meet / micro trực tiếp) ────────────────────────
+# Không giới hạn thời gian: audio gửi theo tốc độ thực, không dồn token.
+# Client gửi: {"event": "auth", "token": "..."} → {"event": "audio", "data": "<base64 pcm16 16khz>"}
+# Server trả: {"event": "transcript", "data": {"text": "...", "is_final": bool}}
+# Client kết thúc: {"event": "stop"}
+
+MAX_AUDIO_CHUNK_BYTES = 65536  # 64 KB per PCM chunk
+
+
+def _stream_verified_context(token: str) -> dict[str, str] | None:
+    session = auth_session(f"Bearer {token}") or auth_session(token)
+    if not session:
+        return None
+    user_id = str(session.get("nv_id") or "").strip()
+    role = str(session.get("role") or "")
+    if not user_id or role not in {"chu_quan", "quan_ly", "nhan_vien"}:
+        return None
+    return {
+        "user_id": user_id,
+        "role": role,
+        "store_id": str(session.get("store_id") or "quan_01"),
+    }
+
+
+@router.websocket("/api/v1/meeting/stream")
+async def meeting_stream_websocket(websocket: WebSocket) -> None:
+    """Streaming realtime: nhận audio chunk, trả transcript liên tục."""
+    await websocket.accept()
+
+    # Auth
+    try:
+        raw = await websocket.receive_text()
+        message = json.loads(raw)
+    except Exception:
+        await websocket.close(code=4001, reason="auth_invalid")
+        return
+    if not isinstance(message, dict) or message.get("event") != "auth":
+        await websocket.close(code=4001, reason="auth_invalid")
+        return
+    context = _stream_verified_context(str(message.get("token") or "").strip())
+    if context is None:
+        await websocket.close(code=4001, reason="auth_invalid")
+        return
+
+    # Tạo session streaming
+    session = create_meeting_stream_session()
+    if session is None:
+        await websocket.send_json(
+            {"event": "error", "data": {"code": "stream_unavailable", "fallback": "batch"}}
+        )
+        await websocket.close(code=4003, reason="stream_unavailable")
+        return
+
+    try:
+        await session.open()
+    except Exception as exc:
+        await websocket.send_json(
+            {"event": "error", "data": {"code": "setup_failed", "detail": str(exc)}}
+        )
+        await websocket.close(code=4003, reason="setup_failed")
+        return
+
+    await websocket.send_json(
+        {"event": "ready", "data": {"input_format": "pcm_s16le_16000_mono"}}
+    )
+
+    async def _receive_client() -> None:
+        """Nhận audio chunk từ client, chuyển tiếp lên Gemini."""
+        while True:
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                return
+            audio = message.get("bytes")
+            if audio is not None:
+                if audio and len(audio) <= MAX_AUDIO_CHUNK_BYTES:
+                    await session.send_audio(audio)
+                continue
+            raw = message.get("text")
+            if not raw:
+                continue
+            try:
+                payload = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if not isinstance(payload, dict):
+                continue
+            event = payload.get("event")
+            if event == "stop":
+                await session.end_audio()
+                return
+
+    async def _receive_upstream() -> None:
+        """Nhận transcript realtime từ Gemini, gửi về client."""
+        while True:
+            transcript = await session.receive()
+            if transcript is None:
+                break
+            await websocket.send_json(
+                {
+                    "event": "transcript",
+                    "data": {"text": transcript.text, "is_final": transcript.is_final},
+                }
+            )
+
+    try:
+        client_task = asyncio.create_task(_receive_client())
+        upstream_task = asyncio.create_task(_receive_upstream())
+        done, _ = await asyncio.wait(
+            {client_task, upstream_task}, return_when=asyncio.FIRST_COMPLETED
+        )
+        for task in done:
+            if not task.cancelled():
+                task.result()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        for task in (client_task, upstream_task):
+            task.cancel()
+        await asyncio.gather(client_task, upstream_task, return_exceptions=True)
+        await session.close()

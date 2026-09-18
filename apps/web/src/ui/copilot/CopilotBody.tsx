@@ -17,10 +17,11 @@ import type { ChatMessage, Mode } from "./useCopilotChat";
 import { useCopilotVoice, type VoiceInputMode } from "./useCopilotVoice";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const VOICE_ENABLED = process.env.NEXT_PUBLIC_GEMINI_LIVE_VOICE_ENABLED === "true";
+const VOICE_ENABLED = process.env.NEXT_PUBLIC_GEMINI_LIVE_VOICE_ENABLED !== "false";
 const VOICE_CONSENT_KEY = "ag_voice_consent_v1";
 const VOICE_MODE_KEY = "ag_voice_input_mode";
 const VOICE_MIC_KEY = "ag_voice_mic_device_id";
+const VOICE_TOGGLE_KEY = "ag_voice_enabled_v1";
 
 function resolveMediaUrl(url: string): string {
   if (!url) return "";
@@ -60,6 +61,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [voiceMode, setVoiceMode] = useState<VoiceInputMode>("open_mic");
   const [selectedMicId, setSelectedMicId] = useState<string>("");
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(VOICE_ENABLED);
 
   useEffect(() => {
     try {
@@ -71,8 +73,26 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
       if (savedMic) {
         setSelectedMicId(savedMic);
       }
+      const savedToggle = window.localStorage.getItem(VOICE_TOGGLE_KEY);
+      if (savedToggle === "true" || savedToggle === "false") {
+        setVoiceEnabled(savedToggle === "true");
+      }
     } catch {}
   }, []);
+
+  const handleVoiceToggleEnabled = () => {
+    setVoiceEnabled((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(VOICE_TOGGLE_KEY, String(next));
+      } catch {}
+      if (!next && isVoiceActive) {
+        voice.stop();
+        activeVoiceTurnRef.current = null;
+      }
+      return next;
+    });
+  };
 
   const handleTranscript = useCallback(
     (role: "user" | "copilot", chunk: string, isFinal: boolean) => {
@@ -313,6 +333,19 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleVoiceToggleEnabled}
+            title={voiceEnabled ? "Tắt voice (chỉ dùng chat text)" : "Bật voice (nói chuyện với trợ lý)"}
+            className={`flex items-center gap-1 border px-2 py-1 text-[10px] font-bold uppercase transition ${
+              voiceEnabled
+                ? "border-[var(--nq-copper)] bg-[var(--nq-copper)]/10 text-[var(--nq-copper)] hover:brightness-110"
+                : "border-[var(--nq-dim)] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
+            }`}
+          >
+            <Icon name="microphone" size={13} />
+            {voiceEnabled ? "Voice: Bật" : "Voice: Tắt"}
+          </button>
           {onClearHistory ? (
             <button
               onClick={onClearHistory ?? clearHistory}
@@ -545,7 +578,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             {uploadError && (
               <p className="mb-2 text-[11px] text-rose-400">{uploadError}</p>
             )}
-            {VOICE_ENABLED && (
+            {voiceEnabled && (
               <div className="mb-2 space-y-1.5">
                 {/* Audio controls: Mode switcher & Mic dropdown */}
                 <div className="flex items-center justify-between gap-2 px-1 text-[10px]">
@@ -687,7 +720,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 className="flex-1 border-2 bg-[var(--nq-bg)] px-3.5 py-2 text-xs text-[var(--nq-fg)] placeholder:text-[var(--nq-dim)] focus:outline-none disabled:opacity-50"
                 style={{ borderColor: "var(--accent)" }}
               />
-              {VOICE_ENABLED && (
+              {voiceEnabled && (
                 <button
                   type="button"
                   onClick={voiceMode === "open_mic" || !isVoiceActive ? handleVoiceToggle : undefined}

@@ -109,6 +109,11 @@ def test_agent_khong_goi_agent_va_khong_ghi_db() -> None:
     if not ROOT.exists():
         return
     ten_agent = {d.name for d in ROOT.iterdir() if d.is_dir() and d.name.startswith("ag_")}
+    # Ngoại lệ: `ag_twin` dùng `ag_predict.math_layer` — math_layer là module toán
+    # thuần (ADR-002), không phải agent. Cho phép import module con này.
+    CHO_PHEP = {
+        "ag_twin": {"ag_predict.math_layer"},
+    }
     for tep in ROOT.rglob("*.py"):
         hien_tai = next((p for p in tep.parts if p.startswith("ag_")), None)
         tree = ast.parse(tep.read_text(encoding="utf-8"))
@@ -121,4 +126,8 @@ def test_agent_khong_goi_agent_va_khong_ghi_db() -> None:
             for x in CAM:
                 assert x not in ten, f"{tep} không được import {x}"
             for khac in ten_agent - {hien_tai}:
+                # Bỏ qua nếu import này là module con được phép (vd ag_predict.math_layer)
+                cho_phep = CHO_PHEP.get(hien_tai, set())
+                if any(cho in ten for cho in cho_phep):
+                    continue
                 assert khac not in ten, f"{tep} không được gọi agent khác: {khac}"
