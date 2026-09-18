@@ -136,3 +136,24 @@ def test_twin_simulate_idempotent() -> None:
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.json()["scenario"]["ket_qua"] == r2.json()["scenario"]["ket_qua"]
+
+
+def test_twin_virtual_staff_endpoint() -> None:
+    ql = headers(client, "lan")
+    res = client.post(
+        "/api/v1/ops/twin/virtual-staff",
+        json={
+            "simulation_id": "sim_test_1",
+            "kich_ban": "2 người ca tối",
+            "staff_rows": [
+                {"id": "nv_01", "ten": "Minh", "loai": "pha_che"},
+                {"id": "nv_02", "ten": "Lan", "loai": "phuc_vu"},
+            ],
+        },
+        headers=ql,
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["ok"] is True
+    assert "simulation" in body
+    assert len(body["simulation"]["staff"]) == 2

@@ -220,3 +220,27 @@ def approve_positive_rule(
 
     kv_mutate("ops_predict_rules", mut_rules, [])
     return {"ok": True, "rule_id": rule_id, "trang_thai": "hieu_luc"}
+
+
+class VirtualStaffBody(BaseModel):
+    simulation_id: str
+    kich_ban: str
+    staff_rows: list[dict[str, object]] = Field(default_factory=list)
+    so_lan: int = 1
+
+
+@router.post("/api/v1/ops/twin/virtual-staff")
+def twin_virtual_staff(
+    body: VirtualStaffBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Mô phỏng hành vi nhân viên ảo (tất định, không LLM)."""
+    _require_manager(authorization)
+
+    simulation = simulate_virtual_staff(
+        simulation_id=body.simulation_id,
+        kich_ban=body.kich_ban,
+        staff_rows=body.staff_rows,
+        so_lan=body.so_lan,
+    )
+    return {"ok": True, "simulation": simulation.model_dump(mode="json")}

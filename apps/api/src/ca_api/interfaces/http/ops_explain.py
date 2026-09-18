@@ -37,10 +37,15 @@ def explain_endpoint(
     """Trả chuỗi nhân quả cho câu hỏi "tại sao" (tất định, có bằng chứng)."""
     _require_role(authorization)
 
-    # Đọc dữ liệu thật từ KV store
-    luat_list = kv_get("cam_nang", []) or kv_get("ops_predict_rules", [])
-    audit_list = kv_get("audit", []) or []
-    ket_qua_list = kv_get("ops_twin_scenarios", []) or []
+    # Đọc dữ liệu thật từ KV store (đảm bảo luôn là list — cam_nang có thể là dict)
+    cam_nang = kv_get("cam_nang", [])
+    luat_list = cam_nang if isinstance(cam_nang, list) else cam_nang.get("items", [])
+    if not luat_list:
+        luat_list = kv_get("ops_predict_rules", [])
+    audit_raw = kv_get("audit", [])
+    audit_list = audit_raw if isinstance(audit_raw, list) else []
+    ket_qua_raw = kv_get("ops_twin_scenarios", [])
+    ket_qua_list = ket_qua_raw if isinstance(ket_qua_raw, list) else []
 
     chain = build_causal_chain(
         cau_hoi=body.cau_hoi,
