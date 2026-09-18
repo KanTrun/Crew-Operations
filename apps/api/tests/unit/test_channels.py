@@ -7,6 +7,8 @@ import hashlib
 import hmac
 import json
 
+import pytest
+
 from ca_agents.messaging import InboundMessage
 from ca_api.interfaces.http.channels import process_inbound
 from ca_api.interfaces.http.main import app
