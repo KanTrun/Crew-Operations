@@ -74,6 +74,43 @@ def list_chains(
     return {"items": chains}
 
 
+class EpisodeBody(BaseModel):
+    loai: str
+    thoi_gian: str = ""
+    mo_ta: str
+    nhan_vien: str = ""
+    ca: str = ""
+    chi_tiet: dict[str, object] = Field(default_factory=dict)
+
+
+@router.post("/api/v1/ops/episodes")
+def add_episode(
+    body: EpisodeBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Ghi một episode (tình huống cụ thể) vào episodic memory."""
+    _require_role(authorization)
+
+    def mut_episodes(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        res = list(cur)
+        res.insert(
+            0,
+            {
+                "id": f"ep_{len(res) + 1}",
+                "loai": body.loai,
+                "thoi_gian": body.thoi_gian,
+                "mo_ta": body.mo_ta,
+                "nhan_vien": body.nhan_vien,
+                "ca": body.ca,
+                "chi_tiet": body.chi_tiet,
+            },
+        )
+        return res
+
+    kv_mutate("ops_episodes", mut_episodes, [])
+    return {"ok": True}
+
+
 @router.post("/api/v1/ops/reflect")
 def reflect_endpoint(
     body: ReflectBody,

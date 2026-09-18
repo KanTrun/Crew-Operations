@@ -54,3 +54,34 @@ def test_reflect_endpoint() -> None:
     assert body["ok"] is True
     assert "result" in body
     assert "ket_luan" in body["result"]
+
+
+def test_add_episode_and_reflect() -> None:
+    ql = headers(client, "lan")
+    # Ghi 2 episode phàn nàn cùng nhân viên/ca
+    for i in range(2):
+        res = client.post(
+            "/api/v1/ops/episodes",
+            json={
+                "loai": "phan_nan",
+                "thoi_gian": f"2026-09-1{i}",
+                "mo_ta": f"Khách chờ {10 + i} phút",
+                "nhan_vien": "Minh",
+                "ca": "T6_toi",
+                "chi_tiet": {"ly_do": "Minh bận pha 3 ly"},
+            },
+            headers=ql,
+        )
+        assert res.status_code == 200, res.text
+
+    # Reflect → phát hiện nhóm phàn nàn
+    res = client.post(
+        "/api/v1/ops/reflect",
+        json={"cau_hoi": "Tuần này có gì bất thường?"},
+        headers=ql,
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["ok"] is True
+    assert len(body["result"]["episodes"]) >= 2
+    assert len(body["result"]["reflections"]) >= 1
