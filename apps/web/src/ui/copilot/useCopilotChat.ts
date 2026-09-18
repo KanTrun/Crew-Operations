@@ -2,7 +2,7 @@
 // Tách ra để 2 nơi cùng dùng: role-aware, streaming, history, action proposal.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getRole, getToken } from "../../lib/session";
+import { getNvId, getRole, getToken } from "../../lib/session";
 import { getCopilotProfile } from "./profile";
 import type { ActionProposalData } from "./ActionProposalCard";
 
@@ -34,15 +34,18 @@ const TYPING_TICK_MS = 30;
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-// Tách key theo mode để pane và /copilot page không ghi đè lịch sử nhau.
-function storageKey(mode: Mode): string {
-  return `${STORAGE_KEY}_${mode}`;
+// Mỗi nhân viên có lịch sử riêng; không đọc khóa chung cũ để tránh lộ hội thoại.
+function storageKey(mode: Mode, nvId: string): string | null {
+  const employeeId = nvId.trim();
+  return employeeId ? `${STORAGE_KEY}_${employeeId}_${mode}` : null;
 }
 
-function loadHistory(mode: Mode): ChatMessage[] | null {
+function loadHistory(mode: Mode, nvId: string): ChatMessage[] | null {
   if (typeof window === "undefined") return null;
+  const key = storageKey(mode, nvId);
+  if (!key) return null;
   try {
-    const raw = window.localStorage.getItem(storageKey(mode));
+    const raw = window.localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ChatMessage[];
     return Array.isArray(parsed) ? parsed : null;
@@ -51,11 +54,13 @@ function loadHistory(mode: Mode): ChatMessage[] | null {
   }
 }
 
-function saveHistory(messages: ChatMessage[], mode: Mode) {
+function saveHistory(messages: ChatMessage[], mode: Mode, nvId: string) {
   if (typeof window === "undefined") return;
+  const key = storageKey(mode, nvId);
+  if (!key) return;
   try {
     window.localStorage.setItem(
-      storageKey(mode),
+      key,
       JSON.stringify(messages.slice(-MAX_HISTORY))
     );
   } catch {
@@ -65,6 +70,7 @@ function saveHistory(messages: ChatMessage[], mode: Mode) {
 
 export function useCopilotChat(mode: Mode = "pane") {
   const profile = getCopilotProfile(getRole() as any);
+  const nvId = getNvId();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -75,6 +81,7 @@ export function useCopilotChat(mode: Mode = "pane") {
     },
   ]);
   const [hydrated, setHydrated] = useState(false);
+  const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const typingTimers = useRef<Record<string, number>>({});
@@ -85,32 +92,30 @@ export function useCopilotChat(mode: Mode = "pane") {
     messagesRef.current = messages;
   }, [messages]);
 
-  // Khi đổi role (logout/login), reset messages + greeting mới
-  useEffect(() => {
-    if (!hydrated) return;
-    setMessages([
-      {
-        id: "welcome",
-        sender: "copilot",
-        text: profile.greeting,
-        timestamp: "Bây giờ",
-      },
-    ]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile.role]);
-
   // Khôi phục lịch sử
   useEffect(() => {
-    const saved = loadHistory(mode);
-    if (saved && saved.length > 0) setMessages(saved);
+    Object.values(typingTimers.current).forEach((timer) => window.clearTimeout(timer));
+    typingTimers.current = {};
+    setHydrated(false);
+    setHydratedStorageKey(null);
+    const saved = loadHistory(mode, nvId);
+    setMessages(saved && saved.length > 0 ? saved : [{
+      id: "welcome",
+      sender: "copilot",
+      text: profile.greeting,
+      timestamp: "Bây giờ",
+    }]);
+    setLoading(false);
+    setStreamingId(null);
+    setHydratedStorageKey(storageKey(mode, nvId));
     setHydrated(true);
-  }, [mode]);
+  }, [mode, nvId, profile.greeting]);
 
   // Lưu lịch sử
   useEffect(() => {
-    if (!hydrated) return;
-    saveHistory(messages, mode);
-  }, [messages, hydrated, mode]);
+    if (!hydrated || hydratedStorageKey !== storageKey(mode, nvId)) return;
+    saveHistory(messages, mode, nvId);
+  }, [messages, hydrated, hydratedStorageKey, mode, nvId]);
 
   // Cleanup timers khi unmount
   useEffect(() => {
@@ -287,6 +292,8 @@ export function useCopilotChat(mode: Mode = "pane") {
     if (typeof window === "undefined") return;
     const ok = window.confirm("Xoá toàn bộ lịch sử hội thoại với trợ lý vận hành?");
     if (!ok) return;
+    const key = storageKey(mode, nvId);
+    if (key) window.localStorage.removeItem(key);
     setMessages([
       {
         id: "welcome",
@@ -295,7 +302,7 @@ export function useCopilotChat(mode: Mode = "pane") {
         timestamp: "Bây giờ",
       },
     ]);
-  }, [profile.greeting]);
+  }, [mode, nvId, profile.greeting]);
 
   const updateProposal = useCallback(
     (msgId: string, updated: ActionProposalData) => {

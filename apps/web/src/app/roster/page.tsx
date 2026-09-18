@@ -114,12 +114,27 @@ const VI_TRI_LABEL: Record<string, string> = {
 const TRANG_THAI_NEXT: Record<string, { label: string; next: string }> = {
   may_sinh: { label: "Chuyển sang nháp", next: "nhap" },
   nhap: { label: "Xếp lịch tự động", next: "dang_giai" },
-  dang_giai: { label: "Gửi duyệt", next: "cho_duyet" },
-  cho_duyet: { label: "Duyệt lịch", next: "da_duyet" },
-  da_duyet: { label: "Công bố cho nhân viên", next: "da_cong_bo" },
-  da_cong_bo: { label: "Đóng tuần", next: "da_dong" },
+  dang_giai: { label: "Đang xếp lịch", next: "" },
+  cho_duyet: { label: "Duyệt và công bố", next: "da_duyet" },
+  da_duyet: { label: "Mở lại để điều chỉnh", next: "nhap" },
+  da_cong_bo: { label: "Mở lại để điều chỉnh", next: "nhap" },
   da_dong: { label: "Mở lại để điều chỉnh", next: "nhap" },
 };
+
+const LIFECYCLE_CONFLICTS: Record<string, string> = {
+  authoritative_schedule_run_required: "Tuần này chưa có kết quả xếp lịch chính thức. Bấm Xếp lịch tự động trước khi duyệt.",
+  stale_schedule_run: "Dữ liệu lịch bận hoặc ràng buộc đã thay đổi sau lần xếp gần nhất. Hãy xếp lịch tự động lại rồi duyệt.",
+  schedule_has_unresolved_gaps: "Lịch còn ca thiếu người. Phân công hoặc xử lý các ca thiếu rồi chạy lại lịch.",
+  invalid_schedule_run: "Kết quả xếp lịch chưa hợp lệ. Chạy lại lịch và xử lý các xung đột được hiển thị.",
+  schedule_has_open_shifts: "Vẫn còn ca đang mở hoặc đã có người nhận nhưng chưa được quản lý xử lý. Hoàn tất các ca này rồi duyệt lại.",
+};
+
+function lifecycleError(error: unknown): string {
+  if (error instanceof ApiError && typeof error.detail === "string") {
+    return LIFECYCLE_CONFLICTS[error.detail] ?? viError(error, { doing: "cập nhật trạng thái lịch" });
+  }
+  return viError(error, { doing: "cập nhật trạng thái lịch" });
+}
 
 const TRANG_THAI_COLOR: Record<string, string> = {
   may_sinh: "warn",
@@ -431,17 +446,17 @@ export default function RosterPage() {
   async function handleLifecycle(nextState: string, weekIso: string) {
     if (!nextState) return;
     if (
-      nextState === "da_cong_bo" &&
-      !window.confirm("Công bố lịch này cho toàn bộ nhân viên? Sau khi công bố không thể ghim hoặc sửa trực tiếp.")
+      nextState === "da_duyet" &&
+      !window.confirm("Duyệt lịch cuối và công bố ngay cho toàn bộ nhân viên? Sau bước này hệ thống sẽ không tự thay đổi lịch.")
     ) return;
     if (
       nextState === "da_dong" &&
       !window.confirm("Đóng lịch tuần này? Chỉ chủ quán có thể mở lại và phải ghi lý do.")
     ) return;
-    const reopenReason = trangThai === "da_dong" && nextState === "nhap"
+    const reopenReason = ["da_duyet", "da_cong_bo", "da_dong"].includes(trangThai) && nextState === "nhap"
       ? window.prompt("Lý do mở lại lịch để điều chỉnh:")?.trim()
       : null;
-    if (trangThai === "da_dong" && !reopenReason) return;
+    if (["da_duyet", "da_cong_bo", "da_dong"].includes(trangThai) && !reopenReason) return;
     setLifecycleBusy(true);
     setLifecycleMsg(null);
     try {
@@ -458,10 +473,10 @@ export default function RosterPage() {
           "PATCH",
         );
       }
-      setLifecycleMsg("Đã cập nhật trạng thái lịch.");
+      setLifecycleMsg(nextState === "da_duyet" ? "Đã duyệt, công bố lịch và gửi thông báo cho nhân viên." : "Đã cập nhật trạng thái lịch.");
       await loadLich(baseWeek, soTuan);
     } catch (e) {
-      setError(viError(e, { doing: "cập nhật trạng thái lịch" }));
+      setError(lifecycleError(e));
     } finally {
       setLifecycleBusy(false);
     }
@@ -744,12 +759,9 @@ export default function RosterPage() {
       {canWrite && (
         <section className="nq-workflow mb-4" aria-label="Quy trình lịch tuần">
           {[
-            ["nhap", "1. Nháp"],
-            ["dang_giai", "2. Xếp tự động"],
-            ["cho_duyet", "3. Chờ duyệt"],
-            ["da_duyet", "4. Đã duyệt"],
-            ["da_cong_bo", "5. Công bố"],
-            ["da_dong", "6. Đóng"],
+            ["nhap", "1. Chuẩn bị lịch"],
+            ["cho_duyet", "2. Rà soát và xử lý ca thiếu"],
+            ["da_cong_bo", "3. Đã duyệt và công bố"],
           ].map(([state, label]) => (
             <span
               key={state}
@@ -759,7 +771,7 @@ export default function RosterPage() {
             </span>
           ))}
           <p className="nq-muted text-xs basis-full">
-            Máy chỉ tạo lịch nháp. Quản lý vẫn phải duyệt và công bố; hệ thống không tự công bố.
+            Duyệt cuối sẽ tự công bố và gửi thông báo. Muốn sửa lịch đã công bố, quản lý phải mở lại và ghi rõ lý do.
           </p>
         </section>
       )}

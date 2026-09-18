@@ -106,9 +106,9 @@ _ALLOWED = {
     "may_sinh": {"nhap"},
     "nhap": {"dang_giai"},
     "dang_giai": {"cho_duyet", "nhap"},
-    "cho_duyet": {"da_duyet", "nhap"},
-    "da_duyet": {"da_cong_bo"},
-    "da_cong_bo": {"da_dong"},
+    "cho_duyet": {"da_duyet", "da_cong_bo", "nhap"},
+    "da_duyet": {"da_cong_bo", "nhap"},
+    "da_cong_bo": {"da_dong", "nhap"},
     "da_dong": {"nhap"},
 }
 _REASON = {
@@ -159,11 +159,11 @@ def _set_week_value(key: str, tuan_iso: str, value: Any) -> None:
     kv_mutate(key, mut, {})
 
 
-def _publish_schedule_notification(week: str) -> int:
+def _publish_schedule_notification(week: str, store_id: str = "quan_01") -> int:
     """Persist one exact-week notification for each active real account."""
     recipients = [
         str(user.get("nv_id") or "")
-        for user in list_users()
+        for user in list_users(store_id=store_id)
         if user.get("role") in {"nhan_vien", "quan_ly", "chu_quan"}
         and str(user.get("status") or "active") == "active"
         and str(user.get("nv_id") or "")
@@ -175,6 +175,7 @@ def _publish_schedule_notification(week: str) -> int:
         noi_dung="Lịch mới đã sẵn sàng. Mở để xem ca làm và xác nhận lịch của bạn.",
         url=f"/lich-tuan?tuan={week}",
         nv_ids=recipients,
+        store_id=store_id,
     )
 
 
@@ -212,6 +213,7 @@ def _run_solver(
     *,
     extra_pin: tuple[str, str] | None = None,
     confirmed_availability: dict[str, dict[str, list[str]]] | None = None,
+    store_id: str = "quan_01",
 ) -> dict[str, Any]:
     """Compatibility entrypoint for older imports and focused solver tests."""
     from ca_api.services.solver_adapter import run_solver
@@ -220,19 +222,23 @@ def _run_solver(
         tuan_iso,
         extra_pin=extra_pin,
         confirmed_availability=confirmed_availability,
+        store_id=store_id,
     )
 
 
-def _life(tuan_iso: str | None = None) -> dict[str, Any]:
+def _life(tuan_iso: str | None = None, *, store_id: str = "quan_01") -> dict[str, Any]:
     """Trạng thái lịch tuần — SSOT là kv `lich_tuan_lifecycle` (giờ main.py,
     copilot và sprint45 cùng một nguồn). Fallback đọc kv `lifecycle` cũ cho
     data trước khi nhất hóa; thiếu hẳn thì về máy-sinh tuần mặc định."""
     requested = tuan_iso
     if requested:
         by_week = kv_get("lich_tuan_lifecycle_by_week", {})
-        if isinstance(by_week, dict) and isinstance(by_week.get(requested), dict):
-            return cast(dict[str, Any], by_week[requested])
+        week_key = requested if store_id == "quan_01" else f"{store_id}:{requested}"
+        if isinstance(by_week, dict) and isinstance(by_week.get(week_key), dict):
+            return cast(dict[str, Any], by_week[week_key])
         return {"tuan_iso": requested, "trang_thai": "nhap", "nguon": "quan"}
+    if store_id != "quan_01":
+        return {"tuan_iso": "2026-W01", "trang_thai": "may_sinh", "nguon": "quan"}
     moi = kv_get("lich_tuan_lifecycle", None)
     if isinstance(moi, dict) and moi.get("trang_thai"):
         return cast(dict[str, Any], moi)
@@ -242,14 +248,16 @@ def _life(tuan_iso: str | None = None) -> dict[str, Any]:
     return {"tuan_iso": "2026-W01", "trang_thai": "may_sinh", "nguon": "quan"}
 
 
-def _save_life(doc: dict[str, Any]) -> None:
+def _save_life(doc: dict[str, Any], *, store_id: str = "quan_01") -> None:
     # Ghi CẢ HAI khóa: mới là nguồn sự thật, cũ giữ đồng bộ cho tiến trình
     # còn đọc chưa nâng cấp (đọc soft ở trên tự bỏ qua khi mới tồn tại).
-    kv_set("lich_tuan_lifecycle", doc)
-    kv_set("lifecycle", doc)
+    if store_id == "quan_01":
+        kv_set("lich_tuan_lifecycle", doc)
+        kv_set("lifecycle", doc)
+    week = str(doc.get("tuan_iso") or "2026-W01")
     _set_week_value(
         "lich_tuan_lifecycle_by_week",
-        str(doc.get("tuan_iso") or "2026-W01"),
+        week if store_id == "quan_01" else f"{store_id}:{week}",
         doc,
     )
 
@@ -359,7 +367,8 @@ def lich_life(
     tuan: str | None = Query(default=None),
 ) -> dict[str, Any]:
     _require_role(authorization)
-    return _life(tuan)
+    session = auth_session(authorization) or {}
+    return _life(tuan, store_id=str(session.get("store_id") or "quan_01"))
 
 
 @router.post("/api/v1/lich/lifecycle")
@@ -368,32 +377,37 @@ async def lich_transition(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     role = _require_manager(authorization)
-    current = _life()
+    session = auth_session(authorization) or {}
+    store_id = str(session.get("store_id") or "quan_01")
+    current = _life(store_id=store_id)
     week = (body.tuan_iso or "").strip() or str(current.get("tuan_iso") or "2026-W01")
-    doc = _life(week) if body.tuan_iso else current
+    doc = _life(week, store_id=store_id) if body.tuan_iso else current
     cur = doc.get("trang_thai", "may_sinh")
     if body.to not in _ALLOWED.get(cur, set()):
         raise HTTPException(status_code=409, detail=f"illegal:{cur}->{body.to}")
     if body.to == "da_dong":
         _require_chu_quan(authorization)
-    if cur == "da_dong" and body.to == "nhap":
-        _require_chu_quan(authorization)
+    reopening_locked = cur in {"da_duyet", "da_cong_bo", "da_dong"} and body.to == "nhap"
+    if reopening_locked:
+        if cur == "da_dong":
+            _require_chu_quan(authorization)
         if not body.ly_do or not body.ly_do.strip():
             raise HTTPException(status_code=400, detail="can_ly_do_mo_lai_lich")
         _audit("schedule.lifecycle_reopen", role, {"entity_type": "schedule", "entity_id": doc.get("tuan_iso", "2026-W01"), "from": cur, "to": body.to, "ly_do": body.ly_do.strip()})
 
-    session = auth_session(authorization) or {}
-    store_id = str(session.get("store_id") or "quan_01")
-    if body.to in {"da_duyet", "da_cong_bo"}:
-        _guard_authoritative_lifecycle(week, body.to, store_id)
+    effective_target = "da_cong_bo" if body.to == "da_duyet" else body.to
+    if effective_target == "da_cong_bo":
+        _guard_authoritative_lifecycle(week, effective_target, store_id)
 
     doc["tuan_iso"] = week
-    doc["trang_thai"] = body.to
+    doc["trang_thai"] = effective_target
     if body.to == "dang_giai":
         try:
+            from ca_api.services.scheduling_service import authoritative_input_fingerprint
+            _, fingerprint = authoritative_input_fingerprint(store_id, week)
             authoritative = run_authoritative_schedule(
-                store_id=str((auth_session(authorization) or {}).get("store_id") or "quan_01"),
-                tuan_iso=week, actor_id=role, idempotency_key=f"lifecycle:{week}:solve",
+                store_id=store_id, tuan_iso=week, actor_id=role,
+                idempotency_key=f"lifecycle:{week}:solve:{fingerprint[:16]}",
             )
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -401,10 +415,10 @@ async def lich_transition(
         doc["solver"] = solver
         doc["schedule_run"] = authoritative
         doc["trang_thai"] = "cho_duyet" if solver.get("ok") else "nhap"
-    _save_life(doc)
-    _audit("schedule.lifecycle", role, {"entity_type": "schedule", "entity_id": doc.get("tuan_iso", "2026-W01"), "from": cur, "to": body.to})
-    if body.to == "da_cong_bo":
-        _publish_schedule_notification(week)
+    _save_life(doc, store_id=store_id)
+    _audit("schedule.lifecycle", role, {"entity_type": "schedule", "entity_id": doc.get("tuan_iso", "2026-W01"), "from": cur, "to": effective_target})
+    if effective_target == "da_cong_bo":
+        _publish_schedule_notification(week, store_id)
     await notify_ops_changed("roster:lifecycle", doc.get("tuan_iso"))
     return doc
 
@@ -453,11 +467,12 @@ async def resolve_gaps(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     result = run.get("result") or {}
     if result.get("ok"):
-        doc = _life(body.tuan_iso)
+        store_id = str((auth_session(authorization) or {}).get("store_id") or "quan_01")
+        doc = _life(body.tuan_iso, store_id=store_id)
         doc["trang_thai"] = "cho_duyet"
         doc["schedule_run"] = run
         doc["solver"] = result
-        _save_life(doc)
+        _save_life(doc, store_id=store_id)
     _audit("schedule.resolve_gaps", role, {"entity_type": "schedule_run", "entity_id": body.schedule_run_id, "tuan_iso": body.tuan_iso, "ok": bool(result.get("ok"))})
     await notify_ops_changed("roster:gap-resolution", body.tuan_iso)
     return {"ok": bool(result.get("ok")), "schedule_run": run, "solver": result}
@@ -468,8 +483,9 @@ def _export_rows(
     tuan: str | None,
 ) -> tuple[str, dict[str, Any], list[dict[str, Any]]]:
     s = _require_role_session(authorization)
-    tuan_iso = (tuan or "").strip() or str(_life().get("tuan_iso") or "2026-W01")
-    life = _life(tuan_iso)
+    store_id = str(s.get("store_id") or "quan_01")
+    tuan_iso = (tuan or "").strip() or str(_life(store_id=store_id).get("tuan_iso") or "2026-W01")
+    life = _life(tuan_iso, store_id=store_id)
     if s.get("role") == "nhan_vien" and life.get("trang_thai") not in {"da_cong_bo", "da_dong"}:
         raise HTTPException(status_code=409, detail="lich_chua_cong_bo")
     phan = _phan(tuan_iso)
@@ -853,7 +869,9 @@ def inbox_decide(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     role = _require_manager(authorization)
-    tuan_default = _life().get("tuan_iso", "2026-W01")
+    session = auth_session(authorization) or {}
+    store_id = str(session.get("store_id") or "quan_01")
+    tuan_default = _life(store_id=store_id).get("tuan_iso", "2026-W01")
     found: dict[str, Any] | None = None
     pending_swap: dict[str, Any] | None = None
 
@@ -980,7 +998,7 @@ def inbox_decide(
         and body.tu_dong_xep_lich
         and found.get("hieu_luc", {}).get("loai") == "rang_buoc_cho_solver"
     ):
-        life = _life()
+        life = _life(store_id=store_id)
         current_state = str(life.get("trang_thai") or "may_sinh")
         if current_state in {"da_duyet", "da_cong_bo", "da_dong"}:
             solver_result = {
@@ -1017,7 +1035,7 @@ def inbox_decide(
                 life["schedule_run"] = solver_result.get("schedule_run")
                 life["cap_nhat_luc"] = _clock.now_iso()
                 life["cap_nhat_boi"] = role
-                _save_life(life)
+                _save_life(life, store_id=store_id)
         response["tu_dong_xep_lich"] = solver_result
         _audit(
             "inbox_auto_schedule",

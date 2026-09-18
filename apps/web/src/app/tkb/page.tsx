@@ -54,6 +54,73 @@ const THU_TEN: Record<string, string> = {
   CN: "Chủ Nhật",
 };
 
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function isoWeekDates(tuanIso: string): Record<string, string> {
+  const match = /^(\d{4})-W(\d{2})$/.exec(tuanIso);
+  if (!match) return {};
+
+  const year = Number(match[1]);
+  const week = Number(match[2]);
+  const januaryFourth = new Date(Date.UTC(year, 0, 4));
+  const monday = new Date(januaryFourth);
+  monday.setUTCDate(
+    januaryFourth.getUTCDate() - ((januaryFourth.getUTCDay() + 6) % 7) + (week - 1) * 7,
+  );
+
+  return Object.fromEntries(
+    THU.map((thu, index) => {
+      const date = new Date(monday);
+      date.setUTCDate(monday.getUTCDate() + index);
+      return [
+        thu,
+        new Intl.DateTimeFormat("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          timeZone: "UTC",
+        }).format(date),
+      ];
+    }),
+  );
+}
+
+function validateRows(rows: Khoang[]): string[][] {
+  const errors = rows.map(() => [] as string[]);
+  const hasValidTimeRange = rows.map(
+    (row) => TIME_PATTERN.test(row.start) && TIME_PATTERN.test(row.end) && row.start < row.end,
+  );
+
+  rows.forEach((row, index) => {
+    if (!THU.includes(row.thu as (typeof THU)[number])) {
+      errors[index].push("Ngày không hợp lệ.");
+    }
+    if (!TIME_PATTERN.test(row.start) || !TIME_PATTERN.test(row.end)) {
+      errors[index].push("Nhập đủ giờ bắt đầu và kết thúc theo định dạng HH:mm.");
+    } else if (row.start >= row.end) {
+      errors[index].push("Giờ kết thúc phải sau giờ bắt đầu.");
+    }
+  });
+
+  rows.forEach((row, index) => {
+    if (!hasValidTimeRange[index]) return;
+    rows.slice(index + 1).forEach((other, offset) => {
+      const otherIndex = index + offset + 1;
+      if (
+        hasValidTimeRange[otherIndex] &&
+        row.thu === other.thu &&
+        row.start < other.end &&
+        other.start < row.end
+      ) {
+        errors[index].push("Khung giờ bị trùng trong cùng ngày.");
+        errors[otherIndex].push("Khung giờ bị trùng trong cùng ngày.");
+      }
+    });
+  });
+
+  return errors;
+}
+
 function nextISOWeek(): string {
   const now = new Date();
   now.setDate(now.getDate() + 7);
@@ -89,6 +156,12 @@ export default function TkbPage() {
   const [loading, setLoading] = useState(true);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const { toasts, push, dismiss } = useToasts();
+  const datesByDay = isoWeekDates(tuanIso);
+  const rowErrors = validateRows(rows);
+  const hasInvalidRows = rowErrors.some((messages) => messages.length > 0);
+  const unrecognizedDayRows = rows
+    .map((row, index) => ({ ...row, _i: index }))
+    .filter((row) => !THU.includes(row.thu as (typeof THU)[number]));
 
   useEffect(() => {
     setToken(getToken());
@@ -154,10 +227,14 @@ export default function TkbPage() {
         out.rows?.length > 0
           ? out.rows
           : (out.spans ?? []).map((s) => ({ thu: s.day, start: s.start, end: s.end }));
-      setRows(khoang.length ? khoang : [{ thu: "T2", start: "07:30", end: "11:00" }]);
+      setRows(khoang);
       if (out.escalate || !khoang.length) {
         // Inline — không dùng toast đáy màn (đè nút Xác nhận).
-        setHint("Máy đọc chưa chắc. Sửa các khung giờ bên dưới rồi bấm Xác nhận gắn TKB.");
+        setHint(
+          khoang.length
+            ? "Máy đọc chưa chắc. Kiểm tra và sửa các khung giờ bên dưới trước khi xác nhận."
+            : "Không nhận diện được khung giờ bận nào. Ảnh có thể chưa đủ rõ; hãy thêm khung thủ công theo từng ngày.",
+        );
       } else {
         setHint(null);
         push(`Đã đọc ${khoang.length} khung · độ tin ${(out.confidence * 100).toFixed(0)}%.`);
@@ -170,6 +247,10 @@ export default function TkbPage() {
   }
 
   async function xacNhan() {
+    if (rows.length === 0 || hasInvalidRows) {
+      setError("Kiểm tra và sửa các khung giờ chưa hợp lệ trước khi xác nhận.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -325,8 +406,12 @@ export default function TkbPage() {
       {result ? (
         <OpsCard eyebrow="Bước 2" title="Sửa & xác nhận" count={rows.length} countLabel="khung">
           <div className="mb-3 flex flex-wrap gap-2">
-            <StatusChip tone={result.escalate ? "warn" : "ok"}>
-              {result.escalate ? "Cần sửa tay" : "Đọc được"}
+            <StatusChip tone={result.escalate || rows.length === 0 ? "warn" : "ok"}>
+              {rows.length === 0
+                ? "Không nhận diện được khung"
+                : result.escalate
+                  ? "Kết quả chưa chắc chắn"
+                  : "Đã nhận diện"}
             </StatusChip>
             <StatusChip>
               {(result.confidence * 100).toFixed(0)}% · {safeText(result.provider, "—")} ·{" "}
@@ -334,6 +419,45 @@ export default function TkbPage() {
             </StatusChip>
           </div>
           {hint ? <Alert kind="info">{hint}</Alert> : null}
+          <p className="mb-3 text-sm text-[var(--nq-fg)]">
+            Kết quả nhận diện cho tuần <strong>{tuanIso}</strong>. Mỗi khung bên dưới hiển thị rõ
+            ngày và giờ bận; bạn có thể thêm, sửa hoặc xóa trước khi xác nhận.
+          </p>
+          {hasInvalidRows ? (
+            <Alert kind="err">Có khung giờ chưa hợp lệ hoặc bị trùng. Hãy sửa các mục được đánh dấu.</Alert>
+          ) : null}
+
+          {unrecognizedDayRows.map((row) => (
+            <div
+              key={row._i}
+              className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-red-800/60 bg-red-950/20 p-3"
+            >
+              <span className="text-sm text-red-200">
+                Không nhận diện được ngày “{safeText(row.thu, "trống")}” cho khung {safeText(row.start, "—")}–
+                {safeText(row.end, "—")}.
+              </span>
+              <select
+                className={`${inputClassName} w-auto text-xs`}
+                value=""
+                aria-label={`Chọn lại ngày cho khung ${row.start}–${row.end}`}
+                onChange={(event) => updateRow(row._i, { thu: event.target.value })}
+              >
+                <option value="">Chọn ngày</option>
+                {THU.map((thu) => (
+                  <option key={thu} value={thu}>
+                    {THU_TEN[thu]} · {datesByDay[thu]}
+                  </option>
+                ))}
+              </select>
+              <Btn
+                variant="ghost"
+                title="Xóa khung không nhận diện được ngày"
+                onClick={() => setRows((prev) => prev.filter((_, index) => index !== row._i))}
+              >
+                Xóa
+              </Btn>
+            </div>
+          ))}
 
           {/* Lưới chi tiết theo ngày — mỗi khung hiện đầy đủ thứ, giờ, nút xóa */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -349,45 +473,57 @@ export default function TkbPage() {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold uppercase tracking-wide text-[var(--nq-fg)]">
-                      {THU_TEN[t]}
-                    </p>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-[var(--nq-fg)]">
+                        {THU_TEN[t]}
+                      </p>
+                      <p className="mt-0.5 text-xs text-[var(--nq-dim)]">{datesByDay[t]}</p>
+                    </div>
                     <button
                       type="button"
                       className="rounded px-1.5 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-950"
                       title={`Thêm khung bận cho ${THU_TEN[t]}`}
-                      onClick={() => setRows((prev) => [...prev, { thu: t, start: "13:00", end: "17:00" }])}
+                      onClick={() => setRows((prev) => [...prev, { thu: t, start: "", end: "" }])}
                     >
-                      + Khung
+                      + Thêm khung
                     </button>
                   </div>
                   {khungTrongNgay.length === 0 ? (
                     <p className="text-xs text-neutral-500">Không có khung bận</p>
                   ) : (
                     khungTrongNgay.map((r) => (
-                      <div key={r._i} className="flex items-center gap-1.5">
-                        <input
-                          className="nq-input w-full text-xs"
-                          type="time"
-                          value={r.start}
-                          onChange={(e) => updateRow(r._i, { start: e.target.value })}
-                          aria-label={`Giờ bắt đầu bận ${THU_TEN[t]}`}
-                        />
-                        <span className="text-[var(--nq-fg)] text-xs">đến</span>
-                        <input
-                          className="nq-input w-full text-xs"
-                          type="time"
-                          value={r.end}
-                          onChange={(e) => updateRow(r._i, { end: e.target.value })}
-                          aria-label={`Giờ kết thúc bận ${THU_TEN[t]}`}
-                        />
-                        <Btn
-                          variant="ghost"
-                          title={`Xóa khung bận ${THU_TEN[t]} ${r.start}–${r.end}`}
-                          onClick={() => setRows((prev) => prev.filter((_, j) => j !== r._i))}
-                        >
-                          Xóa
-                        </Btn>
+                      <div key={r._i}>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            className="nq-input w-full text-xs"
+                            type="time"
+                            value={r.start}
+                            aria-invalid={rowErrors[r._i].length > 0}
+                            onChange={(e) => updateRow(r._i, { start: e.target.value })}
+                            aria-label={`Giờ bắt đầu bận ${THU_TEN[t]} ${datesByDay[t]}`}
+                          />
+                          <span className="text-[var(--nq-fg)] text-xs">đến</span>
+                          <input
+                            className="nq-input w-full text-xs"
+                            type="time"
+                            value={r.end}
+                            aria-invalid={rowErrors[r._i].length > 0}
+                            onChange={(e) => updateRow(r._i, { end: e.target.value })}
+                            aria-label={`Giờ kết thúc bận ${THU_TEN[t]} ${datesByDay[t]}`}
+                          />
+                          <Btn
+                            variant="ghost"
+                            title={`Xóa khung bận ${THU_TEN[t]} ${r.start}–${r.end}`}
+                            onClick={() => setRows((prev) => prev.filter((_, j) => j !== r._i))}
+                          >
+                            Xóa
+                          </Btn>
+                        </div>
+                        {rowErrors[r._i].map((message) => (
+                          <p key={message} className="mt-1 text-xs text-red-300" role="alert">
+                            {message}
+                          </p>
+                        ))}
                       </div>
                     ))
                   )}
@@ -397,7 +533,11 @@ export default function TkbPage() {
           </div>
 
           <div className="mt-6 pb-24 md:pb-8">
-            <Btn variant="primary" disabled={busy || rows.length === 0} onClick={xacNhan}>
+            <Btn
+              variant="primary"
+              disabled={busy || rows.length === 0 || hasInvalidRows}
+              onClick={xacNhan}
+            >
               Xác nhận gắn TKB
             </Btn>
           </div>

@@ -566,22 +566,33 @@ def init_db() -> None:
 
 def _ensure_scheduling_schema(cx: Any) -> None:
     """Create the additive scheduling tables used by the authoritative flow."""
-    cx.execute(
-        """
-        CREATE TABLE IF NOT EXISTS availability_confirmations (
-            id TEXT PRIMARY KEY,
-            store_id TEXT NOT NULL,
-            nv_id TEXT NOT NULL,
-            tuan_iso TEXT NOT NULL,
-            availability TEXT NOT NULL,
-            status TEXT NOT NULL,
-            source TEXT NOT NULL DEFAULT 'chat',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            UNIQUE(store_id, nv_id, tuan_iso)
+    # Check if table exists first to avoid PostgreSQL composite type collision
+    # CREATE TABLE IF NOT EXISTS still tries to create the composite type which fails if type exists
+    # Use database-agnostic approach: try CREATE TABLE IF NOT EXISTS first, catch duplicate type error
+    try:
+        cx.execute(
+            """
+            CREATE TABLE IF NOT EXISTS availability_confirmations (
+                id TEXT PRIMARY KEY,
+                store_id TEXT NOT NULL,
+                nv_id TEXT NOT NULL,
+                tuan_iso TEXT NOT NULL,
+                availability TEXT NOT NULL,
+                status TEXT NOT NULL,
+                source TEXT NOT NULL DEFAULT 'chat',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(store_id, nv_id, tuan_iso)
+            )
+            """
         )
-        """
-    )
+    except Exception as e:
+        # PostgreSQL raises UniqueViolation for duplicate composite type
+        # SQLite doesn't have this issue with IF NOT EXISTS
+        # If it's a duplicate type error, table already exists, continue
+        error_msg = str(e).lower()
+        if "duplicate" not in error_msg and "already exists" not in error_msg:
+            raise
     cx.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_availability_week
@@ -900,8 +911,9 @@ def shift_application_claim_first(
                 (application_id, open_shift_id, store_id, nv_id, "accepted", claimed_at, claimed_at),
             )
             cx.execute(
-                "UPDATE open_shifts SET status='claimed', claimed_by=?, claimed_at=? WHERE id=? AND status='open'",
-                (nv_id, claimed_at, open_shift_id),
+                """UPDATE open_shifts SET status='claimed', claimed_by=?, claimed_at=?
+                   WHERE id=? AND status='open' AND deadline_at>? AND escalated_at IS NULL""",
+                (nv_id, claimed_at, open_shift_id, claimed_at),
             )
             if cx.execute("SELECT changes()").fetchone()[0] != 1:
                 cx.execute("ROLLBACK")
@@ -933,7 +945,7 @@ def open_shift_create(
             (shift_id, store_id, schedule_run_id, tuan_iso, ca_id, "open", deadline_at, now),
         )
         row = cx.execute(
-            "SELECT id, status, deadline_at, claimed_by, claimed_at FROM open_shifts WHERE store_id=? AND schedule_run_id=? AND ca_id=?",
+            "SELECT id, status, deadline_at, claimed_by, claimed_at, escalated_at FROM open_shifts WHERE store_id=? AND schedule_run_id=? AND ca_id=?",
             (store_id, schedule_run_id, ca_id),
         ).fetchone()
     return {"id": str(row[0]), "status": str(row[1]), "deadline_at": str(row[2]), "claimed_by": row[3], "claimed_at": row[4]}
@@ -966,7 +978,6 @@ def open_shift_resolve_for_week(store_id: str, tuan_iso: str) -> int:
 
 def open_shift_escalate_due(store_id: str, *, now_iso: str) -> list[dict[str, Any]]:
     init_db()
-    escalated_at = now_iso
     with _conn() as cx:
         rows = cx.execute(
             """
@@ -977,15 +988,21 @@ def open_shift_escalate_due(store_id: str, *, now_iso: str) -> list[dict[str, An
             """,
             (store_id, now_iso),
         ).fetchall()
-        for row in rows:
-            cx.execute(
-                "UPDATE open_shifts SET escalated_at=? WHERE id=? AND status='open' AND escalated_at IS NULL",
-                (escalated_at, str(row[0])),
-            )
     return [
         {"id": str(row[0]), "tuan_iso": str(row[1]), "ca_id": str(row[2]), "deadline_at": str(row[3])}
         for row in rows
     ]
+
+
+def open_shift_mark_escalated(open_shift_id: str, *, store_id: str, escalated_at: str) -> bool:
+    init_db()
+    with _conn() as cx:
+        result = cx.execute(
+            """UPDATE open_shifts SET escalated_at=?
+               WHERE id=? AND store_id=? AND status='open' AND escalated_at IS NULL""",
+            (escalated_at, open_shift_id, store_id),
+        )
+    return result.rowcount == 1
 
 
 def shift_application_claim_eligible(
@@ -1495,7 +1512,8 @@ def kv_mutate(key: str, fn: Callable[[Any], Any], default: Any) -> Any:
                 cur = list(cur)
             new = fn(cur)
             cx.execute(
-                "INSERT INTO kv(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v",
+                "INSERT INTO kv(k,v) VALUES(?,?) "
+                "ON CONFLICT(k) DO UPDATE SET v=excluded.v",
                 (key, json.dumps(new, ensure_ascii=False)),
             )
             cx.execute("COMMIT")
@@ -1655,12 +1673,18 @@ def audit_add(
         state["written"] = True
 
 
-def list_users() -> list[dict[str, str]]:
+def list_users(*, store_id: str | None = None) -> list[dict[str, str]]:
     init_db()
     with _conn() as cx:
-        rows = cx.execute(
-            "SELECT username, role, nv_id, display_name, email FROM users ORDER BY username"
-        ).fetchall()
+        if store_id:
+            rows = cx.execute(
+                "SELECT username, role, nv_id, display_name, email FROM users WHERE store_id=? ORDER BY username",
+                (store_id,),
+            ).fetchall()
+        else:
+            rows = cx.execute(
+                "SELECT username, role, nv_id, display_name, email FROM users ORDER BY username"
+            ).fetchall()
     return [
         {
             "username": str(r[0]),
@@ -2581,7 +2605,7 @@ def ai_learning_list(kind: str, *, store_id: str, limit: int = 50) -> list[dict[
         raise ValueError("ai_learning_query_invalid")
     init_db()
     with _conn() as cx:
-        rows = cx.execute(f"SELECT payload FROM {_AI_LEARNING_TABLES[kind]} WHERE store_id=? ORDER BY created_at DESC LIMIT ?", (store_id, max(1, min(limit, 200)))).fetchall()
+        rows = cx.execute(f"SELECT payload FROM {_AI_LEARNING_TABLES[kind]} WHERE store_id=? ORDER BY created_at, id LIMIT ?", (store_id, max(1, min(limit, 200)))).fetchall()
     return [json.loads(str(row[0])) for row in rows]
 
 
@@ -3295,9 +3319,13 @@ def chat_conversation_list_for_user(nv_id: str, store_id: str = "quan_01") -> li
         c_rows = cx.execute(
             """
             SELECT c.id, c.store_id, c.type, c.display_name, c.avatar_url, c.is_locked,
-                   c.created_at, c.updated_at, p.muted, p.last_read_at
+                   c.created_at, c.updated_at, p.muted, p.last_read_at, p.joined_at, p.archived_at,
+                   COALESCE(u.display_name, p.nv_id) as participant_display_name,
+                   COALESCE(u.role, 'nhan_vien') as user_role,
+                   COALESCE(u.status, 'active') as user_status
             FROM chat_conversations c
             JOIN chat_participants p ON c.id = p.conversation_id AND p.nv_id = ?
+            LEFT JOIN users u ON p.nv_id = u.nv_id
             WHERE c.store_id = ? AND p.status = 'active'
             ORDER BY c.updated_at DESC
             """,
@@ -3318,6 +3346,11 @@ def chat_conversation_list_for_user(nv_id: str, store_id: str = "quan_01") -> li
                 "updated_at": str(r[7]),
                 "muted": bool(r[8]),
                 "last_read_at": str(r[9] or ""),
+                "joined_at": str(r[10]),
+                "archived_at": str(r[11] or ""),
+                "participant_display_name": str(r[12]),
+                "user_role": str(r[13]),
+                "user_status": str(r[14]),
             }
 
             # Thành viên
@@ -4187,4 +4220,26 @@ def thong_bao_ca_ack(thong_bao_id: str, nv_id: str) -> bool:
                 )
             return True
         return False
+
+
+def list_active_stores() -> list[str]:
+    """Trả về danh sách store_id đang hoạt động (có user hoặc ca trống)."""
+    init_db()
+    with _conn() as cx:
+        # Lấy store_id từ users
+        user_stores = cx.execute(
+            "SELECT DISTINCT store_id FROM users WHERE store_id IS NOT NULL AND store_id != ''"
+        ).fetchall()
+        # Lấy store_id từ open_shifts
+        shift_stores = cx.execute(
+            "SELECT DISTINCT store_id FROM open_shifts WHERE store_id IS NOT NULL AND store_id != ''"
+        ).fetchall()
+    stores = set()
+    for r in user_stores:
+        stores.add(str(r[0]))
+    for r in shift_stores:
+        stores.add(str(r[0]))
+    # Luôn bao gồm store mặc định
+    stores.add(DEFAULT_STORE_ID)
+    return sorted(stores)
 

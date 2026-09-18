@@ -356,7 +356,7 @@ async def send_message(
         for prefix in ("@copilot", "@Copilot"):
             prompt = prompt.replace(prefix, "")
         asyncio.create_task(_reply_copilot_bg(conv_id, prompt.strip() or "Xin chào", sess))
-    elif any(w in c_low for w in ["rảnh", "đăng ký", "em rảnh"]) and any(d in c_low for d in ["t2", "t3", "t4", "t5", "t6", "t7", "cn", "thứ"]):
+    elif any(w in c_low for w in ["rảnh", "đăng ký", "bận", "hôm nay", "ngày mai", "tuần sau"]):
         try:
             from ca_api.services.chat_scheduler_agent import submit_availability_confirmation
             draft = submit_availability_confirmation(
@@ -364,6 +364,7 @@ async def send_message(
                 nv_id=nv_id,
                 display_name=str(sess.get("display_name") or nv_id),
                 text=content,
+                store_id=str(sess.get("store_id") or "quan_01"),
             )
             if draft:
                 card = chat_message_create(
@@ -379,8 +380,24 @@ async def send_message(
                     },
                 )
                 await chat_ws_manager.broadcast_to_conversation(conv_id, {"event": "message:new", "data": card})
-        except Exception:
-            pass
+            else:
+                clarification = chat_message_create(
+                    conv_id=conv_id,
+                    sender_id="ai_scheduler",
+                    content="Mình chưa xác định được đủ ngày và khoảng giờ. Bạn ghi rõ, ví dụ: “ngày 22/9 em bận 8h-11h” hoặc “thứ ba tuần sau em rảnh ca tối” nhé.",
+                    msg_type="system",
+                    metadata={"workflow": "availability_confirmation", "status": "can_bo_sung"},
+                )
+                await chat_ws_manager.broadcast_to_conversation(conv_id, {"event": "message:new", "data": clarification})
+        except (KeyError, ValueError, TypeError):
+            clarification = chat_message_create(
+                conv_id=conv_id,
+                sender_id="ai_scheduler",
+                content="Mình chưa đọc chắc chắn lịch bận. Bạn vui lòng ghi lại ngày và giờ bắt đầu-kết thúc để mình xác nhận đúng tuần.",
+                msg_type="system",
+                metadata={"workflow": "availability_confirmation", "status": "can_bo_sung"},
+            )
+            await chat_ws_manager.broadcast_to_conversation(conv_id, {"event": "message:new", "data": clarification})
 
     return msg
 
@@ -393,20 +410,44 @@ async def confirm_chat_availability(
     sess = _require_user(authorization)
     from ca_api.services.chat_scheduler_agent import update_availability_confirmation
     try:
+        store_id = str(sess.get("store_id") or "quan_01")
         item = update_availability_confirmation(
-            confirmation_id, nv_id=sess["nv_id"], status="da_xac_nhan"
+            confirmation_id, nv_id=sess["nv_id"], status="da_xac_nhan", store_id=store_id
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="lich_ban_khong_ton_tai") from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail="khong_phai_nguoi_gui") from exc
+    from ca_api.interfaces.http.sprint45 import _life, _save_life
+    from ca_api.services.scheduling_service import run_authoritative_schedule
+
+    week = str(item["tuan_iso"])
+    lifecycle = _life(week, store_id=store_id)
+    schedule_run = None
+    if lifecycle.get("trang_thai") not in {"da_duyet", "da_cong_bo", "da_dong"}:
+        schedule_run = run_authoritative_schedule(
+            store_id=store_id,
+            tuan_iso=week,
+            actor_id=str(sess["nv_id"]),
+            idempotency_key=f"availability:{confirmation_id}",
+        )
+        result = schedule_run.get("result") or {}
+        lifecycle["tuan_iso"] = week
+        lifecycle["schedule_run"] = schedule_run
+        lifecycle["solver"] = result
+        lifecycle["trang_thai"] = "cho_duyet" if result.get("ok") else "nhap"
+        _save_life(lifecycle, store_id=store_id)
     card = chat_message_create(
         conv_id=str(item["conv_id"]), sender_id="ai_scheduler",
-        content="Đã xác nhận lịch bận. Lịch này sẽ được dùng cho lượt xếp lịch tiếp theo.",
+        content=(
+            "Đã xác nhận lịch bận và xếp lại lịch tuần này."
+            if schedule_run else
+            "Đã lưu lịch bận. Tuần này đã duyệt hoặc công bố nên hệ thống không tự xếp lại; quản lý phải mở lại có lý do nếu cần điều chỉnh."
+        ),
         msg_type="system", metadata={"workflow": "availability_confirmation", "workflow_step": 2, "status": "da_xac_nhan", "confirmation_id": confirmation_id},
     )
     await chat_ws_manager.broadcast_to_conversation(str(item["conv_id"]), {"event": "message:new", "data": card})
-    return {"ok": True, "confirmation": item}
+    return {"ok": True, "confirmation": item, "schedule_run": schedule_run}
 
 
 @router.post("/api/v1/chat/availability/{confirmation_id}/correct")
@@ -419,7 +460,9 @@ async def correct_chat_availability(
     from ca_api.services.chat_scheduler_agent import update_availability_confirmation
     try:
         item = update_availability_confirmation(
-            confirmation_id, nv_id=sess["nv_id"], status="cho_xac_nhan", correction=sanitize_text(body.text)
+            confirmation_id, nv_id=sess["nv_id"], status="cho_xac_nhan",
+            correction=sanitize_text(body.text),
+            store_id=str(sess.get("store_id") or "quan_01"),
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="lich_ban_khong_ton_tai") from exc

@@ -13,7 +13,7 @@ import pytest
 from ca_agents.messaging import SendResult
 from ca_api import worker
 from ca_api.orchestration import Clock
-from ca_api.persist import kv_get, kv_set
+from ca_api.persist import kv_get, kv_set, open_shift_create, schedule_run_create
 from ca_ops import dump_run, start_phieu
 
 
@@ -102,6 +102,61 @@ def test_quet_bo_qua_phieu_dong(_reset_worker_state: None) -> None:
     port = RecordingPort()
     assert worker._quet(FakeClock(ms=999 * PHUT), port, han_phut=30) == 0
     assert port.sent == []
+
+
+def test_quet_open_shift_qua_han_bao_chu_quan_mot_lan() -> None:
+    run = schedule_run_create(
+        store_id="quan_01",
+        tuan_iso="2026-W44",
+        input_snapshot={},
+        fingerprint="fp-open-shift-worker",
+        idempotency_key="open-shift-worker",
+        created_by="lan",
+        status="needs_gap_resolution",
+    )
+    open_shift_create(
+        store_id="quan_01",
+        schedule_run_id=str(run["id"]),
+        tuan_iso="2026-W44",
+        ca_id="w1_c01",
+        deadline_at="2026-11-01T02:00:00Z",
+    )
+    port = RecordingPort()
+    clock = FakeClock(ms=int(datetime(2026, 11, 1, 2, 1, tzinfo=UTC).timestamp() * 1000))
+
+    assert worker._quet_open_shifts(clock, port) == 1
+    assert port.sent == [("nv_02", "Ca trống w1_c01 tuần 2026-W44 chưa có người nhận — cần quản lý xử lý.")]
+    assert worker._quet_open_shifts(clock, port) == 0
+    assert len(port.sent) == 1
+
+
+def test_quet_open_shift_gui_loi_se_thu_lai() -> None:
+    run = schedule_run_create(
+        store_id="quan_01", tuan_iso="2026-W45", input_snapshot={},
+        fingerprint="fp-open-shift-retry", idempotency_key="open-shift-retry",
+        created_by="lan", status="needs_gap_resolution",
+    )
+    open_shift_create(
+        store_id="quan_01", schedule_run_id=str(run["id"]), tuan_iso="2026-W45",
+        ca_id="w1_c02", deadline_at="2026-11-01T02:00:00Z",
+    )
+    port = RecordingPort()
+    clock = FakeClock(ms=int(datetime(2026, 11, 1, 2, 1, tzinfo=UTC).timestamp() * 1000))
+    original_send = port.send
+    attempts = 0
+
+    def fail_once(to: str, text: str):
+        nonlocal attempts
+        attempts += 1
+        result = original_send(to, text)
+        if attempts == 1:
+            result.ok = False
+        return result
+
+    port.send = fail_once  # type: ignore[method-assign]
+    assert worker._quet_open_shifts(clock, port) == 0
+    assert worker._quet_open_shifts(clock, port) == 1
+    assert attempts == 2
 
 
 # ── Việc định kỳ: brief sáng / solver tuần / tổng kết ngày ───────────────────

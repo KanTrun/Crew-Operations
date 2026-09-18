@@ -80,6 +80,7 @@ def run_solver(
     *,
     extra_pin: tuple[str, str] | None = None,
     confirmed_availability: dict[str, dict[str, list[str]]] | None = None,
+    store_id: str = "quan_01",
 ) -> dict[str, Any]:
     """Build the authoritative input, solve it, and persist the result.
 
@@ -126,7 +127,8 @@ def run_solver(
             input_data.phan_cong_tuan_truoc = {str(ca): list(ids) for ca, ids in previous.items() if isinstance(ids, list)}
 
     stored_by_week = kv_get("tkb_nv_by_week", {})
-    stored = stored_by_week.get(week, {}) if isinstance(stored_by_week, dict) else {}
+    week_key = week if store_id == "quan_01" else f"{store_id}:{week}"
+    stored = stored_by_week.get(week_key, {}) if isinstance(stored_by_week, dict) else {}
     legacy = kv_get("tkb_nv", {})
     if isinstance(legacy, dict):
         stored = dict(stored) if isinstance(stored, dict) else {}

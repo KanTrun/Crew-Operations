@@ -28,7 +28,15 @@ from ca_agents.messaging import MessagePort, get_port
 from ca_ops import escalate, load_run
 
 from ca_api.orchestration import Clock
-from ca_api.persist import kv_get, kv_mutate, kv_set, list_users, open_shift_escalate_due
+from ca_api.persist import (
+    kv_get,
+    kv_mutate,
+    kv_set,
+    list_active_stores,
+    list_users,
+    open_shift_escalate_due,
+    open_shift_mark_escalated,
+)
 
 _VN_TZ = timezone(timedelta(hours=7))
 
@@ -40,8 +48,8 @@ BAO_TEXT = "Phiếu {mau} ({id}) quá hạn hai lần ngưỡng — cần chủ 
 OPEN_SHIFT_TEXT = "Ca trống {ca_id} tuần {tuan_iso} chưa có người nhận — cần quản lý xử lý."
 
 
-def _chu_quan_nv_id() -> str:
-    for u in list_users():
+def _chu_quan_nv_id(store_id: str | None = None) -> str:
+    for u in list_users(store_id=store_id):
         if u.get("role") == "chu_quan":
             return str(u.get("nv_id") or u.get("username"))
     return "chu_quan"
@@ -83,15 +91,20 @@ def _quet(clock: Clock, port: MessagePort, *, han_phut: int = 30) -> int:
 
 
 def _quet_open_shifts(clock: Clock, port: MessagePort, *, store_id: str = "quan_01") -> int:
-    """Escalate overdue open shifts once; the database owns the idempotency."""
+    """Escalate overdue open shifts, marking only successful deliveries."""
     now_iso = clock.now_iso()
     due = open_shift_escalate_due(store_id, now_iso=now_iso)
-    manager = _chu_quan_nv_id()
+    manager = _chu_quan_nv_id(store_id)
+    sent = 0
     for shift in due:
         text = OPEN_SHIFT_TEXT.format(ca_id=shift["ca_id"], tuan_iso=shift["tuan_iso"])
         res = port.send(manager, text)
         log.info("worker open shift %s -> %s: ok=%s", shift["id"], manager, res.ok)
-    return len(due)
+        if res.ok and open_shift_mark_escalated(
+            str(shift["id"]), store_id=store_id, escalated_at=now_iso
+        ):
+            sent += 1
+    return sent
 
 # ── Việc định kỳ — mỗi job một khoá mốc, chạy đúng một lần mỗi ngày/tuần ──────
 
@@ -328,9 +341,14 @@ def main() -> None:
         try:
             clock = Clock()
             n = _quet(clock, port, han_phut=han_phut)
-            open_shift_n = _quet_open_shifts(clock, port)
-            if n or open_shift_n:
-                log.info("đã gửi %s tin nhắc và %s cảnh báo ca trống", n, open_shift_n)
+            # Duyệt qua tất cả cửa hàng hoạt động để quét ca trống
+            active_stores = list_active_stores()
+            open_shift_total = 0
+            for store_id in active_stores:
+                open_shift_n = _quet_open_shifts(clock, port, store_id=store_id)
+                open_shift_total += open_shift_n
+            if n or open_shift_total:
+                log.info("đã gửi %s tin nhắc và %s cảnh báo ca trống", n, open_shift_total)
         except Exception:  # noqa: BLE001 — worker phải sống sót qua một lượt hỏng
             log.exception("luot quet that bai — thu lai o chu ky tiep")
         try:

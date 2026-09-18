@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 try:
@@ -45,73 +45,235 @@ SHIFT_ICONS = {
     "Tối": "🌙 Ca Tối (17:30 - 22:30)",
 }
 
+_DAY_PATTERNS = {
+    "T2": [r"t2\b", r"thứ 2\b", r"thứ hai\b"],
+    "T3": [r"t3\b", r"thứ 3\b", r"thứ ba\b"],
+    "T4": [r"t4\b", r"thứ 4\b", r"thứ tư\b"],
+    "T5": [r"t5\b", r"thứ 5\b", r"thứ năm\b"],
+    "T6": [r"t6\b", r"thứ 6\b", r"thứ sáu\b"],
+    "T7": [r"t7\b", r"thứ 7\b", r"thứ bảy\b"],
+    "CN": [r"cn\b", r"chủ nhật\b"],
+}
+_WEEKDAY_INDEX = {day: index for index, day in enumerate(ALL_DAYS)}
+_SHIFT_RANGES = {
+    "Sáng": (6 * 60 + 30, 12 * 60),
+    "Chiều": (12 * 60, 17 * 60 + 30),
+    "Tối": (17 * 60 + 30, 22 * 60 + 30),
+}
+_DATE_TOKEN_RE = re.compile(
+    r"(?<!\d)(?P<day>0?[1-9]|[12]\d|3[01])/(?P<month>0?[1-9]|1[0-2])(?:/(?P<year>\d{4}))?(?!\d)"
+    r"|(?P<relative>hôm nay|ngày mai)"
+    r"|(?P<weekday>t[2-7]\b|cn\b|thứ\s+(?:[2-7]|hai|ba|tư|năm|sáu|bảy)\b|chủ nhật\b)",
+    re.IGNORECASE,
+)
+_TIME_RANGE_RE = re.compile(
+    r"(?<!\d)(?P<start_hour>[01]?\d|2[0-3])(?:h|:)(?P<start_minute>[0-5]\d)?"
+    r"\s*(?:-|–|đến|tới)\s*"
+    r"(?P<end_hour>[01]?\d|2[0-3])(?:h|:)(?P<end_minute>[0-5]\d)?(?!\d)",
+    re.IGNORECASE,
+)
 
-def parse_availability_text(text: str) -> dict[str, list[str]]:
-    """Phân tích thời gian rảnh từ câu văn tự nhiên tiếng Việt."""
+
+def _iso_week(value: date) -> str:
+    iso = value.isocalendar()
+    return f"{iso.year}-W{iso.week:02d}"
+
+
+def _day_code(value: str) -> str | None:
+    return next(
+        (day for day, patterns in _DAY_PATTERNS.items() if any(re.fullmatch(pattern, value) for pattern in patterns)),
+        None,
+    )
+
+
+def _resolve_date_token(match: re.Match[str], text: str, reference_date: date) -> date | None:
+    if match.group("day"):
+        day = int(match.group("day"))
+        month = int(match.group("month"))
+        explicit_year = match.group("year")
+        years = [int(explicit_year)] if explicit_year else [reference_date.year, reference_date.year + 1]
+        for year in years:
+            try:
+                candidate = date(year, month, day)
+            except ValueError:
+                continue
+            if explicit_year or candidate >= reference_date:
+                return candidate
+        return None
+    if match.group("relative"):
+        return reference_date if match.group("relative").lower() == "hôm nay" else reference_date + timedelta(days=1)
+
+    day_code = _day_code(match.group("weekday").lower())
+    if not day_code:
+        return None
+    context_start = max(0, match.start() - 20)
+    context_end = min(len(text), match.end() + 20)
+    next_week = bool(re.search(r"tuần\s+(?:sau|tới)", text[context_start:context_end]))
+    week_start = reference_date - timedelta(days=reference_date.weekday())
+    return week_start + timedelta(days=_WEEKDAY_INDEX[day_code] + (7 if next_week else 0))
+
+
+def _extract_date_mentions(text: str, reference_date: date) -> list[tuple[int, int, date]]:
+    mentions: list[tuple[int, int, date]] = []
+    for match in _DATE_TOKEN_RE.finditer(text):
+        resolved = _resolve_date_token(match, text, reference_date)
+        if resolved:
+            mentions.append((match.start(), match.end(), resolved))
+    return mentions
+
+
+def _minutes(hour: str, minute: str | None) -> int:
+    return int(hour) * 60 + int(minute or 0)
+
+
+def _clock(total_minutes: int) -> str:
+    return f"{total_minutes // 60:02d}:{total_minutes % 60:02d}"
+
+
+def _nearest_date_for_time(
+    start: int, end: int, mentions: list[tuple[int, int, date]], text: str,
+) -> date | None:
+    candidates: list[tuple[int, date]] = []
+    for mention_start, mention_end, resolved in mentions:
+        if mention_end <= start:
+            between = text[mention_end:start]
+            distance = start - mention_end
+        elif mention_start >= end:
+            between = text[end:mention_start]
+            distance = mention_start - end
+        else:
+            return resolved
+        if not re.search(r"[,.;\n]", between):
+            candidates.append((distance, resolved))
+    return min(candidates, default=(0, None), key=lambda item: item[0])[1]
+
+
+def _busy_intervals(text: str, mentions: list[tuple[int, int, date]]) -> list[dict[str, str]]:
+    raw: list[tuple[date, int, int]] = []
+    for match in _TIME_RANGE_RE.finditer(text):
+        resolved = _nearest_date_for_time(match.start(), match.end(), mentions, text)
+        start = _minutes(match.group("start_hour"), match.group("start_minute"))
+        end = _minutes(match.group("end_hour"), match.group("end_minute"))
+        if resolved and end > start:
+            raw.append((resolved, start, end))
+
+    merged: list[tuple[date, int, int]] = []
+    for resolved, start, end in sorted(raw):
+        if merged and merged[-1][0] == resolved and start <= merged[-1][2]:
+            previous_date, previous_start, previous_end = merged[-1]
+            merged[-1] = (previous_date, previous_start, max(previous_end, end))
+        else:
+            merged.append((resolved, start, end))
+    return [
+        {
+            "date": resolved.isoformat(),
+            "tuan_iso": _iso_week(resolved),
+            "thu": ALL_DAYS[resolved.weekday()],
+            "start": _clock(start),
+            "end": _clock(end),
+        }
+        for resolved, start, end in merged
+    ]
+
+
+def _parse_shift_availability(text: str) -> dict[str, list[str]]:
+    included_days: set[str] = set()
+    range_match = re.search(r"(t[2-7]|thứ [2-7])\s*(?:-|đến|tới)\s*(t[2-7]|cn|chủ nhật|thứ [2-7])", text)
+    if range_match:
+        start_day = _day_code(range_match.group(1))
+        end_day = _day_code(range_match.group(2))
+        if start_day and end_day and _WEEKDAY_INDEX[start_day] <= _WEEKDAY_INDEX[end_day]:
+            included_days.update(ALL_DAYS[_WEEKDAY_INDEX[start_day] : _WEEKDAY_INDEX[end_day] + 1])
+    for day, patterns in _DAY_PATTERNS.items():
+        if any(re.search(pattern, text) for pattern in patterns):
+            included_days.add(day)
+    if not included_days and ("các ngày trong tuần" in text or "cả tuần" in text):
+        included_days = set(ALL_DAYS)
+
+    shifts: list[str] = []
+    if "sáng" in text or "ca 1" in text:
+        shifts.append("Sáng")
+    if "chiều" in text or "ca 2" in text:
+        shifts.append("Chiều")
+    if "tối" in text or "ca 3" in text:
+        shifts.append("Tối")
+    if not shifts and any(term in text for term in ("cả ngày", "full", "rảnh hết")):
+        shifts = list(SHIFTS)
+    if not shifts or not re.search(r"rảnh|đăng ký", text):
+        return {}
+    return {day: list(shifts) for day in included_days}
+
+
+def _remove_busy_conflicts(
+    availability: dict[str, list[str]], busy_intervals: list[dict[str, str]],
+) -> dict[str, list[str]]:
+    normalized = {day: list(shifts) for day, shifts in availability.items()}
+    for interval in busy_intervals:
+        busy_start = _minutes(*interval["start"].split(":"))
+        busy_end = _minutes(*interval["end"].split(":"))
+        day = interval["thu"]
+        normalized[day] = [
+            shift for shift in normalized.get(day, [])
+            if not (busy_start < _SHIFT_RANGES[shift][1] and busy_end > _SHIFT_RANGES[shift][0])
+        ]
+        if not normalized.get(day):
+            normalized.pop(day, None)
+    return normalized
+
+
+def _busy_exclusions_as_availability(
+    busy_intervals: list[dict[str, str]], tuan_iso: str,
+) -> dict[str, list[str]]:
+    """Convert explicit busy intervals into the shift availability contract used by CP-SAT."""
+    relevant = [item for item in busy_intervals if item["tuan_iso"] == tuan_iso]
+    if not relevant:
+        return {}
+    availability = {day: list(SHIFTS) for day in ALL_DAYS}
+    return _remove_busy_conflicts(availability, relevant)
+
+
+def _availability_summary(
+    availability: dict[str, list[str]], busy_intervals: list[dict[str, str]],
+) -> str:
+    parts: list[str] = []
+    if availability:
+        available = "; ".join(
+            f"{DAY_LABELS[day]}: {', '.join(availability[day])}" for day in ALL_DAYS if day in availability
+        )
+        parts.append(f"Rảnh {available}.")
+    if busy_intervals:
+        busy = "; ".join(
+            f"{DAY_LABELS[item['thu']]} {date.fromisoformat(item['date']).strftime('%d/%m/%Y')}, "
+            f"{item['start']}-{item['end']}"
+            for item in busy_intervals
+        )
+        parts.append(f"Bận {busy}.")
+    if busy_intervals and not availability:
+        parts.append("Không tự suy diễn ca rảnh.")
+    return " ".join(parts)
+
+
+def parse_availability_details(text: str, *, reference_date: date | None = None) -> dict[str, Any]:
+    """Parse explicit availability and busy intervals against a deterministic calendar date."""
     text_lower = text.lower()
-    availabilities: dict[str, list[str]] = {}
-
-    # Xác định các ngày được nhắc đến
-    day_patterns = {
-        "T2": [r"t2\b", r"thứ 2\b", r"thứ hai\b"],
-        "T3": [r"t3\b", r"thứ 3\b", r"thứ ba\b"],
-        "T4": [r"t4\b", r"thứ 4\b", r"thứ tư\b"],
-        "T5": [r"t5\b", r"thứ 5\b", r"thứ năm\b"],
-        "T6": [r"t6\b", r"thứ 6\b", r"thứ sáu\b"],
-        "T7": [r"t7\b", r"thứ 7\b", r"thứ bảy\b"],
-        "CN": [r"cn\b", r"chủ nhật\b"],
+    reference = reference_date or date.today()
+    mentions = _extract_date_mentions(text_lower, reference)
+    busy_intervals = _busy_intervals(text_lower, mentions) if "bận" in text_lower else []
+    availability = _remove_busy_conflicts(_parse_shift_availability(text_lower), busy_intervals)
+    resolved_dates = sorted({resolved.isoformat() for _, _, resolved in mentions})
+    weeks = sorted({_iso_week(date.fromisoformat(value)) for value in resolved_dates})
+    return {
+        "availability": availability,
+        "busy_intervals": busy_intervals,
+        "resolved_dates": resolved_dates,
+        "tuan_iso": weeks[0] if len(weeks) == 1 else None,
+        "summary": _availability_summary(availability, busy_intervals),
     }
 
-    # Kiểm tra range dạng "T2-T6" hoặc "T2 đến T6"
-    range_match = re.search(r"(t[2-7]|thứ [2-7])\s*(?:-|đến|tới)\s*(t[2-7]|cn|chủ nhật|thứ [2-7])", text_lower)
-    included_days = set()
-    if range_match:
-        start_raw, end_raw = range_match.group(1), range_match.group(2)
-        start_day = "T2"
-        for d, pats in day_patterns.items():
-            if any(re.search(p, start_raw) for p in pats):
-                start_day = d
-                break
-        end_day = "T6"
-        for d, pats in day_patterns.items():
-            if any(re.search(p, end_raw) for p in pats):
-                end_day = d
-                break
-        try:
-            s_idx = ALL_DAYS.index(start_day)
-            e_idx = ALL_DAYS.index(end_day)
-            if s_idx <= e_idx:
-                included_days.update(ALL_DAYS[s_idx : e_idx + 1])
-        except ValueError:
-            pass
 
-    for day, pats in day_patterns.items():
-        if any(re.search(p, text_lower) for p in pats):
-            included_days.add(day)
-
-    if not included_days:
-        if "các ngày trong tuần" in text_lower or "cả tuần" in text_lower:
-            included_days = set(ALL_DAYS)
-
-    # Xác định ca làm việc
-    shifts: list[str] = []
-    if "sáng" in text_lower or "ca 1" in text_lower:
-        shifts.append("Sáng")
-    if "chiều" in text_lower or "ca 2" in text_lower:
-        shifts.append("Chiều")
-    if "tối" in text_lower or "ca 3" in text_lower:
-        shifts.append("Tối")
-
-    if not shifts:
-        if "cả ngày" in text_lower or "full" in text_lower or "rảnh hết" in text_lower:
-            shifts = ["Sáng", "Chiều", "Tối"]
-        else:
-            shifts = ["Sáng", "Chiều"]  # Mặc định
-
-    for day in included_days:
-        availabilities[day] = list(shifts)
-
-    return availabilities
+def parse_availability_text(text: str) -> dict[str, list[str]]:
+    """Backward-compatible shift-only view of parsed availability."""
+    return parse_availability_details(text)["availability"]
 
 
 def collect_recent_availabilities(conv_id: str) -> dict[str, dict[str, list[str]]]:
@@ -146,20 +308,31 @@ def collect_recent_availabilities(conv_id: str) -> dict[str, dict[str, list[str]
 
 def submit_availability_confirmation(
     *, conv_id: str, nv_id: str, display_name: str, text: str, tuan_iso: str | None = None,
+    reference_date: date | None = None, store_id: str = "quan_01",
 ) -> dict[str, Any] | None:
     """Create a pending confirmation card; unconfirmed data never reaches the solver."""
-    parsed = parse_availability_text(text)
-    if not parsed:
+    details = parse_availability_details(text, reference_date=reference_date)
+    parsed = details["availability"]
+    busy_intervals = details["busy_intervals"]
+    if not parsed and not busy_intervals:
         return None
-    iso = date.today().isocalendar()
-    week = tuan_iso if tuan_iso and re.fullmatch(r"\d{4}-W\d{2}", tuan_iso) else f"{iso.year}-W{iso.week:02d}"
+    reference = reference_date or date.today()
+    week = (
+        tuan_iso if tuan_iso and re.fullmatch(r"\d{4}-W\d{2}", tuan_iso)
+        else details["tuan_iso"] or _iso_week(reference)
+    )
+    if not parsed and busy_intervals:
+        parsed = _busy_exclusions_as_availability(busy_intervals, week)
     item = {
         "id": f"av_{uuid.uuid4().hex[:10]}",
         "conv_id": conv_id,
         "nv_id": nv_id,
         "display_name": display_name or nv_id,
+        "store_id": store_id,
         "tuan_iso": week,
         "availability": parsed,
+        "busy_intervals": busy_intervals,
+        "summary": details["summary"],
         "source_text": text,
         "status": "cho_xac_nhan",
         "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -174,7 +347,7 @@ def submit_availability_confirmation(
     kv_mutate("lich_ban_confirmations", add, [])
     availability_confirmation_upsert(
         item_id=str(item["id"]),
-        store_id=str(kv_get("chat_store_by_conversation", {}).get(conv_id, "quan_01")),
+        store_id=store_id,
         nv_id=nv_id,
         tuan_iso=week,
         availability=parsed,
@@ -192,7 +365,9 @@ def availability_confirmations(conv_id: str = "", *, confirmed_only: bool = Fals
     ]
 
 
-def update_availability_confirmation(item_id: str, *, nv_id: str, status: str, correction: str = "") -> dict[str, Any]:
+def update_availability_confirmation(
+    item_id: str, *, nv_id: str, status: str, correction: str = "", store_id: str = "quan_01"
+) -> dict[str, Any]:
     found: dict[str, Any] | None = None
 
     def mutate(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -202,12 +377,21 @@ def update_availability_confirmation(item_id: str, *, nv_id: str, status: str, c
                 continue
             if raw.get("nv_id") != nv_id:
                 raise PermissionError("khong_phai_nguoi_gui")
+            if str(raw.get("store_id") or "quan_01") != store_id:
+                raise PermissionError("khong_phai_cua_hang")
             item = dict(raw)
             if status == "cho_xac_nhan":
-                parsed = parse_availability_text(correction)
-                if not parsed:
+                details = parse_availability_details(correction)
+                parsed = details["availability"]
+                if not parsed and not details["busy_intervals"]:
                     raise ValueError("khong_doc_duoc_lich_ban")
+                if not parsed and details["busy_intervals"]:
+                    parsed = _busy_exclusions_as_availability(
+                        details["busy_intervals"], str(item.get("tuan_iso") or "")
+                    )
                 item["availability"] = parsed
+                item["busy_intervals"] = details["busy_intervals"]
+                item["summary"] = details["summary"]
                 item["source_text"] = correction
             item["status"] = status
             found = item
@@ -221,7 +405,7 @@ def update_availability_confirmation(item_id: str, *, nv_id: str, status: str, c
         raise KeyError("lich_ban_khong_ton_tai")
     availability_confirmation_upsert(
         item_id=str(found["id"]),
-        store_id=str(kv_get("chat_store_by_conversation", {}).get(found.get("conv_id", ""), "quan_01")),
+        store_id=store_id,
         nv_id=nv_id,
         tuan_iso=str(found.get("tuan_iso") or ""),
         availability=found.get("availability") or {},
