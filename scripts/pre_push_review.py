@@ -34,6 +34,23 @@ if hasattr(sys.stdout, "reconfigure"):
 ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = ROOT / "apps" / "web"
 
+# Test files gọi MẠNG THẬT (API ngoài, webhook, scraping) — bị treo/fail khi
+# mạng bị chặn ở máy local. Chúng vẫn chạy trên CI (có mạng). Pre-push LOẠI TRỪ
+# để không treo, CI là gate cuối cho các test này.
+NETWORK_TESTS = {
+    "apps/api/tests/unit/test_apify_client.py",
+    "apps/api/tests/unit/test_channels.py",
+    "apps/api/tests/unit/test_channels_reflection_api.py",
+    "apps/api/tests/unit/test_threads_apify_source.py",
+    "apps/api/tests/unit/test_threads_google_bridge.py",
+    "apps/api/tests/unit/test_tiktok_apify_source.py",
+    "apps/api/tests/unit/test_tiktok_smart_fallback.py",
+    "apps/api/tests/unit/test_trends_api.py",
+    "apps/api/tests/unit/test_worker.py",
+    "packages/agents/tests/test_camoufox_client.py",
+    "packages/agents/tests/test_camoufox_source.py",
+}
+
 
 def run_step(name: str, cmd: list[str], env_extra: dict[str, str] | None = None,
              cwd: Path | None = None) -> bool:
@@ -90,6 +107,54 @@ def _has_node_modules() -> bool:
     return (WEB_DIR / "node_modules").is_dir()
 
 
+def _changed_files() -> list[str]:
+    """Lấy danh sách file đã thay đổi so với origin/main (hoặc HEAD~1 nếu chưa có remote).
+
+    Dùng để chỉ chạy test liên quan đến thay đổi (Cách 2 — nhanh hơn nhiều).
+    """
+    try:
+        # Ưu tiên so với origin/main
+        res = subprocess.run(
+            ["git", "diff", "--name-only", "origin/main...HEAD"],
+            capture_output=True, text=True, cwd=ROOT,
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            return [ln.strip() for ln in res.stdout.splitlines() if ln.strip()]
+    except Exception:
+        pass
+    try:
+        # Fallback: so với commit trước
+        res = subprocess.run(
+            ["git", "diff", "--name-only", "HEAD~1", "HEAD"],
+            capture_output=True, text=True, cwd=ROOT,
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            return [ln.strip() for ln in res.stdout.splitlines() if ln.strip()]
+    except Exception:
+        pass
+    return []
+
+
+def _map_changed_to_tests(changed: list[str]) -> list[str]:
+    """Ánh xạ file đã đổi sang test files liên quan.
+
+    Quy tắc (chỉ chạy test file CỤ THỂ, không chạy toàn bộ thư mục để tránh
+    test mạng gây treo):
+    - File test đã đổi → chính nó.
+    - File trong `packages/*/src/` → KHÔNG map sang toàn bộ `packages/*/tests`
+      (tránh chạy test mạng). Chỉ chạy test file đã đổi trực tiếp.
+    - File trong `apps/api/src/` → bỏ qua (CI chạy đầy đủ test API).
+    - File web/tsx/ts → không có test Python (bỏ qua).
+    """
+    tests: set[str] = set()
+    for f in changed:
+        p = Path(f)
+        # File test đã đổi → chạy chính nó
+        if "tests" in p.parts and p.suffix == ".py":
+            tests.add(f)
+    return sorted(tests)
+
+
 def main() -> int:
     python_cmd = find_python()
     print(f"🐍 Sử dụng Python runtime: {python_cmd}")
@@ -129,7 +194,11 @@ def main() -> int:
     elif not skip_web:
         print("⚠️  Bỏ qua tsc: chưa có apps/web/node_modules (chạy `cd apps/web && npm install`).")
 
-    # Pytest
+    # Pytest — Cách 2: chỉ chạy test liên quan đến thay đổi (nhanh hơn nhiều)
+    changed = _changed_files()
+    related_tests = _map_changed_to_tests(changed)
+    print(f"\n📁 File đã thay đổi: {len(changed)} → Test liên quan: {related_tests or '(không có)'}")
+
     if fast_mode:
         steps.append((
             "5. Fast Sanity & Architecture Tests",
@@ -142,26 +211,33 @@ def main() -> int:
             ],
             {"CA_AGENT_MODE": "replay"}, None,
         ))
+    elif related_tests:
+        # Chỉ chạy test liên quan đến thay đổi, LOẠI TRỪ test mạng (tránh treo)
+        filtered = [t for t in related_tests if t not in NETWORK_TESTS]
+        if not filtered:
+            print("   ⚠️  Chỉ có test mạng liên quan — bỏ qua pytest (CI sẽ chạy).")
+        else:
+            pytest_cmd = [python_cmd, "-m", "pytest", *filtered, "-q"]
+            # Cách 1: xdist với worker giới hạn (tránh crash Windows)
+            use_xdist = has_xdist and ("--xdist" in sys.argv or os.environ.get("XDIST", "0").lower() in ("1", "true", "yes"))
+            if use_xdist:
+                pytest_cmd.extend(["-n", "4"])
+            steps.append((
+                "5. Related Tests (Parallel)" if use_xdist else "5. Related Tests",
+                pytest_cmd,
+                {"CA_AGENT_MODE": "replay"}, None,
+            ))
     else:
-        agents_cmd = [
-            python_cmd, "-m", "pytest",
-            "packages/agents/tests",
-            "-q",
-            "--ignore=packages/agents/tests/test_camoufox_source.py",
-        ]
-        # Mặc định KHÔNG dùng xdist: `-n auto` có thể crash (access violation)
-        # trên Windows khi spawn quá nhiều worker. Chỉ dùng khi có `--xdist`.
-        use_xdist = has_xdist and ("--xdist" in sys.argv or os.environ.get("XDIST", "0").lower() in ("1", "true", "yes"))
-        if use_xdist:
-            agents_cmd.extend(["-n", "auto"])
+        # Không có test liên quan → chạy test nhanh mặc định
         steps.append((
-            "5. Agents Test Suite (Parallel)" if use_xdist else "5. Agents Test Suite",
-            agents_cmd,
-            {"CA_AGENT_MODE": "replay"}, None,
-        ))
-        steps.append((
-            "6. API & Contracts Suite",
-            [python_cmd, "-m", "pytest", "apps/api/tests", "packages/contracts/tests", "-q"],
+            "5. Fast Sanity & Architecture Tests",
+            [
+                python_cmd, "-m", "pytest",
+                "packages/agents/tests/test_architecture.py",
+                "packages/agents/tests/test_no_network.py",
+                "packages/contracts/tests",
+                "-q",
+            ],
             {"CA_AGENT_MODE": "replay"}, None,
         ))
 
