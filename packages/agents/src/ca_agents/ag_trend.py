@@ -13,6 +13,7 @@ import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, cast
@@ -131,6 +132,9 @@ def _scrape_tiktok_smart(
         - browser: Camoufox first -> TikWM -> Apify backup (plan §3.5)
     """
     start = time.monotonic()
+    # Theo dõi đã thử Camoufox chưa — tránh launch browser 2 lần cho 1 request
+    # (mode `browser` gọi Camoufox first, nếu fail thì SECONDARY không gọi lại).
+    camoufox_tried = False
 
     # If user selected APIFY FORCE mode
     if scrape_mode == "apify_force":
@@ -150,6 +154,7 @@ def _scrape_tiktok_smart(
 
     # BROWSER mode: Camoufox first (plan §3.5) — rớt tầng về chuỗi cũ nếu fail.
     if scrape_mode == "browser":
+        camoufox_tried = True
         try:
             from ca_agents.sources.tiktok_camoufox_source import scrape_tiktok_camoufox
 
@@ -187,7 +192,8 @@ def _scrape_tiktok_smart(
         )
 
     # SECONDARY: Camoufox browser-thật (chỉ khi available, plan §3.5)
-    if scrape_mode != "direct_only":
+    # Bỏ qua nếu đã thử Camoufox ở mode `browser` — tránh launch browser 2 lần.
+    if scrape_mode != "direct_only" and not camoufox_tried:
         try:
             from ca_agents.clients.camoufox_client import is_available
 
@@ -349,7 +355,7 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
     now_ts = time.time()
     if _TIKTOKWM_CACHE and (now_ts - _TIKTOKWM_CACHE_TIME < 300):
         videos = _TIKTOKWM_CACHE
-    else:
+    elif _CB_TIKWM.allow():
         try:
             url = "https://www.tikwm.com/api/feed/list?region=VN&count=20"
             req = urllib.request.Request(url, headers=_HEADERS)
@@ -361,10 +367,17 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
                     videos = vids
                     _TIKTOKWM_CACHE = vids
                     _TIKTOKWM_CACHE_TIME = now_ts
+                    _CB_TIKWM.record_success()
         except Exception as e:
             logger.warning(f"Lỗi fetch TikWM feed: {e}")
+            _CB_TIKWM.record_failure()
             if _TIKTOKWM_CACHE:
                 videos = _TIKTOKWM_CACHE
+    else:
+        # Circuit breaker đang mở — bỏ qua TikWM, dùng cache cũ nếu có.
+        logger.info("tiktok_source_tikwm_circuit_open_skipping")
+        if _TIKTOKWM_CACHE:
+            videos = _TIKTOKWM_CACHE
 
     if kw_clean and videos:
         filtered = [v for v in videos if kw_clean.lower() in (v.get("title") or "").lower()]
@@ -775,6 +788,9 @@ def _scrape_threads_smart(
         - browser: Camoufox first -> Official API -> Google Bridge -> Direct Jina -> Apify -> RSS (plan §3.5)
     """
     start = time.monotonic()
+    # Theo dõi đã thử Camoufox chưa — tránh launch browser 2 lần cho 1 request
+    # (mode `browser` gọi Camoufox first, nếu fail thì tier 2.5 không gọi lại).
+    camoufox_tried = False
 
     # If user selected APIFY FORCE mode
     if scrape_mode == "apify_force":
@@ -794,6 +810,7 @@ def _scrape_threads_smart(
 
     # BROWSER mode: Camoufox first (plan §3.5) — rớt tầng về chuỗi cũ nếu fail.
     if scrape_mode == "browser":
+        camoufox_tried = True
         try:
             if not keyword.strip():
                 try:
@@ -899,7 +916,8 @@ def _scrape_threads_smart(
         logger.warning("threads_direct_failed_trying_camoufox: %s", str(e)[:200])
 
     # 2.5 CAMOUFOX TIER: browser-thật miễn phí (giữa Jina direct và Apify, plan §3.5)
-    if scrape_mode not in {"direct_only", "apify_force"}:
+    # Bỏ qua nếu đã thử Camoufox ở mode `browser` — tránh launch browser 2 lần.
+    if scrape_mode not in {"direct_only", "apify_force"} and not camoufox_tried:
         try:
             from ca_agents.clients.camoufox_client import is_available
 
@@ -969,6 +987,89 @@ def _scrape_threads_smart(
     return _scrape_genz_media_vn(keyword=keyword)
 
 
+# ── Cache kết quả tổng hợp fetch_trend_radar ────────────────────────────────
+# Nhiều user cùng xem "Tất cả nguồn" trong 1 phút → trước đây cào lại 5 nguồn
+# mỗi lần. Cache này (TTL 90s) giảm tải nguồn bên thứ ba đáng kể. `force_live`
+# bỏ qua cache để luôn cào mới (dùng cho test / yêu cầu real-time tuyệt đối).
+_RADAR_CACHE: dict[str, tuple[float, list[TrendItem]]] = {}
+_RADAR_CACHE_TTL_S = 90.0
+
+
+# ── Circuit breaker cho nguồn free (TikWM/Jina/Google Bridge) ───────────────
+# SerpApi đã có circuit breaker riêng, nhưng các nguồn free thì không. Nếu
+# TikWM/Jina/Google Bridge chặn IP → mỗi request đều thử (timeout 6-8s) rồi mới
+# rớt tầng → chậm + tăng rủi ro bị chặn nặng hơn. Pattern nhẹ này mở mạch khi
+# fail >=3 lần/60s, bỏ qua nguồn trong 5 phút (tái dùng ý tưởng SerpApi CB).
+_CB_FAILURE_THRESHOLD = 3
+_CB_OPEN_SECONDS = 300.0
+_CB_WINDOW_SECONDS = 60.0
+
+
+class _SourceCircuitBreaker:
+    """Circuit breaker đơn giản cho một nguồn cào free."""
+
+    def __init__(self) -> None:
+        self._failures: list[float] = []
+        self._open_until: float = 0.0
+
+    def allow(self) -> bool:
+        if time.monotonic() < self._open_until:
+            return False
+        return True
+
+    def record_failure(self) -> None:
+        now = time.monotonic()
+        # Chỉ đếm lỗi trong cửa sổ 60s gần nhất.
+        self._failures = [t for t in self._failures if now - t <= _CB_WINDOW_SECONDS]
+        self._failures.append(now)
+        if len(self._failures) >= _CB_FAILURE_THRESHOLD:
+            self._open_until = now + _CB_OPEN_SECONDS
+            logger.warning(
+                "source_circuit_breaker_opened failures=%d open_seconds=%.0f",
+                len(self._failures),
+                _CB_OPEN_SECONDS,
+            )
+
+    def record_success(self) -> None:
+        self._failures = []
+
+
+# Circuit breaker per-source (module-level, process-wide).
+_CB_TIKWM = _SourceCircuitBreaker()
+_CB_JINA = _SourceCircuitBreaker()
+_CB_GOOGLE_BRIDGE = _SourceCircuitBreaker()
+
+
+def _radar_cache_key(
+    platform: str,
+    category: str,
+    trend_type: str,
+    keyword: str,
+    scrape_mode: str,
+) -> str:
+    return f"{platform}|{category}|{trend_type}|{(keyword or '').strip().lower()}|{scrape_mode}"
+
+
+def _radar_cache_get(key: str) -> list[TrendItem] | None:
+    hit = _RADAR_CACHE.get(key)
+    if hit is None:
+        return None
+    cached_at, items = hit
+    if time.monotonic() - cached_at > _RADAR_CACHE_TTL_S:
+        _RADAR_CACHE.pop(key, None)
+        return None
+    return items
+
+
+def _radar_cache_put(key: str, items: list[TrendItem]) -> None:
+    _RADAR_CACHE[key] = (time.monotonic(), items)
+
+
+def _radar_cache_clear() -> None:
+    """Xóa cache (dùng cho test)."""
+    _RADAR_CACHE.clear()
+
+
 def fetch_trend_radar(
     trend_type_filter: str = "all",
     category_filter: str = "all",
@@ -983,6 +1084,15 @@ def fetch_trend_radar(
     if trend_type_filter in {"tiktok_vn", "threads_vn", "google_vn", "star_vn", "tiktok_global"}:
         effective_platform = trend_type_filter
         effective_type = "all"
+
+    # Cache tổng hợp: bỏ qua khi force_live=True (mặc định) để giữ hành vi cũ.
+    cache_key = _radar_cache_key(
+        effective_platform, category_filter, effective_type, keyword, scrape_mode
+    )
+    if not force_live:
+        cached = _radar_cache_get(cache_key)
+        if cached is not None:
+            return cached
 
     results: list[TrendItem] = []
 
@@ -1007,16 +1117,26 @@ def fetch_trend_radar(
         results = _scrape_google_trends_global(keyword=keyword)
     # 6. Nếu chọn "Tất cả nguồn" (all) -> Mới cào tổng hợp tất cả!
     else:
-        tt = _scrape_tiktok_smart(
-            keyword=keyword, count=8, nguon_goc="tiktok_vn", scrape_mode=scrape_mode
-        )
-        gg = _scrape_google_trends_vn(keyword=keyword)
-        gz = _scrape_threads_smart(
-            keyword=keyword, count=8, nguon_goc="threads_vn", scrape_mode=scrape_mode
-        )
-        st = _scrape_showbiz_kols_vn(keyword=keyword)
-        gl = _scrape_google_trends_global(keyword=keyword)
-        results = tt + gg + gz + st + gl
+        # Chạy song song 5 nguồn (các hàm sync, không đụng event loop) để giảm
+        # thời gian chờ từ tổng 5 nguồn xuống ~nguồn chậm nhất (plan §3.2).
+        def _scrape_all() -> list[TrendItem]:
+            with ThreadPoolExecutor(max_workers=5) as pool:
+                f_tt = pool.submit(
+                    _scrape_tiktok_smart,
+                    keyword=keyword, count=8, nguon_goc="tiktok_vn", scrape_mode=scrape_mode,
+                )
+                f_gg = pool.submit(_scrape_google_trends_vn, keyword=keyword)
+                f_gz = pool.submit(
+                    _scrape_threads_smart,
+                    keyword=keyword, count=8, nguon_goc="threads_vn", scrape_mode=scrape_mode,
+                )
+                f_st = pool.submit(_scrape_showbiz_kols_vn, keyword=keyword)
+                f_gl = pool.submit(_scrape_google_trends_global, keyword=keyword)
+                return (
+                    f_tt.result() + f_gg.result() + f_gz.result() + f_st.result() + f_gl.result()
+                )
+
+        results = _scrape_all()
 
     # Lọc danh mục phụ nếu có
     if category_filter != "all":
@@ -1025,6 +1145,10 @@ def fetch_trend_radar(
     # Lọc loại xu hướng nếu có
     if effective_type != "all":
         results = [t for t in results if t.loai_xu_huong == effective_type]
+
+    # Lưu cache tổng hợp (chỉ khi không force_live).
+    if not force_live:
+        _radar_cache_put(cache_key, results)
 
     return results
 

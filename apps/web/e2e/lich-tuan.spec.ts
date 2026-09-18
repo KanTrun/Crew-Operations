@@ -9,7 +9,8 @@ test("lịch tuần hiển thị đủ 21 ô và không trắng trang", async ({
 
   await page.goto("/lich-tuan");
   await expect(page.getByRole("heading", { name: /Lịch/i })).toBeVisible();
-  await expect(page.getByText("1. Nháp", { exact: true })).toBeVisible();
+  // Chờ workflow section hiển thị sau khi dữ liệu lịch được nạp (nhãn thật là "1. Chuẩn bị lịch")
+  await expect(page.getByText("1. Chuẩn bị lịch", { exact: true })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText("Ràng buộc & kiểm tra lần xếp này")).toBeVisible();
   await expect(page.locator(".nq-roster-slot-btn")).toHaveCount(21);
   await expect(page.locator("body")).not.toBeEmpty();

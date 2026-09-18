@@ -4,7 +4,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from ca_agents.ag_trend import _scrape_threads_smart
 from ca_agents.sources.threads_google_bridge_source import (
     _assess_lifecycle,
@@ -99,8 +98,10 @@ def test_scrape_threads_google_bridge_end_to_end():
         assert item.danh_muc == "am_thuc_fnb"
         assert "THREADS REALTIME" in item.tieu_de
         assert "https://www.threads.net/@saigon_foodie/post/123456789" == item.link_goc
-        assert item.is_live_scraped is True
-        assert len(item.binh_luan_that_tiktok) > 0
+        # ADR-008: RSS không trả số liệu tương tác/comment thật → is_live_scraped=False
+        # và binh_luan_that_tiktok rỗng (không bịa dữ liệu).
+        assert item.is_live_scraped is False
+        assert item.binh_luan_that_tiktok == []
 
 
 def test_scrape_threads_smart_prioritizes_google_bridge():
