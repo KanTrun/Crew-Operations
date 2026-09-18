@@ -27,26 +27,29 @@ jobs:
       - name: Install Python linters
         run: pip install ruff mypy
 
+      # Cài reviewdog (action chính thức)
+      - name: Setup reviewdog
+        uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: latest
+
       # Ruff — đăng kết quả lint lên PR dưới dạng comment
       - name: Ruff review (Python)
-        uses: reviewdog/action-ruff@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          level: warning
-          filter_mode: diff_context
-          fail_on_error: false
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ruff check apps/api/src packages scripts --output-format=github \
+            | reviewdog -f=ruff -reporter=github-pr-review -level=warning \
+              -filter-mode=diff_context -fail-on-error=false
 
       # Mypy — type check, đăng lên PR
       - name: Mypy review (Python types)
-        uses: reviewdog/action-mypy@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          level: warning
-          filter_mode: diff_context
-          fail_on_error: false
-          mypy_flags: "--ignore-missing-imports"
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mypy packages apps/api/src --ignore-missing-imports \
+            | reviewdog -f=mypy -reporter=github-pr-review -level=warning \
+              -filter-mode=diff_context -fail-on-error=false
 
       # Secret scan — chặn token/key lộ ra PR
       - name: Secret scan

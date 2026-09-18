@@ -96,7 +96,7 @@ test("thông báo lịch: click deep-link tự động ack", async ({ page }) =>
   await page.goto("/lich-tuan");
   
   // Wait for the page to fully load - check for the workflow section which appears after data loads
-  await expect(page.getByText("1. Nháp", { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("1. Chuẩn bị lịch", { exact: true })).toBeVisible({ timeout: 10_000 });
 
   // Wait for notification banner to appear
   const banner = page.locator("text=1 chưa xem");

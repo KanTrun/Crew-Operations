@@ -1022,7 +1022,10 @@ def inbox_decide(
                     idempotency_key=f"inbox:{item_id}:{week}:solve",
                 )
                 solver_result = authoritative.get("result") or {}
-                solver_result["schedule_run"] = authoritative
+                # KHÔNG gán toàn bộ `authoritative` vào `result` (gây tham chiếu vòng
+                # khi serialize JSON). Chỉ giữ metadata run ở mức solver_result.
+                solver_result["schedule_run_id"] = authoritative.get("id")
+                solver_result["schedule_run_status"] = authoritative.get("status")
             except Exception:
                 solver_result = {
                     "ok": False,
@@ -1032,7 +1035,7 @@ def inbox_decide(
             if solver_result.get("ok"):
                 life["trang_thai"] = "cho_duyet"
                 life["solver"] = solver_result
-                life["schedule_run"] = solver_result.get("schedule_run")
+                life["schedule_run_id"] = solver_result.get("schedule_run_id")
                 life["cap_nhat_luc"] = _clock.now_iso()
                 life["cap_nhat_boi"] = role
                 _save_life(life, store_id=store_id)

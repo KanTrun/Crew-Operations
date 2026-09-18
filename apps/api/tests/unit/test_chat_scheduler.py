@@ -6,9 +6,7 @@ import asyncio
 from datetime import date
 
 from ca_api.persist import (
-    chat_conversation_get,
     chat_message_create,
-    chat_messages_list,
     init_db,
     register,
 )
@@ -177,6 +175,8 @@ def test_scheduler_agent_end_to_end() -> None:
     )
     assert draft and draft["status"] == "cho_xac_nhan"
     confirmation_id = str(draft["id"])
+    # Lấy đúng tuần mà availability được lưu (text "tuần sau" → tuần sau)
+    draft_week = str(draft.get("tuan_iso") or "")
     update_availability_confirmation(confirmation_id, nv_id=nv_id, status="da_xac_nhan")
 
     # Bước 3: chỉ dữ liệu đã xác nhận mới được bot xếp.
@@ -184,7 +184,7 @@ def test_scheduler_agent_end_to_end() -> None:
         handle_scheduling_request(
             conv_id=conv_id,
             trigger_msg="@agent_lich xếp lịch",
-            user_sess={"nv_id": nv_id, "role": "nhan_vien", "store_id": "quan_01"},
+            user_sess={"nv_id": nv_id, "role": "nhan_vien", "store_id": "quan_01", "tuan_iso": draft_week},
         )
     )
     assert bot_msg is not None

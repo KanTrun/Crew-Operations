@@ -172,6 +172,17 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/apify-usage": "trend — GET_SCRAPER_USAGE",
     "/radar": "trend — SEARCH_TRENDS",
     "/{trend_id}": "trend — GET_TREND_DETAIL",
+    # ── Hệ sinh thái AI agent (Self-Explaining / Predictive / Digital Twin) ──
+    "/api/v1/ops/episodes": "ops — deep-link /giai-thich (episodic memory)",
+    "/api/v1/ops/explain": "ops — deep-link /giai-thich (causal chain)",
+    "/api/v1/ops/explain/chains": "ops — deep-link /giai-thich (danh sách chain)",
+    "/api/v1/ops/reflect": "ops — deep-link /giai-thich (suy ngẫm)",
+    "/api/v1/ops/predict/run": "ops — deep-link /de-xuat-thong-minh",
+    "/api/v1/ops/predict/suggestions": "ops — deep-link /de-xuat-thong-minh",
+    "/api/v1/ops/predict/{rule_id}/approve": "R3: dual approval qua UI /de-xuat-thong-minh",
+    "/api/v1/ops/twin/scenarios": "ops — deep-link /thu-nghiem-an-toan",
+    "/api/v1/ops/twin/simulate": "ops — deep-link /thu-nghiem-an-toan",
+    "/api/v1/ops/twin/virtual-staff": "ops — deep-link /thu-nghiem-an-toan (virtual staff)",
 }
 
 _ROUTE_RE = re.compile(r'@router\.(?:get|post|patch|put|delete)\("([^"]+)"')

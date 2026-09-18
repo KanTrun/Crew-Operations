@@ -29,7 +29,7 @@ def test_active_model_list_skips_cooldown() -> None:
 def test_complete_skips_provider_on_cooldown(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CA_AGENT_MODE", "live")
     monkeypatch.setenv("GROQ_API_KEY", "sk-groq")
-    monkeypatch.setenv("GEMINI_API_KEY", "sk-gemini")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-openrouter")
 
     # Put groq on cooldown
     llm._PROVIDER_COOLDOWNS["groq"] = time.time() + 60.0
@@ -37,9 +37,10 @@ def test_complete_skips_provider_on_cooldown(monkeypatch: pytest.MonkeyPatch) ->
     with patch("ca_agents.llm._call_provider", return_value='{"ok": true}') as mock_call:
         res = llm.complete(system="s", user="u", json_mode=True)
         assert res.ok is True
-        assert res.provider == "gemini"
+        # _LIVE_ORDER = (groq, openrouter, bai, ollama) — groq cooldown → openrouter
+        assert res.provider == "openrouter"
         mock_call.assert_called_once()
-        assert mock_call.call_args[0][0] == "gemini"
+        assert mock_call.call_args[0][0] == "openrouter"
 
     # Cleanup
     llm._PROVIDER_COOLDOWNS.clear()
