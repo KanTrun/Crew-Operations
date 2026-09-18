@@ -817,6 +817,7 @@ def patch_khung_gio(
 @app.post("/api/v1/lich-tuan/pin")
 async def pin_assignment(
     body: PinBody,
+    request: Request,
     _role: Annotated[str, Depends(_require_write_role)],
 ) -> dict[str, Any]:
     """Pin or unpin a nhan_vien to a ca. Requires quan_ly or chu_quan token."""
@@ -839,16 +840,18 @@ async def pin_assignment(
     from ca_api.interfaces.http.sprint45 import _life
     from ca_api.services.solver_adapter import run_solver
 
-    life = _life(body.tuan_iso)
+    session = auth_session(request.headers.get("authorization")) or {}
+    store_id = str(session.get("store_id") or "quan_01")
+    life = _life(body.tuan_iso, store_id=store_id)
     if life.get("trang_thai") not in {"nhap", "cho_duyet"}:
         raise HTTPException(status_code=409, detail="chi_ghim_khi_lich_nhap_hoac_cho_duyet")
 
     solver_result: dict[str, Any] | None = None
     if body.pinned:
         # Chạy thử với pin mới: đây là kiểm tra đồng thời C01–C06, không chỉ kỹ năng.
-        solver_result = run_solver(body.tuan_iso, extra_pin=(body.ca_id, body.nv_id))
+        solver_result = run_solver(body.tuan_iso, extra_pin=(body.ca_id, body.nv_id), store_id=store_id)
         if not solver_result.get("ok"):
-            baseline = run_solver(body.tuan_iso)
+            baseline = run_solver(body.tuan_iso, store_id=store_id)
             if baseline.get("ok"):
                 detail = solver_result.get("danh_sach_xung_dot") or [
                     "Ghim làm lịch vi phạm ràng buộc cứng"
@@ -860,7 +863,7 @@ async def pin_assignment(
 
     prev = _set_pin(body.tuan_iso, body.ca_id, body.nv_id, body.pinned)
     if body.xep_lai and not body.pinned:
-        solver_result = run_solver(body.tuan_iso)
+        solver_result = run_solver(body.tuan_iso, store_id=store_id)
     record_sua(
         loai="pin_ca",
         truoc={"ca_id": body.ca_id, "nv_id": body.nv_id, "pinned": prev},
@@ -892,8 +895,8 @@ _LIFECYCLE_ALLOWED: dict[str, set[str]] = {
     "may_sinh": {"nhap"},
     "nhap": {"dang_giai"},
     "dang_giai": {"cho_duyet", "nhap"},
-    "cho_duyet": {"da_duyet", "nhap"},
-    "da_duyet": {"da_cong_bo"},
+    "cho_duyet": {"da_duyet", "da_cong_bo", "nhap"},
+    "da_duyet": {"da_cong_bo", "nhap"},
     "da_cong_bo": {"da_dong"},
     "da_dong": {"nhap"},
 }
@@ -945,30 +948,43 @@ async def patch_lifecycle(
 
     session = auth_session(authorization)
     store_id = str((session or {}).get("store_id") or "quan_01")
-    if body.trang_thai in {"da_duyet", "da_cong_bo"}:
-        _guard_authoritative_lifecycle(week, body.trang_thai, store_id)
+    effective_state = "da_cong_bo" if body.trang_thai == "da_duyet" else body.trang_thai
+    if effective_state == "da_cong_bo":
+        _guard_authoritative_lifecycle(week, effective_state, store_id)
+
+    doc = _life(week, store_id=store_id)
+    cur = doc.get("trang_thai", "nhap")
+    if cur == "da_dong" and body.trang_thai == "nhap":
+        raise HTTPException(status_code=409, detail="mo_lai_phai_co_ly_do")
+    if body.trang_thai not in _LIFECYCLE_ALLOWED.get(cur, set()):
+        raise HTTPException(
+            status_code=409,
+            detail=f"illegal:{cur}->{body.trang_thai}",
+        )
 
     def chuyen(trang_thai: str) -> dict[str, Any]:
         doc["trang_thai"] = trang_thai
         doc["tuan_iso"] = week
         doc["cap_nhat_luc"] = datetime.now(UTC).isoformat()
         doc["cap_nhat_boi"] = _role
-        _save_life(doc)
+        _save_life(doc, store_id=store_id)
         return doc
 
     solver_ket_qua: dict[str, Any] | None = None
     authoritative: dict[str, Any] | None = None
     if body.trang_thai == "dang_giai":
+        from ca_api.services.scheduling_service import authoritative_input_fingerprint
+        _, fingerprint = authoritative_input_fingerprint(store_id, week)
         authoritative = run_authoritative_schedule(
             store_id=store_id, tuan_iso=week, actor_id=_role,
-            idempotency_key=f"lifecycle:{week}:solve",
+            idempotency_key=f"lifecycle:{week}:solve:{fingerprint[:16]}",
         )
         solver_ket_qua = authoritative.get("result") or {}
         if not solver_ket_qua.get("ok"):
             new_state = chuyen("nhap")
             return {"ok": True, **new_state, "solver": solver_ket_qua}
 
-    new_state = chuyen("cho_duyet" if body.trang_thai == "dang_giai" else body.trang_thai)
+    new_state = chuyen("cho_duyet" if body.trang_thai == "dang_giai" else effective_state)
     record_sua(
         loai="lifecycle",
         truoc={},
@@ -977,8 +993,8 @@ async def patch_lifecycle(
         now_iso=datetime.now(UTC).isoformat(),
     )
 
-    if body.trang_thai == "da_cong_bo":
-        _publish_schedule_notification(week)
+    if effective_state == "da_cong_bo":
+        _publish_schedule_notification(week, store_id)
 
     if body.trang_thai == "dang_giai":
         record_sua(

@@ -245,6 +245,13 @@ def _clean_khoang_api(raw: list[dict[str, str]]) -> list[dict[str, str]]:
             end = end[:5]
         if thu not in thu_ok or len(start) != 5 or len(end) != 5:
             continue
+        try:
+            start_time = datetime.strptime(start, "%H:%M").time()
+            end_time = datetime.strptime(end, "%H:%M").time()
+        except ValueError:
+            continue
+        if start_time >= end_time:
+            continue
         out.append({"thu": thu, "start": start, "end": end})
     return out
 
@@ -597,6 +604,13 @@ def tkb_confirm(
     nv = (body.nv_id or "").strip() or s["nv_id"]
     if role not in {"quan_ly", "chu_quan"} and nv != s["nv_id"]:
         raise HTTPException(status_code=403, detail="chi_gan_tkb_cua_minh")
+    store_id = s.get("store_id", "quan_01")
+    # Xác thực nhân viên thuộc cửa hàng khi quản lý gán cho người khác
+    if role in {"quan_ly", "chu_quan"} and nv != s["nv_id"]:
+        from ca_api.persist import list_users
+        users = list_users(store_id=store_id)
+        if not any(u.get("id") == nv for u in users):
+            raise HTTPException(status_code=403, detail="nhan_vien_khong_thuoc_cua_hang")
 
     seed = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
     nv_ids = {n["id"] for n in seed.get("nhan_vien", [])}
@@ -617,10 +631,11 @@ def tkb_confirm(
     }
 
     def mut(doc: dict[str, Any]) -> dict[str, Any]:
-        week_doc = doc.setdefault(body.tuan_iso, {})
+        week_key = body.tuan_iso if store_id == "quan_01" else f"{store_id}:{body.tuan_iso}"
+        week_doc = doc.setdefault(week_key, {})
         if not isinstance(week_doc, dict):
             week_doc = {}
-            doc[body.tuan_iso] = week_doc
+            doc[week_key] = week_doc
         week_doc[nv] = entry
         return doc
 
@@ -647,9 +662,12 @@ def tkb_mine(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     nv = _nv_from_token(authorization)
+    s = auth_session(authorization) or {}
+    store_id = s.get("store_id", "quan_01")
     week = tuan_iso or _current_iso_week()
     by_week = kv_get("tkb_nv_by_week", {})
-    week_doc = by_week.get(week, {}) if isinstance(by_week, dict) else {}
+    week_key = week if store_id == "quan_01" else f"{store_id}:{week}"
+    week_doc = by_week.get(week_key, {}) if isinstance(by_week, dict) else {}
     item = week_doc.get(nv) if isinstance(week_doc, dict) else None
     if item is None:
         legacy = kv_get("tkb_nv", {})
@@ -670,9 +688,11 @@ def tkb_get(
         raise HTTPException(status_code=401, detail="thieu_token")
     if s["role"] not in {"quan_ly", "chu_quan"} and s["nv_id"] != nv_id:
         raise HTTPException(status_code=403, detail="cam")
+    store_id = s.get("store_id", "quan_01")
     week = tuan_iso or _current_iso_week()
     by_week = kv_get("tkb_nv_by_week", {})
-    week_doc = by_week.get(week, {}) if isinstance(by_week, dict) else {}
+    week_key = week if store_id == "quan_01" else f"{store_id}:{week}"
+    week_doc = by_week.get(week_key, {}) if isinstance(by_week, dict) else {}
     item = week_doc.get(nv_id) if isinstance(week_doc, dict) else None
     if item is None:
         legacy = kv_get("tkb_nv", {})

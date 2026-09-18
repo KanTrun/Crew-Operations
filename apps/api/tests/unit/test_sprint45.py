@@ -79,8 +79,9 @@ def test_lifecycle_and_audit(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_dung_tu
     body = r.json()
     assert body["trang_thai"] == "cho_duyet"
     assert body.get("solver", {}).get("status")
-    client.post("/api/v1/lich/lifecycle", json={"to": "da_duyet"}, headers=ql)
-    client.post("/api/v1/lich/lifecycle", json={"to": "da_cong_bo"}, headers=ql)
+    approved = client.post("/api/v1/lich/lifecycle", json={"to": "da_duyet"}, headers=ql)
+    assert approved.status_code == 200, approved.text
+    assert approved.json()["trang_thai"] == "da_cong_bo"
     ics = client.get("/api/v1/lich/ics", headers=ql).json()
     assert "BEGIN:VCALENDAR" in ics["ics"]
     assert client.get("/api/v1/audit", headers=ql).status_code == 200
@@ -89,6 +90,70 @@ def test_lifecycle_and_audit(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_dung_tu
     assert log[0]["id"] >= log[-1]["id"]
     assert isinstance(log[0]["payload"], dict)
     assert log[0]["payload"]["to"] in {"dang_giai", "cho_duyet", "da_cong_bo"}
+
+
+def test_published_schedule_reopen_requires_reason(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_dung_tuan: None) -> None:
+    week = "2026-W44"
+    ql = headers(client, "lan")
+    run = run_authoritative_schedule(
+        store_id="quan_01", tuan_iso=week, actor_id="lan", idempotency_key="test-reopen-w44",
+    )
+    assert run["status"] == "computed", run
+    kv_set("lich_tuan_lifecycle_by_week", {week: {"tuan_iso": week, "trang_thai": "cho_duyet"}})
+    approved = client.post(
+        "/api/v1/lich/lifecycle", json={"to": "da_duyet", "tuan_iso": week}, headers=ql,
+    )
+    assert approved.status_code == 200, approved.text
+    assert approved.json()["trang_thai"] == "da_cong_bo"
+
+    missing_reason = client.post(
+        "/api/v1/lich/lifecycle", json={"to": "nhap", "tuan_iso": week}, headers=ql,
+    )
+    assert missing_reason.status_code == 400
+    assert missing_reason.json()["detail"] == "can_ly_do_mo_lai_lich"
+
+    reopened = client.post(
+        "/api/v1/lich/lifecycle",
+        json={"to": "nhap", "tuan_iso": week, "ly_do": "Nhân viên báo bận đột xuất"},
+        headers=ql,
+    )
+    assert reopened.status_code == 200, reopened.text
+    assert reopened.json()["trang_thai"] == "nhap"
+
+    from ca_api.persist import availability_confirmation_upsert
+    availability_confirmation_upsert(
+        item_id="changed-after-reopen",
+        store_id="quan_01",
+        nv_id="nv_03",
+        tuan_iso=week,
+        availability={"T2": ["Sáng"]},
+        status="da_xac_nhan",
+        source="test",
+    )
+    rerun = client.post(
+        "/api/v1/lich/lifecycle", json={"to": "dang_giai", "tuan_iso": week}, headers=ql,
+    )
+    assert rerun.status_code == 200, rerun.text
+    assert rerun.json()["trang_thai"] in {"cho_duyet", "nhap"}
+
+
+def test_only_owner_can_reopen_closed_schedule() -> None:
+    week = "2026-W44"
+    kv_set("lich_tuan_lifecycle_by_week", {week: {"tuan_iso": week, "trang_thai": "da_dong"}})
+    manager = client.post(
+        "/api/v1/lich/lifecycle",
+        json={"to": "nhap", "tuan_iso": week, "ly_do": "Cần sửa lịch"},
+        headers=headers(client, "lan"),
+    )
+    assert manager.status_code == 403
+
+    owner = client.post(
+        "/api/v1/lich/lifecycle",
+        json={"to": "nhap", "tuan_iso": week, "ly_do": "Cần sửa lịch"},
+        headers=headers(client, "hung"),
+    )
+    assert owner.status_code == 200, owner.text
+    assert owner.json()["trang_thai"] == "nhap"
 
 
 def test_publish_creates_exact_week_notification_and_ack(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_dung_tuan: None) -> None:
@@ -607,3 +672,22 @@ def test_claim_first_claimant_wins(_du_nhan_vien_xep_lich: None, _xac_nhan_kha_d
     )
     assert r2.status_code == 404
     assert r2.json()["detail"] == "open_shift_khong_ton_tai"
+
+
+def test_claim_rejects_expired_shift_atomically() -> None:
+    from ca_api.persist import open_shift_create, schedule_run_create, shift_application_claim_first
+
+    run = schedule_run_create(
+        store_id="quan_01", tuan_iso="2026-W44", input_snapshot={}, fingerprint="fp-expired",
+        idempotency_key="claim-expired-test", created_by="lan", status="needs_gap_resolution",
+    )
+    shift = open_shift_create(
+        store_id="quan_01", schedule_run_id=str(run["id"]), tuan_iso="2026-W44",
+        ca_id="w1_c01", deadline_at="2026-11-01T00:00:00Z",
+    )
+
+    claimed = shift_application_claim_first(
+        open_shift_id=str(shift["id"]), store_id="quan_01", nv_id="nv_03",
+        now="2026-11-01T00:00:01Z",
+    )
+    assert claimed is None

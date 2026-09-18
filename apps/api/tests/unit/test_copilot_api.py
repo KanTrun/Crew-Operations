@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 import pytest
@@ -141,14 +142,16 @@ def test_copilot_voice_concurrency_superseded(monkeypatch: pytest.MonkeyPatch) -
 
     class FakeLiveSession:
         def __init__(self, context: object) -> None:
-            pass
+            self._closed = False
+            self._close_event = asyncio.Event()
 
         async def open(self) -> None:
             return None
 
         async def receive(self) -> dict[str, object]:
-            await __import__("asyncio").sleep(60)
-            return {}
+            # Wait until close is called (when WebSocket is closed due to concurrency)
+            await self._close_event.wait()
+            raise asyncio.CancelledError()
 
         async def send_audio(self, audio: bytes) -> None:
             return None
@@ -157,6 +160,8 @@ def test_copilot_voice_concurrency_superseded(monkeypatch: pytest.MonkeyPatch) -
             return None
 
         async def close(self) -> None:
+            self._closed = True
+            self._close_event.set()
             return None
 
     monkeypatch.setattr(voice_module, "GeminiLiveSession", FakeLiveSession)

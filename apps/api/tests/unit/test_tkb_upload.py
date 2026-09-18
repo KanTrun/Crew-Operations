@@ -86,6 +86,21 @@ def test_tkb_confirm_invalid_week_rejected() -> None:
     assert r.status_code == 422
 
 
+def test_tkb_confirm_rejects_invalid_or_reversed_time_ranges() -> None:
+    nv = headers(client, "minh")
+    for block in (
+        {"thu": "T2", "start": "25:00", "end": "26:00"},
+        {"thu": "T2", "start": "12:00", "end": "07:00"},
+        {"thu": "T2", "start": "08:99", "end": "12:00"},
+    ):
+        response = client.post(
+            "/api/v1/tkb/confirm",
+            json={"tuan_iso": "2026-W39", "khoang_ban": [block]},
+            headers=nv,
+        )
+        assert response.status_code == 400, response.text
+
+
 def test_tkb_upload_svg_rejected() -> None:
     nv = headers(client, "minh")
     svg_content = b"<svg xmlns='http://www.w3.org/2000/svg'><text>test</text></svg>"

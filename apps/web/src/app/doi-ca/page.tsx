@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { getRole, getToken } from "../../lib/session";
-import { caHumanLabel, nvLabel, nvTenHienThi, safeText, swapLabel, viError } from "../../lib/present";
+import { caHumanLabel, nvLabel, nvTenHienThi, safeText, swapLabel, thuLabel, viError } from "../../lib/present";
 import { matchExact, matchSearch, uniqueSorted } from "../../lib/list-filters";
 import { useOpsPickers } from "../../lib/ops-context";
 import {
@@ -32,10 +32,52 @@ type Swap = {
 
 type OpenShift = {
   id: string;
+  schedule_run_id: string;
   tuan_iso: string;
   ca_id: string;
+  status: string;
   deadline_at: string;
+  claimed_by?: string | null;
+  claimed_at?: string | null;
+  escalated_at?: string | null;
 };
+
+const OPEN_SHIFT_STATUS: Record<string, string> = {
+  open: "Đang chờ người nhận",
+  claimed: "Đã có người nhận",
+  resolved: "Đã xử lý",
+};
+
+function isoWeekMonday(week: string): Date | null {
+  const match = /^(\d{4})-W(\d{2})$/.exec(week);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const weekNumber = Number(match[2]);
+  const januaryFourth = new Date(year, 0, 4);
+  const monday = new Date(januaryFourth);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(januaryFourth.getDate() - ((januaryFourth.getDay() + 6) % 7) + (weekNumber - 1) * 7);
+  return monday;
+}
+
+function openShiftDate(week: string, weekday?: string): string {
+  const offsets: Record<string, number> = { T2: 0, T3: 1, T4: 2, T5: 3, T6: 4, T7: 5, CN: 6 };
+  const monday = isoWeekMonday(week);
+  const offset = weekday ? offsets[weekday] : undefined;
+  if (!monday || offset === undefined) return "Ngày chưa xác định";
+  monday.setDate(monday.getDate() + offset);
+  return monday.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function validDate(value?: string | null): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dateTimeLabel(value?: string | null): string {
+  return validDate(value)?.toLocaleString("vi-VN") ?? "Chưa có thời gian";
+}
 
 function currentISOWeek(): string {
   const now = new Date();
@@ -56,6 +98,7 @@ export default function DoiCaPage() {
   const [items, setItems] = useState<Swap[]>([]);
   const [openShifts, setOpenShifts] = useState<OpenShift[]>([]);
   const [openShiftWeek, setOpenShiftWeek] = useState(currentISOWeek());
+  const [openShiftLoading, setOpenShiftLoading] = useState(true);
   const [claimingShift, setClaimingShift] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -94,9 +137,14 @@ export default function DoiCaPage() {
 
   const loadOpenShifts = useCallback(() => {
     if (!getToken()) return;
+    setOpenShiftLoading(true);
     apiGet<{ items: OpenShift[] }>(`/api/v1/open-shifts?tuan_iso=${encodeURIComponent(openShiftWeek)}`)
-      .then((payload) => setOpenShifts(payload.items ?? []))
-      .catch((e) => setError(viError(e, { doing: "tải ca đang cần người" })));
+      .then((payload) => {
+        setOpenShifts((payload.items ?? []).filter((item) => item && typeof item.id === "string"));
+        setError(null);
+      })
+      .catch((e) => setError(viError(e, { doing: "tải ca đang cần người" })))
+      .finally(() => setOpenShiftLoading(false));
   }, [openShiftWeek]);
 
   useEffect(() => {
@@ -211,6 +259,14 @@ export default function DoiCaPage() {
     return caHumanLabel(hit, caId);
   }
 
+  function openShiftSchedule(openShift: OpenShift) {
+    const shift = pickers?.ca.find((item) => item.id === openShift.ca_id);
+    return {
+      date: openShiftDate(openShift.tuan_iso, shift?.thu),
+      weekday: shift?.thu ? thuLabel(shift.thu) : "Chưa rõ thứ",
+    };
+  }
+
   function personLabel(id: string) {
     const hit = pickers?.nhan_vien.find((x) => x.id === id);
     return hit ? nvTenHienThi(hit.ten, id) : nvLabel(id);
@@ -221,9 +277,9 @@ export default function DoiCaPage() {
   return (
     <div className="nq-page nq-page--run">
       <PageHeader
-        kicker="Đổi ca giữa hai người"
-        title="Chợ đổi ca"
-        meta="Bạn nhả ca, một người nhận ca chốt phiếu."
+        kicker="Điều phối nhân sự"
+        title="Ca mở & đổi ca"
+        meta="Ca thiếu do hệ thống mở và phiếu đổi giữa nhân viên là hai quy trình riêng."
       />
       <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
         Hỏi trợ lý vận hành
@@ -231,40 +287,105 @@ export default function DoiCaPage() {
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
 
-      <OpsCard eyebrow="Ca mở" title="Ca đang cần người" count={openShifts.length} countLabel="ca">
-        <label className="mb-4 block max-w-xs text-sm text-[var(--nq-dim)]">
-          Tuần ISO
+      <OpsCard eyebrow="Hệ thống tự động mở" title="Ca thiếu người" count={openShifts.length} countLabel="ca">
+        <div className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)] sm:items-end">
+          <p className="text-sm text-[var(--nq-dim)]">
+            Các ca này phát sinh khi lịch tự động chưa đủ người. Đây không phải phiếu một nhân viên nhả ca cho người khác.
+          </p>
+          <label className="block text-sm text-[var(--nq-dim)]">
+          Tuần cần xem
           <input
             type="week"
             value={openShiftWeek}
             onChange={(event) => setOpenShiftWeek(event.target.value)}
             className="mt-1 block min-h-10 w-full border border-[var(--nq-line)] bg-[var(--nq-panel)] px-3 text-[var(--nq-text)]"
           />
-        </label>
-        {openShifts.length === 0 ? <Empty title="Không có ca mở">Tuần này chưa có ca nào đang chờ nhận.</Empty> : null}
-        <div className="nq-list">
-          {openShifts.map((openShift) => (
-            <article key={openShift.id} className="nq-item">
-              <p className="nq-item-title">{caLabel(openShift.ca_id)}</p>
-              <p className="nq-item-sub">Hạn nhận: {new Date(openShift.deadline_at).toLocaleString("vi-VN")}</p>
-              {employeeMode ? (
-                <div className="mt-2">
-                  <Btn
-                    variant="primary"
-                    busy={claimingShift === openShift.id}
-                    disabled={claimingShift !== null}
-                    onClick={() => void claimOpenShift(openShift)}
-                  >
-                    Nhận ca này
-                  </Btn>
-                </div>
-              ) : null}
-            </article>
-          ))}
+          </label>
         </div>
+        {openShiftLoading ? <Loading skeleton="list">Đang tải ca thiếu người…</Loading> : null}
+        {!openShiftLoading && openShifts.length === 0 ? (
+          <Empty title="Không có ca thiếu người">Tuần này không còn ca tự động mở cần xử lý.</Empty>
+        ) : null}
+        {!openShiftLoading ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {openShifts.map((openShift) => {
+              const schedule = openShiftSchedule(openShift);
+              const deadline = validDate(openShift.deadline_at);
+              const expired = deadline ? deadline.getTime() <= Date.now() : false;
+              const escalated = Boolean(openShift.escalated_at);
+              const claimed = openShift.status === "claimed";
+              const actionable = employeeMode && openShift.status === "open" && !expired && !escalated;
+              const statusTone = claimed ? "ok" : expired || escalated ? "danger" : "warn";
+              return (
+                <article key={openShift.id} className="nq-item min-w-0">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="nq-item-title">{caLabel(openShift.ca_id)}</p>
+                      <p className="nq-item-sub">
+                        Tuần {openShift.tuan_iso} · {schedule.weekday}, {schedule.date}
+                      </p>
+                    </div>
+                    <StatusChip tone={statusTone}>
+                      {escalated ? "Quá hạn · đã báo quản lý" : expired ? "Đã hết hạn" : OPEN_SHIFT_STATUS[openShift.status] ?? safeText(openShift.status, "Chưa rõ")}
+                    </StatusChip>
+                  </div>
+
+                  <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-xs text-[var(--nq-dim)]">Hạn nhận ca</dt>
+                      <dd className={expired ? "font-semibold text-[var(--nq-red)]" : "font-semibold"}>
+                        {dateTimeLabel(openShift.deadline_at)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-[var(--nq-dim)]">Trạng thái xử lý</dt>
+                      <dd className="font-semibold">
+                        {claimed
+                          ? `${openShift.claimed_by ? personLabel(openShift.claimed_by) : "Đã có nhân viên"} nhận lúc ${dateTimeLabel(openShift.claimed_at)}`
+                          : escalated
+                            ? `Chờ quản lý xử lý từ ${dateTimeLabel(openShift.escalated_at)}`
+                            : expired
+                              ? "Hết thời gian tự nhận, cần quản lý xử lý"
+                              : "Đang trong thời gian nhân viên nhận ca"}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-3 border-t border-[var(--nq-line)] pt-3">
+                    {actionable ? (
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-xs text-[var(--nq-dim)]">
+                          Bạn có thể nhận nếu đã xác nhận khả dụng tuần này và chưa được xếp vào ca.
+                        </p>
+                        <Btn
+                          variant="primary"
+                          busy={claimingShift === openShift.id}
+                          disabled={claimingShift !== null}
+                          onClick={() => void claimOpenShift(openShift)}
+                        >
+                          Nhận ca này
+                        </Btn>
+                      </div>
+                    ) : (
+                      <p className="text-xs font-semibold text-[var(--nq-dim)]">
+                        {claimed
+                          ? "Quản lý cần chốt nhân sự và chạy lại lịch để giải quyết ca thiếu."
+                          : expired || escalated
+                            ? "Không còn nhận trực tiếp. Quản lý cần phân công và xử lý trên lịch tuần."
+                            : employeeMode
+                              ? "Ca này hiện không thể nhận."
+                              : "Chỉ tài khoản nhân viên mới có thể nhận ca đang mở."}
+                      </p>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : null}
       </OpsCard>
 
-      <OpsCard eyebrow="Khu vực 1" title="Mở lệnh mới">
+      <OpsCard eyebrow="Nhân viên đổi với nhau · Khu vực 1" title="Mở phiếu đổi ca">
         <form onSubmit={onSubmit}>
           <p className="nq-muted mb-3">Người nhả ca: {meNv ? personLabel(meNv) : "Đang tải tài khoản…"}</p>
           <select className="nq-select mb-3" value={b} onChange={(e) => setB(e.target.value)} aria-label="Người nhận ca">
@@ -281,7 +402,7 @@ export default function DoiCaPage() {
         </form>
       </OpsCard>
 
-      <OpsCard eyebrow="Khu vực 2" title="Lệnh đang mở" count={filtered.length} countLabel="lệnh">
+      <OpsCard eyebrow="Nhân viên đổi với nhau · Khu vực 2" title="Phiếu đổi đang mở" count={filtered.length} countLabel="phiếu">
         <ListToolbar
           search={search}
           onSearchChange={setSearch}
