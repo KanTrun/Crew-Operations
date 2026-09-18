@@ -46,6 +46,8 @@ _GEMINI_MODELS = (
 
 
 _OPENROUTER_MODELS = (
+    # Ưu tiên model hỗ trợ vision (đọc ảnh menu/TKB) — đã test hoạt động trên free tier.
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
     "minimax/minimax-m3:free",
     "minimax/minimax-m2.7:free",
     "google/gemma-4-31b-it:free",

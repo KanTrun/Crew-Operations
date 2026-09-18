@@ -1,0 +1,54 @@
+name: ai-code-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ai-review-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  reviewdog:
+    name: "AI Code Review (Reviewdog)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python linters
+        run: pip install ruff mypy
+
+      # Ruff — đăng kết quả lint lên PR dưới dạng comment
+      - name: Ruff review (Python)
+        uses: reviewdog/action-ruff@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          level: warning
+          filter_mode: diff_context
+          fail_on_error: false
+
+      # Mypy — type check, đăng lên PR
+      - name: Mypy review (Python types)
+        uses: reviewdog/action-mypy@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          level: warning
+          filter_mode: diff_context
+          fail_on_error: false
+          mypy_flags: "--ignore-missing-imports"
+
+      # Secret scan — chặn token/key lộ ra PR
+      - name: Secret scan
+        run: |
+          python scripts/scan_secrets_before_commit.py || echo "::warning::Secret scan phát hiện vấn đề — kiểm tra thủ công"

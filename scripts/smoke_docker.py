@@ -7,12 +7,19 @@ Không mock: gọi đúng API đang chạy, in nguyên trạng thái trả về.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import sys
 import time
 import urllib.error
 import urllib.request
 from typing import Any
+
+if sys.platform == "win32":
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if isinstance(sys.stderr, io.TextIOWrapper):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 TIMEOUT = 180
 
@@ -27,8 +34,13 @@ def call(
         req.add_header("Content-Type", "application/json")
     if token:
         req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:  # noqa: S310
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:  # noqa: S310
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        err_body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {exc.code} for {path}: {err_body}") from exc
+
 
 
 def show(label: str, value: Any, limit: int = 300) -> None:

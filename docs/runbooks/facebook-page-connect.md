@@ -54,6 +54,19 @@ https://<domain>/api/v1/channels/facebook/webhook
 
 3. Verify token = đúng `NHIPQUAN_FB_WEBHOOK_VERIFY` trong `.env`.
 4. Subscribe field **messages** (và `messaging_postbacks` nếu cần) cho Page.
+   - **Bắt buộc thêm field `feed`** để nhận comment trên bài viết (`item == "comment"`).
+     Thiếu `feed` → Meta không gửi comment → bot không trả lời được comment công khai.
+   - Có thể chạy `python scripts/fb_exchange_and_subscribe.py <USER_TOKEN>` để subscribe
+     đủ các field (messages + feed + ...).
+
+## 6b. Comment tự trả lời (auto-send)
+
+- Comment **có thể tự trả lời công khai** khi intent an toàn + confidence cao
+  (`COMMENT_SAFE_INTENTS` + `AUTO_THRESHOLD_COMMENT` trong `packages/agents/src/ca_agents/fb_policy.py`):
+  chào hỏi, giờ/địa chỉ, menu/giá, khuyến mãi, đặt bàn.
+- Comment không an toàn (khiếu nại, nhạy cảm, đòi người thật...) → **vẫn queue cho
+  Quản lý duyệt tay** (ADR-008).
+- Bật auto-send bằng `NHIPQUAN_FB_AUTO_SEND=1` trong `.env` (cùng flag với Messenger).
 
 Mỗi lần đổi URL ngrok phải cấu hình webhook lại trên Meta.
 

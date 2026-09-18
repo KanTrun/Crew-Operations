@@ -1,8 +1,13 @@
 FROM python:3.12-slim
 WORKDIR /app
 
+# System deps for Camoufox (Firefox headless) + build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libpq-dev curl \
+    libgtk-3-0 libasound2 libdbus-glib-1-2 libx11-xcb1 \
+    libxcomposite1 libxdamage1 libxrandr2 libatk1.0-0 libatk-bridge2.0-0 \
+    libpango-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 \
+    fonts-liberation fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
 # Toàn bộ package lõi — API import ca_solver / ca_gates / ca_ops / ca_playbook / ca_agents
@@ -22,6 +27,10 @@ RUN pip install --no-cache-dir \
     -e ./packages/playbook \
     -e ./packages/agents \
     -e ./apps/api
+
+# Camoufox: install + fetch binary (for Threads/TikTok browser scraping)
+RUN pip install --no-cache-dir -U 'camoufox[geoip]' \
+    && python -m camoufox fetch
 
 # Dữ liệu instance NHỊP QUÁN: seed, golden, template phiếu, tham số lao động
 COPY config ./config

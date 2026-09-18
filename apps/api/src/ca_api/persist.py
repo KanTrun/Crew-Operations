@@ -20,6 +20,8 @@ except ImportError:
 from pathlib import Path
 from typing import Any
 
+from ca_api.audit_trace import ActorType, resolve_actor_type
+
 ROOT = Path(__file__).resolve().parents[4]
 
 _INITIALIZED = False
@@ -1098,6 +1100,25 @@ def _migrate_schema(cx: sqlite3.Connection) -> None:
             """
         )
 
+    # Truy vết tác nhân cho sổ vết hệ thống (actor_type/agent_name/controller).
+    acols = {r[1] for r in cx.execute("PRAGMA table_info(audit)")}
+    if "actor_type" not in acols:
+        _safe_alter("ALTER TABLE audit ADD COLUMN actor_type TEXT NOT NULL DEFAULT 'human'")
+    if "agent_name" not in acols:
+        _safe_alter("ALTER TABLE audit ADD COLUMN agent_name TEXT")
+    if "controller_user_id" not in acols:
+        _safe_alter("ALTER TABLE audit ADD COLUMN controller_user_id TEXT")
+    _safe_alter("CREATE INDEX IF NOT EXISTS idx_audit_actor_type ON audit(actor_type, at)")
+
+    cal_cols = {r[1] for r in cx.execute("PRAGMA table_info(copilot_audit_log)")}
+    if "agent_name" not in cal_cols:
+        _safe_alter("ALTER TABLE copilot_audit_log ADD COLUMN agent_name TEXT")
+    if "controller_user_id" not in cal_cols:
+        _safe_alter("ALTER TABLE copilot_audit_log ADD COLUMN controller_user_id TEXT")
+    _safe_alter(
+        "CREATE INDEX IF NOT EXISTS idx_copilot_audit_agent ON copilot_audit_log(agent_name, timestamp)"
+    )
+
 
 _MENU_MAC_DINH = (
     ("mon_den", "Cà phê đen", 25000, {"cafe_g": 18, "ly": 1}),
@@ -1594,12 +1615,40 @@ def audit_request_end(token: Token[dict[str, bool] | None]) -> None:
     _AUDIT_REQUEST_STATE.reset(token)
 
 
-def audit_add(at: str, ai: str, hanh: str, payload: dict[str, Any]) -> None:
+def audit_add(
+    at: str,
+    ai: str,
+    hanh: str,
+    payload: dict[str, Any],
+    *,
+    actor_type: str | ActorType | None = None,
+    agent_name: str | None = None,
+    controller_user_id: str | None = None,
+) -> None:
+    """Ghi một vết vào sổ vết hệ thống.
+
+    actor_type/agent_name/controller_user_id là truy vết tác nhân:
+      - actor_type: human / agent / system / guest (mặc định suy từ `ai`)
+      - agent_name: tên agent nếu actor là agent (vd "ag_copilot")
+      - controller_user_id: người điều khiển agent (người duyệt/kích hoạt)
+    """
     init_db()
+    resolved_type = (
+        actor_type.value if isinstance(actor_type, ActorType) else actor_type
+    ) or resolve_actor_type(ai).value
     with _conn() as cx:
         cx.execute(
-            "INSERT INTO audit(at, ai, hanh, payload) VALUES (?,?,?,?)",
-            (at, ai, hanh, json.dumps(payload, ensure_ascii=False)),
+            """INSERT INTO audit(at, ai, hanh, payload, actor_type, agent_name, controller_user_id)
+               VALUES (?,?,?,?,?,?,?)""",
+            (
+                at,
+                ai,
+                hanh,
+                json.dumps(payload, ensure_ascii=False),
+                resolved_type,
+                agent_name,
+                controller_user_id,
+            ),
         )
     state = _AUDIT_REQUEST_STATE.get()
     if state is not None:
@@ -1975,15 +2024,31 @@ def ghi_diem_danh(nv_id: str) -> None:
     kv_mutate("diem_danh", mut, {})
 
 
-def audit_list() -> list[dict[str, Any]]:
+def audit_list(limit: int = 200) -> list[dict[str, Any]]:
     init_db()
     with _conn() as cx:
-        rows = cx.execute("SELECT id, at, ai, hanh, payload FROM audit ORDER BY id DESC").fetchall()
+        rows = cx.execute(
+            "SELECT id, at, ai, hanh, payload, actor_type, agent_name, controller_user_id "
+            "FROM audit ORDER BY id DESC LIMIT ?",
+            (max(1, int(limit)),),
+        ).fetchall()
     out = []
-    for row_id, at, ai, hanh, payload in rows:
+    for row in rows:
+        row_id, at, ai, hanh, payload, actor_type, agent_name, controller_user_id = row
         details = json.loads(payload) if payload else {}
         item = dict(details) if isinstance(details, dict) else {"value": details}
-        item.update({"id": row_id, "at": at, "ai": ai, "hanh": hanh, "payload": details})
+        item.update(
+            {
+                "id": row_id,
+                "at": at,
+                "ai": ai,
+                "hanh": hanh,
+                "payload": details,
+                "actor_type": actor_type or resolve_actor_type(ai).value,
+                "agent_name": agent_name,
+                "controller_user_id": controller_user_id,
+            }
+        )
         out.append(item)
     return out
 
@@ -2348,6 +2413,9 @@ def copilot_audit_add(
     payload_diff: dict[str, Any] | None = None,
     channel: str = "web",
     latency_ms: int = 0,
+    *,
+    agent_name: str | None = None,
+    controller_user_id: str | None = None,
 ) -> None:
     try:
         from datetime import UTC, datetime
@@ -2362,9 +2430,10 @@ def copilot_audit_add(
             """
             INSERT INTO copilot_audit_log(
                 action_id, actor_user_id, store_id, intent, decision,
-                payload_diff, timestamp, channel, latency_ms
+                payload_diff, timestamp, channel, latency_ms,
+                agent_name, controller_user_id
             )
-            VALUES (?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 action_id,
@@ -2376,13 +2445,19 @@ def copilot_audit_add(
                 now_iso,
                 channel,
                 latency_ms,
+                agent_name,
+                controller_user_id,
             ),
         )
 
 
 def copilot_audit_list(store_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
     init_db()
-    query = "SELECT action_id, actor_user_id, store_id, intent, decision, payload_diff, timestamp, channel, latency_ms FROM copilot_audit_log"
+    query = (
+        "SELECT action_id, actor_user_id, store_id, intent, decision, payload_diff, "
+        "timestamp, channel, latency_ms, agent_name, controller_user_id "
+        "FROM copilot_audit_log"
+    )
     params: list[Any] = []
     if store_id:
         query += " WHERE store_id=?"
@@ -2403,6 +2478,10 @@ def copilot_audit_list(store_id: str | None = None, limit: int = 50) -> list[dic
                 "timestamp": str(r[6]),
                 "channel": str(r[7]),
                 "latency_ms": int(r[8]),
+                "agent_name": r[9],
+                "controller_user_id": r[10],
+                # copilot_audit_log không có cột actor_type; suy từ agent_name.
+                "actor_type": "agent" if r[9] else "human",
             }
             for r in rows
         ]

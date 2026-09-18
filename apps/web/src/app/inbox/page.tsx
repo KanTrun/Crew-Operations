@@ -441,7 +441,7 @@ export default function InboxPage() {
       {life?.solver && (!life.solver.ok || life.solver.status?.includes("INFEASIBLE")) ? (
         <div className="mb-4 p-4 border-2 border-red-500 bg-red-950/40 text-red-200 rounded">
           <div className="font-bold uppercase tracking-wider mb-1 flex items-center gap-2">
-            <span>⚠️</span> Lịch tuần này đang xung đột — Solver không khả thi
+            Lịch tuần này đang xung đột — Solver không khả thi
           </div>
           <p className="text-sm mb-2">
             Các ràng buộc xin nghỉ hoặc TKB đã duyệt khiến một số ca thiếu nhân sự tối thiểu. Chi tiết:
@@ -549,7 +549,7 @@ export default function InboxPage() {
                     {it.goi_y_doi_tac && it.goi_y_doi_tac.length > 0 && it.trang_thai === "cho_duyet" && (
                       <div className="mt-2 rounded-lg border border-purple-800/40 bg-purple-950/20 p-2.5 text-xs space-y-1.5">
                         <div className="font-bold text-purple-300 flex items-center gap-1.5">
-                          <span>💡</span> AI Đề Xuất Ứng Viên Phù Hợp Nhất:
+                          AI Đề Xuất Ứng Viên Phù Hợp Nhất:
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {it.goi_y_doi_tac.map((cand) => (
@@ -557,7 +557,7 @@ export default function InboxPage() {
                               key={cand.nv_id}
                               className="flex items-center gap-1.5 rounded bg-zinc-900/90 px-2 py-1 border border-zinc-700"
                             >
-                              <span className="font-semibold text-white">⭐ {cand.ten}</span>
+                              <span className="font-semibold text-white">{cand.ten}</span>
                               <span className="text-[10px] text-amber-300 font-bold">({cand.score}%)</span>
                               {cand.reasons && cand.reasons.length > 0 && (
                                 <span className="text-[10px] text-zinc-400">· {cand.reasons[0]}</span>
@@ -572,7 +572,7 @@ export default function InboxPage() {
                                   }}
                                   className="ml-1 rounded bg-purple-600 hover:bg-purple-500 text-white px-1.5 py-0.5 text-[10px] font-bold"
                                 >
-                                  ✓ Chọn & Duyệt
+                                  Chọn & Duyệt
                                 </button>
                               )}
                             </div>
@@ -588,12 +588,12 @@ export default function InboxPage() {
                     <StatusChip>{kenhLabel(it.nguon)}</StatusChip>
                     <StatusChip>{yDinhLabel(it.y_dinh)}</StatusChip>
                     {it.khan_cap ? (
-                      <StatusChip tone="danger">🚨 Khẩn cấp (&lt;24h)</StatusChip>
+                      <StatusChip tone="danger">Khẩn cấp (&lt;24h)</StatusChip>
                     ) : null}
                     {it.trang_thai === "duyet" ? (
                       it.y_dinh === "doi_ca" || it.y_dinh === "nhan_ca" ? (
                         <Link href="/doi-ca">
-                          <StatusChip tone="ok">Đổi ca · Chợ đổi ca ↗</StatusChip>
+                          <StatusChip tone="ok">Đổi ca · Chợ đổi ca</StatusChip>
                         </Link>
                       ) : (
                         <StatusChip tone="ok">
@@ -621,7 +621,7 @@ export default function InboxPage() {
                           onClick={() => handleSmartApprove(it)}
                           className="bg-purple-600 hover:bg-purple-500 font-bold text-white shadow-md border border-purple-400"
                         >
-                          ⚡ Duyệt AI ({it.goi_y_doi_tac[0].ten})
+                          Duyệt AI ({it.goi_y_doi_tac[0].ten})
                         </Btn>
                       ) : (
                         <Btn

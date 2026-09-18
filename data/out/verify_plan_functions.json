@@ -1,0 +1,156 @@
+{
+  "pass": 30,
+  "fail": 0,
+  "results": [
+    {
+      "name": "31 PhieuMau: liệt kê mẫu",
+      "pass": true,
+      "detail": "200 {'items': [{'ma': 'mo_quan', 'ten': 'Mở quán', 'so_buoc': 20, 'gan_voi': 'ca_dau_ngay', 'mo_khi': 'nhan_vien_da_diem_danh', 'han_hoan_thanh_phut': 30, 'bat_buoc': False, 'buoc': [{'ma': 'diem_danh', 'ten': 'Điểm danh QR / xác nhận có mặt', 'minh_chung': 'xac_nhan'}, {'ma': 'bat_den', 'ten': 'Bật"
+    },
+    {
+      "name": "32 Điểm danh: check-in",
+      "pass": true,
+      "detail": "200 {'ok': 'true', 'nv_id': 'nv_03'}"
+    },
+    {
+      "name": "33 Đăng nhập/phân quyền: profile",
+      "pass": true,
+      "detail": "200 {'username': 'lan', 'role': 'quan_ly', 'nv_id': 'nv_01', 'email': ''}"
+    },
+    {
+      "name": "34 Bàn giao ca: list",
+      "pass": true,
+      "detail": "200 {'items': [], 'nguon': 'quan'}"
+    },
+    {
+      "name": "35 Việc treo: list",
+      "pass": true,
+      "detail": "200 {'items': []}"
+    },
+    {
+      "name": "6 Bản tin giao ban: /hom-nay",
+      "pass": true,
+      "detail": "200 {'ngay': '2026-09-18', 'lich': {'tuan_iso': '2026-W01', 'trang_thai': 'may_sinh', 'nguon': 'quan'}, 'so_treo': 0, 'so_inbox_cho': 0, 'so_luat': 0, 'canh_bao_ton': [], 'so_nhan_vien': 0, 'treo_preview': [], 'treo_theo_trang_thai': [], 'sua_gan_day': [], 'ton_tom_tat': [], 'viec_cho_toi': [{'id': "
+    },
+    {
+      "name": "6 Bản tin giao ban: có brief_hom_nay",
+      "pass": true,
+      "detail": "200"
+    },
+    {
+      "name": "7 Tra cứu SOP: intent",
+      "pass": true,
+      "detail": "200 intent=QUERY_SOP"
+    },
+    {
+      "name": "8 Phân tích thất thoát: intent",
+      "pass": true,
+      "detail": "200 intent=ANALYZE_WASTE"
+    },
+    {
+      "name": "9 Đề xuất quy tắc: intent",
+      "pass": true,
+      "detail": "200 intent=CREATE_RULE_PROPOSAL"
+    },
+    {
+      "name": "10 Soạn email: intent",
+      "pass": true,
+      "detail": "200 intent=SEND_MAIL"
+    },
+    {
+      "name": "11 Khảo sát đối thủ: intent",
+      "pass": true,
+      "detail": "200 intent=RUN_CATCHMENT_SURVEY"
+    },
+    {
+      "name": "5 Đổi ca: intent",
+      "pass": true,
+      "detail": "200 intent=APPROVE_SHIFT_SWAP"
+    },
+    {
+      "name": "4 Xếp lịch tuần: intent",
+      "pass": true,
+      "detail": "200 intent=SCHEDULE_SOLVE"
+    },
+    {
+      "name": "13 Availability: lifecycle",
+      "pass": true,
+      "detail": "200 {'tuan_iso': '2026-W01', 'trang_thai': 'may_sinh', 'nguon': 'quan'}"
+    },
+    {
+      "name": "14 Schedule run: lifecycle",
+      "pass": true,
+      "detail": "200"
+    },
+    {
+      "name": "15 Open shift: list",
+      "pass": true,
+      "detail": "200 {'items': []}"
+    },
+    {
+      "name": "16 Claim: open-shifts",
+      "pass": true,
+      "detail": "200"
+    },
+    {
+      "name": "17 SLA escalation: thong-bao",
+      "pass": true,
+      "detail": "200 {'ok': True, 'notifications': [], 'unread': 0}"
+    },
+    {
+      "name": "18 Gap-resolution: resolve-gaps",
+      "pass": true,
+      "detail": "422 {'detail': [{'type': 'missing', 'loc': ['body', 'schedule_run_id'], 'msg': 'Field required', 'input': {}}, {'type': 'missing', 'loc': ['body', 'tuan_iso'], 'msg': 'Field required', 'input': {}}, {'type': 'missing', 'loc': ['body', 'expected_fingerprint'], 'msg': 'Field required', 'input': {}}, {"
+    },
+    {
+      "name": "19 Duyệt/công bố: lifecycle",
+      "pass": true,
+      "detail": "200"
+    },
+    {
+      "name": "27 SerpApi: tạo catchment-survey",
+      "pass": true,
+      "detail": "202 {'ok': True, 'data': {'job_id': 'c4e5ab03-9bc9-4c32-bf35-600e366e89e2', 'status': 'failed', 'idempotent_replay': True}}"
+    },
+    {
+      "name": "28 Math Layer: job status",
+      "pass": true,
+      "detail": "200 {'ok': True, 'data': {'job_id': 'c4e5ab03-9bc9-4c32-bf35-600e366e89e2', 'status': 'failed', 'created_at': '2026-09-18T06:10:54.197375+00:00', 'updated_at': '2026-09-18T06:10:54.213055+00:00', 'error_code': 'SOURCE_BLOCKED', 'error_message': \"camoufox_khong_kha_dung: chưa cài package `camoufox` —"
+    },
+    {
+      "name": "29 Dashboard: job result",
+      "pass": true,
+      "detail": "502 {'detail': {'code': 'SOURCE_BLOCKED', 'message': \"camoufox_khong_kha_dung: chưa cài package `camoufox` — cài: pip install -U 'camoufox[geoip]'\"}}"
+    },
+    {
+      "name": "20 Telegram: channels/status",
+      "pass": true,
+      "detail": "200 {'uu_tien': ['zalo', 'telegram', 'facebook'], 'agent_mode': 'live', 'zalo': {'enabled_flag': False, 'connected': False, 'huong_dan': 'docs/runbooks/zalo-oa-connect.md'}, 'telegram': {'connected': False, 'huong_dan': 'docs/runbooks/telegram-bot-connect.md'}, 'facebook': {'connected': False, 'huon"
+    },
+    {
+      "name": "22 Facebook Page: page/status",
+      "pass": true,
+      "detail": "200 {'mode': 'disconnected', 'connected': False, 'has_token': False, 'page_id': None, 'page_name': None, 'graph_ok': False, 'graph_detail': 'chua_goi', 'huong_dan': 'Tạo Page Facebook rồi làm theo docs/runbooks/facebook-page-connect.md — không dùng dữ liệu giả.'}"
+    },
+    {
+      "name": "23 TikTok: apify-usage",
+      "pass": true,
+      "detail": "200 {'ok': True, 'usage': {'has_token': True, 'username': 'Sin21', 'plan': 'Free Tier ($5.00/tháng)', 'monthly_limit_usd': 10.0, 'usage_usd': 0.0, 'remaining_usd': 10.0, 'usage_percent': 0.0, 'status_label': 'Hoạt động bình thường', 'active_actors': ['clockworks/tiktok-scraper', 'apify/threads-scrap"
+    },
+    {
+      "name": "24 Threads: page/threads",
+      "pass": true,
+      "detail": "200 {'items': [], 'mode': 'disconnected', 'nguon': 'quan', 'store_id': 'quan_01'}"
+    },
+    {
+      "name": "1 Chat text Copilot (replay)",
+      "pass": true,
+      "detail": "200 {'reply_text': 'Chào anh/chị! Em là AG-COPILOT, trợ lý ảo của Nhịp Quán. Anh/chị cần em hỗ trợ gì hôm nay không ạ?', 'intent': 'OUT_OF_SCOPE', 'confidence': 0.3, 'action_proposal': None, 'direct_answer': 'Chào anh/chị! Em là AG-COPILOT, trợ lý ảo của Nhịp Quán. Anh/chị cần em hỗ trợ gì hôm nay k"
+    },
+    {
+      "name": "30 Roster lưới & khung giờ",
+      "pass": true,
+      "detail": "200"
+    }
+  ]
+}

@@ -242,7 +242,7 @@ export default function FbInboxPage() {
             marginTop: 8,
           }}
         >
-          📅 Sơ đồ & Lịch đặt bàn
+          Sơ đồ & Lịch đặt bàn
         </a>
       </div>
 
@@ -409,10 +409,10 @@ export default function FbInboxPage() {
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     <span className="font-mono uppercase tracking-widest text-[var(--nq-dim)]">Đính kèm:</span>
                     <StatusChip tone="default">
-                      {it.attachment_type === "image" ? "🖼️ Ảnh" :
-                       it.attachment_type === "audio" ? "🎵 Âm thanh" :
-                       it.attachment_type === "video" ? "🎬 Video" :
-                       it.attachment_type === "file" ? "📄 Tệp" : it.attachment_type}
+                      {it.attachment_type === "image" ? "Ảnh" :
+                       it.attachment_type === "audio" ? "Âm thanh" :
+                       it.attachment_type === "video" ? "Video" :
+                       it.attachment_type === "file" ? "Tệp" : it.attachment_type}
                     </StatusChip>
                     {it.attachment_url ? (
                       <a

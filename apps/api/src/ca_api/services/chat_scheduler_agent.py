@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 try:
@@ -17,6 +17,7 @@ except ImportError:
 
 from ca_api.persist import (
     availability_confirmation_upsert,
+    availability_confirmed_list,
     chat_message_create,
     chat_messages_list,
     kv_get,
@@ -161,7 +162,7 @@ def submit_availability_confirmation(
         "availability": parsed,
         "source_text": text,
         "status": "cho_xac_nhan",
-        "created_at": f"{date.today().isoformat()}T00:00:00Z",
+        "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
     def add(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -320,9 +321,19 @@ def format_schedule_report(
 
 async def handle_scheduling_request(conv_id: str, trigger_msg: str, user_sess: dict[str, Any]) -> dict[str, Any]:
     """Xử lý yêu cầu xếp lịch và gửi phản hồi vào cuộc trò chuyện."""
-    confirmations = availability_confirmations(conv_id, confirmed_only=True)
+    store_id = str(user_sess.get("store_id") or "quan_01")
+    requested_week = str(user_sess.get("tuan_iso") or "").strip()
+    if re.fullmatch(r"\d{4}-W\d{2}", requested_week):
+        week = requested_week
+    else:
+        iso = date.today().isocalendar()
+        week = f"{iso.year}-W{iso.week:02d}"
+
+    # Report phải khớp với dữ liệu solver dùng: toàn store, không chỉ conv này.
+    # (run_authoritative_schedule đọc availability_confirmed_list(store_id, week).)
+    confirmed = availability_confirmed_list(store_id, week)
     availabilities: dict[str, dict[str, list[str]]] = {}
-    for item in confirmations:
+    for item in confirmed:
         nv_id = str(item.get("nv_id") or "").strip()
         if nv_id:
             availabilities[nv_id] = item.get("availability") or {}
@@ -339,15 +350,8 @@ async def handle_scheduling_request(conv_id: str, trigger_msg: str, user_sess: d
         await chat_ws_manager.broadcast_to_conversation(conv_id, {"event": "message:new", "data": bot_msg})
         return bot_msg
 
-    requested_week = str(user_sess.get("tuan_iso") or "").strip()
-    if re.fullmatch(r"\d{4}-W\d{2}", requested_week):
-        week = requested_week
-    else:
-        iso = date.today().isocalendar()
-        week = f"{iso.year}-W{iso.week:02d}"
-
     solver_run = run_authoritative_schedule(
-        store_id=str(user_sess.get("store_id") or "quan_01"),
+        store_id=store_id,
         tuan_iso=week,
         actor_id=str(user_sess.get("nv_id") or "chat"),
         idempotency_key=f"chat:{conv_id}:{week}",

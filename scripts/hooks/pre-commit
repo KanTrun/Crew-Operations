@@ -1,0 +1,54 @@
+#!/bin/sh
+# Pre-commit hook — chạy nhanh trước mỗi commit.
+# Chặn commit nếu có lỗi lint hoặc secret.
+#
+# Được cài tự động bởi `python scripts/install_hooks.py`.
+# Bỏ qua bằng: git commit --no-verify
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+# Tìm Python 3.12+
+PY=""
+if command -v py >/dev/null 2>&1; then
+    PY="$(py -3.12 -c "import sys; print(sys.executable)" 2>/dev/null || echo "")"
+fi
+if [ -z "$PY" ]; then
+    PY="$(command -v python3 || command -v python || echo "")"
+fi
+if [ -z "$PY" ]; then
+    echo "⚠️  Không tìm thấy Python — bỏ qua pre-commit hook."
+    exit 0
+fi
+
+echo "🔍 Pre-commit: chạy ruff + secret scan..."
+
+# Chỉ lint các file Python staged TRONG SOURCE CODE (apps/api/src, packages, scripts)
+# — nhất quán với CI gốc (không lint test files, tránh chặn commit vì lỗi test cũ).
+STAGED_PY="$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)"
+if [ -n "$STAGED_PY" ]; then
+    # Lọc chỉ giữ file trong source code
+    SRC_PY=""
+    for f in $STAGED_PY; do
+        case "$f" in
+            apps/api/src/*|packages/*/src/*|scripts/*) SRC_PY="$SRC_PY $f" ;;
+        esac
+    done
+    if [ -n "$SRC_PY" ]; then
+        if ! "$PY" -m ruff check $SRC_PY; then
+            echo "❌ Pre-commit: ruff fail. Sửa lỗi rồi commit lại."
+            exit 1
+        fi
+    fi
+fi
+
+# Secret scan toàn bộ staged
+if ! "$PY" scripts/scan_secrets_before_commit.py; then
+    echo "❌ Pre-commit: phát hiện secret/token. Không cho commit."
+    exit 1
+fi
+
+echo "✅ Pre-commit: OK."
+exit 0

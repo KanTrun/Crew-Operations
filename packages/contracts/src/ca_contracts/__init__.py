@@ -18,7 +18,34 @@ from pydantic import BaseModel, Field
 # Import ở đầu file chứ không để cuối: hai module con chỉ phụ thuộc stdlib + pydantic
 # nên không có vòng lặp import, và để cuối file thì ruff báo E402 (lint gate đỏ).
 from ca_contracts.catchment_survey import StoreCandidate
+from ca_contracts.causal_memory import (
+    CausalChain,
+    CausalLink,
+    CausalNode,
+    CausalNodeType,
+)
+from ca_contracts.episodic_memory import (
+    Episode,
+    EpisodeType,
+    Reflection,
+    ReflectionResult,
+)
+from ca_contracts.ops_predict import (
+    PositiveRule,
+    PositiveRuleStatus,
+    PredictResponse,
+    SuccessPattern,
+    SuccessPatternSource,
+    SuccessPatternType,
+    TwinScenario,
+    TwinScenarioType,
+)
 from ca_contracts.trend_item import TrendItem
+from ca_contracts.virtual_staff import (
+    VirtualSimulation,
+    VirtualStaff,
+    VirtualStaffType,
+)
 
 
 class NhanVien(BaseModel):
@@ -891,5 +918,25 @@ __all__ = [
     "CatchmentSurveyParams",
     "StoreCandidate",
     "TrendItem",
+    # Re-export từ module con (public API) — giữ để không bị ruff F401
+    "CausalChain",
+    "CausalLink",
+    "CausalNode",
+    "CausalNodeType",
+    "Episode",
+    "EpisodeType",
+    "Reflection",
+    "ReflectionResult",
+    "PositiveRule",
+    "PositiveRuleStatus",
+    "PredictResponse",
+    "SuccessPattern",
+    "SuccessPatternSource",
+    "SuccessPatternType",
+    "TwinScenario",
+    "TwinScenarioType",
+    "VirtualSimulation",
+    "VirtualStaff",
+    "VirtualStaffType",
 ]
 

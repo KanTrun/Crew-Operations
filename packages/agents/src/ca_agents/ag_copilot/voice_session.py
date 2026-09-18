@@ -41,7 +41,7 @@ class VerifiedVoiceContext:
 
 
 def voice_enabled() -> bool:
-    return os.environ.get("GEMINI_LIVE_VOICE_ENABLED", "false").strip().lower() in {
+    return os.environ.get("GEMINI_LIVE_VOICE_ENABLED", "true").strip().lower() in {
         "1",
         "true",
         "yes",
@@ -60,7 +60,13 @@ def build_setup_message(context: VerifiedVoiceContext) -> str:
         {
             "setup": {
                 "model": f"models/{GEMINI_LIVE_MODEL}",
-                "generationConfig": {"responseModalities": ["AUDIO"]},
+                "generationConfig": {
+                    "responseModalities": ["AUDIO"],
+                    # Model gemini-3.8-live-extended-thinking bắt buộc khai báo
+                    # thinkingConfig.thinkingLevel, nếu không WebSocket đóng với
+                    # lỗi "Thinking level must be specified for this model".
+                    "thinkingConfig": {"thinkingLevel": "LOW"},
+                },
                 "systemInstruction": {"parts": [{"text": system_instruction}]},
                 "realtimeInputConfig": {
                     "automaticActivityDetection": {

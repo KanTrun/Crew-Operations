@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { apiGet, apiSend, apiUpload } from "../../lib/api";
 import { viError } from "../../lib/present";
 import { getToken, isManager } from "../../lib/session";
+import { useMeetingStream } from "../../lib/useMeetingStream";
 import {
   Alert,
   AuthGate,
@@ -205,6 +206,11 @@ export default function MeetingPage() {
   const [inputMode, setInputMode] = useState<"meet" | "mic" | "upload" | "text">("mic");
   const [meetingType, setMeetingType] = useState<"giao_ca" | "hop_tuan" | "dao_tao">("giao_ca");
 
+  // Streaming realtime (Google Meet / micro trực tiếp)
+  const stream = useMeetingStream();
+  const streamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const streamProcessorRef = useRef<ScriptProcessorNode | null>(null);
+
   // Recording & Live Subtitles State
   const [isRecording, setIsRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
@@ -393,6 +399,20 @@ export default function MeetingPage() {
       setupAudioMeter(mixedStream, audioCtx);
       initLiveSpeechRecognition();
 
+      // Streaming realtime transcript
+      stream.onTranscript((text, isFinal) => {
+        if (isFinal) {
+          liveTranscriptRef.current = liveTranscriptRef.current
+            ? liveTranscriptRef.current + " " + text.trim()
+            : text.trim();
+          setLiveTranscript(liveTranscriptRef.current);
+          setInterimText("");
+        } else {
+          setInterimText(text);
+        }
+      });
+      startStreaming(mixedStream);
+
       const recorder = new MediaRecorder(mixedStream, {
         mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm",
         audioBitsPerSecond: 32000,
@@ -405,6 +425,7 @@ export default function MeetingPage() {
       recorder.onstop = async () => {
         displayStream.getTracks().forEach((t) => t.stop());
         if (micStream) micStream.getTracks().forEach((t) => t.stop());
+        stopStreaming();
         if (audioContextRef.current) {
           try { audioContextRef.current.close(); } catch {}
           audioContextRef.current = null;
@@ -440,6 +461,40 @@ export default function MeetingPage() {
     }
   }
 
+  // Streaming realtime: chuyển audio stream sang PCM16 16kHz, gửi qua WebSocket
+  function startStreaming(mediaStream: MediaStream) {
+    stream.connect();
+    const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    audioContextRef.current = audioCtx;
+    const source = audioCtx.createMediaStreamSource(mediaStream);
+    streamSourceRef.current = source;
+    // ScriptProcessor để lấy PCM16 16kHz
+    const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+    streamProcessorRef.current = processor;
+    source.connect(processor);
+    processor.connect(audioCtx.destination);
+    processor.onaudioprocess = (e) => {
+      const input = e.inputBuffer.getChannelData(0);
+      const pcm = new Int16Array(input.length);
+      for (let i = 0; i < input.length; i++) {
+        pcm[i] = Math.max(-1, Math.min(1, input[i])) * 0x7fff;
+      }
+      stream.sendAudio(pcm.buffer);
+    };
+  }
+
+  function stopStreaming() {
+    if (streamProcessorRef.current) {
+      try { streamProcessorRef.current.disconnect(); } catch {}
+      streamProcessorRef.current = null;
+    }
+    if (streamSourceRef.current) {
+      try { streamSourceRef.current.disconnect(); } catch {}
+      streamSourceRef.current = null;
+    }
+    stream.stop();
+  }
+
   // 2. Microphone Recording
   async function startMicRecording() {
     setError(null);
@@ -450,11 +505,25 @@ export default function MeetingPage() {
     setInterimText("");
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setupAudioMeter(stream);
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setupAudioMeter(mediaStream);
       initLiveSpeechRecognition();
 
-      const recorder = new MediaRecorder(stream, {
+      // Streaming realtime transcript
+      stream.onTranscript((text, isFinal) => {
+        if (isFinal) {
+          liveTranscriptRef.current = liveTranscriptRef.current
+            ? liveTranscriptRef.current + " " + text.trim()
+            : text.trim();
+          setLiveTranscript(liveTranscriptRef.current);
+          setInterimText("");
+        } else {
+          setInterimText(text);
+        }
+      });
+      startStreaming(mediaStream);
+
+      const recorder = new MediaRecorder(mediaStream, {
         mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm",
         audioBitsPerSecond: 32000,
       });
@@ -464,7 +533,8 @@ export default function MeetingPage() {
       };
 
       recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
+        mediaStream.getTracks().forEach((t) => t.stop());
+        stopStreaming();
         if (audioContextRef.current) {
           try { audioContextRef.current.close(); } catch {}
           audioContextRef.current = null;

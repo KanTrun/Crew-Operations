@@ -5,8 +5,10 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import threading
 import time
 from contextlib import suppress
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from ca_agents.ag_copilot.voice_session import (
@@ -28,8 +30,15 @@ MAX_TEXT_LENGTH = 2000
 MAX_AUDIO_CHUNK_BYTES = 65536  # 64 KB per PCM chunk
 MAX_MESSAGES_PER_SECOND = 25.0
 
-_ACTIVE_VOICE_SESSIONS: dict[str, WebSocket] = {}
-_ACTIVE_SESSIONS_LOCK = asyncio.Lock()
+@dataclass
+class _ActiveVoiceSession:
+    websocket: WebSocket
+    stop_event: asyncio.Event
+    loop: asyncio.AbstractEventLoop
+
+_ACTIVE_VOICE_SESSIONS: dict[str, _ActiveVoiceSession] = {}
+_ACTIVE_SESSIONS_LOCK = threading.Lock()
+
 
 
 class TokenBucket:
@@ -171,22 +180,41 @@ async def copilot_voice_websocket(websocket: WebSocket) -> None:
         await websocket.close(code=4001, reason="auth_invalid")
         return
 
+    loop = asyncio.get_running_loop()
+    stop_event = asyncio.Event()
+    current_session = _ActiveVoiceSession(
+        websocket=websocket, stop_event=stop_event, loop=loop
+    )
+
     # Concurrency limit: close previous active session for this user
-    async with _ACTIVE_SESSIONS_LOCK:
-        old_ws = _ACTIVE_VOICE_SESSIONS.get(context.user_id)
-        if old_ws is not None and old_ws is not websocket:
+    with _ACTIVE_SESSIONS_LOCK:
+        old_session = _ACTIVE_VOICE_SESSIONS.get(context.user_id)
+        if old_session is not None and old_session.websocket is not websocket:
+            def _signal_superseded(s: _ActiveVoiceSession) -> None:
+                s.stop_event.set()
+                asyncio.create_task(
+                    s.websocket.close(code=4002, reason="session_superseded")
+                )
+
             with suppress(Exception):
-                await old_ws.close(code=4002, reason="session_superseded")
-        _ACTIVE_VOICE_SESSIONS[context.user_id] = websocket
+                old_session.loop.call_soon_threadsafe(_signal_superseded, old_session)
+        _ACTIVE_VOICE_SESSIONS[context.user_id] = current_session
+
+    if stop_event.is_set():
+        with suppress(Exception):
+            await websocket.close(code=4002, reason="session_superseded")
+        return
 
     live = GeminiLiveSession(context)
-    start_time = asyncio.get_running_loop().time()
+    start_time = loop.time()
     try:
         audit_add(
             datetime.now(UTC).isoformat(),
             context.user_id,
             "copilot.voice.start",
             {"store_id": context.store_id, "role": context.user_role},
+            agent_name="ag_copilot",
+            controller_user_id=context.user_id,
         )
     except Exception:
         pass
@@ -197,6 +225,10 @@ async def copilot_voice_websocket(websocket: WebSocket) -> None:
 
     try:
         await live.open()
+        if stop_event.is_set():
+            close_reason = "session_superseded"
+            return
+
         await websocket.send_json(
             {
                 "event": "voice:ready",
@@ -214,13 +246,17 @@ async def copilot_voice_websocket(websocket: WebSocket) -> None:
             )
             upstream_task = asyncio.create_task(_receive_upstream(websocket, live))
             watchdog_task = asyncio.create_task(_idle_watchdog(websocket, tracker))
-            tasks = {client_task, upstream_task, watchdog_task}
+            stop_task = asyncio.create_task(stop_event.wait())
+            tasks = {client_task, upstream_task, watchdog_task, stop_task}
             try:
                 done, _ = await asyncio.wait(
                     tasks, return_when=asyncio.FIRST_COMPLETED
                 )
                 for task in done:
-                    task.result()
+                    if not task.cancelled():
+                        task.result()
+                if stop_event.is_set():
+                    close_reason = "session_superseded"
             finally:
                 for task in tasks:
                     task.cancel()
@@ -244,6 +280,8 @@ async def copilot_voice_websocket(websocket: WebSocket) -> None:
             )
     except (WebSocketDisconnect, json.JSONDecodeError):
         close_reason = "client_disconnected"
+    except (asyncio.CancelledError, GeneratorExit):
+        close_reason = "session_superseded" if stop_event.is_set() else "cancelled"
     except Exception as exc:
         close_reason = f"upstream_error: {type(exc).__name__}"
         with suppress(Exception):
@@ -254,7 +292,7 @@ async def copilot_voice_websocket(websocket: WebSocket) -> None:
                 }
             )
     finally:
-        duration = asyncio.get_running_loop().time() - start_time
+        duration = loop.time() - start_time
         try:
             audit_add(
                 datetime.now(UTC).isoformat(),
@@ -266,14 +304,21 @@ async def copilot_voice_websocket(websocket: WebSocket) -> None:
                     "duration_seconds": round(duration, 2),
                     "reason": close_reason,
                 },
+                agent_name="ag_copilot",
+                controller_user_id=context.user_id,
             )
         except Exception:
             pass
 
-        async with _ACTIVE_SESSIONS_LOCK:
-            if _ACTIVE_VOICE_SESSIONS.get(context.user_id) is websocket:
+        with _ACTIVE_SESSIONS_LOCK:
+            if _ACTIVE_VOICE_SESSIONS.get(context.user_id) is current_session:
                 _ACTIVE_VOICE_SESSIONS.pop(context.user_id, None)
 
         await live.close()
-        with suppress(Exception):
-            await websocket.close(code=1000)
+        if close_reason == "session_superseded":
+            with suppress(Exception):
+                await websocket.close(code=4002, reason="session_superseded")
+        else:
+            with suppress(Exception):
+                await websocket.close(code=1000)
+

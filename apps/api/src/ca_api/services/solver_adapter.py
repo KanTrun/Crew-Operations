@@ -37,7 +37,13 @@ def _week_value(key: str, week: str, default: Any) -> Any:
 def _previous_week(week: str) -> str | None:
     try:
         year, number = week.split("-W")
-        previous = date.fromisocalendar(int(year), int(number), 1).toordinal() - 7
+        year_i = int(year)
+        number_i = int(number)
+        # Clamp số tuần vào phạm vi hợp lệ của năm (1..số tuần thực của năm).
+        # Nếu tuần không hợp lệ (vd 2025-W53), dùng tuần cuối hợp lệ của năm.
+        max_weeks = date(year_i, 12, 28).isocalendar().week
+        number_i = max(1, min(number_i, max_weeks))
+        previous = date.fromisocalendar(year_i, number_i, 1).toordinal() - 7
         iso = date.fromordinal(previous).isocalendar()
         return f"{iso.year}-W{iso.week:02d}"
     except (TypeError, ValueError):

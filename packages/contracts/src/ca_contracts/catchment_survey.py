@@ -30,6 +30,7 @@ class StoreCandidate(BaseModel):
 
     id: str = Field(default="", description="Mã định danh quán")
     place_id: str = Field(default="", description="Alias place_id theo chuẩn SerpApi / Google Maps")
+    data_id: str = Field(default="", description="data_id theo chuẩn SerpApi — bắt buộc cho google_maps_photos")
     name: str = Field(description="Tên quán")
     address: str = Field(default="", description="Địa chỉ quán")
     lat: float = Field(default=0.0, description="Tọa độ vĩ độ GPS")

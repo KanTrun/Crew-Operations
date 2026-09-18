@@ -1,5 +1,6 @@
 .PHONY: setup contracts dev test test-unit canary lint demo demo-local demo-reset seed seed-ops seed-demo bench eval ab replay budget metrics \
-	docker-up docker-down docker-logs docker-smoke docker-ps docker-reset docker-seed-ops test-fb test-fb-post
+	docker-up docker-down docker-logs docker-smoke docker-ps docker-reset docker-seed-ops test-fb test-fb-post \
+	review review-fast install-hooks
 
 setup:
 	python -m pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api pytest httpx ruff pyyaml hypothesis
@@ -45,6 +46,22 @@ test-fb-post:
 lint:
 	ruff check apps/api/src packages scripts
 	cd apps/web && npm run lint
+
+# ── Cổng review tự động trước khi push ────────────────────────────────────────
+#
+# `make review` chạy toàn bộ chuỗi kiểm tra (ruff + secret + mypy + tsc + pytest)
+# giống CI, ngay tại máy local. Được gọi tự động bởi pre-push hook.
+# `make review-fast` chỉ chạy lint + secret + type (nhanh, cho commit).
+# `make install-hooks` cài git hooks để mỗi commit/push tự chạy review.
+
+review:
+	python scripts/pre_push_review.py
+
+review-fast:
+	python scripts/pre_push_review.py --fast
+
+install-hooks:
+	python scripts/install_hooks.py
 
 seed:
 	python scripts/generate_fixture_data.py

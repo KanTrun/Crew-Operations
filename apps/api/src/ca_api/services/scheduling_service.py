@@ -95,7 +95,9 @@ def _gap_ca_id(gap: str) -> str | None:
     marker = "Ca "
     if marker not in gap:
         return None
-    value = gap.split(marker, 1)[1].split(" ", 1)[0].strip(" :")
+    # The gap format is "Ca {ca_id} ({thu} {start}-{end}) ...". The ca_id is
+    # the token right after "Ca " and before the following " (" separator.
+    value = gap.split(marker, 1)[1].split(" (", 1)[0].strip(" :")
     return value or None
 
 
@@ -107,8 +109,13 @@ def resolve_schedule_gaps(
     current = schedule_run_get(schedule_run_id)
     if not current or current["store_id"] != store_id or current["tuan_iso"] != tuan_iso:
         raise LookupError("schedule_run_not_found")
+    # Derive the idempotency key from the pin so a different pin produces a
+    # different run instead of silently reusing the previous (unpinned) one.
+    pin = (ca_id, nv_id) if ca_id and nv_id else None
+    pin_suffix = f":pin:{ca_id}:{nv_id}" if pin else ""
     return run_authoritative_schedule(
         store_id=store_id, tuan_iso=tuan_iso, actor_id=actor_id,
-        idempotency_key=idempotency_key, expected_fingerprint=expected_fingerprint,
-        extra_pin=(ca_id, nv_id) if ca_id and nv_id else None,
+        idempotency_key=f"{idempotency_key}{pin_suffix}",
+        expected_fingerprint=expected_fingerprint,
+        extra_pin=pin,
     )

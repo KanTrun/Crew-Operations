@@ -614,6 +614,193 @@ def test_comment_approval_uses_comment_reply_transport(
     assert messenger_replies == []
 
 
+def test_comment_auto_send_when_safe_intent_and_flag_on(
+    api: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Comment intent an toàn + confidence cao + auto_send ON → trả lời công khai
+    ngay, không cần QL duyệt (ADR-008: chỉ auto cho intent an toàn)."""
+    from ca_api.interfaces.http import channels as ch
+
+    monkeypatch.setenv("NHIPQUAN_FB_AUTO_SEND", "1")
+    comment_replies: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        ch,
+        "reply_to_comment",
+        lambda comment_id, text: comment_replies.append((comment_id, text)),
+    )
+    payload = {
+        "entry": [
+            {
+                "id": "page_1",
+                "changes": [
+                    {
+                        "field": "feed",
+                        "value": {
+                            "item": "comment",
+                            "verb": "add",
+                            "comment_id": "comment_auto_1",
+                            "post_id": "page_1_42",
+                            "from": {"id": "fb_user_auto", "name": "Lan"},
+                            "message": "quán mở cửa mấy giờ",
+                        },
+                    }
+                ],
+            }
+        ]
+    }
+    r = api.post("/api/v1/channels/facebook/webhook", json=payload)
+    assert r.status_code == 200
+    assert r.json().get("n") == 1
+    # Đã gửi trả lời công khai ngay
+    assert comment_replies, "comment phải được auto-send"
+    assert comment_replies[0][0] == "comment_auto_1"
+    # Không còn nằm trong hàng đợi pending cho QL
+    pending = [i for i in _pending(api) if i["external_thread_id"] == "comment_auto_1"]
+    assert pending == []
+
+
+def test_comment_unsafe_intent_still_queues_for_manager(
+    api: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Comment intent không an toàn (khieu_nai) → vẫn queue cho QL duyệt tay."""
+    from ca_api.interfaces.http import channels as ch
+
+    monkeypatch.setenv("NHIPQUAN_FB_AUTO_SEND", "1")
+    comment_replies: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        ch,
+        "reply_to_comment",
+        lambda comment_id, text: comment_replies.append((comment_id, text)),
+    )
+    payload = {
+        "entry": [
+            {
+                "id": "page_1",
+                "changes": [
+                    {
+                        "field": "feed",
+                        "value": {
+                            "item": "comment",
+                            "verb": "add",
+                            "comment_id": "comment_unsafe_1",
+                            "post_id": "page_1_42",
+                            "from": {"id": "fb_user_unsafe", "name": "Lan"},
+                            "message": "quán phục vụ rất chậm, tôi thất vọng",
+                        },
+                    }
+                ],
+            }
+        ]
+    }
+    r = api.post("/api/v1/channels/facebook/webhook", json=payload)
+    assert r.status_code == 200
+    assert r.json().get("n") == 1
+    # Không auto-send
+    assert comment_replies == []
+    # Vẫn nằm trong hàng đợi pending cho QL
+    pending = [i for i in _pending(api) if i["external_thread_id"] == "comment_unsafe_1"]
+    assert pending, "comment không an toàn phải vào queue cho QL duyệt"
+
+
+def test_comment_auto_send_blocked_when_flag_off(
+    api: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Cờ auto_send TẮT (NHIPQUAN_FB_AUTO_SEND=0) + page live → KHÔNG được
+    auto-send công khai dù intent an toàn + confidence cao. Comment phải vào
+    queue cho QL duyệt tay (master switch không bị bypass)."""
+    from ca_api.interfaces.http import channels as ch
+
+    monkeypatch.setenv("NHIPQUAN_FB_AUTO_SEND", "0")
+    comment_replies: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        ch,
+        "reply_to_comment",
+        lambda comment_id, text: comment_replies.append((comment_id, text)),
+    )
+    payload = {
+        "entry": [
+            {
+                "id": "page_1",
+                "changes": [
+                    {
+                        "field": "feed",
+                        "value": {
+                            "item": "comment",
+                            "verb": "add",
+                            "comment_id": "comment_flagoff_1",
+                            "post_id": "page_1_42",
+                            "from": {"id": "fb_user_flagoff", "name": "Lan"},
+                            "message": "quán mở cửa mấy giờ",
+                        },
+                    }
+                ],
+            }
+        ]
+    }
+    r = api.post("/api/v1/channels/facebook/webhook", json=payload)
+    assert r.status_code == 200
+    assert r.json().get("n") == 1
+    # KHÔNG auto-send dù intent an toàn
+    assert comment_replies == [], "cờ tắt thì không được gửi công khai"
+    # Vẫn vào queue cho QL duyệt
+    pending = [i for i in _pending(api) if i["external_thread_id"] == "comment_flagoff_1"]
+    assert pending, "cờ tắt thì comment phải vào queue cho QL duyệt"
+
+
+def test_comment_with_phone_is_hidden_and_not_auto_replied(
+    api: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Comment chứa SĐT (PII) → phải bị ẩn ngay (hide_comment) + KHÔNG auto-send
+    nội dung công khai. Bảo vệ PII khỏi đối thủ cướp khách (Mục 3b)."""
+    from ca_api.interfaces.http import channels as ch
+
+    monkeypatch.setenv("NHIPQUAN_FB_AUTO_SEND", "1")
+    comment_replies: list[tuple[str, str]] = []
+    hidden: list[str] = []
+    monkeypatch.setattr(
+        ch,
+        "reply_to_comment",
+        lambda comment_id, text: comment_replies.append((comment_id, text)),
+    )
+    monkeypatch.setattr(
+        ch,
+        "hide_comment",
+        lambda comment_id: hidden.append(comment_id),
+    )
+    payload = {
+        "entry": [
+            {
+                "id": "page_1",
+                "changes": [
+                    {
+                        "field": "feed",
+                        "value": {
+                            "item": "comment",
+                            "verb": "add",
+                            "comment_id": "comment_pii_1",
+                            "post_id": "page_1_42",
+                            "from": {"id": "fb_user_pii", "name": "Lan"},
+                            "message": "gọi cho em 0912345678 nhé",
+                        },
+                    }
+                ],
+            }
+        ]
+    }
+    r = api.post("/api/v1/channels/facebook/webhook", json=payload)
+    assert r.status_code == 200
+    assert r.json().get("n") == 1
+    # Comment phải bị ẩn
+    assert hidden == ["comment_pii_1"], "comment chứa SĐT phải bị ẩn ngay"
+    # Trả lời công khai chỉ là câu chuyển DM an toàn (không lộ nội dung PII,
+    # không auto-send nội dung thật)
+    assert comment_replies, "phải trả lời công khai câu chuyển DM"
+    assert comment_replies[0][0] == "comment_pii_1"
+    assert "nhắn tin riêng" in comment_replies[0][1], (
+        "reply phải là câu chuyển DM, không phải nội dung auto-send"
+    )
+
+
 # ── RBAC ────────────────────────────────────────────────────────────────────
 
 

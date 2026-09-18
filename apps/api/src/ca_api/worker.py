@@ -128,24 +128,42 @@ def _sinh_brief_sang() -> str:
 
 
 def _chay_solver_tuan() -> str:
-    """Chạy solver cho tuần sau → đề xuất chờ duyệt. KHÔNG tự công bố."""
-    from ca_solver import build_lich_input, solve_cpsat
+    """Chạy solver cho tuần sau → đề xuất chờ duyệt. KHÔNG tự công bố.
 
-    from ca_api.nhan_vien import list_nhan_vien_ops
+    Đi qua application service authoritative (run_authoritative_schedule) để
+    mọi trigger dùng chung một đường CP-SAT, có schedule_run/fingerprint/audit.
+    """
+    from ca_api.services.scheduling_service import run_authoritative_schedule
 
-    inp = build_lich_input(nhan_vien_ngoai=list_nhan_vien_ops())
-    res = solve_cpsat(inp)
+    next_week = _tuan_sau()
+    run = run_authoritative_schedule(
+        store_id="quan_01",
+        tuan_iso=next_week,
+        actor_id="worker",
+        idempotency_key=f"worker:solver_tuan:{next_week}",
+    )
+    result = run.get("result") or {}
+    phan_cong = result.get("phan_cong") or {}
     de_xuat = {
         "ngay": datetime.now(_VN_TZ).date().isoformat(),
-        "status": res.status,
-        "ok": res.ok,
-        "phan_cong": res.phan_cong or {},
-        "tong_so_luot": sum(len(v) for v in (res.phan_cong or {}).values()),
+        "status": result.get("status") or "unknown",
+        "ok": bool(result.get("ok")),
+        "phan_cong": phan_cong,
+        "tong_so_luot": sum(len(v) for v in phan_cong.values()),
         "trang_thai": "cho_duyet",
+        "schedule_run_id": run.get("id"),
         "ghi": "Worker xếp sẵn lịch tuần sau — quản lý xem rồi duyệt ở /roster hoặc /copilot.",
     }
     kv_set("worker_de_xuat_lich", de_xuat)
-    return f"ok={res.ok} status={res.status} phan_cong={de_xuat['tong_so_luot']}"
+    return f"ok={de_xuat['ok']} status={de_xuat['status']} phan_cong={de_xuat['tong_so_luot']}"
+
+
+def _tuan_sau() -> str:
+    """ISO week of the week after the current one (worker runs Sunday 22h)."""
+    today = datetime.now(_VN_TZ).date()
+    next_week = today + timedelta(days=7)
+    iso = next_week.isocalendar()
+    return f"{iso.year}-W{iso.week:02d}"
 
 
 def _tong_ket_ngay() -> str:
@@ -161,6 +179,53 @@ def _tong_ket_ngay() -> str:
     }
     kv_set("tong_ket_ngay", tong)
     return f"kiem_ke={tong['so_lan_kiem_ke']} hao_phi={tong['so_ghi_hao_phi']}"
+
+
+def _chay_predict_mau() -> str:
+    """Nightly: phát hiện mẫu thành công từ dữ liệu lịch sử → đề xuất luật tích cực.
+
+    Đọc doanh thu theo ca/món/tồn kho từ kv, chạy math_layer tất định, lưu đề
+    xuất vào kv `ops_predict_rules` / `ops_predict_patterns`. Worker KHÔNG tự
+    duyệt — luật chỉ ở trạng thái `de_xuat`, chờ quản lý duyệt (ADR-008).
+    """
+    from ca_agents.ag_predict import de_xuat_luat_tich_cuc, detect_success_patterns
+
+    # Đọc dữ liệu lịch sử từ kv (nếu chưa có → dùng seed mẫu để canary)
+    doanh_thu_by_ca = dict(kv_get("ops_doanh_thu_by_ca", {}) or {})
+    doanh_thu_by_mon = dict(kv_get("ops_doanh_thu_by_mon", {}) or {})
+    ton_kho_by_time = dict(kv_get("ops_ton_kho_by_time", {}) or {})
+
+    if not doanh_thu_by_ca:
+        # Canary: dữ liệu seed mẫu để chạy thử an toàn (plan mục 9)
+        doanh_thu_by_ca = {
+            "T2_sang": 100.0, "T2_chieu": 110.0, "T2_toi": 105.0,
+            "T6_toi": 500.0, "T7_toi": 480.0,
+        }
+        doanh_thu_by_mon = {
+            "caphe_sua_da": 100.0, "tra_dao": 110.0, "caphe_den": 105.0,
+            "matcha": 500.0, "socola": 480.0,
+        }
+        ton_kho_by_time = {"sua_tuoi": 300.0, "ca_phe": 100.0, "da": 500.0}
+
+    patterns = detect_success_patterns(
+        doanh_thu_by_ca=doanh_thu_by_ca,
+        doanh_thu_by_mon=doanh_thu_by_mon,
+        ton_kho_by_time=ton_kho_by_time,
+    )
+    rules = de_xuat_luat_tich_cuc(patterns)
+
+    pattern_dicts = [p.model_dump() for p in patterns]
+    rule_dicts = [r.model_dump() for r in rules]
+
+    def mut_patterns(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return pattern_dicts + cur
+
+    def mut_rules(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return rule_dicts + cur
+
+    kv_mutate("ops_predict_patterns", mut_patterns, [])
+    kv_mutate("ops_predict_rules", mut_rules, [])
+    return f"patterns={len(pattern_dicts)} rules={len(rule_dicts)}"
 
 
 def _quet_telegram_longpoll() -> int:
@@ -241,6 +306,11 @@ def _quet_dinh_ky() -> list[str]:
     if now.hour >= 23 and not _da_chay("tong_ket_ngay", ngay):
         ket_qua.append(f"tong_ket_ngay: {_tong_ket_ngay()}")
         _danh_dau("tong_ket_ngay", ngay)
+
+    # Nightly 23:30 — phát hiện mẫu thành công → đề xuất luật tích cực
+    if now.hour >= 23 and now.minute >= 30 and not _da_chay("predict_mau", ngay):
+        ket_qua.append(f"predict_mau: {_chay_predict_mau()}")
+        _danh_dau("predict_mau", ngay)
     return ket_qua
 
 

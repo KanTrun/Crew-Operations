@@ -93,6 +93,23 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
         ["xác nhận tkb", "xac nhan tkb", "xác nhận lịch bận", "xac nhan lich ban", "tkb bận", "tkb ban", "gán tkb", "gan tkb", "chốt tkb", "chot tkb"],
         0.9,
     ),
+    # Câu hỏi ĐỌC bàn giao đặt TRƯỚC PROPOSE_HANDOVER: "bàn giao ca gần nhất"
+    # là câu hỏi đọc, không phải hành động ghi. Các cụm câu hỏi cụ thể phải
+    # thắng từ chung "bàn giao ca" của PROPOSE_HANDOVER.
+    (
+        GET_HANDOVERS,
+        [
+            "bàn giao ca gần nhất", "ban giao ca gan nhat",
+            "bàn giao gần nhất", "ban giao gan nhat",
+            "xem bàn giao ca", "xem ban giao ca",
+            "bàn giao ca nào", "ban giao ca nao",
+            "lịch sử bàn giao", "lich su ban giao",
+            "bàn giao ca hôm qua", "ban giao ca hom qua",
+            "bàn giao ca hôm nay", "ban giao ca hom nay",
+            "lịch sử sửa", "lich su sua", "bản ghi sửa", "ban ghi sua",
+        ],
+        0.9,
+    ),
     (
         PROPOSE_HANDOVER,
         ["bàn giao ca", "ban giao ca", "ghi bàn giao", "ghi ban giao", "soạn bàn giao", "soan ban giao", "gửi bàn giao", "gui ban giao"],
@@ -236,11 +253,6 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
         ["việc treo", "viec treo", "treo việc nào", "treo viec nao", "công việc đang treo", "cong viec dang treo"],
         0.9,
     ),
-    (
-        GET_HANDOVERS,
-        ["bàn giao", "ban giao", "lịch sử sửa", "lich su sua", "bản ghi sửa", "ban ghi sua"],
-        0.9,
-    ),
     # PR13 read — ràng buộc chờ duyệt / lịch cá nhân phải thắng từ chung của
     # mutating intents ("đổi ca"). GET_SCHEDULE đặt TRƯỚC SCHEDULE_SOLVE để các
     # cụm phủ định ("chưa dc xếp lịch") match đúng intent đọc. Post-match override
@@ -252,7 +264,15 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
     ),
     (
         GET_CONSTRAINT_CANDIDATES,
-        ["ràng buộc chờ duyệt", "rang buoc cho duyet", "ràng buộc nào", "rang buoc nao", "xin nghỉ chờ", "xin nghi cho", "inbox ràng buộc", "inbox rang buoc", "danh sách ràng buộc", "danh sach rang buoc", "ràng buộc chưa duyệt", "rang buoc chua duyet"],
+        [
+            "ràng buộc chờ duyệt", "rang buoc cho duyet", "ràng buộc nào", "rang buoc nao",
+            "xin nghỉ chờ", "xin nghi cho", "inbox ràng buộc", "inbox rang buoc",
+            "danh sách ràng buộc", "danh sach rang buoc", "ràng buộc chưa duyệt", "rang buoc chua duyet",
+            "ai có thể thay ca", "ai co the thay ca", "ai thay ca", "ai thay ca",
+            "ai có thể thay", "ai co the thay", "ai thay được ca", "ai thay duoc ca",
+            "ai thay ca tối nay", "ai thay ca toi nay", "ai có thể thay ca tối nay", "ai co the thay ca toi nay",
+            "ai thay ca tuần này", "ai thay ca tuan nay", "ai có thể thay ca tuần này", "ai co the thay ca tuan nay",
+        ],
         0.9,
     ),
     (

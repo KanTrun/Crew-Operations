@@ -12,6 +12,9 @@ dependencies = [
     "numpy>=2.0",
     "pyyaml>=6.0",
     "websockets>=15.0",
+    # imageio-ffmpeg: decode audio (webm/opus, mp3, ogg, wav) sang PCM16 16kHz
+    # cho STT Live (gemini-3.5-transcribe-live). Cung cấp ffmpeg binary qua pip.
+    "imageio-ffmpeg>=0.5",
 ]
 
 [project.optional-dependencies]
