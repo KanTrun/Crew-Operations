@@ -176,7 +176,7 @@ def _signals(run: Any, extra: dict[str, Any] | None = None) -> dict[str, Any]:
         payload["escalate"] = esc
     if extra:
         payload["signals"] = {**payload.get("signals", {}), **extra}
-    return payload
+    return cast(dict[str, Any], payload)
 
 
 class StartBody(BaseModel):
@@ -345,7 +345,7 @@ def phieu_start(
     sm = StateMachine()
     sm.transition("dang_chay")
     _sm_by_phieu[run_id] = sm
-    return run_to_dict(run)
+    return cast(dict[str, Any], run_to_dict(run))
 
 
 @router.get("/api/v1/phieu/{phieu_id}")

@@ -1557,7 +1557,7 @@ def cam_nang_duyet(
             items[i] = duyet(it, ok=body.ok, ai=role)
             save_luat(items)
             _audit("cam_nang_chot", role, {"id": body.id, "ok": body.ok})
-            return items[i]
+            return cast(dict[str, Any], items[i])
     raise HTTPException(status_code=404, detail="luat")
 
 
@@ -1579,7 +1579,7 @@ def cam_nang_go(
             items[i] = go_luat(it, ai=role)
             save_luat(items)
             _audit("cam_nang_go", role, {"id": body.id})
-            return items[i]
+            return cast(dict[str, Any], items[i])
     raise HTTPException(status_code=404, detail="luat")
 
 
@@ -1907,4 +1907,4 @@ def ab_table() -> dict[str, Any]:
 def conflict_sample() -> dict[str, Any]:
     a = {"nguoi": "nv_03", "khung": "sang", "claim": "có mặt"}
     b = {"nguoi": "nv_03", "khung": "sang", "claim": "vắng"}
-    return present_conflict(a, b).__dict__
+    return cast(dict[str, Any], present_conflict(a, b).__dict__)
