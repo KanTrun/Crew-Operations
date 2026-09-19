@@ -17,29 +17,30 @@ depends_on = None
 
 def upgrade() -> None:
     # audit: phân loại tác nhân + agent + người điều khiển
-    op.execute(
-        "ALTER TABLE audit ADD COLUMN IF NOT EXISTS actor_type TEXT NOT NULL DEFAULT 'human';"
-    )
-    op.execute(
-        "ALTER TABLE audit ADD COLUMN IF NOT EXISTS agent_name TEXT;"
-    )
-    op.execute(
-        "ALTER TABLE audit ADD COLUMN IF NOT EXISTS controller_user_id TEXT;"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS idx_audit_actor_type ON audit(actor_type, at);"
-    )
+    # An toàn: chỉ ALTER nếu bảng tồn tại (tránh fail khi production chưa có bảng).
+    op.execute("""
+        DO $$
+        BEGIN
+            IF to_regclass('public.audit') IS NOT NULL THEN
+                ALTER TABLE audit ADD COLUMN IF NOT EXISTS actor_type TEXT NOT NULL DEFAULT 'human';
+                ALTER TABLE audit ADD COLUMN IF NOT EXISTS agent_name TEXT;
+                ALTER TABLE audit ADD COLUMN IF NOT EXISTS controller_user_id TEXT;
+                CREATE INDEX IF NOT EXISTS idx_audit_actor_type ON audit(actor_type, at);
+            END IF;
+        END $$;
+    """)
 
     # copilot_audit_log: agent + người điều khiển
-    op.execute(
-        "ALTER TABLE copilot_audit_log ADD COLUMN IF NOT EXISTS agent_name TEXT;"
-    )
-    op.execute(
-        "ALTER TABLE copilot_audit_log ADD COLUMN IF NOT EXISTS controller_user_id TEXT;"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS idx_copilot_audit_agent ON copilot_audit_log(agent_name, timestamp);"
-    )
+    op.execute("""
+        DO $$
+        BEGIN
+            IF to_regclass('public.copilot_audit_log') IS NOT NULL THEN
+                ALTER TABLE copilot_audit_log ADD COLUMN IF NOT EXISTS agent_name TEXT;
+                ALTER TABLE copilot_audit_log ADD COLUMN IF NOT EXISTS controller_user_id TEXT;
+                CREATE INDEX IF NOT EXISTS idx_copilot_audit_agent ON copilot_audit_log(agent_name, timestamp);
+            END IF;
+        END $$;
+    """)
 
 
 def downgrade() -> None:
