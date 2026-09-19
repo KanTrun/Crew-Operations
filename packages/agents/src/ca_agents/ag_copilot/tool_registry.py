@@ -26,7 +26,7 @@ except ImportError:
 
     UTC = timezone.utc
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 WHITELISTED_INTENTS = {
     "SCHEDULE_SOLVE": "tool_solve_weekly_schedule",
@@ -272,8 +272,8 @@ def tool_solve_weekly_schedule(
                 continue
             # `hieu_luc`/`rang_buoc` có thể là chuỗi ngày (fixture) chứ không
             # phải dict — guard isinstance giống main.py/_detect_staff_availability.
-            hl = it.get("hieu_luc") if isinstance(it.get("hieu_luc"), dict) else {}
-            rb = it.get("rang_buoc") if isinstance(it.get("rang_buoc"), dict) else {}
+            hl = cast(dict, it.get("hieu_luc")) if isinstance(it.get("hieu_luc"), dict) else {}
+            rb = cast(dict, it.get("rang_buoc")) if isinstance(it.get("rang_buoc"), dict) else {}
             it_tuan = rb.get("tuan_id") or hl.get("tuan_id")
             if it_tuan and it_tuan != tuan:
                 continue
@@ -1403,8 +1403,8 @@ def tool_get_schedule(
     if isinstance(inbox_items, list):
         for it in inbox_items:
             if isinstance(it, dict):
-                rb = it.get("rang_buoc") if isinstance(it.get("rang_buoc"), dict) else {}
-                hl = it.get("hieu_luc") if isinstance(it.get("hieu_luc"), dict) else {}
+                rb = cast(dict, it.get("rang_buoc")) if isinstance(it.get("rang_buoc"), dict) else {}
+                hl = cast(dict, it.get("hieu_luc")) if isinstance(it.get("hieu_luc"), dict) else {}
                 if (rb.get("tuan_id") or hl.get("tuan_id") or it.get("tuan_id")) == tuan_iso:
                     nvid = it.get("nv_id") or hl.get("nv_id")
                     if nvid:
@@ -2431,7 +2431,10 @@ def tool_propose_catchment_survey(
             store_id=store_id,
             category_keyword=category_keyword,
             radius_km=float(radius_km),
-            channel_mode=channel_mode if channel_mode in ("dine_in_vision", "delivery_platform", "hybrid") else "hybrid",
+            channel_mode=cast(
+                Literal["dine_in_vision", "delivery_platform", "hybrid"],
+                channel_mode if channel_mode in ("dine_in_vision", "delivery_platform", "hybrid") else "hybrid",
+            ),
             include_substitutes=bool(include_substitutes),
             quota_cost=1,
         )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 from collections import defaultdict
 
@@ -56,7 +57,18 @@ def _vi_pham_khoang_nghi(ma: dict[str, str], mb: dict[str, str], khoang_nghi_gio
     return 0 <= gap < khoang_nghi_gio * 60
 
 
-def solve_cpsat(data: LichInput, *, time_limit_s: float = 60.0) -> SolveResult:
+def solve_cpsat(data: LichInput, *, time_limit_s: float | None = None) -> SolveResult:
+    if time_limit_s is None:
+        env_limit = os.environ.get("CA_SOLVER_TIME_LIMIT_S")
+        if env_limit:
+            try:
+                time_limit_s = float(env_limit)
+            except ValueError:
+                time_limit_s = 60.0
+        elif os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("PYTEST_VERSION"):
+            time_limit_s = 4.0
+        else:
+            time_limit_s = 60.0
     if data.tran_gio_tuan <= 0 or data.khoang_nghi_gio <= 0:
         return SolveResult(ok=False, violations=["config:thieu_tham_so_lao_dong"])
 

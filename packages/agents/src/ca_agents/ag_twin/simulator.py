@@ -15,13 +15,21 @@ from ca_agents.ag_predict.math_layer import (
 )
 
 
+def _as_float(value: object, default: float = 0.0) -> float:
+    """Cast an object value to float, falling back to default on failure."""
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
 def _simulate_tang_gia(tham_so: dict[str, object]) -> dict[str, object]:
     """Tăng giá → ước tính doanh thu mới (độ co giãn giá)."""
-    gia_cu = float(tham_so.get("gia_cu", 0))
-    gia_moi = float(tham_so.get("gia_moi", 0))
-    luong_cu = float(tham_so.get("luong_ban_cu", 0))
-    chi_phi = float(tham_so.get("chi_phi_bien_doi", 0))
-    he_so = float(tham_so.get("he_so_co_gian", -0.5))
+    gia_cu = _as_float(tham_so.get("gia_cu"))
+    gia_moi = _as_float(tham_so.get("gia_moi"))
+    luong_cu = _as_float(tham_so.get("luong_ban_cu"))
+    chi_phi = _as_float(tham_so.get("chi_phi_bien_doi"))
+    he_so = _as_float(tham_so.get("he_so_co_gian"), -0.5)
 
     luong_moi = price_elasticity(gia_cu, gia_moi, luong_cu, he_so)
     doanh_thu = doanh_thu_moi(gia_moi, luong_moi, chi_phi)
@@ -38,8 +46,8 @@ def _simulate_tang_gia(tham_so: dict[str, object]) -> dict[str, object]:
 
 def _simulate_them_nhan_su(tham_so: dict[str, object]) -> dict[str, object]:
     """Thêm nhân sự → ước tính lợi nhuận ròng."""
-    doanh_thu_tang = float(tham_so.get("doanh_thu_tang_them", 0))
-    chi_phi = float(tham_so.get("chi_phi_nhan_su", 0))
+    doanh_thu_tang = _as_float(tham_so.get("doanh_thu_tang_them"))
+    chi_phi = _as_float(tham_so.get("chi_phi_nhan_su"))
     loi_nhuan = loi_nhuan_them_nhan_su(doanh_thu_tang, chi_phi)
     return {
         "loi_nhuan_rong": loi_nhuan,
@@ -51,8 +59,8 @@ def _simulate_them_nhan_su(tham_so: dict[str, object]) -> dict[str, object]:
 
 def _simulate_doi_gio_mo_cua(tham_so: dict[str, object]) -> dict[str, object]:
     """Đổi giờ mở cửa → ước tính doanh thu mất/được."""
-    doanh_thu_gio_dong = float(tham_so.get("doanh_thu_gio_dong", 0))
-    doanh_thu_gio_mo = float(tham_so.get("doanh_thu_gio_mo", 0))
+    doanh_thu_gio_dong = _as_float(tham_so.get("doanh_thu_gio_dong"))
+    doanh_thu_gio_mo = _as_float(tham_so.get("doanh_thu_gio_mo"))
     chenh_lech = doanh_thu_gio_mo - doanh_thu_gio_dong
     return {
         "chenh_lech": chenh_lech,

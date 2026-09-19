@@ -27,11 +27,8 @@ def _isolated_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # adapter thật, không patch). Không test nào trong apps/api đọc file này.
     monkeypatch.setenv("NHIPQUAN_MAIL_LOG", str(tmp_path / "mail_log.jsonl"))
     monkeypatch.setenv("NHIPQUAN_PBKDF2_VONG", "1000")
+    monkeypatch.setenv("CA_SOLVER_TIME_LIMIT_S", "4.0")
     monkeypatch.delenv("NHIPQUAN_LOI_GIAI_SEED", raising=False)
-    # Mail replay ghi nhật ký ra file. Mặc định của ag_mail là đường dẫn
-    # data/out/mail_log.jsonl ĐƯỢC THEO DÕI bởi git — không đổi chỗ thì mỗi lần
-    # chạy test lại nối thêm dòng vào repo, làm bẩn working tree.
-    monkeypatch.setenv("NHIPQUAN_MAIL_LOG", str(tmp_path / "mail_log.jsonl"))
     # _run_solver ghi output ra data/out/lich_tuan.json — file lịch THẬT của
     # quán. Test INFEASIBLE (vd test_infeasible_solver_returns_specific_conflicts)
     # ghi đè phan_cong rỗng + status INFEASIBLE vào file này, làm UI mất lịch.

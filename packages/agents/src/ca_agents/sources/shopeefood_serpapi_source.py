@@ -18,7 +18,7 @@ import math
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from ca_contracts.catchment_survey import StoreCandidate
 
@@ -118,7 +118,7 @@ def parse_shopeefood_serpapi_results(
     origin_lat: float,
     origin_lng: float,
     radius_km: float = 5.0,
-    data_source: str = "serpapi",
+    data_source: Literal["serpapi", "camoufox", "cache", "delivery_platform"] = "serpapi",
 ) -> list[StoreCandidate]:
     """Parse payload JSON từ SerpApi Google Maps thành danh sách StoreCandidate ShopeeFood."""
     candidates: list[StoreCandidate] = []
