@@ -149,6 +149,14 @@ export default function TreoPage() {
 
   const treoDangCho = treo.filter((t) => t.trang_thai !== "xong").length;
 
+  // Phân nhóm việc treo theo trạng thái để bố trí rõ ràng trên màn hình.
+  const treoQuaHan = filteredTreo.filter((t) => t.trang_thai === "qua_han");
+  const treoDangChoF = filteredTreo.filter((t) => t.trang_thai === "dang_cho");
+  const treoXong = filteredTreo.filter((t) => t.trang_thai === "xong");
+  const treoKhac = filteredTreo.filter(
+    (t) => t.trang_thai !== "qua_han" && t.trang_thai !== "dang_cho" && t.trang_thai !== "xong",
+  );
+
   if (!token) return <AuthGate />;
 
   return (
@@ -192,31 +200,157 @@ export default function TreoPage() {
           {loading ? <Loading skeleton="list">Đang tải việc treo…</Loading> : null}
           {!loading && treo.length === 0 ? <Empty title="Không có việc treo">Ca chạy sạch, không còn việc kẹt.</Empty> : null}
           {!loading && treo.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
-          <div className="nq-list">
-            {filteredTreo.map((v) => (
-              <article
-                key={v.id}
-                className={`nq-item ${v.trang_thai === "xong" ? "" : "nq-item--accent-warn"}`}
-              >
-                <p className="nq-item-title">{v.noi_dung}</p>
-                <p className="nq-item-sub flex flex-wrap items-center gap-2">
-                  <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
-                  {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
-                  {v.phieu_id ? (
-                    <Link href="/phieu" className="underline text-[var(--nq-copper)]">
-                      Mở phiếu
-                    </Link>
-                  ) : null}
-                  {v.created_at ? formatLuc(v.created_at) : ""}
-                </p>
-                {manager && v.trang_thai !== "xong" ? (
-                  <Btn variant="ghost" busy={busy} onClick={() => void danhDauXong(v.id)} className="mt-2">
-                    Đánh dấu xong
-                  </Btn>
-                ) : null}
-              </article>
-            ))}
-          </div>
+
+          {!loading && treo.length > 0 && filtered.length > 0 ? (
+            <div className="nq-treo-sections">
+              {/* Việc quá hạn — ưu tiên xử lý trước */}
+              <section className="nq-treo-section">
+                <div className="nq-treo-section-head">
+                  <h3 className="nq-treo-section-title">
+                    <span className="nq-treo-section-dot nq-treo-section-dot--danger" aria-hidden="true" />
+                    Quá hạn
+                  </h3>
+                  <span className="nq-treo-section-count">{treoQuaHan.length} việc</span>
+                </div>
+                <div className="nq-treo-section-body">
+                  {treoQuaHan.length === 0 ? (
+                    <p className="nq-treo-empty-note">Không có việc quá hạn.</p>
+                  ) : (
+                    <div className="nq-list nq-treo-grid">
+                      {treoQuaHan.map((v) => (
+                        <article key={v.id} className="nq-item nq-item--accent-danger">
+                          <p className="nq-item-title">{v.noi_dung}</p>
+                          <p className="nq-item-sub flex flex-wrap items-center gap-2">
+                            <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
+                            {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
+                            {v.phieu_id ? (
+                              <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                                Mở phiếu
+                              </Link>
+                            ) : null}
+                            {v.created_at ? formatLuc(v.created_at) : ""}
+                          </p>
+                          {manager ? (
+                            <Btn variant="ghost" busy={busy} onClick={() => void danhDauXong(v.id)} className="mt-2">
+                              Đánh dấu xong
+                            </Btn>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Việc đang chờ làm */}
+              <section className="nq-treo-section">
+                <div className="nq-treo-section-head">
+                  <h3 className="nq-treo-section-title">
+                    <span className="nq-treo-section-dot nq-treo-section-dot--warn" aria-hidden="true" />
+                    Đang chờ làm
+                  </h3>
+                  <span className="nq-treo-section-count">{treoDangChoF.length} việc</span>
+                </div>
+                <div className="nq-treo-section-body">
+                  {treoDangChoF.length === 0 ? (
+                    <p className="nq-treo-empty-note">Không có việc đang chờ.</p>
+                  ) : (
+                    <div className="nq-list nq-treo-grid">
+                      {treoDangChoF.map((v) => (
+                        <article key={v.id} className="nq-item nq-item--accent-warn">
+                          <p className="nq-item-title">{v.noi_dung}</p>
+                          <p className="nq-item-sub flex flex-wrap items-center gap-2">
+                            <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
+                            {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
+                            {v.phieu_id ? (
+                              <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                                Mở phiếu
+                              </Link>
+                            ) : null}
+                            {v.created_at ? formatLuc(v.created_at) : ""}
+                          </p>
+                          {manager ? (
+                            <Btn variant="ghost" busy={busy} onClick={() => void danhDauXong(v.id)} className="mt-2">
+                              Đánh dấu xong
+                            </Btn>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Việc trạng thái khác (mới ghi…) */}
+              {treoKhac.length > 0 ? (
+                <section className="nq-treo-section">
+                  <div className="nq-treo-section-head">
+                    <h3 className="nq-treo-section-title">
+                      <span className="nq-treo-section-dot" aria-hidden="true" />
+                      Trạng thái khác
+                    </h3>
+                    <span className="nq-treo-section-count">{treoKhac.length} việc</span>
+                  </div>
+                  <div className="nq-treo-section-body">
+                    <div className="nq-list nq-treo-grid">
+                      {treoKhac.map((v) => (
+                        <article key={v.id} className="nq-item">
+                          <p className="nq-item-title">{v.noi_dung}</p>
+                          <p className="nq-item-sub flex flex-wrap items-center gap-2">
+                            <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
+                            {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
+                            {v.phieu_id ? (
+                              <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                                Mở phiếu
+                              </Link>
+                            ) : null}
+                            {v.created_at ? formatLuc(v.created_at) : ""}
+                          </p>
+                          {manager ? (
+                            <Btn variant="ghost" busy={busy} onClick={() => void danhDauXong(v.id)} className="mt-2">
+                              Đánh dấu xong
+                            </Btn>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              ) : null}
+
+              {/* Việc đã xong — tách riêng, mờ đi để không lẫn với việc cần làm */}
+              {treoXong.length > 0 ? (
+                <section className="nq-treo-section nq-treo-section--done">
+                  <div className="nq-treo-section-head">
+                    <h3 className="nq-treo-section-title">
+                      <span className="nq-treo-section-dot nq-treo-section-dot--ok" aria-hidden="true" />
+                      Đã xong
+                    </h3>
+                    <span className="nq-treo-section-count">{treoXong.length} việc</span>
+                  </div>
+                  <div className="nq-treo-section-body">
+                    <div className="nq-list nq-treo-grid">
+                      {treoXong.map((v) => (
+                        <article key={v.id} className="nq-item">
+                          <p className="nq-item-title">{v.noi_dung}</p>
+                          <p className="nq-item-sub flex flex-wrap items-center gap-2">
+                            <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
+                            {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
+                            {v.phieu_id ? (
+                              <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                                Mở phiếu
+                              </Link>
+                            ) : null}
+                            {v.created_at ? formatLuc(v.created_at) : ""}
+                          </p>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              ) : null}
+            </div>
+          ) : null}
         </OpsCard>
       ) : (
         <OpsCard eyebrow="Khu vực 2" title="Lần sửa lịch đã ghi" count={filtered.length} countLabel="lần">

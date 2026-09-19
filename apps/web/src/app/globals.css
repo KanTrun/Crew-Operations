@@ -3978,6 +3978,97 @@ a:focus-visible {
   color: var(--nq-ink-muted);
 }
 
+/* ── Việc treo: phân nhóm theo trạng thái ── */
+
+.nq-treo-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nq-s6);
+}
+
+.nq-treo-section {
+  border: 1px solid var(--nq-line);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
+  border-radius: var(--nq-radius-bubble);
+  box-shadow: var(--nq-shadow-bubble), var(--nq-inner-hi);
+  overflow: hidden;
+}
+
+.nq-treo-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nq-s4);
+  padding: var(--nq-s4) var(--nq-s5);
+  border-bottom: 1px solid var(--nq-line);
+}
+
+.nq-treo-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s3);
+  margin: 0;
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.nq-treo-section-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  flex: none;
+}
+
+.nq-treo-section-dot--danger { background: var(--nq-danger); }
+.nq-treo-section-dot--warn { background: var(--nq-warn); }
+.nq-treo-section-dot--ok { background: var(--nq-ok); }
+
+.nq-treo-section-count {
+  font-family: var(--nq-font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--nq-ink-muted);
+}
+
+.nq-treo-section-body {
+  padding: var(--nq-s4) var(--nq-s5) var(--nq-s5);
+}
+
+.nq-treo-section--done .nq-treo-section-body {
+  padding-top: var(--nq-s4);
+}
+
+.nq-treo-section--done .nq-item {
+  opacity: 0.72;
+}
+
+.nq-treo-section--done .nq-item:hover {
+  opacity: 1;
+}
+
+/* Lưới phân bố việc treo theo chiều ngang trên màn hình rộng */
+@media (min-width: 900px) {
+  .nq-treo-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--nq-s4);
+  }
+}
+
+.nq-treo-empty-note {
+  margin: 0;
+  padding: var(--nq-s4);
+  border: 1px dashed var(--nq-line-strong);
+  border-radius: var(--nq-radius-bubble);
+  color: var(--nq-ink-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
 .nq-tkb-upload input[type="file"],
 .nq-tkb-upload select {
   display: block;
