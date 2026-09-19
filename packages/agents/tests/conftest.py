@@ -10,6 +10,7 @@ def _default_to_replay(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prevent a developer's live .env from changing test behavior."""
     monkeypatch.setenv("CA_AGENT_MODE", "replay")
     monkeypatch.setenv("NHIPQUAN_AUTO_RESERVATION", "1")
+    monkeypatch.setenv("CA_SOLVER_TIME_LIMIT_S", "4.0")
 
     import ca_agents.ag_concierge as concierge_mod
 

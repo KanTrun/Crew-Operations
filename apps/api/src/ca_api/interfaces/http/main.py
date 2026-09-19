@@ -78,8 +78,8 @@ try:
         system_router as serpapi_system_router,
     )
 except ImportError:
-    pricing_radar_router = None
-    serpapi_system_router = None
+    pricing_radar_router = None  # type: ignore[assignment]
+    serpapi_system_router = None  # type: ignore[assignment]
 from ca_api.interfaces.http.reservations import router as reservations_router
 from ca_api.interfaces.http.skills import router as skills_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
@@ -89,6 +89,7 @@ from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import (
     DangKyLoi,
     audit_add,
+    audit_list,
     audit_request_begin,
     audit_request_end,
     audit_request_had_entry,
@@ -433,6 +434,8 @@ configure_data_sources(
     ],
     list_nhan_vien_ops=list_nhan_vien_ops,
     menu_list=menu_list,
+    # QUERY_AUDIT provider — vết hệ thống (tenant-scoped, đã redact ở tool)
+    audit_list=audit_list,
     # PR11 admin providers — đơn quầy cho snapshot/validate
     don_list=don_list,
     don_get=don_get,
@@ -559,8 +562,8 @@ def _detect_staff_availability(
         for it in inbox_items:
             if not isinstance(it, dict):
                 continue
-            rb = it.get("rang_buoc") if isinstance(it.get("rang_buoc"), dict) else {}
-            hl = it.get("hieu_luc") if isinstance(it.get("hieu_luc"), dict) else {}
+            rb = cast(dict[str, Any], it.get("rang_buoc")) if isinstance(it.get("rang_buoc"), dict) else {}
+            hl = cast(dict[str, Any], it.get("hieu_luc")) if isinstance(it.get("hieu_luc"), dict) else {}
             it_tuan = rb.get("tuan_id") or hl.get("tuan_id") or it.get("tuan_id")
             if it_tuan == tuan_iso:
                 nvid = it.get("nv_id") or hl.get("nv_id")

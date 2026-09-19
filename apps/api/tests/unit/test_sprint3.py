@@ -166,6 +166,12 @@ def test_orc_idempotency() -> None:
 
 
 def test_ghi_nhan_after_nha() -> None:
+    from ca_api.interfaces.http.sprint3 import _phan_cong
+
+    phan = dict(_phan_cong())
+    if "nv_03" in phan.get("w1_c01", []):
+        phan["w1_c01"] = [x for x in phan["w1_c01"] if x != "nv_03"]
+        kv_set("phan_cong", phan)
     auth = headers(client, "minh")
     nhan = client.post("/api/v1/ca/nhan", json={"ca_id": "w1_c01"}, headers=auth)
     assert nhan.status_code == 200, nhan.text

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 
 try:
@@ -29,6 +30,10 @@ from ca_agents.ag_copilot.tool_registry import (
     execute_whitelisted_tool,
 )
 from ca_agents.ag_supervisor import supervise_outgoing_response
+
+# TTL mặc định cho ActionProposal — configurable qua env var.
+# Tăng từ 30 → 120 phút: chủ quán hay bị ngắt giữa chừng nên cần thời gian duyệt dài hơn.
+_DEFAULT_TTL_MINUTES: int = max(5, int(os.environ.get("COPILOT_PROPOSAL_TTL_MINUTES", "120")))
 
 _RATE_WINDOWS: dict[str, _collections.deque[float]] = {}
 _RATE_LIMIT = 30
@@ -154,7 +159,7 @@ def run_copilot(
     message: str,
     context: dict[str, Any] | None = None,
     *,
-    ttl_minutes: int = 30,
+    ttl_minutes: int = _DEFAULT_TTL_MINUTES,
 ) -> CopilotResponse:
     """Main AG-COPILOT entrypoint."""
     ctx = context or {}

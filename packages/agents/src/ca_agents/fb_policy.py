@@ -7,6 +7,7 @@ Mặc định TỰ XỬ LÝ. Chỉ chuyển người khi khớp đúng danh sác
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from ca_contracts import FbPolicyAction, PolicyDecision
 
@@ -113,7 +114,7 @@ def _queue(
     reason: str,
     intent: str,
     confidence: float,
-    role: str = "quan_ly",
+    role: Literal["quan_ly", "chu_quan"] = "quan_ly",
     sla: int = SLA_MINUTES_QUEUE_REVIEW,
     flagged: tuple[str, ...] = (),
 ) -> PolicyDecision:

@@ -12,7 +12,7 @@ import math
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 from ca_contracts.catchment_survey import StoreCandidate
 
@@ -85,7 +85,7 @@ def parse_gmaps_results_to_candidates(
     origin_lat: float,
     origin_lng: float,
     radius_km: float = 3.0,
-    data_source: str = "serpapi",
+    data_source: Literal["serpapi", "camoufox", "cache", "delivery_platform"] = "serpapi",
 ) -> list[StoreCandidate]:
     """Parse payload JSON từ SerpApi Google Maps thành danh sách StoreCandidate hợp lệ."""
     candidates: list[StoreCandidate] = []
@@ -185,7 +185,7 @@ def fetch_gmaps_competitors_serpapi(
             quota_path=quota_path,
             circuit_breaker=circuit_breaker,
         )
-        data_source = "cache" if payload.get("data_source") == "cache" else "serpapi"
+        data_source = cast(Literal["serpapi", "camoufox", "cache", "delivery_platform"], "cache" if payload.get("data_source") == "cache" else "serpapi")
         return parse_gmaps_results_to_candidates(
             payload,
             origin_lat=latitude,

@@ -18,7 +18,7 @@ except ImportError:
     from datetime import datetime, timedelta, timezone
     UTC = timezone.utc
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from ca_api.audit_trace import ActorType, resolve_actor_type
 
@@ -1002,7 +1002,7 @@ def open_shift_mark_escalated(open_shift_id: str, *, store_id: str, escalated_at
                WHERE id=? AND store_id=? AND status='open' AND escalated_at IS NULL""",
             (escalated_at, open_shift_id, store_id),
         )
-    return result.rowcount == 1
+    return bool(result.rowcount == 1)
 
 
 def shift_application_claim_eligible(
@@ -1739,7 +1739,7 @@ def thong_bao_lich_ack(notification_id: str, nv_id: str, *, store_id: str = DEFA
             "UPDATE thong_bao_lich SET da_xem=1 WHERE id=? AND store_id=? AND nv_id=?",
             (notification_id, store_id, nv_id),
         )
-        return cur.rowcount > 0
+        return bool(cur.rowcount > 0)
 
 
 def set_user_email(username: str, email: str) -> dict[str, str]:
@@ -2043,7 +2043,7 @@ def ghi_diem_danh(nv_id: str) -> None:
         if nv_id not in hom_nay_list:
             hom_nay_list.append(nv_id)
         dd[hom_nay] = hom_nay_list
-        return dd
+        return cast(dict[str, list[str]], dd)
 
     kv_mutate("diem_danh", mut, {})
 

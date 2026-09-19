@@ -168,12 +168,15 @@ async def chat_websocket_endpoint(websocket: WebSocket) -> None:
     display_name = sess.get("display_name", nv_id)
 
     # Gửi ACK xác thực cho client
-    await websocket.send_text(
-        json.dumps({
-            "event": "auth:ack",
-            "data": {"nv_id": nv_id, "display_name": display_name, "role": sess.get("role")},
-        })
-    )
+    try:
+        await websocket.send_text(
+            json.dumps({
+                "event": "auth:ack",
+                "data": {"nv_id": nv_id, "display_name": display_name, "role": sess.get("role")},
+            })
+        )
+    except (WebSocketDisconnect, RuntimeError):
+        return
 
     # Chỉ add connection vào broadcast group SAU KHI auth thành công
     await chat_ws_manager.connect(nv_id, websocket)
@@ -295,9 +298,10 @@ async def _reply_copilot_bg(conv_id: str, prompt: str, sess: dict[str, Any]) -> 
         reply_content = res.reply_text if res else "Tôi đã nhận được yêu cầu."
         meta: dict[str, Any] = {}
         msg_type = "text"
-        if res and getattr(res, "action_proposal", None):
+        proposal = getattr(res, "action_proposal", None) if res else None
+        if proposal is not None:
             msg_type = "ops_card"
-            meta["proposal"] = res.action_proposal.model_dump()
+            meta["proposal"] = proposal.model_dump()
 
         copilot_msg = chat_message_create(
             conv_id=conv_id,

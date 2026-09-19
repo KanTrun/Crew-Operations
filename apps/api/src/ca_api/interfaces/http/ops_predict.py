@@ -14,7 +14,7 @@ import hashlib
 import json
 import threading
 import time
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from ca_agents.ag_predict import (
     de_xuat_luat_tich_cuc,
@@ -123,7 +123,7 @@ def run_predict(
     idem_key = f"predict_run:{fp}"
     cached = _check_idempotency(idem_key)
     if cached:
-        return json.loads(cached)
+        return cast(dict[str, Any], json.loads(cached))
 
     patterns = detect_success_patterns(
         doanh_thu_by_ca=body.doanh_thu_by_ca,
@@ -168,7 +168,7 @@ def twin_simulate(
     idem_key = f"twin_simulate:{fp}"
     cached = _check_idempotency(idem_key)
     if cached:
-        return json.loads(cached)
+        return cast(dict[str, Any], json.loads(cached))
 
     scenario = simulate_scenario(
         scenario_id=body.scenario_id,

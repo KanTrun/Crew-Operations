@@ -173,9 +173,19 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
   }
 
   const isPending = currentStatus === "draft" || currentStatus === "ready_for_approval" || currentStatus === "amendment_ready";
+  // Hiện cảnh báo đỏ khi còn ít hơn 10 phút
+  const isUrgent = isPending && timeLeft && (() => {
+    const parts = timeLeft.split(":");
+    const minutes = parseInt(parts[0] ?? "999", 10);
+    return minutes < 10;
+  })();
 
   return (
-    <div className="mt-3 p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 text-xs text-zinc-200">
+    <div className={`mt-3 p-3.5 rounded-xl border text-xs text-zinc-200 ${
+      isUrgent
+        ? "border-rose-500/40 bg-rose-500/5"
+        : "border-amber-500/30 bg-amber-500/5"
+    }`}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <span className="font-semibold text-amber-400 flex items-center gap-1.5">
           <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
@@ -183,8 +193,12 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         </span>
         <div className="flex items-center gap-2">
           {timeLeft && isPending && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
-              ⏳ {timeLeft}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+              isUrgent
+                ? "bg-rose-900/60 text-rose-300 border border-rose-500/40"
+                : "bg-zinc-800 text-zinc-400"
+            }`}>
+              {isUrgent ? "⚠️" : "⏳"} {timeLeft}
             </span>
           )}
           <span
@@ -214,6 +228,14 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           </span>
         </div>
       </div>
+      {/* Hint text: hướng dẫn duyệt qua chat */}
+      {isPending && (
+        <p className={`text-[10px] mb-2 ${isUrgent ? "text-rose-400" : "text-zinc-500"}`}>
+          {isUrgent
+            ? `⚠️ Còn ${timeLeft} — nhắn "Duyệt" hoặc bấm nút bên dưới trước khi hết hạn!`
+            : `💬 Nhắn "Duyệt" hoặc bấm nút bên dưới để xác nhận`}
+        </p>
+      )}
 
       <p className="text-zinc-100 font-medium mb-1">
         <ChatText text={proposal.summary} />

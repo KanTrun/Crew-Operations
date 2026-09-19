@@ -26,9 +26,18 @@ export interface MicDeviceInfo {
   label: string;
 }
 
+export interface VoiceProposalData {
+  reply_text: string;
+  intent: string;
+  action_proposal: import("./ActionProposalCard").ActionProposalData | null;
+  citations: string[];
+  agent_mode: string;
+}
+
 export interface UseCopilotVoiceOptions {
   onTranscript?: (role: "user" | "copilot", text: string, isFinal: boolean) => void;
   onInterrupted?: () => void;
+  onProposal?: (data: VoiceProposalData) => void;
   inputMode?: VoiceInputMode;
   deviceId?: string;
   noiseFloor?: number;
@@ -232,6 +241,15 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
     failedRef.current = false;
     setState("connecting");
     try {
+      // Xin quyền micro TRƯỚC TIÊN, ngay trong ngữ cảnh click của người dùng.
+      // Nếu gọi sau khi await WebSocket + chờ voice:ready, transient activation
+      // đã hết hạn → trình duyệt từ chối im lặng (NotAllowedError) mà KHÔNG hiện
+      // hộp thoại hỏi quyền micro.
+      const stream = await acquireMicStream(deviceIdRef.current);
+      void enumerateMics().then((mics) => {
+        if (mics.length > 0) setAvailableMics(mics);
+      });
+
       const socket = new WebSocket(voiceUrl());
       socket.binaryType = "arraybuffer";
       socketRef.current = socket;
@@ -271,6 +289,9 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
             if (payload.data?.code === "max_duration_reached") {
               stop();
             }
+          } else if (payload.event === "voice:proposal") {
+            // Kết quả pipeline nghiệp vụ (reply + ActionProposal) từ server.
+            optionsRef.current?.onProposal?.(payload.data as VoiceProposalData);
           } else if (payload.event === "voice:upstream") {
             const event = payload.data || {};
             const serverContent = event.serverContent || {};
@@ -353,10 +374,6 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
         };
       });
 
-      const stream = await acquireMicStream(deviceIdRef.current);
-      void enumerateMics().then((mics) => {
-        if (mics.length > 0) setAvailableMics(mics);
-      });
       if (socketRef.current !== socket || socket.readyState !== WebSocket.OPEN) {
         stream.getTracks().forEach((track) => track.stop());
         return;

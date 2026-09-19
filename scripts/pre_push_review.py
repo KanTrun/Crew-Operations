@@ -149,8 +149,8 @@ def _map_changed_to_tests(changed: list[str]) -> list[str]:
     tests: set[str] = set()
     for f in changed:
         p = Path(f)
-        # File test đã đổi → chạy chính nó
-        if "tests" in p.parts and p.suffix == ".py":
+        # File test đã đổi → chạy chính nó (bỏ qua conftest.py vì không phải test case)
+        if "tests" in p.parts and p.suffix == ".py" and p.name != "conftest.py":
             tests.add(f)
     return sorted(tests)
 

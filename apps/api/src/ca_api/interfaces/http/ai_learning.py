@@ -5,11 +5,11 @@ from __future__ import annotations
 import hashlib
 import os
 from datetime import datetime, timezone
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, cast
 
 from ca_agents.ag_fbpage_reflection import run_facebook_reflection
 from ca_agents.ag_mailwriter import run_gmail_reflection
-from ca_contracts import AIFeedbackEvent, AIRuleProposal
+from ca_contracts import AIFeedbackContent, AIFeedbackEvent, AIRuleProposal
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
@@ -88,7 +88,7 @@ def add_feedback(body: FeedbackBody, authorization: Annotated[str | None, Header
     fingerprint = hashlib.sha256(f"{current['store_id']}:{body.generation_id}:{body.type}:{now}".encode()).hexdigest()
     event = AIFeedbackEvent(
         id=f"feedback-manual-{fingerprint[:24]}", store_id=current["store_id"], generation_id=body.generation_id,
-        channel=body.channel, type=body.type, original=body.original, final=body.final,
+        channel=body.channel, type=body.type, original=cast(AIFeedbackContent | None, body.original), final=cast(AIFeedbackContent | None, body.final),
         edited_fields=body.edited_fields, materially_edited=body.materially_edited, actor_user_id=current["username"],
         actor_role=current["role"], send_status=body.send_status, failure_code=body.failure_code,
         idempotency_key=f"manual:{fingerprint}", created_at=now,

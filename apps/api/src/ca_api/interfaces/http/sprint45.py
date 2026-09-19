@@ -218,6 +218,7 @@ def _run_solver(
     extra_pin: tuple[str, str] | None = None,
     confirmed_availability: dict[str, dict[str, list[str]]] | None = None,
     store_id: str = "quan_01",
+    time_limit_s: float | None = None,
 ) -> dict[str, Any]:
     """Compatibility entrypoint for older imports and focused solver tests."""
     from ca_api.services.solver_adapter import run_solver
@@ -227,6 +228,7 @@ def _run_solver(
         extra_pin=extra_pin,
         confirmed_availability=confirmed_availability,
         store_id=store_id,
+        time_limit_s=time_limit_s,
     )
 
 
@@ -542,7 +544,7 @@ def create_open_shift(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     _require_manager(authorization)
-    store_id = str(auth_session(authorization).get("store_id") or "quan_01")
+    store_id = str((auth_session(authorization) or {}).get("store_id") or "quan_01")
     deadline_at = body.deadline_at
     if not deadline_at:
         sla_minutes = int(os.environ.get("OPEN_SHIFT_SLA_MINUTES", "120"))
@@ -562,7 +564,7 @@ def list_open_shifts(
     tuan_iso: str | None = Query(default=None),
 ) -> dict[str, Any]:
     role = _require_role(authorization)
-    store_id = str(auth_session(authorization).get("store_id") or "quan_01")
+    store_id = str((auth_session(authorization) or {}).get("store_id") or "quan_01")
     items = open_shift_list(store_id, tuan_iso=tuan_iso)
     if role in {"quan_ly", "chu_quan"}:
         items.extend(open_shift_list(store_id, tuan_iso=tuan_iso, status="claimed"))
@@ -1559,7 +1561,7 @@ def cam_nang_duyet(
             items[i] = duyet(it, ok=body.ok, ai=role)
             save_luat(items)
             _audit("cam_nang_chot", role, {"id": body.id, "ok": body.ok})
-            return items[i]
+            return cast(dict[str, Any], items[i])
     raise HTTPException(status_code=404, detail="luat")
 
 
@@ -1581,7 +1583,7 @@ def cam_nang_go(
             items[i] = go_luat(it, ai=role)
             save_luat(items)
             _audit("cam_nang_go", role, {"id": body.id})
-            return items[i]
+            return cast(dict[str, Any], items[i])
     raise HTTPException(status_code=404, detail="luat")
 
 
@@ -1909,4 +1911,4 @@ def ab_table() -> dict[str, Any]:
 def conflict_sample() -> dict[str, Any]:
     a = {"nguoi": "nv_03", "khung": "sang", "claim": "có mặt"}
     b = {"nguoi": "nv_03", "khung": "sang", "claim": "vắng"}
-    return present_conflict(a, b).__dict__
+    return cast(dict[str, Any], present_conflict(a, b).__dict__)

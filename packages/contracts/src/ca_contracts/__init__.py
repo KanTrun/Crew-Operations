@@ -5,10 +5,12 @@ from __future__ import annotations
 try:
     from enum import StrEnum
 except ImportError:
-    from enum import Enum
+    from enum import Enum as _Enum
 
-    class StrEnum(str, Enum):
+    class _StrEnum(str, _Enum):
         pass
+
+    StrEnum = _StrEnum  # type: ignore[assignment,misc]
 
 
 from typing import Any, Literal
@@ -338,6 +340,8 @@ class CopilotIntent(StrEnum):
     RUN_CATCHMENT_SURVEY = "RUN_CATCHMENT_SURVEY"
     GET_SERPAPI_QUOTA = "GET_SERPAPI_QUOTA"
     GET_SURVEY_RESULT = "GET_SURVEY_RESULT"
+    # Audit / vết hệ thống — chỉ quản lý & chủ quán (R0_READ, tenant-scoped)
+    QUERY_AUDIT = "QUERY_AUDIT"
     OUT_OF_SCOPE = "OUT_OF_SCOPE"
 
 
@@ -395,6 +399,8 @@ _QUAN_LY_INTENTS: frozenset[str] = frozenset(
         "PROPOSE_HANDOVER",
         # Khảo sát giá thị trường — R2_CONFIRM (chỉ quản lý/chủ quán)
         "RUN_CATCHMENT_SURVEY",
+        # Audit / vết hệ thống — R0_READ nhưng chỉ quản lý & chủ quán (tenant-scoped)
+        "QUERY_AUDIT",
     }
 )
 COPILOT_ROLE_INTENT_MATRIX: dict[str, frozenset[str]] = {
