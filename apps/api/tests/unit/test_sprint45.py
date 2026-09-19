@@ -487,6 +487,33 @@ def test_hom_nay_preview_fields() -> None:
     assert "ton_tom_tat" in body
 
 
+def test_hom_nay_so_treo_chi_tinh_viec_dang_mo() -> None:
+    """so_treo chỉ đếm việc treo chưa xong — việc đã xong không còn là việc treo."""
+    from ca_api.persist import kv_set
+
+    kv_set(
+        "treo",
+        [
+            {"id": "t_mo_1", "noi_dung": "việc đang chờ", "trang_thai": "dang_cho"},
+            {"id": "t_mo_2", "noi_dung": "việc quá hạn", "trang_thai": "qua_han"},
+            {"id": "t_xong_1", "noi_dung": "việc đã xong", "trang_thai": "xong"},
+            {"id": "t_xong_2", "noi_dung": "việc đã xong khác", "trang_thai": "xong"},
+        ],
+    )
+    ql = headers(client, "lan")
+    body = client.get("/api/v1/hom-nay", headers=ql).json()
+    assert body["so_treo"] == 2
+    # Preview chỉ liệt kê việc đang mở, không kéo việc đã xong lên.
+    ids = [p["id"] for p in body["treo_preview"]]
+    assert "t_xong_1" not in ids
+    assert "t_xong_2" not in ids
+    # Breakdown chỉ gom các trạng thái đang mở.
+    breakdown = {b["trang_thai"]: b["so_luong"] for b in body["treo_theo_trang_thai"]}
+    assert "xong" not in breakdown
+    assert breakdown["dang_cho"] == 1
+    assert breakdown["qua_han"] == 1
+
+
 def test_handover_history_list() -> None:
     nv = headers(client, "minh")
     client.post(

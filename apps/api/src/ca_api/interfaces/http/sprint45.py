@@ -1188,6 +1188,9 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
     role = _require_role(authorization)
     life = _life()
     treo = kv_get("treo", [])
+    # Chỉ tính việc treo đang mở (chưa xong) — khớp với /treo, brief sáng và
+    # hàng đợi "việc treo trong ca". Việc đã xong không còn là việc treo.
+    treo_mo = [t for t in treo if isinstance(t, dict) and t.get("trang_thai") != "xong"]
     inbox = kv_get("inbox_rang_buoc", [])
     cho = sum(1 for x in inbox if x.get("trang_thai") == "cho_duyet")
     if role == "nhan_vien":
@@ -1203,8 +1206,7 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
             "trang_thai": t.get("trang_thai") or "dang_cho",
             "nhan_vien": t.get("nhan_vien") or t.get("nv_id"),
         }
-        for t in treo[:5]
-        if isinstance(t, dict)
+        for t in treo_mo[:5]
     ]
     sua_gan_day = [
         {
@@ -1225,9 +1227,7 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
         if isinstance(x, dict)
     ]
     treo_counts: dict[str, int] = {}
-    for t in treo:
-        if not isinstance(t, dict):
-            continue
+    for t in treo_mo:
         st = str(t.get("trang_thai") or "dang_cho")
         treo_counts[st] = treo_counts.get(st, 0) + 1
     treo_theo_trang_thai = [{"trang_thai": k, "so_luong": v} for k, v in sorted(treo_counts.items(), key=lambda x: -x[1])]
@@ -1304,7 +1304,7 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
     return {
         "ngay": datetime.now(UTC).date().isoformat(),
         "lich": life,
-        "so_treo": len(treo),
+        "so_treo": len(treo_mo),
         "so_inbox_cho": cho,
         "so_luat": len(luat),
         "canh_bao_ton": canh_bao,
