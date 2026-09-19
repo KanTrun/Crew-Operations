@@ -147,6 +147,10 @@ def _week_value(key: str, tuan_iso: str, default: Any) -> Any:
     if key.endswith("_by_week"):
         legacy = kv_get(key.removesuffix("_by_week"), None)
         if legacy is not None:
+            # Legacy doc có tuan_iso: chỉ fallback khi đúng tuần được hỏi,
+            # tránh tuần mới thừa hưởng trạng thái của tuần cũ.
+            if isinstance(legacy, dict) and "tuan_iso" in legacy:
+                return legacy if legacy.get("tuan_iso") == tuan_iso else default
             return legacy
     return default
 

@@ -226,6 +226,8 @@ export default function RosterPage() {
   const [gapBusy, setGapBusy] = useState<string | null>(null);
   const [gapStaff, setGapStaff] = useState<Record<string, string>>({});
   const [lifecycleMsg, setLifecycleMsg] = useState<string | null>(null);
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [reopenReason, setReopenReason] = useState("");
   const [icsBusy, setIcsBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [filterKhung, setFilterKhung] = useState("all");
@@ -445,18 +447,16 @@ export default function RosterPage() {
 
   async function handleLifecycle(nextState: string, weekIso: string) {
     if (!nextState) return;
-    if (
-      nextState === "da_duyet" &&
-      !window.confirm("Duyệt lịch cuối và công bố ngay cho toàn bộ nhân viên? Sau bước này hệ thống sẽ không tự thay đổi lịch.")
-    ) return;
-    if (
-      nextState === "da_dong" &&
-      !window.confirm("Đóng lịch tuần này? Chỉ chủ quán có thể mở lại và phải ghi lý do.")
-    ) return;
-    const reopenReason = ["da_duyet", "da_cong_bo", "da_dong"].includes(trangThai) && nextState === "nhap"
-      ? window.prompt("Lý do mở lại lịch để điều chỉnh:")?.trim()
-      : null;
-    if (["da_duyet", "da_cong_bo", "da_dong"].includes(trangThai) && !reopenReason) return;
+    // Mở lại lịch đã duyệt/công bố/đóng cần lý do — dùng modal tuỳ chỉnh thay window.prompt.
+    if (["da_duyet", "da_cong_bo", "da_dong"].includes(trangThai) && nextState === "nhap") {
+      setReopenReason("");
+      setReopenOpen(true);
+      return;
+    }
+    await runLifecycle(nextState, weekIso, null);
+  }
+
+  async function runLifecycle(nextState: string, weekIso: string, reopenReason: string | null) {
     setLifecycleBusy(true);
     setLifecycleMsg(null);
     try {
@@ -480,6 +480,16 @@ export default function RosterPage() {
     } finally {
       setLifecycleBusy(false);
     }
+  }
+
+  async function confirmReopen() {
+    const reason = reopenReason.trim();
+    if (!reason) {
+      setError("Vui lòng ghi lý do mở lại lịch để điều chỉnh.");
+      return;
+    }
+    setReopenOpen(false);
+    await runLifecycle("nhap", currentDisplayWeek, reason);
   }
 
   async function resolveGap(openShift: OpenShift) {
@@ -791,7 +801,7 @@ export default function RosterPage() {
             {nextAction?.next && (
               <button
                 type="button"
-                className="nq-btn px-3 py-1 text-sm"
+                className={`nq-btn px-3 py-1 text-sm ${trangThai === "cho_duyet" ? "nq-btn-primary" : ""}`}
                 disabled={lifecycleBusy}
                 onClick={() => void handleLifecycle(nextAction.next, currentDisplayWeek)}
               >
@@ -1435,6 +1445,80 @@ export default function RosterPage() {
         </div>,
         document.body,
       )}
+
+      {reopenOpen && typeof document !== "undefined" && createPortal(
+        <div
+          className="nq-roster-dialog-layer"
+          onClick={() => setReopenOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="roster-reopen-title"
+            tabIndex={-1}
+            className="nq-roster-dialog-panel nq-reopen-panel"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-neutral-800 bg-neutral-900 p-4 sm:p-6 sm:pb-4">
+              <div>
+                <h3 id="roster-reopen-title" className="text-lg font-bold text-amber-400">
+                  Mở lại lịch để điều chỉnh
+                </h3>
+                <p className="text-xs text-neutral-400">
+                  Tuần {currentDisplayWeek} · {lifeLabel(trangThai)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReopenOpen(false)}
+                className="px-3 py-1 text-xs font-bold uppercase tracking-widest text-neutral-400 hover:text-amber-400 inline-flex items-center gap-1"
+              >
+                Đóng <Icon name="close" size={14} />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
+              <p className="text-sm text-neutral-300">
+                Lịch đã được duyệt/công bố. Để mở lại và chỉnh sửa, vui lòng ghi rõ lý do.
+                Thao tác này sẽ được ghi lại trong nhật ký hệ thống.
+              </p>
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-neutral-400">
+                  Lý do mở lại lịch
+                </span>
+                <textarea
+                  value={reopenReason}
+                  onChange={(event) => setReopenReason(event.target.value)}
+                  rows={3}
+                  autoFocus
+                  placeholder="VD: Có nhân viên xin nghỉ, cần sắp xếp lại ca…"
+                  className="w-full rounded-lg border border-neutral-700 bg-neutral-950 p-3 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-amber-500 focus:outline-none"
+                />
+              </label>
+            </div>
+
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-neutral-800 bg-neutral-900 p-4 sm:px-6">
+              <button
+                type="button"
+                onClick={() => setReopenOpen(false)}
+                className="px-4 py-1.5 text-xs font-bold rounded bg-neutral-800 text-neutral-200 hover:bg-neutral-700"
+              >
+                Huỷ
+              </button>
+              <button
+                type="button"
+                disabled={lifecycleBusy || !reopenReason.trim()}
+                onClick={() => void confirmReopen()}
+                className="px-4 py-1.5 text-xs font-bold rounded bg-amber-600 hover:bg-amber-500 text-neutral-950 disabled:opacity-50"
+              >
+                {lifecycleBusy ? "Đang lưu…" : "Mở lại lịch"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
       <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );

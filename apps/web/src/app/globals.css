@@ -1920,6 +1920,11 @@ a:focus-visible {
   outline: none;
 }
 
+/* Hộp thoại mở lại lịch — hẹp hơn, tập trung vào lý do */
+.nq-reopen-panel {
+  width: min(100%, 30rem);
+}
+
 /* Hộp thoại INBOX luôn bám viewport thật.
    z-index cao hơn shell/header và widget nổi; 100dvh tránh flex căn giữa theo
    chiều cao trang dài khiến người dùng chỉ thấy backdrop khi đang cuộn. */
