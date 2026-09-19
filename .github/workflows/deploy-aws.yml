@@ -97,6 +97,11 @@ jobs:
             sudo cp repo/infra/oracle/Caddyfile Caddyfile
 
             domain="$(awk -F= '/^DOMAIN=/{print $2; exit}' .env)"
+            # Dọn dung lượng TRƯỚC khi pull image mới — ổ đĩa VM A1 (200GB) có thể
+            # đầy do image Camoufox rất lớn (663MB+), gây "no space left on device".
+            sudo docker image prune -f || true
+            sudo docker builder prune -f || true
+            sudo docker system prune -f --volumes 2>/dev/null || true
             if sudo IMAGE_TAG="$release_sha" docker compose pull &&
                sudo IMAGE_TAG="$release_sha" docker compose up -d --remove-orphans --wait --wait-timeout 180 &&
                test -n "$domain" &&
