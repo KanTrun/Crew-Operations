@@ -168,12 +168,15 @@ async def chat_websocket_endpoint(websocket: WebSocket) -> None:
     display_name = sess.get("display_name", nv_id)
 
     # Gửi ACK xác thực cho client
-    await websocket.send_text(
-        json.dumps({
-            "event": "auth:ack",
-            "data": {"nv_id": nv_id, "display_name": display_name, "role": sess.get("role")},
-        })
-    )
+    try:
+        await websocket.send_text(
+            json.dumps({
+                "event": "auth:ack",
+                "data": {"nv_id": nv_id, "display_name": display_name, "role": sess.get("role")},
+            })
+        )
+    except (WebSocketDisconnect, RuntimeError):
+        return
 
     # Chỉ add connection vào broadcast group SAU KHI auth thành công
     await chat_ws_manager.connect(nv_id, websocket)
