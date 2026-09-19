@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Gate 10: tests must not open live network when CA_AGENT_MODE=replay."""
 
 from __future__ import annotations

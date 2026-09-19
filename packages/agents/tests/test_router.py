@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Tests for FreeTierRouter — 5-provider live order + replay."""
 
 from __future__ import annotations

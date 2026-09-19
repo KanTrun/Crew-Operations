@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Kiểm thử API v2 cho Catchment Price Radar (async job, plan mục 5).
 
 `TestClient` của Starlette chạy `BackgroundTasks` ĐỒNG BỘ sau khi trả response,

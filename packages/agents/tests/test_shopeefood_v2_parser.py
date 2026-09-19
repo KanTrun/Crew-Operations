@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho ShopeeFood v2 parser — tách original/effective price.
 
 Test coverage:

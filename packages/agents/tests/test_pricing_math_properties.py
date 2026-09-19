@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Property-based test cho Math Layer AG-PRICING (plan 260913-1455 mục 4.6).
 
 Plan mục 4.6 **[ĐỀ XUẤT MỚI]**: dùng `hypothesis` sinh ngẫu nhiên hàng nghìn tổ

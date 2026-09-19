@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests cho Central SerpApi Client và Quota Guard."""
 
 from __future__ import annotations

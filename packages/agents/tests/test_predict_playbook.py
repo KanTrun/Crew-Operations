@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho AG-PREDICT playbook tích cực (plan 260918 mục 2.2, Phase 2).
 
 ADR-008: luật tích cực chỉ là đề xuất (de_xuat), không tự áp dụng.

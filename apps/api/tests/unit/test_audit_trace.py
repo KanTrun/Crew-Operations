@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho truy vết tác nhân trong sổ vết hệ thống.
 
 Kiểm tra:

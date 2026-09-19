@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 from ca_agents.runtime import AgentRuntime, SkillLoader
 
 

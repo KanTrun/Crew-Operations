@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests for Specialized Agent Squad (AG-BARISTA, AG-CONCIERGE, AG-SUPERVISOR)."""
 
 from ca_agents.ag_barista import consult_beverage

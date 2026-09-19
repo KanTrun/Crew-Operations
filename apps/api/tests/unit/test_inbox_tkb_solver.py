@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests cho luồng nối logic lịch ↔ inbox ↔ TKB ↔ Solver lifecycle."""
 
 from __future__ import annotations

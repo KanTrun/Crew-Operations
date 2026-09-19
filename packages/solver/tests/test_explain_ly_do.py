@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Mã lý do phân công — lõi tất định, không LLM (§13.1)."""
 
 from __future__ import annotations

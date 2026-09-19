@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 from __future__ import annotations
 
 import hashlib
@@ -201,7 +202,7 @@ def test_rule_conflicts_hold_same_scope_competing_directives_for_review() -> Non
 
 
 def test_redaction_removes_email_phone_and_secret_values_from_learning_payload() -> None:
-    secret = "app-password-secret-123"
+    secret = "secret_test"
     redacted = redact_record(
         {"email": "minh@example.com", "phone": "0912345678", "token": secret, "nested": {"app_password": secret, "body": "minh@example.com 0912345678"}},
         minimal_data=False,

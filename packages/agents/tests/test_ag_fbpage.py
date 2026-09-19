@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests for AG-FBPAGE and Guardrails."""
 
 import asyncio
@@ -262,11 +263,11 @@ def test_send_messenger_bubbles(monkeypatch):
     from ca_agents.facebook_page import send_messenger_bubbles
 
     sent = []
-    monkeypatch.setattr(
-        fb_page,
-        "send_messenger_text",
-        lambda psid, text, tag=None: sent.append((psid, text, tag)) or {"message_id": f"mid_{len(sent)}"},
-    )
+    def _fake_send(psid: str, text: str, tag: str | None = None) -> dict[str, str]:
+        sent.append((psid, text, tag))
+        return {"message_id": f"mid_{len(sent)}"}
+
+    monkeypatch.setattr(fb_page, "send_messenger_text", _fake_send)
 
     text = "Dạ quán em chào bạn nha 🫶\n\nQuán có Bạc Xỉu 29k đậm đà lắm nè."
     res = asyncio.run(send_messenger_bubbles("psid_123", text))

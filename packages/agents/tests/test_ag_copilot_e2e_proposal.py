@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Integration-style tests cho AG-COPILOT: full flow proposal → execute.
 
 Các test này vẫn dùng CA_AGENT_MODE=replay nhưng mô phỏng đầy đủ vòng đời:

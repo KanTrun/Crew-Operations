@@ -5,12 +5,10 @@ from __future__ import annotations
 try:
     from enum import StrEnum
 except ImportError:
-    from enum import Enum as _Enum
+    from enum import Enum
 
-    class _StrEnum(str, _Enum):
+    class StrEnum(str, Enum):
         pass
-
-    StrEnum = _StrEnum  # type: ignore[assignment,misc]
 
 
 from typing import Any, Literal

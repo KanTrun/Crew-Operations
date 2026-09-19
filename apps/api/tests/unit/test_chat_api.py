@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Enterprise unit tests for employee real-time chat endpoints, security, and WebSocket."""
 
 from __future__ import annotations

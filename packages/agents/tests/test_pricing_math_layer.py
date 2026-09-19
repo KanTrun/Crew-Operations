@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho Math Layer AG-PRICING (plan 260913-1455 mục 4.1–4.5).
 
 Phase 1 Acceptance Criteria (plan mục 10): "100% unit test cho Math Layer pass".

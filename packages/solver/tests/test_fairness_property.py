@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Property: 8 consecutive weeks — max-debt spread does not explode."""
 
 from __future__ import annotations

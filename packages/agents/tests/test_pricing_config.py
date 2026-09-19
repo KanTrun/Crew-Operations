@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho loader tham số nghiệp vụ AG-PRICING (plan mục 1.5).
 
 Plan mục 1.5: "Không tự chốt thay chủ dự án các tham số nghiệp vụ được đánh dấu

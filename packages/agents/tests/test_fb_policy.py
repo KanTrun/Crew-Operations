@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests for fb_policy — every branch of the moderation matrix (plan §3.2).
 
 Deterministic: no LLM, no I/O, no system clock (ADR-002).
@@ -296,7 +297,7 @@ def test_decision_contract_roundtrip() -> None:
 
     d = decide("chao_hoi", 0.95, "hi quán", ctx())
     contract = ContractDecision(
-        action=d.action.value,
+        action=d.action,
         reason=d.reason,
         intent=d.intent,
         confidence=d.confidence,

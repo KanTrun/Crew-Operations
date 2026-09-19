@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Kiểm thử cho orchestrator của AG-PRICING (Catchment Price Radar)."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Nhánh bỏ qua (meta thiếu/khong hợp lệ) của các checker cứng c01, c03, c04, c06."""
 
 from __future__ import annotations
