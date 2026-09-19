@@ -272,8 +272,8 @@ def tool_solve_weekly_schedule(
                 continue
             # `hieu_luc`/`rang_buoc` có thể là chuỗi ngày (fixture) chứ không
             # phải dict — guard isinstance giống main.py/_detect_staff_availability.
-            hl = cast(dict, it.get("hieu_luc")) if isinstance(it.get("hieu_luc"), dict) else {}
-            rb = cast(dict, it.get("rang_buoc")) if isinstance(it.get("rang_buoc"), dict) else {}
+            hl = cast(dict[str, Any], it.get("hieu_luc")) if isinstance(it.get("hieu_luc"), dict) else {}
+            rb = cast(dict[str, Any], it.get("rang_buoc")) if isinstance(it.get("rang_buoc"), dict) else {}
             it_tuan = rb.get("tuan_id") or hl.get("tuan_id")
             if it_tuan and it_tuan != tuan:
                 continue
@@ -1403,12 +1403,12 @@ def tool_get_schedule(
     if isinstance(inbox_items, list):
         for it in inbox_items:
             if isinstance(it, dict):
-                rb = cast(dict, it.get("rang_buoc")) if isinstance(it.get("rang_buoc"), dict) else {}
-                hl = cast(dict, it.get("hieu_luc")) if isinstance(it.get("hieu_luc"), dict) else {}
+                rb = cast(dict[str, Any], it.get("rang_buoc")) if isinstance(it.get("rang_buoc"), dict) else {}
+                hl = cast(dict[str, Any], it.get("hieu_luc")) if isinstance(it.get("hieu_luc"), dict) else {}
                 if (rb.get("tuan_id") or hl.get("tuan_id") or it.get("tuan_id")) == tuan_iso:
-                    nvid = it.get("nv_id") or hl.get("nv_id")
-                    if nvid:
-                        inbox_submitted_nv.add(str(nvid))
+                    nvid_raw = it.get("nv_id") or hl.get("nv_id")
+                    if nvid_raw:
+                        inbox_submitted_nv.add(str(nvid_raw))
 
     tkb_by_week = _kv_get("tkb_nv_by_week", {}) or {}
     tkb_nv = tkb_by_week.get(tuan_iso, {}) if isinstance(tkb_by_week, dict) else {}
