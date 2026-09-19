@@ -12,7 +12,7 @@ import math
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from ca_contracts.catchment_survey import StoreCandidate
 
@@ -185,7 +185,7 @@ def fetch_gmaps_competitors_serpapi(
             quota_path=quota_path,
             circuit_breaker=circuit_breaker,
         )
-        data_source = "cache" if payload.get("data_source") == "cache" else "serpapi"
+        data_source = cast(Literal["serpapi", "camoufox", "cache", "delivery_platform"], "cache" if payload.get("data_source") == "cache" else "serpapi")
         return parse_gmaps_results_to_candidates(
             payload,
             origin_lat=latitude,

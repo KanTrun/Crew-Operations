@@ -10,7 +10,7 @@ except ImportError:
     class _StrEnum(str, _Enum):
         pass
 
-    StrEnum = _StrEnum
+    StrEnum = _StrEnum  # type: ignore[assignment,misc]
 
 
 from typing import Any, Literal
