@@ -3,7 +3,34 @@ name: ci
 on:
   push:
     branches: [main, release/**]
+    paths-ignore:
+      - "docs/**"
+      - "plans/**"
+      - "*.md"
+      - ".gitignore"
+      - "LICENSE"
+      - ".github/workflows/deploy-*.yml"
+      - "**/*.png"
+      - "**/*.jpg"
+      - "**/*.jpeg"
+      - "**/*.gif"
+      - "**/*.svg"
+      - "**/*.ico"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "plans/**"
+      - "*.md"
+      - ".gitignore"
+      - "LICENSE"
+      - ".github/workflows/deploy-*.yml"
+      - "**/*.png"
+      - "**/*.jpg"
+      - "**/*.jpeg"
+      - "**/*.gif"
+      - "**/*.svg"
+      - "**/*.ico"
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}

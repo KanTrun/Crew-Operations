@@ -9,6 +9,13 @@ on:
     types:
       - completed
 
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-aws.yml"
+      - "infra/oracle/**"
+
   workflow_dispatch:
 
 concurrency:
@@ -19,6 +26,7 @@ jobs:
   deploy:
     if: >
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
       github.event.workflow_run.conclusion == 'success'
 
     runs-on: ubuntu-latest
@@ -79,7 +87,7 @@ jobs:
               backup="backups/postgres-before-${release_sha}.sql"
               sudo docker compose exec -T postgres pg_dump -U nhipquan -d nhipquan > "$backup"
               gzip -f "$backup"
-              ls -1t backups/postgres-before-*.sql.gz | tail -n +11 | xargs -r rm -f
+              ls -1t backups/postgres-before-*.sql.gz | tail -n +4 | xargs -r rm -f
             fi
 
             api_container="$(sudo docker compose ps -q api 2>/dev/null || true)"
@@ -97,22 +105,45 @@ jobs:
             sudo cp repo/infra/oracle/Caddyfile Caddyfile
 
             domain="$(awk -F= '/^DOMAIN=/{print $2; exit}' .env)"
-            # Dọn dung lượng TRƯỚC khi pull image mới — ổ đĩa VM A1 (200GB) có thể
-            # đầy do image Camoufox rất lớn (663MB+), gây "no space left on device".
-            sudo docker image prune -f || true
-            sudo docker builder prune -f || true
-            sudo docker system prune -f --volumes 2>/dev/null || true
-            if sudo IMAGE_TAG="$release_sha" docker compose pull &&
-               # Chạy migration riêng (tách khỏi command API) — DB lên revision mới
-               # trước khi start API mới. Rollback không chạy lại migration.
-               sudo IMAGE_TAG="$release_sha" docker compose run --rm --no-deps api sh -c "cd /app/apps/api && alembic -c alembic/alembic.ini upgrade head" &&
-               sudo IMAGE_TAG="$release_sha" docker compose up -d --remove-orphans --wait --wait-timeout 180 &&
+            # Dọn dung lượng triệt để TRƯỚC khi pull image mới (ổ đĩa EC2 20GB):
+            # 1. Tự động mở rộng phân vùng nếu volume AWS có dung lượng chưa cấp phát
+            sudo growpart /dev/xvda 1 2>/dev/null || sudo growpart /dev/nvme0n1 1 2>/dev/null || true
+            sudo resize2fs /dev/xvda1 2>/dev/null || sudo resize2fs /dev/nvme0n1p1 2>/dev/null || true
+            # 2. Thu hồi systemd journal logs
+            sudo journalctl --vacuum-size=50M 2>/dev/null || true
+            # 3. Dọn apt cache và thư mục /tmp
+            sudo apt-get clean 2>/dev/null || true
+            sudo rm -rf /tmp/* 2>/dev/null || true
+            # 4. Xóa bớt log container quá lớn nếu có
+            sudo truncate -s 0 /var/lib/docker/containers/*/*-json.log 2>/dev/null || true
+            # 5. Xóa toàn bộ images cũ không còn container nào dùng (cờ -a để xóa cả tagged images)
+            sudo docker image prune -a -f || true
+            sudo docker builder prune -a -f || true
+            sudo docker system prune -f || true
+            # 6. Dọn containerd snapshot cache dở dang từ các lần pull trước
+            sudo ctr -n moby content prune 2>/dev/null || true
+            sudo ctr -n moby snapshots --snapshotter overlayfs prune 2>/dev/null || true
+
+            echo "=== Dung lượng đĩa trước khi pull ==="
+            df -h /
+
+            target_tag="$release_sha"
+            if ! sudo IMAGE_TAG="$target_tag" docker compose pull 2>/dev/null; then
+              echo "Image tag $release_sha chưa có trên GHCR; dùng tag :latest"
+              target_tag="latest"
+              sudo IMAGE_TAG="$target_tag" docker compose pull
+            fi
+
+            if sudo IMAGE_TAG="$target_tag" docker compose run --rm --no-deps api sh -c "cd /app/apps/api && alembic -c alembic/alembic.ini upgrade head" &&
+               sudo IMAGE_TAG="$target_tag" docker compose up -d --remove-orphans --wait --wait-timeout 180 &&
                test -n "$domain" &&
                curl -fsS --retry 12 --retry-delay 5 "https://${domain}/health" &&
                curl -fsS --retry 12 --retry-delay 5 "https://${domain}/"; then
               printf '%s\n' "$release_sha" | sudo tee .deployed_sha >/dev/null
-              sudo docker image prune -f
-              sudo IMAGE_TAG="$release_sha" docker compose ps
+              sudo docker image prune -a -f || true
+              sudo IMAGE_TAG="$target_tag" docker compose ps
+              echo "=== Dung lượng đĩa sau khi deploy ==="
+              df -h /
             else
               echo "Deploy lỗi; khôi phục image đang chạy trước đó."
               sudo docker compose logs --tail=200 api web || true
