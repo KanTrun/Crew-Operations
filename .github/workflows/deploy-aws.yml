@@ -97,11 +97,22 @@ jobs:
             sudo cp repo/infra/oracle/Caddyfile Caddyfile
 
             domain="$(awk -F= '/^DOMAIN=/{print $2; exit}' .env)"
-            # Dọn dung lượng TRƯỚC khi pull image mới — ổ đĩa VM A1 (200GB) có thể
-            # đầy do image Camoufox rất lớn (663MB+), gây "no space left on device".
-            sudo docker image prune -f || true
-            sudo docker builder prune -f || true
-            sudo docker system prune -f --volumes 2>/dev/null || true
+            # Dọn dung lượng triệt để TRƯỚC khi pull image mới (ổ đĩa EC2 20GB):
+            # 1. Thu hồi systemd journal logs
+            sudo journalctl --vacuum-size=50M 2>/dev/null || true
+            # 2. Dọn apt cache và thư mục /tmp
+            sudo apt-get clean 2>/dev/null || true
+            sudo rm -rf /tmp/* 2>/dev/null || true
+            # 3. Xóa bớt log container quá lớn nếu có
+            sudo truncate -s 0 /var/lib/docker/containers/*/*-json.log 2>/dev/null || true
+            # 4. Xóa toàn bộ images cũ không còn container nào dùng (cờ -a để xóa cả tagged images)
+            sudo docker image prune -a -f || true
+            sudo docker builder prune -a -f || true
+            sudo docker system prune -f || true
+
+            echo "=== Dung lượng đĩa trước khi pull ==="
+            df -h /
+
             if sudo IMAGE_TAG="$release_sha" docker compose pull &&
                # Chạy migration riêng (tách khỏi command API) — DB lên revision mới
                # trước khi start API mới. Rollback không chạy lại migration.
@@ -111,8 +122,10 @@ jobs:
                curl -fsS --retry 12 --retry-delay 5 "https://${domain}/health" &&
                curl -fsS --retry 12 --retry-delay 5 "https://${domain}/"; then
               printf '%s\n' "$release_sha" | sudo tee .deployed_sha >/dev/null
-              sudo docker image prune -f
+              sudo docker image prune -a -f || true
               sudo IMAGE_TAG="$release_sha" docker compose ps
+              echo "=== Dung lượng đĩa sau khi deploy ==="
+              df -h /
             else
               echo "Deploy lỗi; khôi phục image đang chạy trước đó."
               sudo docker compose logs --tail=200 api web || true
