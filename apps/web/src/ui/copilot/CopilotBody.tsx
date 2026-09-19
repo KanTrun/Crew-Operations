@@ -58,6 +58,10 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeVoiceTurnRef = useRef<{ id: string; role: "user" | "copilot" } | null>(null);
+  // Khi nhận voice:proposal (reply + ActionProposal từ pipeline), bỏ qua
+  // outputAudioTranscription tiếp theo của Gemini để tránh tin nhắn copilot
+  // trùng lặp (một từ proposal, một từ transcript audio).
+  const skipNextCopilotTranscriptRef = useRef(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [voiceMode, setVoiceMode] = useState<VoiceInputMode>("open_mic");
   const [selectedMicId, setSelectedMicId] = useState<string>("");
@@ -97,6 +101,11 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
   const handleTranscript = useCallback(
     (role: "user" | "copilot", chunk: string, isFinal: boolean) => {
       if (!chunk.trim()) return;
+      // Bỏ qua transcript copilot của reply đã hiển thị qua voice:proposal.
+      if (role === "copilot" && skipNextCopilotTranscriptRef.current) {
+        if (isFinal) skipNextCopilotTranscriptRef.current = false;
+        return;
+      }
       const now = new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
@@ -147,9 +156,34 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
     activeVoiceTurnRef.current = null;
   }, []);
 
+  const handleVoiceProposal = useCallback(
+    (data: import("./useCopilotVoice").VoiceProposalData) => {
+      if (!data.reply_text.trim()) return;
+      const now = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const newId = `voice_proposal_${Date.now()}`;
+      const newMsg: ChatMessage = {
+        id: newId,
+        sender: "copilot",
+        text: data.reply_text,
+        action_proposal: data.action_proposal ?? null,
+        citations: data.citations?.length ? data.citations : null,
+        agent_mode: data.agent_mode || "live",
+        timestamp: now,
+      };
+      setMessages((prev) => [...prev, newMsg]);
+      // Đánh dấu bỏ qua transcript copilot tiếp theo (audio của reply này).
+      skipNextCopilotTranscriptRef.current = true;
+    },
+    [setMessages]
+  );
+
   const voice = useCopilotVoice({
     onTranscript: handleTranscript,
     onInterrupted: handleInterrupted,
+    onProposal: handleVoiceProposal,
     inputMode: voiceMode,
     deviceId: selectedMicId || undefined,
   });

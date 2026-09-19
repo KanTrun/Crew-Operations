@@ -110,6 +110,29 @@ def _detect_category(title: str, text: str) -> str:
     return "tam_ly_lifestyle"
 
 
+# Dấu hiệu Jina/Threads chặn bot — gặp bất kỳ dấu hiệu nào → coi như bị chặn,
+# trả [] ngay (không parse rác), rớt tầng nhanh (ADR-008, plan §2.3).
+_BLOCK_SIGNALS = (
+    "captcha",
+    "forbidden",
+    "access denied",
+    "blocked",
+    "too many requests",
+    "rate limit",
+    "unusual traffic",
+    "enablejsandcookies",
+    "sorry/index",
+)
+
+
+def _is_blocked(content: str) -> bool:
+    """Kiểm tra response Jina có phải trang chặn bot không."""
+    if not content:
+        return True
+    low = content.lower()
+    return any(sig in low for sig in _BLOCK_SIGNALS)
+
+
 def _assess_trend_lifecycle(likes: int, replies: int, text: str) -> tuple[str, float, int, str]:
     """Phân loại xu hướng: Mới nhú (Sắp hot) vs Đang đỉnh cao (Hot viral)."""
     # Nếu tương tác cực khủng -> Đang đỉnh cao
@@ -136,58 +159,70 @@ def scrape_threads_direct(
     from ca_agents.ag_trend import TrendItem, extract_core_tiktok_keyword
 
     kw_clean = keyword.strip()
-    target_query = kw_clean if kw_clean else "fnb quan cafe gen z"
-    encoded_query = urllib.parse.quote(target_query)
-    
-    # 1. Sử dụng Jina Reader Engine để render Threads Search sạch
-    target_url = f"https://www.threads.net/search?q={encoded_query}"
-    jina_url = f"https://r.jina.ai/{target_url}"
+
+    # Thử nhiều query để tăng khả năng lấy được dữ liệu (Jina hay bị chặn 1 query).
+    if kw_clean:
+        queries = [kw_clean, f"fnb {kw_clean}", f"quán cafe {kw_clean}"]
+    else:
+        queries = ["fnb quan cafe gen z", "cà phê matcha trà sữa", "gen z lifestyle"]
 
     posts_raw: list[dict[str, Any]] = []
     now_str = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
     # Circuit breaker: nếu Jina đang mở mạch (fail >=3 lần/60s) → bỏ qua, rớt tầng.
     if _CB_JINA.allow():
-        try:
-            req = urllib.request.Request(jina_url, headers=_HEADERS)
-            with urllib.request.urlopen(req, timeout=8, context=_get_ssl_context()) as resp:
-                content = resp.read().decode("utf-8")
-                _CB_JINA.record_success()
-                
-                # Bóc tách các đoạn post từ Markdown
-                # Cấu trúc markdown thường có: [@username](...) hoặc [Post text](...)
-                blocks = content.split("\n\n")
-                for block in blocks:
-                    clean_b = block.strip()
-                    if len(clean_b) > 40 and not clean_b.startswith("Title:") and not clean_b.startswith("URL Source:"):
-                        # Trích xuất username nếu có
-                        u_match = re.search(r"@([a-zA-Z0-9_\.]+)", clean_b)
-                        username = u_match.group(1) if u_match else "threads_creator"
-                        
-                        # Trích xuất URL post nếu có
-                        url_match = re.search(r"https://www\.threads\.net/@[\w\.]+/post/(\w+)", clean_b)
-                        post_url = url_match.group(0) if url_match else f"https://www.threads.net/search?q={encoded_query}"
-                        post_id = url_match.group(1) if url_match else f"th_{len(posts_raw)}_{int(time.time())}"
-                        
-                        # Trích xuất nội dung bài
-                        text = re.sub(r"\[.*?\]\(.*?\)", "", clean_b).replace("###", "").strip()
-                        if text and len(text) > 30:
-                            # ADR-008: Jina Reader chỉ trả text, KHÔNG có số like/reply thật.
-                            # Không bịa số tương tác — để 0 và đánh dấu is_live_scraped=False
-                            # để downstream phân biệt được dữ liệu không có số liệu thật.
-                            posts_raw.append({
-                                "id": post_id,
-                                "username": username,
-                                "text": text,
-                                "url": post_url,
-                                "likes": 0,
-                                "replies": 0,
-                            })
-                    if len(posts_raw) >= count:
+        for target_query in queries:
+            encoded_query = urllib.parse.quote(target_query)
+            # 1. Sử dụng Jina Reader Engine để render Threads Search sạch
+            target_url = f"https://www.threads.net/search?q={encoded_query}"
+            jina_url = f"https://r.jina.ai/{target_url}"
+            try:
+                req = urllib.request.Request(jina_url, headers=_HEADERS)
+                with urllib.request.urlopen(req, timeout=8, context=_get_ssl_context()) as resp:
+                    content = resp.read().decode("utf-8", errors="ignore")
+                    # Phát hiện CAPTCHA/block → bỏ query này, thử query khác.
+                    if _is_blocked(content):
+                        logger.warning("threads_direct_jina_blocked query=%s", target_query[:40])
+                        _CB_JINA.record_failure()
+                        continue
+                    _CB_JINA.record_success()
+
+                    # Bóc tách các đoạn post từ Markdown
+                    # Cấu trúc markdown thường có: [@username](...) hoặc [Post text](...)
+                    blocks = content.split("\n\n")
+                    for block in blocks:
+                        clean_b = block.strip()
+                        if len(clean_b) > 40 and not clean_b.startswith("Title:") and not clean_b.startswith("URL Source:"):
+                            # Trích xuất username nếu có
+                            u_match = re.search(r"@([a-zA-Z0-9_\.]+)", clean_b)
+                            username = u_match.group(1) if u_match else "threads_creator"
+
+                            # Trích xuất URL post nếu có
+                            url_match = re.search(r"https://www\.threads\.net/@[\w\.]+/post/(\w+)", clean_b)
+                            post_url = url_match.group(0) if url_match else f"https://www.threads.net/search?q={encoded_query}"
+                            post_id = url_match.group(1) if url_match else f"th_{len(posts_raw)}_{int(time.time())}"
+
+                            # Trích xuất nội dung bài
+                            text = re.sub(r"\[.*?\]\(.*?\)", "", clean_b).replace("###", "").strip()
+                            if text and len(text) > 30:
+                                # ADR-008: Jina Reader chỉ trả text, KHÔNG có số like/reply thật.
+                                # Không bịa số tương tác — để 0 và đánh dấu is_live_scraped=False
+                                # để downstream phân biệt được dữ liệu không có số liệu thật.
+                                posts_raw.append({
+                                    "id": post_id,
+                                    "username": username,
+                                    "text": text,
+                                    "url": post_url,
+                                    "likes": 0,
+                                    "replies": 0,
+                                })
+                        if len(posts_raw) >= count:
+                            break
+                    if posts_raw:
                         break
-        except Exception as e:
-            logger.warning("Lỗi cào Threads direct qua Jina engine: %s", e)
-            _CB_JINA.record_failure()
+            except Exception as e:
+                logger.warning("Lỗi cào Threads direct qua Jina engine (query=%s): %s", target_query[:40], e)
+                _CB_JINA.record_failure()
     else:
         logger.info("threads_direct_jina_circuit_open_skipping")
 

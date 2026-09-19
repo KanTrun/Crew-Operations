@@ -170,30 +170,44 @@ def scrape_threads_google_bridge(
 
     kw_clean = keyword.strip()
     
-    # Xây dựng câu truy vấn Google Search tối ưu cho Threads F&B & Gen Z
+    # Xây dựng câu truy vấn Google Search tối ưu cho Threads F&B & Gen Z.
+    # Lưu ý: Google News RSS KHÔNG index tốt `site:threads.net` (Threads chặn
+    # Google bot) — thử nhiều query, fallback sang query không có `site:` khi
+    # query chính trả rỗng để tăng khả năng lấy được dữ liệu thật.
     if kw_clean:
-        query_str = f"site:threads.net {kw_clean}"
+        queries = [
+            f"site:threads.net {kw_clean}",
+            f"threads.net {kw_clean}",
+            kw_clean,
+        ]
     else:
-        query_str = "site:threads.net cà phê OR matcha OR \"trà sữa\" OR \"quán cafe\" OR \"gen z\""
+        queries = [
+            "site:threads.net cà phê OR matcha OR \"trà sữa\" OR \"quán cafe\" OR \"gen z\"",
+            "threads.net cà phê OR matcha OR \"trà sữa\" OR \"quán cafe\" OR \"gen z\"",
+            "cà phê OR matcha OR \"trà sữa\" OR \"quán cafe\" OR \"gen z\"",
+        ]
 
-    encoded_query = urllib.parse.quote(query_str)
-    rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=vi&gl=VN&ceid=VN:vi"
-    
     raw_posts: list[dict[str, Any]] = []
     now_str = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 
     # Circuit breaker: nếu Google Bridge đang mở mạch → bỏ qua, rớt tầng.
     if _CB_GOOGLE_BRIDGE.allow():
-        try:
-            req = urllib.request.Request(rss_url, headers=_HEADERS)
-            with urllib.request.urlopen(req, timeout=8, context=_SSL_CTX) as resp:
-                xml_data = resp.read().decode("utf-8", errors="ignore")
-                raw_posts = parse_google_rss_xml(xml_data)
-                _CB_GOOGLE_BRIDGE.record_success()
-                logger.info("google_threads_rss_fetched items=%d", len(raw_posts))
-        except Exception as e:
-            logger.warning("Lỗi fetch Google Threads RSS: %s", e)
-            _CB_GOOGLE_BRIDGE.record_failure()
+        for query_str in queries:
+            encoded_query = urllib.parse.quote(query_str)
+            rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=vi&gl=VN&ceid=VN:vi"
+            try:
+                req = urllib.request.Request(rss_url, headers=_HEADERS)
+                with urllib.request.urlopen(req, timeout=8, context=_SSL_CTX) as resp:
+                    xml_data = resp.read().decode("utf-8", errors="ignore")
+                    posts = parse_google_rss_xml(xml_data)
+                    if posts:
+                        raw_posts = posts
+                        _CB_GOOGLE_BRIDGE.record_success()
+                        logger.info("google_threads_rss_fetched items=%d query=%s", len(posts), query_str[:60])
+                        break
+            except Exception as e:
+                logger.warning("Lỗi fetch Google Threads RSS (query=%s): %s", query_str[:40], e)
+                _CB_GOOGLE_BRIDGE.record_failure()
     else:
         logger.info("google_threads_rss_circuit_open_skipping")
 

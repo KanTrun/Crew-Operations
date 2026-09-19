@@ -1296,6 +1296,51 @@ def tool_get_handovers(
     )
 
 
+def tool_query_audit(
+    store_id: str = "quan_01",
+    limit: int = 20,
+    **kwargs: Any,
+) -> ToolExecutionResult:
+    """QUERY_AUDIT: tra cứu vết hệ thống / nhật ký thay đổi (tenant-scoped).
+
+    Chỉ quản lý & chủ quán được gọi (đã chặn ở tầng role matrix). Đọc từ
+    `audit_list` được inject qua data source — không import trực tiếp ca_api.
+    """
+    audit_list = _src("audit_list")
+    if audit_list is None:
+        return _read_result(
+            "QUERY_AUDIT", "tool_query_audit", {"so_vet": 0, "vet": []},
+            "Em chưa có nguồn vết hệ thống để tra cứu trong môi trường này.",
+            "Không có data source audit_list được inject.",
+        )
+    try:
+        vet = list(audit_list(limit=limit) or [])
+    except Exception as e:  # noqa: BLE001
+        return _read_result(
+            "QUERY_AUDIT", "tool_query_audit", {"so_vet": 0, "vet": [], "loi": str(e)},
+            "Em gặp lỗi khi đọc vết hệ thống.",
+            f"audit_list() ném lỗi: {e}",
+        )
+    # Redact payload nhạy cảm trước khi trả về qua chat (ADR-008: không lộ dữ liệu).
+    safe = []
+    for v in vet:
+        item = dict(v)
+        payload = item.get("payload")
+        if isinstance(payload, dict):
+            # Chỉ giữ các trường an toàn, bỏ token/body nhạy cảm.
+            safe_payload = {
+                k: val for k, val in payload.items()
+                if k not in {"token", "password", "secret", "body", "content", "text"}
+            }
+            item["payload"] = safe_payload
+        safe.append(item)
+    return _read_result(
+        "QUERY_AUDIT", "tool_query_audit", {"so_vet": len(safe), "vet": safe},
+        f"Em tìm thấy {len(safe)} vết hệ thống gần nhất.",
+        "Đọc từ audit_list (vết hệ thống, tenant-scoped, đã redact payload nhạy cảm).",
+    )
+
+
 def _tuan_hien_tai() -> str:
     """ISO week 'YYYY-Wnn' của hôm nay — không hardcode."""
     iso = datetime.now(UTC).isocalendar()
@@ -1565,6 +1610,8 @@ _READ_TOOLS: dict[str, Callable[..., ToolExecutionResult]] = {
     "GET_SCHEDULE": tool_get_schedule,
     "GET_MY_SHIFTS": tool_get_my_shifts,
     "GET_CONSTRAINT_CANDIDATES": tool_get_constraint_candidates,
+    # Audit / vết hệ thống — chỉ quản lý & chủ quán (R0_READ, tenant-scoped)
+    "QUERY_AUDIT": tool_query_audit,
 }
 
 _TOOLS.update(_READ_TOOLS)

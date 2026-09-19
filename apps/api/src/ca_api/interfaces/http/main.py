@@ -89,6 +89,7 @@ from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import (
     DangKyLoi,
     audit_add,
+    audit_list,
     audit_request_begin,
     audit_request_end,
     audit_request_had_entry,
@@ -426,6 +427,8 @@ configure_data_sources(
     ],
     list_nhan_vien_ops=list_nhan_vien_ops,
     menu_list=menu_list,
+    # QUERY_AUDIT provider — vết hệ thống (tenant-scoped, đã redact ở tool)
+    audit_list=audit_list,
     # PR11 admin providers — đơn quầy cho snapshot/validate
     don_list=don_list,
     don_get=don_get,

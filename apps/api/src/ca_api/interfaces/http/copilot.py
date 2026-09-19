@@ -1285,6 +1285,7 @@ def copilot_execute_action(
         "PROPOSE_PAGE_SYNC": "/page-quan",
         "PROPOSE_PAGE_DRAFT": "/page-quan",
         "RUN_CATCHMENT_SURVEY": "/khao-sat-gia",
+        "QUERY_AUDIT": "/vet",
     }
     outcome = {
         "ok": True,

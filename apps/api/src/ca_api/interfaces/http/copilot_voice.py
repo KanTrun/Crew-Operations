@@ -10,7 +10,9 @@ import time
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
+from ca_agents.ag_copilot import run_copilot
 from ca_agents.ag_copilot.voice_session import (
     GeminiLiveSession,
     VerifiedVoiceContext,
@@ -18,7 +20,11 @@ from ca_agents.ag_copilot.voice_session import (
 )
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from ca_api.persist import audit_add
+from ca_api.persist import (
+    audit_add,
+    copilot_audit_add,
+    copilot_draft_save,
+)
 from ca_api.persist import session as auth_session
 
 router = APIRouter(tags=["copilot-voice"])
@@ -158,10 +164,103 @@ async def _receive_client(
             await live.send_activity_end()
 
 
-async def _receive_upstream(websocket: WebSocket, live: GeminiLiveSession) -> None:
+def _extract_function_call(event: dict[str, Any]) -> tuple[str, str] | None:
+    """Return (call_id, message) if the upstream event contains a function call."""
+    server_content = event.get("serverContent") or {}
+    model_turn = server_content.get("modelTurn") or {}
+    parts = model_turn.get("parts") or []
+    for part in parts:
+        fn = part.get("functionCall") or {}
+        if fn.get("name") == "run_copilot_pipeline":
+            args = fn.get("args") or {}
+            message = str(args.get("message") or "").strip()
+            call_id = str(fn.get("id") or "")
+            if message and call_id:
+                return call_id, message
+    return None
+
+
+async def _receive_upstream(
+    websocket: WebSocket,
+    live: GeminiLiveSession,
+    context: VerifiedVoiceContext,
+) -> None:
     while True:
         event = await live.receive()
         await websocket.send_json({"event": "voice:upstream", "data": event})
+
+        # Nối pipeline nghiệp vụ: khi Gemini gọi tool run_copilot_pipeline,
+        # chạy run_copilot() (role auth + tool + ActionProposal + audit) rồi
+        # trả kết quả về Gemini để đọc thành tiếng + gửi proposal về client.
+        fn = _extract_function_call(event)
+        if fn is None:
+            continue
+        call_id, message = fn
+        try:
+            # run_copilot() có thể gọi LLM (chậm) trong live mode → chạy trong
+            # thread executor để không block event loop của WebSocket.
+            response = await asyncio.to_thread(
+                run_copilot,
+                message,
+                {
+                    "store_id": context.store_id,
+                    "user_id": context.user_id,
+                    "user_role": context.user_role,
+                    "active_date": datetime.now(UTC).strftime("%Y-%m-%d"),
+                    "channel": "voice",
+                },
+            )
+        except Exception:
+            response = None
+
+        if response is None:
+            await live.send_function_response(
+                call_id,
+                "Dạ em gặp lỗi khi xử lý yêu cầu. Anh/chị thử lại hoặc dùng chat text nhé.",
+            )
+            continue
+
+        proposal = (
+            response.action_proposal.model_dump()
+            if response.action_proposal is not None
+            else None
+        )
+        # Lưu draft + audit như chat thường để client bấm "Duyệt & Gửi"
+        # không bị 404 action_proposal_not_found.
+        if response.action_proposal is not None:
+            try:
+                copilot_draft_save(response.action_proposal.model_dump())
+                copilot_audit_add(
+                    action_id=response.action_proposal.action_id,
+                    actor_user_id=context.user_id,
+                    store_id=context.store_id,
+                    intent=response.action_proposal.intent.value,
+                    decision="propose",
+                    payload_diff=response.action_proposal.payload_diff,
+                    channel="voice",
+                    latency_ms=0,
+                    agent_name="ag_copilot",
+                    controller_user_id=context.user_id,
+                )
+            except Exception:
+                pass
+        await live.send_function_response(call_id, response.reply_text, proposal)
+        await websocket.send_json(
+            {
+                "event": "voice:proposal",
+                "data": {
+                    "reply_text": response.reply_text,
+                    "intent": (
+                        response.intent.value
+                        if hasattr(response.intent, "value")
+                        else str(response.intent)
+                    ),
+                    "action_proposal": proposal,
+                    "citations": response.citations or [],
+                    "agent_mode": response.agent_mode,
+                },
+            }
+        )
 
 
 async def _idle_watchdog(websocket: WebSocket, tracker: ActivityTracker) -> None:
@@ -244,7 +343,9 @@ async def copilot_voice_websocket(websocket: WebSocket) -> None:
             client_task = asyncio.create_task(
                 _receive_client(websocket, live, tracker, limiter)
             )
-            upstream_task = asyncio.create_task(_receive_upstream(websocket, live))
+            upstream_task = asyncio.create_task(
+                _receive_upstream(websocket, live, context)
+            )
             watchdog_task = asyncio.create_task(_idle_watchdog(websocket, tracker))
             stop_task = asyncio.create_task(stop_event.wait())
             tasks = {client_task, upstream_task, watchdog_task, stop_task}
