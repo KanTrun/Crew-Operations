@@ -97,7 +97,15 @@ jobs:
             sudo cp repo/infra/oracle/Caddyfile Caddyfile
 
             domain="$(awk -F= '/^DOMAIN=/{print $2; exit}' .env)"
+            # Dọn dung lượng TRƯỚC khi pull image mới — ổ đĩa VM A1 (200GB) có thể
+            # đầy do image Camoufox rất lớn (663MB+), gây "no space left on device".
+            sudo docker image prune -f || true
+            sudo docker builder prune -f || true
+            sudo docker system prune -f --volumes 2>/dev/null || true
             if sudo IMAGE_TAG="$release_sha" docker compose pull &&
+               # Chạy migration riêng (tách khỏi command API) — DB lên revision mới
+               # trước khi start API mới. Rollback không chạy lại migration.
+               sudo IMAGE_TAG="$release_sha" docker compose run --rm --no-deps api sh -c "cd /app/apps/api && alembic -c alembic/alembic.ini upgrade head" &&
                sudo IMAGE_TAG="$release_sha" docker compose up -d --remove-orphans --wait --wait-timeout 180 &&
                test -n "$domain" &&
                curl -fsS --retry 12 --retry-delay 5 "https://${domain}/health" &&
@@ -108,6 +116,9 @@ jobs:
             else
               echo "Deploy lỗi; khôi phục image đang chạy trước đó."
               sudo docker compose logs --tail=200 api web || true
+              # Rollback KHÔNG chạy migration (DB đã ở revision mới; image cũ không
+              # có migration mới → alembic upgrade head sẽ fail). Migration đã được
+              # tách khỏi command API, nên image cũ vẫn start được.
               sudo IMAGE_TAG=rollback docker compose up -d --remove-orphans --wait --wait-timeout 180 || true
               exit 1
             fi
