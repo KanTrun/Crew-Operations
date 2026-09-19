@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Nhánh lỗi và biên của ops engine: chặn mở phiếu, sai thứ tự, minh chứng, ngưỡng."""
 
 from __future__ import annotations

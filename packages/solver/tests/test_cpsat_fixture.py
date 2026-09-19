@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """CP-SAT smoke on fixture."""
 
 from __future__ import annotations

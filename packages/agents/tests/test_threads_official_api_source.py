@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Test threads_official_api_source — Threads Official API (graph.threads.net).
 
 Cover:

@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Kiểm thử unit test cho thuật toán lọc kép Dual-Gate và thống kê Bayes (AG-PRICING)."""
 
 from __future__ import annotations

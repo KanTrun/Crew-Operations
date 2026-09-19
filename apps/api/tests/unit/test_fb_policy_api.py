@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Tests — feature flag auto-send + endpoint /api/v1/page/fb-policy (kế hoạch §5.5).
 
 Flag OFF (mặc định): pipeline ghi auto_sent nhưng webhook KHÔNG gửi thật.

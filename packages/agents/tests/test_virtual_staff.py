@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho Virtual Staff (Generative Agents) — plan 260918 mục 5.
 
 ADR-002: mô phỏng tất định, không LLM.

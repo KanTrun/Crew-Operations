@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests cho vision_menu_extractor.py (Phase 2 rewrite).
 
 Test coverage:

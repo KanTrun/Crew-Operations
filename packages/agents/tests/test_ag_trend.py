@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests for AG-TREND Catchphrase & Slang Intelligence Engine."""
 
 from unittest.mock import patch

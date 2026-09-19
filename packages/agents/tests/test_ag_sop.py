@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """AG-SOP — trả lời câu hỏi nghiệp vụ từ phiếu quy trình và luật hiệu lực."""
 
 from __future__ import annotations

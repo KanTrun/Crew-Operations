@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests cho STT Live (gemini-3.5-transcribe-live) — replay + decode."""
 
 from __future__ import annotations

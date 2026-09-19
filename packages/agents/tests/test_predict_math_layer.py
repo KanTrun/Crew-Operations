@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho Contracts & Math Layer AG-PREDICT (plan 260918 mục 3, 4).
 
 Phase 1 Acceptance Criteria (plan mục 10): "100% unit test cho contracts + math

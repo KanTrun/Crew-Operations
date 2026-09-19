@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Nhánh biên của bảng ghi nhận lần sửa: path truyền tay, cờ synthetic, lọc synthetic."""
 
 from __future__ import annotations

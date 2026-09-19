@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 from ca_api.interfaces.http.main import app
 from fastapi.testclient import TestClient
 from unit.auth_util import headers

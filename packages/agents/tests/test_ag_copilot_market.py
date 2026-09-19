@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit & Integration tests for Copilot Catchment Price Radar & SerpApi (plan v2.0).
 
 Covers:

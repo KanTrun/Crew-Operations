@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """AG-MEETING tests — Meeting transcription, action item extraction, entity matching, and contracts validation."""
 
 from __future__ import annotations

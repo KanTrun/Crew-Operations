@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho Episodic Memory & Reflection (plan 260918 mục 4).
 
 ADR-002: suy ngẫm tất định, từ dữ liệu thật, không LLM.

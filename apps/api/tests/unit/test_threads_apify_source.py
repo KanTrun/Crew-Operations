@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests cho threads_apify_source.py — mock Apify client & Threads mapping."""
 
 from __future__ import annotations

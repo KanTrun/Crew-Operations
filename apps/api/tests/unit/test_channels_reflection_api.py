@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Integration tests for Channels Self-Improving CSKH API:
 
 1. Thread Approve Feedback Learning Loop (Golden Memory)

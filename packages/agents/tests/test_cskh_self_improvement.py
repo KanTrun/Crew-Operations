@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests for Self-Improving CSKH Agent:
 
 1. Golden Memory Feedback Loop (Sửa là Học)
@@ -107,6 +108,7 @@ def test_process_fb_message_with_customer_profile() -> None:
     )
     profile = {"ten_khach": "Lan", "visit_count": 1, "is_vip_or_regular": False}
     out = asyncio.run(process_fb_message(inp, customer_profile=profile))
+    assert out.response is not None
     assert "Lan" in out.response
 
 

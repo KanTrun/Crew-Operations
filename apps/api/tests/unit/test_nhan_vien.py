@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Nguồn nhân viên hợp nhất (users thật + seed tùy chọn) cho solver và API.
 
 Mặc định production: `NHIPQUAN_LOI_GIAI_SEED` TẮT — pool chỉ chứa users thật.

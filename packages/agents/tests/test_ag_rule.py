@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """AG-RULE là agent thuần: chỉ diễn đạt lại tín hiệu thật, không bịa luật.
 
 Hợp đồng: lớp điều phối suy luật tất định từ lần sửa thật

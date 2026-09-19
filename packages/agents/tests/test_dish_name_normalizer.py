@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho dish_name_normalizer — 20+ test cases với tên món thật F&B Việt Nam.
 
 Test coverage:

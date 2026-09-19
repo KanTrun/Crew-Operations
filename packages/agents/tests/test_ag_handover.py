@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """AG-HANDOVER — trích xuất văn bản bàn giao ca SBAR và việc treo."""
 
 from __future__ import annotations

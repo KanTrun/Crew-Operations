@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Worker nhắc việc — tất định với đồng hồ giả, không sleep, không mạng."""
 
 from __future__ import annotations

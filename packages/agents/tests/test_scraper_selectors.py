@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Test cho `scraper_selectors.py` — nguồn duy nhất của selector bên thứ ba.
 
 File này nằm TRONG test suite chặn merge, còn canary thì KHÔNG. Lý do tách đôi:

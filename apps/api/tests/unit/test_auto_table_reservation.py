@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Enterprise Unit & Concurrency Tests for Auto Table Reservation Engine.
 
 Verifies:

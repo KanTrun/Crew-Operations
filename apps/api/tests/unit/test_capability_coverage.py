@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """PR13 coverage gate — mọi route user-facing phải có capability hoặc exclusion.
 
 Kế hoạch §PR13: "CI fail khi thêm chức năng user-facing mà không khai báo

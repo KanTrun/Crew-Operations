@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Nhánh biên của cẩm nang sống: path tường minh, từ chối duyệt, dạng lưu {items}."""
 
 from __future__ import annotations

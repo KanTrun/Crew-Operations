@@ -1,6 +1,8 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,7 +15,7 @@ def test_send_mail_empty_recipient() -> None:
     assert res.reason == "no_recipient_email"
 
 
-def test_send_mail_replay_mode(tmp_path: pytest.TempPathFactory) -> None:
+def test_send_mail_replay_mode(tmp_path: Path) -> None:
     log_file = tmp_path / "mail.jsonl"
     with patch.dict(os.environ, {"CA_AGENT_MODE": "replay", "NHIPQUAN_MAIL_LOG": str(log_file)}):
         res = send_mail(to_emails=["test@example.com"], subject="Xin chào", body="Nội dung test")
@@ -128,7 +130,7 @@ def test_send_mail_partial_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         assert res.reason == "some_failed"
 
 
-def test_send_mail_with_attachments_replay(tmp_path: pytest.TempPathFactory) -> None:
+def test_send_mail_with_attachments_replay(tmp_path: Path) -> None:
     log_file = tmp_path / "mail_att.jsonl"
     dummy_img = tmp_path / "lich_ca.png"
     dummy_img.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDRfake")

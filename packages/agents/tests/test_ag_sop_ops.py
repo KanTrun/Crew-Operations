@@ -1,6 +1,9 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Tests for AG-SOP ops context and topic guards."""
 
 from __future__ import annotations
+
+from typing import Any, cast
 
 from ca_agents.ag_sop import answer
 from ca_agents.ag_sop.ops import SopOpsContext, filter_luat_for_sop, topic_blocked
@@ -26,7 +29,7 @@ def test_filter_luat_by_ops_context() -> None:
         },
     ]
     t2 = SopOpsContext(ngay="2026-08-31", thu="T2", khung="sang")
-    scoped = filter_luat_for_sop(laws, t2)
+    scoped = filter_luat_for_sop(cast(list[dict[str, Any]], laws), t2)
     assert len(scoped) == 1
     assert scoped[0]["id"] == "luat_chung"
 

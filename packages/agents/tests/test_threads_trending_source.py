@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Test threads_trending_source — kiểm thử cào bảng Trending Now trên Threads.
 
 Cover các ca kiểm thử:

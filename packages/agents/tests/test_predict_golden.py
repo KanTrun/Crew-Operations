@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho golden dataset success_patterns (plan 260918 mục 7.4).
 
 So sánh kết quả detect_success_patterns với golden data chuẩn.

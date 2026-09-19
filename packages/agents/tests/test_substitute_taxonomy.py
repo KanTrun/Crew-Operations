@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho taxonomy nhóm món thay thế nạp từ config (plan mục 1.2 / 3.4).
 
 Plan mục 3.4: ma trận nhu cầu → nhóm thay thế phải là DỮ LIỆU CẤU HÌNH versioned,

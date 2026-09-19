@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Kiểm thử JobStore + SurveyJob state machine (plan mục 2.4).
 
 Tập trung vào các tính chất mà orchestrator và API dựa vào:

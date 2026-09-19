@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Test camoufox_client — mock toàn bộ, không mở browser thật (CA_AGENT_MODE=replay).
 
 Cover theo PR 1 §IV:

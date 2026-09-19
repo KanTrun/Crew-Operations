@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests for Smart Shift Swap & Emergency Leave Matching Engine (smart_swap.py)."""
 
 from __future__ import annotations

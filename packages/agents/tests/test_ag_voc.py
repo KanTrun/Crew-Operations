@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """AG-VOC — phản hồi khách thành sự cố vận hành, nối vào việc treo."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Nhánh từ chối (fail-closed) của cổng VF-RULE."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """AG-COPILOT tool: đề xuất luật phải trung thực khi de_xuat trả None.
 
 Hồi quy: de_xuat đổi hợp đồng sang `dict | None` (không bịa khi thiếu tín

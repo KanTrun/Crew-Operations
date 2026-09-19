@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 import importlib.util
 from pathlib import Path
 
@@ -6,6 +7,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # 1. Load audit_recipe_waste
 WASTE_SCRIPT = REPO_ROOT / "skills" / "repositories" / "repo-skills" / "barista-waste-audit" / "scripts" / "audit_recipe_waste.py"
 spec_waste = importlib.util.spec_from_file_location("audit_recipe_waste", WASTE_SCRIPT)
+assert spec_waste is not None and spec_waste.loader is not None
 mod_waste = importlib.util.module_from_spec(spec_waste)
 spec_waste.loader.exec_module(mod_waste)
 audit_waste = mod_waste.audit_waste
@@ -13,6 +15,7 @@ audit_waste = mod_waste.audit_waste
 # 2. Load reconcile_shift_cash
 CASH_SCRIPT = REPO_ROOT / "skills" / "repositories" / "repo-skills" / "handover-reconciliation" / "scripts" / "reconcile_shift_cash.py"
 spec_cash = importlib.util.spec_from_file_location("reconcile_shift_cash", CASH_SCRIPT)
+assert spec_cash is not None and spec_cash.loader is not None
 mod_cash = importlib.util.module_from_spec(spec_cash)
 spec_cash.loader.exec_module(mod_cash)
 reconcile_cash = mod_cash.reconcile_cash
