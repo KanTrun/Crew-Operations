@@ -53,7 +53,13 @@ from ca_api.persist import session as auth_session
 router = APIRouter()
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
-LICH = ROOT / "data" / "out" / "lich_tuan.json"
+
+
+def _lich_out_path() -> Path:
+    env = os.environ.get("NHIPQUAN_LICH_TUAN_OUT")
+    if env:
+        return Path(env)
+    return ROOT / "data" / "out" / "lich_tuan.json"
 
 _clock: Clock = Clock()
 _sm_by_phieu: dict[str, StateMachine] = {}
@@ -135,8 +141,9 @@ def _phan_cong() -> dict[str, list[str]]:
     if stored:
         return cast(dict[str, list[str]], stored)
     phan: dict[str, list[str]] = {}
-    if LICH.exists():
-        phan = json.loads(LICH.read_text(encoding="utf-8")).get("phan_cong", {})
+    lich_path = _lich_out_path()
+    if lich_path.exists():
+        phan = json.loads(lich_path.read_text(encoding="utf-8")).get("phan_cong", {})
     elif SEED.exists():
         seed = json.loads(SEED.read_text(encoding="utf-8"))
         hist = (seed.get("lich_su_8_tuan") or [{}])[0].get("phan_cong", {})

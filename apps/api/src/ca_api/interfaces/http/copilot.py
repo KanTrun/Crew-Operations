@@ -831,7 +831,8 @@ def copilot_execute_action(
         # Ghi đúng nơi /roster đọc: file lich_tuan.json (nguồn GET /api/v1/lich-tuan)
         # + kv phan_cong (nguồn /toi, đổi ca, công bằng) + lifecycle trạng thái mới.
         try:
-            _lich_out = _ROOT / "data" / "out" / "lich_tuan.json"
+            _env_out = os.environ.get("NHIPQUAN_LICH_TUAN_OUT")
+            _lich_out = Path(_env_out) if _env_out else _ROOT / "data" / "out" / "lich_tuan.json"
             _lich_out.parent.mkdir(parents=True, exist_ok=True)
             payload_file = {
                 "nguon": "quan",

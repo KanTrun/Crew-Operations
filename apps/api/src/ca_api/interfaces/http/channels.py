@@ -16,7 +16,7 @@ except ImportError:
     from datetime import datetime, timezone
     UTC = timezone.utc
 from pathlib import Path
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Literal, cast
 
 from ca_agents.ag_fbpage import (
     FBMessageInput,
@@ -55,7 +55,16 @@ from ca_agents.messaging import (
     parse_zalo_webhook,
     should_enqueue_constraint,
 )
-from ca_contracts import AIEvaluation, AIFeedbackEvent, AIGenerationRecord
+from ca_contracts import (
+    AIEvaluation,
+    AIEvaluationScores,
+    AIFeedbackContent,
+    AIFeedbackEvent,
+    AIGenerationDraft,
+    AIGenerationRecord,
+    AIModelVersion,
+    FbPolicyAction,
+)
 from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
@@ -154,11 +163,12 @@ def _record_fb_feedback(
         ).hexdigest()
         repository.save(AIFeedbackEvent(
             id=f"fb-feedback-{fingerprint[:24]}", store_id=store_id, generation_id=str(generation["id"]),
-            channel="facebook", type=feedback_type, original={"body": original} if original else None,
-            final={"body": final} if final else None,
-            edited_fields=["body"] if original and final and original != final else [],
+            channel="facebook", type=cast(Literal["manager_approve", "manager_edit", "manager_reject", "customer_positive", "customer_negative", "customer_followup", "send_success", "send_failure", "manual_rating"], feedback_type),
+            original=cast(AIFeedbackContent | None, {"body": original} if original else None),
+            final=cast(AIFeedbackContent | None, {"body": final} if final else None),
+            edited_fields=cast(list[Literal["subject", "body"]], ["body"] if original and final and original != final else []),
             materially_edited=bool(original and final and original != final), actor_user_id=actor_user_id,
-            actor_role=actor_role, send_status=send_status, failure_code=failure_code,
+            actor_role=cast(Literal["chu_quan", "quan_ly", "system", "customer"], actor_role), send_status=cast(Literal["not_applicable", "sent", "failed"], send_status), failure_code=failure_code,
             idempotency_key=f"fb-feedback:{fingerprint}", created_at=_now(),
         ))
     except Exception:
@@ -793,18 +803,18 @@ async def _execute_fb_pipeline(
     learning_repository.save(AIGenerationRecord(
         id=generation_id, store_id=store_id, channel="facebook",
         conversation_id=sender, request_kind="facebook_message", external_event_hash=hashlib.sha256(mid.encode()).hexdigest(),
-        draft={"body": out.suggested_reply or out.response or "Đã chuyển quản lý xử lý."}, context_snapshot_hash=fingerprint,
+        draft=cast(AIGenerationDraft, {"body": out.suggested_reply or out.response or "Đã chuyển quản lý xử lý."}), context_snapshot_hash=fingerprint,
         agent_version="ag-fbpage", prompt_version="fb-messenger-v1",
         rule_version=",".join(str(rule.get("id")) for rule in active_rules) or "none",
-        rollout_bucket=rollout_bucket, model={"provider": agent_mode(), "model_id": "ag-fbpage", "temperature": 0, "tool_context_hash": fingerprint},
-        policy_action=policy_action, idempotency_key=f"generation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
+        rollout_bucket=cast(Literal["control", "canary_10", "canary_50", "active_100"], rollout_bucket), model=cast(AIModelVersion, {"provider": agent_mode(), "model_id": "ag-fbpage", "temperature": 0, "tool_context_hash": fingerprint}),
+        policy_action=cast(FbPolicyAction, policy_action), idempotency_key=f"generation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
     ))
     if moderation.get("review_id"):
         fb_review_link_generation(int(moderation["review_id"]), generation_id=generation_id)
     learning_repository.save(AIEvaluation(
         id=f"facebook-evaluation-{fingerprint[:20]}", store_id=store_id, generation_id=f"facebook-{fingerprint[:24]}", channel="facebook",
-        scores={"accuracy": out.confidence, "safety": 1.0}, aggregate_score=out.confidence,
-        passed=out.action == "auto_respond", action=policy_action,
+        scores=cast(AIEvaluationScores, {"accuracy": out.confidence, "safety": 1.0}), aggregate_score=out.confidence,
+        passed=out.action == "auto_respond", action=cast(FbPolicyAction, policy_action),
         flags=[] if out.action == "auto_respond" else ["manager_review_required"], threshold_version="facebook-policy-v1",
         calibration_version="deterministic-v1", sample_count=0, evaluation_window="per_messenger_event",
         evaluator="ag-fbpage-policy", idempotency_key=f"evaluation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),

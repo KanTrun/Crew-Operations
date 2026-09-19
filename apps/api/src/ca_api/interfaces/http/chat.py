@@ -295,9 +295,10 @@ async def _reply_copilot_bg(conv_id: str, prompt: str, sess: dict[str, Any]) -> 
         reply_content = res.reply_text if res else "Tôi đã nhận được yêu cầu."
         meta: dict[str, Any] = {}
         msg_type = "text"
-        if res and getattr(res, "action_proposal", None):
+        proposal = getattr(res, "action_proposal", None) if res else None
+        if proposal is not None:
             msg_type = "ops_card"
-            meta["proposal"] = res.action_proposal.model_dump()
+            meta["proposal"] = proposal.model_dump()
 
         copilot_msg = chat_message_create(
             conv_id=conv_id,
