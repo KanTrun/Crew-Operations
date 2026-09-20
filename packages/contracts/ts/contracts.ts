@@ -617,3 +617,86 @@ export interface LivingCafeSnapshot {
   data_quality?: DataQualityNotice[];
 }
 
+export interface MemoryQuery {
+  store_id?: string;
+  anchor_id?: string | null;
+  from_time?: string | null;
+  to_time?: string | null;
+  status?: MemoryStatus | null;
+  consent_status?: MemoryConsentStatus | null;
+  role?: ExperienceRole;
+  requester_id: string;
+  keyword?: string | null;
+}
+
+export interface MemoryProposal {
+  proposal_id: string;
+  anchor_id: string;
+  store_id?: string;
+  content: string;
+  owner_scope: string;
+  visibility?: "private" | "staff" | "manager" | "public";
+  proposed_by: string;
+  source_event_ids?: string[];
+  snapshot_hash: string;
+}
+
+export interface MemoryConsentRequest {
+  memory_id: string;
+  consent: MemoryConsentStatus;
+  actor_id: string;
+  actor_role?: ExperienceRole;
+  reason?: string;
+}
+
+export interface MemoryAuditEntry {
+  audit_id: string;
+  memory_id: string;
+  action: "propose" | "consent_grant" | "consent_revoke" | "confirm" | "expire" | "delete" | "supersede";
+  actor_id: string;
+  reason?: string;
+  occurred_at?: string;
+}
+
+export interface GroundedAnswer {
+  answer_id: string;
+  answer_text: string;
+  citations?: string[];
+  memory_ids?: string[];
+  proposal_id?: string | null;
+  unsupported_claims?: string[];
+  grounded?: boolean;
+}
+
+export interface TourStep {
+  step_id: string;
+  anchor_id: string;
+  narrative: string;
+  citation_memory_ids?: string[];
+}
+
+export interface TourPlan {
+  tour_id: string;
+  steps: TourStep[];
+  grounded?: boolean;
+}
+
+export interface VoiceTurnRequest {
+  conversation_id: string;
+  transcript: string;
+  store_id?: string;
+  anchor_id?: string | null;
+  role?: ExperienceRole;
+  requester_id: string;
+}
+
+export interface VoiceTurnResponse {
+  turn_id: string;
+  transcript: string;
+  response_text: string;
+  citations?: string[];
+  audio_ref?: string | null;
+  proposal?: MemoryProposal | null;
+  grounded?: boolean;
+}
+

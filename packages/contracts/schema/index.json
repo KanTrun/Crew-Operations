@@ -41,5 +41,14 @@
   "HorizonItem": "packages/contracts/schema/HorizonItem.json",
   "DataQualityNotice": "packages/contracts/schema/DataQualityNotice.json",
   "LivingCafeSnapshot": "packages/contracts/schema/LivingCafeSnapshot.json",
+  "MemoryQuery": "packages/contracts/schema/MemoryQuery.json",
+  "MemoryProposal": "packages/contracts/schema/MemoryProposal.json",
+  "MemoryConsentRequest": "packages/contracts/schema/MemoryConsentRequest.json",
+  "MemoryAuditEntry": "packages/contracts/schema/MemoryAuditEntry.json",
+  "GroundedAnswer": "packages/contracts/schema/GroundedAnswer.json",
+  "TourStep": "packages/contracts/schema/TourStep.json",
+  "TourPlan": "packages/contracts/schema/TourPlan.json",
+  "VoiceTurnRequest": "packages/contracts/schema/VoiceTurnRequest.json",
+  "VoiceTurnResponse": "packages/contracts/schema/VoiceTurnResponse.json",
   "CatchmentPriceSurveyV2": "packages/contracts/schema/CatchmentPriceSurveyV2.json"
 }

@@ -72,6 +72,18 @@ from ca_contracts.ops_predict import (
     TwinScenario,
     TwinScenarioType,
 )
+from ca_contracts.spatial_memory import (
+    AnchorQuery,
+    GroundedAnswer,
+    MemoryAuditEntry,
+    MemoryConsentRequest,
+    MemoryProposal,
+    MemoryQuery,
+    TourPlan,
+    TourStep,
+    VoiceTurnRequest,
+    VoiceTurnResponse,
+)
 from ca_contracts.trend_item import TrendItem
 from ca_contracts.virtual_staff import (
     VirtualSimulation,
@@ -964,6 +976,16 @@ CONTRACTS = {
     "HorizonItem": HorizonItem,
     "DataQualityNotice": DataQualityNotice,
     "LivingCafeSnapshot": LivingCafeSnapshot,
+    # ── HỒN QUÁN Spatial Memory (Phase 05) ──
+    "MemoryQuery": MemoryQuery,
+    "MemoryProposal": MemoryProposal,
+    "MemoryConsentRequest": MemoryConsentRequest,
+    "MemoryAuditEntry": MemoryAuditEntry,
+    "GroundedAnswer": GroundedAnswer,
+    "TourStep": TourStep,
+    "TourPlan": TourPlan,
+    "VoiceTurnRequest": VoiceTurnRequest,
+    "VoiceTurnResponse": VoiceTurnResponse,
 }
 
 __all__ = [
@@ -1021,5 +1043,15 @@ __all__ = [
     "LivingCafeSnapshot",
     "experience_capabilities_for_role",
     "experience_role_can",
+    "AnchorQuery",
+    "MemoryQuery",
+    "MemoryProposal",
+    "MemoryConsentRequest",
+    "MemoryAuditEntry",
+    "GroundedAnswer",
+    "TourStep",
+    "TourPlan",
+    "VoiceTurnRequest",
+    "VoiceTurnResponse",
 ]
 

@@ -1,0 +1,59 @@
+{
+  "description": "Trả lời grounded: citations + optional proposal. Không bao giờ bịa.",
+  "properties": {
+    "answer_id": {
+      "minLength": 1,
+      "title": "Answer Id",
+      "type": "string"
+    },
+    "answer_text": {
+      "minLength": 1,
+      "title": "Answer Text",
+      "type": "string"
+    },
+    "citations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Citations",
+      "type": "array"
+    },
+    "memory_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Memory Ids",
+      "type": "array"
+    },
+    "proposal_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Proposal Id"
+    },
+    "unsupported_claims": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Unsupported Claims",
+      "type": "array"
+    },
+    "grounded": {
+      "default": true,
+      "title": "Grounded",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "answer_id",
+    "answer_text"
+  ],
+  "title": "GroundedAnswer",
+  "type": "object"
+}

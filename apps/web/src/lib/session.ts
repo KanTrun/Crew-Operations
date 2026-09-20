@@ -70,6 +70,8 @@ const STAFF_ACCESS = new Set([
   "/them",
   "/contracts",
   "/chat",
+  // Grand AI Experience — HỒN QUÁN Spatial Memory mở cho mọi vai trò đã đăng nhập
+  "/quanverse/spatial-memory",
 ]);
 const MANAGER_ONLY = new Set([
   "/lich-tuan",

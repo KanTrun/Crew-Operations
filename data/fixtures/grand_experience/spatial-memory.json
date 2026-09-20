@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "schema": "grand_experience_spatial_memory_v1",
+    "note": "Fixture replay Spatial Memory — không chứa dữ liệu khách thật, không audio.",
+    "labels": ["mo_phong_fixture", "replay"]
+  },
+  "snapshot_hash": "snap_20260918_spatial_001",
+  "memories": [
+    {
+      "memory_id": "mem_bar_01",
+      "anchor_id": "bar",
+      "owner_scope": "staff_quan",
+      "content": "Khách quen thích ít ngọt và nguyên chất trà",
+      "consent_status": "granted",
+      "visibility": "staff",
+      "status": "confirmed",
+      "retention_until": null,
+      "created_by": "nv_lan"
+    },
+    {
+      "memory_id": "mem_blender_01",
+      "anchor_id": "blender-02",
+      "owner_scope": "staff_quan",
+      "content": "Máy xay 02 từng mất điện cục bộ sáng thứ 6",
+      "consent_status": "granted",
+      "visibility": "staff",
+      "status": "confirmed",
+      "retention_until": null,
+      "created_by": "nv_quan"
+    },
+    {
+      "memory_id": "mem_window_01",
+      "anchor_id": "window_table",
+      "owner_scope": "customer_psid_fixture",
+      "content": "Khách thích chỗ cửa sổ vì yên tĩnh",
+      "consent_status": "granted",
+      "visibility": "private",
+      "status": "confirmed",
+      "retention_until": "2026-12-31T00:00:00+07:00",
+      "created_by": "nv_lan"
+    },
+    {
+      "memory_id": "mem_bar_draft_01",
+      "anchor_id": "bar",
+      "owner_scope": "staff_quan",
+      "content": "Suy đoán: khách đoàn cuối tuần cần 2 người pha chế (chờ xác nhận)",
+      "consent_status": "required",
+      "visibility": "staff",
+      "status": "draft",
+      "retention_until": null,
+      "created_by": "system"
+    }
+  ],
+  "audit": [
+    {"memory_id": "mem_bar_01", "action": "confirm", "actor_id": "nv_lan", "reason": "manager accepted"},
+    {"memory_id": "mem_window_01", "action": "consent_grant", "actor_id": "kh_psid_1", "reason": "customer agreed"}
+  ],
+  "tour_route": [
+    ["entrance", "Cửa vào — nơi đón khách đầu tiên"],
+    ["bar", "Quầy pha chế — trái tim đồ uống"],
+    ["espresso-machine-01", "Máy pha cà phê chính"]
+  ]
+}

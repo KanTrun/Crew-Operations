@@ -85,6 +85,7 @@ except ImportError:
 from ca_api.interfaces.http.reservations import router as reservations_router
 from ca_api.interfaces.http.shift_rescue import router as shift_rescue_router
 from ca_api.interfaces.http.skills import router as skills_router
+from ca_api.interfaces.http.spatial_memory import router as spatial_memory_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
 from ca_api.interfaces.http.trends import router as trends_router
@@ -261,6 +262,7 @@ app.include_router(ai_learning_router)
 app.include_router(chat_router)
 app.include_router(reservations_router)
 app.include_router(shift_rescue_router)
+app.include_router(spatial_memory_router)
 app.include_router(skills_router)
 
 

@@ -85,6 +85,16 @@ def test_contracts_registered() -> None:
         "HorizonItem",
         "DataQualityNotice",
         "LivingCafeSnapshot",
+        # HỒN QUÁN Spatial Memory (Phase 05)
+        "MemoryQuery",
+        "MemoryProposal",
+        "MemoryConsentRequest",
+        "MemoryAuditEntry",
+        "GroundedAnswer",
+        "TourStep",
+        "TourPlan",
+        "VoiceTurnRequest",
+        "VoiceTurnResponse",
     }
 
 

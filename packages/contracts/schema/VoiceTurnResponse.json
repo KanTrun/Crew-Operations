@@ -1,0 +1,131 @@
+{
+  "$defs": {
+    "MemoryProposal": {
+      "description": "Đề xuất tạo memory từ text/voice — chưa lưu confirmed.",
+      "properties": {
+        "proposal_id": {
+          "minLength": 1,
+          "title": "Proposal Id",
+          "type": "string"
+        },
+        "anchor_id": {
+          "minLength": 1,
+          "title": "Anchor Id",
+          "type": "string"
+        },
+        "store_id": {
+          "default": "quan_01",
+          "title": "Store Id",
+          "type": "string"
+        },
+        "content": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        },
+        "owner_scope": {
+          "minLength": 1,
+          "title": "Owner Scope",
+          "type": "string"
+        },
+        "visibility": {
+          "default": "staff",
+          "enum": [
+            "private",
+            "staff",
+            "manager",
+            "public"
+          ],
+          "title": "Visibility",
+          "type": "string"
+        },
+        "proposed_by": {
+          "minLength": 1,
+          "title": "Proposed By",
+          "type": "string"
+        },
+        "source_event_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Event Ids",
+          "type": "array"
+        },
+        "snapshot_hash": {
+          "minLength": 8,
+          "title": "Snapshot Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "proposal_id",
+        "anchor_id",
+        "content",
+        "owner_scope",
+        "proposed_by",
+        "snapshot_hash"
+      ],
+      "title": "MemoryProposal",
+      "type": "object"
+    }
+  },
+  "description": "Kết quả voice turn — transcript, response, citations, optional proposal.",
+  "properties": {
+    "turn_id": {
+      "minLength": 1,
+      "title": "Turn Id",
+      "type": "string"
+    },
+    "transcript": {
+      "title": "Transcript",
+      "type": "string"
+    },
+    "response_text": {
+      "title": "Response Text",
+      "type": "string"
+    },
+    "citations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Citations",
+      "type": "array"
+    },
+    "audio_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Audio Ref"
+    },
+    "proposal": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MemoryProposal"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "grounded": {
+      "default": true,
+      "title": "Grounded",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "turn_id",
+    "transcript",
+    "response_text"
+  ],
+  "title": "VoiceTurnResponse",
+  "type": "object"
+}
