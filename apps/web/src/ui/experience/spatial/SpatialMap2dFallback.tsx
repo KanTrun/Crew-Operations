@@ -58,9 +58,16 @@ export default function SpatialMap2dFallback({
               key={a.anchor_id}
               transform={`translate(${px} ${py})`}
               onClick={() => onSelect(a.anchor_id)}
-              className={`nq-map2d__anchor${selected ? " is-selected" : ""}`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(a.anchor_id);
+                }
+              }}
+              tabIndex={0}
               role="button"
               aria-label={a.label}
+              className={`nq-map2d__anchor${selected ? " is-selected" : ""}`}
             >
               <circle r="26" fill={selected ? "var(--nq-copper)" : "var(--nq-surface-hi)"} stroke="var(--nq-copper)" strokeWidth="2" />
               <text y="0" textAnchor="middle" dominantBaseline="central" fill="currentColor">

@@ -66,6 +66,34 @@ Người phê duyệt (lan / hung)
 
 ---
 
+## Grand AI Experience Portfolio (replay demo)
+
+Bên cạnh màn hình vận hành, NHỊP QUÁN có bề mặt **trải nghiệm AI** tại
+`/quanverse` (routed riêng, đọc dữ liệu qua adapter — không import DB internals):
+
+| Ý tưởng | Route | Nguyên tắc |
+|---|---|---|
+| War Room Digital Twin | `/quanverse/war-room` | Mô phỏng “nếu… thì…” tất định + baseline ≥2 option; proposal chờ duyệt |
+| AI Shift Rescue | `/quanverse/shift-rescue` | Vắng đột xuất → candidate an toàn theo C01-C06; không broadcast |
+| Quán tự viết luật | `/quanverse/rules` | Decision lặp lại ≥3 → shadow test → playbook 8 bước; không tự kích hoạt |
+| HỒN QUÁN Spatial Memory | `/quanverse/spatial-memory` | Ký ức gắn anchor: consent, retention, citations grounded, voice/replay |
+| QUÁNVERSE Living Cafe OS | `/quanverse` | Living map theo 4 vai trò (server-side projection), mode/flavor/AR-lite |
+
+**Triết lý chung:** LLM chỉ lo lời; mọi số/recommendation/scoring là
+deterministic; mọi mutation là proposal → consent/confirm → audit; 2D là
+canonical (WebGL/voice/AR là progressive). Chạy demo replay:
+
+```powershell
+make contracts
+$env:CA_AGENT_MODE='replay'; python scripts/demo_grand_experience.py
+# UI: docs/runbook-grand-ai-experience.md (6 bước 5 phút)
+```
+
+Xem thêm: `docs/architecture-grand-ai-experience.md`,
+`docs/adr/ADR-016|017|018-*.md`, plan `plans/260920-1442-*`.
+
+---
+
 ## Cấu trúc thư mục
 
 ```text
