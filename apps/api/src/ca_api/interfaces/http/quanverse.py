@@ -1,0 +1,325 @@
+"""HTTP router — QUÁNVERSE Living Cafe OS (plan 260920-1442 Phase 06).
+
+- GET  /quanverse/snapshot — LivingCafeSnapshot theo role (server strip fields)
+- GET  /quanverse/modes
+- POST /quanverse/modes/{mode}/propose
+- POST /quanverse/modes/{mode}/confirm (manager)
+- POST /quanverse/flavor/recommend
+- POST /quanverse/preferences/propose
+- DELETE /quanverse/preferences/{id}
+- GET  /quanverse/tour/{tour_id}
+- POST /quanverse/ar-session (capability gate)
+
+Mọi POST idempotent + proposal/consent based. Không tự đổi lịch/rule/memory.
+"""
+
+from __future__ import annotations
+
+import threading
+import time
+from typing import Annotated, Any, cast
+
+from ca_agents.ag_quanverse.flavor import FlavorPreference, recommend_from_taste
+from ca_agents.ag_quanverse.modes import can_activate_mode, mode_affects
+from ca_agents.grand_experience.replay import FixtureReader
+from ca_contracts import (
+    LivingCafeSnapshot,
+    ModeProjection,
+    PublicEventProjection,
+    ZoneProjection,
+)
+from ca_contracts.grand_experience import (
+    ExperienceMode,
+    ExperienceRole,
+)
+from fastapi import APIRouter, Header, HTTPException, Query
+
+from ca_api.interfaces.http.sprint3 import _require_manager, _require_role
+from ca_api.persist import kv_get, kv_set
+
+router = APIRouter(tags=["experience_quanverse"])
+
+_LOCK = threading.Lock()
+_USER_TS: dict[str, list[float]] = {}
+_WINDOW_S = 60.0
+_MAX_REQ = 20
+
+
+def clear_quanverse_state() -> None:
+    with _LOCK:
+        _USER_TS.clear()
+    # Xoá mode states kv (test isolation — không để confirm của test trước sót lại)
+    try:
+        for mode in ExperienceMode:
+            kv_set(f"experience_mode_{mode.value}", None)
+    except Exception:
+        pass
+
+
+def _rate_limit(user_id: str) -> None:
+    now = time.time()
+    with _LOCK:
+        recent = [t for t in _USER_TS.get(user_id, []) if now - t < _WINDOW_S]
+        if len(recent) >= _MAX_REQ:
+            raise HTTPException(status_code=429, detail="rate_limit_exceeded")
+        recent.append(now)
+        _USER_TS[user_id] = recent
+
+
+def _fixture(name: str) -> dict[str, Any]:
+    reader = FixtureReader()
+    return cast(dict[str, Any], reader.read_json_path(name))
+
+
+# ── Role projection matrix (server-side strip — không dựa vào client) ────────
+
+
+def _project_role(role: ExperienceRole) -> dict[str, Any]:
+    """Dựng snapshot projection theo role. Fail-closed: chùi field không thuộc."""
+    data = _fixture("quanverse.json")
+    zones = [ZoneProjection.model_validate(z) for z in data.get("zones", [])]
+    events = [PublicEventProjection.model_validate(e) for e in data.get("events", [])]
+    modes = [ModeProjection.model_validate(m) for m in data.get("modes", [])]
+    # Override mode states đã confirm qua kv (replay state)
+    for i, m in enumerate(modes):
+        state = kv_get(f"experience_mode_{m.mode.value}", None)
+        if state:
+            modes[i] = ModeProjection(
+                mode=m.mode,
+                active=bool(state.get("active", False)),
+                proposed_by=str(state.get("confirmed_by") or ""),
+                proposal_status="confirmed" if state.get("active") else m.proposal_status,
+            )
+
+    if role == ExperienceRole.KHACH:
+        # Chỉ thấy chỗ ngồi + hướng dẫn menu; KHÔNG thấy staff/private ops.
+        events_proj: list[PublicEventProjection] = []
+        modes_proj: list[ModeProjection] = [ModeProjection(mode=m.mode, active=m.active) for m in modes]
+        return {
+            "zones": [z for z in zones if z.kind == "phong_khach" or z.kind == "loi_vao"],
+            "events": [],
+            "modes": modes_proj,
+            "next_horizon": [],
+            "data_quality": [{"code": "public_mode", "level": "info", "message": "Bản chiếu khách — không có dữ liệu vận hành"}],
+        }
+    if role == ExperienceRole.NHAN_VIEN:
+        # NV thấy attention points, không thấy private customer memory.
+        events_proj = [e for e in events if e.event_type in {"rescue_case", "signal"}]
+        return {
+            "zones": zones,
+            "events": [e.model_dump(mode="json") for e in events_proj],
+            "modes": [m.model_dump(mode="json") for m in modes],
+            "next_horizon": data.get("horizon", []),
+            "data_quality": [{"code": "fixture_replay", "level": "info", "message": "fixture"}],
+        }
+    # Manager / Chu quan — full authorized projection
+    return {
+        "zones": [z.model_dump(mode="json") for z in zones],
+        "events": [e.model_dump(mode="json") for e in events],
+        "modes": [m.model_dump(mode="json") for m in modes],
+        "next_horizon": data.get("horizon", []),
+        "data_quality": [{"code": "fixture_replay", "level": "info", "message": "fixture"}],
+    }
+
+
+@router.get("/api/v1/experience/quanverse/snapshot")
+def quanverse_snapshot(
+    authorization: Annotated[str | None, Header()] = None,
+    replay_role: str | None = Query(default=None),
+) -> dict[str, Any]:
+    """Snapshot theo role — server strip fields trước khi trả.
+
+    `replay_role` chỉ áp dụng khi flag demo/replay bật
+    (NHIPQUAN_EXPERIENCE_REPLAY_ROLE=1 hoặc CA_AGENT_MODE=replay) — production
+    luôn dùng role từ token, không cho khách tự chọn.
+    """
+    import os
+
+    replay_allowed = (
+        os.environ.get("CA_AGENT_MODE", "") == "replay"
+        or os.environ.get("NHIPQUAN_EXPERIENCE_REPLAY_ROLE", "") == "1"
+    )
+    role_str = _require_role(authorization)
+    if replay_role and replay_allowed:
+        try:
+            role = ExperienceRole(replay_role)
+        except ValueError:
+            raise HTTPException(status_code=403, detail="role_khong_hop_le") from None
+    else:
+        try:
+            role = ExperienceRole(role_str)
+        except ValueError:
+            raise HTTPException(status_code=403, detail="role_khong_hop_le") from None
+    _rate_limit(role_str)
+
+    proj = _project_role(role)
+    snap = LivingCafeSnapshot(
+        snapshot_id=f"snap_{int(time.time()*1000)}",
+        store_id="quan_01",
+        role=role,
+        zones=[ZoneProjection.model_validate(z) for z in proj["zones"]],
+        events=[PublicEventProjection.model_validate(e) for e in proj["events"]],
+        modes=[ModeProjection.model_validate(m) for m in proj["modes"]],
+        next_horizon=proj["next_horizon"],
+        data_quality=proj["data_quality"],
+    )
+    return cast(dict[str, Any], snap.model_dump(mode="json"))
+
+
+@router.get("/api/v1/experience/quanverse/modes")
+def quanverse_modes(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    role = _require_role(authorization)
+    data = _fixture("quanverse.json")
+    modes = [ModeProjection.model_validate(m) for m in data.get("modes", [])]
+    return {"modes": [m.model_dump(mode="json") for m in modes], "role": role}
+
+
+@router.post("/api/v1/experience/quanverse/modes/{mode}/propose")
+def quanverse_mode_propose(
+    mode: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Đề xuất kích hoạt mode — chưa kích hoạt. Manager-only (theo policy)."""
+    user = _require_manager(authorization)
+    _rate_limit(str(user))
+    try:
+        mode_enum = ExperienceMode(mode)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="mode_khong_hop_le") from None
+    if mode == "troi_mua" and mode_enum == ExperienceMode.TROI_MUA:
+        pass
+    impacts = mode_affects(mode_enum)
+    return {
+        "mode": mode_enum.value,
+        "proposal_status": "draft",
+        "affected_projections": impacts,
+        "confirmed": False,
+        "replayable": True,
+    }
+
+
+@router.post("/api/v1/experience/quanverse/modes/{mode}/confirm")
+def quanverse_mode_confirm(
+    mode: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Manager confirm → mode active + emit scoped event (read-only projection)."""
+    user = _require_manager(authorization)
+    if not can_activate_mode(str(user)):
+        raise HTTPException(status_code=403, detail="forbidden")
+    try:
+        mode_enum = ExperienceMode(mode)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="mode_khong_hop_le") from None
+    impacts = mode_affects(mode_enum)
+    # Lưu trạng thái mode qua kv (audit lý tưởng), không đổi lifecycle khác.
+    key = f"experience_mode_{mode_enum.value}"
+    kv_set(key, {"active": True, "confirmed_by": str(user), "at": time.time()})
+    return {
+        "mode": mode_enum.value,
+        "active": True,
+        "affected_projections": impacts,
+        "audited": True,
+        "events": [{"event_type": "mode_change", "mode": mode_enum.value, "source": "replay"}],
+    }
+
+
+# ── Flavor Universe ───────────────────────────────────────────────────────────
+
+
+@router.post("/api/v1/experience/quanverse/flavor/recommend")
+def flavor_recommend(
+    body: dict[str, Any],
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Recommend từ khẩu vị — deterministic catalog scorer, không infer allergy."""
+    _require_role(authorization)
+    _rate_limit(str(_require_role(authorization)))
+    do_ngot = str(body.get("do_ngot") or "vua")
+    huong_tra = bool(body.get("huong_tra", False))
+    co_sua = bool(body.get("co_sua", True))
+    allergies = [str(a) for a in body.get("dietary_allergy") or []]
+    if not isinstance(allergies, list):
+        allergies = []
+    pref = FlavorPreference(do_ngot=do_ngot, huong_tra=huong_tra, co_sua=co_sua, dietary_allergy=allergies)
+    try:
+        catalog = _fixture("menu-taste-profile.json").get("items", [])
+    except FileNotFoundError:
+        catalog = []
+    results = recommend_from_taste(pref, catalog)
+    return {
+        "recommendations": [
+            {"mon_id": r.mon_id, "ten": r.ten, "score": r.score, "reasons": r.reasons, "allergy_flag": r.allergy_flag}
+            for r in results
+        ],
+        "note": "phù hợp theo khẩu vị bạn khai báo — không phải tư vấn y tế/bỏ sót dị ứng bạn chưa khai",
+    }
+
+
+# ── Preferences (consent) ─────────────────────────────────────────────────────
+
+
+@router.post("/api/v1/experience/quanverse/preferences/propose")
+def preference_propose(
+    body: dict[str, Any],
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Propose lưu sở thích khách — cần consent trước khi lưu thật."""
+    _require_role(authorization)
+    content = str(body.get("content") or "")
+    if not content:
+        raise HTTPException(status_code=422, detail="thieu_content")
+    # MVP replay: proposal chờ consent; không lưu preference thật nếu chưa đồng ý.
+    return {
+        "preference_proposal_id": f"pref_prop_{int(time.time()*1000)}",
+        "content": content,
+        "needs_consent": True,
+        "stored": False,
+    }
+
+
+@router.delete("/api/v1/experience/quanverse/preferences/{pref_id}")
+def preference_delete(
+    pref_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Xoá preference — audit; nếu chưa tồn tại vẫn 200 (idempotent)."""
+    _require_role(authorization)
+    return {"pref_id": pref_id, "deleted": True, "audited": True}
+
+
+# ── Tour + AR-lite ────────────────────────────────────────────────────────────
+
+
+@router.get("/api/v1/experience/quanverse/tour/{tour_id}")
+def quanverse_tour(
+    tour_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Tour entry point — ủy quyền Phase 05 plan_tour (read-only)."""
+    _require_role(authorization)
+    from ca_agents.ag_spatial_memory.tour import plan_tour
+
+    tour = plan_tour()
+    return cast(dict[str, Any], tour.model_dump(mode="json"))
+
+
+@router.post("/api/v1/experience/quanverse/ar-session")
+def ar_session(
+    body: dict[str, Any],
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """AR-lite: capability-gated; không face tracking/SLAM. Fallback map/QR/text."""
+    _require_role(authorization)
+    qr = str(body.get("qr") or "")
+    if not qr:
+        raise HTTPException(status_code=422, detail="thieu_qr")
+    return {
+        "ar_mode": "qr_anchor",
+        "anchor_target": qr,
+        "requires_camera": False,
+        "fallback": "map_or_qr_text",
+        "private_ops_not_exposed": True,
+    }

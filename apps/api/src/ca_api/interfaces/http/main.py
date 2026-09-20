@@ -71,6 +71,7 @@ from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.ops_explain import router as ops_explain_router
 from ca_api.interfaces.http.ops_predict import router as ops_predict_router
 from ca_api.interfaces.http.pos import router as pos_router
+from ca_api.interfaces.http.quanverse import router as quanverse_router
 
 try:
     from ca_api.interfaces.http.pricing_radar import (
@@ -246,6 +247,7 @@ app.include_router(channels_router)
 app.include_router(copilot_router)
 app.include_router(copilot_voice_router)
 app.include_router(pos_router)
+app.include_router(quanverse_router)
 app.include_router(meeting_router)
 app.include_router(ops_explain_router)
 app.include_router(ops_predict_router)

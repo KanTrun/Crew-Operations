@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "schema": "grand_experience_menu_taste_v1",
+    "note": "Catalog approved (fixture) cho Flavor Universe — không phải menu thật.",
+    "labels": ["mo_phong_fixture", "replay"]
+  },
+  "items": [
+    {"id": "tr_sua", "ten": "Trà sữa trân châu", "do_ngot": "ngot", "co_sua": true, "huong_tra": true, "nguyen_lieu": ["trà", "sữa", "trân châu"]},
+    {"id": "tra_dao", "ten": "Trà đào", "do_ngot": "it", "co_sua": false, "huong_tra": true, "nguyen_lieu": ["trà", "đào"]},
+    {"id": "cafe_sua", "ten": "Cà phê sữa đá", "do_ngot": "vua", "co_sua": true, "huong_tra": false, "nguyen_lieu": ["cà phê", "sữa"]},
+    {"id": "cafe_den", "ten": "Cà phê đen", "do_ngot": "it", "co_sua": false, "huong_tra": false, "nguyen_lieu": ["cà phê"]},
+    {"id": "matcha", "ten": "Matcha latte", "do_ngot": "vua", "co_sua": true, "huong_tra": true, "nguyen_lieu": ["matcha", "sữa"]}
+  ]
+}

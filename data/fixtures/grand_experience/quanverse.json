@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "schema": "grand_experience_quanverse_v1",
+    "note": "Fixture replay QUANVERSE — bản chiếu vai trò + states, không phải thật.",
+    "labels": ["mo_phong_fixture", "replay"]
+  },
+  "snapshot_hash": "snap_20260918_quanverse_001",
+  "zones": [
+    {"zone_id": "bar", "label": "Quầy pha chế", "kind": "quay", "active": true, "load_signal": 0.6},
+    {"zone_id": "cashier", "label": "Thu ngân", "kind": "quay", "active": true, "load_signal": 0.4},
+    {"zone_id": "window_table", "label": "Bàn cửa sổ", "kind": "phong_khach", "active": true, "load_signal": 0.3},
+    {"zone_id": "entrance", "label": "Cửa vào", "kind": "loi_vao", "active": true, "load_signal": 0.1}
+  ],
+  "events": [
+    {"event_id": "qv_ev_1", "event_type": "rescue_case", "status": "candidates_ready", "occurred_at": "2026-09-18T08:10:00+07:00", "source": "replay", "summary": "Ca tối T7 cần người bù"},
+    {"event_id": "qv_ev_2", "event_type": "mode_proposal", "status": "proposed", "occurred_at": "2026-09-18T09:00:00+07:00", "source": "replay", "summary": "Đề xuất bật chế độ giờ cao điểm"}
+  ],
+  "modes": [
+    {"mode": "gio_cao_diem", "active": false, "proposed_by": null, "proposal_status": null},
+    {"mode": "troi_mua", "active": true, "proposed_by": "lan", "proposal_status": "confirmed"},
+    {"mode": "quan_yen_tinh", "active": false, "proposed_by": null, "proposal_status": null}
+  ],
+  "horizon": [
+    {"item_id": "hz_1", "kind": "event", "title": "Dự kiến khách đoàn 11:30", "starts_at": "2026-09-19T11:30:00+07:00", "source": "replay"},
+    {"item_id": "hz_2", "kind": "mode_proposal", "title": "Chế độ khách đoàn đang chờ duyệt", "starts_at": "2026-09-19T11:00:00+07:00", "source": "replay"}
+  ]
+}
