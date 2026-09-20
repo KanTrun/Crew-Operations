@@ -1,0 +1,62 @@
+{
+  "description": "Ứng viên thay ca hợp lệ/không hợp lệ kèm lý do từng ràng buộc.",
+  "properties": {
+    "candidate_id": {
+      "minLength": 1,
+      "title": "Candidate Id",
+      "type": "string"
+    },
+    "nv_id": {
+      "minLength": 1,
+      "title": "Nv Id",
+      "type": "string"
+    },
+    "nv_ten": {
+      "default": "",
+      "title": "Nv Ten",
+      "type": "string"
+    },
+    "safe": {
+      "default": true,
+      "title": "Safe",
+      "type": "boolean"
+    },
+    "reason_passes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reason Passes",
+      "type": "array"
+    },
+    "reason_blocks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reason Blocks",
+      "type": "array"
+    },
+    "fairness_delta": {
+      "default": 0.0,
+      "title": "Fairness Delta",
+      "type": "number"
+    },
+    "added_hours": {
+      "default": 0.0,
+      "title": "Added Hours",
+      "type": "number"
+    },
+    "skill_coverage": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "title": "Skill Coverage",
+      "type": "object"
+    }
+  },
+  "required": [
+    "candidate_id",
+    "nv_id"
+  ],
+  "title": "RescueCandidate",
+  "type": "object"
+}

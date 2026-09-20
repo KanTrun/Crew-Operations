@@ -66,6 +66,25 @@ def test_contracts_registered() -> None:
         "AIEvaluation",
         "AIRuleProposal",
         "TableReservation",
+        # Grand AI Experience Portfolio (plan 260920-1442) — chỉ BaseModel
+        "SpatialAnchor",
+        "ExperienceEvent",
+        "VoiceTurn",
+        "ExperienceMemory",
+        "ExperienceActionProposal",
+        "WarRoomScenario",
+        "WarRoomOption",
+        "WarRoomComparison",
+        "RuleCandidate",
+        "ShadowTestResult",
+        "RescueCandidate",
+        "RescueCase",
+        "ZoneProjection",
+        "PublicEventProjection",
+        "ModeProjection",
+        "HorizonItem",
+        "DataQualityNotice",
+        "LivingCafeSnapshot",
     }
 
 

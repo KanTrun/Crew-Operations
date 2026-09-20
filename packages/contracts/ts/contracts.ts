@@ -22,7 +22,7 @@ export interface Ca {
 
 export interface LichTuan {
   tuan_iso: string;
-  trang_thai?: "nhap" | "dang_giai" | "cho_duyet" | "da_cong_bo" | "da_dong";
+  trang_thai?: "may_sinh" | "nhap" | "dang_giai" | "cho_duyet" | "da_duyet" | "da_cong_bo" | "da_dong";
   phan_cong?: Record<string, string[]>;
 }
 
@@ -406,5 +406,214 @@ export interface TableReservation {
   cancelled_reason?: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface SpatialAnchor {
+  anchor_id: string;
+  khu_vuc: string;
+  label: string;
+  x: number;
+  y: number;
+  z?: number;
+  kind: string;
+  active?: boolean;
+}
+
+export type ExperienceRole = "khach" | "nhan_vien" | "quan_ly" | "chu_quan";
+
+export interface ExperienceEvent {
+  event_id: string;
+  event_type: string;
+  occurred_at: string;
+  actor_id?: string | null;
+  role?: ExperienceRole | null;
+  anchor_id?: string | null;
+  payload?: Record<string, JsonValue>;
+  evidence_refs?: string[];
+  source: "replay" | "user" | "system" | "agent";
+}
+
+export interface VoiceTurn {
+  turn_id: string;
+  conversation_id: string;
+  transcript: string;
+  response_text?: string;
+  audio_ref?: string | null;
+  intent?: string | null;
+  confidence?: number;
+  proposal_id?: string | null;
+}
+
+export type MemoryConsentStatus = "required" | "granted" | "revoked" | "expired";
+
+export type MemoryStatus = "draft" | "confirmed" | "superseded" | "deleted";
+
+export type MemoryVisibility = "private" | "staff" | "manager" | "public";
+
+export interface ExperienceMemory {
+  memory_id: string;
+  anchor_id?: string | null;
+  owner_scope: string;
+  content: string;
+  source_event_ids?: string[];
+  consent_status?: MemoryConsentStatus;
+  visibility?: MemoryVisibility;
+  status?: MemoryStatus;
+  retention_until?: string | null;
+  created_by?: string;
+}
+
+export type ExperienceProposalStatus = "draft" | "ready" | "confirmed" | "rejected" | "expired";
+
+export interface ExperienceActionProposal {
+  proposal_id: string;
+  action_type: string;
+  status?: ExperienceProposalStatus;
+  snapshot_hash: string;
+  evidence_refs?: string[];
+  deterministic_result?: Record<string, JsonValue>;
+  explanation?: string;
+  requested_by: string;
+  store_id?: string;
+  created_at?: string;
+  expires_at?: string | null;
+}
+
+export type WarRoomScenarioType = "demand_surge" | "add_staff_to_shift" | "remove_staff_from_shift" | "equipment_outage" | "heavy_rain" | "large_group_arrival";
+
+export interface WarRoomScenario {
+  scenario_id: string;
+  loai: WarRoomScenarioType;
+  tham_so?: Record<string, string | number | boolean>;
+}
+
+export interface WarRoomOption {
+  option_id: string;
+  scenario_id: string;
+  input_assumptions?: Record<string, string | number | boolean>;
+  outputs?: Record<string, number>;
+  staffing?: Record<string, number>;
+  load?: Record<string, number>;
+  fairness_impact?: Record<string, number>;
+  estimated_cost?: number | null;
+  estimated_revenue?: number | null;
+  risk?: string;
+  evidence_refs?: string[];
+  stale_data?: boolean;
+  constraint_violations?: string[];
+  labels?: Array<"mo_phong" | "uoc_tinh">;
+}
+
+export interface WarRoomComparison {
+  simulation_id: string;
+  baseline_snapshot_hash: string;
+  baseline?: Record<string, JsonValue>;
+  options?: WarRoomOption[];
+}
+
+export type PositiveRuleStatus = "de_xuat" | "qua_vf_rule" | "du_tap_su" | "hieu_luc" | "tu_choi" | "da_go";
+
+export interface ShadowTestResult {
+  before?: Record<string, number>;
+  after?: Record<string, number>;
+  diffs?: Record<string, number>;
+  hard_constraints_ok?: boolean;
+  fairness_delta?: number;
+  workload_delta?: number;
+  operational_delta?: number;
+  notes?: string[];
+}
+
+export interface RuleCandidate {
+  candidate_id: string;
+  condition: Record<string, string | number | boolean>;
+  effect: Record<string, string | number | boolean>;
+  sentence: string;
+  evidence_refs?: string[];
+  counterexample_refs?: string[];
+  confidence?: number;
+  source_kind: "decision" | "rescue" | "twin" | "episode";
+  playbook_status?: PositiveRuleStatus;
+  shadow_result?: ShadowTestResult | null;
+  rule_version?: string;
+  created_from_snapshot_hash: string;
+}
+
+export interface RescueCandidate {
+  candidate_id: string;
+  nv_id: string;
+  nv_ten?: string;
+  safe?: boolean;
+  reason_passes?: string[];
+  reason_blocks?: string[];
+  fairness_delta?: number;
+  added_hours?: number;
+  skill_coverage?: Record<string, boolean>;
+}
+
+export type RescueCaseStatus = "reported" | "resolving" | "candidates_ready" | "proposed" | "invited" | "responded" | "confirmed" | "expired" | "cancelled";
+
+export interface RescueCase {
+  case_id: string;
+  store_id?: string;
+  status?: RescueCaseStatus;
+  absence_nv_id: string;
+  shift_id: string;
+  reported_by: string;
+  schedule_snapshot_hash: string;
+  candidates?: RescueCandidate[];
+  selected_candidate_id?: string | null;
+}
+
+export interface ZoneProjection {
+  zone_id: string;
+  label: string;
+  kind: string;
+  active?: boolean;
+  load_signal?: number;
+}
+
+export interface PublicEventProjection {
+  event_id: string;
+  event_type: string;
+  status: string;
+  occurred_at: string;
+  source: "replay" | "user" | "system" | "agent";
+  summary?: string;
+}
+
+export type ExperienceMode = "troi_mua" | "gio_cao_diem" | "khach_doan" | "thieu_nhan_su" | "quan_yen_tinh" | "dem_nhac";
+
+export interface ModeProjection {
+  mode: ExperienceMode;
+  active?: boolean;
+  proposed_by?: string | null;
+  proposal_status?: ExperienceProposalStatus | null;
+}
+
+export interface HorizonItem {
+  item_id: string;
+  kind?: "event" | "signal" | "handover" | "mode_proposal";
+  title: string;
+  starts_at: string;
+  source: "replay" | "user" | "system" | "agent";
+}
+
+export interface DataQualityNotice {
+  code: string;
+  level?: "info" | "warning" | "error";
+  message: string;
+}
+
+export interface LivingCafeSnapshot {
+  snapshot_id: string;
+  store_id?: string;
+  generated_at?: string;
+  role: ExperienceRole;
+  zones?: ZoneProjection[];
+  events?: PublicEventProjection[];
+  modes?: ModeProjection[];
+  next_horizon?: HorizonItem[];
+  data_quality?: DataQualityNotice[];
 }
 

@@ -1,0 +1,49 @@
+{
+  "description": "Một mục trong tầm nhìn 15 phút tới.",
+  "properties": {
+    "item_id": {
+      "minLength": 1,
+      "title": "Item Id",
+      "type": "string"
+    },
+    "kind": {
+      "default": "event",
+      "enum": [
+        "event",
+        "signal",
+        "handover",
+        "mode_proposal"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "starts_at": {
+      "format": "date-time",
+      "title": "Starts At",
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "replay",
+        "user",
+        "system",
+        "agent"
+      ],
+      "title": "Source",
+      "type": "string"
+    }
+  },
+  "required": [
+    "item_id",
+    "title",
+    "starts_at",
+    "source"
+  ],
+  "title": "HorizonItem",
+  "type": "object"
+}

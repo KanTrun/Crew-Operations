@@ -1,0 +1,76 @@
+{
+  "description": "Một lượt hội thoại voice/text — transcript + phản hồi + intent + proposal.",
+  "properties": {
+    "turn_id": {
+      "minLength": 1,
+      "title": "Turn Id",
+      "type": "string"
+    },
+    "conversation_id": {
+      "minLength": 1,
+      "title": "Conversation Id",
+      "type": "string"
+    },
+    "transcript": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Transcript",
+      "type": "string"
+    },
+    "response_text": {
+      "default": "",
+      "title": "Response Text",
+      "type": "string"
+    },
+    "audio_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Audio Ref"
+    },
+    "intent": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Intent"
+    },
+    "confidence": {
+      "default": 0.0,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "proposal_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Proposal Id"
+    }
+  },
+  "required": [
+    "turn_id",
+    "conversation_id",
+    "transcript"
+  ],
+  "title": "VoiceTurn",
+  "type": "object"
+}

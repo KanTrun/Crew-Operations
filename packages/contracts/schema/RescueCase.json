@@ -1,0 +1,147 @@
+{
+  "$defs": {
+    "RescueCandidate": {
+      "description": "Ứng viên thay ca hợp lệ/không hợp lệ kèm lý do từng ràng buộc.",
+      "properties": {
+        "candidate_id": {
+          "minLength": 1,
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "nv_id": {
+          "minLength": 1,
+          "title": "Nv Id",
+          "type": "string"
+        },
+        "nv_ten": {
+          "default": "",
+          "title": "Nv Ten",
+          "type": "string"
+        },
+        "safe": {
+          "default": true,
+          "title": "Safe",
+          "type": "boolean"
+        },
+        "reason_passes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Passes",
+          "type": "array"
+        },
+        "reason_blocks": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Blocks",
+          "type": "array"
+        },
+        "fairness_delta": {
+          "default": 0.0,
+          "title": "Fairness Delta",
+          "type": "number"
+        },
+        "added_hours": {
+          "default": 0.0,
+          "title": "Added Hours",
+          "type": "number"
+        },
+        "skill_coverage": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Skill Coverage",
+          "type": "object"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "nv_id"
+      ],
+      "title": "RescueCandidate",
+      "type": "object"
+    },
+    "RescueCaseStatus": {
+      "description": "State machine của một ca cứu hộ thiếu người.",
+      "enum": [
+        "reported",
+        "resolving",
+        "candidates_ready",
+        "proposed",
+        "invited",
+        "responded",
+        "confirmed",
+        "expired",
+        "cancelled"
+      ],
+      "title": "RescueCaseStatus",
+      "type": "string"
+    }
+  },
+  "description": "Một ca cứu hộ hoàn chỉnh (state machine).",
+  "properties": {
+    "case_id": {
+      "minLength": 1,
+      "title": "Case Id",
+      "type": "string"
+    },
+    "store_id": {
+      "default": "quan_01",
+      "title": "Store Id",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/RescueCaseStatus",
+      "default": "reported"
+    },
+    "absence_nv_id": {
+      "minLength": 1,
+      "title": "Absence Nv Id",
+      "type": "string"
+    },
+    "shift_id": {
+      "minLength": 1,
+      "title": "Shift Id",
+      "type": "string"
+    },
+    "reported_by": {
+      "minLength": 1,
+      "title": "Reported By",
+      "type": "string"
+    },
+    "schedule_snapshot_hash": {
+      "minLength": 8,
+      "title": "Schedule Snapshot Hash",
+      "type": "string"
+    },
+    "candidates": {
+      "items": {
+        "$ref": "#/$defs/RescueCandidate"
+      },
+      "title": "Candidates",
+      "type": "array"
+    },
+    "selected_candidate_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Selected Candidate Id"
+    }
+  },
+  "required": [
+    "case_id",
+    "absence_nv_id",
+    "shift_id",
+    "reported_by",
+    "schedule_snapshot_hash"
+  ],
+  "title": "RescueCase",
+  "type": "object"
+}

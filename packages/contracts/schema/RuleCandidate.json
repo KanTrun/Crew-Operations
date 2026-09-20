@@ -1,0 +1,191 @@
+{
+  "$defs": {
+    "PositiveRuleStatus": {
+      "description": "Trạng thái vòng đời luật tích cực (plan mục 3.2).",
+      "enum": [
+        "de_xuat",
+        "qua_vf_rule",
+        "du_tap_su",
+        "hieu_luc",
+        "tu_choi",
+        "da_go"
+      ],
+      "title": "PositiveRuleStatus",
+      "type": "string"
+    },
+    "ShadowTestResult": {
+      "description": "Kết quả shadow test — chỉ đọc, không bao giờ mutation sản xuất.",
+      "properties": {
+        "before": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Before",
+          "type": "object"
+        },
+        "after": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "After",
+          "type": "object"
+        },
+        "diffs": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Diffs",
+          "type": "object"
+        },
+        "hard_constraints_ok": {
+          "default": true,
+          "title": "Hard Constraints Ok",
+          "type": "boolean"
+        },
+        "fairness_delta": {
+          "default": 0.0,
+          "title": "Fairness Delta",
+          "type": "number"
+        },
+        "workload_delta": {
+          "default": 0.0,
+          "title": "Workload Delta",
+          "type": "number"
+        },
+        "operational_delta": {
+          "default": 0.0,
+          "title": "Operational Delta",
+          "type": "number"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        }
+      },
+      "title": "ShadowTestResult",
+      "type": "object"
+    }
+  },
+  "description": "Một luật đề xuất: điều kiện/effect có cấu trúc + câu từ + bằng chứng.",
+  "properties": {
+    "candidate_id": {
+      "minLength": 1,
+      "title": "Candidate Id",
+      "type": "string"
+    },
+    "condition": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          }
+        ]
+      },
+      "title": "Condition",
+      "type": "object"
+    },
+    "effect": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          }
+        ]
+      },
+      "title": "Effect",
+      "type": "object"
+    },
+    "sentence": {
+      "minLength": 1,
+      "title": "Sentence",
+      "type": "string"
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "counterexample_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Counterexample Refs",
+      "type": "array"
+    },
+    "confidence": {
+      "default": 0.0,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "source_kind": {
+      "enum": [
+        "decision",
+        "rescue",
+        "twin",
+        "episode"
+      ],
+      "title": "Source Kind",
+      "type": "string"
+    },
+    "playbook_status": {
+      "$ref": "#/$defs/PositiveRuleStatus",
+      "default": "de_xuat"
+    },
+    "shadow_result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ShadowTestResult"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "rule_version": {
+      "default": "v1",
+      "title": "Rule Version",
+      "type": "string"
+    },
+    "created_from_snapshot_hash": {
+      "minLength": 8,
+      "title": "Created From Snapshot Hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "candidate_id",
+    "condition",
+    "effect",
+    "sentence",
+    "source_kind",
+    "created_from_snapshot_hash"
+  ],
+  "title": "RuleCandidate",
+  "type": "object"
+}

@@ -64,6 +64,7 @@ from ca_api.interfaces.http.channels import router as channels_router
 from ca_api.interfaces.http.chat import router as chat_router
 from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.copilot_voice import router as copilot_voice_router
+from ca_api.interfaces.http.experience import router as experience_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.ops_explain import router as ops_explain_router
@@ -244,6 +245,7 @@ app.include_router(pos_router)
 app.include_router(meeting_router)
 app.include_router(ops_explain_router)
 app.include_router(ops_predict_router)
+app.include_router(experience_router)
 app.include_router(trends_router)
 if pricing_radar_router:
     app.include_router(pricing_radar_router)
