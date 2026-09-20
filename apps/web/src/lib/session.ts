@@ -90,6 +90,7 @@ const MANAGER_ONLY = new Set([
   "/quanverse",
   "/quanverse/war-room",
   "/quanverse/shift-rescue",
+  "/quanverse/rules",
 ]);
 const OWNER_ONLY = new Set(["/menu", "/nguoi"]);
 
