@@ -4,7 +4,7 @@
 
 <img src="./docs/hinh/logo.png" alt="NHỊP QUÁN — Crew Operations" width="150" />
 
-# ☕ NHỊP QUÁN
+# NHỊP QUÁN
 
 ### Hệ điều hành vận hành quán cà phê bằng AI agent
 
@@ -12,9 +12,18 @@
 
 <br/>
 
+<p align="center">
+  <a href="https://nhipquan.duckdns.org/">
+    <img src="https://img.shields.io/badge/🚀_Truy_cập_trực_tiếp-nhipquan.duckdns.org-6F4E37?style=for-the-badge&logo=globe&logoColor=white" alt="Truy cập trực tiếp" />
+  </a>
+</p>
+
+<br/>
+
 [![CI](https://github.com/KanTrun/Crew-Operations/actions/workflows/ci.yml/badge.svg)](https://github.com/KanTrun/Crew-Operations/actions/workflows/ci.yml)
 [![Skills Verify](https://github.com/KanTrun/Crew-Operations/actions/workflows/skills-verify.yml/badge.svg)](https://github.com/KanTrun/Crew-Operations/actions/workflows/skills-verify.yml)
 [![Docker GHCR](https://github.com/KanTrun/Crew-Operations/actions/workflows/docker-ghcr.yml/badge.svg)](https://github.com/KanTrun/Crew-Operations/actions/workflows/docker-ghcr.yml)
+[![Website](https://img.shields.io/website?url=https%3A%2F%2Fnhipquan.duckdns.org%2F&style=for-the-badge&label=Website&color=6F4E37)](https://nhipquan.duckdns.org/)
 
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
@@ -27,12 +36,12 @@
 
 <br/>
 
-[🚀 **Bắt đầu nhanh**](#cai-dat) &nbsp;•&nbsp;
-[🏗 **Kiến trúc**](#gioi-thieu) &nbsp;•&nbsp;
-[🔌 **API**](#api-reference) &nbsp;•&nbsp;
-[🤖 **Agents**](#agents) &nbsp;•&nbsp;
-[🧠 **Skills**](#skills) &nbsp;•&nbsp;
-[📚 **Tài liệu**](#tai-lieu)
+[**Bắt đầu nhanh**](#cai-dat) &nbsp;•&nbsp;
+[**Kiến trúc**](#gioi-thieu) &nbsp;•&nbsp;
+[**API**](#api-reference) &nbsp;•&nbsp;
+[**Agents**](#agents) &nbsp;•&nbsp;
+[**Skills**](#skills) &nbsp;•&nbsp;
+[**Tài liệu**](#tai-lieu)
 
 </div>
 
@@ -55,16 +64,17 @@
   <tr>
     <td width="50%">
 
-**📦 Sản phẩm** — NHỊP QUÁN
-**🗃 Repository** — [KanTrun/Crew-Operations](https://github.com/KanTrun/Crew-Operations)
-**🏆 Cuộc thi** — Xây dựng Hệ điều hành Doanh nghiệp số AI · Khoa CNTT HUTECH · 2026
+**Sản phẩm** — NHỊP QUÁN
+**Website** — [nhipquan.duckdns.org](https://nhipquan.duckdns.org/)
+**Repository** — [KanTrun/Crew-Operations](https://github.com/KanTrun/Crew-Operations)
+**Cuộc thi** — Xây dựng Hệ điều hành Doanh nghiệp số AI · Khoa CNTT HUTECH · 2026
 
 </td>
     <td width="50%">
 
-**📄 Hồ sơ** — [`NHIP-QUAN-HO-SO-TONG-THE .md`](./NHIP-QUAN-HO-SO-TONG-THE%20.md)
-**📊 Kết quả đo §18.2** — [`docs/ket-qua-tong-hop.md`](./docs/ket-qua-tong-hop.md)
-**⬇️ Clone** — `git clone https://github.com/KanTrun/Crew-Operations.git`
+**Hồ sơ** — [`NHIP-QUAN-HO-SO-TONG-THE .md`](./NHIP-QUAN-HO-SO-TONG-THE%20.md)
+**Kết quả đo §18.2** — [`docs/ket-qua-tong-hop.md`](./docs/ket-qua-tong-hop.md)
+**Clone** — `git clone https://github.com/KanTrun/Crew-Operations.git`
 
 </td>
   </tr>
@@ -75,72 +85,87 @@
 
 ---
 
-## 🧭 Mục lục
+## Mục lục
 
 | | | |
 |:--|:--|:--|
-| 1. [📖 Giới thiệu](#gioi-thieu) | 6. [🔑 Tài khoản demo](#tai-khoan-demo) | 11. [🤖 Agents Lô 1](#agents) |
-| 2. [🗂 Cấu trúc thư mục](#cau-truc) | 7. [🔧 Biến môi trường](#bien-moi-truong) | 12. [🧠 Thư viện Kỹ năng](#skills) |
-| 3. [🧰 Yêu cầu môi trường](#yeu-cau) | 8. [🛠 Makefile](#makefile) | 13. [🧪 Kiểm thử & đánh giá](#kiem-thu) |
-| 4. [🚀 Cài đặt](#cai-dat) | 9. [🔌 API Reference](#api-reference) | 14. [🌿 GitHub — nhánh & quy trình](#github) |
-| 5. [▶️ Hướng dẫn chạy](#huong-dan-chay) | 10. [📦 Packages Python](#packages) | 15. [📚 Tài liệu](#tai-lieu) |
+| 1. [Giới thiệu](#gioi-thieu) | 6. [Tài khoản demo](#tai-khoan-demo) | 11. [Agents Lô 1](#agents) |
+| 2. [Cấu trúc thư mục](#cau-truc) | 7. [Biến môi trường](#bien-moi-truong) | 12. [Thư viện Kỹ năng](#skills) |
+| 3. [Yêu cầu môi trường](#yeu-cau) | 8. [Makefile](#makefile) | 13. [Kiểm thử & đánh giá](#kiem-thu) |
+| 4. [Cài đặt](#cai-dat) | 9. [API Reference](#api-reference) | 14. [GitHub — nhánh & quy trình](#github) |
+| 5. [Hướng dẫn chạy](#huong-dan-chay) | 10. [Packages Python](#packages) | 15. [Tài liệu](#tai-lieu) |
 
 ---
 
 <a id="gioi-thieu"></a>
-## 📖 Giới thiệu
+## Giới thiệu
 
 NHỊP QUÁN là monorepo gồm **lõi tất định** (deterministic core) và **21 agent LLM** phục vụ quản lý quán cà phê qua web PWA + kênh tin (Telegram / Zalo / Facebook Page).
 
-### ✨ Triết lý cốt lõi
+### Tính năng nổi bật
+
+| Tính năng | Mô tả |
+|:----------|:------|
+| **Xếp ca CP-SAT** | Lịch tuần tối ưu với 6 ràng buộc cứng (C01–C06) + soft + công bằng 4 trục, không dùng LLM |
+| **21 AI agent** | AG-COPILOT, AG-TKB, AG-MSG, AG-PRICING, AG-PREDICT, AG-EXPLAIN, AG-TWIN… phủ toàn bộ nghiệp vụ |
+| **Cẩm nang tự viết** | Lỗi lặp ≥ 3 lần tự sinh luật qua 8 bước, có người duyệt cuối |
+| **Fail-closed** | Cổng VF-SCHEMA/TRACE/CONF/RULE lọc mọi trích xuất AI — từ chối thay vì bịa dữ liệu |
+| **Đa kênh tin** | Telegram · Zalo · Facebook Page — nhân viên gửi tin, hệ thống phân loại ý định |
+| **Copilot Voice** | Trợ lý giọng nói qua Gemini Live, giới hạn phiên an toàn |
+| **Khảo sát giá** | AG-PRICING quét giá đối thủ quanh quán (SerpApi + Vision), giá không chắc chắn chờ người xác nhận |
+| **Digital Twin** | AG-TWIN mô phỏng kịch bản "nếu… thì…" bằng Math Layer |
+| **Tự giải thích** | AG-EXPLAIN dịch mã lý do solver thành câu tiếng Việt có căn cứ |
+| **14 kỹ năng** | Thư viện Agent Skills (13 skill + 1 router) giữ context ≤ 1.500 tokens |
+
+### Triết lý cốt lõi
 
 <table>
   <tr>
     <td width="25%" valign="top">
 
-#### 🧮 Lõi không dùng LLM
+#### Lõi không dùng LLM
 Xếp ca bằng **CP-SAT** (Google OR-Tools), cổng kiểm duyệt fail-closed, orchestration tất định.
 
 </td>
     <td width="25%" valign="top">
 
-#### ✅ Người duyệt có tiếng nói cuối
+#### Người duyệt có tiếng nói cuối
 Agent **chỉ trích xuất và đề xuất**. Mọi thay đổi lịch và hiệu lực ca đi qua quản lý / chủ quán.
 
 </td>
     <td width="25%" valign="top">
 
-#### 📓 Cẩm nang sống
+#### Cẩm nang sống
 Lỗi lặp lại **≥ 3 lần** tự sinh đề xuất luật, qua **8 bước** từ tìm mẫu đến gỡ luật.
 
 </td>
     <td width="25%" valign="top">
 
-#### 🛡 Fail-closed
+#### Fail-closed
 Khi LLM lỗi hoặc không chắc chắn, hệ thống **từ chối** thay vì bịa dữ liệu.
 
 </td>
   </tr>
 </table>
 
-### 🏗 Kiến trúc tổng thể
+### Kiến trúc tổng thể
 
 ```mermaid
 flowchart TB
-    APR["👤 <b>Người phê duyệt</b><br/>lan · hung"]
+    APR["<b>Người phê duyệt</b><br/>lan · hung"]
 
-    subgraph ORCH["⚙️ Điều phối tất định — ghi store duy nhất (SQLite / Postgres)"]
+    subgraph ORCH["Điều phối tất định — ghi store duy nhất (SQLite / Postgres)"]
         direction LR
-        subgraph AG["🤖 Agents Lô 1"]
+        subgraph AG["Agents Lô 1"]
             A1["AG-TKB · AG-MSG<br/>AG-COPILOT · ..."]
         end
-        subgraph XP["💡 Giải thích & dự đoán"]
+        subgraph XP["Giải thích & dự đoán"]
             A2["EXPLAIN · BRIEF · SOP"]
         end
-        subgraph RU["📓 Cẩm nang"]
+        subgraph RU["Cẩm nang"]
             A3["AG-RULE"]
         end
-        subgraph CORE["🧮 Lõi tất định"]
+        subgraph CORE["Lõi tất định"]
             A4["solver · gates<br/>opsengine · playbook"]
         end
     end
@@ -156,16 +181,16 @@ flowchart TB
     class A1,A2,A3 agent
 ```
 
-### 🔄 Luồng nghiệp vụ chính
+### Luồng nghiệp vụ chính
 
 ```mermaid
 flowchart LR
-    NV["📱 NV gửi tin<br/>Telegram · Zalo · FB"] --> MSG["🏷 AG-MSG<br/>phân loại ý định"]
-    MSG --> INBOX["📥 Hộp thư<br/>ràng buộc"]
-    INBOX -->|"quản lý duyệt"| SOLVER["🧮 CP-SAT<br/>C01–C06 + soft<br/>+ công bằng 4 trục"]
-    SOLVER --> LICH["📅 Lịch tuần"]
-    LICH --> CA["✅ Trong ca<br/>điểm danh · phiếu<br/>việc treo · bàn giao"]
-    CA -->|"lỗi lặp ≥ 3 lần"| CN["📓 Cẩm nang<br/>8 bước"]
+    NV["NV gửi tin<br/>Telegram · Zalo · FB"] --> MSG["AG-MSG<br/>phân loại ý định"]
+    MSG --> INBOX["Hộp thư<br/>ràng buộc"]
+    INBOX -->|"quản lý duyệt"| SOLVER["CP-SAT<br/>C01–C06 + soft<br/>+ công bằng 4 trục"]
+    SOLVER --> LICH["Lịch tuần"]
+    LICH --> CA["Trong ca<br/>điểm danh · phiếu<br/>việc treo · bàn giao"]
+    CA -->|"lỗi lặp ≥ 3 lần"| CN["Cẩm nang<br/>8 bước"]
     CN -->|"apply_luat"| SOLVER
 
     style SOLVER fill:#6F4E37,stroke:#3E2723,color:#fff
@@ -173,7 +198,7 @@ flowchart LR
 ```
 
 <details>
-<summary><b>📋 Xem chi tiết 7 bước của luồng nghiệp vụ</b></summary>
+<summary><b>Xem chi tiết 7 bước của luồng nghiệp vụ</b></summary>
 
 <br/>
 
@@ -187,7 +212,7 @@ flowchart LR
 
 </details>
 
-### 📅 Vòng đời lịch tuần
+### Vòng đời lịch tuần
 
 ```mermaid
 stateDiagram-v2
@@ -201,17 +226,17 @@ stateDiagram-v2
     da_dong --> [*]
 ```
 
-### 📓 Cẩm nang 8 bước
+### Cẩm nang 8 bước
 
 ```mermaid
 flowchart LR
-    S1["1️⃣ Tìm mẫu"] --> S2["2️⃣ Đề xuất"] --> S3["3️⃣ Kiểm chứng"] --> S4["4️⃣ Tập sự"] --> S5["5️⃣ Chốt"] --> S6["6️⃣ Hiệu lực"] --> S7["7️⃣ Áp dụng"] --> S8["8️⃣ Gỡ"]
+    S1["1. Tìm mẫu"] --> S2["2. Đề xuất"] --> S3["3. Kiểm chứng"] --> S4["4. Tập sự"] --> S5["5. Chốt"] --> S6["6. Hiệu lực"] --> S7["7. Áp dụng"] --> S8["8. Gỡ"]
 ```
 
 ---
 
 <a id="cau-truc"></a>
-## 🗂 Cấu trúc thư mục
+## Cấu trúc thư mục
 
 ```text
 Crew-Operations/
@@ -261,35 +286,35 @@ Crew-Operations/
 
 | Thành phần | Đường dẫn | Vai trò |
 |:-----------|:----------|:--------|
-| 📜 Hợp đồng dữ liệu | `packages/contracts` | Pydantic models + JSON Schema + TypeScript types |
-| 🧮 Solver | `packages/solver` | CP-SAT, ràng buộc cứng C01–C06, soft, công bằng |
-| 🚧 Cổng VF | `packages/gates` | VF-TRACE, VF-CONF, VF-SCHEMA, VF-RULE, VF-SCOPE, VF-STALE |
-| ✅ Ops | `packages/opsengine` | Phiếu checklist, việc treo, nhắc quá hạn |
-| 📓 Playbook | `packages/playbook` | Cẩm nang 8 bước, ghi nhận sửa, distiller |
-| 🤖 Agents | `packages/agents` | AG-TKB, AG-MSG, AG-COPILOT, AG-PRICING, AG-PREDICT, AG-EXPLAIN, AG-TWIN…, router LLM, messaging |
-| ⚡ API | `apps/api` | FastAPI · SQLite/Postgres · worker nền |
-| 🖥 Web | `apps/web` | Next.js PWA (quản lý, NV, inbox, page quán) |
-| 🐳 Infra | `infra/docker` | Compose 5 dịch vụ |
-| 🧠 Skills | `skills/` | 14 kỹ năng vận hành đã kiểm định (13 skill + 1 router) |
+| Hợp đồng dữ liệu | `packages/contracts` | Pydantic models + JSON Schema + TypeScript types |
+| Solver | `packages/solver` | CP-SAT, ràng buộc cứng C01–C06, soft, công bằng |
+| Cổng VF | `packages/gates` | VF-TRACE, VF-CONF, VF-SCHEMA, VF-RULE, VF-SCOPE, VF-STALE |
+| Ops | `packages/opsengine` | Phiếu checklist, việc treo, nhắc quá hạn |
+| Playbook | `packages/playbook` | Cẩm nang 8 bước, ghi nhận sửa, distiller |
+| Agents | `packages/agents` | AG-TKB, AG-MSG, AG-COPILOT, AG-PRICING, AG-PREDICT, AG-EXPLAIN, AG-TWIN…, router LLM, messaging |
+| API | `apps/api` | FastAPI · SQLite/Postgres · worker nền |
+| Web | `apps/web` | Next.js PWA (quản lý, NV, inbox, page quán) |
+| Infra | `infra/docker` | Compose 5 dịch vụ |
+| Skills | `skills/` | 14 kỹ năng vận hành đã kiểm định (13 skill + 1 router) |
 
 ---
 
 <a id="yeu-cau"></a>
-## 🧰 Yêu cầu môi trường
+## Yêu cầu môi trường
 
 | Công cụ | Phiên bản | Ghi chú |
 |:--------|:----------|:--------|
 | ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white) | ≥ 3.12 | Khuyến nghị dùng `uv` |
 | ![Node](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white) | ≥ 20 | Cho web |
 | ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white) | Docker Desktop | Khuyến nghị demo toàn tuyến |
-| 📄 `.env` | ở root | Copy từ `.env.example` — **không commit** |
+| `.env` | ở root | Copy từ `.env.example` — **không commit** |
 
 ---
 
 <a id="cai-dat"></a>
-## 🚀 Cài đặt
+## Cài đặt
 
-### 🐳 Cách 1 — Docker toàn tuyến (khuyến nghị)
+### Cách 1 — Docker toàn tuyến (khuyến nghị)
 
 ```bash
 git clone https://github.com/KanTrun/Crew-Operations.git
@@ -302,7 +327,7 @@ make docker-smoke           # kiểm toàn tuyến backend
 > [!WARNING]
 > **Windows:** BuildKit có thể lỗi khi đường dẫn clone có ký tự non-ASCII. Clone/junction sang đường dẫn ASCII, ví dụ `mklink /J C:\nhipquan D:\CA-CÔNG-BẰNG` — chi tiết [`docs/runbook-demo.md`](./docs/runbook-demo.md).
 
-### 💻 Cách 2 — Local (không Docker)
+### Cách 2 — Local (không Docker)
 
 ```bash
 # 1. Cài Python packages (editable) + npm web
@@ -324,7 +349,7 @@ cd apps/web && npm run dev
 ```
 
 <details>
-<summary><b>🗄 Migration Postgres (Alembic)</b></summary>
+<summary><b>Migration Postgres (Alembic)</b></summary>
 
 <br/>
 
@@ -341,21 +366,22 @@ uv run alembic -c alembic/alembic.ini revision -m "mo_ta" # tạo migration mớ
 ---
 
 <a id="huong-dan-chay"></a>
-## ▶️ Hướng dẫn chạy
+## Hướng dẫn chạy
 
-### 🌐 Dịch vụ & URL (Docker)
+### Dịch vụ & URL
 
 | Dịch vụ | URL / cổng |
 |:--------|:-----------|
-| 🖥 Web PWA | http://localhost:3000 |
-| ⚡ API + OpenAPI docs | http://localhost:8000/docs |
-| 💚 Health | http://localhost:8000/health |
-| 🐘 Postgres | `localhost:5433` (container 5432) |
-| 🔴 Redis | `localhost:6379` |
+| 🌐 **Web PWA (production)** | [https://nhipquan.duckdns.org/](https://nhipquan.duckdns.org/) |
+| Web PWA (local Docker) | http://localhost:3000 |
+| API + OpenAPI docs | http://localhost:8000/docs |
+| Health | http://localhost:8000/health |
+| Postgres | `localhost:5433` (container 5432) |
+| Redis | `localhost:6379` |
 
 Dừng: `make docker-down` · Xóa volume: `make docker-reset`
 
-### 🔧 Chạy local từng phần
+### Chạy local từng phần
 
 | Việc | Lệnh |
 |:-----|:-----|
@@ -367,18 +393,18 @@ Dừng: `make docker-down` · Xóa volume: `make docker-reset`
 | Seed toàn bộ demo | `make seed-demo` |
 | Reset demo Docker | `make demo-reset` |
 
-### ⏰ Worker nền làm gì
+### Worker nền làm gì
 
 `ca_api.worker` chạy việc định kỳ (mỗi job một khoá mốc, idempotent):
 
 | Giờ | Job | Kết quả |
 |:----|:----|:--------|
-| 🌅 06:00 | `brief_sang` | Sinh bản tin sáng (ca hôm nay, treo, tồn cảnh báo) → kv `brief_hom_nay` |
-| 🌙 22:00 Chủ nhật | `solver_tuan` | CP-SAT tuần sau → kv `worker_de_xuat_lich` **chờ quản lý duyệt** (worker không tự công bố) |
-| 🌃 23:00 | `tong_ket_ngay` | Gom tiêu thụ/hao phí trong ngày |
+| 06:00 | `brief_sang` | Sinh bản tin sáng (ca hôm nay, treo, tồn cảnh báo) → kv `brief_hom_nay` |
+| 22:00 Chủ nhật | `solver_tuan` | CP-SAT tuần sau → kv `worker_de_xuat_lich` **chờ quản lý duyệt** (worker không tự công bố) |
+| 23:00 | `tong_ket_ngay` | Gom tiêu thụ/hao phí trong ngày |
 
 <details>
-<summary><b>📌 Chi tiết hành vi của worker & ca trống</b></summary>
+<summary><b>Chi tiết hành vi của worker & ca trống</b></summary>
 
 <br/>
 
@@ -395,18 +421,18 @@ Dừng: `make docker-down` · Xóa volume: `make docker-reset`
 ---
 
 <a id="tai-khoan-demo"></a>
-## 🔑 Tài khoản demo
+## Tài khoản demo
 
 > [!IMPORTANT]
 > Mật khẩu mọi tài khoản: **`nhipquan`**. Danh sách đầy đủ 19 NV: [`docs/runbook-demo.md`](./docs/runbook-demo.md).
 
 | Tài khoản | Vai trò | Dùng để |
 |:----------|:--------|:--------|
-| 👩‍💼 `lan` | `quan_ly` | Người phê duyệt chính — inbox, duyệt đổi ca, xếp lịch |
-| 👑 `hung` | `chu_quan` | Nâng/hạ vai, audit, chốt luật cẩm nang |
-| ☕ `minh` | `nhan_vien` | Ca sáng, bind Telegram demo |
-| 📚 `chi` | `nhan_vien` | TKB xung đột T2, bind Zalo demo |
-| 🌱 `rosa` | `nhan_vien` | Mới đăng ký — demo onboarding |
+| `lan` | `quan_ly` | Người phê duyệt chính — inbox, duyệt đổi ca, xếp lịch |
+| `hung` | `chu_quan` | Nâng/hạ vai, audit, chốt luật cẩm nang |
+| `minh` | `nhan_vien` | Ca sáng, bind Telegram demo |
+| `chi` | `nhan_vien` | TKB xung đột T2, bind Zalo demo |
+| `rosa` | `nhan_vien` | Mới đăng ký — demo onboarding |
 
 Đăng nhập lấy token:
 
@@ -421,10 +447,10 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 ---
 
 <a id="bien-moi-truong"></a>
-## 🔧 Biến môi trường
+## Biến môi trường
 
 <details open>
-<summary><b>⚙️ Lõi hệ thống & LLM</b></summary>
+<summary><b>Lõi hệ thống & LLM</b></summary>
 
 <br/>
 
@@ -442,7 +468,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 </details>
 
 <details open>
-<summary><b>💬 Kênh tin & Page</b></summary>
+<summary><b>Kênh tin & Page</b></summary>
 
 <br/>
 
@@ -460,7 +486,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 </details>
 
 <details open>
-<summary><b>🔍 Khảo sát giá & Copilot Voice</b></summary>
+<summary><b>Khảo sát giá & Copilot Voice</b></summary>
 
 <br/>
 
@@ -485,12 +511,12 @@ VOICE_SESSION_MAX_SECONDS=300
 
 </details>
 
-📎 **Runbook kết nối:** [Telegram](./docs/runbooks/telegram-bot-connect.md) · [Zalo](./docs/runbooks/zalo-oa-connect.md) · [Facebook Page](./docs/runbooks/facebook-page-connect.md)
+**Runbook kết nối:** [Telegram](./docs/runbooks/telegram-bot-connect.md) · [Zalo](./docs/runbooks/zalo-oa-connect.md) · [Facebook Page](./docs/runbooks/facebook-page-connect.md)
 
 ---
 
 <a id="makefile"></a>
-## 🛠 Makefile
+## Makefile
 
 | Lệnh | Mô tả |
 |:-----|:------|
@@ -512,7 +538,7 @@ VOICE_SESSION_MAX_SECONDS=300
 ---
 
 <a id="api-reference"></a>
-## 🔌 API Reference
+## API Reference
 
 **Base URL:** `http://localhost:8000` · **OpenAPI:** [`/docs`](http://localhost:8000/docs) · **Auth:** `Authorization: Bearer <token>` từ `/api/v1/auth/login`
 
@@ -522,10 +548,10 @@ VOICE_SESSION_MAX_SECONDS=300
 |:--:|:--:|:--:|:--:|
 | Công khai | Mọi vai đã đăng nhập | `quan_ly` + `chu_quan` | `chu_quan` |
 
-> 💡 Bấm vào từng nhóm bên dưới để mở rộng.
+> Bấm vào từng nhóm bên dưới để mở rộng.
 
 <details>
-<summary><b>🩺 Health & Auth</b></summary>
+<summary><b>Health & Auth</b></summary>
 
 <br/>
 
@@ -540,7 +566,7 @@ VOICE_SESSION_MAX_SECONDS=300
 </details>
 
 <details>
-<summary><b>📅 Lịch tuần (roster)</b></summary>
+<summary><b>Lịch tuần (roster)</b></summary>
 
 <br/>
 
@@ -560,7 +586,7 @@ VOICE_SESSION_MAX_SECONDS=300
 </details>
 
 <details>
-<summary><b>🕳 Ca trống (Open Shifts)</b></summary>
+<summary><b>Ca trống (Open Shifts)</b></summary>
 
 <br/>
 
@@ -573,7 +599,7 @@ VOICE_SESSION_MAX_SECONDS=300
 </details>
 
 <details>
-<summary><b>✅ Phiếu & điểm danh (opsengine)</b></summary>
+<summary><b>Phiếu & điểm danh (opsengine)</b></summary>
 
 <br/>
 
@@ -593,7 +619,7 @@ VOICE_SESSION_MAX_SECONDS=300
 </details>
 
 <details>
-<summary><b>📥 Hộp thư & ràng buộc</b></summary>
+<summary><b>Hộp thư & ràng buộc</b></summary>
 
 <br/>
 
@@ -610,7 +636,7 @@ VOICE_SESSION_MAX_SECONDS=300
 </details>
 
 <details>
-<summary><b>🖼 TKB (thời khoá biểu)</b></summary>
+<summary><b>TKB (thời khoá biểu)</b></summary>
 
 <br/>
 
@@ -623,7 +649,7 @@ VOICE_SESSION_MAX_SECONDS=300
 </details>
 
 <details>
-<summary><b>⚖️ Công bằng & hôm nay</b></summary>
+<summary><b>Công bằng & hôm nay</b></summary>
 
 <br/>
 
@@ -640,7 +666,7 @@ VOICE_SESSION_MAX_SECONDS=300
 </details>
 
 <details>
-<summary><b>📓 Bàn giao & cẩm nang</b></summary>
+<summary><b>Bàn giao & cẩm nang</b></summary>
 
 <br/>
 
@@ -658,7 +684,7 @@ VOICE_SESSION_MAX_SECONDS=300
 </details>
 
 <details>
-<summary><b>💡 Tự giải thích (Self-Explaining System) — AG-EXPLAIN</b></summary>
+<summary><b>Tự giải thích (Self-Explaining System) — AG-EXPLAIN</b></summary>
 
 <br/>
 
@@ -674,7 +700,7 @@ Prefix: `/api/v1/ops/explain`. Agent: **AG-EXPLAIN** — dịch mã lý do của
 </details>
 
 <details>
-<summary><b>🔮 Playbook dự đoán & Digital Twin — AG-PREDICT · AG-TWIN</b></summary>
+<summary><b>Playbook dự đoán & Digital Twin — AG-PREDICT · AG-TWIN</b></summary>
 
 <br/>
 
@@ -692,7 +718,7 @@ Prefix: `/api/v1/ops`. Agents: **AG-PREDICT** (phát hiện mẫu thành công �
 </details>
 
 <details>
-<summary><b>💰 Khảo sát giá thị trường — AG-PRICING</b></summary>
+<summary><b>Khảo sát giá thị trường — AG-PRICING</b></summary>
 
 <br/>
 
@@ -711,7 +737,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>🔁 QR & đổi ca</b></summary>
+<summary><b>QR & đổi ca</b></summary>
 
 <br/>
 
@@ -727,7 +753,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>🧋 Menu & quầy POS</b></summary>
+<summary><b>Menu & quầy POS</b></summary>
 
 <br/>
 
@@ -747,7 +773,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>👥 Người dùng & vai trò</b></summary>
+<summary><b>Người dùng & vai trò</b></summary>
 
 <br/>
 
@@ -760,7 +786,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>💬 Chat nội bộ (realtime)</b></summary>
+<summary><b>Chat nội bộ (realtime)</b></summary>
 
 <br/>
 
@@ -790,7 +816,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>🧑‍✈️ AG-COPILOT (trợ lý hội thoại)</b></summary>
+<summary><b>AG-COPILOT (trợ lý hội thoại)</b></summary>
 
 <br/>
 
@@ -810,7 +836,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>📡 Kênh tin (Telegram / Zalo)</b></summary>
+<summary><b>Kênh tin (Telegram / Zalo)</b></summary>
 
 <br/>
 
@@ -827,7 +853,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>📘 Page quán (Facebook)</b></summary>
+<summary><b>Page quán (Facebook)</b></summary>
 
 <br/>
 
@@ -852,7 +878,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>🏪 Hồ sơ quán & khuyến mãi</b></summary>
+<summary><b>Hồ sơ quán & khuyến mãi</b></summary>
 
 <br/>
 
@@ -864,7 +890,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>🎙 Cuộc họp — AG-MEETING</b></summary>
+<summary><b>Cuộc họp — AG-MEETING</b></summary>
 
 <br/>
 
@@ -879,7 +905,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>✉️ Mail</b></summary>
+<summary><b>Mail</b></summary>
 
 <br/>
 
@@ -893,7 +919,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>🪑 Đặt bàn</b></summary>
+<summary><b>Đặt bàn</b></summary>
 
 <br/>
 
@@ -910,7 +936,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>🧠 Skills (thư viện kỹ năng)</b></summary>
+<summary><b>Skills (thư viện kỹ năng)</b></summary>
 
 <br/>
 
@@ -924,7 +950,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>🎓 AI Learning (học từ phản hồi)</b></summary>
+<summary><b>AI Learning (học từ phản hồi)</b></summary>
 
 <br/>
 
@@ -948,7 +974,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 </details>
 
 <details>
-<summary><b>📈 Trends & audit</b></summary>
+<summary><b>Trends & audit</b></summary>
 
 <br/>
 
@@ -966,10 +992,10 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 ---
 
 <a id="packages"></a>
-## 📦 Packages Python — API nội bộ
+## Packages Python — API nội bộ
 
 <details>
-<summary><b>📜 <code>ca_contracts</code></b> — packages/contracts</summary>
+<summary><b><code>ca_contracts</code></b> — packages/contracts</summary>
 
 <br/>
 
@@ -978,7 +1004,7 @@ Schema Pydantic chia sẻ: `NhanVien`, `Ca`, `LichTuan`, `PhieuMau`, `RangBuocTr
 </details>
 
 <details>
-<summary><b>🧮 <code>ca_solver</code></b> — packages/solver</summary>
+<summary><b><code>ca_solver</code></b> — packages/solver</summary>
 
 <br/>
 
@@ -995,7 +1021,7 @@ Schema Pydantic chia sẻ: `NhanVien`, `Ca`, `LichTuan`, `PhieuMau`, `RangBuocTr
 </details>
 
 <details>
-<summary><b>🚧 <code>ca_gates</code></b> — packages/gates</summary>
+<summary><b><code>ca_gates</code></b> — packages/gates</summary>
 
 <br/>
 
@@ -1011,7 +1037,7 @@ Schema Pydantic chia sẻ: `NhanVien`, `Ca`, `LichTuan`, `PhieuMau`, `RangBuocTr
 </details>
 
 <details>
-<summary><b>✅ <code>ca_ops</code></b> — packages/opsengine</summary>
+<summary><b><code>ca_ops</code></b> — packages/opsengine</summary>
 
 <br/>
 
@@ -1027,7 +1053,7 @@ Schema Pydantic chia sẻ: `NhanVien`, `Ca`, `LichTuan`, `PhieuMau`, `RangBuocTr
 </details>
 
 <details>
-<summary><b>📓 <code>ca_playbook</code></b> — packages/playbook</summary>
+<summary><b><code>ca_playbook</code></b> — packages/playbook</summary>
 
 <br/>
 
@@ -1048,7 +1074,7 @@ Schema Pydantic chia sẻ: `NhanVien`, `Ca`, `LichTuan`, `PhieuMau`, `RangBuocTr
 </details>
 
 <details>
-<summary><b>🤖 <code>ca_agents</code></b> — packages/agents</summary>
+<summary><b><code>ca_agents</code></b> — packages/agents</summary>
 
 <br/>
 
@@ -1074,39 +1100,39 @@ Schema Pydantic chia sẻ: `NhanVien`, `Ca`, `LichTuan`, `PhieuMau`, `RangBuocTr
 ---
 
 <a id="agents"></a>
-## 🤖 Agents Lô 1
+## Agents Lô 1
 
 Tổng cộng **21 agent** (17 agent Lô 1 + 4 agent bổ sung). Bảng dưới là các agent Lô 1; bốn agent bổ sung nằm ngay sau.
 
 | Agent | Vai trò |
 |:------|:--------|
-| 🧑‍✈️ **AG-COPILOT** | Trợ lý hội thoại đầu não — parse intent, đề xuất hành động 2 pha, audit (có kênh voice qua Gemini Live) |
-| 🖼 **AG-TKB** | Trích thời khoá biểu từ ảnh (vision) |
-| 🏷 **AG-MSG** | Phân loại 6 ý định tin nhắn + trích ràng buộc |
-| 📓 **AG-RULE** | Đề xuất luật cẩm nang từ mẫu lỗi |
-| 📖 **AG-SOP** | Hỏi đáp quy trình, trích dẫn nguồn |
-| 🗑 **AG-WASTE** | Cụm hóa ghi chú hao phí |
-| 🤝 **AG-HANDOVER** | Trích bàn giao ca |
-| 📰 **AG-BRIEF** | Sinh bản tin giao ban |
-| 🎙 **AG-MEETING** | Trích biên bản họp → action items |
-| ✉️ **AG-MAIL / AG-MAILWRITER** | Soạn + gửi mail |
-| 💖 **AG-VOC** | Ghi nhớ khách quen, khen/chê |
-| 📘 **AG-FBPAGE / AG-CONCIERGE** | Trực Page, báo giá, đặt bàn |
-| ☕ **AG-BARISTA / AG-TREND / AG-SUPERVISOR** | Định mức pha / xu hướng / giám sát đầu ra |
+| **AG-COPILOT** | Trợ lý hội thoại đầu não — parse intent, đề xuất hành động 2 pha, audit (có kênh voice qua Gemini Live) |
+| **AG-TKB** | Trích thời khoá biểu từ ảnh (vision) |
+| **AG-MSG** | Phân loại 6 ý định tin nhắn + trích ràng buộc |
+| **AG-RULE** | Đề xuất luật cẩm nang từ mẫu lỗi |
+| **AG-SOP** | Hỏi đáp quy trình, trích dẫn nguồn |
+| **AG-WASTE** | Cụm hóa ghi chú hao phí |
+| **AG-HANDOVER** | Trích bàn giao ca |
+| **AG-BRIEF** | Sinh bản tin giao ban |
+| **AG-MEETING** | Trích biên bản họp → action items |
+| **AG-MAIL / AG-MAILWRITER** | Soạn + gửi mail |
+| **AG-VOC** | Ghi nhớ khách quen, khen/chê |
+| **AG-FBPAGE / AG-CONCIERGE** | Trực Page, báo giá, đặt bàn |
+| **AG-BARISTA / AG-TREND / AG-SUPERVISOR** | Định mức pha / xu hướng / giám sát đầu ra |
 
-### ➕ Agents bổ sung
+### Agents bổ sung
 
 | Agent | Vai trò | File |
 |:------|:--------|:-----|
-| 💰 **AG-PRICING** | Khảo sát giá đối thủ (SerpApi + Vision) | `ag_pricing` |
-| 🔮 **AG-PREDICT** | Phát hiện mẫu thành công → đề xuất luật tích cực | `packages/agents/src/ca_agents/ag_predict.py` |
-| 💡 **AG-EXPLAIN** | Dịch mã lý do solver thành câu tiếng Việt (grounded) | `packages/agents/src/ca_agents/ag_explain.py` |
-| 🧪 **AG-TWIN** | Mô phỏng "nếu… thì…" bằng Math Layer | `packages/agents/src/ca_agents/ag_twin.py` |
+| **AG-PRICING** | Khảo sát giá đối thủ (SerpApi + Vision) | `ag_pricing` |
+| **AG-PREDICT** | Phát hiện mẫu thành công → đề xuất luật tích cực | `packages/agents/src/ca_agents/ag_predict.py` |
+| **AG-EXPLAIN** | Dịch mã lý do solver thành câu tiếng Việt (grounded) | `packages/agents/src/ca_agents/ag_explain.py` |
+| **AG-TWIN** | Mô phỏng "nếu… thì…" bằng Math Layer | `packages/agents/src/ca_agents/ag_twin.py` |
 
 ---
 
 <a id="skills"></a>
-## 🧠 Thư viện Kỹ năng (Skills)
+## Thư viện Kỹ năng (Skills)
 
 **14 kỹ năng** (13 skill chưng cất theo **Repo-To-Skill** / **Playbook-To-Skill** + 1 Skill Router), tuân chuẩn [Agent Skills Format](https://github.com/agentskills/agentskills). Mỗi skill gồm `SKILL.md` + `references/` + `scripts/` (smoke test offline). Xem [`skills/README.md`](./skills/README.md).
 
@@ -1115,15 +1141,15 @@ Tổng cộng **21 agent** (17 agent Lô 1 + 4 agent bổ sung). Bảng dưới 
 
 | Thành phần | Cách hoạt động |
 |:-----------|:---------------|
-| 🧭 Skill Router | Khớp **trigger từ khóa** của yêu cầu với metadata từng skill, chỉ nạp skill phù hợp |
-| 📏 Ngân sách context | ≤ 1.500 tokens (Progressive Disclosure: metadata trước, nội dung đầy đủ khi khớp) |
-| 🔌 Nạp trong code | `SkillLoader` / `SkillRef` (`ca_agents`) |
-| ⚗️ Chưng cất mới | `POST /skills/distill-sop` (Hybrid mode) · `distill_sop_to_dir` (`ca_playbook`) |
+| Skill Router | Khớp **trigger từ khóa** của yêu cầu với metadata từng skill, chỉ nạp skill phù hợp |
+| Ngân sách context | ≤ 1.500 tokens (Progressive Disclosure: metadata trước, nội dung đầy đủ khi khớp) |
+| Nạp trong code | `SkillLoader` / `SkillRef` (`ca_agents`) |
+| Chưng cất mới | `POST /skills/distill-sop` (Hybrid mode) · `distill_sop_to_dir` (`ca_playbook`) |
 
 ---
 
 <a id="kiem-thu"></a>
-## 🧪 Kiểm thử & đánh giá
+## Kiểm thử & đánh giá
 
 ```bash
 make test          # pytest toàn monorepo (CA_AGENT_MODE=replay)
@@ -1148,11 +1174,11 @@ cd apps/web && npm run test:e2e   # Playwright e2e
 ---
 
 <a id="github"></a>
-## 🌿 GitHub — nhánh & quy trình
+## GitHub — nhánh & quy trình
 
 **Remote:** `https://github.com/KanTrun/Crew-Operations.git` · Chi tiết: [`docs/github-operating-model.md`](./docs/github-operating-model.md)
 
-### 🌳 Nhánh gốc
+### Nhánh gốc
 
 ```mermaid
 gitGraph
@@ -1176,7 +1202,7 @@ gitGraph
 | `release/semifinal` | Đóng băng tuần 6 → tag `v0.1.0-semifinal` |
 | `release/final` | Đóng băng tuần 8 → tag `v1.0.0-final` |
 
-### 👥 Bốn vùng sở hữu (tiền tố nhánh)
+### Bốn vùng sở hữu (tiền tố nhánh)
 
 | Người | Tiền tố nhánh | Sở hữu chính |
 |:-----:|:--------------|:-------------|
@@ -1187,17 +1213,17 @@ gitGraph
 
 **Luật:** nhánh `feat/*` ≤ 3 ngày · ≤ 2 nhánh mở/người · `git pull --rebase origin main` hằng ngày · vào `main` chỉ qua **squash merge** + PR. WIP: `wip/a|b|c|d/...` — cấm PR thẳng vào `main`.
 
-### 📜 Quy tắc bất biến
+### Quy tắc bất biến
 
-1. 📑 Hợp đồng dữ liệu trước, mã nguồn sau
-2. 💚 `main` luôn xanh và luôn demo được
-3. 🔒 Không vào `main` nếu không qua PR được duyệt
-4. 🚫 Không LLM ghi lịch / điều phối
+1. Hợp đồng dữ liệu trước, mã nguồn sau
+2. `main` luôn xanh và luôn demo được
+3. Không vào `main` nếu không qua PR được duyệt
+4. Không LLM ghi lịch / điều phối
 
 ---
 
 <a id="tai-lieu"></a>
-## 📚 Tài liệu
+## Tài liệu
 
 | Tài liệu | Nội dung |
 |:---------|:---------|
@@ -1212,7 +1238,7 @@ gitGraph
 
 ---
 
-## 📄 License
+## License
 
 Xem [`THIRD_PARTY.md`](./docs/THIRD_PARTY.md) cho phụ thuộc và license của các thành phần.
 
@@ -1220,7 +1246,7 @@ Xem [`THIRD_PARTY.md`](./docs/THIRD_PARTY.md) cho phụ thuộc và license củ
 
 <br/>
 
-**☕ NHỊP QUÁN** — *Ca làm việc là hạt nhân · Cẩm nang tự viết là bộ nhớ · Lõi không dùng LLM*
+**NHỊP QUÁN** — *Ca làm việc là hạt nhân · Cẩm nang tự viết là bộ nhớ · Lõi không dùng LLM*
 
 <sub>Xây dựng Hệ điều hành Doanh nghiệp số AI · Khoa CNTT HUTECH · 2026</sub>
 
