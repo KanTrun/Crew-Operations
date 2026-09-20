@@ -89,6 +89,7 @@ const MANAGER_ONLY = new Set([
   // Grand AI Experience Portfolio — phases được mở dần theo quyền (Phase 02 War Room)
   "/quanverse",
   "/quanverse/war-room",
+  "/quanverse/shift-rescue",
 ]);
 const OWNER_ONLY = new Set(["/menu", "/nguoi"]);
 

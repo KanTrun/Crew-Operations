@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "schema": "grand_experience_shift_rescue_v1",
+    "note": "Fixture replay Shift Rescue — dữ liệu nhân viên fixture, không phải thật.",
+    "labels": ["mo_phong_fixture", "replay"]
+  },
+  "snapshot_hash": "snap_20260918_shift_rescue_001",
+  "staff": [
+    {"nv_id": "nv_1", "ten": "Lan", "ky_nang": ["pha_che", "phuc_vu"], "gio_da_lam": 20.0, "so_ca_tuan": 3},
+    {"nv_id": "nv_2", "ten": "Minh", "ky_nang": ["pha_che"], "gio_da_lam": 25.0, "so_ca_tuan": 4},
+    {"nv_id": "nv_3", "ten": "Hung", "ky_nang": ["phuc_vu"], "gio_da_lam": 30.0, "so_ca_tuan": 5},
+    {"nv_id": "nv_4", "ten": "Nhung", "ky_nang": ["pha_che", "phuc_vu"], "gio_da_lam": 10.0, "so_ca_tuan": 1}
+  ],
+  "shifts": [
+    {"id": "t7_toi", "thu": "T7", "khung": "toi", "vi_tri": "pha_che", "bat_dau": "17:00", "ket_thuc": "22:00"},
+    {"id": "t7_chieu", "thu": "T7", "khung": "chieu", "vi_tri": "phuc_vu", "bat_dau": "12:00", "ket_thuc": "18:00"}
+  ],
+  "current_assignment": {
+    "t7_toi": ["nv_absent_quan", "nv_1"],
+    "t7_chieu": ["nv_3"]
+  },
+  "demo_case": {
+    "case_id": "rescue_demo_1",
+    "absence_nv_id": "nv_absent_quan",
+    "shift_id": "t7_toi",
+    "reported_by": "quan_ly_test",
+    "reason": "Ốm đột xuất"
+  }
+}

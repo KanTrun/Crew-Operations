@@ -94,6 +94,13 @@ class FixtureReader:
     def spatial_map_path(self) -> Path:
         return self._fixture_dir / "spatial-map.json"
 
+    def read_json_path(self, name: str) -> dict[str, Any]:
+        """Đọc fixture theo tên file (không path traversal — chỉ tên file)."""
+        if "/" in name or "\\" in name or not name.endswith(".json"):
+            raise ValueError(f"tên fixture không hợp lệ: {name}")
+        path = self._fixture_dir / name
+        return _read_json(path)
+
     def list_events(self, **filters: Any) -> list[dict[str, Any]]:
         if self._events_cache is None:
             self._events_cache = _read_json(self.events_path)
