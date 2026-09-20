@@ -2,7 +2,7 @@
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:3E2723,50:6F4E37,100:C68B59&height=200&section=header&text=Crew%20Operations&fontSize=54&fontColor=ffffff&animation=fadeIn&fontAlignY=36&desc=NHIP%20QUAN&descAlignY=58&descSize=20" width="100%" alt="Crew Operations banner" />
 
-<img src="./logo.png" alt="NHỊP QUÁN — Crew Operations" width="150" />
+<img src="./docs/hinh/logo.png" alt="NHỊP QUÁN — Crew Operations" width="150" />
 
 # ☕ NHỊP QUÁN
 
@@ -1208,13 +1208,13 @@ gitGraph
 | [`docs/ket-qua-tong-hop.md`](./docs/ket-qua-tong-hop.md) | 12 con số hồ sơ §18.2 |
 | [`docs/runbooks/`](./docs/runbooks/) | Kết nối Telegram, Zalo, Facebook |
 | [`docs/adr/`](./docs/adr/) | Architecture Decision Records |
-| [`THIRD_PARTY.md`](./THIRD_PARTY.md) | Phụ thuộc & license |
+| [`THIRD_PARTY.md`](./docs/THIRD_PARTY.md) | Phụ thuộc & license |
 
 ---
 
 ## 📄 License
 
-Xem [`THIRD_PARTY.md`](./THIRD_PARTY.md) cho phụ thuộc và license của các thành phần.
+Xem [`THIRD_PARTY.md`](./docs/THIRD_PARTY.md) cho phụ thuộc và license của các thành phần.
 
 <div align="center">
 
