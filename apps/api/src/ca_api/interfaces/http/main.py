@@ -86,6 +86,7 @@ from ca_api.interfaces.http.skills import router as skills_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
 from ca_api.interfaces.http.trends import router as trends_router
+from ca_api.interfaces.http.war_room import router as war_room_router
 from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import (
     DangKyLoi,
@@ -246,6 +247,7 @@ app.include_router(meeting_router)
 app.include_router(ops_explain_router)
 app.include_router(ops_predict_router)
 app.include_router(experience_router)
+app.include_router(war_room_router)
 app.include_router(trends_router)
 if pricing_radar_router:
     app.include_router(pricing_radar_router)
