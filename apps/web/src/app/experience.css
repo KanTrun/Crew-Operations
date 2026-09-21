@@ -28,6 +28,60 @@
   max-width: 48rem;
 }
 
+/* ── Section header có icon + mô tả (bố cục rõ ràng, hết trắng) ─────────── */
+.nq-exp-section { display: grid; gap: 0.6rem; }
+.nq-exp-section__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-bottom: 1px solid var(--nq-line);
+  padding-bottom: 0.5rem;
+}
+.nq-exp-section__head .nq-icon { color: var(--nq-copper); }
+.nq-exp-section__title { margin: 0; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--nq-fg); }
+.nq-exp-section__desc { margin: 0; font-size: 0.8rem; color: var(--nq-dim); }
+.nq-exp-section__spacer { flex: 1; }
+
+/* ── Empty state có icon (không để trắng) ───────────────────────────────── */
+.nq-exp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  border: 2px dashed var(--nq-line);
+  border-radius: var(--nq-radius-bubble, 18px);
+  color: var(--nq-dim);
+  text-align: center;
+}
+.nq-exp-empty .nq-icon { opacity: 0.8; }
+.nq-exp-empty p { margin: 0; font-size: 0.9rem; line-height: 1.5; }
+
+/* ── Skeleton loading cho trang experience ──────────────────────────────── */
+.nq-skeleton {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 0;
+}
+.nq-skeleton__head { width: 45%; height: 2rem; border-radius: 6px; background: linear-gradient(100deg, var(--nq-surface) 40%, var(--nq-bg-elevated) 50%, var(--nq-surface) 60%); background-size: 200% 100%; animation: nq-shimmer 1.3s linear infinite; }
+.nq-skeleton__row { height: 4.5rem; border-radius: 18px; background: linear-gradient(100deg, var(--nq-surface) 40%, var(--nq-bg-elevated) 50%, var(--nq-surface) 60%); background-size: 200% 100%; animation: nq-shimmer 1.3s linear infinite; }
+.nq-skeleton__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
+@keyframes nq-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ── Chip trạng thái (thay thế chip "fixture/demo") ─────────────────────── */
+.nq-rolechip {
+  font-size: 0.68rem;
+  font-family: var(--nq-font-mono, monospace);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nq-dim);
+  border: 1px solid var(--nq-line);
+  border-radius: 999px;
+  padding: 0.14rem 0.55rem;
+  width: max-content;
+}
+
 /* ── War Room ───────────────────────────────────────────────────────────── */
 .nq-war-picker__grid {
   display: grid;
@@ -112,10 +166,10 @@
 .nq-war-compare__stale { color: var(--nq-warn); font-size: 0.75rem; }
 .nq-war-compare__actions { display: flex; gap: 0.5rem; margin-top: 0.25rem; flex-wrap: wrap; }
 
-.nq-crisis { margin-top: 1.5rem; }
-.nq-crisis h2 { font-size: 1.05rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--nq-copper); }
+.nq-crisis { margin-top: 1.25rem; }
+.nq-crisis h2 { font-size: 1rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--nq-copper); }
 .nq-crisis__note { color: var(--nq-dim); font-size: 0.85rem; }
-.nq-crisis__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.nq-crisis__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
 .nq-crisis__item {
   width: 100%;
   text-align: left;
@@ -124,9 +178,9 @@
   border-radius: var(--nq-radius-bubble, 18px);
   background: var(--nq-surface);
   cursor: pointer;
-  transition: border-color 180ms;
+  transition: border-color 180ms, transform 180ms;
 }
-.nq-crisis__item:hover { border-color: var(--nq-copper); }
+.nq-crisis__item:hover { border-color: var(--nq-copper); transform: translateY(-1px); }
 .nq-crisis__title { display: block; font-weight: 700; }
 .nq-crisis__desc { display: block; color: var(--nq-dim); font-size: 0.85rem; line-height: 1.5; }
 
@@ -307,11 +361,14 @@
 .nq-quanverse__layout { display: grid; gap: 1rem; grid-template-columns: 1fr 420px; align-items: start; }
 @media (max-width: 980px) { .nq-quanverse__layout { grid-template-columns: 1fr; } }
 .nq-quanverse__right { display: grid; gap: 1rem; }
+.nq-quanverse__guests { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 1rem; align-items: start; }
+.nq-quanverse__guests section { margin-top: 0; }
 @media (min-width: 760px) and (max-width: 980px) { .nq-quanverse__right { grid-template-columns: 1fr 1fr; } }
 .nq-quanverse__events { border: 2px solid var(--nq-line); border-radius: var(--nq-radius-bubble, 18px); background: var(--nq-surface); padding: 1rem; margin-top: 1rem; }
 .nq-quanverse__events ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
 .nq-quanverse__event { display: flex; gap: 0.5rem; align-items: baseline; font-size: 0.9rem; padding: 0.5rem 0.6rem; border-radius: var(--nq-radius, 6px); background: var(--nq-bg-elevated); }
 .nq-quanverse__event span { font-family: var(--nq-font-mono, monospace); font-size: 0.75rem; color: var(--nq-copper); white-space: nowrap; }
+.nq-quanverse__event--empty { color: var(--nq-dim); font-style: italic; }
 
 .nq-living-map__grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
 @media (min-width: 640px) { .nq-living-map__grid { grid-template-columns: repeat(4, 1fr); } }
