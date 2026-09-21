@@ -18,7 +18,8 @@
   "modes": [
     {"mode": "gio_cao_diem", "active": false, "proposed_by": null, "proposal_status": null},
     {"mode": "troi_mua", "active": true, "proposed_by": "lan", "proposal_status": "confirmed"},
-    {"mode": "quan_yen_tinh", "active": false, "proposed_by": null, "proposal_status": null}
+    {"mode": "quan_yen_tinh", "active": false, "proposed_by": null, "proposal_status": null},
+    {"mode": "dem_nhac", "active": false, "proposed_by": null, "proposal_status": null}
   ],
   "horizon": [
     {"item_id": "hz_1", "kind": "event", "title": "Dự kiến khách đoàn 11:30", "starts_at": "2026-09-19T11:30:00+07:00", "source": "replay"},

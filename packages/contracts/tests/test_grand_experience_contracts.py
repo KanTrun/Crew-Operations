@@ -26,7 +26,6 @@ from ca_contracts import (
     VoiceTurn,
     WarRoomOption,
     WarRoomScenario,
-    WarRoomScenarioType,
     experience_capabilities_for_role,
     experience_role_can,
 )

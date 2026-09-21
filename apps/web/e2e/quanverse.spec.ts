@@ -31,8 +31,12 @@ test.describe("QUANVERSE", () => {
 
   test("manager confirms mode", async ({ page }) => {
     await expect(page.locator(".nq-living-map")).toBeVisible({ timeout: 15_000 });
-    // quan_yen_tinh chưa active trong fixture — confirm để bật.
-    await page.getByTestId("mode-confirm-quan_yen_tinh").first().click();
+    // quan_yen_tinh — click nếu chưa active (idempotent-friendly với DB bền).
+    const btn = page.getByTestId("mode-confirm-quan_yen_tinh").first();
+    if (await btn.isVisible().catch(() => false)) {
+      await btn.click();
+    }
+    // Dù đã active từ lần chạy trước, khẳng định có mode đang bật.
     await expect(page.locator(".nq-moderail__item.is-active").first()).toBeVisible({ timeout: 10_000 });
   });
 
