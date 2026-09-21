@@ -37,6 +37,12 @@ from ca_agents.fb_policy import (
 )
 from ca_agents.fb_rate_limiter import SlidingWindowRateLimiter
 from ca_agents.guardrails import check_input_guardrail, normalize_text
+from ca_agents.sensors.fb_questions import (
+    FB_QUESTIONS,
+    INJECTION_QUESTIONS,
+    anonymize_state,
+)
+from ca_agents.sensors.jev_sensor import JevSensor
 from ca_contracts import FbPolicyAction, PolicyDecision
 
 from ca_api.persist import (
@@ -51,6 +57,119 @@ from ca_api.persist import (
 
 _RATE_LIMITER = SlidingWindowRateLimiter()
 _FB_POLICY_KV = "fb_policy_runtime"
+
+# Cảm biến Jev — tắt mặc định (fail-closed). Bật bằng JEV_ENABLED=true + JEV_API_KEY.
+_JEV_SENSOR: JevSensor | None = None
+
+
+def _get_jev_sensor() -> JevSensor | None:
+    """Khởi tạo JevSensor một lần (lazy). Trả None nếu Jev không được bật.
+
+    Kiểm tra kill-switch runtime (`fb_jev_enabled`) + key mỗi lần gọi: nếu Chủ
+    quán tắt qua `/page/fb-policy` → `_JEV_SENSOR=None` → fail-closed an toàn.
+    """
+    global _JEV_SENSOR
+    if _JEV_SENSOR is None and fb_jev_enabled():
+        candidate = JevSensor()  # đọc env: enabled, api_key, base_url
+        if candidate.enabled and candidate.api_key:
+            _JEV_SENSOR = candidate
+    # Kill-switch runtime tắt → bỏ sensor cache (nếu đang bật vì env old).
+    if _JEV_SENSOR is not None and not fb_jev_enabled():
+        _JEV_SENSOR = None
+    return _JEV_SENSOR
+
+
+def _jev_flags(
+    text: str, name_map: dict[str, str] | None = None
+) -> PolicyContext:
+    """Đánh giá Jev (nếu bật) và trả PolicyContext với các flag jev_* điền sẵn.
+
+    Fail-closed theo kế hoạch §5:
+    - Jev TẮT (chưa cấu hình key): jev_ok=False, jev_failed=False → hành vi cũ
+      (regex vẫn là lưới an toàn). KHÔNG leo thang thêm.
+    - Jev BẬT nhưng LỖI (timeout/5xx/429/schema): jev_ok=False, jev_failed=True
+      → decide() thoái lui về hàng đợi người, KHÔNG im lặng tự trả lời.
+    """
+    flags = PolicyContext(
+        source="jev",
+        jev_ok=False,
+        jev_failed=False,
+    )
+    sensor = _get_jev_sensor()
+    if sensor is None:
+        # Jev tắt (chưa cấu hình) → không coi là lỗi, không fail-closed.
+        return flags
+
+    # Ẩn danh hóa trước khi gửi cho bên thứ ba (§6) — chỉ gửi trường cần.
+    state = anonymize_state({"noi_dung_khach": text}, name_map)
+    r = sensor.evaluate(state, "fb_page", FB_QUESTIONS)
+    if not r.ok:
+        # Jev bật nhưng lỗi → fail-closed về phía con người (kế hoạch §5).
+        # Ghi vết để chẩn đoán (ADR-007: không ghi nội dung thô, chỉ metadata).
+        audit_add(
+            _now_iso(), "fb_jev_sensor", "jev_failed", {
+                "ok": False,
+                "latency_ms": r.latency_ms,
+            },
+            actor_type="system", agent_name="ag_fbpage",
+        )
+        return PolicyContext(source="jev", jev_ok=False, jev_failed=True)
+
+    # Replay (ADR-007): lưu phản hồi đã parse (KHÔNG text thô, KHÔNG dữ liệu
+    # cá nhân) vào audit để `make replay` tái dựng được quyết định.
+    audit_add(
+        _now_iso(), "fb_jev_sensor", "jev_success", {
+            "ok": True,
+            "latency_ms": r.latency_ms,
+            "model": r.model_version,
+            "schema": r.schema_version,
+            "signals": {
+                name: s.value for name, s in r.signals.items()
+            },
+        },
+        actor_type="system", agent_name="ag_fbpage",
+    )
+
+    signals = r.signals
+    health = signals.get("nguy_co_suc_khoe")
+    legal = signals.get("de_doa_phap_ly_truyen_thong")
+    hostility = signals.get("muc_gay_gat")
+    ask_human = signals.get("doi_gap_nguoi_that")
+    sarcasm = signals.get("co_ve_mia_mai")
+    flags = PolicyContext(
+        source="jev",
+        jev_ok=True,
+        jev_failed=False,
+        jev_health_risk=float(health.value) if health is not None else 0.0,
+        jev_legal_threat=float(legal.value) if legal is not None else 0.0,
+        jev_hostility_score=float(hostility.value) if hostility is not None else 0.0,
+        jev_ask_human=float(ask_human.value) if ask_human is not None else 0.0,
+        jev_sarcasm=float(sarcasm.value) if sarcasm is not None else 0.0,
+    )
+    return flags
+
+
+def _check_jev_injection(psid: str, text: str) -> bool:
+    """Kiểm tra injection/jailbreak bằng Jev (kế hoạch §4.3).
+
+    Fail-closed an toàn: Jev tắt/lỗi → trả False (KHÔNG chặn vô tội vạ,
+    KHÔNG cấp thêm quyền nào). Giữ regex L1 làm ranh giới chính; Jev chỉ bổ
+    trợ phát hiện cách diễn đạt khéo mà regex bỏ lọt.
+    """
+    sensor = _get_jev_sensor()
+    if sensor is None:
+        return False
+    state = anonymize_state({"noi_dung_khach": text})
+    r = sensor.evaluate(state, "injection_scan", INJECTION_QUESTIONS)
+    if not r.ok:
+        return False
+    signals = r.signals
+    override = float(signals["co_gang_ghi_de_chi_dan"].value)
+    ask_internal = float(signals["hoi_du_lieu_noi_bo"].value)
+    blocked = override >= 0.5 or ask_internal >= 0.5
+    if blocked:
+        _audit_block(psid, text, "jev_injection", "jev_flag")
+    return blocked
 
 _POSITIVE_KEYWORDS = (
     "cảm ơn",
@@ -124,6 +243,21 @@ def fb_auto_send_enabled() -> bool:
     return env in {"1", "true", "yes", "on"}
 
 
+def fb_jev_enabled() -> bool:
+    """Kill-switch runtime cho Jev (kế hoạch §5 / review mục còn lại).
+
+    KV (`jev_enabled`) thắng env — Chủ quán tắt nhanh qua API/hộp thư mà KHÔNG
+    cần deploy, khi phát hiện Jev hoạt động sai / lộ dữ liệu. Mặc định đọc env
+    `JEV_ENABLED`. Khi tắt → JevSensor không được tạo → fail-closed an toàn.
+    """
+    stored = _policy_runtime()
+    if "jev_enabled" in stored:
+        return bool(stored["jev_enabled"])
+    return os.environ.get("JEV_ENABLED", "").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+
+
 def fb_auto_price_cap_vnd() -> int:
     stored = _policy_runtime()
     if stored.get("auto_price_cap_vnd") is not None:
@@ -160,15 +294,23 @@ def _compensation_above_cap(text: str) -> bool:
 def set_fb_policy_runtime(
     auto_send_enabled: bool | None = None,
     auto_price_cap_vnd: int | None = None,
+    jev_enabled: bool | None = None,
 ) -> dict[str, Any]:
     """Ghi chính sách runtime (KV + env process) — Chủ quán chỉnh không restart."""
     cur = dict(_policy_runtime())
+    global _JEV_SENSOR
     if auto_send_enabled is not None:
         cur["auto_send_enabled"] = bool(auto_send_enabled)
         os.environ["NHIPQUAN_FB_AUTO_SEND"] = "1" if auto_send_enabled else "0"
     if auto_price_cap_vnd is not None:
         cur["auto_price_cap_vnd"] = int(auto_price_cap_vnd)
         os.environ["NHIPQUAN_FB_AUTO_PRICE_CAP_VND"] = str(int(auto_price_cap_vnd))
+    if jev_enabled is not None:
+        # Kill-switch runtime: tắt Jev ngay không cần deploy (kế hoạch §5).
+        cur["jev_enabled"] = bool(jev_enabled)
+        os.environ["JEV_ENABLED"] = "1" if jev_enabled else "0"
+        # Reset sensor cache để lần gọi sau tạo/ko tạo đúng trạng thái mới.
+        _JEV_SENSOR = None
     kv_set(_FB_POLICY_KV, cur)
     return cur
 
@@ -326,6 +468,18 @@ def moderate_fb_message(
     # L3 — Intent classify (deterministic)
     _, intent, confidence = detect_customer_psychology(guard.sanitized_text)
 
+    # L3.5 — Lọc injection/jailbreak bằng Jev (kế hoạch §4.3) — bổ trợ regex L1,
+    # chỉ TĂNG leo thang (đơn điệu). Jev tắt/lỗi → bỏ qua, không cấp quyền gì.
+    _jev_injection_blocked = _check_jev_injection(psid, guard.sanitized_text)
+    if _jev_injection_blocked:
+        return {
+            "action": FbPolicyAction.BLOCK_SILENT.value,
+            "review_id": None,
+            "response": None,
+            "reason": "jev_injection_detected",
+            "flagged_reasons": ["jev_injection"],
+        }
+
     # L4 — Policy decide (tất định)
     res_eligible = False
     if intent == "dat_ban":
@@ -343,6 +497,10 @@ def moderate_fb_message(
         except Exception:
             res_eligible = False
 
+    # L3.5 — Đánh giá Jev một lần (fail-closed nếu tắt/lỗi) — đơn điệu, chỉ
+    # thêm leo thang. Ẩn danh hóa state trước khi gửi bên thứ ba (§6).
+    jctx = _jev_flags(guard.sanitized_text, {"minh": "NV_01", "lan": "NV_02"})
+
     ctx = PolicyContext(
         source=source,
         sensitive_post=post_is_sensitive,
@@ -354,6 +512,13 @@ def moderate_fb_message(
         reservation_auto_eligible=res_eligible,
         booking_system_down=False,
         compensation_above_limit=_compensation_above_cap(guard.sanitized_text),
+        jev_ok=jctx.jev_ok,
+        jev_failed=jctx.jev_failed,
+        jev_health_risk=jctx.jev_health_risk,
+        jev_legal_threat=jctx.jev_legal_threat,
+        jev_hostility_score=jctx.jev_hostility_score,
+        jev_ask_human=jctx.jev_ask_human,
+        jev_sarcasm=jctx.jev_sarcasm,
     )
     decision = decide(intent, confidence, guard.sanitized_text, ctx)
     flagged = list(decision.flagged_reasons)

@@ -108,7 +108,7 @@ async function mockInbox(page: Page, items: ReviewItem[], decisions: unknown[]) 
     const url = new URL(route.request().url());
     if (url.pathname.endsWith("/fb-policy")) {
       await route.fulfill({
-        json: { auto_send_enabled: true },
+        json: { auto_send_enabled: true, jev_enabled: false },
       });
       return;
     }
@@ -185,7 +185,7 @@ test("Bộ lọc tải đúng trạng thái và khóa mục đã xử lý", asyn
   await page.route(API_PATTERN, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith("/fb-policy")) {
-      await route.fulfill({ json: { auto_send_enabled: true } });
+      await route.fulfill({ json: { auto_send_enabled: true, jev_enabled: false } });
       return;
     }
     if (url.pathname.endsWith("/stats")) {

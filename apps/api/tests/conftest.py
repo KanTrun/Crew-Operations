@@ -29,6 +29,11 @@ def _isolated_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("NHIPQUAN_PBKDF2_VONG", "1000")
     monkeypatch.setenv("CA_SOLVER_TIME_LIMIT_S", "4.0")
     monkeypatch.delenv("NHIPQUAN_LOI_GIAI_SEED", raising=False)
+    # Jev (TypeSafe) phải TẮT trong test — không gọi API thật, không phụ thuộc
+    # mạng/key. JevSensor sẽ fail-closed (jev_ok=False) → hành vi tương tự khi
+    # chưa bật Jev ở production.
+    monkeypatch.delenv("JEV_ENABLED", raising=False)
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
     # _run_solver ghi output ra data/out/lich_tuan.json — file lịch THẬT của
     # quán. Test INFEASIBLE (vd test_infeasible_solver_returns_specific_conflicts)
     # ghi đè phan_cong rỗng + status INFEASIBLE vào file này, làm UI mất lịch.

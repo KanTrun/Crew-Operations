@@ -59,6 +59,7 @@ type Stats = {
 
 type Policy = {
   auto_send_enabled: boolean;
+  jev_enabled?: boolean;
 };
 
 type StatusFilter = "pending" | "approved" | "rejected" | "all";
@@ -274,6 +275,39 @@ export default function FbInboxPage() {
                 }}
               >
                 {policy.auto_send_enabled ? "Tắt tự trả lời" : "Bật tự trả lời FAQ"}
+              </Btn>
+            </span>
+          ) : null}
+        </Notice>
+      ) : null}
+      {policy ? (
+        <Notice>
+          {policy.jev_enabled
+            ? "Đang bật cảm biến Jev (TypeSafe) để phát hiện nguy cơ sức khỏe/pháp lý/gay gắt bổ trợ regex."
+            : "Đang tắt cảm biến Jev — chỉ dùng regex làm lưới an toàn. Chủ quán bật để Jev hỗ trợ phát hiện cách diễn đạt khéo mà regex bỏ lọt."}
+          {chuQuan ? (
+            <span style={{ display: "inline-block", marginLeft: 12 }}>
+              <Btn
+                variant={policy.jev_enabled ? "ghost" : undefined}
+                busy={policyBusy}
+                onClick={async () => {
+                  setPolicyBusy(true);
+                  try {
+                    const next = await apiSend<Policy>(
+                      "/api/v1/page/fb-policy",
+                      { jev_enabled: !policy.jev_enabled, note: "inbox_jev_toggle" },
+                      "PUT",
+                    );
+                    setPolicy(next);
+                    push(next.jev_enabled ? "Đã bật cảm biến Jev." : "Đã tắt cảm biến Jev.");
+                  } catch (e) {
+                    setError(viError(e, { doing: "cập nhật trạng thái cảm biến Jev" }));
+                  } finally {
+                    setPolicyBusy(false);
+                  }
+                }}
+              >
+                {policy.jev_enabled ? "Tắt Jev" : "Bật Jev"}
               </Btn>
             </span>
           ) : null}

@@ -221,3 +221,40 @@ def test_flag_on_escalate_still_not_auto(api: TestClient, monkeypatch) -> None:
     _post(api, "flag_on_esc", "Hôm qua uống bị ngộ độc quá")
     calls = getattr(api, "sent_calls", [])
     assert len(calls) == 0, "escalate bị tự gửi — NGUY HIỂM!"
+
+
+def test_policy_get_exposes_jev_enabled(api: TestClient) -> None:
+    """GET fb-policy phải expose `jev_enabled` (kill-switch Jev)."""
+    body = api.get("/api/v1/page/fb-policy", headers=headers(api, "lan")).json()
+    assert "jev_enabled" in body
+
+
+def test_policy_put_jev_enabled_kill_switch(api: TestClient, monkeypatch) -> None:
+    """Chủ quán tắt Jev qua API → fb_jev_enabled() trả False ngay (không deploy)."""
+    from ca_api.services import fb_moderation as fm
+
+    # Bật trước qua env (giả lập production có key).
+    monkeypatch.setenv("JEV_ENABLED", "1")
+    assert fm.fb_jev_enabled() is True
+
+    # Tắt qua API (Chủ quán) → kill-switch hoạt động.
+    ok = api.put(
+        "/api/v1/page/fb-policy",
+        json={"jev_enabled": False, "note": "tắt gấp do nghi ngờ lộ dữ liệu"},
+        headers=headers(api, "hung"),
+    )
+    assert ok.status_code == 200
+    assert ok.json()["jev_enabled"] is False
+
+    # env vẫn bật nhưng KV thắng → tắt.
+    monkeypatch.setenv("JEV_ENABLED", "1")
+    assert fm.fb_jev_enabled() is False
+
+    # Bật lại qua API.
+    ok2 = api.put(
+        "/api/v1/page/fb-policy",
+        json={"jev_enabled": True},
+        headers=headers(api, "hung"),
+    )
+    assert ok2.status_code == 200
+    assert fm.fb_jev_enabled() is True
