@@ -3,6 +3,7 @@
 /** War Room container — quản lý chọn preset, chạy simulate, propose. */
 
 import { useCallback, useState } from "react";
+import { eligibilityReasonLabel, proposalStatusLabel, warOptionTitle } from "../exp-present";
 import CrisisRoom from "./CrisisRoom";
 import ScenarioComparison from "./ScenarioComparison";
 import ScenarioPicker from "./ScenarioPicker";
@@ -90,7 +91,7 @@ export default function WarRoom() {
           optionId,
           result.baseline_snapshot_hash,
         );
-        setNotice(`Đã tạo đề xuất ${res.proposal.proposal_id} (${res.proposal.status}). Chờ quản lý xác nhận.`);
+        setNotice(`Đã tạo đề xuất (${proposalStatusLabel(res.proposal.status)}). Chờ quản lý xác nhận — mô phỏng không đổi lịch thật.`);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Lỗi khi tạo đề xuất");
       } finally {
@@ -156,7 +157,7 @@ export default function WarRoom() {
             >
               ✕
             </button>
-            <h2>Vì sao: {evidenceOption.option_id}</h2>
+            <h2>Vì sao: {warOptionTitle(evidenceOption.option_id, evidenceOption.option_id)}</h2>
             <p className="nq-drawer__risk">Rủi ro: {evidenceOption.risk || "—"}</p>
             <h3>Nguồn dữ liệu</h3>
             <ul className="nq-drawer__refs">
@@ -168,7 +169,7 @@ export default function WarRoom() {
             </ul>
             {evidenceOption.constraint_violations?.length ? (
               <div className="nq-alert nq-alert--error">
-                Ràng buộc cứng bị vi phạm: {evidenceOption.constraint_violations.join(", ")}
+                Ràng buộc cứng chưa đạt: {evidenceOption.constraint_violations.map(eligibilityReasonLabel).join("; ")}
               </div>
             ) : null}
           </div>

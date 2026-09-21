@@ -2,6 +2,8 @@
 
 /** ModeRail — đề xuất chế độ quán; confirm manager. */
 
+import { modeLabel, proposalStatusLabel } from "../exp-present";
+
 interface ModeItem {
   mode: string;
   active: boolean;
@@ -14,15 +16,6 @@ interface Props {
   busy?: boolean;
 }
 
-const MODE_LABEL: Record<string, string> = {
-  troi_mua: "Trời mưa",
-  gio_cao_diem: "Giờ cao điểm",
-  khach_doan: "Khách đoàn",
-  thieu_nhan_su: "Thiếu nhân sự",
-  quan_yen_tinh: "Quán yên tĩnh",
-  dem_nhac: "Đêm nhạc",
-};
-
 export default function ModeRail({ modes, onConfirm, busy }: Props) {
   return (
     <section className="nq-moderail" aria-label="Chế độ quán">
@@ -30,9 +23,9 @@ export default function ModeRail({ modes, onConfirm, busy }: Props) {
       <ul className="nq-moderail__list">
         {modes.map((m) => (
           <li key={m.mode} className={`nq-moderail__item${m.active ? " is-active" : ""}`}>
-            <span className="nq-moderail__label">{MODE_LABEL[m.mode] ?? m.mode}</span>
+            <span className="nq-moderail__label">{modeLabel(m.mode)}</span>
             <span className="nq-moderail__state">
-              {m.active ? "Đang bật" : m.proposal_status ? `Đề xuất ${m.proposal_status}` : "Tắt"}
+              {m.active ? "Đang bật" : m.proposal_status ? `Đề xuất: ${proposalStatusLabel(m.proposal_status)}` : "Tắt"}
             </span>
             {!m.active && (
               <button

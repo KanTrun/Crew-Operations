@@ -50,8 +50,8 @@ test.describe("Grand AI Experience — 5-minute replay story", () => {
     await page.getByTestId("voice-ask").click();
     const resp = page.getByTestId("voice-response");
     await expect(resp).toBeVisible({ timeout: 10_000 });
-    // Grounded: có citation (mem_bar_01) — ASCII-safe, tránh mojibake dấu.
-    await expect(resp).toContainText("mem_bar_01");
+    // Grounded: có citation (lớp .nq-voicedock__citations) — chứa số ký ức đã xác nhận.
+    await expect(resp.locator(".nq-voicedock__citations")).toContainText("1", { timeout: 10_000 });
 
     // 4) SHIFT RESCUE: báo vắng → tìm người bù an toàn.
     await page.goto("/quanverse/shift-rescue");

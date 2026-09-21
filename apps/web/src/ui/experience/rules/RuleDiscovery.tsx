@@ -3,6 +3,7 @@
 /** Rule Discovery — quán tự viết luật: evidence first → sentence → shadow → confirm. */
 
 import { useCallback, useState } from "react";
+import { proposalStatusLabel } from "../exp-present";
 import RuleEvidenceDrawer from "./RuleEvidenceDrawer";
 import RuleShadowResult from "./RuleShadowResult";
 
@@ -170,7 +171,7 @@ export default function RuleDiscovery() {
           <li key={c.candidate_id} className="nq-rules__item">
             <p className="nq-rules__sentence">{c.sentence}</p>
             <p className="nq-rules__meta">
-              {c.candidate_id} · {c.confidence.toFixed(2)} · trạng thái {c.status}
+              {proposalStatusLabel(c.status)} · độ tin cậy {(c.confidence * 100).toFixed(0)}%
             </p>
             {c.shadow_result ? <RuleShadowResult result={c.shadow_result} /> : null}
             <div className="nq-rules__actions-row">

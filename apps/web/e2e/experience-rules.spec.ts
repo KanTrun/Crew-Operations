@@ -41,6 +41,7 @@ test.describe("Quan tu viet luat", () => {
     await expect(page.locator(".nq-rules__item")).toHaveCount(1, { timeout: 15_000 });
     await page.getByTestId("reject-btn").first().click();
     await expect(page.locator(".nq-alert--info")).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator(".nq-rules__item").first()).toContainText("rejected");
+    // Nhãn tiếng Việt (exp-present) — không in mã thô "rejected".
+    await expect(page.locator(".nq-rules__item").first()).toContainText("Bị từ chối");
   });
 });

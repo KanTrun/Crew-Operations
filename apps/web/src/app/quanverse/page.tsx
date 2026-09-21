@@ -13,6 +13,7 @@ import FlavorUniverse from "../../ui/experience/quanverse/FlavorUniverse";
 import PreferenceConsent from "../../ui/experience/quanverse/PreferenceConsent";
 import ArLiteOverlay from "../../ui/experience/quanverse/ArLiteOverlay";
 import type { LiveSnapshotUI } from "../../ui/experience/quanverse/quanverse-model";
+import { eventStatusLabel, eventTypeLabel } from "../../ui/experience/exp-present";
 
 const ALL_ROLES: RoleId[] = ["khach", "nhan_vien", "quan_ly", "chu_quan"];
 
@@ -113,7 +114,7 @@ export default function QuanversePage() {
               {(snap.events ?? []).map(
                 (ev: { event_id: string; event_type: string; summary: string; status: string }) => (
                   <li key={ev.event_id} className="nq-quanverse__event">
-                    <span>{ev.event_type}</span> · {ev.summary} · {ev.status}
+                    <span>{eventTypeLabel(ev.event_type)}</span> · {ev.summary} · {eventStatusLabel(ev.status)}
                   </li>
                 ),
               )}

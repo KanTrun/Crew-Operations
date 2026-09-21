@@ -3,6 +3,7 @@
 /** So sánh baseline + options. Mọi số phải có nhãn Mô phỏng/Ước tính. */
 
 import { formatVnd } from "../experience-api";
+import { eventStatusLabel, warOptionTitle } from "../exp-present";
 import type { WarRoomOption } from "./war-room-model";
 
 interface Props {

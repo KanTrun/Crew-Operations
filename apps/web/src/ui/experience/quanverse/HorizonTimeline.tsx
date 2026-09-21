@@ -2,6 +2,8 @@
 
 /** HorizonTimeline — 15 phút tới. */
 
+import { horizonKindLabel } from "../exp-present";
+
 interface HorizonItem {
   item_id: string;
   kind: string;
@@ -20,7 +22,7 @@ export default function HorizonTimeline({ items }: { items: HorizonItem[] }) {
       <ul className="nq-horizon__list">
         {items.map((h) => (
           <li key={h.item_id} className={`nq-horizon__item nq-horizon__item--${h.kind}`}>
-            <span className="nq-horizon__kind">{h.kind}</span>
+            <span className="nq-horizon__kind">{horizonKindLabel(h.kind)}</span>
             <span className="nq-horizon__title">{h.title}</span>
           </li>
         ))}

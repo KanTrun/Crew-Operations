@@ -3,6 +3,7 @@
 /** Shift Rescue panel — báo vắng → danh sách người bù → propose/invite/confirm. */
 
 import { useCallback, useState } from "react";
+import { rescueStatusLabel } from "../exp-present";
 import CandidateCard from "./CandidateCard";
 
 interface Candidate {
@@ -142,9 +143,7 @@ export default function ShiftRescuePanel() {
 
       {caze ? (
         <div className="nq-rescue__case">
-          <p className="nq-rescue__status">
-            Case {caze.case_id} — trạng thái: {caze.status}
-          </p>
+          <p className="nq-rescue__status">Trạng thái: {rescueStatusLabel(caze.status)}</p>
           <h2>An toàn ({caze.candidates.length})</h2>
           <div className="nq-rescue__cards">
             {caze.candidates.map((c) => (

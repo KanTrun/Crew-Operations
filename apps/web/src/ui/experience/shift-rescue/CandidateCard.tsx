@@ -2,6 +2,8 @@
 
 /** Candidate card — safe/blocked rõ ràng + lý do tối thiểu an toàn privacy. */
 
+import { eligibilityReasonLabel, passReasonLabel } from "../exp-present";
+
 interface Candidate {
   candidate_id: string;
   nv_id: string;
@@ -57,14 +59,14 @@ export default function CandidateCard({
       {c.reason_blocks?.length ? (
         <ul className="nq-candidate__reasons nq-candidate__reasons--block">
           {c.reason_blocks.map((r, i) => (
-            <li key={i}>{r}</li>
+            <li key={i}>{eligibilityReasonLabel(r)}</li>
           ))}
         </ul>
       ) : null}
       {c.safe && c.reason_passes?.length ? (
         <ul className="nq-candidate__reasons">
-          {c.reason_passes.slice(0, 3).map((r, i) => (
-            <li key={i}>{r}</li>
+          {c.reason_passes.slice(0, 4).map((r, i) => (
+            <li key={i}>{passReasonLabel(r)}</li>
           ))}
         </ul>
       ) : null}

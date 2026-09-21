@@ -306,8 +306,12 @@
 .nq-quanverse__roleswitcher { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.5rem; }
 .nq-quanverse__layout { display: grid; gap: 1rem; grid-template-columns: 1fr 420px; align-items: start; }
 @media (max-width: 980px) { .nq-quanverse__layout { grid-template-columns: 1fr; } }
+.nq-quanverse__right { display: grid; gap: 1rem; }
+@media (min-width: 760px) and (max-width: 980px) { .nq-quanverse__right { grid-template-columns: 1fr 1fr; } }
 .nq-quanverse__events { border: 2px solid var(--nq-line); border-radius: var(--nq-radius-bubble, 18px); background: var(--nq-surface); padding: 1rem; margin-top: 1rem; }
 .nq-quanverse__events ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.nq-quanverse__event { display: flex; gap: 0.5rem; align-items: baseline; font-size: 0.9rem; padding: 0.5rem 0.6rem; border-radius: var(--nq-radius, 6px); background: var(--nq-bg-elevated); }
+.nq-quanverse__event span { font-family: var(--nq-font-mono, monospace); font-size: 0.75rem; color: var(--nq-copper); white-space: nowrap; }
 
 .nq-living-map__grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
 @media (min-width: 640px) { .nq-living-map__grid { grid-template-columns: repeat(4, 1fr); } }
@@ -366,3 +370,40 @@
 .nq-alert { border-radius: var(--nq-radius, 6px); padding: 0.7rem 0.9rem; font-size: 0.9rem; line-height: 1.5; }
 .nq-alert--error { border: 2px solid color-mix(in srgb, var(--nq-warn) 45%, transparent); color: var(--nq-warn); background: color-mix(in srgb, var(--nq-warn) 10%, var(--nq-bg-elevated)); }
 .nq-alert--info { border: 2px solid var(--nq-line-strong); color: var(--nq-copper); background: var(--nq-accent-soft); }
+
+/* ── Hiệu ứng (motion T1/T2 — tôn trọng reduced-motion qua var(--nq-press)) ── */
+@keyframes nq-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.nq-war-picker__card,
+.nq-war-compare__option,
+.nq-candidate,
+.nq-rules__item,
+.nq-living-map__zone,
+.nq-flavor__result,
+.nq-timeline__item {
+  animation: nq-fade-up 220ms ease-out both;
+}
+.nq-rules__item:nth-child(2), .nq-candidate:nth-child(2), .nq-living-map__zone:nth-child(2) { animation-delay: 40ms; }
+.nq-rules__item:nth-child(3), .nq-candidate:nth-child(3), .nq-living-map__zone:nth-child(3) { animation-delay: 80ms; }
+.nq-rules__item:nth-child(4), .nq-candidate:nth-child(4), .nq-living-map__zone:nth-child(4) { animation-delay: 120ms; }
+
+/* Bấm giữ — lún nhẹ (không dịch chuyển layout) */
+.nq-war-picker__card:active,
+.nq-crisis__item:active,
+.nq-living-map__zone:active,
+.nq-moderail__item:active {
+  transform: scale(var(--nq-press, 0.97));
+  transition: transform 120ms var(--nq-ease-spring, ease-out);
+}
+
+/* Focus ring rõ ràng cho bàn phím */
+.nq-war-picker__card:focus-visible,
+.nq-crisis__item:focus-visible,
+.nq-living-map__zone:focus-visible,
+.nq-moderail__item:focus-visible,
+.nq-drawer__close:focus-visible {
+  outline: 2px solid var(--nq-copper);
+  outline-offset: 2px;
+}

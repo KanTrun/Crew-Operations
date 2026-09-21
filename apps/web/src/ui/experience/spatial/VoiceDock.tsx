@@ -97,7 +97,7 @@ export default function VoiceDock({ anchorId }: Props) {
           <p className="nq-voicedock__text">{response.response_text}</p>
           {response.citations.length ? (
             <p className="nq-voicedock__citations">
-              Nguồn: {response.citations.join(", ")}
+              Nguồn: {response.citations.length} ký ức đã xác nhận
             </p>
           ) : null}
           {response.proposal ? (
