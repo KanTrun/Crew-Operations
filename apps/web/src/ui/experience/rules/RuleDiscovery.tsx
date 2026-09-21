@@ -4,6 +4,7 @@
 
 import { useCallback, useState } from "react";
 import { proposalStatusLabel } from "../exp-present";
+import { RoleChip } from "../exp-kit";
 import RuleEvidenceDrawer from "./RuleEvidenceDrawer";
 import RuleShadowResult from "./RuleShadowResult";
 
@@ -157,7 +158,7 @@ export default function RuleDiscovery() {
       <div className="nq-rules__actions">
         <button
           type="button"
-          className="nq-btn nq-btn--primary"
+          className="nq-btn nq-btn-primary"
           data-testid="rules-discover"
           disabled={busy}
           onClick={discover}
@@ -194,7 +195,7 @@ export default function RuleDiscovery() {
               </button>
               <button
                 type="button"
-                className="nq-btn nq-btn--primary"
+                className="nq-btn nq-btn-primary"
                 data-testid="confirm-btn"
                 disabled={busy || !c.shadow_result}
                 onClick={() => confirm(c.candidate_id)}
@@ -203,7 +204,7 @@ export default function RuleDiscovery() {
               </button>
               <button
                 type="button"
-                className="nq-btn nq-btn--ghost"
+                className="nq-btn nq-btn-ghost"
                 data-testid="reject-btn"
                 disabled={busy}
                 onClick={() => reject(c.candidate_id)}
@@ -211,7 +212,7 @@ export default function RuleDiscovery() {
                 Từ chối
               </button>
             </div>
-            <span className="nq-fixture-chip">Bằng chứng fixture</span>
+              <RoleChip label="Đề xuất từ dữ liệu quán" />
           </li>
         ))}
       </ul>

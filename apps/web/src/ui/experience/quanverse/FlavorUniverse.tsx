@@ -88,7 +88,7 @@ export default function FlavorUniverse() {
         </label>
         <button
           type="button"
-          className="nq-btn nq-btn--primary"
+          className="nq-btn nq-btn-primary"
           data-testid="flavor-go"
           disabled={busy}
           onClick={recommend}

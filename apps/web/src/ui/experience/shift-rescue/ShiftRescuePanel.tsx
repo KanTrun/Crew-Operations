@@ -132,7 +132,7 @@ export default function ShiftRescuePanel() {
       <div className="nq-rescue__actions">
         <button
           type="button"
-          className="nq-btn nq-btn--primary"
+          className="nq-btn nq-btn-primary"
           data-testid="rescue-intake"
           disabled={busy}
           onClick={intake}

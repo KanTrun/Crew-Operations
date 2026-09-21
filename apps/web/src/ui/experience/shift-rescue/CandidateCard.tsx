@@ -74,7 +74,7 @@ export default function CandidateCard({
       {onSelect && c.safe ? (
         <button
           type="button"
-          className="nq-btn nq-btn--primary"
+          className="nq-btn nq-btn-primary"
           data-testid="invite-btn"
           disabled={disabled}
           onClick={onSelect}

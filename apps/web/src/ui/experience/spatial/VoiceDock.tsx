@@ -81,7 +81,7 @@ export default function VoiceDock({ anchorId }: Props) {
         />
         <button
           type="button"
-          className="nq-btn nq-btn--primary"
+          className="nq-btn nq-btn-primary"
           data-testid="voice-ask"
           disabled={busy || !transcript.trim()}
           onClick={ask}

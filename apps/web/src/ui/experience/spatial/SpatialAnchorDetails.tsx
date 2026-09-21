@@ -3,6 +3,7 @@
 /** SpatialAnchorDetails — trạng thái anchor + timeline + related. */
 
 import { useEffect, useState } from "react";
+import { RoleChip } from "../exp-kit";
 import MemoryTimeline from "./MemoryTimeline";
 
 interface AnchorDetail {
@@ -62,7 +63,7 @@ export default function SpatialAnchorDetails({ anchorId }: Props) {
   return (
     <section className="nq-anchor" aria-label={`Chi tiết ${data.anchor.label}`}>
       <h3>{data.anchor.label}</h3>
-      <span className="nq-fixture-chip">Fixture replay</span>
+      <RoleChip label="Đang hoạt động" />
 
       <h4>Ký ức đã xác nhận</h4>
       <MemoryTimeline memories={data.confirmed_memories} />

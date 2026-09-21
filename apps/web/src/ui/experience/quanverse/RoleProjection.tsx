@@ -3,6 +3,7 @@
 /** RoleProjection — hiển thị khoanh vùng theo vai trò (server đã strip). */
 
 import type { ReactNode } from "react";
+import { RoleChip } from "../exp-kit";
 
 export type RoleId = "khach" | "nhan_vien" | "quan_ly" | "chu_quan";
 
@@ -23,7 +24,7 @@ export default function RoleProjection({ role, children }: Props) {
     <section className="nq-role" aria-label={`Bản chiếu vai trò ${ROLE_LABEL[role]}`}>
       <header className="nq-role__head">
         <h2>{ROLE_LABEL[role]}</h2>
-        <span className="nq-fixture-chip">Chế độ replay</span>
+        <RoleChip label="Bản chiếu trực tiếp" />
       </header>
       {children}
     </section>

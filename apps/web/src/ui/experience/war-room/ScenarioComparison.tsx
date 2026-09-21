@@ -77,7 +77,7 @@ export default function ScenarioComparison({
                 </button>
                 <button
                   type="button"
-                  className="nq-btn nq-btn--primary"
+                  className="nq-btn nq-btn-primary"
                   data-testid="propose-btn"
                   disabled={blocked || proposing}
                   onClick={() => onPropose(opt.option_id)}

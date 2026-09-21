@@ -119,7 +119,7 @@ export default function WarRoom() {
       <div className="nq-war__actions">
         <button
           type="button"
-          className="nq-btn nq-btn--primary"
+          className="nq-btn nq-btn-primary"
           disabled={busy || scenarios.length < 2}
           onClick={simulate}
         >

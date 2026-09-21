@@ -70,7 +70,7 @@ export default function PreferenceConsent() {
         />
         <button
           type="button"
-          className="nq-btn nq-btn--primary"
+          className="nq-btn nq-btn-primary"
           data-testid="pref-propose"
           disabled={busy || !content.trim()}
           onClick={propose}

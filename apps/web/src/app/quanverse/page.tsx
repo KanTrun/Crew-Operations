@@ -24,7 +24,6 @@ export default function QuanversePage() {
   const [ready, setReady] = useState(false);
   const [snap, setSnap] = useState<LiveSnapshotUI | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [replayMode, setReplayMode] = useState(true); // fixture/demo
 
   const base = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
@@ -37,7 +36,7 @@ export default function QuanversePage() {
 
   const loadSnapshot = useCallback(async (forRole: RoleId) => {
     try {
-      const qs = replayMode ? `?replay_role=${forRole}` : "";
+      const qs = `?replay_role=${forRole}`;
       const res = await fetch(`${base}/api/v1/experience/quanverse/snapshot${qs}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -46,7 +45,7 @@ export default function QuanversePage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Lỗi tải snapshot");
     }
-  }, [base, token, replayMode]);
+  }, [base, token]);
 
   useEffect(() => {
     if (token && ready) loadSnapshot(role);
@@ -76,21 +75,20 @@ export default function QuanversePage() {
 
       {error ? <div className="nq-alert nq-alert--error">{error}</div> : null}
 
-      {/* Role switch CHỈ trong replay/demo fixture — production từ session */}
+      {/* Chuyển bản chiếu theo vai trò — xem cách trải nghiệm đổi theo người xem */}
       <div className="nq-quanverse__roleswitcher">
         {ALL_ROLES.map((r) => (
           <button
             key={r}
             type="button"
-            className={`nq-btn${role === r ? " nq-btn--primary" : ""}`}
+            className={`nq-btn${role === r ? " nq-btn-primary" : ""}`}
             data-testid={`role-${r}`}
-            onClick={() => replayMode && setRole(r)}
-            disabled={!replayMode}
+            onClick={() => setRole(r)}
           >
             {r === "khach" ? "Khách" : r === "nhan_vien" ? "Nhân viên" : r === "quan_ly" ? "Quản lý" : "Chủ quán"}
           </button>
         ))}
-        <span className="nq-fixture-chip">{replayMode ? "Role switch chỉ trong demo" : ""}</span>
+        <span className="nq-rolechip">Bản chiếu trực tiếp</span>
       </div>
 
       {snap ? (
@@ -103,11 +101,16 @@ export default function QuanversePage() {
             <div className="nq-quanverse__right">
               <HorizonTimeline items={snap.next_horizon ?? []} />
               <ModeRail modes={snap.modes ?? []} onConfirm={confirmMode} />
-              <FlavorUniverse />
-              <PreferenceConsent />
-              <ArLiteOverlay />
             </div>
           </div>
+
+          {/* Không gian khách: Hương vị · Sở thích · AR — lấp đầy chiều ngang */}
+          <div className="nq-quanverse__guests">
+            <FlavorUniverse />
+            <PreferenceConsent />
+            <ArLiteOverlay />
+          </div>
+
           {/* Event/action list theo bản chiếu */}
           <section className="nq-quanverse__events" aria-label="Sự kiện trạng thái">
             <h3>Sự kiện</h3>
@@ -119,7 +122,11 @@ export default function QuanversePage() {
                   </li>
                 ),
               )}
-              {(snap.events ?? []).length === 0 && <li>Không có sự kiện vận hành cho bản chiếu này.</li>}
+              {(snap.events ?? []).length === 0 && (
+                <li className="nq-quanverse__event nq-quanverse__event--empty">
+                  Không có sự kiện vận hành cho bản chiếu này.
+                </li>
+              )}
             </ul>
           </section>
         </RoleProjection>

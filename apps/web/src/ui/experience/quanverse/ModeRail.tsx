@@ -30,7 +30,7 @@ export default function ModeRail({ modes, onConfirm, busy }: Props) {
             {!m.active && (
               <button
                 type="button"
-                className="nq-btn nq-btn--primary"
+                className="nq-btn nq-btn-primary"
                 data-testid={`mode-confirm-${m.mode}`}
                 disabled={busy}
                 onClick={() => onConfirm(m.mode)}

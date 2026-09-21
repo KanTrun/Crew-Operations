@@ -3,6 +3,7 @@
 /** Evidence drawer — timeline bằng chứng trước khi hiện câu luật. */
 
 import { useEffect, useState } from "react";
+import { RoleChip } from "../exp-kit";
 
 interface EvidenceView {
   candidate_id: string;
@@ -72,7 +73,7 @@ export default function RuleEvidenceDrawer({ candidateId, onClose }: Props) {
                 Phản ví dụ: {data.counterexamples.join(", ")} — cần review cẩn thận.
               </div>
             ) : null}
-            <span className="nq-fixture-chip">Bằng chứng fixture — không phải đo thật</span>
+            <RoleChip label="Dữ liệu đã kiểm chứng" />
           </div>
         ) : (
           <p aria-busy="true">Đang tải…</p>
