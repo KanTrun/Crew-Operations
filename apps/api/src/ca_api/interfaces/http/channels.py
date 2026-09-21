@@ -1435,7 +1435,8 @@ def page_thread_approve(
 
     page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
     store_id = resolve_store_id_from_page_id(page_id_cfg)
-    kv_mutate("page_quan", mut, _page_store(store_id))
+    # Ghi vào ĐÚNG key _page_store đọc (page_quan:{store_id}) — chống mất trả lời.
+    kv_mutate(f"page_quan:{store_id}", mut, _page_store(store_id))
     if not found:
         raise HTTPException(status_code=404, detail="thread")
 
