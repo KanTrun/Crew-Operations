@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getToken, getRole } from "../../lib/session";
 import { AuthGate, Loading } from "../../ui/kit";
+import { ExpSkeleton } from "../../ui/experience/exp-kit";
 import LivingMap from "../../ui/experience/quanverse/LivingMap";
 import RoleProjection, { type RoleId } from "../../ui/experience/quanverse/RoleProjection";
 import ModeRail from "../../ui/experience/quanverse/ModeRail";
@@ -63,7 +64,7 @@ export default function QuanversePage() {
     }
   }, [base, token, role, loadSnapshot]);
 
-  if (!ready) return <Loading>Đang kiểm tra phiên…</Loading>;
+  if (!ready) return <ExpSkeleton rows={6} />;
   if (!token) return <AuthGate />;
 
   return (
@@ -123,7 +124,7 @@ export default function QuanversePage() {
           </section>
         </RoleProjection>
       ) : (
-        <p aria-busy="true">Đang tải snapshot…</p>
+        <ExpSkeleton rows={6} />
       )}
     </div>
   );

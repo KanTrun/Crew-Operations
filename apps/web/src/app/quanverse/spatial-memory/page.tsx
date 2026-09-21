@@ -4,7 +4,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getToken } from "../../../lib/session";
-import { AuthGate, Loading } from "../../../ui/kit";
+import { AuthGate } from "../../../ui/kit";
+import { ExpSkeleton } from "../../../ui/experience/exp-kit";
 import SpatialMap from "../../../ui/experience/spatial/SpatialMap";
 import SpatialAnchorDetails from "../../../ui/experience/spatial/SpatialAnchorDetails";
 import VoiceDock from "../../../ui/experience/spatial/VoiceDock";
@@ -43,7 +44,7 @@ export default function SpatialMemoryPage() {
     if (token) loadAnchors();
   }, [token, loadAnchors]);
 
-  if (!ready) return <Loading>Đang kiểm tra phiên…</Loading>;
+  if (!ready) return <ExpSkeleton rows={6} />;
   if (!token) return <AuthGate />;
 
   return (

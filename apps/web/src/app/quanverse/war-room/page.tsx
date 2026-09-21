@@ -3,11 +3,12 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { getToken, isManager } from "../../../lib/session";
-import { AuthGate, Loading } from "../../../ui/kit";
+import { AuthGate } from "../../../ui/kit";
+import { ExpSkeleton } from "../../../ui/experience/exp-kit";
 
 const WarRoom = dynamic(
   () => import("../../../ui/experience/war-room/WarRoom"),
-  { ssr: false, loading: () => <Loading>Đang tải War Room…</Loading> },
+  { ssr: false, loading: () => <ExpSkeleton rows={5} grid /> },
 );
 
 export default function WarRoomPage() {
@@ -21,7 +22,7 @@ export default function WarRoomPage() {
     setReady(true);
   }, []);
 
-  if (!ready) return <Loading>Đang kiểm tra phiên…</Loading>;
+  if (!ready) return <ExpSkeleton rows={5} grid />;
   if (!token) return <AuthGate />;
   if (!manager) {
     return (
