@@ -3,6 +3,7 @@ import { ConditionalShell } from "./ConditionalShell";
 import { SmoothScroll } from "../ui/SmoothScroll";
 import { fontClass } from "../ui/fonts";
 import "./globals.css";
+import "./experience.css";
 
 export const metadata: Metadata = {
   title: "NHỊP QUÁN",

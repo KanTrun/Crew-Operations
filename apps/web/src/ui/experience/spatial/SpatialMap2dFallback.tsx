@@ -37,7 +37,6 @@ export default function SpatialMap2dFallback({
       <svg
         viewBox={`0 0 ${W} ${H}`}
         width="100%"
-        height="auto"
         aria-hidden="true"
         className="nq-map2d__svg"
       >
@@ -70,9 +69,31 @@ export default function SpatialMap2dFallback({
               className={`nq-map2d__anchor${selected ? " is-selected" : ""}`}
             >
               <circle r="26" fill={selected ? "var(--nq-copper)" : "var(--nq-surface-hi)"} stroke="var(--nq-copper)" strokeWidth="2" />
-              <text y="0" textAnchor="middle" dominantBaseline="central" fill="currentColor">
-                {a.kind === "thiet_bi" ? "⚙" : "▭"}
-              </text>
+              {a.kind === "thiet_bi" ? (
+                /* Gear đơn giản — SVG thay emoji (guideline: không emoji icon). */
+                <g fill="none" stroke="currentColor" strokeWidth="2" opacity="0.9">
+                  <circle r="8" strokeWidth="2.5" />
+                  {[0, 60, 120].map((deg) => {
+                    const rad = (deg * Math.PI) / 180;
+                    const cos = Math.cos(rad);
+                    const sin = Math.sin(rad);
+                    return (
+                      <rect
+                        key={deg}
+                        x={-10 * cos - 2}
+                        y={-10 * sin - 2}
+                        width="4"
+                        height="4"
+                        rx="1"
+                        transform={`rotate(${deg})`}
+                      />
+                    );
+                  })}
+                </g>
+              ) : (
+                /* Vùng — hình vuông bo góc. */
+                <rect x="-10" y="-10" width="20" height="20" rx="4" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.9" />
+              )}
               <text y="44" textAnchor="middle" className="nq-map2d__label">
                 {a.label}
               </text>
