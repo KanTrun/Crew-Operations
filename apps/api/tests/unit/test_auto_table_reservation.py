@@ -421,7 +421,7 @@ def test_auto_reservation_with_gmail_confirmation_ticket():
 
     # Turn 2: Customer provides phone and Gmail
     ticket2 = handle_reservation(
-        "SĐT 0987654321, email: khachhang.vip@gmail.com, tên Trang nhé",
+        "SĐT 0987654321, email: khachhang.test@example.com, tên Trang nhé",
         psid=psid,
         session_state=session_state,
     )
@@ -429,7 +429,7 @@ def test_auto_reservation_with_gmail_confirmation_ticket():
     assert ticket2.action_type == "confirmed"
     assert not ticket2.requires_human_approval
     assert "đã xác nhận giữ bàn" in ticket2.suggested_reply.lower()
-    assert "khachhang.vip@gmail.com" in ticket2.suggested_reply
+    assert "khachhang.test@example.com" in ticket2.suggested_reply
 
     # Verify reservation created in database
     actives = reservation_find_active_by_psid(psid)
@@ -438,10 +438,10 @@ def test_auto_reservation_with_gmail_confirmation_ticket():
     assert booking["customer_name"] == "Trang"
     assert booking["party_size"] == 6
     assert booking["phone"] == "0987654321"
-    assert "khachhang.vip@gmail.com" in booking.get("notes", "")
+    assert "khachhang.test@example.com" in booking.get("notes", "")
 
     # Verify sending confirmation email works
-    ok = send_reservation_confirmation_email(booking, to_email="khachhang.vip@gmail.com")
+    ok = send_reservation_confirmation_email(booking, to_email="khachhang.test@example.com")
     assert ok is True
 
 

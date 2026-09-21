@@ -29,11 +29,20 @@ type Status = {
 type Thread = {
   id: string;
   psid?: string;
+  from?: string;
+  customer_name?: string;
+  status?: string;
+  unread?: boolean;
+  last_message?: string;
   sender_name: string;
   sender_avatar?: string;
-  last_message_at: string;
-  is_within_24h: boolean;
-  needs_action: boolean;
+  last_message_at?: string;
+  last_message_ts?: number;
+  is_within_24h?: boolean;
+  needs_action?: boolean;
+  pending_approval?: boolean;
+  tom_tat?: string;
+  intent?: string;
   suggested_reply?: string;
   customer_profile?: {
     ten_khach?: string;
@@ -164,6 +173,11 @@ export default function PageQuanPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { toasts, push, dismiss } = useToasts();
+
+  // Hội thoại Messenger: hội thoại đang chọn & bộ lọc
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [threadFilter, setThreadFilter] = useState<"all" | "needs_action" | "within_24h">("all");
+  const [sendingReplyId, setSendingReplyId] = useState<string | null>(null);
 
   // Load Saved Trends from localStorage
   useEffect(() => {
@@ -359,19 +373,23 @@ export default function PageQuanPage() {
   async function reply(id: string) {
     const text = (replyDraft[id] ?? "").trim();
     if (!text) return;
+    setSendingReplyId(id);
     try {
       await apiSend(`/api/v1/page/threads/${id}/reply`, { text });
-      push("Đã gửi trả lời.");
+      push("Đã gửi trả lời cho khách.");
       setReplyDraft((m) => ({ ...m, [id]: "" }));
       load();
     } catch (e) {
       setError(viError(e, { doing: "gửi được trả lời" }));
+    } finally {
+      setSendingReplyId(null);
     }
   }
 
   async function approveSuggestion(th: Thread) {
     const text = (replyDraft[th.id] || th.suggested_reply || "").trim();
     if (!text) return;
+    setSendingReplyId(th.id);
     try {
       await apiSend(`/api/v1/page/threads/${th.id}/approve`, {
         final_reply: text,
@@ -382,6 +400,8 @@ export default function PageQuanPage() {
       load();
     } catch (e) {
       setError(viError(e, { doing: "duyệt trả lời" }));
+    } finally {
+      setSendingReplyId(null);
     }
   }
 
@@ -512,6 +532,48 @@ export default function PageQuanPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  // ── Hội thoại Messenger: tiện ích hiển thị ────────────────────────────────
+  const threadTime = (th: Thread): string => {
+    const raw =
+      th.last_message_at ||
+      (th.replies && th.replies.length > 0 ? th.replies[th.replies.length - 1].at : "") ||
+      "";
+    if (!raw) return "";
+    const t = new Date(raw.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(raw) ? raw : `${raw}Z`);
+    if (Number.isNaN(t.getTime())) return "";
+    const now = new Date();
+    const sameDay = t.toDateString() === now.toDateString();
+    if (sameDay) {
+      return t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+    return t.toLocaleDateString([], { day: "2-digit", month: "2-digit" });
+  };
+
+  const avatarFor = (th: Thread): { fallback: string; src?: string } => {
+    const name = th.sender_name || "Khách";
+    const fallback = name.trim().charAt(0).toUpperCase();
+    return { fallback, src: th.sender_avatar || undefined };
+  };
+
+  const isCustomerMsg = (th: Thread, m: NonNullable<Thread["replies"]>[number]): boolean => {
+    const by = String(m.by || "");
+    if (by === th.psid || by === th.id || by.startsWith("fb_")) return true;
+    const profTen = th.customer_profile?.ten_khach;
+    if (profTen && by === profTen) return true;
+    // Tin do nhân viên/QL/chatbot gửi đi — không phải khách
+    if (by.includes("Quản lý") || by.includes("Chatbot") || by.includes("Copilot") || by.includes("Agent")) return false;
+    // Có thời điểm tin nhắn `at` nhưng sender lạ — ưu tiên xem là khách khi chưa khớp ai
+    return !by || by === th.sender_name || by === th.from;
+  };
+
+  const filteredThreads = threads.filter((th) => {
+    if (threadFilter === "needs_action") return Boolean(th.needs_action || th.pending_approval);
+    if (threadFilter === "within_24h") return th.is_within_24h !== false;
+    return true;
+  });
+
+  const activeThread = filteredThreads.find((t) => t.id === activeThreadId) || null;
+
   const displayedTrends = showSavedOnly ? savedTrends : trends;
 
   const currentSourceLabel =
@@ -558,8 +620,23 @@ export default function PageQuanPage() {
         >
           Kho Xu Hướng Đã Lưu ({savedTrends.length})
         </Btn>
-        <Btn variant={tab === "threads" ? "primary" : "ghost"} onClick={() => setTab("threads")}>
+        <Btn
+          variant={tab === "threads" ? "primary" : "ghost"}
+          onClick={() => setTab("threads")}
+          className={
+            tab === "threads"
+              ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-bold shadow-md"
+              : threads.filter((t) => t.needs_action || t.pending_approval).length > 0
+              ? "text-amber-300 hover:bg-amber-500/10 border border-amber-500/30"
+              : undefined
+          }
+        >
           Hội thoại Messenger ({threads.length})
+          {threads.filter((t) => t.needs_action || t.pending_approval).length > 0 ? (
+            <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-black text-black">
+              {threads.filter((t) => t.needs_action || t.pending_approval).length}
+            </span>
+          ) : null}
         </Btn>
         <Btn variant={tab === "drafts" ? "primary" : "ghost"} onClick={() => setTab("drafts")}>
           Nháp bài Fanpage ({drafts.length})
@@ -1490,88 +1567,380 @@ export default function PageQuanPage() {
       {/* TAB 2: HỘI THOẠI MESSENGER */}
       {tab === "threads" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-[var(--nq-muted)]">
-              {connected ? "Đã nối Page Messenger" : "Chưa nối Fanpage"}
-            </span>
-            <Btn variant="ghost" onClick={load}>
-              Làm mới
-            </Btn>
+          {/* Thanh trạng thái kết nối + bộ lọc */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span
+                className={`inline-block h-2.5 w-2.5 rounded-full ${
+                  connected ? "bg-emerald-500" : "bg-[var(--nq-danger)]"
+                }`}
+                aria-hidden="true"
+              />
+              <span className="text-sm font-bold text-[var(--nq-primary)]">
+                {connected ? `Đã nối ${status?.page_name || "Messenger"}` : "Chưa nối Fanpage"}
+              </span>
+              {connected ? (
+                <span className="hidden sm:inline-block rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-mono text-emerald-400">
+                  {threads.filter((t) => t.needs_action || t.pending_approval).length} cần xử lý
+                </span>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex rounded-lg border border-[var(--nq-dim)] overflow-hidden text-xs">
+                {(
+                  [
+                    { id: "all", label: "Tất cả" },
+                    { id: "needs_action", label: "Cần xử lý" },
+                    { id: "within_24h", label: "Trong 24h" },
+                  ] as const
+                ).map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setThreadFilter(f.id)}
+                    className={`px-3 py-1.5 font-bold transition cursor-pointer ${
+                      threadFilter === f.id
+                        ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)]"
+                        : "text-[var(--nq-muted)] hover:bg-[var(--nq-dim)] hover:text-white"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              <Btn variant="ghost" onClick={load}>
+                Làm mới
+              </Btn>
+            </div>
           </div>
 
-          {threads.length === 0 ? (
-            <Empty>Không có hội thoại nào cần xử lý.</Empty>
+          {filteredThreads.length === 0 ? (
+            <Empty title="Chưa có hội thoại">
+              {connected
+                ? "Không có hội thoại nào khớp bộ lọc. Bấm Làm mới để đồng bộ tin mới từ Messenger."
+                : "Chưa nối Fanpage nên chưa có tin nhắn. Xem hướng dẫn kết nối trong docs/runbooks/facebook-page-connect.md."}
+            </Empty>
           ) : (
-            <div className="space-y-4">
-              {threads.map((th) => (
-                <div
-                  key={th.id}
-                  className={`border-2 p-4 ${
-                    th.needs_action ? "border-[var(--nq-copper)] bg-[var(--nq-surface-hi)]" : "border-[var(--nq-dim)]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-[var(--nq-primary)]">{th.sender_name}</span>
-                      {th.customer_profile?.is_vip_or_regular && (
-                        <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/40">
-                          Khách quen ({th.customer_profile.visit_count} lần)
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* CỘT TRÁI: DANH SÁCH HỘI THOẠI */}
+              <div
+                className={`${
+                  activeThread ? "hidden lg:flex" : "flex"
+                } lg:col-span-4 flex-col rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] overflow-hidden max-h-[70vh]`}
+              >
+                <div className="flex items-center justify-between border-b border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 py-3">
+                  <span className="text-xs font-bold uppercase tracking-widest text-[var(--nq-copper)]">
+                    Hội thoại ({filteredThreads.length})
+                  </span>
+                  <span className="text-[11px] font-mono text-[var(--nq-muted)]">
+                    {threads.filter((t) => t.is_within_24h).length} trong 24h
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto divide-y divide-[var(--nq-dim)]/40">
+                  {filteredThreads.map((th) => {
+                    const isActive = activeThread?.id === th.id;
+                    const { fallback, src } = avatarFor(th);
+                    const lastMsg = (th.replies && th.replies[th.replies.length - 1]) || null;
+                    const isCustLastMsg = lastMsg ? isCustomerMsg(th, lastMsg) : true;
+                    return (
+                      <button
+                        key={th.id}
+                        type="button"
+                        onClick={() => setActiveThreadId(th.id)}
+                        className={`w-full flex items-start gap-3 px-4 py-3 text-left transition cursor-pointer ${
+                          isActive
+                            ? "bg-[var(--nq-accent-soft)] border-l-4 border-[var(--nq-copper)]"
+                            : "hover:bg-[var(--nq-bg)] border-l-4 border-transparent"
+                        }`}
+                      >
+                        {/* Avatar */}
+                        <span className="relative shrink-0">
+                          {src ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={src}
+                              alt=""
+                              className="w-11 h-11 rounded-full object-cover border border-[var(--nq-dim)]"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <span className="w-11 h-11 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-black flex items-center justify-center text-base border border-[var(--nq-copper-dim)]">
+                              {fallback}
+                            </span>
+                          )}
+                          {(th.needs_action || th.pending_approval) && (
+                            <span
+                              className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--nq-copper)] border-2 border-[var(--nq-surface)]"
+                              title="Cần xử lý"
+                              aria-label="Cần xử lý"
+                            />
+                          )}
                         </span>
-                      )}
-                      {th.customer_profile?.favorite_drinks && th.customer_profile.favorite_drinks.length > 0 && (
-                        <span className="rounded bg-cyan-950/60 px-1.5 py-0.5 text-[10px] text-cyan-300 border border-cyan-800/40">
-                          {th.customer_profile.favorite_drinks.join(", ")}
+
+                        {/* Tên + tin cuối */}
+                        <span className="flex-1 min-w-0">
+                          <span className="flex items-center justify-between gap-1">
+                            <span className="font-bold text-xs text-[var(--nq-fg)] truncate">
+                              {th.sender_name}
+                            </span>
+                            <span className="shrink-0 text-[10px] font-mono text-[var(--nq-muted)]">
+                              {threadTime(th)}
+                            </span>
+                          </span>
+                          <span className="flex items-center gap-1.5 mt-0.5">
+                            {th.customer_profile?.is_vip_or_regular && (
+                              <span className="rounded-full bg-amber-500/20 px-1.5 py-px text-[9px] font-bold text-amber-300 border border-amber-500/40 whitespace-nowrap">
+                                Quen · {th.customer_profile.visit_count}
+                              </span>
+                            )}
+                            <span className="text-[11px] text-[var(--nq-muted)] truncate leading-tight">
+                              {th.tom_tat || (lastMsg ? lastMsg.text : "")}
+                            </span>
+                          </span>
+                          <span className="flex items-center gap-1.5 mt-1">
+                            {th.is_within_24h ? (
+                              <span className="text-[10px] font-mono text-emerald-500/90">● trong 24h</span>
+                            ) : (
+                              <span className="text-[10px] font-mono text-[var(--nq-muted)]">hết 24h — cần tag</span>
+                            )}
+                            {th.intent ? (
+                              <span className="rounded bg-[var(--nq-dim)]/50 px-1.5 py-px text-[9px] text-[var(--nq-primary)]">
+                                {th.intent.replace(/_/g, " ")}
+                              </span>
+                            ) : null}
+                          </span>
                         </span>
-                      )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* CỘT PHẢI: KHUNG HỘI THOẠI CHI TIẾT */}
+              {activeThread ? (
+                <div className={`${activeThread ? "flex" : "hidden"} lg:col-span-8 lg:flex flex-col rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-bg)] overflow-hidden max-h-[70vh]`}>
+                  {/* Header hội thoại */}
+                  <div className="flex items-center gap-3 border-b border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => setActiveThreadId(null)}
+                      className="lg:hidden shrink-0 rounded border border-[var(--nq-dim)] px-2 py-1 text-xs font-bold text-[var(--nq-muted)] hover:bg-[var(--nq-dim)] hover:text-white transition cursor-pointer"
+                      aria-label="Quay lại danh sách"
+                    >
+                      ← Quay lại
+                    </button>
+                    {(() => {
+                      const { fallback, src } = avatarFor(activeThread);
+                      return src ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={src}
+                          alt=""
+                          className="w-10 h-10 rounded-full object-cover border border-[var(--nq-dim)]"
+                        />
+                      ) : (
+                        <span className="w-10 h-10 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-black flex items-center justify-center text-sm">
+                          {fallback}
+                        </span>
+                      );
+                    })()}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-sm text-[var(--nq-fg)] truncate">{activeThread.sender_name}</h3>
+                      <p className="text-[11px] text-[var(--nq-muted)] truncate">
+                        {activeThread.customer_profile?.ten_khach
+                          ? `Hồ sơ: ${activeThread.customer_profile.ten_khach}`
+                          : activeThread.psid
+                          ? `PSID ····${activeThread.psid.slice(-4)}`
+                          : activeThread.id}
+                      </p>
                     </div>
-                    <span className="text-xs text-[var(--nq-muted)]">
-                      {th.is_within_24h ? "Trong 24h" : "Hết 24h (cần tag)"}
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold border ${
+                        activeThread.is_within_24h
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                          : "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                      }`}
+                    >
+                      {activeThread.is_within_24h ? "Trong 24h" : "Hết 24h · tag"}
                     </span>
+                    {(activeThread.needs_action || activeThread.pending_approval) && (
+                      <span className="shrink-0 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] px-2.5 py-1 text-[10px] font-bold">
+                        Cần xử lý
+                      </span>
+                    )}
                   </div>
 
-                  <div className="my-3 max-h-48 space-y-2 overflow-y-auto border border-[var(--nq-dim)] p-2">
-                    {(th.replies ?? []).map((m) => {
-                      const fromCustomer = m.by === th.psid;
+                  {/* Hồ sơ khách gọn (khách quen / món quen / lưu ý) */}
+                  {activeThread.customer_profile &&
+                    (activeThread.customer_profile.is_vip_or_regular ||
+                      (activeThread.customer_profile.favorite_drinks || []).length > 0 ||
+                      (activeThread.customer_profile.special_notes || []).length > 0) && (
+                      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--nq-dim)] bg-[var(--nq-surface)] px-4 py-2">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--nq-copper)]">
+                          Hồ sơ khách
+                        </span>
+                        {activeThread.customer_profile.is_vip_or_regular && (
+                          <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/40">
+                            Khách quen · {activeThread.customer_profile.visit_count} lần
+                          </span>
+                        )}
+                        {(activeThread.customer_profile.favorite_drinks || []).map((d) => (
+                          <span
+                            key={d}
+                            className="rounded border border-cyan-800/40 bg-cyan-950/60 px-1.5 py-0.5 text-[10px] text-cyan-300"
+                          >
+                            ☕ {d}
+                          </span>
+                        ))}
+                        {(activeThread.customer_profile.special_notes || []).map((n) => (
+                          <span
+                            key={n}
+                            className="rounded border border-purple-800/40 bg-purple-950/60 px-1.5 py-0.5 text-[10px] text-purple-300"
+                          >
+                            {n}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                  {/* Chuỗi tin nhắn */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {(activeThread.replies ?? []).map((m) => {
+                      const fromCustomer = isCustomerMsg(activeThread, m);
                       return (
                         <div
-                          key={m.id}
-                          className={`text-xs ${
-                            fromCustomer ? "text-[var(--nq-primary)]" : "text-right text-[var(--nq-copper)]"
-                          }`}
+                          key={m.id || `${m.at}-${m.text}-${m.by}`}
+                          className={`flex items-end gap-2 ${fromCustomer ? "" : "flex-row-reverse"}`}
                         >
-                          <span className="font-bold">{fromCustomer ? "Khách: " : "Quán: "}</span>
-                          {m.text}
+                          {fromCustomer ? (
+                            (() => {
+                              const { fallback, src } = avatarFor(activeThread);
+                              return src ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={src}
+                                  alt=""
+                                  className="w-7 h-7 rounded-full object-cover border border-[var(--nq-dim)] shrink-0"
+                                />
+                              ) : (
+                                <span className="w-7 h-7 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-bold text-[10px] flex items-center justify-center shrink-0">
+                                  {fallback}
+                                </span>
+                              );
+                            })()
+                          ) : null}
+                          <div
+                            className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed shadow-sm ${
+                              fromCustomer
+                                ? "bg-[var(--nq-surface)] border border-[var(--nq-dim)] text-[var(--nq-fg)] rounded-bl-sm"
+                                : "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] rounded-br-sm font-medium"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-3 mb-0.5">
+                              <span
+                                className={`text-[9px] font-bold uppercase tracking-wider ${
+                                  fromCustomer ? "text-[var(--nq-copper)]" : "text-[var(--nq-accent-ink)]/70"
+                                }`}
+                              >
+                                {fromCustomer ? activeThread.sender_name : m.by || "Quán"}
+                              </span>
+                              {m.at ? (
+                                <span
+                                  className={`text-[9px] font-mono ${
+                                    fromCustomer ? "text-[var(--nq-dim)]" : "text-[var(--nq-accent-ink)]/60"
+                                  }`}
+                                >
+                                  {(() => {
+                                    const raw = String(m.at || "");
+                                    const t = new Date(raw.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(raw) ? raw : `${raw}Z`);
+                                    return Number.isNaN(t.getTime())
+                                      ? ""
+                                      : t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                                  })()}
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="whitespace-pre-wrap break-words">{m.text}</p>
+                            {m.mock ? (
+                              <span className="block mt-1 text-[9px] font-mono opacity-60 italic">(mock — replay)</span>
+                            ) : null}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
 
-                  {th.suggested_reply ? (
-                    <div className="mb-2 rounded bg-[var(--nq-surface)] p-2 text-xs">
-                      <span className="font-bold text-[var(--nq-copper)]">Gợi ý trả lời: </span>
-                      {th.suggested_reply}
+                  {/* Gợi ý trả lời của AI */}
+                  {activeThread.suggested_reply ? (
+                    <div className="border-t border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 py-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 shrink-0 rounded bg-indigo-500/20 border border-indigo-500/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-indigo-300">
+                          AI
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] text-[var(--nq-primary)] leading-relaxed">
+                            {activeThread.suggested_reply}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Btn
+                              variant="primary"
+                              busy={sendingReplyId === activeThread.id}
+                              onClick={() => approveSuggestion(activeThread)}
+                            >
+                              Duyệt & gửi
+                            </Btn>
+                            <Btn
+                              variant="ghost"
+                              onClick={() => setReplyDraft((d) => ({ ...d, [activeThread.id]: activeThread.suggested_reply || "" }))}
+                            >
+                              Chỉnh trước khi gửi
+                            </Btn>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ) : null}
 
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      className="nq-input flex-1 text-xs"
-                      placeholder="Nhập nội dung trả lời..."
-                      value={replyDraft[th.id] ?? th.suggested_reply ?? ""}
-                      onChange={(e) => setReplyDraft({ ...replyDraft, [th.id]: e.target.value })}
+                  {/* Hộp soạn trả lời */}
+                  <div className="flex items-end gap-2 border-t border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 py-3">
+                    <textarea
+                      rows={2}
+                      className="nq-input flex-1 resize-none text-xs"
+                      placeholder="Nhập nội dung trả lời cho khách…"
+                      value={replyDraft[activeThread.id] ?? ""}
+                      onChange={(e) => setReplyDraft({ ...replyDraft, [activeThread.id]: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          reply(activeThread.id);
+                        }
+                      }}
                     />
-                    <Btn variant="primary" onClick={() => reply(th.id)}>
+                    <Btn
+                      variant="primary"
+                      disabled={!String(replyDraft[activeThread.id] ?? "").trim()}
+                      busy={sendingReplyId === activeThread.id}
+                      onClick={() => reply(activeThread.id)}
+                    >
                       Gửi
                     </Btn>
-                    {th.suggested_reply ? (
-                      <Btn variant="ghost" onClick={() => approveSuggestion(th)}>
-                        Duyệt gợi ý
-                      </Btn>
+                    {!activeThread.is_within_24h ? (
+                      <span
+                        className="hidden md:inline-block max-w-[140px] text-[10px] leading-tight text-[var(--nq-muted)]"
+                        title="Gửi ngoài 24h sẽ tự gắn tag CONFIRMED_EVENT_UPDATE trên Messenger"
+                      >
+                        Hết 24h — hệ thống tự gắn tag khi gửi
+                      </span>
                     ) : null}
                   </div>
                 </div>
-              ))}
+              ) : (
+                <div className="hidden lg:block lg:col-span-8">
+                  <Empty title="Chọn hội thoại">
+                    Chọn một hội thoại bên trái để đọc tin nhắn và trả lời khách.
+                  </Empty>
+                </div>
+              )}
             </div>
           )}
         </div>

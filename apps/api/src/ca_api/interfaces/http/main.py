@@ -277,15 +277,8 @@ def _week_value(key: str, week: str, default: Any) -> Any:
     raw = kv_get(key, None)
     if isinstance(raw, dict) and raw:
         return raw.get(week, default)
-    if key.endswith("_by_week"):
-        legacy = kv_get(key.removesuffix("_by_week"), None)
-        if legacy is not None:
-            # Legacy doc có tuan_iso: chỉ fallback khi đúng tuần được hỏi,
-            # tránh tuần mới thừa hưởng trạng thái của tuần cũ.
-            if isinstance(legacy, dict) and "tuan_iso" in legacy:
-                return legacy if legacy.get("tuan_iso") == week else default
-            return legacy
-    return default
+    legacy = kv_get(key.removesuffix("_by_week"), None) if key.endswith("_by_week") else None
+    return legacy if legacy is not None else default
 
 
 def _pin_map(tuan_iso: str) -> dict[tuple[str, str], bool]:

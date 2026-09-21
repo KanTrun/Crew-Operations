@@ -152,6 +152,137 @@ def test_page_empty_without_fixture_seed() -> None:
     assert th.json()["items"] == []
 
 
+def test_page_threads_enrichment_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    """API /page/threads phải trả sender_name hiển thị được dù thread gốc thiếu tên."""
+    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "disconnected")
+    monkeypatch.delenv("NHIPQUAN_FB_PAGE_TOKEN", raising=False)
+    ql = headers(client, "lan")
+
+    from ca_api.persist import kv_set
+
+    kv_set(
+        "page_quan",
+        {
+            "threads": [
+                {
+                    "id": "th_enrich_1",
+                    "psid": "111222333444",
+                    "from": "Chị Lan",
+                    "replies": [{"id": "m1", "text": "cho em hỏi giờ mở cửa", "by": "111222333444"}],
+                    "tom_tat": "cho em hỏi giờ mở cửa",
+                },
+                {
+                    "id": "th_enrich_2",
+                    "psid": "555666777888",
+                    "replies": [{"id": "m2", "text": "đặt bàn 2 người", "by": "555666777888"}],
+                    "tom_tat": "đặt bàn 2 người",
+                    "customer_profile": {"ten_khach": "Anh Hùng", "visit_count": 4},
+                },
+                {
+                    "id": "th_enrich_3",
+                    "psid": "1234abcd",
+                    "replies": [{"id": "m3", "text": "hi", "by": "1234abcd"}],
+                    "tom_tat": "hi",
+                },
+            ],
+            "drafts": [],
+            "mode": "disconnected",
+        },
+    )
+
+    res = client.get("/api/v1/page/threads", headers=ql)
+    assert res.status_code == 200
+    items = res.json()["items"]
+    by_id = {t["id"]: t for t in items}
+
+    # 1. Ưu tiên tên Graph `from`
+    assert by_id["th_enrich_1"]["sender_name"] == "Chị Lan"
+    assert by_id["th_enrich_1"].get("sender_avatar")
+
+    # 2. Fallback về hồ sơ khách do AI trích xuất
+    assert by_id["th_enrich_2"]["sender_name"] == "Anh Hùng"
+
+    # 3. Không có tên gì → mã rút gọn, KHÔNG phải "Khách" chung chung
+    assert by_id["th_enrich_3"]["sender_name"] == "Khách abcd"
+    assert by_id["th_enrich_3"].get("sender_avatar")
+
+
+def test_page_threads_avatar_stable_per_psid(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "disconnected")
+    monkeypatch.delenv("NHIPQUAN_FB_PAGE_TOKEN", raising=False)
+    ql = headers(client, "lan")
+
+    from ca_api.persist import kv_set
+
+    kv_set(
+        "page_quan",
+        {
+            "threads": [
+                {
+                    "id": "th_av_1",
+                    "psid": "psid_avatar_a",
+                    "replies": [{"id": "m", "text": "xin chào", "by": "psid_avatar_a"}],
+                }
+            ],
+            "drafts": [],
+            "mode": "disconnected",
+        },
+    )
+    first = client.get("/api/v1/page/threads", headers=ql).json()["items"][0]
+    second = client.get("/api/v1/page/threads", headers=ql).json()["items"][0]
+    assert first["sender_avatar"] == second["sender_avatar"]
+    assert "dicebear" in first["sender_avatar"]
+
+
+def test_page_reply_writes_to_scoped_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Reply phải ghi vào key page_quan:{store_id} — chống mất tin nhắn.
+
+    Hồi quy: trước đây reply ghi vào key legacy "page_quan" nhưng _page_store
+    ưu tiên đọc "page_quan:quan_01" → trả lời biến mất (404 "thread" trên UI).
+    """
+    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "disconnected")
+    monkeypatch.delenv("NHIPQUAN_FB_PAGE_TOKEN", raising=False)
+    ql = headers(client, "lan")
+
+    from ca_api.persist import kv_get, kv_set
+
+    kv_set(
+        "page_quan",
+        {
+            "threads": [
+                {
+                    "id": "th_reply_scoped",
+                    "psid": "psid_reply_scoped",
+                    "sender_name": "Anh Đức",
+                    "replies": [{"id": "m1", "text": "xin chào quán", "by": "psid_reply_scoped"}],
+                }
+            ],
+            "drafts": [],
+            "mode": "disconnected",
+        },
+    )
+
+    # Endpoint reply → 200, không 404
+    r = client.post(
+        "/api/v1/page/threads/th_reply_scoped/reply",
+        json={"text": "Dạ em chào anh Đức ạ!"},
+        headers=ql,
+    )
+    assert r.status_code == 200, r.text
+
+    # Tin trả lời phải đọc lại được qua /page/threads (cùng key _page_store đọc)
+    th = client.get("/api/v1/page/threads", headers=ql).json()["items"][0]
+    assert th["id"] == "th_reply_scoped"
+    texts = [m["text"] for m in th["replies"]]
+    assert "Dạ em chào anh Đức ạ!" in texts
+
+    # Key scoped tồn tại và đã chứa trả lời
+    scoped = kv_get("page_quan:quan_01", {}).get("threads", [])
+    assert any(t.get("id") == "th_reply_scoped" for t in scoped)
+    scoped_th = next(t for t in scoped if t.get("id") == "th_reply_scoped")
+    assert any("Dạ em chào" in str(m.get("text") or "") for m in scoped_th.get("replies", []))
+
+
 def test_facebook_webhook_verify(monkeypatch) -> None:
     monkeypatch.setenv("NHIPQUAN_FB_WEBHOOK_VERIFY", "verify_test_token")
     r = client.get(

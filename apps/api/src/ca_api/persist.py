@@ -482,6 +482,7 @@ def init_db() -> None:
                 psid TEXT NOT NULL DEFAULT '',
                 customer_name TEXT NOT NULL,
                 phone TEXT NOT NULL,
+                email TEXT NOT NULL DEFAULT '',
                 booking_time TEXT NOT NULL,
                 duration_minutes INTEGER NOT NULL DEFAULT 120,
                 party_size INTEGER NOT NULL,
@@ -1031,6 +1032,16 @@ def _migrate_schema(cx: sqlite3.Connection) -> None:
     if "status" not in ucols:
         _safe_alter("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
     cx.execute("UPDATE users SET store_id=? WHERE TRIM(store_id)=''", (DEFAULT_STORE_ID,))
+    # dat_ban: thêm cột email riêng (trước đây email bị nhét vào notes, khiến
+    # record đọc lại từ DB không có field email → không gửi được phiếu xác nhận).
+    dcols = {r[1] for r in cx.execute("PRAGMA table_info(dat_ban)")}
+    if "email" not in dcols:
+        _safe_alter("ALTER TABLE dat_ban ADD COLUMN email TEXT NOT NULL DEFAULT ''")
+        # Backfill email đã lưu trong notes dạng "Email: xxx@yyy.zz"
+        cx.execute(
+            "UPDATE dat_ban SET email=TRIM(SUBSTR(notes, 8)) "
+            "WHERE email='' AND notes LIKE 'Email: %@%'"
+        )
     scols = {r[1] for r in cx.execute("PRAGMA table_info(sessions)")}
     if "store_id" not in scols:
         _safe_alter("ALTER TABLE sessions ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")

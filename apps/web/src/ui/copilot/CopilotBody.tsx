@@ -11,10 +11,13 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../icons";
+import { chatSounds } from "../../lib/chat-sound";
 import { ActionProposalCard } from "./ActionProposalCard";
+import { Avatar2D } from "./Avatar2D";
 import { ChatText } from "./ChatText";
 import type { ChatMessage, Mode } from "./useCopilotChat";
-import { useCopilotVoice, type VoiceInputMode } from "./useCopilotVoice";
+import { useCopilotVoice, type VoiceInputMode, type VoiceState } from "./useCopilotVoice";
+import { useAvatarLipSync } from "./useAvatarLipSync";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const VOICE_ENABLED = process.env.NEXT_PUBLIC_GEMINI_LIVE_VOICE_ENABLED !== "false";
@@ -187,6 +190,26 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
     inputMode: voiceMode,
     deviceId: selectedMicId || undefined,
   });
+
+  // Lip-sync avatar: mức mở miệng theo amplitude audio trợ lý đang phát.
+  const isSpeaking = voice.state === "speaking";
+  const isListening = voice.state === "listening";
+  const mouthOpen = useAvatarLipSync(voice.audioLevel, isSpeaking);
+
+  // Phản hồi âm thanh khi trạng thái voice thay đổi:
+  // - Bắt đầu nghe → bíp nhẹ (báo micro đã mở).
+  // - Trả lời xong (speaking → listening) → ting nhẹ (báo đã nghe xong).
+  const prevVoiceStateRef = useRef<VoiceState | null>(null);
+  useEffect(() => {
+    const prev = prevVoiceStateRef.current;
+    prevVoiceStateRef.current = voice.state;
+    if (prev === voice.state) return;
+    if (voice.state === "listening" && prev === "speaking") {
+      chatSounds.playVoiceEnd();
+    } else if (voice.state === "listening" && (prev === "idle" || prev === "connecting")) {
+      chatSounds.playVoiceStart();
+    }
+  }, [voice.state]);
 
   const [attachedFile, setAttachedFile] = useState<{
     file: File;
@@ -660,33 +683,25 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   )}
                 </div>
 
-                {/* Status banner */}
-                {voice.state !== "idle" && (
+                {/* Banner avatar — hiện khi voice đang hoạt động (kết nối/nghe/xử lý/nói).
+                    Avatar nhép miệng theo giọng nói trợ lý. */}
+                {isVoiceActive && (
                   <div
-                    className={`flex items-center justify-between gap-2 rounded border px-2.5 py-1.5 text-[11px] ${
-                      isVoiceError
-                        ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
-                        : voice.isPttSpeaking
-                        ? "border-rose-500/60 bg-rose-500/20 text-rose-200 animate-pulse"
-                        : "border-[var(--nq-copper)]/30 bg-[var(--nq-copper)]/10 text-[var(--nq-copper)]"
-                    }`}
+                    className="flex items-center gap-3 rounded border border-[var(--nq-dim)]/40 bg-[var(--nq-bg)] px-3 py-2"
                     role="status"
+                    aria-live="polite"
                   >
-                    <div className="flex items-center gap-2">
-                      <div className="shrink-0">
-                        {voice.state === "connecting" && <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--nq-copper)]" />}
-                        {voice.state === "listening" && (
-                          voice.isPttSpeaking ? (
-                            <span className="inline-block h-2 w-2 animate-ping rounded-full bg-rose-500" />
-                          ) : (
-                            <span className="inline-block h-2 w-2 animate-ping rounded-full bg-emerald-400" />
-                          )
-                        )}
-                        {voice.state === "processing" && <span className="inline-block h-2 w-2 animate-spin rounded-full border-2 border-[var(--nq-copper)] border-t-transparent" />}
-                        {voice.state === "speaking" && <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-amber-400" />}
-                        {isVoiceError && <span className="inline-block h-2 w-2 rounded-full bg-rose-400" />}
-                      </div>
-                      <p className="flex-1">
+                    <Avatar2D
+                      mouthOpen={mouthOpen}
+                      speaking={isSpeaking}
+                      listening={isListening}
+                      size={72}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--nq-copper)]">
+                        {profile.label}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-[var(--nq-dim)]">
                         {voice.state === "connecting" && "Đang kết nối voice trực tiếp…"}
                         {voice.state === "listening" && (
                           voiceMode === "push_to_talk" ? (
@@ -699,26 +714,36 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                         )}
                         {voice.state === "processing" && "Đang xử lý yêu cầu…"}
                         {voice.state === "speaking" && "Trợ lý đang nói… Có thể nói chen ngang để ngắt lời."}
-                        {voice.state === "mic_denied" && "Trình duyệt chưa cấp quyền micro. Vui lòng mở quyền micro trong cài đặt trình duyệt."}
-                        {voice.state === "mic_not_found" && "Không tìm thấy thiết bị micro. Vui lòng kiểm tra cổng cắm hoặc cài đặt micro."}
-                        {voice.state === "superseded" && "Phiên voice đã được chuyển sang tab/thiết bị khác của anh/chị."}
-                        {voice.state === "idle_timeout" && "Phiên voice tạm ngưng sau 60 giây im lặng. Bấm micro để nói lại."}
-                        {voice.state === "error" && "Voice chưa sẵn sàng. Anh/chị có thể thử lại hoặc tiếp tục dùng chat text."}
                       </p>
                     </div>
-                    {isVoiceActive && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          voice.stop();
-                          activeVoiceTurnRef.current = null;
-                        }}
-                        className="shrink-0 border border-transparent px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--nq-dim)] hover:border-rose-400 hover:text-rose-400 transition"
-                        title="Dừng phiên voice"
-                      >
-                        Đóng
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        voice.stop();
+                        activeVoiceTurnRef.current = null;
+                      }}
+                      className="shrink-0 border border-transparent px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--nq-dim)] hover:border-rose-400 hover:text-rose-400 transition"
+                      title="Dừng phiên voice"
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                )}
+
+                {/* Banner lỗi — chỉ hiện khi có lỗi, tách khỏi banner avatar */}
+                {isVoiceError && (
+                  <div
+                    className="flex items-center justify-between gap-2 rounded border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5 text-[11px] text-rose-300"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <p className="flex-1">
+                      {voice.state === "mic_denied" && "Trình duyệt chưa cấp quyền micro. Vui lòng mở quyền micro trong cài đặt trình duyệt, rồi bấm nút micro để thử lại."}
+                      {voice.state === "mic_not_found" && "Không tìm thấy thiết bị micro. Vui lòng kiểm tra cổng cắm hoặc cài đặt micro."}
+                      {voice.state === "superseded" && "Phiên voice đã được chuyển sang tab/thiết bị khác của anh/chị."}
+                      {voice.state === "idle_timeout" && "Phiên voice tạm ngưng sau 60 giây im lặng. Bấm micro để nói lại."}
+                      {voice.state === "error" && "Voice chưa sẵn sàng. Bấm nút micro để thử lại, hoặc tiếp tục dùng chat text."}
+                    </p>
                   </div>
                 )}
               </div>
@@ -789,7 +814,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                       : undefined
                   }
                   disabled={loading || Boolean(streamingId) || uploading || voice.state === "connecting"}
-                  className={`border-2 p-2 transition select-none disabled:opacity-40 ${
+                  className={`flex items-center gap-1.5 border-2 px-2.5 py-2 text-[11px] font-bold uppercase transition select-none disabled:opacity-40 ${
                     voiceMode === "push_to_talk" && isVoiceActive
                       ? voice.isPttSpeaking
                         ? "border-rose-500 bg-rose-500 text-white animate-pulse scale-105"
@@ -811,6 +836,15 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   }
                 >
                   <Icon name="microphone" size={16} />
+                  <span className="hidden sm:inline">
+                    {voiceMode === "push_to_talk" && isVoiceActive
+                      ? voice.isPttSpeaking
+                        ? "Đang nói…"
+                        : "Giữ để nói"
+                      : isVoiceActive
+                      ? "Dừng"
+                      : "Nói"}
+                  </span>
                 </button>
               )}
               <button
@@ -821,6 +855,11 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 {uploading ? "Đang tải…" : "Gửi"}
               </button>
             </form>
+            {voiceEnabled && voice.state === "idle" && (
+              <p className="mt-1.5 text-center text-[10px] text-[var(--nq-dim)]" role="status" aria-live="polite">
+                Bấm nút micro để nói chuyện với trợ lý.
+              </p>
+            )}
             <p className="mt-1.5 text-center text-[10px] text-[var(--nq-dim)]">
               Ctrl/Cmd+K mở hoặc đóng · Esc thu nhỏ
             </p>

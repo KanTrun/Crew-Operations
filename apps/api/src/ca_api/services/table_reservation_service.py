@@ -15,9 +15,11 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 from ca_api.persist import (
@@ -300,10 +302,10 @@ def atomic_hold_or_book_table(
         cx.execute(
             """
             INSERT INTO dat_ban(
-                id, store_id, psid, customer_name, phone, booking_time, duration_minutes,
+                id, store_id, psid, customer_name, phone, email, booking_time, duration_minutes,
                 party_size, table_ids, status, source, notes, idempotency_key, notified_nv_id,
                 created_at, updated_at
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 res_id,
@@ -311,6 +313,7 @@ def atomic_hold_or_book_table(
                 psid,
                 customer_name,
                 phone,
+                email,
                 start_iso,
                 duration_minutes,
                 party_size,
@@ -508,6 +511,13 @@ def send_reservation_confirmation_email(
 ) -> bool:
     """Send table reservation confirmation ticket / email to customer's Gmail."""
     email = (to_email or reservation.get("email") or "").strip()
+    # Fallback: record đọc từ DB cũ có thể chưa có cột email (email nằm trong notes
+    # dạng "Email: xxx@yyy.zz"). Parse lại để không mất phiếu xác nhận.
+    if not email:
+        notes = reservation.get("notes") or ""
+        m = re.search(r"Email:\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})", notes)
+        if m:
+            email = m.group(1).strip()
     if not email or "@" not in email:
         LOG.warning("No valid email provided for reservation confirmation.")
         return False
@@ -536,80 +546,200 @@ def send_reservation_confirmation_email(
     body = (
         f"Kính gửi {customer_name},\n\n"
         f"{store_name} xin trân trọng thông báo yêu cầu đặt bàn của Quý khách đã được xác nhận thành công!\n\n"
-        f"--- THÔNG TIN PHIẾU ĐẶT BÀN ---\n"
-        f"• Mã đặt bàn: {res_id}\n"
-        f"• Thời gian đón khách: {time_display}\n"
-        f"• Số lượng khách: {party_size} người\n"
-        f"• Bàn xếp chỗ: {table_ids}\n"
-        f"• Người đặt: {customer_name}\n"
-        f"• Số điện thoại: {phone}\n"
-        f"• Địa chỉ quán: {store_address}\n"
-        f"• Hotline hỗ trợ: {store_hotline}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"  PHIẾU XÁC NHẬN ĐẶT BÀN\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"  Mã đặt bàn    : {res_id}\n"
+        f"  Thời gian đến : {time_display}\n"
+        f"  Số lượng khách: {party_size} người\n"
+        f"  Bàn xếp chỗ   : {table_ids}\n"
+        f"  Người đặt     : {customer_name}\n"
+        f"  Số điện thoại : {phone}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"Quán sẽ chuẩn bị chỗ ngồi chu đáo và giữ bàn cho Quý khách tối đa 15 phút so với giờ hẹn.\n"
         f"Nếu Quý khách có bất kỳ thay đổi nào, vui lòng liên hệ hotline hoặc phản hồi tin nhắn Messenger.\n\n"
         f"Trân trọng cảm ơn và rất hân hạnh được đón tiếp Quý khách!\n"
         f"---\n"
         f"{store_name}\n"
+        f"Địa chỉ: {store_address}\n"
+        f"Hotline: {store_hotline}\n"
     )
 
-    # Rich HTML version with ticket-card style
+    # Rich HTML version — table-based layout for maximum Gmail/Outlook compatibility.
+    # Gmail strips <style> in <head> and does not support flexbox/grid, so all
+    # styling is inline and layout uses tables.
+    # Phong cách: Sang trọng (Elegant) — nền sáng kem + vàng gold.
+    # Dùng font sans-serif (Arial) vì font serif (Georgia) trên Windows tách rời
+    # dấu tiếng Việt (cầu -> cầ u) khi xem trên web máy tính.
     html_body = f"""
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background-color: #f8fafc; border-radius: 12px; color: #1e293b;">
-        <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 24px; border-radius: 10px 10px 0 0; text-align: center; color: #ffffff;">
-            <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">XÁC NHẬN ĐẶT BÀN THÀNH CÔNG</h1>
-            <p style="margin: 6px 0 0 0; opacity: 0.95; font-size: 14px;">{store_name} hân hạnh chào đón Quý khách</p>
-        </div>
-        <div style="background: #ffffff; padding: 28px; border-radius: 0 0 10px 10px; border: 1px solid #e2e8f0; border-top: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-            <p style="font-size: 16px; line-height: 1.5; margin-top: 0;">Xin chào <strong>{customer_name}</strong>,</p>
-            <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-                Yêu cầu đặt bàn của Quý khách đã được hệ thống tự động kiểm tra và chốt giữ bàn thành công. Dưới đây là thông tin chi tiết phiếu đặt bàn của Quý khách:
-            </p>
-            <div style="background-color: #f1f5f9; border-left: 4px solid #10b981; padding: 18px 20px; margin: 20px 0; border-radius: 6px;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin:0; padding:0; background-color:#f4f1ec;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f1ec; padding:24px 12px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 10px 30px rgba(120,53,15,0.12); font-family:Arial, 'Segoe UI', Helvetica, sans-serif; color:#3f2d1d;">
+              <!-- HEADER - Light cream background to make red/orange logo pop -->
+              <tr>
+                <td style="background-color:#f9f6ee; padding:36px 40px; text-align:center; border-bottom:1px solid #ece5d8;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b; width: 140px;">Mã phiếu đặt bàn:</td>
-                        <td style="padding: 6px 0; font-weight: 600; color: #0f172a; font-family: monospace;">{res_id}</td>
+                      <td align="center" style="padding-bottom:16px;">
+                        <img src="cid:logo_nhipquan" alt="{store_name}" width="160" height="160" style="display:block; width:160px; height:160px; object-fit:contain;">
+                      </td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;">Thời gian đến:</td>
-                        <td style="padding: 6px 0; font-weight: 700; color: #059669; font-size: 15px;">{time_display}</td>
+                      <td align="center" style="color:#8a6d3b; font-size:13px; letter-spacing:1px; text-transform:uppercase; padding-bottom:6px;">{store_name}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;">Số lượng khách:</td>
-                        <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">{party_size} người</td>
+                      <td align="center" style="color:#1f3d2b; font-size:24px; font-weight:bold;">XÁC NHẬN ĐẶT BÀN</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;">Bàn xếp trước:</td>
-                        <td style="padding: 6px 0; font-weight: 700; color: #0f172a;">Bàn {table_ids}</td>
+                      <td align="center" style="padding-top:14px;">
+                        <span style="display:inline-block; background-color:#c9a227; color:#3f2d1d; font-size:11px; font-weight:bold; letter-spacing:1px; padding:5px 18px; border-radius:2px; text-transform:uppercase;">Đã xác nhận</span>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <!-- BODY -->
+              <tr>
+                <td style="padding:32px 40px 8px 40px;">
+                  <p style="margin:0 0 8px 0; font-size:17px; line-height:1.5;">Kính gửi <strong>{customer_name}</strong>,</p>
+                  <p style="margin:0; font-size:14px; line-height:1.8; color:#6b5d4f;">
+                    Chúng tôi trân trọng xác nhận yêu cầu đặt bàn của Quý khách tại {store_name}. Thông tin chi tiết như sau:
+                  </p>
+                </td>
+              </tr>
+              <!-- DETAILS - elegant table with gold dividers -->
+              <tr>
+                <td style="padding:24px 40px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e8dfd0; border-radius:6px;">
+                    <tr>
+                      <td style="padding:16px 24px; background-color:#faf7f1; border-bottom:1px solid #e8dfd0; font-size:13px; color:#8a7a66; text-transform:uppercase; font-weight:bold;">Thông tin đặt bàn</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;">Số điện thoại:</td>
-                        <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">{phone}</td>
+                      <td style="padding:6px 24px; border-bottom:1px solid #f0e9dd;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+                          <tr>
+                            <td style="padding:8px 0; color:#8a7a66; width:160px;">Mã đặt bàn</td>
+                            <td style="padding:8px 0; font-weight:bold; color:#3f2d1d; font-family:Consolas, monospace;">{res_id}</td>
+                          </tr>
+                        </table>
+                      </td>
                     </tr>
-                </table>
-            </div>
-            <div style="background-color: #fffbeb; border: 1px solid #fef3c7; padding: 14px 16px; border-radius: 6px; font-size: 13px; color: #92400e; margin-bottom: 20px;">
-                📌 <strong>Lưu ý từ quán:</strong> Bàn sẽ được giữ tối đa <strong>15 phút</strong> so với giờ hẹn. Quý khách vui lòng đến đúng giờ để có trải nghiệm phục vụ tốt nhất.
-            </div>
-            <div style="border-top: 1px dashed #cbd5e1; padding-top: 16px; font-size: 13px; color: #64748b;">
-                <p style="margin: 4px 0;">📍 <strong>Địa chỉ:</strong> {store_address}</p>
-                <p style="margin: 4px 0;">📞 <strong>Hotline hỗ trợ:</strong> {store_hotline}</p>
-            </div>
-            <p style="margin-top: 24px; font-size: 14px; color: #334155; text-align: center;">
-                <em>Hân hạnh được phục vụ Quý khách tại {store_name}!</em>
-            </p>
-        </div>
-    </div>
+                    <tr>
+                      <td style="padding:6px 24px; border-bottom:1px solid #f0e9dd;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+                          <tr>
+                            <td style="padding:8px 0; color:#8a7a66; width:160px;">Thời gian đến</td>
+                            <td style="padding:8px 0; font-weight:bold; color:#1f3d2b; font-size:15px;">{time_display}</td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:6px 24px; border-bottom:1px solid #f0e9dd;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+                          <tr>
+                            <td style="padding:8px 0; color:#8a7a66; width:160px;">Số lượng khách</td>
+                            <td style="padding:8px 0; font-weight:bold; color:#3f2d1d;">{party_size} người</td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:6px 24px; border-bottom:1px solid #f0e9dd;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+                          <tr>
+                            <td style="padding:8px 0; color:#8a7a66; width:160px;">Bàn xếp trước</td>
+                            <td style="padding:8px 0; font-weight:bold; color:#3f2d1d;">Bàn {table_ids}</td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:6px 24px;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+                          <tr>
+                            <td style="padding:8px 0; color:#8a7a66; width:160px;">Số điện thoại</td>
+                            <td style="padding:8px 0; font-weight:bold; color:#3f2d1d;">{phone}</td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <!-- NOTE -->
+              <tr>
+                <td style="padding:0 40px 8px 40px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fdf6e3; border-left:3px solid #c9a227; border-radius:4px;">
+                    <tr>
+                      <td style="padding:14px 18px; font-size:13px; line-height:1.7; color:#7a5c1e;">
+                        <strong>Lưu ý:</strong> Bàn sẽ được giữ tối đa <strong>15 phút</strong> so với giờ hẹn. Quý khách vui lòng đến đúng giờ để có trải nghiệm tốt nhất.
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <!-- FOOTER -->
+              <tr>
+                <td style="padding:24px 40px 32px 40px; border-top:1px solid #f0e9dd; margin-top:8px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px; color:#8a7a66;">
+                    <tr>
+                      <td style="padding:4px 0;">Địa chỉ: <strong style="color:#3f2d1d;">{store_address}</strong></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:4px 0;">Hotline: <strong style="color:#3f2d1d;">{store_hotline}</strong></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:4px 0;">Giờ mở cửa: <strong style="color:#3f2d1d;">07:00 – 22:00</strong></td>
+                    </tr>
+                  </table>
+                  <p style="margin:18px 0 0 0; font-size:12px; color:#b0a28e; text-align:center; line-height:1.6;">
+                    Email tự động từ hệ thống {store_name}. Vui lòng không trả lời trực tiếp.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
     """
 
     try:
         from ca_agents.ag_mail import send_mail
+
+        # Logo quán nhúng inline (CID) để hiển thị trong header email.
+        # Ưu tiên bản "bold" (đậm nét) nếu có, fallback về bản gốc.
+        logo_path = Path(__file__).resolve().parents[5] / "docs" / "hinh" / "logo_bold.png"
+        if not logo_path.exists():
+            logo_path = Path(__file__).resolve().parents[5] / "docs" / "hinh" / "logo.png"
+        attachments: list[dict[str, Any] | str] = []
+        if logo_path.exists():
+            attachments.append(
+                {
+                    "path": str(logo_path),
+                    "filename": "logo.png",
+                    "cid": "logo_nhipquan",
+                    "is_inline": True,
+                    "content_type": "image/png",
+                }
+            )
 
         result = send_mail(
             to_emails=[email],
             subject=subject,
             body=body,
             html_body=html_body,
+            attachments=attachments,
         )
         return result.ok
     except Exception as e:

@@ -35,3 +35,18 @@ quy ước của dự án. Copilot đọc file này và áp dụng các quy tắ
 - Nhận xét viết bằng **tiếng Việt** (ngắn gọn, dùng nhãn `[chặn]`/`[nên]`/`[hỏi]`).
 - Trích dẫn file + dòng cụ thể.
 - Không tự ý sửa code — chỉ nhận xét.
+
+## Quy ước UI & code (áp dụng khi viết code)
+
+- **Không lạm dụng icon/emoji.** Chỉ dùng icon khi thực sự tăng rõ ràng cho người dùng (ví dụ trạng thái, cảnh báo). Không chèn icon trang trí vào mọi dòng, tiêu đề, nút bấm hay log.
+- Ưu tiên text rõ ràng hơn icon; một màn hình không nên có quá nhiều icon khác nhau.
+- Giữ giao diện tối giản, nhất quán với thiết kế hiện có của `apps/web`.
+
+## Quy ước dùng Terminal (áp dụng khi chạy lệnh)
+
+- **Ghép lệnh độc lập vào một lần chạy** bằng `&&` thay vì chạy từng lệnh rời rạc — giảm spam lệnh và số lần mở terminal.
+- **Không mở terminal mới khi đã có terminal đang chạy.** Ưu tiên tái sử dụng terminal hiện có; chỉ mở mới khi thật sự cần (ví dụ cần giữ server chạy nền riêng).
+- **Không chạy lệnh song song** — chờ lệnh trước hoàn tất rồi mới chạy lệnh sau, tránh xung đột.
+- **Lệnh dài chạy nền** (server, watcher, dev daemon) dùng chế độ async/background; không chặn terminal.
+- **Khi cần dừng** một tiến trình đang chạy, dùng đúng cách (Ctrl+C / kill theo PID) thay vì mở terminal mới để chạy lệnh khác.
+- **Không dùng `sleep`/poll** để chờ — chờ thông báo hoàn tất từ hệ thống.
