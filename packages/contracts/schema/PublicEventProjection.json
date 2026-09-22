@@ -1,5 +1,5 @@
 {
-  "description": "Một sự kiện công khai trên Living Map — không chứa dữ liệu riêng tư.",
+  "description": "Một sự kiện công khai trên Living Map — không chứa dữ liệu riêng tư.\n\n`zone_id` gắn sự kiện với một khu vực trên mặt bằng. Để trống khi sự kiện\nlà toàn quán: UI phải nói thẳng \"không thuộc khu vực nào\", không suy diễn.",
   "properties": {
     "event_id": {
       "minLength": 1,
@@ -35,6 +35,18 @@
       "default": "",
       "title": "Summary",
       "type": "string"
+    },
+    "zone_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Zone Id"
     }
   },
   "required": [

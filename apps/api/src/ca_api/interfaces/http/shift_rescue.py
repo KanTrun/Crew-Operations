@@ -62,6 +62,60 @@ def _fixture() -> dict[str, Any]:
     return cast(dict[str, Any], reader.read_json_path("shift-rescue.json"))
 
 
+@router.get("/api/v1/experience/shift-rescue/options")
+def shift_rescue_options(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Ca đang có người + danh bạ để báo vắng.
+
+    UI trước đây hardcode `nv_absent_quan` / `t7_toi`, nghĩa là nghiệp vụ chỉ
+    chạy được đúng một kịch bản. Trả về danh sách thật để người quản lý chọn
+    đúng ca và đúng người — vẫn từ fixture, nhưng không còn một đường cứng.
+    """
+    _require_role(authorization)
+    data = _fixture()
+    staff_rows = data.get("staff", [])
+    assignment = data.get("current_assignment", {}) or {}
+    shifts = data.get("shifts", [])
+
+    options: list[dict[str, Any]] = []
+    for shift in shifts:
+        shift_id = str(shift.get("id") or "")
+        assigned = [str(x) for x in assignment.get(shift_id, [])]
+        options.append(
+            {
+                "shift_id": shift_id,
+                "thu": str(shift.get("thu") or ""),
+                "khung": str(shift.get("khung") or ""),
+                "vi_tri": str(shift.get("vi_tri") or ""),
+                "bat_dau": str(shift.get("bat_dau") or ""),
+                "ket_thuc": str(shift.get("ket_thuc") or ""),
+                # Chỉ người đang được phân ca mới báo vắng được — báo vắng cho
+                # người không có trong ca là dữ liệu vô nghĩa.
+                "assigned": [
+                    {
+                        "nv_id": nv_id,
+                        "ten": next(
+                            (
+                                str(s.get("ten") or nv_id)
+                                for s in staff_rows
+                                if str(s.get("nv_id") or "") == nv_id
+                            ),
+                            nv_id,
+                        ),
+                    }
+                    for nv_id in assigned
+                ],
+            }
+        )
+
+    return {
+        "shifts": [o for o in options if o["assigned"]],
+        "suggested": data.get("demo_case", {}),
+        "replayable": True,
+    }
+
+
 @router.post("/api/v1/experience/shift-rescue/intake")
 def shift_rescue_intake(
     body: dict[str, Any],

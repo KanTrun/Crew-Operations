@@ -1,26 +1,34 @@
 """HTTP router — QUÁNVERSE Living Cafe OS (plan 260920-1442 Phase 06).
 
-- GET  /quanverse/snapshot — LivingCafeSnapshot theo role (server strip fields)
-- GET  /quanverse/modes
-- POST /quanverse/modes/{mode}/propose
-- POST /quanverse/modes/{mode}/confirm (manager)
-- POST /quanverse/flavor/recommend
-- POST /quanverse/preferences/propose
+- GET    /quanverse/snapshot — LivingCafeSnapshot theo role (server strip fields)
+- GET    /quanverse/modes
+- POST   /quanverse/modes/{mode}/propose
+- POST   /quanverse/modes/{mode}/confirm (manager)
+- POST   /quanverse/modes/{mode}/deactivate (manager)
+- POST   /quanverse/flavor/recommend
+- GET    /quanverse/preferences
+- POST   /quanverse/preferences/propose
+- POST   /quanverse/preferences/{id}/consent
 - DELETE /quanverse/preferences/{id}
-- GET  /quanverse/tour/{tour_id}
-- POST /quanverse/ar-session (capability gate)
+- GET    /quanverse/tour/{tour_id}
+- POST   /quanverse/ar-session (capability gate)
 
 Mọi POST idempotent + proposal/consent based. Không tự đổi lịch/rule/memory.
+
+Thời gian: fixture khai mốc bằng phút tương đối (`minutes_ago`, `starts_in_min`)
+để trục "15 phút tới" luôn có mốc thật ở tương lai thay vì mốc quá khứ đóng băng.
+Không bịa dữ liệu: chỉ quy đổi mốc, `data_quality` nói rõ đây là fixture.
 """
 
 from __future__ import annotations
 
 import threading
 import time
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, cast
 
 from ca_agents.ag_quanverse.flavor import FlavorPreference, recommend_from_taste
-from ca_agents.ag_quanverse.modes import can_activate_mode, mode_affects
+from ca_agents.ag_quanverse.modes import can_activate_mode, mode_affects, mode_effect
 from ca_agents.grand_experience.replay import FixtureReader
 from ca_contracts import (
     LivingCafeSnapshot,
@@ -35,7 +43,7 @@ from ca_contracts.grand_experience import (
 from fastapi import APIRouter, Header, HTTPException, Query
 
 from ca_api.interfaces.http.sprint3 import _require_manager, _require_role
-from ca_api.persist import kv_get, kv_set
+from ca_api.persist import kv_get, kv_mutate, kv_set
 
 router = APIRouter(tags=["experience_quanverse"])
 
@@ -43,6 +51,8 @@ _LOCK = threading.Lock()
 _USER_TS: dict[str, list[float]] = {}
 _WINDOW_S = 60.0
 _MAX_REQ = 20
+
+_PREF_KEY = "experience_preferences"
 
 
 def clear_quanverse_state() -> None:
@@ -52,6 +62,7 @@ def clear_quanverse_state() -> None:
     try:
         for mode in ExperienceMode:
             kv_set(f"experience_mode_{mode.value}", None)
+        kv_set(_PREF_KEY, [])
     except Exception:
         pass
 
@@ -71,6 +82,31 @@ def _fixture(name: str) -> dict[str, Any]:
     return cast(dict[str, Any], reader.read_json_path(name))
 
 
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _iso_at(minutes_from_now: float) -> str:
+    """Mốc ISO cách hiện tại `minutes_from_now` phút (âm = quá khứ)."""
+    return (_now() + timedelta(minutes=minutes_from_now)).isoformat()
+
+
+def _event_time(row: dict[str, Any]) -> str:
+    """Mốc sự kiện: ưu tiên `occurred_at` tuyệt đối, nếu không thì `minutes_ago`."""
+    absolute = row.get("occurred_at")
+    if absolute:
+        return str(absolute)
+    return _iso_at(-float(row.get("minutes_ago") or 0))
+
+
+def _horizon_time(row: dict[str, Any]) -> str:
+    """Mốc tầm nhìn: ưu tiên `starts_at` tuyệt đối, nếu không thì `starts_in_min`."""
+    absolute = row.get("starts_at")
+    if absolute:
+        return str(absolute)
+    return _iso_at(float(row.get("starts_in_min") or 0))
+
+
 # ── Role projection matrix (server-side strip — không dựa vào client) ────────
 
 
@@ -78,38 +114,56 @@ def _project_role(role: ExperienceRole) -> dict[str, Any]:
     """Dựng snapshot projection theo role. Fail-closed: chùi field không thuộc."""
     data = _fixture("quanverse.json")
     zones = [ZoneProjection.model_validate(z) for z in data.get("zones", [])]
-    events = [PublicEventProjection.model_validate(e) for e in data.get("events", [])]
+    events = [
+        PublicEventProjection.model_validate({**e, "occurred_at": _event_time(e)})
+        for e in data.get("events", [])
+    ]
     modes = [ModeProjection.model_validate(m) for m in data.get("modes", [])]
     # Override mode states đã confirm qua kv (replay state)
     for i, m in enumerate(modes):
         state = kv_get(f"experience_mode_{m.mode.value}", None)
         if state:
+            active = bool(state.get("active", False))
             modes[i] = ModeProjection(
                 mode=m.mode,
-                active=bool(state.get("active", False)),
+                active=active,
                 proposed_by=str(state.get("confirmed_by") or ""),
-                proposal_status="confirmed" if state.get("active") else m.proposal_status,
+                proposal_status="confirmed" if active else m.proposal_status,
             )
+
+    horizon = [
+        {**h, "starts_at": _horizon_time(h)} for h in data.get("horizon", [])
+    ]
 
     if role == ExperienceRole.KHACH:
         # Chỉ thấy chỗ ngồi + hướng dẫn menu; KHÔNG thấy staff/private ops.
-        events_proj: list[PublicEventProjection] = []
-        modes_proj: list[ModeProjection] = [ModeProjection(mode=m.mode, active=m.active) for m in modes]
+        modes_proj: list[ModeProjection] = [
+            ModeProjection(mode=m.mode, active=m.active) for m in modes
+        ]
         return {
-            "zones": [z for z in zones if z.kind == "phong_khach" or z.kind == "loi_vao"],
+            "zones": [z for z in zones if z.kind in ("phong_khach", "loi_vao")],
             "events": [],
             "modes": modes_proj,
             "next_horizon": [],
-            "data_quality": [{"code": "public_mode", "level": "info", "message": "Bản chiếu khách — không có dữ liệu vận hành"}],
+            "data_quality": [
+                {
+                    "code": "public_mode",
+                    "level": "info",
+                    "message": "Bản chiếu khách — không có dữ liệu vận hành",
+                }
+            ],
         }
     if role == ExperienceRole.NHAN_VIEN:
         # NV thấy attention points, không thấy private customer memory.
+        # Ranh giới này do test_employee_snapshot_limited_events giữ: chỉ
+        # rescue_case + signal. Mở rộng thêm loại sự kiện là thay đổi quyền,
+        # không phải chi tiết hiển thị.
         events_proj = [e for e in events if e.event_type in {"rescue_case", "signal"}]
         return {
             "zones": zones,
             "events": [e.model_dump(mode="json") for e in events_proj],
             "modes": [m.model_dump(mode="json") for m in modes],
-            "next_horizon": data.get("horizon", []),
+            "next_horizon": horizon,
             "data_quality": [{"code": "fixture_replay", "level": "info", "message": "fixture"}],
         }
     # Manager / Chu quan — full authorized projection
@@ -117,7 +171,7 @@ def _project_role(role: ExperienceRole) -> dict[str, Any]:
         "zones": [z.model_dump(mode="json") for z in zones],
         "events": [e.model_dump(mode="json") for e in events],
         "modes": [m.model_dump(mode="json") for m in modes],
-        "next_horizon": data.get("horizon", []),
+        "next_horizon": horizon,
         "data_quality": [{"code": "fixture_replay", "level": "info", "message": "fixture"}],
     }
 
@@ -173,7 +227,30 @@ def quanverse_modes(
     role = _require_role(authorization)
     data = _fixture("quanverse.json")
     modes = [ModeProjection.model_validate(m) for m in data.get("modes", [])]
-    return {"modes": [m.model_dump(mode="json") for m in modes], "role": role}
+    with_state: list[dict[str, Any]] = []
+    for m in modes:
+        impact = mode_affects(m.mode)
+        state = kv_get(f"experience_mode_{m.mode.value}", None) or {}
+        active = bool(state.get("active", m.active))
+        if active:
+            proposal_status = "confirmed"
+        else:
+            # Đề xuất đã ghi vào kv phải đọc lại được — nếu không, UI hiện
+            # "Đang tắt" cho một chế độ đang chờ duyệt.
+            proposal_status = state.get("proposal_status") or (
+                m.proposal_status.value if m.proposal_status else None
+            )
+        with_state.append(
+            {
+                "mode": m.mode.value,
+                "active": active,
+                "proposed_by": state.get("confirmed_by") or m.proposed_by,
+                "proposal_status": proposal_status,
+                "affected_projections": impact,
+                "effect": mode_effect(m.mode),
+            }
+        )
+    return {"modes": with_state, "role": role, "can_activate": can_activate_mode(role)}
 
 
 @router.post("/api/v1/experience/quanverse/modes/{mode}/propose")
@@ -181,20 +258,44 @@ def quanverse_mode_propose(
     mode: str,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    """Đề xuất kích hoạt mode — chưa kích hoạt. Manager-only (theo policy)."""
+    """Đề xuất kích hoạt mode — chưa kích hoạt. Manager-only (theo policy).
+
+    Ghi đề xuất vào kv để `snapshot` thấy được trạng thái "đang chờ duyệt";
+    không đụng tới lịch, nhân sự hay bất kỳ lifecycle nào khác.
+    """
     user = _require_manager(authorization)
     _rate_limit(str(user))
     try:
         mode_enum = ExperienceMode(mode)
     except ValueError:
         raise HTTPException(status_code=422, detail="mode_khong_hop_le") from None
-    if mode == "troi_mua" and mode_enum == ExperienceMode.TROI_MUA:
-        pass
-    impacts = mode_affects(mode_enum)
+
+    key = f"experience_mode_{mode_enum.value}"
+    existing = kv_get(key, None)
+    if existing and existing.get("active"):
+        return {
+            "mode": mode_enum.value,
+            "proposal_status": "confirmed",
+            "affected_projections": mode_affects(mode_enum),
+            "confirmed": True,
+            "already_active": True,
+            "replayable": True,
+        }
+
+    kv_set(
+        key,
+        {
+            "active": False,
+            "proposal_status": "draft",
+            "proposed_by": str(user),
+            "at": time.time(),
+        },
+    )
     return {
         "mode": mode_enum.value,
         "proposal_status": "draft",
-        "affected_projections": impacts,
+        "affected_projections": mode_affects(mode_enum),
+        "effect": mode_effect(mode_enum),
         "confirmed": False,
         "replayable": True,
     }
@@ -221,6 +322,36 @@ def quanverse_mode_confirm(
         "mode": mode_enum.value,
         "active": True,
         "affected_projections": impacts,
+        "audited": True,
+        "events": [{"event_type": "mode_change", "mode": mode_enum.value, "source": "replay"}],
+    }
+
+
+@router.post("/api/v1/experience/quanverse/modes/{mode}/deactivate")
+def quanverse_mode_deactivate(
+    mode: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Manager tắt mode đang bật — idempotent, có ghi vết người tắt.
+
+    Bật mà không tắt được là vòng đời một chiều: quán sẽ kẹt ở chế độ cũ sau
+    khi tình huống đã qua. Tắt mode không đụng lịch hay nhân sự.
+    """
+    user = _require_manager(authorization)
+    if not can_activate_mode(str(user)):
+        raise HTTPException(status_code=403, detail="forbidden")
+    try:
+        mode_enum = ExperienceMode(mode)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="mode_khong_hop_le") from None
+    key = f"experience_mode_{mode_enum.value}"
+    was_active = bool((kv_get(key, None) or {}).get("active"))
+    kv_set(key, {"active": False, "deactivated_by": str(user), "at": time.time()})
+    return {
+        "mode": mode_enum.value,
+        "active": False,
+        "was_active": was_active,
+        "affected_projections": mode_affects(mode_enum),
         "audited": True,
         "events": [{"event_type": "mode_change", "mode": mode_enum.value, "source": "replay"}],
     }
@@ -261,22 +392,96 @@ def flavor_recommend(
 # ── Preferences (consent) ─────────────────────────────────────────────────────
 
 
+def _preferences() -> list[dict[str, Any]]:
+    rows = kv_get(_PREF_KEY, [])
+    return list(rows) if isinstance(rows, list) else []
+
+
+@router.get("/api/v1/experience/quanverse/preferences")
+def preference_list(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Sở thích của chính người gọi — chỉ trả bản ghi do chính họ tạo."""
+    user = str(_require_role(authorization))
+    rows = [p for p in _preferences() if p.get("owner") == user]
+    return {
+        "preferences": rows,
+        "count": len(rows),
+        "note": "Sở thích lưu kèm trạng thái đồng thuận; thu hồi thì ngừng dùng ngay.",
+    }
+
+
 @router.post("/api/v1/experience/quanverse/preferences/propose")
 def preference_propose(
     body: dict[str, Any],
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    """Propose lưu sở thích khách — cần consent trước khi lưu thật."""
-    _require_role(authorization)
-    content = str(body.get("content") or "")
+    """Propose lưu sở thích khách — ghi ở trạng thái CHỜ ĐỒNG THUẬN.
+
+    Không lưu "thật" trước khi khách đồng ý: bản ghi tồn tại để khách nhìn thấy
+    đúng thứ đang chờ, và `consent_status=required` là thứ chặn việc dùng nó.
+    """
+    user = str(_require_role(authorization))
+    content = str(body.get("content") or "").strip()
     if not content:
         raise HTTPException(status_code=422, detail="thieu_content")
-    # MVP replay: proposal chờ consent; không lưu preference thật nếu chưa đồng ý.
+    pref_id = f"pref_prop_{int(time.time() * 1000)}"
+    entry = {
+        "preference_id": pref_id,
+        "content": content,
+        "owner": user,
+        "consent_status": "required",
+        "stored": False,
+        "created_at": _iso_at(0),
+    }
+    kv_mutate(_PREF_KEY, lambda cur: [*(cur or []), entry], [])
     return {
-        "preference_proposal_id": f"pref_prop_{int(time.time()*1000)}",
+        "preference_proposal_id": pref_id,
         "content": content,
         "needs_consent": True,
         "stored": False,
+    }
+
+
+@router.post("/api/v1/experience/quanverse/preferences/{pref_id}/consent")
+def preference_consent(
+    pref_id: str,
+    body: dict[str, Any],
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Khách đồng ý (hoặc từ chối) lưu sở thích — quyết định của chính họ.
+
+    Từ chối = xoá ngay, không giữ bản nháp "để sau". Đồng ý = chuyển sang
+    `granted` + `stored=True` để lần ghé sau dùng được.
+    """
+    user = str(_require_role(authorization))
+    grant = bool(body.get("grant", True))
+    found: dict[str, Any] = {}
+
+    def _apply(cur: Any) -> list[dict[str, Any]]:
+        rows = list(cur or [])
+        if not grant:
+            return [p for p in rows if p.get("preference_id") != pref_id]
+        for p in rows:
+            if p.get("preference_id") == pref_id:
+                if p.get("owner") != user:
+                    raise HTTPException(status_code=403, detail="khong_phai_chu_so_thich")
+                p["consent_status"] = "granted"
+                p["stored"] = True
+                p["granted_at"] = _iso_at(0)
+                found.update(p)
+        return rows
+
+    rows = kv_mutate(_PREF_KEY, _apply, [])
+    if grant and not found:
+        raise HTTPException(status_code=404, detail="preference_not_found")
+    return {
+        "preference_id": pref_id,
+        "consent_status": "granted" if grant else "revoked",
+        "stored": grant,
+        "deleted": not grant,
+        "audited": True,
+        "remaining": len([p for p in rows if p.get("owner") == user]),
     }
 
 
@@ -285,9 +490,19 @@ def preference_delete(
     pref_id: str,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    """Xoá preference — audit; nếu chưa tồn tại vẫn 200 (idempotent)."""
-    _require_role(authorization)
-    return {"pref_id": pref_id, "deleted": True, "audited": True}
+    """Xoá sở thích — audit; nếu chưa tồn tại vẫn 200 (idempotent)."""
+    user = str(_require_role(authorization))
+
+    def _apply(cur: Any) -> list[dict[str, Any]]:
+        return [p for p in list(cur or []) if p.get("preference_id") != pref_id]
+
+    rows = kv_mutate(_PREF_KEY, _apply, [])
+    return {
+        "pref_id": pref_id,
+        "deleted": True,
+        "audited": True,
+        "remaining": len([p for p in rows if p.get("owner") == user]),
+    }
 
 
 # ── Tour + AR-lite ────────────────────────────────────────────────────────────

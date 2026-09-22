@@ -72,8 +72,8 @@ def run_shadow_test(
         fairness_delta=fairness_delta,
         workload_delta=workload_delta,
         operational_delta=0.0,
-        notes=[
-            f"áp dụng trên {applicable_count} sự kiện lịch sử (fixture/replay)",
-            f"snapshot_hash={candidate.created_from_snapshot_hash}",
-        ],
+        # `notes` đi thẳng lên UI, nên chỉ chứa câu người đọc hiểu. Mã vết
+        # (snapshot hash) không phải nội dung để đọc — nó thuộc `evidence_refs`
+        # và đã có sẵn trên candidate.
+        notes=[f"Áp dụng thử trên {applicable_count} quyết định lịch sử của quán."],
     )

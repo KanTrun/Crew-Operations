@@ -39,6 +39,104 @@ def test_intake_requires_manager() -> None:
     assert r.status_code == 403
 
 
+def test_options_lists_shifts_with_assigned_staff() -> None:
+    """UI cần chọn ca thật thay vì hardcode một kịch bản."""
+    r = client.get(
+        "/api/v1/experience/shift-rescue/options", headers=headers(client, "lan")
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["shifts"], "phải có ít nhất một ca đang phân người"
+    for shift in body["shifts"]:
+        assert shift["shift_id"]
+        assert shift["assigned"], "ca trả về phải có người, không thì báo vắng vô nghĩa"
+        for person in shift["assigned"]:
+            assert person["nv_id"]
+            # Nhãn hiển thị phải đọc được, không rơi về mã thô khi fixture có tên.
+            assert person["ten"]
+
+
+def test_options_requires_auth() -> None:
+    r = client.get("/api/v1/experience/shift-rescue/options")
+    assert r.status_code == 401
+
+
+def test_full_lifecycle_invite_respond_confirm() -> None:
+    """Vòng đời đầy đủ — trước đây UI dừng ở invite nên case không bao giờ chốt."""
+    h = headers(client, "lan")
+    case_id = _intake().json()["case_id"]
+
+    cands = client.post(
+        f"/api/v1/experience/shift-rescue/{case_id}/candidates", headers=h
+    )
+    assert cands.status_code == 200, cands.text
+    safe = cands.json()["candidates"]
+    assert safe, "fixture phải có ít nhất một người an toàn"
+    cand_id = safe[0]["candidate_id"]
+
+    assert client.post(
+        f"/api/v1/experience/shift-rescue/{case_id}/propose",
+        json={"candidate_id": cand_id},
+        headers=h,
+    ).status_code == 200
+
+    invited = client.post(
+        f"/api/v1/experience/shift-rescue/{case_id}/invite",
+        json={"candidate_ids": [cand_id]},
+        headers=h,
+    )
+    assert invited.status_code == 200, invited.text
+    assert invited.json()["status"] == "invited"
+
+    responded = client.post(
+        f"/api/v1/experience/shift-rescue/{case_id}/respond",
+        json={"candidate_id": cand_id, "accept": True},
+        headers=h,
+    )
+    assert responded.status_code == 200, responded.text
+    assert responded.json()["status"] == "responded"
+
+    confirmed = client.post(
+        f"/api/v1/experience/shift-rescue/{case_id}/confirm",
+        json={"candidate_id": cand_id},
+        headers=h,
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    assert confirmed.json()["status"] == "confirmed"
+    assert confirmed.json()["confirmed_candidate_id"] == cand_id
+
+
+def test_decline_keeps_case_open_for_next_candidate() -> None:
+    """Từ chối không được đóng ca — vẫn phải mời được người kế tiếp."""
+    h = headers(client, "lan")
+    case_id = _intake().json()["case_id"]
+    client.post(f"/api/v1/experience/shift-rescue/{case_id}/candidates", headers=h)
+    safe = client.get(
+        f"/api/v1/experience/shift-rescue/{case_id}", headers=h
+    ).json()["candidates"]
+    cand_id = safe[0]["candidate_id"]
+
+    client.post(
+        f"/api/v1/experience/shift-rescue/{case_id}/propose",
+        json={"candidate_id": cand_id},
+        headers=h,
+    )
+    client.post(
+        f"/api/v1/experience/shift-rescue/{case_id}/invite",
+        json={"candidate_ids": [cand_id]},
+        headers=h,
+    )
+    declined = client.post(
+        f"/api/v1/experience/shift-rescue/{case_id}/respond",
+        json={"candidate_id": cand_id, "accept": False},
+        headers=h,
+    )
+    assert declined.status_code == 200
+    assert declined.json()["onboard_next_candidate"] is True
+    # Vẫn ở INVITED để còn mời người khác.
+    assert declined.json()["status"] == "invited"
+
+
 def test_intake_creates_case() -> None:
     r = _intake()
     assert r.status_code == 200, r.text

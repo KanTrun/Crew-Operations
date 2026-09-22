@@ -43,3 +43,20 @@ def mode_affects(mode: ExperienceMode) -> list[str]:
         ExperienceMode.DEM_NHAC: ["am_nhac", "khong_gian", "bar"],
     }
     return impact.get(mode, [])
+
+
+def mode_effect(mode: ExperienceMode) -> str:
+    """Hệ quả vận hành khi bật mode — nói cho người duyệt biết mình đang đổi gì.
+
+    Tách khỏi `mode_affects`: `affects` là mã projection cho máy, `effect` là câu
+    người đọc. Cùng một nguồn sự thật nên không lệch nhau khi thêm mode mới.
+    """
+    effects: dict[ExperienceMode, str] = {
+        ExperienceMode.TROI_MUA: "Dồn chỗ ngồi trong nhà, ưu tiên món nóng.",
+        ExperienceMode.GIO_CAO_DIEM: "Bật gợi ý san ca và cảnh báo quầy quá tải.",
+        ExperienceMode.KHACH_DOAN: "Gom bàn, chuẩn bị đón đoàn và xếp trước.",
+        ExperienceMode.THIEU_NHAN_SU: "Mở luồng cứu ca và xếp hạng người bù.",
+        ExperienceMode.QUAN_YEN_TINH: "Giảm nhạc, hạn chế thông báo không khẩn.",
+        ExperienceMode.DEM_NHAC: "Bật lịch nhạc, giữ khu vực sân khấu.",
+    }
+    return effects.get(mode, "Thay đổi cách quán vận hành trong khung giờ tới.")

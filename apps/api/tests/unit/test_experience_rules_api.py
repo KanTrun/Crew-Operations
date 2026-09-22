@@ -84,6 +84,73 @@ def test_confirm_after_shadow() -> None:
     assert r.json()["not_auto_activated"] is True
 
 
+def test_confirmed_rule_is_persisted_to_store() -> None:
+    """Xác nhận phải ghi luật vào kho của quán, không chỉ trả về rồi quên.
+
+    Trước đây `luat` chỉ sống trong biến cục bộ: xác nhận xong luật biến mất,
+    nên `revoke` vĩnh viễn 409 và trạng thái `confirmed` trên UI là lời hứa suông.
+    """
+    from ca_playbook.vong_doi import list_luat
+
+    cid = _discover_and_get_candidate()
+    client.post(f"/api/v1/experience/rules/{cid}/shadow-test", headers=headers(client, "lan"))
+    confirmed = client.post(
+        f"/api/v1/experience/rules/{cid}/confirm", headers=headers(client, "lan")
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    playbook_id = confirmed.json()["playbook_id"]
+    assert playbook_id
+
+    ids = {row.get("id") for row in list_luat()}
+    assert playbook_id in ids, "luật đã xác nhận phải nằm trong kho luật của quán"
+
+
+def test_confirmed_rule_can_be_revoked() -> None:
+    """Thu hồi phải chạy được sau khi xác nhận — trước đây luôn 409.
+
+    Vòng đời một chiều (ban hành được, không rút lại được) nghĩa là quán mất
+    quyền sửa luật của chính mình.
+    """
+    from ca_playbook.vong_doi import list_luat
+
+    cid = _discover_and_get_candidate()
+    client.post(f"/api/v1/experience/rules/{cid}/shadow-test", headers=headers(client, "lan"))
+    confirmed = client.post(
+        f"/api/v1/experience/rules/{cid}/confirm", headers=headers(client, "lan")
+    )
+    playbook_id = confirmed.json()["playbook_id"]
+
+    revoked = client.post(
+        f"/api/v1/experience/rules/{cid}/revoke", headers=headers(client, "lan")
+    )
+    assert revoked.status_code == 200, revoked.text
+    body = revoked.json()
+    assert body["status"] == "revoked"
+    assert body["playbook_revoked"] is True
+    assert body["reason_required"] is True
+
+    row = next(r for r in list_luat() if r.get("id") == playbook_id)
+    assert row["trang_thai"] == "da_go"
+    # Gỡ luật không xoá vết — tham số lõi phải bị rút khỏi lưu thông.
+    assert "tham_so_loi" not in row
+
+
+def test_revoke_before_confirm_is_rejected() -> None:
+    """Thu hồi một luật chưa từng ban hành là thao tác vô nghĩa — phải nói rõ."""
+    cid = _discover_and_get_candidate()
+    r = client.post(f"/api/v1/experience/rules/{cid}/revoke", headers=headers(client, "lan"))
+    assert r.status_code == 409
+    assert r.json()["detail"] == "chua_phai_luat_da_ban_hanh"
+
+
+def test_revoke_requires_manager() -> None:
+    cid = _discover_and_get_candidate()
+    client.post(f"/api/v1/experience/rules/{cid}/shadow-test", headers=headers(client, "lan"))
+    client.post(f"/api/v1/experience/rules/{cid}/confirm", headers=headers(client, "lan"))
+    r = client.post(f"/api/v1/experience/rules/{cid}/revoke", headers=headers(client, "minh"))
+    assert r.status_code == 403
+
+
 def test_reject_candidate() -> None:
     cid = _discover_and_get_candidate()
     r = client.post(f"/api/v1/experience/rules/{cid}/reject", headers=headers(client, "lan"))

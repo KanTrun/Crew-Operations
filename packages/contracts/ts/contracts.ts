@@ -580,6 +580,7 @@ export interface PublicEventProjection {
   occurred_at: string;
   source: "replay" | "user" | "system" | "agent";
   summary?: string;
+  zone_id?: string | null;
 }
 
 export type ExperienceMode = "troi_mua" | "gio_cao_diem" | "khach_doan" | "thieu_nhan_su" | "quan_yen_tinh" | "dem_nhac";

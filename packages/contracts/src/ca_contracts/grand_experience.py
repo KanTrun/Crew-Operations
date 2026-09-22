@@ -444,7 +444,11 @@ class ZoneProjection(BaseModel):
 
 
 class PublicEventProjection(BaseModel):
-    """Một sự kiện công khai trên Living Map — không chứa dữ liệu riêng tư."""
+    """Một sự kiện công khai trên Living Map — không chứa dữ liệu riêng tư.
+
+    `zone_id` gắn sự kiện với một khu vực trên mặt bằng. Để trống khi sự kiện
+    là toàn quán: UI phải nói thẳng "không thuộc khu vực nào", không suy diễn.
+    """
 
     event_id: str = Field(min_length=1)
     event_type: str = Field(min_length=1)
@@ -452,6 +456,7 @@ class PublicEventProjection(BaseModel):
     occurred_at: datetime
     source: ExperienceEventSource
     summary: str = ""
+    zone_id: str | None = None
 
 
 class ModeProjection(BaseModel):

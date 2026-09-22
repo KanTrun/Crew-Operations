@@ -1,8 +1,9 @@
 {
   "meta": {
     "schema": "grand_experience_quanverse_v1",
-    "note": "Fixture replay QUANVERSE — bản chiếu vai trò + states, không phải thật.",
-    "labels": ["mo_phong_fixture", "replay"]
+    "note": "Fixture replay QUANVERSE — bản chiếu vai trò + states, không phải dữ liệu đo thật.",
+    "labels": ["mo_phong_fixture", "replay"],
+    "time_basis": "`minutes_ago` / `starts_in_min` là phút tương đối so với lúc gọi API; máy chủ quy đổi thành mốc ISO."
   },
   "snapshot_hash": "snap_20260918_quanverse_001",
   "zones": [
@@ -12,17 +13,25 @@
     {"zone_id": "entrance", "label": "Cửa vào", "kind": "loi_vao", "active": true, "load_signal": 0.1}
   ],
   "events": [
-    {"event_id": "qv_ev_1", "event_type": "rescue_case", "status": "candidates_ready", "occurred_at": "2026-09-18T08:10:00+07:00", "source": "replay", "summary": "Ca tối T7 cần người bù"},
-    {"event_id": "qv_ev_2", "event_type": "mode_proposal", "status": "proposed", "occurred_at": "2026-09-18T09:00:00+07:00", "source": "replay", "summary": "Đề xuất bật chế độ giờ cao điểm"}
+    {"event_id": "qv_ev_1", "event_type": "rescue_case", "status": "candidates_ready", "minutes_ago": 52, "source": "replay", "summary": "Ca tối T7 cần người bù — đã có danh sách an toàn", "zone_id": "bar"},
+    {"event_id": "qv_ev_2", "event_type": "mode_proposal", "status": "proposed", "minutes_ago": 24, "source": "replay", "summary": "Đề xuất bật chế độ giờ cao điểm khung 17:00–19:00", "zone_id": "cashier"},
+    {"event_id": "qv_ev_3", "event_type": "signal", "status": "draft", "minutes_ago": 14, "source": "replay", "summary": "Tải quầy pha chế tăng liên tục ba khung năm phút", "zone_id": "bar"},
+    {"event_id": "qv_ev_4", "event_type": "anchor_status", "status": "confirmed", "minutes_ago": 38, "source": "replay", "summary": "Bàn cửa sổ còn hai chỗ trống cạnh cửa kính", "zone_id": "window_table"},
+    {"event_id": "qv_ev_5", "event_type": "process", "status": "done", "minutes_ago": 96, "source": "replay", "summary": "Nhịp khách vào buổi chiều thấp hơn trung bình tuần 18%", "zone_id": null},
+    {"event_id": "qv_ev_6", "event_type": "decision", "status": "confirmed", "minutes_ago": 150, "source": "replay", "summary": "Giữ nguyên định biên chiều nay — chưa cần gọi thêm người", "zone_id": null}
   ],
   "modes": [
     {"mode": "gio_cao_diem", "active": false, "proposed_by": null, "proposal_status": null},
     {"mode": "troi_mua", "active": true, "proposed_by": "lan", "proposal_status": "confirmed"},
+    {"mode": "khach_doan", "active": false, "proposed_by": "lan", "proposal_status": "draft"},
+    {"mode": "thieu_nhan_su", "active": false, "proposed_by": null, "proposal_status": null},
     {"mode": "quan_yen_tinh", "active": false, "proposed_by": null, "proposal_status": null},
     {"mode": "dem_nhac", "active": false, "proposed_by": null, "proposal_status": null}
   ],
   "horizon": [
-    {"item_id": "hz_1", "kind": "event", "title": "Dự kiến khách đoàn 11:30", "starts_at": "2026-09-19T11:30:00+07:00", "source": "replay"},
-    {"item_id": "hz_2", "kind": "mode_proposal", "title": "Chế độ khách đoàn đang chờ duyệt", "starts_at": "2026-09-19T11:00:00+07:00", "source": "replay"}
+    {"item_id": "hz_1", "kind": "mode_proposal", "title": "Chế độ khách đoàn đang chờ duyệt", "starts_in_min": 4, "source": "replay"},
+    {"item_id": "hz_2", "kind": "signal", "title": "Quầy pha chế dự kiến vượt ngưỡng tải", "starts_in_min": 7, "source": "replay"},
+    {"item_id": "hz_3", "kind": "event", "title": "Dự kiến khách đoàn 12 người tới", "starts_in_min": 11, "source": "replay"},
+    {"item_id": "hz_4", "kind": "handover", "title": "Bàn giao ca chiều cho ca tối", "starts_in_min": 14, "source": "replay"}
   ]
 }

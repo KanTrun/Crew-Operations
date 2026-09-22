@@ -28,6 +28,7 @@ from ca_agents.ag_rule_learning.shadow_test import run_shadow_test
 from ca_agents.grand_experience.replay import FixtureReader
 from ca_contracts import RuleCandidate
 from ca_playbook.vong_doi import de_xuat as vong_doi_de_xuat
+from ca_playbook.vong_doi import go_luat, list_luat, save_luat
 from ca_playbook.vong_doi import kiem_chung as vong_doi_kiem_chung
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
@@ -207,14 +208,34 @@ def rules_confirm(
     if verified.get("trang_thai") == "loai":
         raise HTTPException(status_code=422, detail="vf_rule_loai")
 
+    # Publish vào kho luật của quán.
+    #
+    # Trước đây hàm này chỉ trả về trạng thái vừa kiểm chứng rồi quên luật:
+    # `luat` chỉ sống trong biến cục bộ, không lần nào ghi xuống `cam_nang.json`.
+    # Hệ quả: "xác nhận" xong luật biến mất, và `revoke` — vốn đòi trạng thái
+    # `hieu_luc` — vĩnh viễn trả 409 `chua_phai_luat_hieu_luc`. Quán không thu
+    # hồi được thứ mình chưa từng thực sự ban hành.
+    #
+    # Ở đây ghi xuống với trạng thái `qua_vf_rule`: luật đã qua kiểm chứng và
+    # nằm trong kho, nhưng CHƯA hiệu lực — đúng ADR-008 (AI đề xuất, người
+    # quyết định; không tự kích hoạt tham số lõi).
+    published = verified
+    published["nguon"] = "quan_tu_viet_luat"
+    existing = [x for x in list_luat() if x.get("id") != published["id"]]
+    save_luat([*existing, published])
+
     with _LOCK:
         item["status"] = "confirmed"
-        item["playbook_ref"] = luat["id"]
+        item["playbook_ref"] = published["id"]
+        # Ghi cả trạng thái playbook: `revoke` đọc lại từ đây để biết luật đã
+        # thực sự được ban hành hay chưa.
+        item["playbook_status"] = published["trang_thai"]
         _CANDIDATES[candidate_id] = item
     return {
         "candidate_id": candidate_id,
-        "playbook_status": verified["trang_thai"],
-        "playbook_buoc": verified["buoc"],
+        "playbook_id": published["id"],
+        "playbook_status": published["trang_thai"],
+        "playbook_buoc": published["buoc"],
         "not_auto_activated": True,
     }
 
@@ -239,14 +260,45 @@ def rules_revoke(
     candidate_id: str,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    """Revoke active rule — dùng vong_doi.go_luat khi đã hieu_luc."""
-    _require_manager(authorization)
+    """Thu hồi luật đã ban hành — dùng `vong_doi.go_luat`, không xoá vết.
+
+    Nhận cả hai trạng thái hợp lệ: `hieu_luc` (luật đã chạy thật, do 8 bước
+    phê duyệt) và `qua_vf_rule` (luật vừa xác nhận từ bề mặt Trải nghiệm).
+    Chỉ chặn khi luật chưa từng được ban hành — thu hồi một thứ chưa tồn tại
+    là thao tác vô nghĩa, và im lặng cho qua sẽ che mất lỗi ở tầng gọi.
+    """
+    user = _require_manager(authorization)
     with _LOCK:
         item = _CANDIDATES.get(candidate_id)
     if not item:
         raise HTTPException(status_code=404, detail="candidate_not_found")
-    if item.get("playbook_status") != "hieu_luc":
-        raise HTTPException(status_code=409, detail="chua_phai_luat_hieu_luc")
-    item["status"] = "revoked"
-    _CANDIDATES[candidate_id] = item
-    return {"candidate_id": candidate_id, "status": "revoked", "reason_required": True}
+
+    revocable = {"hieu_luc", "qua_vf_rule"}
+    status = str(item.get("playbook_status") or "")
+    if status not in revocable:
+        raise HTTPException(status_code=409, detail="chua_phai_luat_da_ban_hanh")
+
+    # Gỡ khỏi kho luật của quán — nguồn sự thật là `cam_nang.json`, không phải
+    # cache trong bộ nhớ, nên phải cập nhật cả hai.
+    playbook_ref = str(item.get("playbook_ref") or "")
+    revoked_rows = 0
+    if playbook_ref:
+        rows = list_luat()
+        for i, row in enumerate(rows):
+            if row.get("id") == playbook_ref:
+                rows[i] = go_luat(row, ai=str(user))
+                revoked_rows += 1
+        if revoked_rows:
+            save_luat(rows)
+
+    with _LOCK:
+        item["status"] = "revoked"
+        item["playbook_status"] = "da_go"
+        _CANDIDATES[candidate_id] = item
+    return {
+        "candidate_id": candidate_id,
+        "status": "revoked",
+        "playbook_id": playbook_ref,
+        "playbook_revoked": bool(revoked_rows),
+        "reason_required": True,
+    }
