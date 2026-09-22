@@ -17,6 +17,8 @@ export interface PublicEventUI {
   occurred_at: string;
   source: string;
   summary: string;
+  /** Khu vực sự kiện gắn vào; `null` nghĩa là sự kiện toàn quán. */
+  zone_id?: string | null;
 }
 
 export interface ModeUI {

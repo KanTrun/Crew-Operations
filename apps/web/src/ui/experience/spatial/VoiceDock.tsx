@@ -1,8 +1,16 @@
 "use client";
 
-/** VoiceDock — voice/text input + response grounded + replay control. */
+/**
+ * VoiceDock — hỏi HỒN QUÁN bằng chữ (mic là bước sau), trả lời có căn cứ.
+ *
+ * Không in `proposal_id` ra UI: người hỏi cần biết "đã đề xuất ghi nhớ" và
+ * "đang chờ ai duyệt", không cần mã nội bộ.
+ */
 
 import { useEffect, useRef, useState } from "react";
+import { ApiError } from "../../../lib/api";
+import { viError } from "../../../lib/present";
+import { Icon } from "../../icons";
 
 interface VoiceResponse {
   turn_id: string;
@@ -16,6 +24,13 @@ interface VoiceResponse {
 interface Props {
   anchorId: string | null;
 }
+
+const COPY = {
+  ask: {
+    doing: "hỏi được HỒN QUÁN",
+    missing: "Neo này chưa có ký ức nào để trả lời. Chọn neo khác hoặc ghi nhớ điều gì đó trước.",
+  },
+} as const;
 
 export default function VoiceDock({ anchorId }: Props) {
   const [transcript, setTranscript] = useState("");
@@ -50,13 +65,10 @@ export default function VoiceDock({ anchorId }: Props) {
           requester_id: "quan_ly_demo",
         }),
       });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error((d as { detail?: string }).detail || `api_${res.status}`);
-      }
+      if (!res.ok) throw new ApiError(res.status);
       setResponse((await res.json()) as VoiceResponse);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Lỗi voice");
+      setError(viError(e, COPY.ask));
     } finally {
       setBusy(false);
     }
@@ -83,26 +95,38 @@ export default function VoiceDock({ anchorId }: Props) {
           type="button"
           className="nq-btn nq-btn-primary"
           data-testid="voice-ask"
-          disabled={busy || !transcript.trim()}
+          disabled={busy || !transcript.trim() || !anchorId}
           onClick={ask}
         >
+          <Icon name="send" size={15} />
           {busy ? "Đang xử lý…" : "Hỏi"}
         </button>
       </div>
 
-      {error ? <div className="nq-alert nq-alert--error">{error}</div> : null}
+      {!anchorId ? (
+        <p className="nq-voicedock__hint">
+          Chọn một neo trên bản đồ trước — câu trả lời luôn gắn với một khu vực cụ thể.
+        </p>
+      ) : null}
+
+      {error ? (
+        <div className="nq-alert nq-alert--error" role="alert">
+          {error}
+        </div>
+      ) : null}
 
       {response ? (
         <div className="nq-voicedock__response" data-testid="voice-response" aria-live="polite">
           <p className="nq-voicedock__text">{response.response_text}</p>
-          {response.citations.length ? (
-            <p className="nq-voicedock__citations">
-              Nguồn: {response.citations.length} ký ức đã xác nhận
-            </p>
-          ) : null}
+          <p className="nq-voicedock__citations">
+            {response.citations.length
+              ? `Dựa trên ${response.citations.length} ký ức đã xác nhận`
+              : "Chưa có ký ức nào đã xác nhận ở khu vực này"}
+          </p>
           {response.proposal ? (
             <p className="nq-voicedock__proposal">
-              Đề xuất ký ức {response.proposal.proposal_id} — chờ xác nhận.
+              <Icon name="pin" size={13} />
+              Đã đề xuất ghi nhớ điều này — chờ quản lý xác nhận trước khi lưu.
             </p>
           ) : null}
         </div>

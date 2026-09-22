@@ -24,6 +24,18 @@ test.describe("QUANVERSE", () => {
     await expect(page.locator(".nq-loadbar__fill").first()).toBeVisible();
   });
 
+  test("events link to zones and store-wide events say so", async ({ page }) => {
+    await expect(page.getByTestId("quanverse-events")).toBeVisible({ timeout: 15_000 });
+    // Sự kiện gắn khu vực: bấm chip phải mở đúng bảng chi tiết khu vực đó.
+    const zoneChip = page.locator(".nq-zonechip").first();
+    await expect(zoneChip).toBeVisible();
+    await zoneChip.click();
+    await expect(page.locator(".nq-zone-detail")).toBeVisible({ timeout: 10_000 });
+    // Sự kiện không thuộc khu vực nào phải nói thẳng là toàn quán.
+    await expect(page.locator(".nq-zonechip--none").first()).toBeVisible();
+    await expect(page.locator(".nq-zonechip--none").first()).toContainText("Toàn quán");
+  });
+
   test("role switch (replay) changes projection", async ({ page }) => {
     await expect(page.locator(".nq-living-map")).toBeVisible({ timeout: 15_000 });
     // Switch sang khách → không còn sự kiện staff.
@@ -33,7 +45,6 @@ test.describe("QUANVERSE", () => {
 
   test("chọn khu vực mở bảng chi tiết", async ({ page }) => {
     await expect(page.locator(".nq-living-map")).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator(".nq-zone-detail")).toHaveCount(0);
     await page.getByTestId("zone-bar").click();
     const detail = page.locator(".nq-zone-detail");
     await expect(detail).toBeVisible({ timeout: 10_000 });
@@ -47,16 +58,29 @@ test.describe("QUANVERSE", () => {
     await expect(page.locator(".nq-zone-detail")).toHaveCount(0);
   });
 
-  test("manager confirms mode", async ({ page }) => {
-    await expect(page.locator(".nq-living-map")).toBeVisible({ timeout: 15_000 });
-    // quan_yen_tinh — click nếu chưa active (idempotent-friendly với DB bền).
-    const btn = page.getByTestId("mode-confirm-quan_yen_tinh").first();
-    if (await btn.isVisible().catch(() => false)) {
-      await btn.click();
+  test("manager walks mode propose -> confirm -> deactivate", async ({ page }) => {
+    await expect(page.locator(".nq-moderail")).toBeVisible({ timeout: 15_000 });
+
+    // Bật một chế độ rồi phải TẮT được — trước đây vòng đời một chiều.
+    const mode = "dem_nhac";
+    const item = page.getByTestId(`mode-item-${mode}`);
+    await expect(item).toBeVisible();
+
+    const propose = page.getByTestId(`mode-propose-${mode}`);
+    if (await propose.isVisible().catch(() => false)) {
+      await propose.click();
+      await expect(page.getByTestId(`mode-confirm-${mode}`)).toBeVisible({ timeout: 10_000 });
     }
-    // Dù đã active từ lần chạy trước, khẳng định có mode đang bật (công tắc bật).
-    await expect(page.locator(".nq-moderail__item.is-active").first()).toBeVisible({ timeout: 10_000 });
+
+    const confirm = page.getByTestId(`mode-confirm-${mode}`);
+    if (await confirm.isVisible().catch(() => false)) {
+      await confirm.click();
+    }
+    await expect(item).toHaveClass(/is-active/, { timeout: 10_000 });
     await expect(page.locator(".nq-switch.is-on").first()).toBeVisible();
+
+    await page.getByTestId(`mode-deactivate-${mode}`).click();
+    await expect(item).not.toHaveClass(/is-active/, { timeout: 10_000 });
   });
 
   test("flavor recommendation with reasons", async ({ page }) => {
@@ -68,6 +92,20 @@ test.describe("QUANVERSE", () => {
     // Mỗi gợi ý có điểm số trực quan + lý do, không chỉ tên món.
     await expect(page.locator(".nq-flavor__meter-fill").first()).toBeVisible();
     await expect(page.locator(".nq-flavor__reasons li").first()).toBeVisible();
+  });
+
+  test("preference reaches stored via consent", async ({ page }) => {
+    // Bản trước chỉ có nhánh xoá — không có đường đồng ý, nên không lưu được.
+    await expect(page.locator(".nq-pref")).toBeVisible({ timeout: 15_000 });
+    await page.getByTestId("pref-input").fill("thích bàn cạnh cửa sổ yên tĩnh");
+    await page.getByTestId("pref-propose").click();
+
+    const grant = page.getByTestId("pref-grant");
+    await expect(grant).toBeVisible({ timeout: 10_000 });
+    await grant.click();
+
+    await expect(page.getByTestId("pref-stored")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("pref-stored")).toContainText("thích bàn cạnh cửa sổ yên tĩnh");
   });
 
   test("ar-lite fallback path", async ({ page }) => {

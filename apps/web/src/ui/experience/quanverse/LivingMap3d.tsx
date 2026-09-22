@@ -79,11 +79,11 @@ function ZoneBlock({
       >
         <boxGeometry args={[place.w, height, place.d]} />
         <meshStandardMaterial
-          color={zone.active ? color : "#4a423a"}
+          color={zone.active ? color : "#6b6055"}
           emissive={color}
-          emissiveIntensity={(hovered ? 0.75 : 0.28) + zone.load_signal * 0.45}
-          metalness={0.4}
-          roughness={0.5}
+          emissiveIntensity={(hovered ? 0.75 : 0.35) + zone.load_signal * 0.5}
+          metalness={0.35}
+          roughness={0.45}
         />
       </mesh>
       {/* Khung dây đồng = khu vực đang chọn (không dùng màu chữ để báo trạng thái) */}
@@ -194,19 +194,24 @@ export default function LivingMap3d({ zones, selectedId = null, onSelect, tier }
         dpr={tier === "full" ? [1, 2] : [1, 1.5]}
         gl={{ antialias: tier === "full", alpha: true, powerPreference: "low-power" }}
       >
-        <ambientLight intensity={0.4} />
-        <pointLight position={[3, 4, 2]} intensity={0.85} color="#d4b888" />
-        <pointLight position={[-3, 2, -2]} intensity={0.4} color="#8fa8a0" />
+        {/* Ba lớp sáng: nền khuếch tán + bầu trời/nền đất + hai nguồn điểm ấm/lạnh.
+            Bản trước chỉ có ambient 0.4 + hai point yếu nên khối chìm vào nền đen. */}
+        <ambientLight intensity={0.55} />
+        <hemisphereLight args={["#e8d5b5", "#171310", 0.55]} />
+        <pointLight position={[3, 4, 2]} intensity={1.5} distance={18} decay={1.3} color="#d4b888" />
+        <pointLight position={[-3, 2, -2]} intensity={0.7} distance={16} decay={1.3} color="#8fa8a0" />
 
-        {/* Sàn quán */}
+        {/* Sàn quán — sáng hơn nền để khối có chỗ đứng, không trôi trong hư không. */}
         <mesh position={[0, -0.07, 0]} receiveShadow={tier === "full"}>
           <boxGeometry args={[6.2, 0.14, 4.6]} />
-          <meshStandardMaterial color="#171310" metalness={0.2} roughness={0.85} />
+          <meshStandardMaterial color="#241d17" metalness={0.25} roughness={0.8} />
         </mesh>
+        {/* Lưới sàn mờ: mắt đọc được chiều sâu mà không cần bóng đổ. */}
+        <gridHelper args={[6.2, 12, "#3a3128", "#2a231c"]} position={[0, 0.005, 0]} />
         {/* Viền sàn đồng */}
         <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[3.02, 3.16, 64]} />
-          <meshBasicMaterial color="#c4a574" transparent opacity={0.35} />
+          <meshBasicMaterial color="#c4a574" transparent opacity={0.5} />
         </mesh>
 
         <Core load={avgLoad} />

@@ -1,26 +1,31 @@
 "use client";
 
 /**
- * ModeRail — chế độ quán: đang bật, đang chờ duyệt, hay tắt.
+ * ModeRail — vòng đời đầy đủ của chế độ quán: đề xuất → duyệt → tắt.
  *
- * Bản trước in mọi chế độ bằng một danh sách như nhau, nút "Kích hoạt" cùng cỡ
- * với nút chính của trang (min-height 48px) nên bốn dòng thành một bức tường
- * pill, và bấm xong không có phản hồi nào ngoài viền đổi màu. Bản này: một
- * công tắc thật (switch) cho trạng thái, hàng đợi duyệt tách khỏi hàng đang
- * bật, nút nhỏ đúng cỡ hàng, và một dòng trấn an trong lúc chờ máy chủ.
+ * Bản trước chỉ có nút "Kích hoạt" và bỏ qua hoàn toàn endpoint `propose`; một
+ * chế độ bật rồi thì ở lại mãi, nên quán kẹt ở chế độ cũ sau khi tình huống đã
+ * qua. Bản này dựng đúng ba trạng thái:
  *
- * `busy` trước đây được khai báo mà không ai truyền — nay nó điều khiển khoá
- * nút và hiện trạng thái "Đang gửi…", nên người dùng không bấm hai lần.
+ *   đang tắt  → [Đề xuất]       ghi đề xuất, chờ người có quyền quyết
+ *   chờ duyệt → [Duyệt] [Bỏ]    duyệt thì bật, bỏ thì rút đề xuất
+ *   đang bật  → [Tắt]           đưa quán về trạng thái thường
+ *
+ * Vai trò không có quyền thấy đúng sự thật: "Chỉ quản lý đổi được", thay vì nút
+ * bấm được rồi máy chủ trả 403.
  */
 
 import { useState } from "react";
 import { Icon, type IconName } from "../../icons";
 import { modeLabel, proposalStatusLabel } from "../exp-present";
 
-interface ModeItem {
+export interface ModeItem {
   mode: string;
   active: boolean;
   proposal_status?: string | null;
+  proposed_by?: string | null;
+  /** Câu hệ quả do máy chủ trả — cùng nguồn với `mode_affects`. */
+  effect?: string;
 }
 
 /** Mỗi chế độ có một biểu tượng riêng — mắt nhận ra trước khi đọc chữ. */
@@ -45,23 +50,39 @@ const MODE_EFFECT: Record<string, string> = {
 
 interface Props {
   modes: ModeItem[];
-  onConfirm: (mode: string) => Promise<void>;
+  onAction: (mode: string, action: ModeAction) => Promise<void>;
   busy?: boolean;
+  /** Vai trò hiện tại có được duyệt/kích hoạt chế độ không (máy chủ quyết định). */
+  canActivate?: boolean;
 }
 
-export default function ModeRail({ modes, onConfirm, busy }: Props) {
+export type ModeAction = "propose" | "confirm" | "deactivate";
+
+/** Chế độ đang có đề xuất nhưng chưa bật. */
+function isWaiting(m: ModeItem): boolean {
+  return Boolean(m.proposal_status && m.proposal_status !== "confirmed");
+}
+
+export default function ModeRail({ modes, onAction, busy, canActivate = true }: Props) {
   const [pending, setPending] = useState<string | null>(null);
 
   const active = modes.filter((m) => m.active);
-  const inactive = modes.filter((m) => !m.active);
+  const waiting = modes.filter((m) => !m.active && isWaiting(m));
+  const off = modes.filter((m) => !m.active && !isWaiting(m));
 
-  async function confirm(mode: string) {
-    setPending(mode);
+  async function run(mode: string, action: ModeAction) {
+    setPending(`${mode}:${action}`);
     try {
-      await onConfirm(mode);
+      await onAction(mode, action);
     } finally {
       setPending(null);
     }
+  }
+
+  function stateLabel(m: ModeItem): string {
+    if (m.active) return "Đang bật";
+    if (isWaiting(m)) return `Chờ duyệt · ${proposalStatusLabel(m.proposal_status)}`;
+    return "Đang tắt";
   }
 
   return (
@@ -75,53 +96,102 @@ export default function ModeRail({ modes, onConfirm, busy }: Props) {
         </span>
       </div>
 
+      {/* Chờ duyệt xếp lên trên: đây là việc cần người quyết định. */}
+      {waiting.length > 0 ? (
+        <p className="nq-moderail__sectionlabel">Chờ quyết định · {waiting.length}</p>
+      ) : null}
+
       <ul className="nq-moderail__list">
-        {modes.map((m) => {
+        {[...waiting, ...active, ...off].map((m) => {
           const icon = MODE_ICON[m.mode] ?? "zap";
-          const isPending = pending === m.mode;
-          const waiting = !m.active && m.proposal_status && m.proposal_status !== "confirmed";
+          const waitingNow = !m.active && isWaiting(m);
           return (
-            <li key={m.mode} className={`nq-moderail__item${m.active ? " is-active" : ""}`}>
+            <li
+              key={m.mode}
+              className={
+                "nq-moderail__item" +
+                (m.active ? " is-active" : "") +
+                (waitingNow ? " is-waiting" : "")
+              }
+              data-testid={`mode-item-${m.mode}`}
+            >
               <span className="nq-moderail__glyph" aria-hidden="true">
                 <Icon name={icon} size={18} />
               </span>
               <span className="nq-moderail__text">
                 <span className="nq-moderail__label">{modeLabel(m.mode)}</span>
-                <span className="nq-moderail__effect">{MODE_EFFECT[m.mode] ?? "Thay đổi cách quán vận hành."}</span>
+                <span className="nq-moderail__effect">
+                  {m.effect ?? MODE_EFFECT[m.mode] ?? "Thay đổi cách quán vận hành."}
+                </span>
               </span>
 
               {/* Công tắc: trạng thái là hình dạng, không chỉ là chữ "Đang bật". */}
               <span
-                className={`nq-switch${m.active ? " is-on" : ""}`}
+                className={`nq-switch${m.active ? " is-on" : ""}${waitingNow ? " is-waiting" : ""}`}
                 role="img"
-                aria-label={m.active ? "Đang bật" : "Đang tắt"}
+                aria-label={
+                  m.active ? "Đang bật" : waitingNow ? "Đang chờ duyệt" : "Đang tắt"
+                }
               >
                 <span className="nq-switch__dot" />
               </span>
-              <span className="nq-moderail__state">
-                {m.active
-                  ? "Đang bật"
-                  : waiting
-                    ? `Đang chờ duyệt · ${proposalStatusLabel(m.proposal_status)}`
-                    : "Đang tắt"}
-              </span>
+              <span className="nq-moderail__state">{stateLabel(m)}</span>
 
-              {!m.active ? (
-                <button
-                  type="button"
-                  className="nq-btn-compact nq-modebtn"
-                  data-testid={`mode-confirm-${m.mode}`}
-                  disabled={busy || isPending}
-                  onClick={() => confirm(m.mode)}
-                >
-                  {isPending ? "Đang gửi…" : "Kích hoạt"}
-                </button>
-              ) : null}
+              <span className="nq-moderail__actions">
+                {!canActivate ? (
+                  <span className="nq-moderail__readonly">Chỉ quản lý đổi được</span>
+                ) : m.active ? (
+                  <button
+                    type="button"
+                    className="nq-btn-compact nq-modebtn"
+                    data-testid={`mode-deactivate-${m.mode}`}
+                    disabled={busy || pending !== null}
+                    onClick={() => run(m.mode, "deactivate")}
+                  >
+                    <Icon name="pause" size={13} />
+                    {pending === `${m.mode}:deactivate` ? "Đang tắt…" : "Tắt"}
+                  </button>
+                ) : waitingNow ? (
+                  <>
+                    <button
+                      type="button"
+                      className="nq-btn-compact nq-modebtn"
+                      data-testid={`mode-confirm-${m.mode}`}
+                      disabled={busy || pending !== null}
+                      onClick={() => run(m.mode, "confirm")}
+                    >
+                      <Icon name="check" size={13} />
+                      {pending === `${m.mode}:confirm` ? "Đang duyệt…" : "Duyệt"}
+                    </button>
+                    <button
+                      type="button"
+                      className="nq-linkbtn"
+                      data-testid={`mode-drop-${m.mode}`}
+                      disabled={busy || pending !== null}
+                      onClick={() => run(m.mode, "deactivate")}
+                    >
+                      Bỏ đề xuất
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="nq-btn-compact nq-modebtn"
+                    data-testid={`mode-propose-${m.mode}`}
+                    disabled={busy || pending !== null}
+                    onClick={() => run(m.mode, "propose")}
+                  >
+                    <Icon name="plus" size={13} />
+                    {pending === `${m.mode}:propose` ? "Đang gửi…" : "Đề xuất"}
+                  </button>
+                )}
+              </span>
             </li>
           );
         })}
       </ul>
-      {inactive.length > 0 ? (
+
+      {off.length > 0 && canActivate ? (
         <p className="nq-moderail__note">
           Kích hoạt một chế độ là thay đổi cách quán vận hành — thao tác được ghi lại kèm người duyệt.
         </p>

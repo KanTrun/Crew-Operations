@@ -36,6 +36,41 @@ test.describe("Quan tu viet luat", () => {
     await expect(page.getByText(/AI đề xuất, quản lý quyết định/)).toBeVisible();
   });
 
+  test("candidates load on mount, not only after discover", async ({ page }) => {
+    // Bản trước khởi tạo danh sách rỗng và không nạp khi mount — mở lại trang
+    // là thấy trống dù máy chủ vẫn giữ ứng viên.
+    await page.getByTestId("rules-discover").click();
+    await expect(page.locator(".nq-rules__item")).toHaveCount(1, { timeout: 15_000 });
+
+    await page.reload();
+    await expect(page.locator(".nq-rules__item")).toHaveCount(1, { timeout: 15_000 });
+  });
+
+  test("published rule can be revoked", async ({ page }) => {
+    // Luật đã ban hành mà không thu hồi được nghĩa là quán không sửa được luật
+    // của chính mình.
+    await page.getByTestId("rules-discover").click();
+    const item = page.locator(".nq-rules__item").first();
+    await expect(item).toBeVisible({ timeout: 15_000 });
+
+    // Đi hết tới ban hành.
+    const shadow = page.getByTestId("shadow-btn").first();
+    if (await shadow.isEnabled().catch(() => false)) {
+      await shadow.click();
+      await expect(page.locator(".nq-shadow")).toBeVisible({ timeout: 10_000 });
+    }
+    const confirm = page.getByTestId("confirm-btn").first();
+    if (await confirm.isVisible().catch(() => false)) {
+      await confirm.click();
+      await expect(page.locator(".nq-alert--info")).toBeVisible({ timeout: 10_000 });
+    }
+
+    const revoke = page.getByTestId("revoke-btn").first();
+    await expect(revoke).toBeVisible({ timeout: 10_000 });
+    await revoke.click();
+    await expect(item).toContainText("Đã thu hồi", { timeout: 10_000 });
+  });
+
   test("reject candidate without activation", async ({ page }) => {
     await page.getByTestId("rules-discover").click();
     await expect(page.locator(".nq-rules__item")).toHaveCount(1, { timeout: 15_000 });

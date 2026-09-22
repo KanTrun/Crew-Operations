@@ -35,6 +35,37 @@ test.describe("Shift Rescue", () => {
     expect(elapsed).toBeLessThan(90);
   });
 
+  test("full lifecycle reaches confirmed", async ({ page }) => {
+    // Trước đây UI dừng ở bước mời nên ca cứu không bao giờ chốt được.
+    await page.getByTestId("rescue-intake").click();
+    await expect(page.locator(".nq-rescue__case")).toBeVisible({ timeout: 15_000 });
+    await page.getByTestId("invite-btn").first().click();
+
+    const respond = page.locator(".nq-rescue__respond");
+    await expect(respond).toBeVisible({ timeout: 10_000 });
+
+    // Chưa phản hồi thì chưa chốt được — nút chốt phải khoá.
+    await expect(page.getByTestId("rescue-confirm")).toBeDisabled();
+
+    await page.getByTestId("rescue-accept").click();
+    await expect(page.getByTestId("rescue-confirm")).toBeEnabled({ timeout: 10_000 });
+    await page.getByTestId("rescue-confirm").click();
+
+    // Trạng thái cuối đọc được bằng nhãn tiếng Việt, không phải mã thô.
+    await expect(page.getByTestId("rescue-status")).toContainText("Đã xác nhận", {
+      timeout: 10_000,
+    });
+  });
+
+  test("shift and absence are chosen, not hardcoded", async ({ page }) => {
+    // Bản trước hardcode ca t7_toi / nv_absent_quan nên chỉ chạy một kịch bản.
+    const shift = page.getByTestId("rescue-shift");
+    await expect(shift).toBeVisible({ timeout: 15_000 });
+    const optionCount = await shift.locator("option").count();
+    expect(optionCount).toBeGreaterThanOrEqual(1);
+    await expect(page.getByTestId("rescue-absence")).toBeVisible();
+  });
+
   test("no unsafe recommend: blocked candidates never have invite button", async ({ page }) => {
     await page.getByTestId("rescue-intake").click();
     await expect(page.locator(".nq-rescue__case")).toBeVisible({ timeout: 15_000 });

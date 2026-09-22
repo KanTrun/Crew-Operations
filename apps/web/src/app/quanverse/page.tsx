@@ -12,7 +12,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ApiError } from "../../lib/api";
 import { getRole, getToken } from "../../lib/session";
+import { viError } from "../../lib/present";
 import { Icon } from "../../ui/icons";
 import { AuthGate } from "../../ui/kit";
 import { ExpSkeleton } from "../../ui/experience/exp-kit";
@@ -21,16 +23,20 @@ import {
   dataQualityLevelLabel,
   eventStatusLabel,
   eventTypeLabel,
+  sourceLabel,
 } from "../../ui/experience/exp-present";
 import LivingMap from "../../ui/experience/quanverse/LivingMap";
 import RoleProjection, { type RoleId } from "../../ui/experience/quanverse/RoleProjection";
-import ModeRail from "../../ui/experience/quanverse/ModeRail";
+import ModeRail, { type ModeAction } from "../../ui/experience/quanverse/ModeRail";
 import HorizonTimeline from "../../ui/experience/quanverse/HorizonTimeline";
 import FlavorUniverse from "../../ui/experience/quanverse/FlavorUniverse";
 import PreferenceConsent from "../../ui/experience/quanverse/PreferenceConsent";
 import ArLiteOverlay from "../../ui/experience/quanverse/ArLiteOverlay";
 import ZoneDetail from "../../ui/experience/quanverse/ZoneDetail";
-import type { LiveSnapshotUI } from "../../ui/experience/quanverse/quanverse-model";
+import type {
+  LiveSnapshotUI,
+  ZoneUI,
+} from "../../ui/experience/quanverse/quanverse-model";
 
 const ALL_ROLES: RoleId[] = ["khach", "nhan_vien", "quan_ly", "chu_quan"];
 const ROLE_NAME: Record<RoleId, string> = {
@@ -40,6 +46,14 @@ const ROLE_NAME: Record<RoleId, string> = {
   chu_quan: "Chủ quán",
 };
 
+const COPY = {
+  snapshot: { doing: "đọc được trạng thái quán" },
+  mode: {
+    doing: "đổi chế độ quán",
+    forbidden: "Chỉ quản lý hoặc chủ quán mới đổi được chế độ quán.",
+  },
+} as const;
+
 export default function QuanversePage() {
   const [token, setToken] = useState("");
   const [role, setRole] = useState<RoleId>("quan_ly");
@@ -48,6 +62,7 @@ export default function QuanversePage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [busyMode, setBusyMode] = useState(false);
+  const [canActivateMode, setCanActivateMode] = useState(false);
 
   const base = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
@@ -65,32 +80,65 @@ export default function QuanversePage() {
       const res = await fetch(`${base}/api/v1/experience/quanverse/snapshot${qs}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!res.ok) throw new Error(`api_${res.status}`);
+      if (!res.ok) throw new ApiError(res.status);
       setSnap((await res.json()) as LiveSnapshotUI);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Lỗi tải snapshot");
+      setError(viError(e, COPY.snapshot));
+    }
+  }, [base, token]);
+
+  /**
+   * Quyền đổi chế độ do máy chủ quyết, không suy từ vai trò đang xem.
+   *
+   * Trang này cho phép đổi `replay_role` để xem các bản chiếu khác nhau, nhưng
+   * quyền thao tác vẫn thuộc về phiên đăng nhập thật — nếu lấy `role` đang xem
+   * thì khách sẽ thấy nút duyệt chế độ.
+   */
+  const loadModeCapability = useCallback(async () => {
+    try {
+      const res = await fetch(`${base}/api/v1/experience/quanverse/modes`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return;
+      const body = (await res.json()) as { can_activate?: boolean };
+      setCanActivateMode(Boolean(body.can_activate));
+    } catch {
+      setCanActivateMode(false);
     }
   }, [base, token]);
 
   useEffect(() => {
-    if (token && ready) loadSnapshot(role);
-  }, [token, ready, role, loadSnapshot]);
-
-  const confirmMode = useCallback(async (mode: string) => {
-    setBusyMode(true);
-    try {
-      const res = await fetch(`${base}/api/v1/experience/quanverse/modes/${mode}/confirm`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) throw new Error(`api_${res.status}`);
-      await loadSnapshot(role);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Không kích hoạt được chế độ");
-    } finally {
-      setBusyMode(false);
+    if (token && ready) {
+      void loadSnapshot(role);
+      void loadModeCapability();
     }
-  }, [base, token, role, loadSnapshot]);
+  }, [token, ready, role, loadSnapshot, loadModeCapability]);
+
+  const actOnMode = useCallback(
+    async (mode: string, action: ModeAction) => {
+      setBusyMode(true);
+      setError(null);
+      try {
+        const path =
+          action === "propose"
+            ? `/modes/${mode}/propose`
+            : action === "confirm"
+              ? `/modes/${mode}/confirm`
+              : `/modes/${mode}/deactivate`;
+        const res = await fetch(`${base}/api/v1/experience/quanverse${path}`, {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new ApiError(res.status);
+        await loadSnapshot(role);
+      } catch (e) {
+        setError(viError(e, COPY.mode));
+      } finally {
+        setBusyMode(false);
+      }
+    },
+    [base, token, role, loadSnapshot],
+  );
 
   // Khi đổi vai trò, khu vực đang chọn có thể không còn trong bản chiếu mới.
   useEffect(() => {
@@ -104,6 +152,13 @@ export default function QuanversePage() {
     () => snap?.zones?.find((z) => z.zone_id === selectedZone) ?? null,
     [snap, selectedZone],
   );
+
+  /** Tra khu vực theo mã — để sự kiện hiện nhãn khu vực thay vì mã khô. */
+  const zoneById = useMemo(() => {
+    const map = new Map<string, ZoneUI>();
+    for (const z of snap?.zones ?? []) map.set(z.zone_id, z);
+    return map;
+  }, [snap]);
 
   if (!ready) return <ExpSkeleton rows={6} />;
   if (!token) return <AuthGate />;
@@ -122,7 +177,19 @@ export default function QuanversePage() {
         </p>
       </header>
 
-      {error ? <div className="nq-alert nq-alert--error" role="alert">{error}</div> : null}
+      {error ? (
+        <div className="nq-alert nq-alert--error" role="alert">
+          {error}
+          <button
+            type="button"
+            className="nq-linkbtn"
+            onClick={() => void loadSnapshot(role)}
+          >
+            <Icon name="refresh" size={14} />
+            Tải lại
+          </button>
+        </div>
+      ) : null}
 
       {/* Chuyển bản chiếu theo vai trò — vai trò đang xem được đánh dấu rõ */}
       <div className="nq-rolebar" role="group" aria-label="Chọn vai trò xem">
@@ -188,7 +255,12 @@ export default function QuanversePage() {
             />
             <div className="nq-quanverse__right">
               <HorizonTimeline items={snap.next_horizon ?? []} />
-              <ModeRail modes={snap.modes ?? []} onConfirm={confirmMode} busy={busyMode} />
+              <ModeRail
+                modes={snap.modes ?? []}
+                onAction={actOnMode}
+                busy={busyMode}
+                canActivate={canActivateMode}
+              />
             </div>
           </div>
 
@@ -221,14 +293,42 @@ export default function QuanversePage() {
               <span className="nq-exp-section__spacer" />
               <span className="nq-quanverse__eventcount">{events.length} mục</span>
             </div>
-            <ul>
-              {events.map((ev) => (
-                <li key={ev.event_id} className="nq-quanverse__event">
-                  <span className="nq-quanverse__eventtype">{eventTypeLabel(ev.event_type)}</span>
-                  <span className="nq-quanverse__eventsum">{ev.summary}</span>
-                  <span className="nq-quanverse__eventstatus">{eventStatusLabel(ev.status)}</span>
-                </li>
-              ))}
+            <ul data-testid="quanverse-events">
+              {events.map((ev) => {
+                const zone = zoneById.get(ev.zone_id ?? "");
+                return (
+                  <li key={ev.event_id} className="nq-quanverse__event">
+                    <span className="nq-quanverse__eventtype">
+                      {eventTypeLabel(ev.event_type)}
+                    </span>
+                    <span className="nq-quanverse__eventsum">{ev.summary}</span>
+                    <span className="nq-quanverse__eventmeta">
+                      {/* Vùng gắn kết: bấm để mở chi tiết khu vực đó. */}
+                      {zone ? (
+                        <button
+                          type="button"
+                          className="nq-zonechip"
+                          data-testid={`event-zone-${ev.event_id}`}
+                          onClick={() => setSelectedZone(zone.zone_id)}
+                        >
+                          <Icon name="location" size={12} />
+                          {zone.label}
+                        </button>
+                      ) : (
+                        <span className="nq-zonechip nq-zonechip--none">
+                          Toàn quán
+                        </span>
+                      )}
+                      <span className="nq-quanverse__eventsrc">
+                        {sourceLabel(ev.source)}
+                      </span>
+                      <span className="nq-quanverse__eventstatus">
+                        {eventStatusLabel(ev.status)}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
               {events.length === 0 && (
                 <li className="nq-quanverse__event nq-quanverse__event--empty">
                   Không có sự kiện vận hành cho bản chiếu này.
