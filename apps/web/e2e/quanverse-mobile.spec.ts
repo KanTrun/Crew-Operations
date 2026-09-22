@@ -31,12 +31,23 @@ test.describe("QUANVERSE mobile", () => {
     await page.getByTestId("zone-bar").click();
   });
 
+  test("touch target đủ lớn cho khu vực mặt bằng", async ({ page }) => {
+    await page.goto("/quanverse");
+    await expect(page.locator(".nq-living-map")).toBeVisible({ timeout: 15_000 });
+
+    // Mục tiêu chạm ≥ 44px theo WCAG 2.5.5.
+    const box = await page.getByTestId("zone-bar").boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+  });
+
   test("flavor + mode actions accessible on mobile", async ({ page }) => {
     await page.goto("/quanverse");
     await expect(page.locator(".nq-living-map")).toBeVisible({ timeout: 15_000 });
 
-    // Flavor input vẫn dùng được (touch target)
-    await page.getByTestId("flavor-ngot").selectOption("it");
+    // Núm độ ngọt là nút thật (bấm chạm được, không còn select ẩn).
+    await page.getByTestId("flavor-ngot-it").click();
+    await expect(page.getByTestId("flavor-ngot-it")).toHaveAttribute("aria-checked", "true");
     await page.getByTestId("flavor-go").click();
     await expect(page.getByTestId("flavor-results").first()).toBeVisible({ timeout: 10_000 });
   });

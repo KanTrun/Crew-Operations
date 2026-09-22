@@ -28,7 +28,7 @@ test.describe("Grand AI Experience — 5-minute replay story", () => {
     // 1) QUANVERSE: khách nói khẩu vị → gợi ý coffee.
     await page.goto("/quanverse");
     await expect(page.locator(".nq-living-map")).toBeVisible({ timeout: 15_000 });
-    await page.getByTestId("flavor-ngot").selectOption("it");
+    await page.getByTestId("flavor-ngot-it").click();
     await page.getByTestId("flavor-sua").uncheck();
     await page.getByTestId("flavor-go").click();
     await expect(page.getByTestId("flavor-results").first()).toBeVisible({ timeout: 10_000 });

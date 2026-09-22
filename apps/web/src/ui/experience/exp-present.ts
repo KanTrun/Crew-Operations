@@ -188,3 +188,60 @@ const SOURCE_LABELS: Record<string, string> = {
 export function sourceLabel(code: unknown): string {
   return pick(SOURCE_LABELS, code, String(code));
 }
+
+/** Kênh dự phòng của AR-lite khi thiết bị không mở được camera. */
+const AR_FALLBACK_LABELS: Record<string, string> = {
+  map_or_qr_text: "mở bản đồ hoặc quét mã QR kèm chữ",
+  none: "không cần dự phòng",
+  text: "chỉ hiện chữ hướng dẫn",
+  map: "chuyển sang bản đồ 2D",
+};
+export function arFallbackLabel(code: unknown): string {
+  return pick(AR_FALLBACK_LABELS, code, String(code));
+}
+
+/** Loại khu vực trên Living Map. */
+const ZONE_KIND_LABELS: Record<string, string> = {
+  quay: "Quầy",
+  phong_khach: "Khu khách",
+  loi_vao: "Lối vào",
+  kho: "Kho",
+  ve_sinh: "Vệ sinh",
+};
+export function zoneKindLabel(code: unknown): string {
+  return pick(ZONE_KIND_LABELS, code, String(code));
+}
+
+/** Mức chất lượng dữ liệu của snapshot. */
+const DATA_LEVEL_LABELS: Record<string, string> = {
+  info: "Thông tin",
+  warn: "Cần lưu ý",
+  error: "Thiếu dữ liệu",
+  debug: "Kỹ thuật",
+  ok: "Đầy đủ",
+};
+export function dataQualityLevelLabel(code: unknown): string {
+  return pick(DATA_LEVEL_LABELS, code, String(code));
+}
+
+/** Mã chất lượng dữ liệu → câu người đọc được. */
+const DATA_CODE_LABELS: Record<string, string> = {
+  fixture_replay: "Đang chạy dữ liệu diễn tập",
+  public_mode: "Bản chiếu khách — không kèm dữ liệu vận hành",
+  stale_snapshot: "Ảnh trạng thái đã cũ",
+  rate_limited: "Đã chạm trần truy vấn",
+  missing_horizon: "Chưa có tầm nhìn 15 phút",
+};
+export function dataQualityLabel(code: unknown): string {
+  return pick(DATA_CODE_LABELS, code, String(code));
+}
+
+/** Điểm của một khu vực trên Living Map (tải thấp/vừa/cao). */
+export function zoneLoadLabel(load: unknown): string {
+  const n = typeof load === "number" ? load : Number(load);
+  if (!Number.isFinite(n)) return "Không rõ tải";
+  const pct = Math.round(n * 100);
+  if (n >= 0.7) return `Tải cao ${pct}%`;
+  if (n >= 0.4) return `Tải vừa ${pct}%`;
+  return `Tải nhẹ ${pct}%`;
+}
