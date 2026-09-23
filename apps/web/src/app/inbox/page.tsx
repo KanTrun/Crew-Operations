@@ -439,7 +439,7 @@ export default function InboxPage() {
       ) : null}
       {!manager ? <Notice>Bạn xem được nội dung. Quản lý hoặc chủ quán mới bấm duyệt.</Notice> : null}
       {life?.solver && (!life.solver.ok || life.solver.status?.includes("INFEASIBLE")) ? (
-        <div className="mb-4 p-4 border-2 border-red-500 bg-red-950/40 text-red-200 rounded">
+        <div className="mb-4 p-4 border-2 border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] bg-[var(--nq-st-danger-soft)] text-[var(--nq-st-danger-ink)] rounded">
           <div className="font-bold uppercase tracking-wider mb-1 flex items-center gap-2">
             Lịch tuần này đang xung đột — Solver không khả thi
           </div>
@@ -542,25 +542,25 @@ export default function InboxPage() {
                       </p>
                     ) : null}
                     {it.ly_do_quyet && it.trang_thai === "tu_choi" ? (
-                      <p className="text-xs text-rose-300">
+                      <p className="text-xs text-[var(--nq-st-danger-ink)]">
                         Lý do từ chối: {it.ly_do_quyet}
                       </p>
                     ) : null}
                     {it.goi_y_doi_tac && it.goi_y_doi_tac.length > 0 && it.trang_thai === "cho_duyet" && (
-                      <div className="mt-2 rounded-lg border border-purple-800/40 bg-purple-950/20 p-2.5 text-xs space-y-1.5">
-                        <div className="font-bold text-purple-300 flex items-center gap-1.5">
+                      <div className="mt-2 rounded-lg border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))] bg-[var(--nq-st-info-soft)] p-2.5 text-xs space-y-1.5">
+                        <div className="font-bold text-[var(--nq-st-info-ink)] flex items-center gap-1.5">
                           AI Đề Xuất Ứng Viên Phù Hợp Nhất:
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {it.goi_y_doi_tac.map((cand) => (
                             <div
                               key={cand.nv_id}
-                              className="flex items-center gap-1.5 rounded bg-zinc-900/90 px-2 py-1 border border-zinc-700"
+                              className="flex items-center gap-1.5 rounded bg-[var(--nq-bg-elevated)] px-2 py-1 border border-[var(--nq-line)]"
                             >
                               <span className="font-semibold text-white">{cand.ten}</span>
-                              <span className="text-2xs text-amber-300 font-bold">({cand.score}%)</span>
+                              <span className="text-2xs text-[var(--nq-st-warn-ink)] font-bold">({cand.score}%)</span>
                               {cand.reasons && cand.reasons.length > 0 && (
-                                <span className="text-2xs text-zinc-400">· {cand.reasons[0]}</span>
+                                <span className="text-2xs text-[var(--nq-ink-muted)]">· {cand.reasons[0]}</span>
                               )}
                               {manager && (
                                 <button
@@ -570,7 +570,7 @@ export default function InboxPage() {
                                     e.stopPropagation();
                                     handleSmartApprove(it, cand.nv_id);
                                   }}
-                                  className="ml-1 rounded bg-purple-600 hover:bg-purple-500 text-white px-1.5 py-0.5 text-2xs font-bold"
+                                  className="ml-1 rounded bg-[var(--nq-st-info)] hover:bg-[var(--nq-st-info)] text-[var(--nq-accent-ink)] px-1.5 py-0.5 text-2xs font-bold"
                                 >
                                   Chọn & Duyệt
                                 </button>
@@ -619,7 +619,7 @@ export default function InboxPage() {
                           busy={busy === it.id}
                           busyLabel="Đang duyệt…"
                           onClick={() => handleSmartApprove(it)}
-                          className="bg-purple-600 hover:bg-purple-500 font-bold text-white shadow-md border border-purple-400"
+                          className="bg-[var(--nq-st-info)] hover:bg-[var(--nq-st-info)] font-bold text-[var(--nq-accent-ink)] shadow-md border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))]"
                         >
                           Duyệt AI ({it.goi_y_doi_tac[0].ten})
                         </Btn>
@@ -656,7 +656,7 @@ export default function InboxPage() {
             className="nq-inbox-dialog-panel"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 id="inbox-approve-dialog-title" className="text-lg font-bold uppercase tracking-wider mb-2 text-emerald-300">
+            <h3 id="inbox-approve-dialog-title" className="text-lg font-bold uppercase tracking-wider mb-2 text-[var(--nq-st-ok-ink)]">
               Duyệt ràng buộc — xem chi tiết trước khi chốt
             </h3>
             <p className="text-sm opacity-80 mb-4 text-[var(--nq-fg)]">
@@ -696,7 +696,7 @@ export default function InboxPage() {
               </div>
             </dl>
             {anhHuongXepLich(duyetModalItem) ? (
-              <label className="flex items-start gap-3 rounded border border-emerald-700/50 bg-emerald-950/20 p-3 text-sm text-[var(--nq-fg)]">
+              <label className="flex items-start gap-3 rounded border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] bg-[var(--nq-st-ok-soft)] p-3 text-sm text-[var(--nq-fg)]">
                 <input
                   type="checkbox"
                   checked={autoXepSauDuyet}
@@ -740,7 +740,7 @@ export default function InboxPage() {
             className="nq-inbox-dialog-panel nq-inbox-dialog-panel--compact nq-inbox-dialog-panel--danger"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 id="inbox-reject-dialog-title" className="text-lg font-bold uppercase tracking-wider mb-2 text-rose-300">
+            <h3 id="inbox-reject-dialog-title" className="text-lg font-bold uppercase tracking-wider mb-2 text-[var(--nq-st-danger-ink)]">
               Từ chối ràng buộc
             </h3>
             <p className="text-sm opacity-80 mb-4 text-[var(--nq-fg)]">

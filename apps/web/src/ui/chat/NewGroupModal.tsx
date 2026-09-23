@@ -74,7 +74,7 @@ export function NewGroupModal({ isOpen, onClose, onCreated }: NewGroupModalProps
         </div>
 
         <form onSubmit={handleCreate} className="p-4 flex flex-col gap-4 flex-1 overflow-hidden">
-          {error && <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-500 font-medium">{error}</div>}
+          {error && <div className="p-2.5 rounded-lg bg-[var(--nq-st-danger-soft)] border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] text-xs text-[var(--nq-st-danger-ink)] font-medium">{error}</div>}
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[var(--nq-muted)] mb-1">

@@ -389,7 +389,7 @@ export default function SkillsPage() {
                     )}
                   </div>
 
-                  <div className="pt-4 mt-4 border-t-2 border-[var(--nq-dim)] flex items-center justify-between gap-2">
+                  <div className="pt-4 mt-4 border-t border-[var(--nq-line)] flex items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={() => handleViewDetail(skill.skill_id)}
@@ -467,7 +467,7 @@ export default function SkillsPage() {
               )}
             </div>
 
-            <div className="p-4 border-t-2 border-[var(--nq-dim)] flex justify-end">
+            <div className="p-4 border-t border-[var(--nq-line)] flex justify-end">
               <Btn
                 variant="primary"
                 onClick={() => {

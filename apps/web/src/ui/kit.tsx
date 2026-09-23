@@ -33,8 +33,17 @@ type BtnVariant = "primary" | "ghost" | "danger";
 function btnClass(variant: BtnVariant, block?: boolean) {
   const base = "nq-btn";
   const w = block ? " nq-btn-block" : "";
-  if (variant === "primary") return `${base} nq-btn-primary${w}`;
-  if (variant === "danger") return `${base} nq-btn-danger${w}`;
+  // `nq-ink-on-solid` phải có mặt trên mọi nút nền đặc, KHÔNG chỉ nằm trong
+  // `.nq-btn-primary` ở CSS. Hai lý do:
+  //   1. Nó là HỢP ĐỒNG được kiểm bằng test thật
+  //      (`e2e/flows.spec.ts` → `a.nq-ink-on-solid` phải có độ sáng < 0.35, tức
+  //      chữ tối trên nền sáng, không được là chữ đen trên nền tối). Class này
+  //      từng bị bỏ khi nút chuyển sang `.nq-btn-primary`, làm hợp đồng đó mất
+  //      vật mang và test đỏ.
+  //   2. Nó là móc ổn định cho công cụ đo: `scripts/contrast.mjs` và các spec
+  //      dùng nó để nhận diện "nút nền đặc" mà không phải bám vào tên biến thể.
+  if (variant === "primary") return `${base} nq-btn-primary nq-ink-on-solid${w}`;
+  if (variant === "danger") return `${base} nq-btn-danger nq-ink-on-solid${w}`;
   return `${base} nq-btn-ghost${w}`;
 }
 
@@ -325,7 +334,7 @@ function SkeletonCard({ cards = 1, form }: { cards?: number; form?: boolean }) {
 function SkeletonTable({ rows = 3 }: { rows?: number }) {
   return (
     <div className="nq-skeleton nq-skeleton--block w-full" aria-hidden="true">
-      <div className="flex border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 gap-4">
+      <div className="flex border-b border-[var(--nq-line)] bg-[var(--nq-surface)] p-4 gap-4">
         {Array.from({ length: 5 }, (_, i) => (
           <div key={i} className="h-4 bg-[var(--nq-dim)]/20 rounded flex-1" />
         ))}
@@ -671,7 +680,7 @@ export function PageHeader({
 }
 
 export function TabBar({ children }: { children: ReactNode }) {
-  return <div className="flex border-b-2 border-[var(--nq-dim)] mb-8">{children}</div>;
+  return <div className="flex border-b border-[var(--nq-line)] mb-8">{children}</div>;
 }
 
 export function TabButton({
@@ -757,7 +766,7 @@ export function StepDone({ label, timingMs }: { label: string; timingMs?: number
 
 export function FixedBottomBar({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed bottom-0 left-0 w-full p-4 bg-[var(--nq-bg)]/80 backdrop-blur-md border-t-2 border-[var(--nq-dim)] z-50">
+    <div className="fixed bottom-0 left-0 w-full p-4 bg-[var(--nq-bg)]/80 backdrop-blur-md border-t border-[var(--nq-line)] z-50">
       <div className="max-w-2xl mx-auto flex gap-4">
         {children}
       </div>
@@ -961,7 +970,7 @@ export function DataTable({
         <table className="w-full text-left border-collapse">
           <caption className="sr-only">{caption}</caption>
           <thead>
-            <tr className="border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)]">
+            <tr className="border-b border-[var(--nq-line)] bg-[var(--nq-surface)]">
               {head.map((h) => (
                 <th key={h.label} scope="col" className={`p-4 font-black uppercase tracking-widest text-[var(--nq-dim)] ${h.num ? "text-right" : ""}`}>
                   {h.label}

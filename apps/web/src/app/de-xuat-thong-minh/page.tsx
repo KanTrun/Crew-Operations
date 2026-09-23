@@ -124,7 +124,7 @@ export default function DeXuatThongMinhPage() {
               <div key={p.pattern_id} className="nq-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="font-bold">{p.mo_ta}</h4>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--nq-st-ok-soft)] text-[var(--nq-st-ok-ink)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))]">
                     {Math.round(p.do_tin_cay * 100)}%
                   </span>
                 </div>
@@ -146,7 +146,7 @@ export default function DeXuatThongMinhPage() {
               <div key={r.id} className="nq-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="font-bold">{r.cau}</h4>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700">
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--nq-surface)] text-[var(--nq-ink)] border border-[var(--nq-line)]">
                     {r.trang_thai}
                   </span>
                 </div>

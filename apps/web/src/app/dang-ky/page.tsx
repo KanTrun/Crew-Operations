@@ -117,7 +117,7 @@ export default function DangKyPage() {
         noValidate
         className="nq-login-card relative z-10 grid w-full max-w-5xl grid-cols-1 overflow-hidden nq-surface-block shadow-[var(--nq-elev-2)] md:grid-cols-2"
       >
-        <aside className="flex flex-col justify-between border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
+        <aside className="flex flex-col justify-between border-b border-[var(--nq-line)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
           <p className="nq-brand-mark">NHỊP QUÁN</p>
           <div className="mt-8 md:mt-0">
             <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-copper)] uppercase">
@@ -243,7 +243,7 @@ export default function DangKyPage() {
             Tạo tài khoản
           </Btn>
 
-          <p className="border-t-2 border-dashed border-[var(--nq-dim)] pt-3 text-sm text-[var(--nq-dim)]">
+          <p className="border-t border-dashed border-[var(--nq-line)] pt-3 text-sm text-[var(--nq-dim)]">
             Đã có tài khoản?{" "}
             <Link href="/login" className="text-[var(--nq-copper)] underline-offset-4 hover:underline">
               Vào hệ thống

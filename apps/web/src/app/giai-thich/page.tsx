@@ -89,7 +89,7 @@ export default function GiaiThichPage() {
               type="text"
               value={cauHoi}
               onChange={(e) => setCauHoi(e.target.value)}
-              className="bg-neutral-800 text-white text-sm p-2 rounded border border-neutral-700 w-full"
+              className="bg-[var(--nq-surface)] text-white text-sm p-2 rounded border border-[var(--nq-line)] w-full"
               placeholder="Tại sao ca tối T6 có 2 pha chế?"
             />
           </Field>
@@ -101,14 +101,14 @@ export default function GiaiThichPage() {
 
       {chain && (
         <OpsCard title={`Kết luận: ${chain.cau_hoi}`}>
-          <div className="nq-card p-4 mb-4 bg-emerald-950/40 border-emerald-800/60">
-            <p className="font-bold text-emerald-300">{chain.ket_luan}</p>
+          <div className="nq-card p-4 mb-4 bg-[var(--nq-st-ok-soft)] border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))]">
+            <p className="font-bold text-[var(--nq-st-ok-ink)]">{chain.ket_luan}</p>
           </div>
           <div className="space-y-2">
             {chain.nodes.map((n) => (
               <div key={n.node_id} className="nq-card p-3 flex items-center justify-between gap-2">
                 <div>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700 mr-2">
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--nq-surface)] text-[var(--nq-ink)] border border-[var(--nq-line)] mr-2">
                     {n.loai}
                   </span>
                   <span className="text-sm">{n.mo_ta}</span>
@@ -128,7 +128,7 @@ export default function GiaiThichPage() {
             {chains.map((c) => (
               <div key={c.chain_id} className="nq-card p-4">
                 <h4 className="font-bold">{c.cau_hoi}</h4>
-                <p className="text-sm text-emerald-300 mt-1">{c.ket_luan}</p>
+                <p className="text-sm text-[var(--nq-st-ok-ink)] mt-1">{c.ket_luan}</p>
               </div>
             ))}
           </div>

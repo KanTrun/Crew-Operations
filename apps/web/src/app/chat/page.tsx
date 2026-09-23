@@ -259,7 +259,7 @@ export default function ChatPage() {
                 </div>
                 <span
                   className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[var(--nq-card)] ${
-                    isConnected ? "bg-green-500" : "bg-gray-400"
+                    isConnected ? "bg-[var(--nq-st-ok)]" : "bg-[var(--nq-line-control)]"
                   }`}
                   title={isConnected ? "Đã kết nối" : "Mất kết nối"}
                 />
@@ -267,7 +267,7 @@ export default function ChatPage() {
               <div>
                 <h2 className="font-bold text-base text-[var(--nq-fg)] leading-tight">Trò chuyện</h2>
                 <p className="text-2xs text-[var(--nq-muted)] flex items-center gap-1">
-                  <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-amber-500"}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-[var(--nq-st-ok)]" : "bg-[var(--nq-st-warn)]"}`} />
                   {isConnected ? "Trực tuyến" : "Đang kết nối lại…"}
                 </p>
               </div>
@@ -359,7 +359,7 @@ export default function ChatPage() {
                     {/* Avatar */}
                     <div className="relative shrink-0">
                       {isGeneral ? (
-                        <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-500 font-bold flex items-center justify-center text-lg border border-amber-500/30">
+                        <div className="w-11 h-11 rounded-2xl bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] font-bold flex items-center justify-center text-lg border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]">
                           <Icon name="coffee" size={20} />
                         </div>
                       ) : conv.type === "group" ? (
@@ -374,7 +374,7 @@ export default function ChatPage() {
                       {conv.type === "direct" && (
                         <span
                           className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[var(--nq-card)] ${
-                            isUserOnline ? "bg-green-500" : "bg-gray-400"
+                            isUserOnline ? "bg-[var(--nq-st-ok)]" : "bg-[var(--nq-line-control)]"
                           }`}
                         />
                       )}
@@ -451,13 +451,13 @@ export default function ChatPage() {
                   <h3 className="font-bold text-sm text-[var(--nq-fg)] flex items-center gap-2">
                     {activeConv.display_name}
                     {activeConv.is_locked && (
-                      <span className="text-2xs bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded font-mono">CHUNG</span>
+                      <span className="text-2xs bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] px-1.5 py-0.5 rounded font-mono">CHUNG</span>
                     )}
                   </h3>
                   <p className="text-2xs text-[var(--nq-muted)]">
                     {activeConv.type === "direct" ? (
                       activeConv.other_user && onlineUsers.has(activeConv.other_user.nv_id) ? (
-                        <span className="text-green-500 font-medium">● Đang hoạt động</span>
+                        <span className="text-[var(--nq-st-ok-ink)] font-medium">● Đang hoạt động</span>
                       ) : (
                         "Ngoại tuyến"
                       )
@@ -475,7 +475,7 @@ export default function ChatPage() {
                   onClick={() => muteConversation(activeConv.id, !activeConv.muted)}
                   className={`p-2 rounded-xl border transition ${
                     activeConv.muted
-                      ? "bg-amber-500/10 text-amber-500 border-amber-500/30"
+                      ? "bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]"
                       : "text-[var(--nq-muted)] hover:text-[var(--nq-fg)] border-transparent"
                   }`}
                   title={activeConv.muted ? "Bật thông báo" : "Tắt thông báo"}
@@ -603,21 +603,21 @@ export default function ChatPage() {
                                 ? msg.metadata.availability_confirmation as { id: string; tuan_iso: string; availability?: Record<string, string[]>; status?: string }
                                 : null;
                               return (
-                              <div className="my-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2 max-w-sm text-left">
-                                <div className="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase tracking-wider">
+                              <div className="my-2 p-3 bg-[var(--nq-st-warn-soft)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] rounded-xl space-y-2 max-w-sm text-left">
+                                <div className="flex items-center gap-2 text-[var(--nq-st-warn-ink)] font-bold text-xs uppercase tracking-wider">
                                   <Icon name="zap" size={15} />
                                   <span>{msg.metadata?.proposal?.title || "Đề xuất tác vụ vận hành"}</span>
                                 </div>
                                 <p className="text-xs opacity-90">{msg.metadata?.proposal?.summary || msg.content}</p>
                                 {confirmation && (
-                                  <div className="space-y-2 border-t border-amber-500/20 pt-2">
+                                  <div className="space-y-2 border-t border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] pt-2">
                                     <p className="text-xs font-semibold">
                                       Tuần {confirmation.tuan_iso} · {Object.entries(confirmation.availability || {}).map(([day, shifts]) => `${day}: ${shifts.join(", ")}`).join(" · ")}
                                     </p>
                                     {confirmation.status === "cho_xac_nhan" ? (
                                       <>
                                         <div className="flex gap-2">
-                                          <button type="button" disabled={availabilityBusy === confirmation.id} onClick={() => void confirmAvailability(confirmation.id)} className="rounded bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white disabled:opacity-50">
+                                          <button type="button" disabled={availabilityBusy === confirmation.id} onClick={() => void confirmAvailability(confirmation.id)} className="rounded bg-[var(--nq-st-ok)] px-2.5 py-1 text-xs font-bold text-[var(--nq-accent-ink)] disabled:opacity-50">
                                             {availabilityBusy === confirmation.id ? "Đang lưu…" : "Đồng ý"}
                                           </button>
                                           <span className="self-center text-2xs opacity-75">Sai lịch? Nhập lại bên dưới.</span>
@@ -627,20 +627,20 @@ export default function ChatPage() {
                                             value={availabilityCorrection[confirmation.id] || ""}
                                             onChange={(event) => setAvailabilityCorrection((prev) => ({ ...prev, [confirmation.id]: event.target.value }))}
                                             placeholder="Ví dụ: Em rảnh sáng T2, T4 và tối T6"
-                                            className="min-w-0 flex-1 rounded border border-amber-500/30 bg-black/10 px-2 py-1 text-xs"
+                                            className="min-w-0 flex-1 rounded border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-black/10 px-2 py-1 text-xs"
                                           />
-                                          <button type="button" disabled={!availabilityCorrection[confirmation.id]?.trim() || availabilityBusy === confirmation.id} onClick={() => void correctAvailability(confirmation.id)} className="rounded border border-amber-500/40 px-2.5 py-1 text-xs font-bold disabled:opacity-50">
+                                          <button type="button" disabled={!availabilityCorrection[confirmation.id]?.trim() || availabilityBusy === confirmation.id} onClick={() => void correctAvailability(confirmation.id)} className="rounded border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] px-2.5 py-1 text-xs font-bold disabled:opacity-50">
                                             Gửi chỗ sai
                                           </button>
                                         </div>
                                       </>
-                                    ) : <p className="text-xs text-emerald-700">Đã xác nhận</p>}
+                                    ) : <p className="text-xs text-[var(--nq-st-ok-ink)]">Đã xác nhận</p>}
                                   </div>
                                 )}
-                                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/20 text-2xs">
+                                <div className="flex items-center gap-2 pt-1 border-t border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] text-2xs">
                                   <Link
                                     href="/contracts"
-                                    className="px-2.5 py-1 bg-amber-500 text-black font-semibold rounded hover:bg-amber-400 transition inline-block"
+                                    className="px-2.5 py-1 bg-[var(--nq-st-warn)] text-black font-semibold rounded hover:bg-[var(--nq-st-warn)] transition inline-block"
                                   >
                                     Xem và duyệt trong Hộp thư
                                   </Link>
@@ -653,7 +653,7 @@ export default function ChatPage() {
                               <p className="nq-chat-message__content leading-relaxed whitespace-pre-wrap">
                                 {msg.content.split(/(@\S+)/g).map((part, i) =>
                                   part.startsWith("@") ? (
-                                    <span key={i} className="font-semibold text-amber-500 bg-amber-500/15 px-1 py-0.5 rounded">
+                                    <span key={i} className="font-semibold text-[var(--nq-st-warn-ink)] bg-[var(--nq-st-warn-soft)] px-1 py-0.5 rounded">
                                       {part}
                                     </span>
                                   ) : (
@@ -733,7 +733,7 @@ export default function ChatPage() {
                               <button
                                 type="button"
                                 onClick={() => deleteMessage(msg.id, activeConv.id)}
-                                className="text-[var(--nq-muted)] hover:text-red-500 p-1 text-xs"
+                                className="text-[var(--nq-muted)] hover:text-[var(--nq-st-danger-ink)] p-1 text-xs"
                                 title="Thu hồi"
                               >
                                 ✕
@@ -748,7 +748,7 @@ export default function ChatPage() {
                     <div className="flex items-center gap-1 mt-0.5 text-2xs text-[var(--nq-muted)]">
                       <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                       {isMe && msg.status === "sending" && <span>• Đang gửi…</span>}
-                      {isMe && msg.status === "error" && <span className="text-rose-700">• Gửi thất bại</span>}
+                      {isMe && msg.status === "error" && <span className="text-[var(--nq-st-danger-ink)]">• Gửi thất bại</span>}
                     </div>
 
                     {/* Avatars người đã xem (Seen avatars) dưới tin nhắn */}
@@ -824,18 +824,18 @@ export default function ChatPage() {
                 <button
                   type="button"
                   onClick={() => insertMention("@copilot")}
-                  className="flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 text-left transition hover:-translate-y-px hover:border-amber-500/60 hover:bg-amber-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+                  className="flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-warn-soft)] px-2.5 text-left transition hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] hover:bg-[var(--nq-st-warn-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nq-st-warn)]"
                 >
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400"><Icon name="bot" size={14} /></span>
-                  <span><strong className="block text-2xs text-amber-400">copilot</strong><small className="block text-2xs text-[var(--nq-muted)]">Trợ lý vận hành</small></span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)]"><Icon name="bot" size={14} /></span>
+                  <span><strong className="block text-2xs text-[var(--nq-st-warn-ink)]">copilot</strong><small className="block text-2xs text-[var(--nq-muted)]">Trợ lý vận hành</small></span>
                 </button>
                 <button
                   type="button"
                   onClick={() => insertMention("@agent_lich")}
-                  className="flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 text-left transition hover:-translate-y-px hover:border-emerald-500/60 hover:bg-emerald-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+                  className="flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] bg-[var(--nq-st-ok-soft)] px-2.5 text-left transition hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] hover:bg-[var(--nq-st-ok-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nq-st-ok)]"
                 >
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400"><Icon name="calendar" size={14} /></span>
-                  <span><strong className="block text-2xs text-emerald-400">agent_lich</strong><small className="block text-2xs text-[var(--nq-muted)]">Trợ lý lịch</small></span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--nq-st-ok-soft)] text-[var(--nq-st-ok-ink)]"><Icon name="calendar" size={14} /></span>
+                  <span><strong className="block text-2xs text-[var(--nq-st-ok-ink)]">agent_lich</strong><small className="block text-2xs text-[var(--nq-muted)]">Trợ lý lịch</small></span>
                 </button>
                 {mentionParticipants.map((p) => (
                   <button
@@ -854,7 +854,7 @@ export default function ChatPage() {
 
             {/* Action Input Bar */}
             <div className="nq-chat-composer relative p-3 border-t border-[var(--nq-dim)] bg-[var(--nq-card)] flex items-end gap-2">
-              {mediaError && <p className="absolute bottom-20 left-3 right-3 z-10 rounded-lg border border-rose-500/40 bg-rose-950/90 px-3 py-2 text-xs text-rose-200">{mediaError}</p>}
+              {mediaError && <p className="absolute bottom-20 left-3 right-3 z-10 rounded-lg border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] bg-[var(--nq-st-danger-soft)] px-3 py-2 text-xs text-[var(--nq-st-danger-ink)]">{mediaError}</p>}
               <input
                 type="file"
                 ref={fileInputRef}

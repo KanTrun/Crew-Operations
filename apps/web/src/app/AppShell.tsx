@@ -168,7 +168,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[var(--nq-bg)] text-[var(--nq-fg)] font-sans selection:bg-[var(--nq-copper)] selection:text-[#0e0c0a] flex flex-col relative z-10">
-      <header className="fixed top-0 left-0 w-full z-40 border-b-2 border-[var(--nq-dim)] bg-[var(--nq-bg)]/80 backdrop-blur-md">
+      <header className="fixed top-0 left-0 w-full z-40 border-b border-[var(--nq-line)] bg-[var(--nq-bg)]/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 md:gap-4 md:px-8">
           <Logo href={token ? "/hom-nay" : "/"} />
 
@@ -178,7 +178,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Link
                   key={l.href}
                   href={l.href}
-                  className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap text-2xs font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:text-xs ${path === l.href ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
+                  /* `min-h-11` (44px) + padding: vùng bấm của điều hướng chính phải
+                     đủ lớn cho ngón tay. Trước đây link chỉ cao 21px (đo trên bản
+                     render), dưới cả ngưỡng 24px của WCAG 2.5.8 — nhân viên đứng
+                     quầy bấm trên máy tính bảng rất dễ trượt sang mục bên cạnh.
+                     `rounded-full` + hover nền để vùng bấm nhìn thấy được. */
+                  className={`flex shrink-0 min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full px-2 text-2xs font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:px-3 xl:text-xs ${path === l.href ? "bg-[var(--nq-accent-soft)] text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:bg-[var(--nq-accent-soft)] hover:text-[var(--nq-fg)]"}`}
                   data-tour={tourId(l.href)}
                   aria-current={path === l.href ? "page" : undefined}
                 >
@@ -191,7 +196,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setOpen((v) => !v)}
-                  className={`flex items-center gap-1.5 whitespace-nowrap text-2xs font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:text-xs ${open ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
+                  className={`flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full px-2 text-2xs font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:px-3 xl:text-xs ${open ? "bg-[var(--nq-accent-soft)] text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:bg-[var(--nq-accent-soft)] hover:text-[var(--nq-fg)]"}`}
                   aria-expanded={open}
                   data-tour="nav-them"
                 >

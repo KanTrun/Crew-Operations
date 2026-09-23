@@ -45,7 +45,7 @@ export default function LoginPage() {
         onSubmit={onSubmit}
         className="nq-login-card relative z-10 grid w-full max-w-4xl grid-cols-1 overflow-hidden nq-surface-block shadow-[var(--nq-elev-2)] md:grid-cols-2"
       >
-        <aside className="flex flex-col justify-between border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
+        <aside className="flex flex-col justify-between border-b border-[var(--nq-line)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
           <Logo />
           <div className="mt-8 md:mt-0">
             <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-copper)] uppercase">
@@ -93,7 +93,7 @@ export default function LoginPage() {
             {loading ? "Đang vào…" : "Vào hệ thống"}
           </button>
 
-          <div className="mt-2 space-y-1 border-t-2 border-dashed border-[var(--nq-dim)] pt-4 text-sm text-[var(--nq-dim)]">
+          <div className="mt-2 space-y-1 border-t border-dashed border-[var(--nq-line)] pt-4 text-sm text-[var(--nq-dim)]">
             <p>
               Chưa có tài khoản?{" "}
               <Link href="/dang-ky" className="text-[var(--nq-copper)] underline-offset-4 hover:underline">

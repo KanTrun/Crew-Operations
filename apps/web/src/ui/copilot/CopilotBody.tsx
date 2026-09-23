@@ -278,7 +278,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 Theo <strong>Nghị định 13/2023/NĐ-CP</strong>, AG-COPILOT cần sự đồng thuận của anh/chị trước khi tiếp nhận âm thanh từ micro để hỗ trợ tra cứu và điều hành qua giọng nói.
               </p>
               <div className="border border-[var(--nq-dim)]/40 bg-[var(--nq-bg)] p-2.5 text-2xs text-[var(--nq-fg)]">
-                <p className="font-semibold text-emerald-400">Cam kết an toàn dữ liệu:</p>
+                <p className="font-semibold text-[var(--nq-st-ok-ink)]">Cam kết an toàn dữ liệu:</p>
                 <ul className="mt-1 list-disc pl-4 space-y-0.5 text-[var(--nq-dim)]">
                   <li>Không lưu trữ tệp ghi âm giọng nói thô trên hệ thống.</li>
                   <li>Chỉ lưu bản ghi văn bản (transcript) trong lịch sử hội thoại.</li>
@@ -313,7 +313,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
       )}
 
       {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4">
+      <div className="flex shrink-0 items-center justify-between border-b border-[var(--nq-line)] bg-[var(--nq-surface)] p-4">
         <div className="flex items-center gap-2.5">
           <div
             className="flex h-8 w-8 items-center justify-center border-2"
@@ -327,7 +327,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
           <div>
             <h3 className="text-sm font-bold uppercase text-[var(--nq-fg)]">{profile.label}</h3>
             <p className="flex items-center gap-1 text-2xs text-[var(--nq-dim)]">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--nq-st-ok)]" />
               Sẵn sàng hỗ trợ · AI trả lời kèm đề xuất, người duyệt mới áp dụng
             </p>
           </div>
@@ -446,7 +446,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   <p className="whitespace-pre-wrap leading-relaxed">
                     <ChatText text={msg.text} />
                     {streamingId === msg.id && (
-                      <span className="ml-0.5 inline-block w-1.5 h-3 align-middle bg-amber-400 animate-pulse" />
+                      <span className="ml-0.5 inline-block w-1.5 h-3 align-middle bg-[var(--nq-st-warn)] animate-pulse" />
                     )}
                   </p>
 
@@ -461,7 +461,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                           {profile.capabilities.map((cap, i) => (
                             <li
                               key={`cap-${i}`}
-                              className="text-2xs px-1.5 py-0.5 rounded bg-zinc-800/80 border border-emerald-500/20 text-emerald-300"
+                              className="text-2xs px-1.5 py-0.5 rounded bg-[var(--nq-surface)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] text-[var(--nq-st-ok-ink)]"
                             >
                               {cap}
                             </li>
@@ -478,7 +478,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   {msg.sender === "copilot" &&
                     msg.citations &&
                     msg.citations.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-zinc-800/80">
+                      <div className="mt-2 pt-2 border-t border-[var(--nq-line)]">
                         <p className="text-2xs uppercase tracking-wider text-[var(--nq-ink-muted)] mb-1">
                           Nguồn tham chiếu
                         </p>
@@ -486,7 +486,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                           {msg.citations.map((c, i) => (
                             <li
                               key={`${msg.id}-cit-${i}`}
-                              className="text-2xs px-1.5 py-0.5 rounded bg-zinc-800/80 border"
+                              className="text-2xs px-1.5 py-0.5 rounded bg-[var(--nq-surface)] border"
                               style={{
                                 color: profile.accent,
                                 borderColor: `color-mix(in srgb, ${profile.accent} 20%, transparent)`,
@@ -506,7 +506,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                     />
                   )}
                   {msg.action_proposal && !profile.allowActionApproval && (
-                    <div className="mt-2 pt-2 border-t border-zinc-800/80 text-2xs text-zinc-400 italic">
+                    <div className="mt-2 pt-2 border-t border-[var(--nq-line)] text-2xs text-[var(--nq-ink-muted)] italic">
                       Đề xuất: {msg.action_proposal.intent} — nhờ quản lý duyệt trong
                       <a className="underline ml-1" href="/inbox">
                         Hộp thư
@@ -542,7 +542,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
           </div>
 
           {/* Input */}
-          <div className="shrink-0 border-t-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-3">
+          <div className="shrink-0 border-t border-[var(--nq-line)] bg-[var(--nq-surface)] p-3">
             {/* Thanh xem trước đính kèm trước khi gửi */}
             {attachedFile && (
               <div className="mb-2 flex items-center justify-between rounded border border-[var(--nq-dim)] bg-[var(--nq-bg)] p-2 text-xs">
@@ -568,7 +568,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   type="button"
                   onClick={handleRemoveAttachment}
                   disabled={uploading}
-                  className="p-1 text-xs font-bold text-[var(--nq-dim)] transition hover:text-rose-400 shrink-0"
+                  className="p-1 text-xs font-bold text-[var(--nq-dim)] transition hover:text-[var(--nq-st-danger-ink)] shrink-0"
                   title="Xóa tệp đính kèm"
                 >
                   ✕
@@ -576,7 +576,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
               </div>
             )}
             {uploadError && (
-              <p className="mb-2 text-2xs text-rose-400">{uploadError}</p>
+              <p className="mb-2 text-2xs text-[var(--nq-st-danger-ink)]">{uploadError}</p>
             )}
             {voiceEnabled && (
               <div className="mb-2 space-y-1.5">
@@ -631,9 +631,9 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   <div
                     className={`flex items-center justify-between gap-2 rounded border px-2.5 py-1.5 text-2xs ${
                       isVoiceError
-                        ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
+                        ? "border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] bg-[var(--nq-st-danger-soft)] text-[var(--nq-st-danger-ink)]"
                         : voice.isPttSpeaking
-                        ? "border-rose-500/60 bg-rose-500/20 text-rose-200 animate-pulse"
+                        ? "border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] bg-[var(--nq-st-danger-soft)] text-[var(--nq-st-danger-ink)] animate-pulse"
                         : "border-[var(--nq-copper)]/30 bg-[var(--nq-copper)]/10 text-[var(--nq-copper)]"
                     }`}
                     role="status"
@@ -643,14 +643,14 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                         {voice.state === "connecting" && <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--nq-copper)]" />}
                         {voice.state === "listening" && (
                           voice.isPttSpeaking ? (
-                            <span className="inline-block h-2 w-2 animate-ping rounded-full bg-rose-500" />
+                            <span className="inline-block h-2 w-2 animate-ping rounded-full bg-[var(--nq-st-danger)]" />
                           ) : (
-                            <span className="inline-block h-2 w-2 animate-ping rounded-full bg-emerald-400" />
+                            <span className="inline-block h-2 w-2 animate-ping rounded-full bg-[var(--nq-st-ok)]" />
                           )
                         )}
                         {voice.state === "processing" && <span className="inline-block h-2 w-2 animate-spin rounded-full border-2 border-[var(--nq-copper)] border-t-transparent" />}
-                        {voice.state === "speaking" && <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-amber-400" />}
-                        {isVoiceError && <span className="inline-block h-2 w-2 rounded-full bg-rose-400" />}
+                        {voice.state === "speaking" && <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-[var(--nq-st-warn)]" />}
+                        {isVoiceError && <span className="inline-block h-2 w-2 rounded-full bg-[var(--nq-st-danger)]" />}
                       </div>
                       <p className="flex-1">
                         {voice.state === "connecting" && "Đang kết nối voice trực tiếp…"}
@@ -679,7 +679,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                           voice.stop();
                           activeVoiceTurnRef.current = null;
                         }}
-                        className="shrink-0 border border-transparent px-1.5 py-0.5 text-2xs font-bold uppercase text-[var(--nq-dim)] hover:border-rose-400 hover:text-rose-400 transition"
+                        className="shrink-0 border border-transparent px-1.5 py-0.5 text-2xs font-bold uppercase text-[var(--nq-dim)] hover:border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] hover:text-[var(--nq-st-danger-ink)] transition"
                         title="Dừng phiên voice"
                       >
                         Đóng

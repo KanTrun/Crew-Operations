@@ -119,18 +119,18 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
   if (isRecording) {
     return (
       <div className="flex items-center gap-3 bg-[var(--nq-card)] border border-[var(--nq-copper)] px-3 py-1.5 rounded-full animate-pulse shadow-sm">
-        <span className="w-3 h-3 rounded-full bg-red-500 animate-ping" />
-        <span className="font-mono text-xs font-bold text-red-500">{formatTime(duration)}</span>
+        <span className="w-3 h-3 rounded-full bg-[var(--nq-st-danger)] animate-ping" />
+        <span className="font-mono text-xs font-bold text-[var(--nq-st-danger-ink)]">{formatTime(duration)}</span>
         <div className="flex items-center gap-1 h-4">
-          <span className="w-1 h-2 bg-red-400 rounded animate-bounce" />
-          <span className="w-1 h-4 bg-red-500 rounded animate-bounce delay-75" />
-          <span className="w-1 h-3 bg-red-400 rounded animate-bounce delay-150" />
+          <span className="w-1 h-2 bg-[var(--nq-st-danger)] rounded animate-bounce" />
+          <span className="w-1 h-4 bg-[var(--nq-st-danger)] rounded animate-bounce delay-75" />
+          <span className="w-1 h-3 bg-[var(--nq-st-danger)] rounded animate-bounce delay-150" />
         </div>
         <button
           type="button"
           onClick={cancelRecording}
           disabled={isSending}
-          className="text-xs text-[var(--nq-muted)] hover:text-red-500 px-2 py-0.5 rounded transition"
+          className="text-xs text-[var(--nq-muted)] hover:text-[var(--nq-st-danger-ink)] px-2 py-0.5 rounded transition"
           title="Hủy ghi âm"
         >
           <Icon name="close" size={14} /> Hủy

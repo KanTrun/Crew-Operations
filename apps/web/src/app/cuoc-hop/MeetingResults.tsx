@@ -213,7 +213,7 @@ export function MeetingResults({
 
       {tab === "overview" ? (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded bg-neutral-900/80 border border-neutral-800">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)]">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-mono uppercase text-[var(--nq-ink-muted)]">Trạng thái:</span>
               <StatusChip tone={meeting.trang_thai === "da_duyet" ? "ok" : "warn"}>
@@ -401,7 +401,7 @@ export function MeetingResults({
                             {prop.trang_thai !== "da_duyet" && (
                               <button
                                 type="button"
-                                className="px-2 py-0.5 text-xs rounded bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 transition-colors"
+                                className="px-2 py-0.5 text-xs rounded bg-[var(--nq-st-ok)] hover:bg-[var(--nq-st-ok)] text-[var(--nq-st-ok-ink)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] transition-colors"
                                 onClick={() => onUpdateProposalStatus(prop.id, "da_duyet")}
                                 title="Đồng ý duyệt đề xuất này"
                               >
@@ -411,7 +411,7 @@ export function MeetingResults({
                             {prop.trang_thai !== "tu_choi" && (
                               <button
                                 type="button"
-                                className="px-2 py-0.5 text-xs rounded bg-red-950 hover:bg-red-900 text-red-300 border border-red-700/60 transition-colors"
+                                className="px-2 py-0.5 text-xs rounded bg-[var(--nq-st-danger)] hover:bg-[var(--nq-st-danger)] text-[var(--nq-st-danger-ink)] border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] transition-colors"
                                 onClick={() => onUpdateProposalStatus(prop.id, "tu_choi")}
                                 title="Bác bỏ đề xuất này"
                               >
@@ -421,7 +421,7 @@ export function MeetingResults({
                             {prop.trang_thai !== "cho_duyet" && (
                               <button
                                 type="button"
-                                className="px-2 py-0.5 text-xs rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-600/60 transition-colors"
+                                className="px-2 py-0.5 text-xs rounded bg-[var(--nq-surface)] hover:bg-[var(--nq-line)] text-[var(--nq-ink)] border border-[var(--nq-line)] transition-colors"
                                 onClick={() => onUpdateProposalStatus(prop.id, "cho_duyet")}
                                 title="Chờ xem xét lại sau"
                               >
@@ -510,13 +510,13 @@ export function MeetingResults({
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <div className="text-xs">
               {meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length > 0 ? (
-                <span className="text-amber-400 font-medium flex items-center gap-1.5">
+                <span className="text-[var(--nq-st-warn-ink)] font-medium flex items-center gap-1.5">
                   <span>⚠️</span> Có{" "}
                   <strong>{meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length}</strong> việc cần
                   làm rõ ngữ cảnh hoặc lịch ca trước khi giao
                 </span>
               ) : (
-                <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                <span className="text-[var(--nq-st-ok-ink)] font-medium flex items-center gap-1.5">
                   <span>✓</span> Toàn bộ công việc đã đầy đủ thông tin nhân sự và ca làm việc
                 </span>
               )}
@@ -543,7 +543,7 @@ export function MeetingResults({
                 <div
                   key={it.id}
                   className={`nq-meeting-action ${it.da_chon ? "" : "nq-meeting-action--off"} ${
-                    it.can_lam_ro && it.da_chon ? "border-amber-600/60 bg-amber-950/10" : ""
+                    it.can_lam_ro && it.da_chon ? "border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-warn-soft)]" : ""
                   }`}
                 >
                   <div className="flex gap-3 items-start">
@@ -560,7 +560,7 @@ export function MeetingResults({
                           {onUpdateActionTitle ? (
                             <input
                               type="text"
-                              className="w-full bg-transparent border-b border-dashed border-neutral-700 focus:border-copper text-sm font-semibold text-white outline-none py-0.5"
+                              className="w-full bg-transparent border-b border-dashed border-[var(--nq-line)] focus:border-copper text-sm font-semibold text-white outline-none py-0.5"
                               value={it.tieu_de}
                               onChange={(e) => onUpdateActionTitle(it.id, e.target.value)}
                               placeholder="Tên công việc..."
@@ -572,14 +572,14 @@ export function MeetingResults({
 
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {/* Work Type Switcher */}
-                          <div className="flex items-center gap-0.5 bg-neutral-900 p-0.5 rounded border border-neutral-800 text-2xs font-medium">
+                          <div className="flex items-center gap-0.5 bg-[var(--nq-bg-elevated)] p-0.5 rounded border border-[var(--nq-line)] text-2xs font-medium">
                             <button
                               type="button"
                               onClick={() => onUpdateWorkType?.(it.id, "1_ca")}
                               className={`px-2 py-0.5 rounded transition-colors ${
                                 !it.loai_cong_viec || it.loai_cong_viec === "1_ca"
-                                  ? "bg-amber-600/30 text-amber-300 font-semibold border border-amber-500/40"
-                                  : "text-neutral-400 hover:text-neutral-200"
+                                  ? "bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] font-semibold border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]"
+                                  : "text-[var(--nq-ink-muted)] hover:text-[var(--nq-ink)]"
                               }`}
                               title="Làm ngay trong 1 ca (ca hiện tại hoặc ca kế tiếp)"
                             >
@@ -590,8 +590,8 @@ export function MeetingResults({
                               onClick={() => onUpdateWorkType?.(it.id, "nhieu_ca")}
                               className={`px-2 py-0.5 rounded transition-colors ${
                                 it.loai_cong_viec === "nhieu_ca"
-                                  ? "bg-blue-600/30 text-blue-300 font-semibold border border-blue-500/40"
-                                  : "text-neutral-400 hover:text-neutral-200"
+                                  ? "bg-[var(--nq-st-info-soft)] text-[var(--nq-st-info-ink)] font-semibold border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))]"
+                                  : "text-[var(--nq-ink-muted)] hover:text-[var(--nq-ink)]"
                               }`}
                               title="Kéo dài qua nhiều ca / theo dõi định kỳ"
                             >
@@ -602,8 +602,8 @@ export function MeetingResults({
                               onClick={() => onUpdateWorkType?.(it.id, "gop_y")}
                               className={`px-2 py-0.5 rounded transition-colors ${
                                 it.loai_cong_viec === "gop_y"
-                                  ? "bg-purple-600/30 text-purple-300 font-semibold border border-purple-500/40"
-                                  : "text-neutral-400 hover:text-neutral-200"
+                                  ? "bg-[var(--nq-st-info-soft)] text-[var(--nq-st-info-ink)] font-semibold border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))]"
+                                  : "text-[var(--nq-ink-muted)] hover:text-[var(--nq-ink)]"
                               }`}
                               title="Chỉ là góp ý / nhắc nhở làm việc"
                             >
@@ -620,7 +620,7 @@ export function MeetingResults({
                           {manager && onRemoveActionItem && (
                             <button
                               type="button"
-                              className="px-1.5 py-0.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 rounded transition-colors"
+                              className="px-1.5 py-0.5 text-xs text-[var(--nq-st-danger-ink)] hover:text-[var(--nq-st-danger-ink)] hover:bg-[var(--nq-st-danger-soft)] rounded transition-colors"
                               onClick={() => onRemoveActionItem(it.id)}
                               title="Xoá việc này"
                             >
@@ -638,14 +638,14 @@ export function MeetingResults({
 
                       {/* Notice if marked as Gop Y */}
                       {it.loai_cong_viec === "gop_y" && (
-                        <div className="p-2 rounded bg-purple-950/40 border border-purple-800/60 flex items-center justify-between gap-2 flex-wrap text-xs">
-                          <span className="text-purple-300">
+                        <div className="p-2 rounded bg-[var(--nq-st-info-soft)] border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))] flex items-center justify-between gap-2 flex-wrap text-xs">
+                          <span className="text-[var(--nq-st-info-ink)]">
                             💡 Mục này mang tính chất góp ý/nhắc nhở, sẽ được lưu vào biên bản thay vì tạo việc treo.
                           </span>
                           {onConvertToFeedback && (
                             <button
                               type="button"
-                              className="px-2 py-0.5 rounded bg-purple-800 hover:bg-purple-700 text-white font-medium transition-colors"
+                              className="px-2 py-0.5 rounded bg-[var(--nq-st-info)] hover:bg-[var(--nq-st-info)] text-[var(--nq-accent-ink)] font-medium transition-colors"
                               onClick={() => onConvertToFeedback(it.id)}
                             >
                               Chuyển ngay sang tab Góp ý ➔
@@ -668,10 +668,10 @@ export function MeetingResults({
 
                         {/* Ca thực hiện */}
                         <div className="flex items-center gap-1.5 text-xs flex-wrap">
-                          <span className="text-neutral-400">Ca thực hiện:</span>
+                          <span className="text-[var(--nq-ink-muted)]">Ca thực hiện:</span>
                           {it.ca_du_kien && it.ca_du_kien.length > 0 ? (
                             <select
-                              className="bg-neutral-900 border border-neutral-700 text-amber-300 text-xs rounded px-2 py-1 font-mono focus:border-amber-500 outline-none max-w-[210px]"
+                              className="bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] text-[var(--nq-st-warn-ink)] text-xs rounded px-2 py-1 font-mono focus:border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] outline-none max-w-[210px]"
                               value={it.ca_thuc_hien || it.ca_du_kien[0]}
                               onChange={(e) => onUpdateCaThucHien?.(it.id, e.target.value)}
                             >
@@ -697,7 +697,7 @@ export function MeetingResults({
                         {/* Schedule Badge */}
                         {it.ca_du_kien && it.ca_du_kien.length > 0 ? (
                           <span
-                            className="text-2xs px-2 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-neutral-800 font-mono"
+                            className="text-2xs px-2 py-0.5 rounded bg-[var(--nq-bg-elevated)] text-[var(--nq-ink)] border border-[var(--nq-line)] font-mono"
                             title={it.ca_du_kien.join(" | ")}
                           >
                             📅 Có {it.ca_du_kien.length} ca trực tuần này
@@ -705,7 +705,7 @@ export function MeetingResults({
                         ) : it.ten_nguoi_nhan &&
                           it.ten_nguoi_nhan !== "Chưa rõ" &&
                           it.ten_nguoi_nhan !== "Cả ca" ? (
-                          <span className="text-2xs px-2 py-0.5 rounded bg-red-950/60 text-red-400 border border-red-800/50 font-mono">
+                          <span className="text-2xs px-2 py-0.5 rounded bg-[var(--nq-st-danger-soft)] text-[var(--nq-st-danger-ink)] border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] font-mono">
                             ⚠️ Không có ca trực tuần này
                           </span>
                         ) : null}
@@ -724,34 +724,34 @@ export function MeetingResults({
 
                       {/* AI Clarifier Agent Box */}
                       {it.can_lam_ro && it.cau_hoi_lam_ro && (
-                        <div className="p-3 rounded-md bg-amber-950/30 border border-amber-700/50 space-y-2 mt-2">
+                        <div className="p-3 rounded-md bg-[var(--nq-st-warn-soft)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] space-y-2 mt-2">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <div className="flex items-center gap-1.5">
                               <span className="text-sm">🤖</span>
-                              <span className="text-xs font-bold font-mono uppercase tracking-wider text-amber-400">
+                              <span className="text-xs font-bold font-mono uppercase tracking-wider text-[var(--nq-st-warn-ink)]">
                                 Trợ lý AI làm rõ phân công
                               </span>
                             </div>
                             {it.van_de_ngu_canh && (
-                              <span className="text-2xs px-2 py-0.5 rounded bg-neutral-900/90 text-amber-300 border border-amber-800/60">
+                              <span className="text-2xs px-2 py-0.5 rounded bg-[var(--nq-bg-elevated)] text-[var(--nq-st-warn-ink)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]">
                                 {it.van_de_ngu_canh}
                               </span>
                             )}
                           </div>
 
-                          <p className="text-xs text-neutral-200 m-0 leading-relaxed font-medium">
+                          <p className="text-xs text-[var(--nq-ink)] m-0 leading-relaxed font-medium">
                             {it.cau_hoi_lam_ro}
                           </p>
 
                           {it.goi_y_xu_ly && it.goi_y_xu_ly.length > 0 && (
                             <div className="pt-1 flex flex-wrap items-center gap-1.5">
-                              <span className="text-2xs text-neutral-400 font-mono">Gợi ý 1-chạm:</span>
+                              <span className="text-2xs text-[var(--nq-ink-muted)] font-mono">Gợi ý 1-chạm:</span>
                               {it.goi_y_xu_ly.map((sug, sIdx) => (
                                 <button
                                   key={sIdx}
                                   type="button"
                                   onClick={() => onResolveClarification?.(it.id, sug)}
-                                  className="px-2.5 py-0.5 text-xs rounded-full bg-amber-900/40 hover:bg-amber-800/60 text-amber-200 border border-amber-600/40 transition-colors cursor-pointer"
+                                  className="px-2.5 py-0.5 text-xs rounded-full bg-[var(--nq-st-warn-soft)] hover:bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] transition-colors cursor-pointer"
                                 >
                                   ✓ {sug}
                                 </button>
@@ -764,7 +764,7 @@ export function MeetingResults({
                             <input
                               type="text"
                               placeholder="Hoặc tự nhập hướng giải quyết (vd: Giao Lan làm trước 15:30)..."
-                              className="bg-neutral-900 border border-neutral-700/80 text-xs text-white rounded px-2.5 py-1 focus:border-amber-500 outline-none flex-1 font-sans"
+                              className="bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] text-xs text-white rounded px-2.5 py-1 focus:border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] outline-none flex-1 font-sans"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" && e.currentTarget.value.trim()) {
                                   onResolveClarification?.(it.id, e.currentTarget.value.trim());
@@ -774,7 +774,7 @@ export function MeetingResults({
                             />
                             <button
                               type="button"
-                              className="px-2.5 py-1 text-xs rounded bg-amber-800/80 hover:bg-amber-700 text-amber-100 font-medium border border-amber-600/40 transition-colors shrink-0"
+                              className="px-2.5 py-1 text-xs rounded bg-[var(--nq-st-warn-soft)] hover:bg-[var(--nq-st-warn)] text-[var(--nq-st-warn-ink)] font-medium border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] transition-colors shrink-0"
                               onClick={(e) => {
                                 const input = e.currentTarget.previousElementSibling as HTMLInputElement;
                                 if (input && input.value.trim()) {
@@ -899,7 +899,7 @@ export function MeetingResults({
       <div className="nq-meeting-footer flex flex-wrap items-center justify-between gap-4">
         <div>
           {meeting.trang_thai === "da_duyet" ? (
-            <p className="text-sm text-emerald-400 font-medium m-0">
+            <p className="text-sm text-[var(--nq-st-ok-ink)] font-medium m-0">
               ✓ Biên bản đã được duyệt vào ca
               {meeting.duyet_boi ? ` bởi ${meeting.duyet_boi}` : ""}
               {meeting.duyet_luc ? ` lúc ${new Date(meeting.duyet_luc).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}.
@@ -910,7 +910,7 @@ export function MeetingResults({
                 Sau khi duyệt, việc được chọn sẽ đẩy vào OpsEngine (việc treo ca); đề xuất cẩm nang ghi vào Playbook; điều chỉnh lịch ca được nạp thẳng vào Solver.
               </p>
               {meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length > 0 && (
-                <p className="text-xs text-amber-400 font-medium m-0">
+                <p className="text-xs text-[var(--nq-st-warn-ink)] font-medium m-0">
                   ⚠️ Còn {meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length} việc chưa hoàn tất làm rõ ngữ cảnh. Bạn có thể chọn nhanh gợi ý của AI ở trên hoặc duyệt nếu đã nắm rõ.
                 </p>
               )}
@@ -921,7 +921,7 @@ export function MeetingResults({
           {meeting.trang_thai === "da_duyet" && (
             <a
               href="/lich-tuan"
-              className="px-3 py-1.5 text-xs rounded font-medium bg-neutral-800 hover:bg-neutral-700 text-amber-300 border border-amber-500/40 transition-colors inline-flex items-center gap-1.5 no-underline"
+              className="px-3 py-1.5 text-xs rounded font-medium bg-[var(--nq-surface)] hover:bg-[var(--nq-line)] text-[var(--nq-st-warn-ink)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] transition-colors inline-flex items-center gap-1.5 no-underline"
             >
               📅 Sang Lịch tuần xếp ca (Solver)
             </a>
