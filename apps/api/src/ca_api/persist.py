@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sqlite3
+import threading
 import uuid
 from collections.abc import Callable
 from contextvars import ContextVar, Token
@@ -262,14 +263,23 @@ def acquire_write_lock(cx: Any, scope: str) -> None:
 
 
 _INITIALIZED_PATHS: set[str] = set()
+_INIT_DB_LOCK = threading.Lock()
 
 
 def init_db() -> None:
-    global _INITIALIZED
     p_str = str(db_path())
     if p_str in _INITIALIZED_PATHS:
         return
+    with _INIT_DB_LOCK:
+        if p_str in _INITIALIZED_PATHS:
+            return
+        _init_db_locked(p_str)
+
+
+def _init_db_locked(p_str: str) -> None:
+    global _INITIALIZED
     with _conn() as cx:
+        acquire_write_lock(cx, "nhipquan_init_db")
         # Luôn chạy DDL IF NOT EXISTS — thêm bảng mới (kenh_bind) không bị kẹt
         # vì cờ _INITIALIZED sớm trên DB cũ.
         if not _database_url():
@@ -701,33 +711,23 @@ def init_db() -> None:
 
 def _ensure_scheduling_schema(cx: Any) -> None:
     """Create the additive scheduling tables used by the authoritative flow."""
-    # Check if table exists first to avoid PostgreSQL composite type collision
-    # CREATE TABLE IF NOT EXISTS still tries to create the composite type which fails if type exists
-    # Use database-agnostic approach: try CREATE TABLE IF NOT EXISTS first, catch duplicate type error
-    try:
-        cx.execute(
-            """
-            CREATE TABLE IF NOT EXISTS availability_confirmations (
-                id TEXT PRIMARY KEY,
-                store_id TEXT NOT NULL,
-                nv_id TEXT NOT NULL,
-                tuan_iso TEXT NOT NULL,
-                availability TEXT NOT NULL,
-                status TEXT NOT NULL,
-                source TEXT NOT NULL DEFAULT 'chat',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                UNIQUE(store_id, nv_id, tuan_iso)
-            )
-            """
+    acquire_write_lock(cx, "nhipquan_ensure_scheduling_schema")
+    cx.execute(
+        """
+        CREATE TABLE IF NOT EXISTS availability_confirmations (
+            id TEXT PRIMARY KEY,
+            store_id TEXT NOT NULL,
+            nv_id TEXT NOT NULL,
+            tuan_iso TEXT NOT NULL,
+            availability TEXT NOT NULL,
+            status TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'chat',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(store_id, nv_id, tuan_iso)
         )
-    except Exception as e:
-        # PostgreSQL raises UniqueViolation for duplicate composite type
-        # SQLite doesn't have this issue with IF NOT EXISTS
-        # If it's a duplicate type error, table already exists, continue
-        error_msg = str(e).lower()
-        if "duplicate" not in error_msg and "already exists" not in error_msg:
-            raise
+        """
+    )
     cx.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_availability_week
@@ -1588,9 +1588,9 @@ def _session_expired(created_at: str) -> bool:
 
 
 def session(authorization: str | None) -> dict[str, str] | None:
-    init_db()
     if not authorization:
         return None
+    init_db()
     raw = authorization.removeprefix("Bearer ").strip()
     with _conn() as cx:
         row = cx.execute(

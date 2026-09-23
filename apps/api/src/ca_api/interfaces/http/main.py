@@ -182,6 +182,8 @@ async def broadcast_successful_mutation(request: Request, call_next: Any) -> Any
     actor_session = (
         auth_session(request.headers.get("authorization"))
         if is_mutation_method
+        and path not in _AUDIT_SKIP_PATHS
+        and request.headers.get("authorization")
         else None
     )
     generic_audit_added = False
