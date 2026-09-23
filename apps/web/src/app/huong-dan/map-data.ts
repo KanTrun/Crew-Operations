@@ -180,7 +180,7 @@ export const HUBS: MapHub[] = [
       {
         href: "/hao-phi",
         label: "Hao phí",
-        desc: "Ghi hao hụt trong ca — AI gom cụm nguyên nhân.",
+        desc: "Hao hụt theo nguyên liệu: công thức đối chiếu kiểm kê, kèm xếp hạng nguyên nhân.",
         roles: ["ql"],
         agent: "AG-WASTE",
       },
