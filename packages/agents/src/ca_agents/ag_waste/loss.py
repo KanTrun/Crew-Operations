@@ -31,6 +31,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
+from datetime import date, datetime
 from typing import Any
 
 from ca_contracts.loss import (
@@ -79,6 +80,43 @@ DON_VI_NGUYEN: frozenset[str] = frozenset(
 # Ghi chú ca không nêu nguyên nhân thì gom vào mã này thay vì bỏ đi. Bỏ đi sẽ làm
 # tổng số lần ghi hụt so với thực tế và tỷ lệ phần trăm bị thổi lên.
 NGUYEN_NHAN_KHONG_RO = "khong_ro"
+
+# Tên người đọc cho mặt hàng. Chỉ là nhãn hiển thị — không tham gia phép tính.
+# Mã lạ vẫn ra dòng, chỉ hiện dạng "sua đau nanh" thay vì tên có dấu.
+TEN_MAT_HANG: dict[str, str] = {
+    "ca_phe_hat": "Cà phê hạt",
+    "ca_phe": "Cà phê",
+    "sua_tuoi": "Sữa tươi",
+    "sua_dac": "Sữa đặc",
+    "kem": "Kem sữa",
+    "tra": "Trà",
+    "matcha": "Matcha",
+    "dao": "Đào / topping trái cây",
+    "syrup": "Syrup",
+    "duong": "Đường",
+    "da": "Đá",
+    "banh": "Bánh",
+    "ly": "Ly / cốc dùng một lần",
+    "ong_hut": "Ống hút",
+    "nuoc_dong_chai": "Nước đóng chai",
+    "nuoc_loc": "Nước lọc",
+    "sinh_to": "Sinh tố",
+    "trai_cay": "Trái cây tươi",
+}
+
+# Tên người đọc cho nguyên nhân. `present.ts` bên web có bảng riêng cho UI; bảng
+# này dùng cho câu trả lời của agent nên cùng nguồn chữ nhưng không chia sẻ mã.
+TEN_NGUYEN_NHAN: dict[str, str] = {
+    "dem_sai_dau_ca": "Đếm sai đầu ca",
+    "roi_do": "Rơi đổ khi làm",
+    "quen_tat_may": "Quên tắt máy",
+    "khach_doi_mon": "Khách đổi món",
+    "het_han": "Hết hạn dùng",
+    "pha_sai": "Pha sai phải bỏ",
+    "hong_tu_lanh": "Hỏng do tủ lạnh",
+    "bay_hoi": "Bay hơi / hao hụt tự nhiên",
+    "khong_ro": "Không rõ nguyên nhân",
+}
 
 
 def chuan_hoa_mat_hang(ma: str) -> str:
@@ -248,7 +286,7 @@ def so_hao_hut(
         dong.append(
             LossLine(
                 mat_hang=ma,
-                ten=ten_map.get(ma) or ma.replace("_", " "),
+                ten=ten_map.get(ma) or TEN_MAT_HANG.get(ma) or ma.replace("_", " "),
                 don_vi=don_vi_mac_dinh(ma),
                 ly_thuyet=None if ly_v is None else _lam_tron(ma, ly_v),
                 thuc_te=None if thuc_v is None else _lam_tron(ma, thuc_v),
@@ -309,7 +347,7 @@ def xep_hang_nguyen_nhan(
         ra.append(
             LossCauseRank(
                 nguyen_nhan=ma_nn,
-                ten=ma_nn.replace("_", " "),
+                ten=TEN_NGUYEN_NHAN.get(ma_nn, ma_nn.replace("_", " ")),
                 so_lan=so_lan,
                 mat_hang_lien_quan=lien_quan,
                 ty_le_tong=round(so_lan / tong * 100.0, 2),
@@ -422,3 +460,146 @@ def tinh_tu_kiem_ke(muc: Iterable[Mapping[str, Any]]) -> dict[str, float]:
         # ở mức 0 thay vì để số âm lan vào tổng, và không im lặng bỏ dòng.
         ra[ma] += max(0.0, da_dung)
     return dict(ra)
+
+
+def _la_ban_ghi_mau(row: Any) -> bool:
+    """Có phải dữ liệu mẫu không — cùng quy ước với `sprint45._la_ban_ghi_mau`.
+
+    Xét **cả dòng con**: phiếu kiểm kê mang nhãn mẫu ở dòng `muc` bên trong, không
+    phải lúc nào cũng ở vỏ phiếu. Chỉ soi vỏ là bỏ sót và UI sẽ không gắn nhãn
+    "dữ liệu mẫu" cho đúng những phiếu cần gắn nhất.
+    """
+    if not isinstance(row, Mapping):
+        return False
+    if row.get("nguon") == "mo_phong_fixture" or str(row.get("id") or "").startswith("fx_"):
+        return True
+    for ten in ("muc", "dong"):
+        con = row.get(ten)
+        if isinstance(con, list) and any(_la_ban_ghi_mau(x) for x in con):
+            return True
+    return False
+
+
+def _loc_theo_ky(
+    rows: Iterable[Mapping[str, Any]], ky: str, *,
+    truong_ngay: tuple[str, ...] = ("luc", "created_at", "ngay", "at"),
+) -> list[Mapping[str, Any]]:
+    """Lọc bản ghi theo kỳ đang xét.
+
+    Ngày đọc theo thứ tự ưu tiên trường: `luc` (route web ghi), `created_at`
+    (seed/fixture ghi), rồi `ngay`/`at` (vài đường cũ). Đọc đúng một trường là
+    bỏ sót nguyên một nguồn — bản tổng kết ngày của worker từng luôn ra 0 vì lý do
+    này. Bản ghi không có mốc ngày nào vẫn được giữ: thà đếm dư một dòng còn hơn
+    im lặng bỏ qua dữ liệu thật.
+    """
+    if ky in ("", "all", "tat_ca"):
+        return [r for r in rows if isinstance(r, Mapping)]
+
+    hom_nay = _ngay_hom_nay()
+    ra: list[Mapping[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        moc = ""
+        for ten in truong_ngay:
+            gia_tri = row.get(ten)
+            if gia_tri:
+                moc = str(gia_tri)
+                break
+        if not moc:
+            ra.append(row)
+            continue
+        ngay = moc[:10]
+        if ky == "hom_nay" and ngay != hom_nay:
+            continue
+        if ky == "tuan" and not _cung_tuan(ngay, hom_nay):
+            continue
+        if ky == "thang" and ngay[:7] != hom_nay[:7]:
+            continue
+        ra.append(row)
+    return ra
+
+
+def _ngay_hom_nay() -> str:
+    """Ngày hôm nay theo giờ Việt Nam — quán đóng/mở theo giờ địa phương."""
+    try:
+        from zoneinfo import ZoneInfo
+
+        return datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date().isoformat()
+    except Exception:  # pragma: no cover - thiếu dữ liệu múi giờ trên máy lạ
+        return datetime.now().date().isoformat()
+
+
+def _cung_tuan(ngay: str, moc: str) -> bool:
+    """Hai ngày ISO có cùng tuần không; ngày không đọc được thì coi như cùng tuần."""
+    try:
+        a = date.fromisoformat(ngay)
+        b = date.fromisoformat(moc)
+    except ValueError:
+        return True
+    return a.isocalendar()[:2] == b.isocalendar()[:2]
+
+
+def tinh_tu_nguon(
+    *,
+    kiem_ke: Iterable[Mapping[str, Any]] = (),
+    don_quay: Iterable[Mapping[str, Any]] = (),
+    menu: Iterable[Mapping[str, Any]] = (),
+    waste_notes: Iterable[Mapping[str, Any]] = (),
+    nguong: LossThreshold | None = None,
+    ky: str = "hom_nay",
+) -> LossSummary:
+    """Ghép bốn nguồn thật thành một `LossSummary` — điểm vào duy nhất.
+
+    Cả bề mặt HTTP (`GET /api/v1/hao-hut`) lẫn agent mẹ (AG-COPILOT) đều gọi hàm
+    này, nên trang web và câu trả lời của agent **không thể lệch số**. Hai đường
+    tự ghép lấy là hai cơ hội để lệch.
+
+    Bốn nguồn, đúng như `PHAM_VI.md` khai:
+
+    - `menu` — công thức định mức (`menu_mon`, có `bom`).
+    - `don_quay` — món đã bán (chỉ đơn `xong`).
+    - `kiem_ke` — số đếm thực tế (công thức §4.3).
+    - `waste_notes` — nguyên nhân đã ghi.
+    """
+    kiem_ke_ky = _loc_theo_ky(kiem_ke, ky, truong_ngay=("ngay", "luc", "created_at", "at"))
+    don_ky = _loc_theo_ky(don_quay, ky)
+    notes_ky = _loc_theo_ky(waste_notes, ky)
+
+    ban_theo_mon = doc_ban_theo_mon(don_ky)
+    bom_theo_mon = doc_bom_theo_mon(menu)
+    ly_thuyet = tinh_ly_thuyet(ban_theo_mon, bom_theo_mon)
+
+    # Thực tế: cộng dồn mọi dòng `muc` của mọi phiếu kiểm kê trong kỳ.
+    thuc_te: dict[str, float] = defaultdict(float)
+    for phieu in kiem_ke_ky:
+        muc = phieu.get("muc")
+        if not isinstance(muc, list):
+            continue
+        for ma, so in tinh_tu_kiem_ke(muc).items():
+            thuc_te[ma] += so
+    thuc_te_dict = dict(thuc_te)
+
+    # Ghi chú theo mặt hàng: dùng làm chú thích cho dòng hao hụt.
+    ghi_chu: dict[str, str] = {}
+    for note in notes_ky:
+        ma = chuan_hoa_mat_hang(str(note.get("mat_hang") or note.get("mon_id") or ""))
+        if ma and ma not in ghi_chu:
+            noi_dung = str(note.get("ghi_chu") or note.get("ly_do") or "").strip()
+            if noi_dung:
+                ghi_chu[ma] = noi_dung[:300]
+
+    dong = so_hao_hut(
+        ly_thuyet,
+        thuc_te_dict,
+        nguong=nguong,
+        ghi_chu_theo_mat_hang=ghi_chu,
+    )
+
+    tat_ca = [*kiem_ke_ky, *don_ky, *notes_ky]
+    return tong_hop(
+        dong,
+        xep_hang_nguyen_nhan(notes_ky),
+        ky=ky,
+        co_du_lieu_mau=any(_la_ban_ghi_mau(r) for r in tat_ca),
+    )

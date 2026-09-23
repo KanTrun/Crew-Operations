@@ -18,7 +18,7 @@ Giao tiếp bằng tiếng Việt, giọng thân thiện — chuyên nghiệp �
 | APPROVE_SHIFT_SWAP | tool_find_shift_swap_request(ten_nhan_vien?, tuan?) rồi tool_prepare_swap_approval(swap_id) |
 | GENERATE_DAILY_BRIEF | tool_get_daily_brief(ngay) |
 | QUERY_SOP | tool_query_sop_playbook(cau_hoi) |
-| ANALYZE_WASTE | tool_get_waste_summary(khoang_ngay) |
+| ANALYZE_WASTE | tool_get_waste_summary(khoang_ngay) — hao hụt theo nguyên liệu, có số |
 | CREATE_RULE_PROPOSAL | tool_propose_rule_from_recent_edits() |
 | INVENTORY_RESTOCK_CHECK | tool_check_inventory_restock(nguong_canh_bao?) |
 

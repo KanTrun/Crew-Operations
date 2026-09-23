@@ -25,6 +25,7 @@ from ca_agents.ag_pricing.job_manager import get_job_store as _get_job_store
 from ca_agents.ag_sop import answer as _sop_answer
 from ca_agents.ag_tkb.extract import extract_tkb as _extract_tkb
 from ca_agents.ag_waste import cluster as _waste_cluster
+from ca_agents.ag_waste import tinh_tu_nguon as _loss_engine
 from ca_agents.clients.serpapi_client import (
     get_circuit_breaker as _get_circuit_breaker,
 )
@@ -433,6 +434,9 @@ configure_data_sources(
     de_xuat=_de_xuat,
     sop_answer=_sop_answer,
     waste_cluster=_waste_cluster,
+    # Động cơ hao hụt: CÙNG hàm mà GET /api/v1/hao-hut gọi, nên câu trả lời của
+    # agent mẹ và con số trên trang Hao phí không thể lệch nhau.
+    loss_engine=_loss_engine,
     list_ca_meta=_list_ca_meta,
     draft_mail=_draft_mail_with_active_rules,
     get_user_emails=get_user_emails,

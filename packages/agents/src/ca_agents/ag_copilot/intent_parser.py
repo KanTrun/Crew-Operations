@@ -408,7 +408,23 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
     ),
     (
         ANALYZE_WASTE,
-        ["hao hụt", "hao hut", "hàng hủy", "lãng phí", "sữa hỏng", "đổ bọt", "báo cáo hủy"],
+        [
+            # Cụm gốc — giữ nguyên để không đổi hành vi cũ.
+            "hao hụt", "hao hut", "hàng hủy", "lãng phí", "sữa hỏng", "đổ bọt", "báo cáo hủy",
+            # Cụm của câu hỏi định lượng: người quán hỏi "hao bao nhiêu", "nguyên liệu
+            # nào hao", "lệch kiểm kê" chứ không chỉ nói "hao hụt". Không thêm thì
+            # những câu đó rơi vào OUT_OF_SCOPE dù đúng thẩm quyền của intent này.
+            "thất thoát", "that thoat",
+            "hao phí", "hao phi",
+            "lệch kiểm kê", "lech kiem ke",
+            "lệch kho", "lech kho",
+            "chênh lệch nguyên liệu", "chenh lech nguyen lieu",
+            "nguyên liệu nào hao", "nguyen lieu nao hao",
+            "hao bao nhiêu", "hao bao nhieu",
+            "tiêu hao nguyên liệu", "tieu hao nguyen lieu",
+            "tỷ lệ hao", "ty le hao",
+            "mức hao", "muc hao",
+        ],
         0.91,
     ),
     (

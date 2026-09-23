@@ -11,6 +11,8 @@ Trọng tâm khẳng định:
 
 from __future__ import annotations
 
+from datetime import date
+
 from ca_agents.ag_waste import (
     chuan_hoa_mat_hang,
     doc_ban_theo_mon,
@@ -19,6 +21,7 @@ from ca_agents.ag_waste import (
     so_hao_hut,
     tinh_ly_thuyet,
     tinh_tu_kiem_ke,
+    tinh_tu_nguon,
     tong_hop,
     xep_hang_nguyen_nhan,
 )
@@ -432,3 +435,150 @@ def test_so_hao_hut_chay_khong_can_fixture_db() -> None:
     ra = so_hao_hut({"da": 100.0}, {"da": 110.0})
     assert len(ra) == 1
     assert isinstance(ra[0], LossLine)
+
+
+# ── Ghép bốn nguồn (điểm vào dùng chung cho API và agent mẹ) ────────────────────
+
+
+def _phieu_kiem_ke(ngay: str, muc: list[dict]) -> dict:
+    return {"ngay": ngay, "muc": muc}
+
+
+def test_tinh_tu_nguon_ghep_du_bon_nguon() -> None:
+    """Đường vào duy nhất: menu + đơn + kiểm kê + ghi chú ⇒ một LossSummary."""
+    hom_nay = date.today().isoformat()
+    s = tinh_tu_nguon(
+        menu=[{"id": "latte", "bom": {"cafe_g": 18}}],
+        don_quay=[{"trang_thai": "xong", "luc": f"{hom_nay}T08:00:00", "dong": [{"mon_id": "latte", "so_luong": 10}]}],
+        kiem_ke=[_phieu_kiem_ke(hom_nay, [{"mat_hang": "ca_phe_hat", "dau_ca": 500, "nhap_trong_ca": 0, "cuoi_ca": 300, "hao_hut_ghi": 0}])],
+        waste_notes=[{"nguyen_nhan": "roi_do", "mat_hang": "ca_phe_hat", "luc": f"{hom_nay}T09:00:00"}],
+        ky="hom_nay",
+    )
+    assert s.tong_dong == 1
+    dong = s.dong[0]
+    assert dong.mat_hang == "ca_phe_hat"
+    assert dong.ten == "Cà phê hạt"
+    assert dong.ly_thuyet == 180.0
+    assert dong.thuc_te == 200.0
+    assert dong.ty_le_phan_tram == 11.11  # 20/180 — trên 5%, dưới 15% ⇒ cảnh báo
+    assert dong.muc_do is LossLevel.CANH_BAO
+    assert s.nguyen_nhan_hang_dau[0].nguyen_nhan == "roi_do"
+    assert s.nguyen_nhan_hang_dau[0].ten == "Rơi đổ khi làm"
+
+
+def test_tinh_tu_nguon_dung_chung_mot_diem_vao() -> None:
+    """API và agent mẹ gọi cùng hàm này ⇒ trang web và câu trả lời không thể lệch số.
+
+    Khẳng định hai lần gọi với cùng dữ liệu ra cùng kết quả (tất định), để hai bề
+    mặt không có cơ hội tính khác nhau.
+    """
+    hom_nay = date.today().isoformat()
+    kwargs = {
+        "menu": [{"id": "latte", "bom": {"cafe_g": 18}}],
+        "don_quay": [{"trang_thai": "xong", "luc": f"{hom_nay}T08:00:00", "dong": [{"mon_id": "latte", "so_luong": 10}]}],
+        "kiem_ke": [_phieu_kiem_ke(hom_nay, [{"mat_hang": "ca_phe_hat", "dau_ca": 500, "nhap_trong_ca": 0, "cuoi_ca": 300, "hao_hut_ghi": 0}])],
+        "ky": "hom_nay",
+    }
+    a = tinh_tu_nguon(**kwargs)  # type: ignore[arg-type]
+    b = tinh_tu_nguon(**kwargs)  # type: ignore[arg-type]
+    assert a.model_dump_json() == b.model_dump_json()
+
+
+def test_tinh_tu_nguon_rong_khong_bia() -> None:
+    """Không nguồn nào ⇒ summary rỗng, không raise, không bịa dòng."""
+    s = tinh_tu_nguon(ky="hom_nay")
+    assert s.tong_dong == 0
+    assert s.ty_le_trung_binh is None
+    assert s.co_du_lieu_mau is False
+
+
+def test_tinh_tu_nguon_chi_kiem_ke_ra_thieu_ly_thuyet() -> None:
+    """Chỉ có phiếu kiểm kê, chưa có đơn ⇒ chưa kết luận được, không nói 'đạt'."""
+    hom_nay = date.today().isoformat()
+    s = tinh_tu_nguon(
+        kiem_ke=[_phieu_kiem_ke(hom_nay, [{"mat_hang": "sua_tuoi", "dau_ca": 25, "nhap_trong_ca": 8, "cuoi_ca": 26, "hao_hut_ghi": 0}])],
+        ky="hom_nay",
+    )
+    assert s.dong[0].muc_do is LossLevel.THIEU_DU_LIEU
+    assert s.dong[0].thieu_ve == ["ly_thuyet"]
+    assert s.so_thieu_du_lieu == 1
+
+
+def test_tinh_tu_nguon_loc_theo_ky() -> None:
+    """Kỳ hôm nay không được tính phiếu của ngày khác."""
+    hom_nay = date.today().isoformat()
+    s = tinh_tu_nguon(
+        kiem_ke=[
+            _phieu_kiem_ke(hom_nay, [{"mat_hang": "da", "dau_ca": 10, "nhap_trong_ca": 0, "cuoi_ca": 5, "hao_hut_ghi": 0}]),
+            _phieu_kiem_ke("2020-01-01", [{"mat_hang": "da", "dau_ca": 999, "nhap_trong_ca": 0, "cuoi_ca": 0, "hao_hut_ghi": 0}]),
+        ],
+        ky="hom_nay",
+    )
+    assert s.dong[0].thuc_te == 5.0
+
+
+def test_tinh_tu_nguon_ky_all_nhan_moi_ngay() -> None:
+    """`ky="all"` gộp mọi ngày — dùng khi xem toàn bộ lịch sử."""
+    s = tinh_tu_nguon(
+        kiem_ke=[
+            _phieu_kiem_ke("2020-01-01", [{"mat_hang": "da", "dau_ca": 10, "nhap_trong_ca": 0, "cuoi_ca": 5, "hao_hut_ghi": 0}]),
+            _phieu_kiem_ke("2021-06-06", [{"mat_hang": "da", "dau_ca": 10, "nhap_trong_ca": 0, "cuoi_ca": 3, "hao_hut_ghi": 0}]),
+        ],
+        ky="all",
+    )
+    assert s.dong[0].thuc_te == 12.0
+
+
+def test_tinh_tu_nguon_giu_ban_ghi_khong_co_ngay() -> None:
+    """Bản ghi thiếu mốc ngày vẫn được đếm — thà dư một dòng còn hơn bỏ sót."""
+    s = tinh_tu_nguon(
+        kiem_ke=[_phieu_kiem_ke("", [{"mat_hang": "da", "dau_ca": 10, "nhap_trong_ca": 0, "cuoi_ca": 4, "hao_hut_ghi": 0}])],
+        ky="hom_nay",
+    )
+    assert s.dong[0].thuc_te == 6.0
+
+
+def test_tinh_tu_nguon_danh_dau_du_lieu_mau() -> None:
+    """Nhãn dữ liệu mẫu phải theo lên summary để người đọc không nhầm số mẫu."""
+    hom_nay = date.today().isoformat()
+    s = tinh_tu_nguon(
+        kiem_ke=[_phieu_kiem_ke(hom_nay, [{
+            "id": "fx_kk_01", "nguon": "mo_phong_fixture",
+            "mat_hang": "da", "dau_ca": 10, "nhap_trong_ca": 0, "cuoi_ca": 4, "hao_hut_ghi": 0,
+        }])],
+        ky="hom_nay",
+    )
+    assert s.co_du_lieu_mau is True
+
+
+def test_tinh_tu_nguon_khong_danh_dau_du_lieu_that() -> None:
+    hom_nay = date.today().isoformat()
+    s = tinh_tu_nguon(
+        kiem_ke=[_phieu_kiem_ke(hom_nay, [{"id": "kk_01", "mat_hang": "da", "dau_ca": 10, "nhap_trong_ca": 0, "cuoi_ca": 4, "hao_hut_ghi": 0}])],
+        ky="hom_nay",
+    )
+    assert s.co_du_lieu_mau is False
+
+
+def test_tinh_tu_nguon_doc_ngay_tu_nhieu_truong() -> None:
+    """Bản ghi thật ghi `luc`; cả fixture/MinIO ghi `created_at`.
+
+    Đọc sai trường là bỏ sót nguyên một nguồn. Bản tổng kết ngày của worker từng
+    luôn ra 0 vì lý do này.
+    """
+    hom_nay = date.today().isoformat()
+    s = tinh_tu_nguon(
+        waste_notes=[
+            {"nguyen_nhan": "het_han", "luc": f"{hom_nay}T10:00:00"},
+            {"nguyen_nhan": "roi_do", "created_at": f"{hom_nay}T11:00:00"},
+        ],
+        ky="hom_nay",
+    )
+    ma = {r.nguyen_nhan: r.so_lan for r in s.nguyen_nhan_hang_dau}
+    assert ma == {"het_han": 1, "roi_do": 1}
+
+
+def test_tinh_tu_nguon_nguon_la_khong_raise() -> None:
+    """Nguồn rác không làm sập trang hao hụt."""
+    s = tinh_tu_nguon(kiem_ke=[None, "chuoi", 42], don_quay=[None], menu=[None], ky="hom_nay")  # type: ignore[list-item]
+    assert s.tong_dong == 0

@@ -66,6 +66,7 @@ def configure_data_sources(**sources: Callable[..., Any]) -> None:
       - de_xuat(mau) -> dict | None         (sinh đề xuất luật; None khi thiếu tín hiệu)
       - sop_answer(q, buoc, luat) -> SopAnswer
       - waste_cluster(notes) -> list[WasteHint]
+      - loss_engine(kiem_ke, don_quay, menu, waste_notes, nguong, ky) -> LossSummary
       - list_ca_meta() -> dict[str, dict]   (ca_id -> {thu, khung, bat_dau, ket_thuc})
     """
     _SOURCES.clear()
@@ -794,16 +795,88 @@ def tool_get_waste_summary(
     khoang_ngay: str = "hom_nay",
     **kwargs: Any,
 ) -> ToolExecutionResult:
-    """Query structured waste summary from REAL waste notes (KV "waste_notes").
+    """ANALYZE_WASTE — hao hụt theo nguyên liệu, có số, từ dữ liệu thật.
 
-    Dùng waste_cluster được inject (AG-WASTE thật) để nhóm ghi chú hao hụt.
-    Không có ghi chú → báo trung thực.
+    AG-COPILOT (mẹ) điều phối, AG-WASTE (con) tính: hàm `loss_engine` được inject
+    từ tầng API, cùng hàm mà `GET /api/v1/hao-hut` gọi. Nhờ vậy câu trả lời của
+    agent và con số trên trang web **không thể lệch nhau**.
+
+    Đọc bốn nguồn qua `_src`/`_kv_get` (không import ca_api — hexagonal boundary):
+
+    - kv `kiem_ke` + kv `waste_notes` — qua `kv_get` được inject.
+    - `menu_list` — danh mục món kèm công thức định mức.
+    - `don_list` — đơn quầy, chỉ đơn `xong` được tính.
+
+    Không có dữ liệu ⇒ trả lời trung thực, không bịa số.
     """
+    loss_engine = _src("loss_engine")
     waste_cluster = _src("waste_cluster")
 
     stored = [x for x in (_kv_get("waste_notes", []) or []) if isinstance(x, dict)]
     pairs = [(str(x.get("thu", "")), str(x.get("ghi_chu", ""))) for x in stored if x.get("ghi_chu")]
 
+    if loss_engine is None:
+        # Chưa cấu hình nguồn tính → vẫn trả lời được phần gom cụm ghi chú.
+        return _waste_cluster_only(pairs, waste_cluster)
+
+    kiem_ke = [x for x in (_kv_get("kiem_ke", []) or []) if isinstance(x, dict)]
+    menu_list = _src("menu_list")
+    don_list = _src("don_list")
+    try:
+        menu = list(menu_list(gom_an=True) or []) if menu_list else []
+        don = list(don_list() or []) if don_list else []
+    except Exception:
+        menu, don = [], []
+
+    try:
+        summary = loss_engine(
+            kiem_ke=kiem_ke,
+            don_quay=don,
+            menu=menu,
+            waste_notes=stored,
+            ky=khoang_ngay or "hom_nay",
+        )
+    except TypeError:
+        # Nguồn được inject theo chữ ký cũ → lui về gọi không tham số kỳ.
+        summary = loss_engine(kiem_ke, don, menu, stored)
+
+    data = summary.model_dump() if hasattr(summary, "model_dump") else dict(summary)
+    dong = list(data.get("dong") or [])
+
+    if not dong:
+        return ToolExecutionResult(
+            success=True,
+            tool_name="tool_get_waste_summary",
+            intent="ANALYZE_WASTE",
+            data={"co_du_lieu": False, "so_ghi_nhan": len(stored)},
+            summary="Chưa có dữ liệu để tính hao hụt.",
+            explanation=(
+                "Chưa có phiếu kiểm kê hoặc đơn quầy nào trong kỳ này. "
+                "Ghi kiểm kê ở mặt Hàng tồn (/tieu-thu) rồi hỏi lại."
+            ),
+            requires_confirmation=False,
+        )
+
+    return ToolExecutionResult(
+        success=True,
+        tool_name="tool_get_waste_summary",
+        intent="ANALYZE_WASTE",
+        data={**data, "co_du_lieu": True},
+        summary=_tom_tat_hao_hut(data),
+        explanation=_giai_thich_hao_hut(data),
+        requires_confirmation=False,
+    )
+
+
+def _waste_cluster_only(
+    pairs: list[tuple[str, str]],
+    waste_cluster: Callable[..., Any] | None,
+) -> ToolExecutionResult:
+    """Đường lui khi `loss_engine` chưa được cấu hình: chỉ gom cụm ghi chú.
+
+    Giữ lại để môi trường chạy standalone/test không có tầng API vẫn trả lời được
+    thay vì sập.
+    """
     if not pairs:
         return ToolExecutionResult(
             success=True,
@@ -811,7 +884,7 @@ def tool_get_waste_summary(
             intent="ANALYZE_WASTE",
             data={"so_ghi_nhan": 0, "co_du_lieu": False},
             summary="Chưa có ghi chú hao hụt nào được ghi nhận.",
-            explanation="Nhân viên chưa ghi hao hụt nào qua mặt Hao hụt (/hao-phi).",
+            explanation="Nhân viên chưa ghi hao hụt nào qua mặt Hao phí (/hao-phi).",
             requires_confirmation=False,
         )
 
@@ -824,7 +897,6 @@ def tool_get_waste_summary(
         summary += f" Phát hiện {len(clusters)} mẫu lặp: " + "; ".join(
             str(x.get("cau") or x.get("ten") or "") for x in clusters[:3]
         ) + "."
-
     return ToolExecutionResult(
         success=True,
         tool_name="tool_get_waste_summary",
@@ -834,6 +906,52 @@ def tool_get_waste_summary(
         explanation=f"Phân cụm từ {n} ghi chú thật của nhân viên (nguồn: waste_notes).",
         requires_confirmation=False,
     )
+
+
+def _tom_tat_hao_hut(data: dict[str, Any]) -> str:
+    """Câu tóm tắt có số, đọc lên là hiểu — không có số nào tự sinh."""
+    dong = list(data.get("dong") or [])
+    nghiem = [d for d in dong if d.get("muc_do") == "nghiem_trong"]
+    canh_bao = [d for d in dong if d.get("muc_do") == "canh_bao"]
+    thieu = [d for d in dong if d.get("muc_do") == "thieu_du_lieu"]
+
+    phan: list[str] = [f"Hao hụt {len(dong)} nguyên liệu."]
+    if nghiem:
+        ten = ", ".join(str(d.get("ten") or d.get("mat_hang")) for d in nghiem[:3])
+        phan.append(f"{len(nghiem)} nguyên liệu vượt ngưỡng nghiêm trọng: {ten}.")
+    if canh_bao:
+        ten = ", ".join(str(d.get("ten") or d.get("mat_hang")) for d in canh_bao[:3])
+        phan.append(f"{len(canh_bao)} nguyên liệu cần xem lại: {ten}.")
+    if not nghiem and not canh_bao:
+        phan.append("Không nguyên liệu nào vượt ngưỡng.")
+    if thieu:
+        phan.append(f"{len(thieu)} nguyên liệu chưa đủ dữ liệu để kết luận.")
+
+    hang_dau = list(data.get("nguyen_nhan_hang_dau") or [])
+    if hang_dau:
+        top = hang_dau[0]
+        phan.append(
+            f"Nguyên nhân ghi nhiều nhất: {top.get('ten')} ({top.get('so_lan')} lần)."
+        )
+    return " ".join(phan)
+
+
+def _giai_thich_hao_hut(data: dict[str, Any]) -> str:
+    """Nói rõ số này từ đâu ra, để người đọc biết mức tin của con số."""
+    dong = list(data.get("dong") or [])
+    du_hai_ve = [d for d in dong if d.get("ty_le_phan_tram") is not None]
+    phan = [
+        "Lý thuyết = định mức công thức trong menu × số phần đã bán (đơn quầy đã xong).",
+        "Thực tế = đầu ca + nhập trong ca − cuối ca − hao hụt đã ghi, từ phiếu kiểm kê.",
+    ]
+    if len(du_hai_ve) < len(dong):
+        phan.append(
+            f"{len(dong) - len(du_hai_ve)} nguyên liệu thiếu một vế nên để trống chứ không đoán số."
+        )
+    if data.get("co_du_lieu_mau"):
+        phan.append("Dữ liệu có phần từ bộ mẫu (không phải số thật của quán).")
+    phan.append(f"Trung bình trên {len(du_hai_ve)} nguyên liệu đủ hai vế: {data.get('ty_le_trung_binh')}%.")
+    return " ".join(phan)
 
 
 def tool_propose_rule_from_recent_edits(

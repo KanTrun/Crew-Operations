@@ -12,6 +12,8 @@ Cả hai đều là hàm thuần, không I/O, không LLM. Tầng API đọc dữ
 from ca_agents.ag_waste.extract import WasteHint, cluster
 from ca_agents.ag_waste.loss import (
     BI_DANH,
+    TEN_MAT_HANG,
+    TEN_NGUYEN_NHAN,
     chuan_hoa_mat_hang,
     doc_ban_theo_mon,
     doc_bom_theo_mon,
@@ -20,6 +22,7 @@ from ca_agents.ag_waste.loss import (
     so_hao_hut,
     tinh_ly_thuyet,
     tinh_tu_kiem_ke,
+    tinh_tu_nguon,
     tong_hop,
     xep_hang_nguyen_nhan,
 )
@@ -30,6 +33,8 @@ __all__ = [
     "cluster",
     # Động cơ hao hụt (plan 260923-1736)
     "BI_DANH",
+    "TEN_MAT_HANG",
+    "TEN_NGUYEN_NHAN",
     "chuan_hoa_mat_hang",
     "doc_ban_theo_mon",
     "doc_bom_theo_mon",
@@ -38,6 +43,7 @@ __all__ = [
     "so_hao_hut",
     "tinh_ly_thuyet",
     "tinh_tu_kiem_ke",
+    "tinh_tu_nguon",
     "tong_hop",
     "xep_hang_nguyen_nhan",
 ]

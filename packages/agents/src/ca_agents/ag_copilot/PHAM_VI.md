@@ -56,6 +56,17 @@ Nguồn duy nhất: `COPILOT_ROLE_INTENT_MATRIX` trong `ca_contracts`. Kiểm tr
 | GENERATE_DAILY_BRIEF (bản tin) | ✅ | ✅ | ✅ |
 | QUERY_SOP (quy trình) | ✅ | ✅ | ✅ |
 | ANALYZE_WASTE (hao hụt) | ✅ | ✅ | ✅ |
+
+**ANALYZE_WASTE là intent định lượng.** Nó không chỉ đếm ghi chú: AG-COPILOT (mẹ)
+gọi hàm thuần của AG-WASTE (con) qua `loss_engine` được inject, để trả lời *nguyên
+liệu nào hao, bao nhiêu, tỷ lệ bao nhiêu, do nguyên nhân nào*.
+
+- Số do `ca_agents.ag_waste.loss` tính (ADR-002), mẹ **không** tự sinh số.
+- Cùng hàm `tinh_tu_nguon` mà `GET /api/v1/hao-hut` gọi ⇒ câu trả lời của agent và
+  con số trên trang web không thể lệch nhau.
+- Nguyên liệu thiếu một vế trả `thieu_du_lieu` kèm `thieu_ve`; mẹ phải nói thẳng
+  là chưa đủ dữ liệu, **không** được suy ra "đạt".
+- Dữ liệu mẫu (`co_du_lieu_mau`) phải được nêu rõ để không nhầm số mẫu với số thật.
 | SCHEDULE_SOLVE (xếp lịch) | ❌ | ✅ | ✅ |
 | APPROVE_SHIFT_SWAP (duyệt đổi ca) | ❌ | ✅ | ✅ |
 | CREATE_RULE_PROPOSAL (đề xuất luật) | ❌ | ✅ | ✅ |
