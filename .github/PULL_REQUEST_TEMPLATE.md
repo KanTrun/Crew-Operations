@@ -17,6 +17,15 @@
 - [ ] Chạm orchestration/lõi → test tất định còn xanh
 - [ ] Nhánh đúng vùng tiền tố (A/B/C/D) · sống ≤ 3 ngày
 
+## Checklist AI / Jev (khi chạm sensors, fb_policy, moderation)
+
+- [ ] Jev là cảm biến, **không** quyết định luồng/agent (ADR-002)
+- [ ] `leo_thang = regex OR jev` — chỉ tăng, không gỡ leo thang (đơn điệu)
+- [ ] Jev tắt/lỗi → fail-closed về phía **con người** (không im lặng auto)
+- [ ] Đã ẩn danh hóa (tên/SĐT) trước khi gửi Jev (kế hoạch §6)
+- [ ] Có test: Jev lỗi → queue; Jev tắt → giữ hành vi cũ; regex vẫn thắng
+- [ ] Kill-switch `jev_enabled` qua API hoạt động (không cần deploy)
+
 ## Người duyệt
 
 Dừng ở lỗi `[chặn]` đầu tiên. Xem `docs/github-operating-model.md`.

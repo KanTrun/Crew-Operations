@@ -35,7 +35,7 @@ from ca_ops import (
     start_phieu,
 )
 from ca_playbook import list_sua, record_sua
-from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, Header, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 
 from ca_api.orchestration import Clock, IdempotencyStore, StateMachine, dispatch_parallel
@@ -136,7 +136,19 @@ def _known_nv(nv_id: str) -> bool:
     return nv_id in ids
 
 
-def _phan_cong() -> dict[str, list[str]]:
+def _current_week() -> str:
+    life = kv_get("lich_tuan_lifecycle", {})
+    if isinstance(life, dict) and life.get("tuan_iso"):
+        return str(life["tuan_iso"])
+    return "2026-W01"
+
+
+def _phan_cong(tuan_iso: str | None = None) -> dict[str, list[str]]:
+    week = (tuan_iso or "").strip()
+    if week:
+        by_week = kv_get("phan_cong_by_week", {})
+        if isinstance(by_week, dict) and week in by_week and isinstance(by_week[week], dict):
+            return cast(dict[str, list[str]], by_week[week])
     stored = kv_get("phan_cong", None)
     if stored:
         return cast(dict[str, list[str]], stored)
@@ -598,6 +610,36 @@ async def tkb_upload(
     return result
 
 
+def _busy_to_availability(busy_intervals: list[dict[str, str]]) -> dict[str, list[str]]:
+    shifts = ["Sáng", "Chiều", "Tối"]
+    all_days = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+    shift_ranges = {
+        "Sáng": (6 * 60 + 30, 12 * 60),
+        "Chiều": (12 * 60, 17 * 60 + 30),
+        "Tối": (17 * 60 + 30, 22 * 60 + 30),
+    }
+    avail = {d: list(shifts) for d in all_days}
+    for b in busy_intervals:
+        day = b.get("thu")
+        start_str = b.get("start", "00:00")
+        end_str = b.get("end", "23:59")
+        try:
+            sh, sm = map(int, start_str.split(":"))
+            eh, em = map(int, end_str.split(":"))
+            b_start = sh * 60 + sm
+            b_end = eh * 60 + em
+        except Exception:
+            continue
+        if day in avail:
+            avail[day] = [
+                s for s in avail[day]
+                if not (b_start < shift_ranges[s][1] and b_end > shift_ranges[s][0])
+            ]
+            if not avail[day]:
+                avail.pop(day, None)
+    return avail
+
+
 @router.post("/api/v1/tkb/confirm")
 def tkb_confirm(
     body: TkbConfirmBody,
@@ -647,6 +689,34 @@ def tkb_confirm(
         return doc
 
     kv_mutate("tkb_nv_by_week", mut, {})
+
+    avail = _busy_to_availability(khoang)
+    from ca_api.persist import availability_confirmation_upsert
+    availability_confirmation_upsert(
+        item_id=f"tkb_{uuid.uuid4().hex[:8]}",
+        store_id=store_id,
+        nv_id=nv,
+        tuan_iso=body.tuan_iso,
+        availability=avail,
+        status="da_xac_nhan",
+        source="tkb_confirm",
+    )
+
+    def add_lbc(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        items = [x for x in items if not (x.get("nv_id") == nv and x.get("tuan_iso") == body.tuan_iso)]
+        items.append({
+            "id": f"lbc_{uuid.uuid4().hex[:8]}",
+            "store_id": store_id,
+            "nv_id": nv,
+            "tuan_iso": body.tuan_iso,
+            "status": "da_xac_nhan",
+            "availability": avail,
+            "busy_intervals": khoang,
+            "source": "tkb_confirm",
+        })
+        return items[-200:]
+    kv_mutate("lich_ban_confirmations", add_lbc, [])
+
     record_sua(
         loai="tkb_xac_nhan",
         truoc={},
@@ -711,10 +781,12 @@ def tkb_get(
 
 @router.get("/api/v1/toi/lich")
 def toi_lich(
+    tuan: Annotated[str | None, Query(description="Tuần ISO, vd 2026-W38")] = None,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     nv = _nv_from_token(authorization)
-    phan = _phan_cong()
+    target_week = (tuan or "").strip() or _current_week()
+    phan = _phan_cong(target_week)
     seed = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
     meta = {c["id"]: c for c in seed.get("ca_mau_21", [])}
     thu = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN"}
@@ -754,8 +826,22 @@ def toi_lich(
         and it.get("trang_thai") == "duyet"
         and it.get("nv_id") == nv
     ]
+    by_week_life = kv_get("lich_tuan_lifecycle_by_week", {})
+    life_doc = by_week_life.get(target_week) if isinstance(by_week_life, dict) else None
+    if not life_doc:
+        life_doc = kv_get("lich_tuan_lifecycle", {})
+    trang_thai = (life_doc.get("trang_thai") if isinstance(life_doc, dict) else None) or "may_sinh"
+
+    from ca_api.persist import list_users
+    users = list_users()
+    matched_user = next((u for u in users if u.get("id") == nv or u.get("nv_id") == nv), None)
+    nv_status = (matched_user.get("status") if matched_user else "active") or "active"
+
     return {
         "nv_id": nv,
+        "tuan_iso": target_week,
+        "trang_thai": trang_thai,
+        "nv_status": nv_status,
         "ca": ca,
         "ca_ids": mine_ids,
         "items": ca,
@@ -782,6 +868,21 @@ def ca_nha(body: CaBody, authorization: Annotated[str | None, Header()] = None) 
 
     base = _phan_cong()
     kv_mutate("phan_cong", mut, base)
+
+    week = _current_week()
+    def mut_week(all_weeks: dict[str, Any]) -> dict[str, Any]:
+        week_pc = all_weeks.setdefault(week, {})
+        week_pc[body.ca_id] = list(state["sau"])
+        return all_weeks
+    kv_mutate("phan_cong_by_week", mut_week, {})
+
+    def mut_results(results: dict[str, Any]) -> dict[str, Any]:
+        if week in results and isinstance(results[week], dict):
+            pc = results[week].setdefault("phan_cong", {})
+            pc[body.ca_id] = list(state["sau"])
+        return results
+    kv_mutate("lich_tuan_results_by_week", mut_results, {})
+
     record_sua(
         loai="nha_ca",
         truoc={"ca_id": body.ca_id, "nv": state["truoc"]},
@@ -817,6 +918,21 @@ def ca_nhan(body: CaBody, authorization: Annotated[str | None, Header()] = None)
 
     base = _phan_cong()
     kv_mutate("phan_cong", mut, base)
+
+    week = _current_week()
+    def mut_week(all_weeks: dict[str, Any]) -> dict[str, Any]:
+        week_pc = all_weeks.setdefault(week, {})
+        week_pc[body.ca_id] = list(state["sau"])
+        return all_weeks
+    kv_mutate("phan_cong_by_week", mut_week, {})
+
+    def mut_results(results: dict[str, Any]) -> dict[str, Any]:
+        if week in results and isinstance(results[week], dict):
+            pc = results[week].setdefault("phan_cong", {})
+            pc[body.ca_id] = list(state["sau"])
+        return results
+    kv_mutate("lich_tuan_results_by_week", mut_results, {})
+
     record_sua(
         loai="nhan_ca",
         truoc={"ca_id": body.ca_id, "nv": state["truoc"]},

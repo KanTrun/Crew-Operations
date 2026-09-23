@@ -111,14 +111,21 @@ GMAPS_NGUON = NguonCanary(
 
 SHOPEEFOOD_NGUON = NguonCanary(
     ma="shopeefood",
-    ten="ShopeeFood — trang tìm kiếm",
-    url_mau=f"https://shopeefood.vn/search?keyword={_GMAPS_TU_KHOA}",
+    ten="ShopeeFood — trang danh sách theo khu vực (delivery)",
+    # URL THẬT scraper dùng (xác minh 2026-09-22): listing khu vực + `?q=` mới
+    # trả kết quả đúng keyword. `/search?keyword=` chỉ là landing chung.
+    url_mau=(
+        f"https://shopeefood.vn/ho-chi-minh/danh-sach-dia-diem-giao-tan-noi"
+        f"?q={_GMAPS_TU_KHOA}"
+    ),
     selector_bat_buoc=(),
     selector_tuy_chon=(),
     chu_thich=(
         "Scraper KHÔNG đọc DOM trang này — nó bắt response JSON của "
-        "`api/delivery/search` / `api/delivery/get_browse_dishes`. Canary vì thế chỉ "
-        "kiểm tra trang còn tải được và không trả trang chặn bot, không dò selector."
+        "`api/delivery/search_global` (id theo keyword) và `api/delivery/get_infos` "
+        "(chi tiết quán, 25/lô) trên host `gappapi.deliverynow.vn`, rồi "
+        "`api/dish/get_delivery_dishes` khi vào trang quán. Canary vì thế chỉ kiểm "
+        "tra trang còn tải được và không trả trang chặn bot, không dò selector."
     ),
 )
 

@@ -41,8 +41,19 @@ def feedback_diff(original_subject: str, original_body: str, final_subject: str,
     }
 
 
-def evaluate_gmail(*, recipients: list[str], subject: str, body: str, store_id: str = "quan_01", store_name: str = "Nhịp Quán", ops_context: dict[str, Any] | None = None) -> QualityGateResult:
-    """Evaluate mail safety and quality using fixed, auditable checks and weights."""
+def evaluate_gmail(
+    *,
+    recipients: list[str],
+    subject: str,
+    body: str,
+    store_id: str = "quan_01",
+    store_name: str = "Nhịp Quán",
+    ops_context: dict[str, Any] | None = None,
+    sensor_chain: Any | None = None,
+) -> QualityGateResult:
+    """Evaluate mail safety and quality using fixed, auditable checks and weights.
+    Supports SensorChain (JEV + Regex fallback) to intercept injection and data exposure.
+    """
     flags: list[str] = []
     hard_fails: list[str] = []
     text = f"{subject}\n{body}"
@@ -54,6 +65,21 @@ def evaluate_gmail(*, recipients: list[str], subject: str, body: str, store_id: 
         hard_fails.append("internal_data_exposure")
     if _INJECTION_RE.search(text):
         hard_fails.append("prompt_injection")
+
+    # SensorChain check: JEV + Regex fallback
+    if sensor_chain is not None:
+        from ca_agents.sensors.fb_questions import INJECTION_QUESTIONS
+        res = sensor_chain.evaluate(text, "gmail_quality_gate", INJECTION_QUESTIONS)
+        sigs = res.signals
+        override = sigs.get("co_gang_ghi_de_chi_dan")
+        leak = sigs.get("hoi_du_lieu_noi_bo")
+        if override and float(override.value) >= 0.50:
+            if "prompt_injection" not in hard_fails:
+                hard_fails.append("prompt_injection")
+        if leak and float(leak.value) >= 0.50:
+            if "internal_data_exposure" not in hard_fails:
+                hard_fails.append("internal_data_exposure")
+
     if ops_context:
         for key in ("gio", "ngay", "mat_hang", "ton_kho", "nguong", "doanh_thu", "so_don"):
             value = ops_context.get(key)

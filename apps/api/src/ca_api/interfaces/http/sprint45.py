@@ -36,6 +36,7 @@ from ca_playbook import (
     list_luat,
     list_sua,
     pipeline_snapshot,
+    record_sua,
     save_luat,
     sua_rows_for_mau,
     tap_su_tu_sua,
@@ -165,22 +166,38 @@ def _set_week_value(key: str, tuan_iso: str, value: Any) -> None:
 
 def _publish_schedule_notification(week: str, store_id: str = "quan_01") -> int:
     """Persist one exact-week notification for each active real account."""
-    recipients = [
-        str(user.get("nv_id") or "")
+    users = [
+        user
         for user in list_users(store_id=store_id)
         if user.get("role") in {"nhan_vien", "quan_ly", "chu_quan"}
         and str(user.get("status") or "active") == "active"
         and str(user.get("nv_id") or "")
     ]
-    return thong_bao_lich_create_for_week(
-        tuan_iso=week,
-        su_kien="da_cong_bo",
-        tieu_de=f"Lịch tuần {week} đã được công bố",
-        noi_dung="Lịch mới đã sẵn sàng. Mở để xem ca làm và xác nhận lịch của bạn.",
-        url=f"/lich-tuan?tuan={week}",
-        nv_ids=recipients,
-        store_id=store_id,
-    )
+    created = 0
+    manager_ids = [str(u["nv_id"]) for u in users if u.get("role") in {"quan_ly", "chu_quan"}]
+    staff_ids = [str(u["nv_id"]) for u in users if u.get("role") == "nhan_vien"]
+
+    if manager_ids:
+        created += thong_bao_lich_create_for_week(
+            tuan_iso=week,
+            su_kien="da_cong_bo",
+            tieu_de=f"Lịch tuần {week} đã được công bố",
+            noi_dung="Lịch mới đã sẵn sàng. Mở để xem bảng phân công toàn quán.",
+            url=f"/lich-tuan?tuan={week}",
+            nv_ids=manager_ids,
+            store_id=store_id,
+        )
+    if staff_ids:
+        created += thong_bao_lich_create_for_week(
+            tuan_iso=week,
+            su_kien="da_cong_bo",
+            tieu_de=f"Lịch tuần {week} đã được công bố",
+            noi_dung="Lịch mới đã sẵn sàng. Mở để xem ca làm và xác nhận lịch của bạn.",
+            url=f"/toi?tuan={week}",
+            nv_ids=staff_ids,
+            store_id=store_id,
+        )
+    return created
 
 
 @router.get("/api/v1/lich/thong-bao")
@@ -971,6 +988,15 @@ def inbox_decide(
             return items_sw
 
         kv_mutate("swap", add_swap, [])
+        if pending_swap.get("trang_thai") == "dong_y":
+            _apply_swap_to_assignments(
+                giver=str(pending_swap.get("a") or ""),
+                taker=str(pending_swap.get("b") or ""),
+                ca_id=str(pending_swap.get("ca_id") or ""),
+                week=str(pending_swap.get("tuan_id") or tuan_default),
+                swap_id=str(pending_swap.get("id") or ""),
+                actor=str(role),
+            )
     if not found:
         raise HTTPException(status_code=404, detail="inbox_item")
 
@@ -1704,6 +1730,48 @@ def qr_use(
     return {"ok": True, "nv_id": used["nv_id"]}
 
 
+def _apply_swap_to_assignments(
+    *, giver: str, taker: str, ca_id: str, week: str, swap_id: str, actor: str,
+) -> None:
+    """Cập nhật hoán đổi nhân viên ca làm việc thật trên lịch khi lệnh đổi ca được đồng ý."""
+    if not giver or not taker or not ca_id:
+        return
+
+    def mut_pc(cur: dict[str, Any]) -> dict[str, Any]:
+        assigned = list(cur.get(ca_id, []))
+        if giver in assigned:
+            assigned = [x for x in assigned if x != giver]
+        if taker not in assigned:
+            assigned.append(taker)
+        cur[ca_id] = assigned
+        return cur
+
+    kv_mutate("phan_cong", mut_pc, {})
+
+    def mut_pc_by_week(all_weeks: dict[str, Any]) -> dict[str, Any]:
+        week_pc = all_weeks.setdefault(week, {})
+        mut_pc(week_pc)
+        return all_weeks
+
+    kv_mutate("phan_cong_by_week", mut_pc_by_week, {})
+
+    def mut_results_by_week(results: dict[str, Any]) -> dict[str, Any]:
+        if week in results and isinstance(results[week], dict):
+            pc = results[week].setdefault("phan_cong", {})
+            mut_pc(pc)
+        return results
+
+    kv_mutate("lich_tuan_results_by_week", mut_results_by_week, {})
+
+    record_sua(
+        loai="doi_ca",
+        truoc={"ca_id": ca_id, "nv_id": giver},
+        sau={"ca_id": ca_id, "nv_id": taker, "swap_id": swap_id, "tuan_iso": week},
+        ai=actor,
+        now_iso=datetime.now(UTC).isoformat(),
+    )
+
+
 @router.post("/api/v1/cho-doi-ca")
 async def swap_open(
     body: SwapBody,
@@ -1725,6 +1793,7 @@ async def swap_open(
         "ca_id": body.ca_id,
         "trang_thai": "cho_xac_nhan",
         "nguon": "quan",
+        "tuan_id": _life().get("tuan_iso", "2026-W01"),
     }
 
     def mut(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1787,6 +1856,8 @@ async def swap_dong_y(
             it["dong_y"] = sorted(agreed)
             if (is_open_to_all and nv != it["a"]) or (it["b"] != "all" and nv == it["b"]):
                 it["trang_thai"] = "dong_y"
+                if is_open_to_all and nv:
+                    it["b"] = nv
             found = dict(it)
             return items
         raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
@@ -1794,6 +1865,21 @@ async def swap_dong_y(
     kv_mutate("swap", mut, [])
     if not found:
         raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
+
+    if found.get("trang_thai") == "dong_y":
+        giver = str(found.get("a") or "")
+        taker = str(found.get("b") or "")
+        ca_id = str(found.get("ca_id") or "")
+        swap_week = str(found.get("tuan_id") or _life().get("tuan_iso") or "2026-W01")
+        _apply_swap_to_assignments(
+            giver=giver,
+            taker=taker,
+            ca_id=ca_id,
+            week=swap_week,
+            swap_id=swap_id,
+            actor=str(nv or caller.get("username") or caller["role"]),
+        )
+
     _audit(
         "shift_swap.confirm",
         nv or caller["role"],

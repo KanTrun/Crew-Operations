@@ -882,6 +882,173 @@ class TableReservation(BaseModel):
     updated_at: str = ""
 
 
+# ── Gmail Management Contracts ──────────────────────────────────────────
+
+class GmailAccount(BaseModel):
+    id: str
+    store_id: str = "quan_01"
+    nv_id: str
+    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    display_name: str = ""
+    is_primary: bool = False
+    is_active: bool = True
+    created_at: str
+    updated_at: str
+
+
+class GmailOAuthTokens(BaseModel):
+    account_id: str
+    access_token: str
+    refresh_token: str | None = None
+    expires_at: str
+    scope: str = ""
+    token_type: str = "Bearer"
+    updated_at: str
+
+
+class GmailSyncState(BaseModel):
+    account_id: str
+    last_history_id: str | None = None
+    last_sync_at: str | None = None
+    sync_cursor: str | None = None
+    total_messages: int = 0
+    unread_count: int = 0
+    updated_at: str
+
+
+class GmailMessage(BaseModel):
+    id: str
+    account_id: str
+    thread_id: str
+    label_ids: list[str] = Field(default_factory=list)
+    snippet: str = ""
+    from_email: str = ""
+    to_emails: list[str] = Field(default_factory=list)
+    cc_emails: list[str] = Field(default_factory=list)
+    subject: str = ""
+    body_text: str | None = None
+    body_html: str | None = None
+    internal_date: str
+    is_read: bool = False
+    is_starred: bool = False
+    has_attachment: bool = False
+    raw_headers: str | None = None
+    created_at: str
+
+
+class GmailLabel(BaseModel):
+    id: str
+    account_id: str
+    name: str
+    label_type: Literal["system", "user"] = "user"
+    message_list_visibility: Literal["show", "hide"] = "show"
+    label_list_visibility: Literal["labelShow", "labelHide"] = "labelShow"
+    color_background: str | None = None
+    color_text: str | None = None
+    total_messages: int = 0
+    unread_messages: int = 0
+    updated_at: str
+
+
+class GmailFilter(BaseModel):
+    id: str
+    account_id: str
+    criteria: dict[str, Any] = Field(default_factory=dict)
+    action: dict[str, Any] = Field(default_factory=dict)
+    created_at: str
+    updated_at: str
+
+
+class GmailThread(BaseModel):
+    id: str
+    account_id: str
+    message_ids: list[str] = Field(default_factory=list)
+    subject: str = ""
+    participants: list[str] = Field(default_factory=list)
+    last_message_date: str = ""
+    is_unread: bool = False
+    label_ids: list[str] = Field(default_factory=list)
+
+
+class GmailOAuthAuthorizeRequest(BaseModel):
+    state: str | None = None
+
+
+class GmailOAuthAuthorizeResponse(BaseModel):
+    authorization_url: str
+    state: str
+
+
+class GmailOAuthCallbackRequest(BaseModel):
+    code: str
+    state: str
+
+
+class GmailOAuthCallbackResponse(BaseModel):
+    ok: bool
+    account_id: str
+    email: str
+    message: str
+
+
+class GmailAccountCreateRequest(BaseModel):
+    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    display_name: str = Field(default="", max_length=100)
+    is_primary: bool = False
+
+
+class GmailAccountUpdateRequest(BaseModel):
+    display_name: str | None = Field(default=None, max_length=100)
+    is_primary: bool | None = None
+    is_active: bool | None = None
+
+
+class GmailMessageListParams(BaseModel):
+    label_ids: list[str] | None = None
+    query: str | None = None
+    is_read: bool | None = None
+    limit: int = Field(default=50, ge=1, le=200)
+    offset: int = Field(default=0, ge=0)
+
+
+class GmailLabelCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    label_list_visibility: Literal["labelShow", "labelHide"] = "labelShow"
+    message_list_visibility: Literal["show", "hide"] = "show"
+    color_background: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    color_text: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+
+
+class GmailLabelUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    label_list_visibility: Literal["labelShow", "labelHide"] | None = None
+    message_list_visibility: Literal["show", "hide"] | None = None
+    color_background: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    color_text: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+
+
+class GmailFilterCreateRequest(BaseModel):
+    criteria: dict[str, Any] = Field(default_factory=dict)
+    action: dict[str, Any] = Field(default_factory=dict)
+
+
+class GmailSyncRequest(BaseModel):
+    account_id: str | None = None
+    full_sync: bool = False
+
+
+class GmailSendMessageRequest(BaseModel):
+    to: list[str] = Field(min_length=1)
+    subject: str = Field(min_length=1, max_length=200)
+    body_text: str = Field(min_length=1, max_length=50000)
+    body_html: str | None = None
+    cc: list[str] | None = None
+    bcc: list[str] | None = None
+    thread_id: str | None = None
+    in_reply_to: str | None = None
+    references: str | None = None
+
+
 CONTRACTS = {
     "NhanVien": NhanVien,
     "Ca": Ca,
@@ -907,6 +1074,26 @@ CONTRACTS = {
     "AIEvaluation": AIEvaluation,
     "AIRuleProposal": AIRuleProposal,
     "TableReservation": TableReservation,
+    # Gmail Management
+    "GmailAccount": GmailAccount,
+    "GmailOAuthTokens": GmailOAuthTokens,
+    "GmailSyncState": GmailSyncState,
+    "GmailMessage": GmailMessage,
+    "GmailLabel": GmailLabel,
+    "GmailFilter": GmailFilter,
+    "GmailThread": GmailThread,
+    "GmailOAuthAuthorizeRequest": GmailOAuthAuthorizeRequest,
+    "GmailOAuthAuthorizeResponse": GmailOAuthAuthorizeResponse,
+    "GmailOAuthCallbackRequest": GmailOAuthCallbackRequest,
+    "GmailOAuthCallbackResponse": GmailOAuthCallbackResponse,
+    "GmailAccountCreateRequest": GmailAccountCreateRequest,
+    "GmailAccountUpdateRequest": GmailAccountUpdateRequest,
+    "GmailMessageListParams": GmailMessageListParams,
+    "GmailLabelCreateRequest": GmailLabelCreateRequest,
+    "GmailLabelUpdateRequest": GmailLabelUpdateRequest,
+    "GmailFilterCreateRequest": GmailFilterCreateRequest,
+    "GmailSyncRequest": GmailSyncRequest,
+    "GmailSendMessageRequest": GmailSendMessageRequest,
 }
 
 __all__ = [
@@ -934,5 +1121,25 @@ __all__ = [
     "VirtualSimulation",
     "VirtualStaff",
     "VirtualStaffType",
+    # Gmail Management
+    "GmailAccount",
+    "GmailOAuthTokens",
+    "GmailSyncState",
+    "GmailMessage",
+    "GmailLabel",
+    "GmailFilter",
+    "GmailThread",
+    "GmailOAuthAuthorizeRequest",
+    "GmailOAuthAuthorizeResponse",
+    "GmailOAuthCallbackRequest",
+    "GmailOAuthCallbackResponse",
+    "GmailAccountCreateRequest",
+    "GmailAccountUpdateRequest",
+    "GmailMessageListParams",
+    "GmailLabelCreateRequest",
+    "GmailLabelUpdateRequest",
+    "GmailFilterCreateRequest",
+    "GmailSyncRequest",
+    "GmailSendMessageRequest",
 ]
 

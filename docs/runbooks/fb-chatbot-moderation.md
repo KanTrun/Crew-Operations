@@ -31,6 +31,28 @@ Kết quả: AUTO_SEND (flag ON + supervisor pass) | QUEUE (QL duyệt) |
 
 **Rollback sự cố:** tắt flag là đủ. Không cần rollback DB (schema additive).
 
+## 2b. Bật / tắt cảm biến Jev (TypeSafe System One)
+
+**Jev là cảm biến xác suất** bổ trợ regex (kế hoạch JEV v2): phát hiện nguy cơ sức khỏe,
+đe dọa pháp lý, gay gắt, mỉa mai, đòi gặp người — bằng cách diễn đạt mà regex bỏ lọt.
+Nó **không** quyết định luồng; `leo_thang = regex OR jev` (đơn điệu).
+
+**Bật (Chủ quán):**
+- Cần key Jev: `JEV_API_KEY=...` + `JEV_ENABLED=true` (env) **hoặc**
+- API: `PUT /api/v1/page/fb-policy` body `{"jev_enabled": true}` (tức thời, không restart)
+
+**Tắt (khẩn cấp — trong vài giây, không cần deploy):**
+- API: `PUT /api/v1/page/fb-policy` body `{"jev_enabled": false}`
+- hoặc UI: nút **Tắt Jev** trên `/page-quan/fb-inbox`.
+- Khi tắt: Jev không chạy, regex vẫn là lưới an toàn (hành vi trước khi có Jev).
+
+**Khi Jev LỖI (timeout/5xx/429):** pipeline **fail-closed** — tin không tự trả lời
+mà vào hàng đợi Quản lý (`jev_failed_fail_closed`), tránh "regex không thấy = an toàn".
+Kiểm tra vết: audit `fb_jev_sensor` (jev_success/jev_failed + latency).
+
+**Ẩn danh hóa:** trước khi gửi Jev, tên/SĐT được mask (`KH_xx`/`KH_SDT`) — kế hoạch §6.
+Kiểm tra điều khoản lưu trữ của TypeSafe trước khi bật với dữ liệu thật.
+
 ## 3. Duyệt tin hàng ngày (UI)
 
 1. Vào **More → Hộp thư Fanpage (duyệt)** (`/page-quan/fb-inbox`) — role Quản lý trở lên.

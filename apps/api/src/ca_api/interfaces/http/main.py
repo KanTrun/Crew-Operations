@@ -64,6 +64,7 @@ from ca_api.interfaces.http.channels import router as channels_router
 from ca_api.interfaces.http.chat import router as chat_router
 from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.copilot_voice import router as copilot_voice_router
+from ca_api.interfaces.http.gmail import router as gmail_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.ops_explain import router as ops_explain_router
@@ -181,6 +182,8 @@ async def broadcast_successful_mutation(request: Request, call_next: Any) -> Any
     actor_session = (
         auth_session(request.headers.get("authorization"))
         if is_mutation_method
+        and path not in _AUDIT_SKIP_PATHS
+        and request.headers.get("authorization")
         else None
     )
     generic_audit_added = False
@@ -251,6 +254,7 @@ if pricing_radar_router:
 if serpapi_system_router:
     app.include_router(serpapi_system_router)
 app.include_router(mail_router)
+app.include_router(gmail_router)
 app.include_router(ai_learning_router)
 app.include_router(chat_router)
 app.include_router(reservations_router)
@@ -277,15 +281,8 @@ def _week_value(key: str, week: str, default: Any) -> Any:
     raw = kv_get(key, None)
     if isinstance(raw, dict) and raw:
         return raw.get(week, default)
-    if key.endswith("_by_week"):
-        legacy = kv_get(key.removesuffix("_by_week"), None)
-        if legacy is not None:
-            # Legacy doc có tuan_iso: chỉ fallback khi đúng tuần được hỏi,
-            # tránh tuần mới thừa hưởng trạng thái của tuần cũ.
-            if isinstance(legacy, dict) and "tuan_iso" in legacy:
-                return legacy if legacy.get("tuan_iso") == week else default
-            return legacy
-    return default
+    legacy = kv_get(key.removesuffix("_by_week"), None) if key.endswith("_by_week") else None
+    return legacy if legacy is not None else default
 
 
 def _pin_map(tuan_iso: str) -> dict[tuple[str, str], bool]:

@@ -73,6 +73,26 @@ def test_contracts_registered() -> None:
         "AIEvaluation",
         "AIRuleProposal",
         "TableReservation",
+        # Gmail Management
+        "GmailAccount",
+        "GmailOAuthTokens",
+        "GmailSyncState",
+        "GmailMessage",
+        "GmailLabel",
+        "GmailFilter",
+        "GmailThread",
+        "GmailOAuthAuthorizeRequest",
+        "GmailOAuthAuthorizeResponse",
+        "GmailOAuthCallbackRequest",
+        "GmailOAuthCallbackResponse",
+        "GmailAccountCreateRequest",
+        "GmailAccountUpdateRequest",
+        "GmailMessageListParams",
+        "GmailLabelCreateRequest",
+        "GmailLabelUpdateRequest",
+        "GmailFilterCreateRequest",
+        "GmailSyncRequest",
+        "GmailSendMessageRequest",
     }
 
 

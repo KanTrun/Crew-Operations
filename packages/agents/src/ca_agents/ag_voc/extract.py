@@ -51,6 +51,8 @@ VIEC_TREO: dict[str, str] = {
     "ve_sinh": "Bổ sung lượt vệ sinh khu khách ngồi — khách phản hồi chưa sạch",
     "thiet_bi": "Kiểm tra thiết bị khách nêu và ghi vào phiếu bảo trì",
     "phuc_vu": "Rà lại bước chào và tiếp khách trong phiếu mở quán",
+    "su_co_an_toan": "Kiểm tra khẩn cấp an toàn vệ sinh thực phẩm và liên hệ khách ngay",
+    "khieu_nai_gay_gat": "Xử lý khẩn cấp phản hồi gay gắt từ khách hàng",
 }
 
 HAN_GIO: dict[str, int] = {
@@ -143,3 +145,95 @@ def phan_loai(phan_hoi: str) -> VocResult:
 def phan_loai_lo(phan_hoi_list: list[str]) -> list[VocResult]:
     """Phân loại một lô phản hồi. Mỗi phản hồi độc lập."""
     return [phan_loai(p) for p in phan_hoi_list]
+
+
+def phan_loai_nang_cao(
+    phan_hoi: str,
+    sensor_chain: object | None = None,
+) -> VocResult:
+    """Phân loại nâng cao: regex trước, SensorChain bổ sung sau (opt-in).
+
+    Gọi `phan_loai()` để phân loại tất định rồi dùng SensorChain (JEV →
+    RegexSensor fallback) để bổ sung:
+    - `nguy_co_suc_khoe ≥ 0.30` → nâng loại thành "su_co_an_toan", han_gio=1.
+    - `muc_gay_gat ≥ 1.5`       → rút han_gio xuống còn 2h (thay vì 24h).
+    - `co_ve_mia_mai ≥ 0.50`    → ghi vào ghi_chu để báo người xử lý.
+
+    Nguyên tắc đơn điệu: SensorChain chỉ rút ngắn hạn (leo thang) hoặc thêm
+    loại nghiêm trọng hơn, không bao giờ nới lỏng kết quả regex đã có.
+
+    Args:
+        phan_hoi: Nội dung phản hồi khách.
+        sensor_chain: SensorChain đã khởi tạo. None → tạo mới chỉ Regex.
+
+    Returns:
+        VocResult (có thể đã được nâng cấp so với phan_loai() thuần túy).
+    """
+    base = phan_loai(phan_hoi)
+
+    # Import lazy tránh vòng lặp phụ thuộc.
+    from ca_agents.sensors.sensor_chain import SensorChain
+    from ca_agents.sensors.voc_questions import VOC_QUESTIONS
+
+    chain = sensor_chain
+    if chain is None:
+        chain = SensorChain()  # chỉ Regex (JEV chưa bật)
+
+    result = chain.evaluate(phan_hoi, "voc_phan_loai", VOC_QUESTIONS)
+
+    # Nếu cả hai cảm biến thất bại → giữ kết quả regex cơ bản, ghi chú.
+    if result.both_failed:
+        return VocResult(
+            la_su_co_van_hanh=base.la_su_co_van_hanh,
+            loai=base.loai,
+            tu_khoa=base.tu_khoa,
+            source_span=base.source_span,
+            cau_viec_treo=base.cau_viec_treo,
+            han_gio=base.han_gio,
+            do_tin_cay=base.do_tin_cay,
+            ghi_chu=f"{base.ghi_chu}|sensor_chain_failed" if base.ghi_chu else "sensor_chain_failed",
+        )
+
+    signals = result.signals
+    health = signals.get("nguy_co_suc_khoe")
+    hostility = signals.get("muc_gay_gat")
+    sarcasm = signals.get("co_ve_mia_mai")
+
+    loai = base.loai
+    han_gio = base.han_gio
+    la_su_co = base.la_su_co_van_hanh
+    ghi_chu_parts = [base.ghi_chu] if base.ghi_chu else []
+
+    if result.fallback_used:
+        ghi_chu_parts.append(f"sensor_source={result.source}")
+
+    # An toàn sức khỏe: ưu tiên cao nhất — ghi đè loại và rút hạn xuống 1h.
+    if health is not None and float(health.value) >= 0.30:
+        loai = "su_co_an_toan"
+        han_gio = 1
+        la_su_co = True
+        ghi_chu_parts.append(f"health_risk={health.value:.2f}")
+
+    # Bức xúc cao: rút hạn xuống 2h (chỉ khi han_gio > 2 hoặc chưa có) và đánh dấu sự cố.
+    elif hostility is not None and float(hostility.value) >= 1.5:
+        la_su_co = True
+        if loai == "chua_phan_loai_duoc":
+            loai = "khieu_nai_gay_gat"
+        if han_gio is None or han_gio > 2:
+            han_gio = 2
+        ghi_chu_parts.append(f"hostility={hostility.value:.2f}")
+
+    # Mỉa mai: không thay đổi phân loại, chỉ ghi chú để người xử lý biết.
+    if sarcasm is not None and float(sarcasm.value) >= 0.50:
+        ghi_chu_parts.append(f"mia_mai={sarcasm.value:.2f}")
+
+    return VocResult(
+        la_su_co_van_hanh=la_su_co,
+        loai=loai,
+        tu_khoa=base.tu_khoa,
+        source_span=base.source_span,
+        cau_viec_treo=VIEC_TREO.get(loai, base.cau_viec_treo),
+        han_gio=han_gio,
+        do_tin_cay=base.do_tin_cay,
+        ghi_chu="|".join(ghi_chu_parts) if ghi_chu_parts else "",
+    )

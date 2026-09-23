@@ -9,11 +9,13 @@ import {
   Alert,
   AuthGate,
   Btn,
+  ConfirmDialog,
   Empty,
   Loading,
   Notice,
   PageHeader,
   StatusChip,
+  Toasts,
   useToasts,
 } from "../../../ui/kit";
 
@@ -65,6 +67,17 @@ const STATUS_MAP: Record<string, { label: string; tone: "default" | "ok" | "warn
   needs_review: { label: "Cần duyệt tay", tone: "warn" },
 };
 
+/** Nhãn tiếng Việt cho mã hành động, dùng trong toast thành công và câu lỗi. */
+const ACTION_LABELS: Record<"check-in" | "complete" | "no-show" | "cancel", string> = {
+  "check-in": "cho khách vào bàn",
+  complete: "hoàn tất và trả bàn",
+  "no-show": "đánh dấu khách không đến",
+  cancel: "hủy đơn đặt bàn",
+};
+
+/** Chu kỳ làm mới nền. Trang ghi "theo thời gian thực" nên phải tự cập nhật. */
+const AUTO_REFRESH_MS = 30_000;
+
 export default function DatBanPage() {
   const [token, setToken] = useState("");
   const [manager, setManager] = useState(false);
@@ -77,7 +90,23 @@ export default function DatBanPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const { push } = useToasts();
+  // Huỷ đơn là hành động không lấy lại được → hỏi lý do trước khi gọi API,
+  // thay vì hardcode "Nhân viên hủy trực tiếp trên giao diện" (lịch sử mất
+  // thông tin thật để đối soát sau này).
+  const [cancelTarget, setCancelTarget] = useState<Reservation | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  // Form đặt bàn thủ công: khách gọi điện / tới trực tiếp thì quản lý phải
+  // nhập được vào hệ thống, nếu không đơn đó tồn tại ngoài sổ và dễ trùng bàn.
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({
+    customer_name: "",
+    phone: "",
+    booking_time: "",
+    party_size: "2",
+  });
+  const { toasts, push, dismiss } = useToasts();
 
   useEffect(() => {
     setToken(getToken());
@@ -86,10 +115,17 @@ export default function DatBanPage() {
     if (!getToken()) setLoading(false);
   }, []);
 
-  const loadData = useCallback(() => {
+  /**
+   * `silent=true` dùng cho làm mới tự động: không bật `loading` (tránh nháy
+   * toàn trang mỗi 30 giây) và không xoá `error` cũ hiển thị chớp nhoáng.
+   */
+  const loadData = useCallback((opts?: { silent?: boolean }) => {
     if (!getToken()) return;
-    setLoading(true);
-    setError(null);
+    const silent = opts?.silent === true;
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
 
     Promise.all([
       apiGet<{ tables: Table[] }>("/api/v1/reservations/tables"),
@@ -100,8 +136,14 @@ export default function DatBanPage() {
         setTables(tblRes.tables || []);
         setReservations(resRes.items || []);
         setNotifications(notifRes.notifications || []);
+        setError(null);
+        setLastSync(new Date());
       })
-      .catch((e) => setError(viError(e, { doing: "tải dữ liệu sơ đồ bàn" })))
+      .catch((e) => {
+        // Làm mới nền thất bại thì im lặng — dữ liệu cũ vẫn đang hiển thị, báo
+        // lỗi mỗi 30 giây sẽ gây nhiễu. Lỗi ở lần tải đầu thì vẫn phải báo.
+        if (!silent) setError(viError(e, { doing: "tải dữ liệu sơ đồ bàn" }));
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -109,33 +151,86 @@ export default function DatBanPage() {
     if (token) loadData();
   }, [token, loadData]);
 
-  const handleAction = async (resId: string, action: "check-in" | "complete" | "no-show" | "cancel") => {
+  // Làm mới tự động: trang ghi "theo thời gian thực" nên phải thật sự cập nhật,
+  // không chỉ khi bấm nút. 30 giây đủ nhanh cho ca trực mà không spam API.
+  // Dừng khi tab bị ẩn để không tốn request vô ích.
+  useEffect(() => {
+    if (!token || !manager) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") loadData({ silent: true });
+    }, AUTO_REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, [token, manager, loadData]);
+
+  const handleAction = async (
+    resId: string,
+    action: "check-in" | "complete" | "no-show" | "cancel",
+    reason?: string,
+  ) => {
     setBusyId(resId);
+    // Nhãn tiếng Việt cho thông báo: mã hành động ("check-in", "no-show") đọc
+    // lên câu tiếng Việt sẽ vỡ ngữ pháp nếu ghép thẳng vào chuỗi.
+    const actionLabel = ACTION_LABELS[action];
     try {
       if (action === "cancel") {
         await apiSend(`/api/v1/reservations/${resId}/cancel`, {
-          reason: "Nhân viên hủy trực tiếp trên giao diện",
+          reason: reason?.trim() || "Nhân viên hủy trực tiếp trên giao diện",
         });
         push("Đã hủy đơn đặt bàn thành công", "ok");
       } else {
         await apiSend(`/api/v1/reservations/${resId}/${action}`);
-        push(`Cập nhật trạng thái sang ${action} thành công`, "ok");
+        push(`Đã ${actionLabel} thành công`, "ok");
       }
-      loadData();
+      loadData({ silent: true });
     } catch (e) {
-      push(viError(e, { doing: `thực hiện ${action}` }), "err");
+      push(viError(e, { doing: actionLabel }), "err");
     } finally {
       setBusyId(null);
     }
+  };
+
+  /** Xác nhận huỷ đơn đã chọn trong hộp thoại, kèm lý do. */
+  const confirmCancel = async () => {
+    if (!cancelTarget) return;
+    const target = cancelTarget;
+    const reason = cancelReason;
+    setCancelTarget(null);
+    setCancelReason("");
+    await handleAction(target.id, "cancel", reason);
   };
 
   const handleAckNotification = async (notifId: string) => {
     try {
       await apiSend(`/api/v1/reservations/notifications/${notifId}/ack`);
       push("Đã xác nhận xem thông báo ca trực", "ok");
-      loadData();
+      loadData({ silent: true });
     } catch (e) {
       push(viError(e, { doing: "xác nhận thông báo" }), "err");
+    }
+  };
+
+  /** Tạo đơn thủ công. Trường giờ dùng `datetime-local` nên gửi thẳng ISO. */
+  const handleCreate = async () => {
+    if (!form.customer_name.trim() || !form.phone.trim() || !form.booking_time) {
+      push("Cần nhập tên khách, số điện thoại và giờ đến.", "err");
+      return;
+    }
+    setCreating(true);
+    try {
+      await apiSend("/api/v1/reservations", {
+        customer_name: form.customer_name.trim(),
+        phone: form.phone.trim(),
+        booking_time: form.booking_time,
+        party_size: Number(form.party_size) || 2,
+      });
+      push("Đã tạo đơn đặt bàn", "ok");
+      setShowCreate(false);
+      setForm({ customer_name: "", phone: "", booking_time: "", party_size: "2" });
+      loadData({ silent: true });
+    } catch (e) {
+      push(viError(e, { doing: "tạo đơn đặt bàn" }), "err");
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -146,8 +241,11 @@ export default function DatBanPage() {
 
   const unreadNotifs = notifications.filter((n) => !n.da_xem);
 
-  // Determine current table occupancy
-  const activeBookings = reservations.filter((r) => ["confirmed", "seated"].includes(r.status));
+  // Trạng thái đang chiếm bàn — phải khớp backend
+  // (`table_reservation_service.atomic_hold_or_book_table` lọc
+  // `status IN ('held','confirmed','seated')`). Thiếu `held` thì bàn đang giữ
+  // tạm cho khách vẫn hiện "Trống", nhân viên dễ xếp nhầm khách vào.
+  const activeBookings = reservations.filter((r) => ["held", "confirmed", "seated"].includes(r.status));
   const occupiedTableMap: Record<string, Reservation> = {};
   for (const b of activeBookings) {
     for (const tid of b.table_ids || []) {
@@ -173,7 +271,17 @@ export default function DatBanPage() {
         meta="Quản lý sơ đồ 10 bàn, theo dõi đơn đặt bàn AI và nhận thông báo ca trực theo thời gian thực."
       />
 
+      <Toasts toasts={toasts} onDismiss={dismiss} />
+
       {error && <Notice>{error}</Notice>}
+
+      {lastSync && (
+        <p className="nq-booking-synced" aria-live="polite">
+          <Icon name="refresh" size={13} /> Cập nhật lúc{" "}
+          {lastSync.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} · tự động
+          mỗi {AUTO_REFRESH_MS / 1000} giây
+        </p>
+      )}
 
       {/* Cảnh báo ca trực có thông báo chưa đọc */}
       {unreadNotifs.length > 0 && (
@@ -221,9 +329,11 @@ export default function DatBanPage() {
                 const tone = booking?.status === "seated" ? "seated" : booking ? "reserved" : "ready";
                 const statusText = booking?.status === "seated"
                   ? `Đang phục vụ · ${booking.customer_name}`
-                  : booking
-                    ? `Đặt lúc ${booking.booking_time.slice(11, 16)} · ${booking.party_size} khách`
-                    : "Sẵn sàng đón khách";
+                  : booking?.status === "held"
+                    ? `Đang giữ tạm · ${booking.customer_name}`
+                    : booking
+                      ? `Đặt lúc ${booking.booking_time.slice(11, 16)} · ${booking.party_size} khách`
+                      : "Sẵn sàng đón khách";
 
                 return (
                   <article key={table.id} className="nq-booking-table" data-tone={tone}>
@@ -253,8 +363,10 @@ export default function DatBanPage() {
               <div className="nq-booking-filters" role="group" aria-label="Lọc trạng thái đặt bàn">
                 {[
                   ["all", "Tất cả"],
+                  ["held", "Giữ tạm"],
                   ["confirmed", "Đã chốt"],
                   ["seated", "Đang ngồi"],
+                  ["needs_review", "Cần duyệt tay"],
                   ["completed", "Hoàn tất"],
                   ["cancelled", "Đã hủy"],
                   ["no_show", "Không đến"],
@@ -268,11 +380,75 @@ export default function DatBanPage() {
                     {label}
                   </button>
                 ))}
-                <button type="button" className="nq-booking-refresh" onClick={loadData} aria-label="Tải lại dữ liệu">
-                  <Icon name="refresh" size={17} />
+                <button
+                  type="button"
+                  className="nq-booking-refresh"
+                  onClick={() => loadData()}
+                  aria-label="Tải lại dữ liệu"
+                >
+                  <Icon name="refresh" size={17} /> Tải lại
+                </button>
+                <button
+                  type="button"
+                  className="nq-booking-refresh"
+                  onClick={() => setShowCreate((v) => !v)}
+                  aria-expanded={showCreate}
+                  aria-label="Thêm đơn đặt bàn"
+                >
+                  <Icon name="clipboard" size={17} /> Thêm đơn
                 </button>
               </div>
             </div>
+
+            {showCreate && (
+              <div className="nq-booking-create">
+                <div className="nq-booking-create-grid">
+                  <label>
+                    Tên khách
+                    <input
+                      value={form.customer_name}
+                      onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
+                      placeholder="VD: Anh Nam"
+                    />
+                  </label>
+                  <label>
+                    Số điện thoại
+                    <input
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      placeholder="VD: 0901234567"
+                      inputMode="tel"
+                    />
+                  </label>
+                  <label>
+                    Giờ đến
+                    <input
+                      type="datetime-local"
+                      value={form.booking_time}
+                      onChange={(e) => setForm({ ...form, booking_time: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Số người
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={form.party_size}
+                      onChange={(e) => setForm({ ...form, party_size: e.target.value })}
+                    />
+                  </label>
+                </div>
+                <div className="nq-booking-create-actions">
+                  <Btn variant="primary" busy={creating} onClick={handleCreate}>
+                    Tạo đơn
+                  </Btn>
+                  <Btn variant="ghost" disabled={creating} onClick={() => setShowCreate(false)}>
+                    Đóng
+                  </Btn>
+                </div>
+              </div>
+            )}
 
             {filteredReservations.length === 0 ? (
               <Empty title="Không có đơn đặt bàn">Không có đơn đặt bàn nào thỏa mãn điều kiện lọc.</Empty>
@@ -308,7 +484,7 @@ export default function DatBanPage() {
                           <>
                             <Btn variant="primary" disabled={busyId === reservation.id} onClick={() => handleAction(reservation.id, "check-in")}>Vào bàn</Btn>
                             <Btn variant="danger" disabled={busyId === reservation.id} onClick={() => handleAction(reservation.id, "no-show")}>No-show</Btn>
-                            <Btn variant="ghost" disabled={busyId === reservation.id} onClick={() => handleAction(reservation.id, "cancel")}>Hủy</Btn>
+                            <Btn variant="ghost" disabled={busyId === reservation.id} onClick={() => { setCancelTarget(reservation); setCancelReason(""); }}>Hủy</Btn>
                           </>
                         )}
                         {reservation.status === "seated" && (
@@ -323,6 +499,39 @@ export default function DatBanPage() {
           </section>
         </>
       )}
+
+      <ConfirmDialog
+        open={cancelTarget !== null}
+        title="Hủy đơn đặt bàn?"
+        body={
+          <div>
+            <p>
+              Đơn của <strong>{cancelTarget?.customer_name}</strong>{" "}
+              ({cancelTarget?.phone}) lúc{" "}
+              <strong>{cancelTarget?.booking_time.slice(0, 16).replace("T", " ")}</strong> sẽ bị hủy
+              và bàn được giải phóng. Thao tác này không khôi phục được.
+            </p>
+            <label className="nq-booking-cancel-reason">
+              Lý do hủy
+              <input
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="VD: khách gọi báo bận, quán quá tải…"
+                aria-label="Lý do hủy đơn"
+              />
+            </label>
+          </div>
+        }
+        confirmLabel="Hủy đơn"
+        cancelLabel="Giữ đơn"
+        variant="danger"
+        busy={busyId === cancelTarget?.id}
+        onConfirm={confirmCancel}
+        onCancel={() => {
+          setCancelTarget(null);
+          setCancelReason("");
+        }}
+      />
     </div>
   );
 }
