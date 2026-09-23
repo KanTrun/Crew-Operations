@@ -1,55 +1,21 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { disableWebgl, loginAs, resetExperienceState } from "./_helpers";
 
 /**
  * GRAND EXPERIENCE — một câu chuyện replay 5 phút xuyên 5 ý tưởng chính.
  * KHÔNG cần mạng LLM, microphone, camera, WebGL (đã tắt getContext).
- */
-
-async function loginAs(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Tài khoản").fill("lan");
-  await page.getByLabel("Mật khẩu").fill("nhipquan");
-  await page.getByRole("button", { name: "Vào hệ thống" }).click();
-  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
-}
-
-/**
- * Xoá trạng thái CỦA CẢ rules lẫn Quánverse trước mỗi bài.
  *
- * Hai store khác nhau, cùng một loại vấn đề — trạng thái sống lâu hơn bài test:
- *   - `_CANDIDATES` (rules): store trong BỘ NHỚ, sống suốt phiên server.
- *   - `experience_preferences` (Quánverse): trong kv/DB nên sống qua cả các LẦN CHẠY.
- * Bài `quanverse.spec.ts` lưu một sở thích khách gắn với neo `window_table`, và nó
- * trở thành ký ức đã xác nhận thứ hai ở neo đó — bài này hỏi về quầy pha chế và
- * khẳng định ĐÚNG 1 trích dẫn, nên chạy sau bài kia là nhận 2 và đỏ.
- * Endpoint reset chỉ mở ở chế độ replay nên an toàn cho production.
+ * `loginAs` / `resetExperienceState` / `disableWebgl` nằm ở `_helpers.ts` dùng chung:
+ * bốn spec trước đây mỗi nơi chép một bản, lệch nhau cả về phạm vi (có nơi chỉ gọi
+ * một trong hai endpoint reset) lẫn thời điểm (có nơi dọn ở cuối bài — cách đó
+ * không bảo vệ được chính bài đang chạy và bỏ qua nếu bài rơi giữa chừng).
  */
-async function resetRuleState(page: Page) {
-  const api = process.env.NQ_API ?? "http://127.0.0.1:8000";
-  const res = await page.request
-    .post(`${api}/api/v1/auth/login`, {
-      data: { username: "lan", password: "nhipquan" },
-    })
-    .catch(() => null);
-  if (!res || !res.ok()) return;
-  const { token } = (await res.json()) as { token: string };
-  for (const path of ["/api/v1/experience/rules/reset", "/api/v1/experience/quanverse/reset"]) {
-    await page.request
-      .post(`${api}${path}`, { headers: { Authorization: `Bearer ${token}` } })
-      .catch(() => undefined);
-  }
-}
 
 test.describe("Grand AI Experience — 5-minute replay story", () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      // Tắt WebGL (2D fallback bắt buộc).
-      Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
-        value: () => null,
-      });
-    });
+    await disableWebgl(page);
     await loginAs(page);
-    await resetRuleState(page);
+    await resetExperienceState(page);
   });
 
   test("full story: flavor -> live map -> mode -> rescue -> war room -> rule", async ({ page }) => {

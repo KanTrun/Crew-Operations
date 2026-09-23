@@ -1,24 +1,20 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { disableWebgl, loginAs, resetExperienceState } from "./_helpers";
 
 /** HỒN QUÁN Spatial Memory e2e — replay fixture, WebGL-off, no mạng LLM. */
-
-async function loginAs(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Tài khoản").fill("lan");
-  await page.getByLabel("Mật khẩu").fill("nhipquan");
-  await page.getByRole("button", { name: "Vào hệ thống" }).click();
-  await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
-}
 
 test.describe("Hon Quan Spatial Memory", () => {
   test.beforeEach(async ({ page }) => {
     // Tắt WebGL để test 2D fallback.
-    await page.addInitScript(() => {
-      Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
-        value: () => null,
-      });
-    });
+    await disableWebgl(page);
     await loginAs(page);
+    // Tệp này trước đây KHÔNG dọn gì cả. Đo được hệ quả: bài "memory consent
+    // grant and remove" cấp consent rồi xoá một ký ức, và bài "voice turn
+    // grounded answer" tạo thêm một draft; cả hai thay đổi nằm trong kho ký ức
+    // TOÀN CỤC sống suốt phiên server. Chạy cả bộ thì bài "anchor select shows
+    // details" ở chính tệp này đỏ (sơ đồ vẽ ra cao hơn khung), chạy riêng tệp
+    // thì xanh — thứ tự chạy quyết định kết quả.
+    await resetExperienceState(page);
     await page.goto("/quanverse/spatial-memory");
   });
 
