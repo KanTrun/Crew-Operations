@@ -119,17 +119,35 @@ def _project_role(role: ExperienceRole) -> dict[str, Any]:
         for e in data.get("events", [])
     ]
     modes = [ModeProjection.model_validate(m) for m in data.get("modes", [])]
-    # Override mode states đã confirm qua kv (replay state)
+    # Ghi đè trạng thái mode bằng kv (trạng thái thật do người dùng tạo khi replay).
+    #
+    # BẪY ĐÃ GẶP: bản trước chỉ lấy `active` từ kv rồi đặt
+    #   proposal_status = "confirmed" if active else m.proposal_status
+    # — tức khi mode CHƯA bật thì nó vứt giá trị trong kv và dùng lại giá trị của
+    # FIXTURE. Hệ quả: `POST /modes/{mode}/propose` ghi `proposal_status="draft"`
+    # vào kv thành công, nhưng `GET /snapshot` (chính endpoint mà UI đọc) không bao
+    # giờ thấy giá trị đó, nên giao diện vẫn hiện "Đang tắt" và KHÔNG hiện nút
+    # "Duyệt" — vòng đời đề xuất → duyệt bị kẹt ngay ở bước đề xuất.
+    # Endpoint `/modes` (thêm sau) đã đọc đúng; ở đây phải đọc giống hệt.
+    # Thứ tự ưu tiên: kv → fixture → None. `confirmed` chỉ khi đang active.
     for i, m in enumerate(modes):
-        state = kv_get(f"experience_mode_{m.mode.value}", None)
-        if state:
-            active = bool(state.get("active", False))
-            modes[i] = ModeProjection(
-                mode=m.mode,
-                active=active,
-                proposed_by=str(state.get("confirmed_by") or ""),
-                proposal_status="confirmed" if active else m.proposal_status,
+        state = kv_get(f"experience_mode_{m.mode.value}", None) or {}
+        active = bool(state.get("active", m.active))
+        if active:
+            proposal_status: str | None = "confirmed"
+        else:
+            raw = state.get("proposal_status") or (
+                m.proposal_status.value if m.proposal_status else None
             )
+            # `confirmed` trong khi chưa active là vô nghĩa (mâu thuẫn trạng thái),
+            # và UI đọc nó thành "chờ duyệt" nên sẽ hiện nút Duyệt sai. Bỏ đi.
+            proposal_status = None if raw == "confirmed" else raw
+        modes[i] = ModeProjection(
+            mode=m.mode,
+            active=active,
+            proposed_by=str(state.get("confirmed_by") or state.get("proposed_by") or m.proposed_by),
+            proposal_status=proposal_status,
+        )
 
     horizon = [
         {**h, "starts_at": _horizon_time(h)} for h in data.get("horizon", [])

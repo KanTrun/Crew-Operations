@@ -50,6 +50,38 @@ def clear_rule_state() -> None:
         _USER_TS.clear()
 
 
+@router.post("/api/v1/experience/rules/reset")
+def rules_reset(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Xoá ứng viên trong bộ nhớ — CHỈ khi bật chế độ replay/demo.
+
+    Vì sao cần: `_CANDIDATES` là store trong BỘ NHỚ, sống suốt phiên server. Mỗi
+    bài e2e đều chạy cùng một server nên trạng thái của bài trước rò sang bài sau:
+    bài "từ chối ứng viên" chạy sau bài "thu hồi luật" sẽ thấy ứng viên đã ở trạng
+    thái `revoked` (không còn nút Từ chối), rồi đỏ.
+
+    Trước đây lỗi này bị CHE vì `discover` luôn ghi đè `status: "draft"` — mỗi lần
+    bấm "Tìm quyết định lặp lại" là trạng thái cũ bị xoá. Nhưng chính hành vi ghi
+    đè đó là lỗi thật ở phần sản phẩm (bấm discover lần hai là mất luật đã ban
+    hành, không thu hồi được). Đã sửa gốc, nên cần cơ chế cách ly tường minh.
+
+    Cùng khuôn với `clear_rule_state()` (pytest dùng) và `replay_role` của
+    quanverse: production KHÔNG được phép gọi. Không có flag thì trả 403.
+    """
+    import os
+
+    allowed = (
+        os.environ.get("CA_AGENT_MODE", "") == "replay"
+        or os.environ.get("NHIPQUAN_EXPERIENCE_REPLAY_ROLE", "") == "1"
+    )
+    if not allowed:
+        raise HTTPException(status_code=403, detail="chi_cho_phep_o_che_do_replay")
+    _require_manager(authorization)
+    clear_rule_state()
+    return {"reset": True, "replayable": True}
+
+
 def _rate_limit(user_id: str) -> None:
     now = time.time()
     with _LOCK:
@@ -111,7 +143,17 @@ def rules_discover(
     candidates = discover_rule_candidates(signals, snapshot_hash=_snapshot_hash())
     with _LOCK:
         for c in candidates:
-            _CANDIDATES[c.candidate_id] = {
+            cid = c.candidate_id
+            # KHÔNG ghi đè ứng viên đã có. Bản trước luôn gán `status: "draft"`,
+            # nên bấm "Tìm quyết định lặp lại" lần thứ hai sẽ XOÁ vòng đời của ứng
+            # viên đã duyệt: `confirmed` (đã ban hành luật) tụt về `draft`, mất luôn
+            # `shadow_result`. Hệ quả thấy được trên giao diện: sau khi duyệt, nút
+            # "Thu hồi luật" chỉ hiện khi status là `confirmed` — chạy lại discover
+            # là nút biến mất, quán không thu hồi được luật của chính mình.
+            # Discover chỉ nên THÊM ứng viên mới, không sửa cái đã quyết.
+            if cid in _CANDIDATES:
+                continue
+            _CANDIDATES[cid] = {
                 **c.model_dump(mode="json"),
                 "status": "draft",
             }

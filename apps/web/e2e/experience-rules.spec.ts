@@ -10,9 +10,34 @@ async function loginAs(page: Page) {
   await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
 }
 
+/**
+ * Xoá ứng viên luật trong bộ nhớ server trước mỗi bài.
+ *
+ * `_CANDIDATES` là store TRONG BỘ NHỚ, sống suốt phiên server; các bài e2e dùng
+ * chung một server nên trạng thái rò sang nhau — bài "từ chối ứng viên" chạy sau
+ * bài "thu hồi luật" sẽ thấy ứng viên đã `revoked` và mất nút Từ chối. Endpoint
+ * reset chỉ mở ở chế độ replay nên an toàn cho production.
+ */
+async function resetRuleState(page: Page) {
+  const api = process.env.NQ_API ?? "http://127.0.0.1:8000";
+  const res = await page.request
+    .post(`${api}/api/v1/auth/login`, {
+      data: { username: "lan", password: "nhipquan" },
+    })
+    .catch(() => null);
+  if (!res || !res.ok()) return;
+  const { token } = (await res.json()) as { token: string };
+  await page.request
+    .post(`${api}/api/v1/experience/rules/reset`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    .catch(() => undefined);
+}
+
 test.describe("Quan tu viet luat", () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page);
+    await resetRuleState(page);
     await page.goto("/quanverse/rules");
   });
 

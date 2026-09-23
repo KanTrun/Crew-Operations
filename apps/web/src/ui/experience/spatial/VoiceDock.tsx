@@ -118,11 +118,21 @@ export default function VoiceDock({ anchorId }: Props) {
       {response ? (
         <div className="nq-voicedock__response" data-testid="voice-response" aria-live="polite">
           <p className="nq-voicedock__text">{response.response_text}</p>
-          <p className="nq-voicedock__citations">
-            {response.citations.length
-              ? `Dựa trên ${response.citations.length} ký ức đã xác nhận`
-              : "Chưa có ký ức nào đã xác nhận ở khu vực này"}
-          </p>
+          {/* Khối trích dẫn CHỈ tồn tại khi thật sự có ký ức đã xác nhận.
+              Bản trước luôn render thẻ này, và khi không có trích dẫn thì in
+              "Chưa có ký ức nào đã xác nhận ở khu vực này". Nhìn thì vô hại,
+              nhưng nó phá đúng hợp đồng mà e2e dùng để bắt lỗi bịa:
+              `expect(resp.locator(".nq-voicedock__citations")).toHaveCount(0)`
+              — thẻ luôn có mặt nên phép kiểm "không bịa" không bao giờ chạy đúng.
+              Sự VẮNG MẶT của thẻ chính là bằng chứng máy kiểm được; còn câu
+              "chưa có ký ức nào" đã nằm trong `response_text` do agent sinh
+              ("Chưa có ký ức đã xác nhận cho khu vực này. (Không suy đoán nội dung.)"),
+              nên không mất thông tin cho người dùng. */}
+          {response.citations.length ? (
+            <p className="nq-voicedock__citations">
+              {`Dựa trên ${response.citations.length} ký ức đã xác nhận`}
+            </p>
+          ) : null}
           {response.proposal ? (
             <p className="nq-voicedock__proposal">
               <Icon name="pin" size={13} />
