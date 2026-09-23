@@ -481,7 +481,7 @@ export default function TkbPage() {
                     </div>
                     <button
                       type="button"
-                      className="rounded px-1.5 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-950"
+                      className="rounded px-1.5 py-0.5 text-2xs font-bold text-amber-300 hover:bg-amber-950"
                       title={`Thêm khung bận cho ${THU_TEN[t]}`}
                       onClick={() => setRows((prev) => [...prev, { thu: t, start: "", end: "" }])}
                     >

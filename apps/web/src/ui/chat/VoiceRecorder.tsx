@@ -210,7 +210,7 @@ export function VoicePlayer({ url, durationSec }: { url: string; durationSec?: n
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="flex justify-between text-[10px] opacity-75 font-mono">
+        <div className="flex justify-between text-2xs opacity-75 font-mono">
           <span>{isPlaying ? "Đang phát" : "Voice note"}</span>
           <span>{durationSec ? `${Math.floor(durationSec / 60)}:${durationSec % 60 < 10 ? "0" : ""}${durationSec % 60}` : "0:00"}</span>
         </div>

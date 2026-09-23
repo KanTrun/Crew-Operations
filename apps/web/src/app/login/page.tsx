@@ -38,9 +38,8 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden p-4 md:p-8">
-      <div className="pointer-events-none absolute top-[-10%] left-[-10%] h-[40vw] w-[40vw] rounded-full bg-[var(--nq-copper-glow)] opacity-40 blur-[100px] mix-blend-screen" />
-      <div className="pointer-events-none absolute right-[-10%] bottom-[-10%] h-[35vw] w-[35vw] rounded-full bg-[var(--nq-red-dim)] opacity-25 blur-[120px] mix-blend-screen" />
+    <main className="nq-login">
+      <div className="relative z-10 flex min-h-dvh items-center justify-center p-4 md:p-8">
 
       <form
         onSubmit={onSubmit}
@@ -109,6 +108,7 @@ export default function LoginPage() {
           </div>
         </div>
       </form>
+      </div>
     </main>
   );
 }

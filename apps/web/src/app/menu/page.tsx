@@ -53,7 +53,7 @@ function MenuThumb({ mon, selected }: { mon: Mon; selected: boolean }) {
         </div>
       )}
       {selected ? (
-        <span className="absolute inset-x-0 bottom-0 bg-[var(--nq-copper)] py-0.5 text-center text-[10px] font-bold uppercase text-black">
+        <span className="absolute inset-x-0 bottom-0 bg-[var(--nq-copper)] py-0.5 text-center text-2xs font-bold uppercase text-black">
           Đang sửa
         </span>
       ) : null}

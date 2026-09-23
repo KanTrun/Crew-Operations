@@ -331,7 +331,7 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-zinc-100">AG-COPILOT</h3>
-                    <p className="text-[11px] text-emerald-400 flex items-center gap-1">
+                    <p className="text-2xs text-emerald-400 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>{" "}
                       Trực tuyến · Điều hành 1-Click
                     </p>
@@ -381,14 +381,14 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                         msg.citations &&
                         msg.citations.length > 0 && (
                           <div className="mt-2 pt-2 border-t border-zinc-800/80">
-                            <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">
+                            <p className="text-2xs uppercase tracking-wider text-zinc-500 mb-1">
                               Nguồn tham chiếu
                             </p>
                             <ul className="flex flex-wrap gap-1">
                               {msg.citations.map((c, i) => (
                                 <li
                                   key={`${msg.id}-cit-${i}`}
-                                  className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/80 text-amber-300 border border-amber-500/20"
+                                  className="text-2xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-amber-300 border border-amber-500/20"
                                 >
                                   📎 {c}
                                 </li>
@@ -410,7 +410,7 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                         />
                       )}
                     </div>
-                    <span className="text-[9px] text-zinc-500 mt-1 px-1">{msg.timestamp}</span>
+                    <span className="text-2xs text-zinc-500 mt-1 px-1">{msg.timestamp}</span>
                   </div>
                 ))}
                 {loading && (
@@ -428,7 +428,7 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                     key={idx}
                     onClick={() => handleSendMessage(qp)}
                     disabled={loading || Boolean(streamingId)}
-                    className="whitespace-nowrap text-[11px] px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-amber-300 hover:border-amber-500/40 transition disabled:opacity-50"
+                    className="whitespace-nowrap text-2xs px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-amber-300 hover:border-amber-500/40 transition disabled:opacity-50"
                   >
                     {qp}
                   </button>
@@ -473,7 +473,7 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                     Gửi
                   </button>
                 </form>
-                <p className="mt-1.5 text-[10px] text-zinc-500 text-center">
+                <p className="mt-1.5 text-2xs text-zinc-500 text-center">
                   Ctrl/Cmd+K mở·đóng · Esc thoát
                 </p>
               </div>

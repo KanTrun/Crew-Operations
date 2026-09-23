@@ -88,7 +88,7 @@ export function Logo({ href = "/", className = "" }: { href?: string; className?
         <span className="text-base font-black uppercase leading-none tracking-tighter text-[var(--nq-fg)] md:text-lg">
           NHỊP QUÁN
         </span>
-        <span className="mt-0.5 font-mono text-[9px] uppercase leading-none tracking-[0.28em] text-[var(--nq-copper)]">
+        <span className="mt-0.5 font-mono text-2xs uppercase leading-none tracking-[0.28em] text-[var(--nq-copper)]">
           Digital System
         </span>
       </div>

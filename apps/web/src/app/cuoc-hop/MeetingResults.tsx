@@ -572,7 +572,7 @@ export function MeetingResults({
 
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {/* Work Type Switcher */}
-                          <div className="flex items-center gap-0.5 bg-neutral-900 p-0.5 rounded border border-neutral-800 text-[11px] font-medium">
+                          <div className="flex items-center gap-0.5 bg-neutral-900 p-0.5 rounded border border-neutral-800 text-2xs font-medium">
                             <button
                               type="button"
                               onClick={() => onUpdateWorkType?.(it.id, "1_ca")}
@@ -697,7 +697,7 @@ export function MeetingResults({
                         {/* Schedule Badge */}
                         {it.ca_du_kien && it.ca_du_kien.length > 0 ? (
                           <span
-                            className="text-[11px] px-2 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-neutral-800 font-mono"
+                            className="text-2xs px-2 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-neutral-800 font-mono"
                             title={it.ca_du_kien.join(" | ")}
                           >
                             📅 Có {it.ca_du_kien.length} ca trực tuần này
@@ -705,7 +705,7 @@ export function MeetingResults({
                         ) : it.ten_nguoi_nhan &&
                           it.ten_nguoi_nhan !== "Chưa rõ" &&
                           it.ten_nguoi_nhan !== "Cả ca" ? (
-                          <span className="text-[11px] px-2 py-0.5 rounded bg-red-950/60 text-red-400 border border-red-800/50 font-mono">
+                          <span className="text-2xs px-2 py-0.5 rounded bg-red-950/60 text-red-400 border border-red-800/50 font-mono">
                             ⚠️ Không có ca trực tuần này
                           </span>
                         ) : null}
@@ -733,7 +733,7 @@ export function MeetingResults({
                               </span>
                             </div>
                             {it.van_de_ngu_canh && (
-                              <span className="text-[11px] px-2 py-0.5 rounded bg-neutral-900/90 text-amber-300 border border-amber-800/60">
+                              <span className="text-2xs px-2 py-0.5 rounded bg-neutral-900/90 text-amber-300 border border-amber-800/60">
                                 {it.van_de_ngu_canh}
                               </span>
                             )}
@@ -745,7 +745,7 @@ export function MeetingResults({
 
                           {it.goi_y_xu_ly && it.goi_y_xu_ly.length > 0 && (
                             <div className="pt-1 flex flex-wrap items-center gap-1.5">
-                              <span className="text-[11px] text-neutral-400 font-mono">Gợi ý 1-chạm:</span>
+                              <span className="text-2xs text-neutral-400 font-mono">Gợi ý 1-chạm:</span>
                               {it.goi_y_xu_ly.map((sug, sIdx) => (
                                 <button
                                   key={sIdx}

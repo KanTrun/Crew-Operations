@@ -842,7 +842,7 @@ export default function RosterPage() {
             </p>
           ) : null}
           {data?.solver?.status ? (
-            <p className="font-mono text-[10px] text-[var(--nq-dim)]">
+            <p className="font-mono text-2xs text-[var(--nq-dim)]">
               Nguồn: máy xếp {data.solver.status}
               {data.solver.elapsed_s != null ? ` · ${data.solver.elapsed_s}s` : ""}
             </p>
@@ -895,11 +895,11 @@ export default function RosterPage() {
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-sm text-neutral-100">{nv.ten}</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700">
+                    <span className="text-2xs font-mono px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700">
                       {nv.so_ca_du_kien} ca dự kiến
                     </span>
                   </div>
-                  <p className="text-[11px] text-neutral-400 mt-1">
+                  <p className="text-2xs text-neutral-400 mt-1">
                     Chưa đăng ký ca hoặc chưa gửi lịch bận tuần này.
                   </p>
                 </div>
@@ -979,7 +979,7 @@ export default function RosterPage() {
               ))}
             </div>
           </div>
-          <p className="text-[11px] text-neutral-400">
+          <p className="text-2xs text-neutral-400">
             Sẵn sàng gọi tăng cường khi có người báo ốm hoặc bận đột xuất.
           </p>
         </div>
@@ -1085,13 +1085,13 @@ export default function RosterPage() {
                             <span className="text-xs font-bold text-neutral-200">
                               {shiftRowLabel(shift, shift.khung ?? "", khungGio)}
                             </span>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-900/70 text-emerald-300 font-bold border border-emerald-700">
+                            <span className="text-2xs font-mono px-2 py-0.5 rounded bg-emerald-900/70 text-emerald-300 font-bold border border-emerald-700">
                               {viTriLabel(shift.vi_tri)}
                             </span>
                           </div>
 
                           {coworkers.length > 0 && (
-                            <p className="text-[11px] text-neutral-400">
+                            <p className="text-2xs text-neutral-400">
                               Cùng ca: {coworkers.map((id) => nvName(id)).join(", ")}
                             </p>
                           )}
@@ -1310,7 +1310,7 @@ export default function RosterPage() {
                               <span className="font-bold text-sm text-neutral-200 truncate">
                                 {shiftRowLabel(shift, khung, khungGio)}
                               </span>
-                              <span className="shrink-0 text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 uppercase">
+                              <span className="shrink-0 text-2xs font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 uppercase">
                                 {viTriLabel(shift.vi_tri)}
                               </span>
                             </div>
@@ -1332,11 +1332,11 @@ export default function RosterPage() {
                           >
                             {nvName(nv_id)}
                             {pinSet.has(`${shift.id}|${nv_id}`) ? (
-                              <span className="text-[10px] text-amber-300">Đã ghim</span>
+                              <span className="text-2xs text-amber-300">Đã ghim</span>
                             ) : null}
                             {data?.nv_status_map?.[nv_id] === "chua_xac_nhan" && (
                               <span
-                                className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/60"
+                                className="inline-flex items-center gap-1 text-2xs font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/60"
                                 title="Nhân viên chưa gửi lịch bận / xác nhận đi làm tuần này"
                               >
                                 <Icon name="warn" size={10} /> Chưa chốt
@@ -1352,7 +1352,7 @@ export default function RosterPage() {
                                   nv_id,
                                   !pinSet.has(`${shift.id}|${nv_id}`),
                                 )}
-                                className="rounded bg-neutral-800 px-2 py-1 text-[10px] text-neutral-300 hover:text-amber-300"
+                                className="rounded bg-neutral-800 px-2 py-1 text-2xs text-neutral-300 hover:text-amber-300"
                               >
                                 {pinSet.has(`${shift.id}|${nv_id}`) ? "Bỏ ghim" : "Ghim"}
                               </button>

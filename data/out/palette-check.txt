@@ -1,0 +1,36 @@
+== Kiểm chứng theo TỔ HỢP THỰC DÙNG trong mã ==
+   nền trang #0e0c0a · bề mặt thẻ #1a1612
+
+== Tính đơn điệu của thang (sáng → tối) ==
+  amber     OK — giảm đều
+  blue      OK — giảm đều
+  cyan      OK — giảm đều
+  emerald   OK — giảm đều
+  fuchsia   OK — giảm đều
+  gray      OK — giảm đều
+  green     OK — giảm đều
+  grey      OK — giảm đều
+  indigo    OK — giảm đều
+  lime      OK — giảm đều
+  neutral   OK — giảm đều
+  orange    OK — giảm đều
+  pink      OK — giảm đều
+  purple    OK — giảm đều
+  red       OK — giảm đều
+  rose      OK — giảm đều
+  sky       OK — giảm đều
+  slate     OK — giảm đều
+  stone     OK — giảm đều
+  teal      OK — giảm đều
+  violet    OK — giảm đều
+  yellow    OK — giảm đều
+  zinc      OK — giảm đều
+
+== Từng tổ hợp đang dùng, chấm theo vai của chính nó ==
+  CẢNH BÁO text-amber-600   #9d7612  CẢNH BÁO chữ mờ, tệ nhất  4.31:1
+  CẢNH BÁO text-neutral-500   #6f675e  CẢNH BÁO chữ mờ, tệ nhất  3.24:1
+  CẢNH BÁO text-neutral-600   #544d46  CẢNH BÁO chữ mờ, tệ nhất  2.16:1
+  CẢNH BÁO text-stone-600   #544d46  CẢNH BÁO chữ mờ, tệ nhất  2.16:1
+  CẢNH BÁO text-zinc-500   #6f675e  CẢNH BÁO chữ mờ, tệ nhất  3.24:1
+
+  Tổ hợp hỏng: 0 · cảnh báo chữ mờ: 5

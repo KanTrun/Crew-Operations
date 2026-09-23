@@ -162,7 +162,7 @@ export function CopilotPane({ open, onClose }: Props = {}) {
           <button
             onClick={() => setState((s) => ({ ...s, size: 0 }))}
             title="Thu nhỏ về chip"
-            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-2 py-0.5 text-[10px] leading-none text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
+            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-2 py-0.5 text-2xs leading-none text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
           >
             –
           </button>
@@ -176,7 +176,7 @@ export function CopilotPane({ open, onClose }: Props = {}) {
               }))
             }
             title={state.size === 2 ? "Thu nhỏ" : "Phóng to"}
-            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-2 py-0.5 text-[10px] leading-none text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
+            className="border border-[var(--nq-dim)] bg-[var(--nq-surface)] px-2 py-0.5 text-2xs leading-none text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
           >
             {state.size === 2 ? "▢" : "▣"}
           </button>

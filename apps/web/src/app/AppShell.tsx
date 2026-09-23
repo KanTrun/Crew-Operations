@@ -178,7 +178,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Link
                   key={l.href}
                   href={l.href}
-                  className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11px] font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:text-xs ${path === l.href ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
+                  className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap text-2xs font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:text-xs ${path === l.href ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
                   data-tour={tourId(l.href)}
                   aria-current={path === l.href ? "page" : undefined}
                 >
@@ -191,7 +191,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setOpen((v) => !v)}
-                  className={`flex items-center gap-1.5 whitespace-nowrap text-[11px] font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:text-xs ${open ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
+                  className={`flex items-center gap-1.5 whitespace-nowrap text-2xs font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:text-xs ${open ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`}
                   aria-expanded={open}
                   data-tour="nav-them"
                 >
@@ -205,16 +205,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 8 }}
                       role="menu"
-                      className="absolute top-full right-0 z-50 mt-2 grid w-[min(22rem,88vw)] max-h-[min(52vh,20rem)] grid-cols-2 gap-0.5 overflow-y-auto border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-1.5 shadow-[8px_8px_0px_0px_var(--nq-copper-dim)]"
+                      className="nq-more-panel"
                     >
                       {more.map((l, i) => (
                         <Fragment key={l.href}>
                           {l.group === "experience" &&
                             (i === 0 || more[i - 1]?.group !== "experience") && (
-                              <div
-                                className="col-span-2 mb-0.5 mt-1 flex items-center gap-1.5 border-t border-[var(--nq-line)] pt-1.5 text-[9px] font-black uppercase tracking-widest text-[var(--nq-copper)]"
-                                role="presentation"
-                              >
+                              <div className="nq-more-group" role="presentation">
                                 Trải nghiệm AI
                               </div>
                             )}
@@ -222,7 +219,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                             href={l.href}
                             role="menuitem"
                             onClick={() => setOpen(false)}
-                            className="rounded px-2.5 py-2 text-[10px] font-semibold leading-tight text-[var(--nq-dim)] transition-colors hover:bg-[var(--nq-surface)] hover:text-[var(--nq-copper)] xl:text-[11px]"
                           >
                             {l.group === "experience" ? (
                               <span className="flex items-center gap-1.5">
@@ -244,7 +240,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="flex-1" />
           )}
 
-          <div className="ml-auto flex shrink-0 items-center gap-2 text-[11px] font-mono uppercase tracking-wide md:gap-3 xl:text-xs">
+          <div className="ml-auto flex shrink-0 items-center gap-2 text-2xs font-mono uppercase tracking-wide md:gap-3 xl:text-xs">
             {ready && token ? (
               <>
                 <span className="hidden max-w-[10rem] truncate text-[var(--nq-dim)] lg:inline-block xl:max-w-[14rem]">
@@ -253,16 +249,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={logout}
-                  className="shrink-0 border-2 border-[var(--nq-dim)] px-3 py-1 transition-colors hover:border-[var(--nq-red)] hover:text-[var(--nq-red)]"
+                  className="nq-cta nq-cta--ghost nq-cta--sm"
                 >
                   Thoát
                 </button>
               </>
             ) : (
-              <Link 
-                href="/login"
-                className="border-2 border-[var(--nq-copper)] text-[var(--nq-copper)] px-4 py-1 hover:bg-[var(--nq-copper)] hover:text-[#0e0c0a] transition-colors"
-              >
+              <Link href="/login" className="nq-cta nq-cta--primary nq-cta--sm">
                 Đăng nhập
               </Link>
             )}
@@ -272,12 +265,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className={`flex-1 px-4 md:px-8 pt-16 ${wide ? "w-full max-w-none" : "max-w-[1280px] mx-auto w-full"}`} id="nq-content">
         {!ready ? (
           <div className="nq-page nq-page--center py-16 text-center" role="status">
-            <p className="text-sm text-neutral-400">Đang kiểm tra quyền truy cập…</p>
+            <p className="nq-muted" style={{ margin: 0 }}>Đang kiểm tra quyền truy cập…</p>
           </div>
         ) : token && role && !canAccess(role, path) ? (
           <div className="nq-page nq-page--center py-16 text-center">
-            <h1 className="text-2xl font-black uppercase text-amber-500">Không đủ quyền truy cập</h1>
-            <p className="text-sm text-neutral-400 mt-2">
+            <h1 className="nq-gate-title">Không đủ quyền truy cập</h1>
+            <p className="nq-muted mx-auto" style={{ margin: "var(--nq-s3) auto 0", maxWidth: "46ch" }}>
               {path === "/vet"
                 ? "Bạn không được uỷ quyền để xem vết hệ thống. Chỉ Quản lý và Chủ quán được phép truy cập."
                 : "Tài khoản hiện tại không có quyền truy cập trang này."}
@@ -288,7 +281,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </main>
       {token ? (
-        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[var(--nq-bg)]/90 backdrop-blur-md border-t-2 border-[var(--nq-dim)] flex justify-around items-center p-2 z-40 pb-safe" aria-label="Lối tắt">
+        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[var(--nq-bg)]/90 backdrop-blur-md border-t border-[var(--nq-line)] flex justify-around items-center p-2 z-40 pb-safe" aria-label="Lối tắt">
           {primary.map((l) => (
             <Link
               key={l.href}
@@ -299,7 +292,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-label={l.label}
             >
               <Icon name={iconForHref(l.href)} size={24} />
-              <span className="text-[10px] font-bold uppercase tracking-widest">{l.short ?? l.label}</span>
+              <span className="text-2xs font-bold uppercase tracking-widest">{l.short ?? l.label}</span>
             </Link>
           ))}
           <Link
@@ -309,7 +302,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             aria-current={path === "/them" ? "page" : undefined}
           >
             <Icon name="them" size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Thêm</span>
+            <span className="text-2xs font-bold uppercase tracking-widest">Thêm</span>
           </Link>
         </nav>
       ) : null}

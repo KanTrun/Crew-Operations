@@ -47,14 +47,68 @@
   color: var(--nq-ink-muted);
 }
 
-.nq-roster-slot-people {
-  display: -webkit-box;
-  overflow: hidden;
+.nq-roster-slot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nq-s1);
+  width: 100%;
+}
+
+/* Dãy avatar trong ô lịch.
+   Ô lịch rộng ~110px; một ca bar thường có 3–6 người. Bản cũ in tên đầy đủ rồi
+   cắt bằng `-webkit-line-clamp: 3`, nên từ người thứ ba trở đi biến mất sau dấu
+   "…" — người xếp lịch mất thông tin đúng lúc cần nhất. Viết tắt 2 ký tự luôn
+   vừa: 6 người vẫn đọc được, tên đầy đủ nằm ở tooltip và bảng chi tiết ngày. */
+.nq-roster-slot-crew {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: var(--nq-s1);
+}
+
+.nq-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: var(--nq-radius-pill);
+  /* Nền trung tính: avatar không phải tình trạng, không được tranh màu với chip
+     "Thiếu người" nằm ngay trên nó. */
+  background: color-mix(in srgb, var(--nq-bg-elevated) 40%, var(--nq-ink) 14%);
+  border: 1px solid var(--nq-line);
+  color: var(--nq-ink);
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-micro);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+/* Ghim ca là quyết định của quản lý, không phải tình trạng — đánh dấu bằng viền
+   copper (nghĩa "thuộc về quán"), không bằng đỏ/vàng. */
+.nq-avatar[data-pinned="1"] {
+  border-color: var(--nq-accent);
+  color: var(--nq-accent);
+}
+
+.nq-avatar--more {
+  background: transparent;
   color: var(--nq-ink-muted);
-  font-size: 0.68rem;
-  line-height: 1.35;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+}
+
+.nq-roster-slot-none {
+  color: var(--nq-ink-muted);
+  font-size: var(--nq-t-micro);
+}
+
+.nq-roster-slot-flag {
+  display: inline-flex;
+  align-items: center;
+  color: var(--nq-st-warn);
+  flex: none;
 }
 /* NHỊP QUÁN v3 Premium Ops — docs/design-guidelines.md */
 @tailwind base;
@@ -96,6 +150,65 @@
   --nq-banner-to: #0e0c0a;
   --nq-max: min(1600px, 100%);
   --nq-max-narrow: min(720px, 100%);
+
+  /* ── Thang chữ ──
+     Trước đây chỉ có h1 (đổi theo từng trang) và h2 cứng 1.2rem, còn tiêu đề
+     thẻ thì mỗi trang tự đặt (0.82 / 0.85 / 0.9rem tuỳ chỗ) — nên mắt không
+     phân được đâu là tiêu đề trang, đâu là tiêu đề khối, đâu là nhãn phụ.
+     Mười bậc dưới đây là hợp đồng duy nhất: mọi cỡ chữ trong apps/web lấy từ
+     đây, không đặt số trực tiếp trong rule. Một bậc chỉ dùng cho đúng một vai —
+     h1 không bao giờ làm cỡ thẻ. */
+  --nq-t-display: clamp(1.9rem, 3.4vw, 2.6rem); /* tên quán, mặt tiền */
+  --nq-t-h1: clamp(1.6rem, 2.4vw, 2rem);         /* tiêu đề trang — 1 lần/trang */
+  --nq-t-h2: 1.2rem;                             /* tiêu đề khối */
+  --nq-t-h3: 1rem;                               /* tiêu đề mục trong khối */
+  --nq-t-body: 0.9375rem;                        /* chữ đọc chính */
+  --nq-t-small: 0.84rem;                         /* phụ chú, dòng thứ hai */
+  --nq-t-caption: 0.75rem;                       /* nhãn, meta, đơn vị */
+  --nq-t-micro: 0.68rem;                         /* eyebrow, chữ hoa nhỏ nhất */
+  --nq-t-num-lg: clamp(1.75rem, 3vw, 2.5rem);    /* số chủ đạo trên thẻ KPI */
+  --nq-t-num: 1.0625rem;                         /* số trong bảng, mã, thời lượng */
+
+  /* ── Bậc nổi (elevation) ──
+     Trước đây mọi khối — thẻ KPI, khối nội dung, thanh nổi, popover — đều mang
+     `--nq-shadow-bubble`, nên bề mặt quan trọng và bề mặt thường có cùng độ nổi:
+     mắt không biết chỗ nào là "lớp trên". Bốn bậc, dùng đúng vai:
+       elev-0  nằm phẳng trên nền trang, chỉ có viền
+       elev-1  khối nội dung trong luồng đọc — nổi vừa đủ để tách khỏi nền
+       elev-2  khối bấm được (thẻ, ô danh sách) — nổi rõ, có phản hồi hover
+       elev-4  lớp phủ rời mặt trang (sheet, popover, thanh nổi dưới)
+     Không có elev-3: hover của elev-2 dùng chính `--nq-elev-2-hover`. */
+  --nq-elev-0: none;
+  --nq-elev-1: 0 1px 2px rgba(0, 0, 0, 0.24), 0 4px 12px rgba(0, 0, 0, 0.2);
+  --nq-elev-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.34);
+  --nq-elev-2-hover: 0 2px 6px rgba(0, 0, 0, 0.34), 0 18px 44px rgba(0, 0, 0, 0.44);
+  --nq-elev-4: 0 12px 36px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
+
+  /* ── Màu trạng thái (tách hẳn khỏi accent thương hiệu) ──
+     Quy ước, áp cho cả 2D lẫn 3D: `--nq-accent` (copper) chỉ nói "bấm được" và
+     "thuộc về quán"; `--nq-st-*` chỉ nói "đang có chuyện gì". Một phần tử không
+     được mang cả hai nghĩa — nút bấm không tô đỏ vì dữ liệu xấu, chip "quá hạn"
+     không tô copper vì nó không bấm được. Bốn trạng thái này là toàn bộ từ vựng
+     tình trạng của hệ thống; không thêm màu thứ năm. */
+  --nq-st-ok: var(--nq-ok);          /* đủ người, đúng hạn, đã xong */
+  --nq-st-warn: var(--nq-warn);      /* thiếu người, sắp hạn, chờ xử lý */
+  --nq-st-danger: var(--nq-danger);  /* trống ca, quá hạn, lỗi */
+  --nq-st-info: #6d8fae;             /* chờ xác nhận, đang xử lý — chưa xấu */
+  --nq-st-idle: var(--nq-ink-muted); /* chưa có gì, không tính là vấn đề */
+  --nq-st-ok-soft: rgba(111, 155, 122, 0.16);
+  --nq-st-warn-soft: rgba(212, 160, 23, 0.16);
+  --nq-st-danger-soft: rgba(212, 93, 74, 0.16);
+  --nq-st-info-soft: rgba(109, 143, 174, 0.16);
+
+  /* Đường biên của thành phần BẤM ĐƯỢC (ô nhập, select, textarea).
+     `--nq-line-strong` là vạch kẻ trang trí, không phải biên điều khiển: đo ra
+     1.99:1 trên nền trang và 1.65:1 trên chính nền ô nhập — dưới ngưỡng 3:1
+     của WCAG 1.4.11. Người vận hành đứng quầy dưới đèn vàng, nhìn máy tính
+     bảng, không thấy được ô nhập bắt đầu từ đâu. Giá trị này đạt 3.9:1 trên nền
+     trang và 3.3:1 trên nền ô nhập — vẫn trong họ copper, không phải xám trung
+     tính. Đừng hạ thấp mà không đo lại (`scripts/check_contrast.py`). */
+  --nq-line-control: #7d6e55;
+
   /* ── Thang khoảng cách ──
      Trước đây mỗi khối tự chọn 0.35 / 0.45 / 0.65 / 0.85 / 1.15rem, nên hai
      nhóm thông tin khác nhau lại cách nhau đúng bằng khoảng cách giữa hai dòng
@@ -115,21 +228,47 @@
   --nq-font-body: var(--nq-font-body-var), "IBM Plex Sans", system-ui, -apple-system,
     "Segoe UI", Roboto, sans-serif, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji";
   --nq-font-mono: var(--nq-font-mono-var), ui-monospace, monospace;
+  /* ── Ngôn ngữ chuyển động ──
+     Nhịp của quán là nhịp giữa hai lượt khách: mọi thứ phải xong trước khi
+     người vận hành kịp rời mắt sang bàn bên cạnh. Vì vậy chuyển động ở đây
+     KHÔNG dùng spring mặc định của thư viện (nảy, trễ, có quán tính) — dùng
+     đường cong giảm tốc dứt khoát, và không hiệu ứng nào được chặn thao tác.
+
+     Bốn nhịp, đặt tên theo việc nó phục vụ — không theo con số:
+       beat-ack     phản hồi cú bấm (lún, đổi màu). Phải xong dưới 200ms, nhanh
+                    hơn cảm nhận "máy chưa nhận".
+       beat-settle  trạng thái đổi tại chỗ (hover, mở chip, gạt tab).
+       beat-focus   đưa mắt tới một khối mới xuất hiện (bảng tải xong, kết quả mới).
+       beat-chapter chuyển "chương" — chỉ dùng ở mặt tiền (landing/login/hub).
+     `--nq-ease-out` là đường cong duy nhất cho chuyển động vào; `--nq-ease-inout`
+     chỉ dùng khi phần tử đi qua lại giữa hai vị trí đều có nghĩa. */
   --nq-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --nq-ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
-  --nq-dur-t0: 160ms;
-  --nq-dur-t1: 240ms;
-  --nq-dur-t2: 520ms;
+  --nq-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --nq-beat-ack: 140ms;
+  --nq-beat-settle: 220ms;
+  --nq-beat-focus: 420ms;
+  --nq-beat-chapter: 720ms;
+  /* Tương thích: mã cũ còn tham chiếu --nq-dur-t0/t1/t2. Trỏ về cùng thang,
+     đừng thêm giá trị mới. */
+  --nq-dur-t0: var(--nq-beat-settle);
+  --nq-dur-t1: var(--nq-beat-focus);
+  --nq-dur-t2: var(--nq-beat-chapter);
+  /* Tên cũ `--nq-ease-spring` giữ lại cho mã đang tham chiếu, nhưng giá trị đã
+     bỏ độ nảy: mọi bề mặt đang dùng nó là thẻ/bảng số liệu, nơi độ nảy khiến
+     con số rung khi người dùng chỉ đang rê chuột qua. */
+  --nq-ease-spring: var(--nq-ease-out);
   /* Bo góc: 6px dành riêng cho input và ô bảng dày (roster) — bo lớn ở bảng số
      liệu làm mắt khó bám hàng. Bubble/pill dùng cho card, tile, sheet, chip. */
   --nq-radius: 6px;
   --nq-radius-bubble: 18px;
   --nq-radius-pill: 999px;
   --nq-radius-sheet: 24px;
-  /* Bubble depth: lớp bóng gần + lớp bóng xa + viền sáng 1px trên cùng */
-  --nq-shadow-bubble: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.34);
-  --nq-shadow-bubble-hover: 0 2px 6px rgba(0, 0, 0, 0.34), 0 18px 44px rgba(0, 0, 0, 0.44);
-  --nq-shadow-float: 0 12px 36px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
+  /* Bubble depth: giữ tên cũ cho mã đang tham chiếu, nhưng trỏ về bậc nổi
+     chung — khối bấm được là elev-2, lớp phủ rời mặt trang là elev-4. Không
+     khai báo bóng riêng ở đây nữa. */
+  --nq-shadow-bubble: var(--nq-elev-2);
+  --nq-shadow-bubble-hover: var(--nq-elev-2-hover);
+  --nq-shadow-float: var(--nq-elev-4);
   --nq-inner-hi: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   --nq-blur-glass: blur(20px) saturate(1.3);
   --nq-press: 0.97;
@@ -258,9 +397,14 @@ li a:hover,
   color: var(--nq-accent-hover);
 }
 
+/* Thang chữ áp ở tầng thẻ HTML: mọi trang thừa hưởng, không trang nào tự đặt
+   lại. Trước đây `h2` cứng 1.2rem còn `h3` không có rule nào — tiêu đề mục
+   trong khối rơi về cỡ chữ trình duyệt (1.17em ≈ 1.1rem), trùng cỡ với `h2` và
+   không phân tầng được với chữ thường. */
 h1 {
   font-family: var(--nq-font-display);
   font-weight: 400;
+  font-size: var(--nq-t-h1);
   line-height: 1.1;
   margin: 0 0 var(--nq-s3);
   letter-spacing: -0.02em;
@@ -269,8 +413,31 @@ h1 {
 h2 {
   font-family: var(--nq-font-display);
   font-weight: 400;
-  font-size: 1.2rem;
+  font-size: var(--nq-t-h2);
+  line-height: 1.2;
   margin: var(--nq-s7) 0 var(--nq-s3);
+}
+
+h3 {
+  font-family: var(--nq-font-body);
+  font-weight: 700;
+  font-size: var(--nq-t-h3);
+  line-height: 1.3;
+  margin: var(--nq-s5) 0 var(--nq-s2);
+}
+
+/* Nhãn nhỏ in hoa — eyebrow của khối. Một bậc duy nhất cho mọi nơi đang tự đặt
+   0.62/0.65/0.68rem; chữ hoa ở 0.62rem là dưới 11px, dưới ngưỡng đọc được,
+   nhất là khi có dấu tiếng Việt. */
+h4,
+.nq-eyebrow {
+  font-family: var(--nq-font-mono);
+  font-weight: 700;
+  font-size: var(--nq-t-micro);
+  line-height: 1.4;
+  letter-spacing: 0.14em; /* chữ hoa cần giãn chữ; dấu tiếng Việt không chồng */
+  text-transform: uppercase;
+  margin: 0 0 var(--nq-s2);
 }
 
 button,
@@ -334,6 +501,7 @@ a:focus-visible {
   transform: translate(-50%, -110%);
   z-index: 200;
   padding: 0.6rem 1.1rem;
+  border-radius: 0 0 var(--nq-radius-pill) var(--nq-radius-pill);
   background: var(--nq-accent);
   color: var(--nq-accent-ink);
   font-weight: 600;
@@ -2801,15 +2969,18 @@ a:focus-visible {
 
 .nq-dash-kpi-value {
   display: block;
-  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-size: var(--nq-t-num-lg);
   font-weight: 800;
   line-height: 1;
   margin-bottom: var(--nq-s2);
+  /* Số trong thẻ KPI đổi tại chỗ khi tải lại: chữ số đều bề rộng để con số
+     không nhảy ngang, và không đổi cỡ để người dùng không mất dấu. */
+  font-variant-numeric: tabular-nums;
 }
 
 .nq-dash-kpi-label {
   font-family: var(--nq-font-mono);
-  font-size: 0.68rem;
+  font-size: var(--nq-t-micro);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   opacity: 0.85;
@@ -3229,7 +3400,7 @@ a:focus-visible {
   max-width: 100%;
   box-sizing: border-box;
   padding: var(--nq-s3) var(--nq-s4);
-  border: 2px solid var(--nq-line-strong);
+  border: 2px solid var(--nq-line-control);
   border-radius: var(--nq-radius);
   background: var(--nq-surface);
   color: var(--nq-ink);
@@ -3237,8 +3408,8 @@ a:focus-visible {
   font-size: 1rem;
   line-height: 1.4;
   transition:
-    border-color var(--nq-dur-t0),
-    box-shadow var(--nq-dur-t0);
+    border-color var(--nq-beat-settle),
+    box-shadow var(--nq-beat-settle);
 }
 
 .nq-textarea {
@@ -3277,7 +3448,7 @@ a:focus-visible {
   max-width: 100%;
   box-sizing: border-box;
   padding: var(--nq-s3) var(--nq-s4);
-  border: 2px solid var(--nq-line-strong);
+  border: 2px solid var(--nq-line-control);
   border-radius: var(--nq-radius);
   background: var(--nq-surface);
   color: var(--nq-ink);
@@ -3447,26 +3618,36 @@ a:focus-visible {
   box-shadow: var(--nq-shadow-bubble-hover), var(--nq-inner-hi);
 }
 
-/* ── Buttons ── */
+/* ── Buttons ──
+   Nút là hình DẠNG duy nhất mà người dùng chạm vào nhiều lần nhất trong ngày,
+   nên nút quyết định cảm giác của sản phẩm. Bản cũ: viền 2px không bo góc +
+   bóng cứng lệch `8px 8px 0 0` + dịch -2px khi hover (brutalist). Kiểu đó hợp
+   với một trang portfolio, không hợp với người đang đứng quầy bấm liên tục:
+   bóng cứng làm nút trông như "dán" lên trang chứ không nằm trên trang.
+   Nay: pill bo tròn, bóng mềm theo bậc nổi, lún nhẹ khi bấm. */
 .nq-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: var(--nq-s2);
   min-height: 48px;
   padding: 0.75rem 1.5rem;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--nq-radius-pill);
-  font-weight: 600;
-  font-size: 1rem;
+  font-weight: 700;
+  font-size: var(--nq-t-small);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
   font-family: var(--nq-font-body);
   text-decoration: none;
+  white-space: nowrap;
   transition:
-    background var(--nq-dur-t0),
-    border-color var(--nq-dur-t0),
-    box-shadow var(--nq-dur-t1),
-    transform var(--nq-dur-press) var(--nq-ease-spring),
-    filter var(--nq-dur-t0);
+    background var(--nq-beat-settle) var(--nq-ease-out),
+    border-color var(--nq-beat-settle) var(--nq-ease-out),
+    box-shadow var(--nq-beat-settle) var(--nq-ease-out),
+    transform var(--nq-beat-ack) var(--nq-ease-out),
+    filter var(--nq-beat-settle) var(--nq-ease-out);
 }
 
 .nq-btn:active:not(:disabled) {
@@ -3479,34 +3660,40 @@ a:focus-visible {
 }
 
 .nq-btn-primary {
-  background: linear-gradient(165deg, var(--nq-accent-hover) 0%, var(--nq-accent) 55%, #a88858 100%);
+  background: var(--nq-accent);
   color: var(--nq-accent-ink);
-  box-shadow: 0 4px 20px var(--nq-accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  box-shadow: 0 4px 18px var(--nq-accent-glow);
 }
 
 .nq-btn-primary:hover:not(:disabled) {
-  box-shadow: 0 6px 28px var(--nq-accent-glow);
-  filter: brightness(1.05);
+  background: var(--nq-accent-hover);
+  box-shadow: 0 6px 26px var(--nq-accent-glow);
 }
 
+/* Nút phụ: viền thấy được nhưng không nền — để nút chính luôn là thứ duy nhất
+   nổi. Viền lấy `--nq-line-control` (đạt 3:1) chứ không lấy vạch kẻ trang trí. */
 .nq-btn-ghost {
-  background: color-mix(in srgb, var(--nq-surface) 80%, transparent);
+  background: color-mix(in srgb, var(--nq-surface) 70%, transparent);
   color: var(--nq-ink);
-  border: 1px solid var(--nq-line);
+  border-color: var(--nq-line-control);
   box-shadow: var(--nq-inner-hi);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 .nq-btn-ghost:hover:not(:disabled) {
-  border-color: var(--nq-line-strong);
-  box-shadow: 0 0 16px var(--nq-accent-glow);
+  border-color: var(--nq-accent);
+  color: var(--nq-accent);
+  background: var(--nq-accent-soft);
 }
 
 .nq-btn-danger {
-  background: var(--nq-danger);
+  background: var(--nq-st-danger);
   color: #fff8f4;
-  box-shadow: 0 4px 18px rgba(212, 93, 74, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  box-shadow: 0 4px 18px rgba(212, 93, 74, 0.28);
+}
+
+.nq-btn-danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 26px rgba(212, 93, 74, 0.34);
 }
 
 .nq-btn-block {
@@ -3588,33 +3775,59 @@ a:focus-visible {
   position: absolute;
   right: 0;
   top: 100%;
-  margin-top: 0.4rem;
-  min-width: 240px;
+  margin-top: var(--nq-s2);
+  width: min(24rem, 90vw);
+  max-height: min(52vh, 22rem);
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  padding: var(--nq-s2);
   background: var(--nq-glass);
   backdrop-filter: var(--nq-blur-glass);
   -webkit-backdrop-filter: var(--nq-blur-glass);
   border: 1px solid var(--nq-line-strong);
-  padding: 0.5rem;
   z-index: 30;
   border-radius: var(--nq-radius-bubble);
-  box-shadow: var(--nq-shadow-float), var(--nq-inner-hi);
+  box-shadow: var(--nq-elev-4), var(--nq-inner-hi);
+}
+
+/* Nhãn nhóm trong menu (vd "Trải nghiệm AI") — chiếm cả hai cột. */
+.nq-more-group {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s2);
+  margin: var(--nq-s2) 0 var(--nq-s1);
+  padding-top: var(--nq-s2);
+  border-top: 1px solid var(--nq-line);
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-micro);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--nq-accent);
 }
 
 .nq-more-panel a {
   color: var(--nq-ink);
   text-decoration: none;
-  min-height: 44px;
+  min-height: 40px;
   display: flex;
   align-items: center;
-  padding: 0 0.85rem;
+  padding: 0 var(--nq-s3);
   border-radius: var(--nq-radius-pill);
+  font-size: var(--nq-t-caption);
+  line-height: 1.3;
   transition:
-    background var(--nq-dur-t0),
-    transform var(--nq-dur-press) var(--nq-ease-spring);
+    background var(--nq-beat-settle) var(--nq-ease-out),
+    color var(--nq-beat-settle) var(--nq-ease-out),
+    transform var(--nq-beat-ack) var(--nq-ease-out);
 }
 
 .nq-more-panel a:hover {
   background: var(--nq-accent-soft);
+  color: var(--nq-accent);
 }
 
 .nq-more-panel a:active {
@@ -3661,6 +3874,824 @@ a:focus-visible {
 }
 
 /* Khối `prefers-reduced-motion` nằm ở CUỐI file — xem mục cuối globals.css. */
+
+/* ── Mặt tiền (landing) và cửa vào (login) ──
+   Bản cũ dựng hai vòng sáng gradient mờ trôi phía sau nội dung — copper một
+   góc, đỏ góc kia, ở hai trang đặt ngược nhau. Đó là trang trí không mang
+   thông tin: không gắn với quán, không đổi theo dữ liệu, và đặt cạnh nhau thì
+   bất kỳ sản phẩm nào cũng vừa. Thay bằng nền "đêm quán": nền tối có hạt
+   (token grain đã có sẵn) và MỘT dải sáng ấm ở đỉnh — như đèn trên quầy bar —
+   để mắt vào đúng tên quán rồi tắt dần xuống hết trang. Hai trang dùng chung
+   một nguồn sáng vì chúng là cùng một không gian, không phải hai sản phẩm. */
+.nq-landing,
+.nq-login {
+  position: relative;
+  background: var(--nq-bg);
+  color: var(--nq-ink);
+  overflow-x: clip;
+}
+
+.nq-landing {
+  min-height: 100vh;
+}
+
+.nq-login {
+  min-height: 100dvh;
+}
+
+.nq-landing::before,
+.nq-login::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(115% 52% at 50% -9%, rgba(196, 165, 116, 0.15) 0%, transparent 61%),
+    var(--nq-grain);
+  opacity: 0.9;
+}
+
+/* ── Mặt tiền chia theo "chương" ──
+   Mỗi chương một headline 2–3 dòng + một hành động duy nhất. Bản trước dồn
+   toàn bộ nội dung vào một cột: hero, khối biên tập, hai nút, 19 nút tài khoản
+   demo, lưới 4 tính năng — tất cả cùng trọng lượng. Trang không có nhịp, và
+   phần đập vào mắt trước tiên là một bức tường nút demo, không phải tên quán.
+   Chương cách nhau bằng khoảng thở lớn (s8) để mắt biết mình vừa sang đoạn mới. */
+.nq-chapter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nq-s5);
+  padding-bottom: var(--nq-s8);
+  margin-bottom: var(--nq-s8);
+  border-bottom: 1px solid var(--nq-line);
+}
+
+.nq-chapter:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+/* Chương mở đầu căn giữa; các chương sau căn trái để có nhịp đọc xuôi. */
+.nq-chapter--opening {
+  align-items: center;
+  text-align: center;
+  gap: var(--nq-s4);
+  padding-top: var(--nq-s6);
+}
+
+.nq-chapter__title {
+  font-family: var(--nq-font-display);
+  font-weight: 400;
+  font-size: var(--nq-t-display);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  margin: 0;
+  max-width: 22ch;
+}
+
+.nq-chapter__title em {
+  font-style: normal;
+  color: var(--nq-accent);
+}
+
+.nq-chapter__lead {
+  margin: 0;
+  max-width: 52ch;
+  font-size: var(--nq-t-body);
+  line-height: 1.65;
+  color: var(--nq-ink-muted);
+}
+
+/* Nhịp vào của chương: mỗi chương trồi lên khi cuộn tới. Đây là hiệu ứng MẠNH
+   DUY NHẤT của trang — phần còn lại giữ tiết chế (chỉ hover/bấm mới động), theo
+   đúng cách các site thắng giải làm: một concept thị trường, không trộn nhiều
+   hiệu ứng. Chuyển động chỉ chạy khi JavaScript bật cờ `data-enter`, nên trang
+   vẫn đọc được đầy đủ nếu JS lỗi. */
+.nq-chapter[data-enter="pending"] {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.nq-chapter[data-enter="in"] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--nq-beat-chapter) var(--nq-ease-out),
+    transform var(--nq-beat-chapter) var(--nq-ease-out);
+}
+
+/* Nhịp của dàn nhân sự trong hero — "nhịp quán" nhìn thấy được.
+   Năm vạch nhịp đập lệch pha nhau như năm người trong ca; đây là biểu tượng
+   gắn với đúng việc hệ thống làm (giữ nhịp ca), không phải hạt sáng trang trí. */
+.nq-pulse {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--nq-s2);
+  height: 56px;
+  margin-bottom: var(--nq-s3);
+}
+
+.nq-pulse span {
+  display: block;
+  width: 5px;
+  border-radius: var(--nq-radius-pill);
+  background: linear-gradient(180deg, var(--nq-accent-hover), var(--nq-accent));
+  transform-origin: bottom;
+  animation: nq-pulse-beat 2.4s var(--nq-ease-inout) infinite;
+}
+
+.nq-pulse span:nth-child(1) { height: 22px; animation-delay: 0ms; }
+.nq-pulse span:nth-child(2) { height: 34px; animation-delay: 180ms; }
+.nq-pulse span:nth-child(3) { height: 48px; animation-delay: 360ms; }
+.nq-pulse span:nth-child(4) { height: 34px; animation-delay: 540ms; }
+.nq-pulse span:nth-child(5) { height: 22px; animation-delay: 720ms; }
+
+@keyframes nq-pulse-beat {
+  0%, 100% { transform: scaleY(0.55); opacity: 0.55; }
+  45% { transform: scaleY(1); opacity: 1; }
+}
+
+/* Số liệu thật của quán — điểm nhấn thị giác chính, thay cho trang trí.
+   Bản trước chỗ này là một khối "9 Agent Chuyên Trách" — con số không đổi, không
+   đo được, không giúp ai ra quyết định. Số dưới đây đọc từ API nên đổi theo ca. */
+.nq-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--nq-s4);
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.nq-figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nq-s1);
+  padding: var(--nq-s4);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 86%, transparent);
+  box-shadow: var(--nq-elev-1), var(--nq-inner-hi);
+  text-align: left;
+}
+
+.nq-figure__value {
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-num-lg);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--nq-ink);
+}
+
+/* Số đang có việc phải xử lý tô theo màu trạng thái — đây là thông tin, không
+   phải trang trí: 0 việc treo thì trung tính, có việc thì vàng. */
+.nq-figure[data-tone="warn"] .nq-figure__value {
+  color: var(--nq-st-warn);
+}
+
+.nq-figure__label {
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-micro);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--nq-ink-muted);
+}
+
+/* Danh sách năng lực: hàng ngang, có vạch phân cách, KHÔNG phải lưới 4 thẻ đều
+   nhau. Bốn thẻ bằng nhau nói rằng bốn thứ quan trọng như nhau — mà chúng không
+   như nhau: xếp ca và chấm công là việc hằng ngày, POS và cẩm nang là việc theo
+   ca. Hàng ngang cho phép mỗi dòng mang mô tả dài mà không bị bó trong ô vuông. */
+.nq-capability {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 72%, transparent);
+  box-shadow: var(--nq-elev-1), var(--nq-inner-hi);
+  overflow: hidden;
+}
+
+.nq-capability__row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--nq-s2);
+  padding: var(--nq-s5);
+  transition: background var(--nq-beat-settle) var(--nq-ease-out);
+}
+
+.nq-capability__row + .nq-capability__row {
+  border-top: 1px solid var(--nq-line);
+}
+
+.nq-capability__row:hover {
+  background: color-mix(in srgb, var(--nq-accent) 6%, transparent);
+}
+
+@media (min-width: 768px) {
+  .nq-capability__row {
+    grid-template-columns: minmax(200px, 280px) 1fr;
+    align-items: baseline;
+    gap: var(--nq-s6);
+  }
+}
+
+.nq-capability__name {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s3);
+  font-family: var(--nq-font-body);
+  font-size: var(--nq-t-small);
+  font-weight: 700;
+  color: var(--nq-ink);
+  margin: 0;
+}
+
+.nq-capability__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: 1px solid color-mix(in srgb, var(--nq-accent) 40%, var(--nq-line));
+  border-radius: var(--nq-radius-pill);
+  background: var(--nq-accent-soft);
+  color: var(--nq-accent);
+}
+
+.nq-capability__copy {
+  margin: 0;
+  font-size: var(--nq-t-small);
+  line-height: 1.6;
+  color: var(--nq-ink-muted);
+}
+
+/* ── Nút của hệ thống (dùng chung cho mặt tiền và các trang) ──
+   Bản trước mỗi nơi tự viết nút bằng Tailwind trần (`border-2` + `px-10 py-4`),
+   nên nút ở mặt tiền vuông trong khi nút trong app bo tròn — hai ngôn ngữ hình
+   dạng trên cùng một sản phẩm. Ba lớp dưới đây là toàn bộ từ vựng nút. */
+.nq-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nq-s2);
+  min-height: 48px;
+  padding: 0.7rem 1.6rem;
+  border: 1px solid transparent;
+  border-radius: var(--nq-radius-pill);
+  font-family: var(--nq-font-body);
+  font-size: var(--nq-t-small);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background var(--nq-beat-settle) var(--nq-ease-out),
+    border-color var(--nq-beat-settle) var(--nq-ease-out),
+    box-shadow var(--nq-beat-settle) var(--nq-ease-out),
+    transform var(--nq-beat-ack) var(--nq-ease-out);
+}
+
+.nq-cta:active {
+  transform: scale(var(--nq-press));
+}
+
+/* Nút chính: copper đặc. Đây là "một hành động duy nhất" của chương. */
+.nq-cta--primary {
+  background: var(--nq-accent);
+  color: var(--nq-accent-ink);
+  box-shadow: 0 4px 18px var(--nq-accent-glow);
+}
+
+.nq-cta--primary:hover {
+  background: var(--nq-accent-hover);
+  box-shadow: 0 6px 26px var(--nq-accent-glow);
+}
+
+/* Nút phụ: viền, không nền. */
+.nq-cta--ghost {
+  border-color: var(--nq-line-control);
+  color: var(--nq-ink);
+}
+
+.nq-cta--ghost:hover {
+  border-color: var(--nq-accent);
+  color: var(--nq-accent);
+}
+
+.nq-cta--lg {
+  min-height: 56px;
+  padding: 0.9rem 2.2rem;
+  font-size: var(--nq-t-h3);
+}
+
+/* Cỡ nhỏ cho thanh trên (Thoát / Đăng nhập). Vẫn đủ 40px bề cao để bấm được
+   bằng ngón tay trên máy tính bảng đặt ở quầy. */
+.nq-cta--sm {
+  min-height: 40px;
+  padding: 0.35rem 0.95rem;
+  font-size: var(--nq-t-caption);
+}
+
+/* Tiêu đề màn hình chặn (thiếu phiên / thiếu quyền). Bản cũ dùng
+   `text-3xl font-black uppercase tracking-tighter` — chữ hoa cỡ lớn, siết
+   khoảng chữ, ngược hẳn với quy ước đặt tiêu đề bằng font display của hệ. */
+.nq-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: var(--nq-s3);
+  padding: var(--nq-s6);
+  text-align: center;
+  background: var(--nq-bg);
+}
+
+.nq-gate-title {
+  font-family: var(--nq-font-display);
+  font-weight: 400;
+  font-size: var(--nq-t-h1);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--nq-ink);
+  margin: 0;
+}
+
+.nq-gate-lead {
+  max-width: 46ch;
+  margin: 0;
+  font-size: var(--nq-t-body);
+  line-height: 1.6;
+  color: var(--nq-ink-muted);
+}
+
+.nq-gate-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nq-s3);
+  margin-top: var(--nq-s4);
+}
+
+@media (min-width: 640px) {
+  .nq-gate-actions {
+    flex-direction: row;
+  }
+}
+
+/* ── Tài khoản demo: xếp gọn sau ngăn kéo ──
+   Trước đây 19 tài khoản là 19 ô vuông bằng nhau nằm giữa trang, mỗi ô có một
+   icon mũi tên — chiếm nhiều diện tích hơn cả phần giới thiệu sản phẩm. Đây là
+   tiện ích cho buổi trình diễn, không phải nội dung chính: đưa vào `<details>`,
+   mặc định đóng, và dùng chip nhỏ thay ô lớn. */
+.nq-demo {
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 60%, transparent);
+}
+
+.nq-demo > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nq-s3);
+  min-height: 48px;
+  padding: var(--nq-s3) var(--nq-s5);
+  cursor: pointer;
+  border-radius: var(--nq-radius-bubble);
+  font-size: var(--nq-t-small);
+  color: var(--nq-ink-muted);
+  transition: color var(--nq-beat-settle) var(--nq-ease-out);
+}
+
+.nq-demo > summary:hover {
+  color: var(--nq-ink);
+}
+
+.nq-demo > summary::marker {
+  color: var(--nq-accent);
+}
+
+.nq-demo__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--nq-s2);
+  padding: 0 var(--nq-s5) var(--nq-s5);
+}
+
+.nq-demo__item {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s3);
+  min-height: 44px;
+  padding: var(--nq-s2) var(--nq-s4);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-pill);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 80%, transparent);
+  color: var(--nq-ink);
+  font-size: var(--nq-t-caption);
+  text-align: left;
+  transition:
+    border-color var(--nq-beat-settle) var(--nq-ease-out),
+    background var(--nq-beat-settle) var(--nq-ease-out),
+    transform var(--nq-beat-ack) var(--nq-ease-out);
+}
+
+.nq-demo__item:hover:not(:disabled) {
+  border-color: var(--nq-accent);
+  background: var(--nq-accent-soft);
+}
+
+.nq-demo__item:active:not(:disabled) {
+  transform: scale(var(--nq-press));
+}
+
+.nq-demo__item:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.nq-demo__name {
+  display: block;
+  font-weight: 700;
+  font-size: var(--nq-t-caption);
+  line-height: 1.3;
+}
+
+.nq-demo__role {
+  display: block;
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nq-ink-muted);
+}
+
+/* Hàng chờ tài khoản — chỉ hiện khi đang đăng nhập. */
+.nq-demo__pending {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--nq-accent);
+  border-top-color: transparent;
+  animation: nq-spin 0.7s linear infinite;
+  flex: none;
+}
+
+@keyframes nq-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nq-pulse span { animation: none; transform: scaleY(0.8); opacity: 0.8; }
+  .nq-demo__pending { animation: none; }
+  .nq-chapter[data-enter="pending"] { opacity: 1; transform: none; }
+}
+
+/* Khối tính năng của mặt tiền: dùng đúng bề mặt và bậc nổi của hệ thống.
+   Bản cũ dùng nền `bg-neutral-900/60` + viền `border-neutral-800/80` — xám
+   Tailwind trung tính, không thuộc bảng màu quán, nên khối này đứng cạnh mọi
+   khối khác của app là lệch tông ngay. */
+.nq-feature-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nq-s2);
+  padding: var(--nq-s4);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
+  box-shadow: var(--nq-elev-1), var(--nq-inner-hi);
+}
+
+.nq-feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid color-mix(in srgb, var(--nq-accent) 50%, var(--nq-line));
+  border-radius: var(--nq-radius);
+  background: var(--nq-accent-soft);
+  color: var(--nq-accent);
+}
+
+.nq-feature-title {
+  font-family: var(--nq-font-body);
+  font-size: var(--nq-t-small);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--nq-ink);
+  margin: 0;
+}
+
+.nq-feature-copy {
+  margin: 0;
+  font-size: var(--nq-t-caption);
+  line-height: 1.6;
+  color: var(--nq-ink-muted);
+}
+
+.nq-landing-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nq-s4);
+  padding-top: var(--nq-s5);
+  border-top: 1px solid var(--nq-line);
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
+  color: var(--nq-ink-muted);
+}
+
+/* Chân trang là chữ, không phải nút — dùng gạch chân để báo "bấm được", thay
+   vì đổi màu sang một họ màu ngoài hệ (bản cũ dùng amber-400). */
+.nq-landing-footer-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--nq-ink-muted);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--nq-beat-ack) var(--nq-ease-out);
+}
+
+.nq-landing-footer-link:hover {
+  color: var(--nq-accent);
+}
+
+/* ── Bề mặt dùng chung cho component ──
+   Trước đây mỗi component tự viết chuỗi `bg-[var(--nq-surface-hi)] border-2
+   border-[var(--nq-dim)]` — viền 2px không bo góc, không đổ bóng. Chuỗi đó lặp
+   lại ở 25 chỗ trong `kit.tsx` và 54 chỗ toàn app, nên toàn bộ giao diện là
+   một loạt khung vuông phẳng như nhau. Ba lớp dưới đây thay thế chuỗi đó.
+   Cả ba đều bo theo token, có bậc nổi theo vai, và chuyển động theo nhịp chung. */
+.nq-surface-row {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s3);
+  padding: var(--nq-s3) var(--nq-s4);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
+  box-shadow: var(--nq-elev-1);
+}
+
+.nq-surface-row--between {
+  justify-content: space-between;
+}
+
+.nq-surface-block {
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
+  box-shadow: var(--nq-elev-1);
+}
+
+/* Ô bấm được: nổi rõ hơn (elev-2) và có phản hồi hover — để mắt phân biệt được
+   "khối này bấm được" với "khối này chỉ để đọc". */
+.nq-surface-tile {
+  display: block;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
+  box-shadow: var(--nq-elev-2);
+  transition:
+    border-color var(--nq-beat-settle) var(--nq-ease-out),
+    box-shadow var(--nq-beat-settle) var(--nq-ease-out),
+    transform var(--nq-beat-ack) var(--nq-ease-out);
+}
+
+.nq-surface-tile:hover {
+  border-color: var(--nq-line-strong);
+  box-shadow: var(--nq-elev-2-hover);
+}
+
+.nq-surface-tile:active {
+  transform: scale(var(--nq-press));
+}
+
+/* Bề mặt lớn (bảng, khung cuộn) — elev-1, bo góc lớn, có khe cuộn riêng. */
+.nq-surface-frame {
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 92%, transparent);
+  box-shadow: var(--nq-elev-1), var(--nq-inner-hi);
+}
+
+/* Bề mặt được NHẤN: viền copper mềm. Dùng cho khối đang chờ người dùng xử lý —
+   viền màu nói "chỗ này cần bạn", khác hẳn viền trung tính của khối thường. */
+.nq-surface-accent {
+  border: 1px solid color-mix(in srgb, var(--nq-accent) 55%, var(--nq-line));
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 90%, var(--nq-accent) 10%);
+  box-shadow: var(--nq-elev-1), var(--nq-inner-hi);
+}
+
+/* Viền mảnh trung tính trên nền hệ — thay cho chuỗi `border-2 border-[dim]`
+   từng lặp khắp nơi. Viền 2px không bo góc là thứ tạo cảm giác "khung vuông". */
+.nq-surface-hairline {
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 76%, transparent);
+}
+
+/* ── Khối biên tập (hero trạng thái) ──
+   Nền copper đặc là cách nói "đây là câu chốt của ca" — mạnh nhất trong hệ.
+   Bản cũ cộng thêm bóng lệch cứng 12px, khiến nó nổi khỏi mặt trang như một
+   tấm bìa dán lệch. Nay giữ nền đặc nhưng bóng mềm, và tiêu đề dùng font
+   display thay vì chữ hoa black siết khoảng chữ. */
+.nq-editorial {
+  background: var(--nq-accent);
+  color: var(--nq-accent-ink);
+  border-radius: var(--nq-radius-bubble);
+  box-shadow: var(--nq-elev-2);
+}
+
+.nq-editorial__wordmark {
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-micro);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin: 0 0 var(--nq-s3);
+}
+
+.nq-editorial__status {
+  font-family: var(--nq-font-display);
+  font-weight: 400;
+  font-size: var(--nq-t-display);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--nq-s3);
+}
+
+.nq-editorial__meta {
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-small);
+  opacity: 0.9;
+  max-width: 62ch;
+  margin: 0;
+}
+
+/* Bento tile — bề mặt bấm được của hub, dùng bậc nổi chung. */
+.nq-bento-surface {
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  box-shadow: var(--nq-elev-1), var(--nq-inner-hi);
+  transition:
+    border-color var(--nq-beat-settle) var(--nq-ease-out),
+    box-shadow var(--nq-beat-settle) var(--nq-ease-out),
+    transform var(--nq-beat-ack) var(--nq-ease-out);
+}
+
+a.nq-bento-surface:hover {
+  border-color: var(--nq-line-strong);
+  box-shadow: var(--nq-elev-2-hover), var(--nq-inner-hi);
+  transform: translateY(-2px);
+}
+
+a.nq-bento-surface:active {
+  transform: scale(var(--nq-press));
+}
+
+.nq-skeleton--block {
+  height: 12rem;
+}
+
+
+/* ── Toast ──
+   Toast là chỗ duy nhất trong hệ thống phải trả lời câu "việc vừa rồi thành
+   công hay hỏng?" — nên chuyển động ở đây phải MANG THÔNG TIN, không chỉ để
+   cho đẹp. Ba kênh trả lời cùng lúc, để không phụ thuộc vào màu:
+     1. hình dạng  — viền trái dày, màu theo kết quả
+     2. ký hiệu    — dấu ✓ / ! ở đầu, khác hẳn nhau về hình
+     3. chuyển động — vào bằng cách trượt lên rồi dừng dứt khoát (không nảy):
+        kết quả đã xong thì phải dừng, không rung.
+   Bản cũ: viền 2px vuông + bóng lệch cứng, và không có animation nào — toast
+   hiện ra đột ngột, không ai để ý, nên người dùng bấm lại nút vừa bấm. */
+.nq-toasts {
+  position: fixed;
+  right: calc(var(--nq-s4) + var(--nq-safe-r));
+  bottom: calc(var(--nq-s4) + var(--nq-safe-b));
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nq-s2);
+  max-width: min(26rem, calc(100vw - var(--nq-s8)));
+  pointer-events: none;
+}
+
+.nq-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--nq-s3);
+  padding: var(--nq-s3) var(--nq-s4);
+  border: 1px solid var(--nq-line-strong);
+  border-left-width: 4px;
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-glass);
+  backdrop-filter: var(--nq-blur-glass);
+  -webkit-backdrop-filter: var(--nq-blur-glass);
+  color: var(--nq-ink);
+  box-shadow: var(--nq-elev-4);
+  animation: nq-toast-in var(--nq-beat-focus) var(--nq-ease-out) both;
+}
+
+/* Viền trái + ký hiệu lấy màu theo kết quả — hai kênh, không chỉ màu nền. */
+.nq-toast[data-tone="ok"] {
+  border-left-color: var(--nq-st-ok);
+}
+
+.nq-toast[data-tone="ok"]::before {
+  content: "✓";
+  color: var(--nq-st-ok);
+  font-weight: 700;
+  line-height: 1.4;
+  flex: none;
+}
+
+.nq-toast[data-tone="danger"] {
+  border-left-color: var(--nq-st-danger);
+}
+
+.nq-toast[data-tone="danger"]::before {
+  content: "!";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--nq-st-danger);
+  color: #fff8f4;
+  font-weight: 800;
+  font-size: 0.62rem;
+  line-height: 1;
+  flex: none;
+}
+
+/* Vào: trượt lên rồi DỪNG. Không dùng đường cong có nảy — một việc đã hoàn tất
+   mà rung lắc thì đọc thành "còn đang xử lý". */
+@keyframes nq-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.nq-toast-text {
+  flex: 1;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* Nút tắt đủ 44px chạm — người dùng đang cầm khay, không cầm bút cảm ứng. */
+.nq-toast-close {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  margin: calc(-1 * var(--nq-s2)) calc(-1 * var(--nq-s2)) 0 0;
+  background: none;
+  border: none;
+  color: var(--nq-ink-muted);
+  cursor: pointer;
+  border-radius: var(--nq-radius-pill);
+}
+
+.nq-toast-close:hover {
+  color: var(--nq-ink);
+  background: color-mix(in srgb, var(--nq-accent-soft) 50%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nq-toast {
+    animation: none;
+  }
+}
+
+/* Trên máy nhỏ, toast trải hết bề ngang và nâng lên trên thanh điều hướng dưới
+   — thanh đó là pill nổi, toast đè lên là che mất lối điều hướng. */
+@media (max-width: 820px) {
+  .nq-toasts {
+    left: calc(var(--nq-s3) + var(--nq-safe-l));
+    right: calc(var(--nq-s3) + var(--nq-safe-r));
+    bottom: calc(6rem + var(--nq-safe-b));
+    max-width: none;
+  }
+}
 
 /* ── Ops register (T0) ── */
 .nq-page--run {
@@ -3740,8 +4771,10 @@ a:focus-visible {
   border-radius: var(--nq-radius-bubble);
   padding: clamp(var(--nq-s4), 3vw, var(--nq-s6));
   margin-bottom: var(--nq-s7);
-  box-shadow: var(--nq-shadow-bubble), var(--nq-inner-hi);
-  animation: nq-rise var(--nq-dur-t0) var(--nq-ease-out) both;
+  /* Khối nội dung không bấm được → elev-1. Thẻ KPI cùng trang là elev-2, nên
+     "chỗ nào bấm được" đọc ra ngay bằng mắt mà không cần thêm icon. */
+  box-shadow: var(--nq-elev-1), var(--nq-inner-hi);
+  animation: nq-rise var(--nq-beat-focus) var(--nq-ease-out) both;
 }
 
 .nq-ops-head {
@@ -3851,34 +4884,72 @@ a:focus-visible {
   padding-bottom: calc(6.5rem + var(--nq-safe-b));
 }
 
+/* ── Chip trạng thái ──
+   Một hệ duy nhất. Trước đây tồn tại hai hệ song song cắn nhau: `.nq-chip--warn`
+   (viền + chữ màu) và component `StatusChip` (nền đặc + chữ tối, cùng token
+   nhưng dạng khác) — nên "Quá hạn" trên hai trang trông như hai mức độ khác
+   nhau. Chip ở đây chỉ nói TÌNH TRẠNG: nền nhạt, chữ đậm, viền cùng họ. Nền đặc
+   dành riêng cho nút bấm (xem `.nq-btn-*`), không dành cho thông tin.
+   `.nq-chip--accent` là chip BẤM ĐƯỢC (bộ lọc, tab nhỏ) — đó là nghĩa accent,
+   không phải nghĩa trạng thái, nên vẫn tô copper. */
 .nq-chip {
   display: inline-flex;
   align-items: center;
+  gap: var(--nq-s1);
   min-height: 28px;
   padding: 0.15rem 0.7rem;
   border-radius: var(--nq-radius-pill);
   background: color-mix(in srgb, var(--nq-bg-elevated) 60%, transparent);
   box-shadow: var(--nq-inner-hi);
-  font-size: 0.75rem;
+  font-size: var(--nq-t-caption);
   font-weight: 600;
   letter-spacing: 0.04em;
   border: 1px solid var(--nq-line);
   color: var(--nq-ink-muted);
+  white-space: nowrap;
 }
 
+/* Biến thể trạng thái: nền nhạt (soft) + chữ và viền cùng họ màu. Dạng này giữ
+   nguyên khi có chữ tiếng Việt dài, không bị "khối màu đặc" nuốt chữ. */
 .nq-chip--warn {
-  border-color: color-mix(in srgb, var(--nq-warn) 50%, var(--nq-line));
-  color: var(--nq-warn);
+  border-color: color-mix(in srgb, var(--nq-st-warn) 46%, var(--nq-line));
+  background: var(--nq-st-warn-soft);
+  color: var(--nq-st-warn);
 }
 
 .nq-chip--ok {
-  border-color: color-mix(in srgb, var(--nq-ok) 50%, var(--nq-line));
-  color: var(--nq-ok);
+  border-color: color-mix(in srgb, var(--nq-st-ok) 46%, var(--nq-line));
+  background: var(--nq-st-ok-soft);
+  color: var(--nq-st-ok);
 }
 
 .nq-chip--danger {
-  border-color: color-mix(in srgb, var(--nq-danger) 50%, var(--nq-line));
-  color: var(--nq-danger);
+  border-color: color-mix(in srgb, var(--nq-st-danger) 46%, var(--nq-line));
+  background: var(--nq-st-danger-soft);
+  color: var(--nq-st-danger);
+}
+
+.nq-chip--info {
+  border-color: color-mix(in srgb, var(--nq-st-info) 46%, var(--nq-line));
+  background: var(--nq-st-info-soft);
+  color: var(--nq-st-info);
+}
+
+.nq-chip--accent {
+  border-color: color-mix(in srgb, var(--nq-accent) 46%, var(--nq-line));
+  background: var(--nq-accent-soft);
+  color: var(--nq-accent);
+}
+
+/* Chip có chấm trạng thái: dấu hiệu thứ hai ngoài màu — người mù màu vẫn đọc
+   được. Dùng cho trạng thái sống (đang chạy / đã dừng), không cho nhãn tĩnh. */
+.nq-chip--dot::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
 }
 
 .nq-toolbar {
@@ -3901,11 +4972,12 @@ a:focus-visible {
   min-height: 40px;
   padding: 0.35rem 0.55rem;
   background: var(--nq-surface);
-  border: 1px solid var(--nq-line-strong);
+  /* Ô lọc cũng là control bấm được — cùng ngưỡng biên với ô nhập. */
+  border: 1px solid var(--nq-line-control);
   color: var(--nq-ink);
   border-radius: var(--nq-radius);
   font-family: var(--nq-font-mono);
-  font-size: 0.85rem;
+  font-size: var(--nq-t-small);
 }
 
 .nq-toolbar select option {
@@ -4487,30 +5559,45 @@ a:focus-visible {
 
 .nq-roster-slot-count {
   font-family: var(--nq-font-mono);
-  font-size: 0.78rem;
+  font-size: var(--nq-t-caption);
   font-weight: 800;
   color: var(--nq-fg);
 }
 
-.nq-roster-slot-role {
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--nq-ink-muted);
+/* Ô ca dùng đúng bốn trạng thái của hệ thống:
+     ok     đủ người       → xanh
+     warn   thiếu người    → vàng
+     empty  trống ca       → đỏ, viền đứt (khác hẳn về HÌNH, không chỉ màu)
+     chưa xác nhận         → cờ vàng nhỏ cạnh số đếm, không đổi màu cả ô
+   Bản cũ chỉ có vàng/đỏ và dùng chung một dạng viền, nên "thiếu 1 người" và
+   "trống ca" khó phân biệt khi liếc nhanh cả tuần. */
+.nq-roster-slot-btn--ok {
+  border-color: color-mix(in srgb, var(--nq-st-ok) 34%, var(--nq-line));
+}
+
+.nq-roster-slot-btn--ok .nq-roster-slot-count {
+  color: var(--nq-st-ok);
+}
+
+.nq-roster-slot-btn--warn {
+  border-color: color-mix(in srgb, var(--nq-st-warn) 44%, var(--nq-line));
 }
 
 .nq-roster-slot-btn--warn .nq-roster-slot-count {
-  color: var(--nq-warn);
+  color: var(--nq-st-warn);
 }
 
 .nq-roster-slot-btn--empty {
   border-style: dashed;
-  border-color: color-mix(in srgb, var(--nq-red) 40%, var(--nq-line));
+  border-color: color-mix(in srgb, var(--nq-st-danger) 40%, var(--nq-line));
 }
 
 .nq-roster-slot-btn--empty .nq-roster-slot-count {
-  color: var(--nq-red);
+  color: var(--nq-st-danger);
+}
+
+.nq-roster-slot-btn[data-unconfirmed="1"] {
+  border-left-width: 3px;
 }
 
 .nq-roster-khung-bar {
@@ -6058,83 +7145,6 @@ a:focus-visible {
   color: var(--nq-ink-muted);
 }
 
-/* ── Toast xác nhận sau hành động ──
-   Nổi ở góc, tự tắt sau 4s, có nút tắt tay. `role="status"` để trình đọc màn
-   hình đọc mà không cắt lời người dùng. */
-.nq-toasts {
-  position: fixed;
-  z-index: 260;
-  right: calc(var(--nq-s4) + var(--nq-safe-r));
-  bottom: calc(var(--nq-s8) + var(--nq-safe-b));
-  display: flex;
-  flex-direction: column;
-  gap: var(--nq-s2);
-  max-width: min(380px, calc(100vw - 2 * var(--nq-s4)));
-  pointer-events: none;
-}
-
-.nq-toast {
-  pointer-events: auto;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--nq-s3);
-  padding: var(--nq-s3) var(--nq-s4);
-  border: 1px solid var(--nq-line-strong);
-  border-left: 3px solid var(--nq-ok);
-  border-radius: var(--nq-radius-bubble);
-  background: var(--nq-bg-elevated);
-  box-shadow: var(--nq-shadow-float), var(--nq-inner-hi);
-  font-size: 0.9rem;
-  animation: nq-toast-in var(--nq-dur-t1) var(--nq-ease-out) both;
-}
-
-.nq-toast[data-kind="err"] {
-  border-left-color: var(--nq-danger);
-}
-
-@keyframes nq-toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.nq-toast-text {
-  flex: 1;
-  margin: 0;
-  line-height: 1.45;
-}
-
-.nq-toast-close {
-  flex: none;
-  min-width: 44px;
-  min-height: 44px;
-  margin: calc(-1 * var(--nq-s2)) calc(-1 * var(--nq-s2)) 0 0;
-  background: none;
-  border: none;
-  color: var(--nq-ink-muted);
-  cursor: pointer;
-  border-radius: var(--nq-radius-pill);
-}
-
-.nq-toast-close:hover {
-  color: var(--nq-ink);
-  background: color-mix(in srgb, var(--nq-accent-soft) 50%, transparent);
-}
-
-@media (max-width: 820px) {
-  .nq-toasts {
-    left: calc(var(--nq-s3) + var(--nq-safe-l));
-    right: calc(var(--nq-s3) + var(--nq-safe-r));
-    bottom: calc(6rem + var(--nq-safe-b));
-    max-width: none;
-  }
-}
-
 /* ── Câu hỏi gợi ý trong tour → nhảy sang /sop đã điền sẵn ──
    Đây là "AI hướng dẫn" có thật: AG-SOP chỉ trả lời từ mẫu phiếu và cẩm nang
    quán, kèm trích dẫn. Không có hộp chat giả ở đâu trong sản phẩm. */
@@ -6414,31 +7424,33 @@ a:focus-visible {
 
 .nq-map-role {
   padding: var(--nq-s3) var(--nq-s5);
-  border: 2px solid var(--nq-line-strong);
-  background: var(--nq-surface);
-  color: var(--nq-fg);
+  border: 1px solid var(--nq-line-control);
+  border-radius: var(--nq-radius-pill);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 80%, transparent);
+  color: var(--nq-ink);
   font-family: var(--nq-font-mono);
-  font-size: 0.75rem;
+  font-size: var(--nq-t-caption);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   cursor: pointer;
+  box-shadow: var(--nq-inner-hi);
   transition:
-    border-color var(--nq-dur-t0),
-    color var(--nq-dur-t0),
-    background var(--nq-dur-t0),
-    transform var(--nq-dur-press) var(--nq-ease-spring);
+    border-color var(--nq-beat-settle) var(--nq-ease-out),
+    color var(--nq-beat-settle) var(--nq-ease-out),
+    background var(--nq-beat-settle) var(--nq-ease-out),
+    transform var(--nq-beat-ack) var(--nq-ease-out);
 }
 
 .nq-map-role:hover {
-  border-color: var(--nq-copper);
-  color: var(--nq-copper);
+  border-color: var(--nq-accent);
+  color: var(--nq-accent);
 }
 
 .nq-map-role--on {
-  border-color: var(--nq-copper);
-  background: color-mix(in srgb, var(--nq-copper) 12%, var(--nq-surface));
-  color: var(--nq-copper);
+  border-color: var(--nq-accent);
+  background: var(--nq-accent-soft);
+  color: var(--nq-accent);
 }
 
 .nq-map-role:active {
@@ -6473,13 +7485,16 @@ a:focus-visible {
   justify-content: center;
   width: 88px;
   height: 88px;
-  border: 2px solid var(--nq-copper);
-  background: color-mix(in srgb, var(--nq-bg) 85%, var(--nq-copper));
-  font-size: 0.65rem;
+  /* Lõi là hình tròn: nó là tâm của sơ đồ, không phải một thẻ nội dung. */
+  border: 2px solid var(--nq-accent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--nq-bg) 85%, var(--nq-accent));
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-micro);
   font-weight: 900;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  box-shadow: 0 0 40px color-mix(in srgb, var(--nq-copper) 35%, transparent);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--nq-accent) 35%, transparent);
   transform: translateZ(0);
 }
 
@@ -6487,29 +7502,34 @@ a:focus-visible {
   position: absolute;
   width: min(42vw, 200px);
   padding: var(--nq-s4);
-  border: 2px solid color-mix(in srgb, var(--hub-color) 55%, var(--nq-line));
+  border: 1px solid color-mix(in srgb, var(--hub-color) 50%, var(--nq-line));
+  border-radius: var(--nq-radius-bubble);
   background: color-mix(in srgb, var(--nq-surface-hi) 92%, var(--hub-color) 8%);
+  color: var(--nq-ink);
   text-align: left;
   cursor: pointer;
   transform-style: preserve-3d;
+  /* Bỏ bóng lệch cứng `8px 8px 0` của bản cũ: những ô này bay trên một sân 3D
+     đã có phối cảnh, nên bóng lệch cứng làm chúng trông dán lệch khỏi sân. Dùng
+     bóng mềm theo bậc nổi chung để độ nổi đọc đúng thứ tự. */
+  box-shadow: var(--nq-elev-2), var(--nq-inner-hi);
   transition:
-    border-color var(--nq-dur-t0),
-    box-shadow var(--nq-dur-t0),
-    opacity var(--nq-dur-t0),
+    border-color var(--nq-beat-settle) var(--nq-ease-out),
+    box-shadow var(--nq-beat-settle) var(--nq-ease-out),
+    opacity var(--nq-beat-settle) var(--nq-ease-out),
     transform 0.45s var(--nq-ease-out);
-  box-shadow: 8px 8px 0 color-mix(in srgb, var(--hub-color) 25%, transparent);
 }
 
 .nq-map-node:hover {
   border-color: var(--hub-color);
-  box-shadow: 12px 12px 0 color-mix(in srgb, var(--hub-color) 35%, transparent);
+  box-shadow: var(--nq-elev-2-hover), var(--nq-inner-hi);
 }
 
 .nq-map-node--active {
   border-color: var(--hub-color);
   box-shadow:
     0 0 0 1px var(--hub-color),
-    12px 12px 0 color-mix(in srgb, var(--hub-color) 40%, transparent);
+    var(--nq-elev-2-hover);
   z-index: 2;
 }
 
@@ -6545,8 +7565,10 @@ a:focus-visible {
 }
 
 .nq-map-detail {
-  border: 2px solid var(--nq-line-strong);
-  background: var(--nq-surface);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 92%, transparent);
+  box-shadow: var(--nq-elev-1), var(--nq-inner-hi);
   padding: var(--nq-s5);
 }
 
@@ -6558,9 +7580,9 @@ a:focus-visible {
 
 .nq-map-detail-head h3 {
   margin: 0 0 var(--nq-s2);
-  font-size: 1.5rem;
-  font-weight: 800;
-  text-transform: uppercase;
+  font-family: var(--nq-font-display);
+  font-size: var(--nq-t-h2);
+  font-weight: 400;
 }
 
 .nq-map-detail-head p {
@@ -6584,17 +7606,22 @@ a:focus-visible {
   gap: var(--nq-s2) var(--nq-s4);
   padding: var(--nq-s4);
   border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 80%, transparent);
+  box-shadow: var(--nq-elev-1);
   text-decoration: none;
   color: inherit;
   transition:
-    border-color var(--nq-dur-t0),
-    background var(--nq-dur-t0),
-    transform var(--nq-dur-press) var(--nq-ease-spring);
+    border-color var(--nq-beat-settle) var(--nq-ease-out),
+    background var(--nq-beat-settle) var(--nq-ease-out),
+    box-shadow var(--nq-beat-settle) var(--nq-ease-out),
+    transform var(--nq-beat-ack) var(--nq-ease-out);
 }
 
 .nq-map-page-link:hover {
-  border-color: var(--nq-copper);
-  background: color-mix(in srgb, var(--nq-copper) 6%, var(--nq-surface));
+  border-color: var(--nq-line-strong);
+  background: color-mix(in srgb, var(--nq-accent) 7%, var(--nq-bg-elevated));
+  box-shadow: var(--nq-elev-2-hover);
 }
 
 .nq-map-page-link:active {
@@ -6612,11 +7639,13 @@ a:focus-visible {
 
 .nq-map-agent {
   font-family: var(--nq-font-mono);
-  font-size: 0.65rem;
+  font-size: var(--nq-t-micro);
   font-weight: 600;
   padding: 2px 8px;
-  border: 1px solid var(--nq-copper);
-  color: var(--nq-copper);
+  border: 1px solid color-mix(in srgb, var(--nq-accent) 50%, var(--nq-line));
+  border-radius: var(--nq-radius-pill);
+  background: var(--nq-accent-soft);
+  color: var(--nq-accent);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }

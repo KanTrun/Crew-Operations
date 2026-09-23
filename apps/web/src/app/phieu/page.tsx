@@ -415,7 +415,7 @@ export default function PhieuPage() {
             ))}
             {buocKe.length > 0 ? (
               <div className="mt-4 border-t border-[var(--nq-dim)] pt-3">
-                <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-[var(--nq-dim)]">
+                <p className="mb-2 font-mono text-2xs uppercase tracking-widest text-[var(--nq-dim)]">
                   Tiếp theo
                 </p>
                 {buocKe.map((b) => (

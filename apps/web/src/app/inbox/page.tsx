@@ -558,9 +558,9 @@ export default function InboxPage() {
                               className="flex items-center gap-1.5 rounded bg-zinc-900/90 px-2 py-1 border border-zinc-700"
                             >
                               <span className="font-semibold text-white">{cand.ten}</span>
-                              <span className="text-[10px] text-amber-300 font-bold">({cand.score}%)</span>
+                              <span className="text-2xs text-amber-300 font-bold">({cand.score}%)</span>
                               {cand.reasons && cand.reasons.length > 0 && (
-                                <span className="text-[10px] text-zinc-400">· {cand.reasons[0]}</span>
+                                <span className="text-2xs text-zinc-400">· {cand.reasons[0]}</span>
                               )}
                               {manager && (
                                 <button
@@ -570,7 +570,7 @@ export default function InboxPage() {
                                     e.stopPropagation();
                                     handleSmartApprove(it, cand.nv_id);
                                   }}
-                                  className="ml-1 rounded bg-purple-600 hover:bg-purple-500 text-white px-1.5 py-0.5 text-[10px] font-bold"
+                                  className="ml-1 rounded bg-purple-600 hover:bg-purple-500 text-white px-1.5 py-0.5 text-2xs font-bold"
                                 >
                                   Chọn & Duyệt
                                 </button>

@@ -273,11 +273,11 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 Bảo vệ quyền riêng tư giọng nói
               </h4>
             </div>
-            <div className="mt-3 space-y-2.5 text-[11px] leading-relaxed text-[var(--nq-dim)]">
+            <div className="mt-3 space-y-2.5 text-2xs leading-relaxed text-[var(--nq-dim)]">
               <p>
                 Theo <strong>Nghị định 13/2023/NĐ-CP</strong>, AG-COPILOT cần sự đồng thuận của anh/chị trước khi tiếp nhận âm thanh từ micro để hỗ trợ tra cứu và điều hành qua giọng nói.
               </p>
-              <div className="border border-[var(--nq-dim)]/40 bg-[var(--nq-bg)] p-2.5 text-[10px] text-[var(--nq-fg)]">
+              <div className="border border-[var(--nq-dim)]/40 bg-[var(--nq-bg)] p-2.5 text-2xs text-[var(--nq-fg)]">
                 <p className="font-semibold text-emerald-400">Cam kết an toàn dữ liệu:</p>
                 <ul className="mt-1 list-disc pl-4 space-y-0.5 text-[var(--nq-dim)]">
                   <li>Không lưu trữ tệp ghi âm giọng nói thô trên hệ thống.</li>
@@ -290,7 +290,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
               <button
                 type="button"
                 onClick={() => setShowConsentModal(false)}
-                className="border border-[var(--nq-dim)] px-3 py-1.5 text-[10px] font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-fg)] hover:text-[var(--nq-fg)]"
+                className="border border-[var(--nq-dim)] px-3 py-1.5 text-2xs font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-fg)] hover:text-[var(--nq-fg)]"
               >
                 Để sau
               </button>
@@ -303,7 +303,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   setShowConsentModal(false);
                   void voice.start();
                 }}
-                className="border border-[var(--nq-copper)] bg-[var(--nq-copper)] px-3.5 py-1.5 text-[10px] font-bold uppercase text-[#0e0c0a] transition hover:brightness-110"
+                className="border border-[var(--nq-copper)] bg-[var(--nq-copper)] px-3.5 py-1.5 text-2xs font-bold uppercase text-[#0e0c0a] transition hover:brightness-110"
               >
                 Đồng ý & Bắt đầu
               </button>
@@ -326,7 +326,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
           </div>
           <div>
             <h3 className="text-sm font-bold uppercase text-[var(--nq-fg)]">{profile.label}</h3>
-            <p className="flex items-center gap-1 text-[11px] text-[var(--nq-dim)]">
+            <p className="flex items-center gap-1 text-2xs text-[var(--nq-dim)]">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Sẵn sàng hỗ trợ · AI trả lời kèm đề xuất, người duyệt mới áp dụng
             </p>
@@ -337,7 +337,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             type="button"
             onClick={handleVoiceToggleEnabled}
             title={voiceEnabled ? "Tắt voice (chỉ dùng chat text)" : "Bật voice (nói chuyện với trợ lý)"}
-            className={`flex items-center gap-1 border px-2 py-1 text-[10px] font-bold uppercase transition ${
+            className={`flex items-center gap-1 border px-2 py-1 text-2xs font-bold uppercase transition ${
               voiceEnabled
                 ? "border-[var(--nq-copper)] bg-[var(--nq-copper)]/10 text-[var(--nq-copper)] hover:brightness-110"
                 : "border-[var(--nq-dim)] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
@@ -350,7 +350,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             <button
               onClick={onClearHistory ?? clearHistory}
               title="Xoá lịch sử hội thoại"
-              className="border border-transparent px-2 py-1 text-[10px] font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-red)] hover:text-[var(--nq-red)]"
+              className="border border-transparent px-2 py-1 text-2xs font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-red)] hover:text-[var(--nq-red)]"
             >
               Xoá
             </button>
@@ -359,7 +359,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             <button
               onClick={onOpenFullPage}
               title="Mở trợ lý ở trang riêng"
-              className="border border-transparent px-2 py-1 text-[10px] font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
+              className="border border-transparent px-2 py-1 text-2xs font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
             >
               Mở rộng
             </button>
@@ -368,7 +368,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             <button
               onClick={onClose}
               title="Đóng"
-              className="border border-transparent px-2 py-1 text-[10px] font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
+              className="border border-transparent px-2 py-1 text-2xs font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)]"
             >
               Đóng
             </button>
@@ -400,7 +400,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   }`}
                 >
                   {msg.sender === "copilot" && msg.id !== "welcome" && (
-                    <span className="mb-1.5 inline-flex items-center gap-1 rounded bg-[var(--nq-bg-elevated)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--nq-copper)]">
+                    <span className="mb-1.5 inline-flex items-center gap-1 rounded bg-[var(--nq-bg-elevated)] px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider text-[var(--nq-copper)]">
                       {msg.agent_mode === "live" ? "AI trực tiếp" : msg.agent_mode === "replay" ? "Bản ghi mẫu" : "Trợ lý"}
                     </span>
                   )}
@@ -431,7 +431,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                             href={mediaUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-center gap-2 rounded bg-black/10 px-2 py-1 text-[11px] transition hover:bg-black/20"
+                            className="flex items-center gap-2 rounded bg-black/10 px-2 py-1 text-2xs transition hover:bg-black/20"
                           >
                             <Icon name="attachment" size={14} />
                             <span className="truncate max-w-[180px] font-medium">
@@ -454,21 +454,21 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                     msg.id === "welcome" &&
                     profile.capabilities.length > 0 && (
                       <div className="mt-2 pt-2 border-t border-zinc-800/80">
-                        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">
+                        <p className="text-2xs uppercase tracking-wider text-zinc-500 mb-1">
                           Em làm được gì cho anh/chị
                         </p>
                         <ul className="flex flex-wrap gap-1">
                           {profile.capabilities.map((cap, i) => (
                             <li
                               key={`cap-${i}`}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/80 border border-emerald-500/20 text-emerald-300"
+                              className="text-2xs px-1.5 py-0.5 rounded bg-zinc-800/80 border border-emerald-500/20 text-emerald-300"
                             >
                               {cap}
                             </li>
                           ))}
                         </ul>
                         {profile.deniedNote ? (
-                          <p className="text-[10px] text-zinc-500 mt-1.5 italic">
+                          <p className="text-2xs text-zinc-500 mt-1.5 italic">
                             {profile.deniedNote}
                           </p>
                         ) : null}
@@ -479,14 +479,14 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                     msg.citations &&
                     msg.citations.length > 0 && (
                       <div className="mt-2 pt-2 border-t border-zinc-800/80">
-                        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">
+                        <p className="text-2xs uppercase tracking-wider text-zinc-500 mb-1">
                           Nguồn tham chiếu
                         </p>
                         <ul className="flex flex-wrap gap-1">
                           {msg.citations.map((c, i) => (
                             <li
                               key={`${msg.id}-cit-${i}`}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/80 border"
+                              className="text-2xs px-1.5 py-0.5 rounded bg-zinc-800/80 border"
                               style={{
                                 color: profile.accent,
                                 borderColor: `color-mix(in srgb, ${profile.accent} 20%, transparent)`,
@@ -506,7 +506,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                     />
                   )}
                   {msg.action_proposal && !profile.allowActionApproval && (
-                    <div className="mt-2 pt-2 border-t border-zinc-800/80 text-[11px] text-zinc-400 italic">
+                    <div className="mt-2 pt-2 border-t border-zinc-800/80 text-2xs text-zinc-400 italic">
                       Đề xuất: {msg.action_proposal.intent} — nhờ quản lý duyệt trong
                       <a className="underline ml-1" href="/inbox">
                         Hộp thư
@@ -515,7 +515,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                     </div>
                   )}
                 </div>
-                <span className="mt-1 px-1 text-[9px] text-[var(--nq-dim)]">{msg.timestamp}</span>
+                <span className="mt-1 px-1 text-2xs text-[var(--nq-dim)]">{msg.timestamp}</span>
               </div>
             ))}
             {loading && (
@@ -534,7 +534,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 key={idx}
                 onClick={() => send(qp)}
                 disabled={loading || Boolean(streamingId)}
-                className="whitespace-nowrap border border-[var(--nq-dim)] bg-[var(--nq-bg)] px-2.5 py-1 text-[11px] text-[var(--nq-dim)] transition hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)] disabled:opacity-50"
+                className="whitespace-nowrap border border-[var(--nq-dim)] bg-[var(--nq-bg)] px-2.5 py-1 text-2xs text-[var(--nq-dim)] transition hover:border-[var(--nq-copper)] hover:text-[var(--nq-fg)] disabled:opacity-50"
               >
                 {qp}
               </button>
@@ -560,8 +560,8 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                     </div>
                   )}
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-[var(--nq-fg)] text-[11px]">{attachedFile.file.name}</p>
-                    <p className="text-[10px] text-[var(--nq-dim)]">{(attachedFile.file.size / 1024).toFixed(1)} KB</p>
+                    <p className="truncate font-semibold text-[var(--nq-fg)] text-2xs">{attachedFile.file.name}</p>
+                    <p className="text-2xs text-[var(--nq-dim)]">{(attachedFile.file.size / 1024).toFixed(1)} KB</p>
                   </div>
                 </div>
                 <button
@@ -576,12 +576,12 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
               </div>
             )}
             {uploadError && (
-              <p className="mb-2 text-[11px] text-rose-400">{uploadError}</p>
+              <p className="mb-2 text-2xs text-rose-400">{uploadError}</p>
             )}
             {voiceEnabled && (
               <div className="mb-2 space-y-1.5">
                 {/* Audio controls: Mode switcher & Mic dropdown */}
-                <div className="flex items-center justify-between gap-2 px-1 text-[10px]">
+                <div className="flex items-center justify-between gap-2 px-1 text-2xs">
                   <div className="inline-flex rounded border border-[var(--nq-dim)] bg-[var(--nq-bg)] p-0.5">
                     <button
                       type="button"
@@ -613,7 +613,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                     <select
                       value={selectedMicId}
                       onChange={(e) => handleMicChange(e.target.value)}
-                      className="max-w-[160px] truncate rounded border border-[var(--nq-dim)] bg-[var(--nq-bg)] px-1.5 py-0.5 text-[10px] text-[var(--nq-dim)] hover:text-[var(--nq-fg)] focus:text-[var(--nq-fg)] focus:outline-none"
+                      className="max-w-[160px] truncate rounded border border-[var(--nq-dim)] bg-[var(--nq-bg)] px-1.5 py-0.5 text-2xs text-[var(--nq-dim)] hover:text-[var(--nq-fg)] focus:text-[var(--nq-fg)] focus:outline-none"
                       title="Chọn thiết bị micro"
                     >
                       <option value="">Micro mặc định</option>
@@ -629,7 +629,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 {/* Status banner */}
                 {voice.state !== "idle" && (
                   <div
-                    className={`flex items-center justify-between gap-2 rounded border px-2.5 py-1.5 text-[11px] ${
+                    className={`flex items-center justify-between gap-2 rounded border px-2.5 py-1.5 text-2xs ${
                       isVoiceError
                         ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
                         : voice.isPttSpeaking
@@ -679,7 +679,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                           voice.stop();
                           activeVoiceTurnRef.current = null;
                         }}
-                        className="shrink-0 border border-transparent px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--nq-dim)] hover:border-rose-400 hover:text-rose-400 transition"
+                        className="shrink-0 border border-transparent px-1.5 py-0.5 text-2xs font-bold uppercase text-[var(--nq-dim)] hover:border-rose-400 hover:text-rose-400 transition"
                         title="Dừng phiên voice"
                       >
                         Đóng
@@ -787,7 +787,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 {uploading ? "Đang tải…" : "Gửi"}
               </button>
             </form>
-            <p className="mt-1.5 text-center text-[10px] text-[var(--nq-dim)]">
+            <p className="mt-1.5 text-center text-2xs text-[var(--nq-dim)]">
               Ctrl/Cmd+K mở hoặc đóng · Esc thu nhỏ
             </p>
           </div>

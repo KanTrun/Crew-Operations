@@ -369,7 +369,7 @@ export default function SkillsPage() {
 
                     {/* SHA256 integrity tag */}
                     <div className="pt-1">
-                      <span className="text-[10px] font-mono text-[var(--nq-dim)] bg-[var(--nq-bg)] px-2 py-1 border border-[var(--nq-dim)] block truncate">
+                      <span className="text-2xs font-mono text-[var(--nq-dim)] bg-[var(--nq-bg)] px-2 py-1 border border-[var(--nq-dim)] block truncate">
                         SHA256: {skill.sha256}
                       </span>
                     </div>

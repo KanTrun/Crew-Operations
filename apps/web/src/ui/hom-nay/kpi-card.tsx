@@ -4,14 +4,37 @@ import Link from "next/link";
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import type { MouseEvent, ReactNode } from "react";
 
-function useTilt(reduced: boolean) {
+/**
+ * Nghiêng theo con trỏ — chỉ dành cho thẻ được AI chọn là việc gấp nhất.
+ *
+ * Vì sao không áp cho mọi thẻ: bản cũ nghiêng cả bốn thẻ KPI như nhau, nên "thẻ
+ * nào quan trọng" không đọc ra được từ chuyển động — mọi thứ đều động thì không
+ * gì nổi bật. Nay đúng một thẻ mỗi trang có khoảnh khắc này, và nó trùng với
+ * thẻ mà `computeOpsPulse` đánh dấu `highlightKpi`. Chuyển động trở thành một
+ * kênh thông tin (chỗ này quan trọng) thay vì trang trí.
+ *
+ * Biên độ 4° và độ cứng/damping đặt theo nhịp `beat-settle` của hệ chuyển động,
+ * không dùng giá trị mặc định của thư viện — mặc định có độ nảy, và độ nảy trên
+ * bảng số liệu khiến con số rung khi người dùng chỉ đang rê chuột qua.
+ */
+const TILT_DEG = 4;
+
+function useHighlightTilt(enabled: boolean) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [6, -6]), { stiffness: 260, damping: 22 });
-  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-6, 6]), { stiffness: 260, damping: 22 });
+  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [TILT_DEG, -TILT_DEG]), {
+    stiffness: 320,
+    damping: 30,
+    mass: 0.6,
+  });
+  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-TILT_DEG, TILT_DEG]), {
+    stiffness: 320,
+    damping: 30,
+    mass: 0.6,
+  });
 
   const onMove = (e: MouseEvent<HTMLElement>) => {
-    if (reduced) return;
+    if (!enabled) return;
     const rect = e.currentTarget.getBoundingClientRect();
     x.set((e.clientX - rect.left) / rect.width - 0.5);
     y.set((e.clientY - rect.top) / rect.height - 0.5);
@@ -39,14 +62,15 @@ export function KpiCard({
   "data-highlight"?: string;
 }) {
   const reduced = useReducedMotion() ?? false;
-  const tilt = useTilt(reduced);
+  const isHighlight = dataHighlight === "on";
+  const tilt = useHighlightTilt(isHighlight && !reduced);
   const tileCls =
     accent === "warn"
       ? "nq-bento-tile nq-dash-kpi nq-dash-kpi--warn nq-ink-on-solid"
       : accent === "ok"
         ? "nq-bento-tile nq-dash-kpi nq-dash-kpi--ok nq-ink-on-solid"
         : "nq-bento-tile nq-dash-kpi";
-  const highlightCls = dataHighlight === "on" ? " nq-dash-kpi--pulse-hi" : "";
+  const highlightCls = isHighlight ? " nq-dash-kpi--pulse-hi" : "";
 
   const inner = (
     <>
@@ -55,18 +79,26 @@ export function KpiCard({
     </>
   );
 
+  // Thẻ thường: chỉ vào nhẹ + phản hồi bấm. Thẻ được đánh dấu: thêm nghiêng.
   const motionProps = reduced
     ? {}
-    : {
-        initial: { opacity: 0, y: 14 },
-        animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.42, delay, ease: [0.22, 1, 0.36, 1] as const },
-        style: { rotateX: tilt.rotateX, rotateY: tilt.rotateY, transformPerspective: 900 },
-        onMouseMove: tilt.onMove,
-        onMouseLeave: tilt.onLeave,
-        whileHover: { scale: 1.02, transition: { duration: 0.2 } },
-        whileTap: { scale: 0.98 },
-      };
+    : isHighlight
+      ? {
+          initial: { opacity: 0, y: 10 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 0.42, delay, ease: [0.22, 1, 0.36, 1] as const },
+          style: { rotateX: tilt.rotateX, rotateY: tilt.rotateY, transformPerspective: 900 },
+          onMouseMove: tilt.onMove,
+          onMouseLeave: tilt.onLeave,
+          whileHover: { scale: 1.015, transition: { duration: 0.22 } },
+          whileTap: { scale: 0.985 },
+        }
+      : {
+          initial: { opacity: 0, y: 10 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 0.42, delay, ease: [0.22, 1, 0.36, 1] as const },
+          whileTap: { scale: 0.985 },
+        };
 
   if (href) {
     return (

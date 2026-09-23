@@ -183,12 +183,12 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         </span>
         <div className="flex items-center gap-2">
           {timeLeft && isPending && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
+            <span className="text-2xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
               ⏳ {timeLeft}
             </span>
           )}
           <span
-            className={`text-[10px] font-medium px-2 py-0.5 rounded ${
+            className={`text-2xs font-medium px-2 py-0.5 rounded ${
               currentStatus === "executed"
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                 : currentStatus === "rejected" || currentStatus === "execution_failed" || currentStatus === "stale_rejected" || currentStatus === "expired"
@@ -219,7 +219,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         <ChatText text={proposal.summary} />
       </p>
       {proposal.explanation && (
-        <p className="text-zinc-400 text-[11px] mb-2 leading-relaxed italic">
+        <p className="text-zinc-400 text-2xs mb-2 leading-relaxed italic">
           <ChatText text={proposal.explanation} />
         </p>
       )}
@@ -229,13 +229,13 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           {/* Metadata Badges: Live Context & Learned Style */}
           <div className="flex flex-wrap items-center gap-1.5 pb-1 border-b border-zinc-800/60">
             {proposal.payload_diff.ops_context_summary && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-800/60 text-cyan-300 text-[10px] font-medium">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-800/60 text-cyan-300 text-2xs font-medium">
                 <span>⚡ Dữ liệu sống:</span>
                 <span>{proposal.payload_diff.ops_context_summary}</span>
               </span>
             )}
             {proposal.payload_diff.has_learned_style && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-950/80 border border-purple-800/60 text-purple-300 text-[10px] font-medium">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-950/80 border border-purple-800/60 text-purple-300 text-2xs font-medium">
                 <span>✨ Đã áp dụng văn phong ưa thích</span>
               </span>
             )}
@@ -243,7 +243,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
               <button
                 type="button"
                 onClick={() => setIsEditingEmail(true)}
-                className="ml-auto text-[10px] text-amber-400 hover:text-amber-300 underline flex items-center gap-0.5"
+                className="ml-auto text-2xs text-amber-400 hover:text-amber-300 underline flex items-center gap-0.5"
               >
                 ✏️ Sửa trước khi duyệt
               </button>
@@ -252,7 +252,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
               <button
                 type="button"
                 onClick={() => setIsEditingEmail(false)}
-                className="ml-auto text-[10px] text-zinc-400 hover:text-zinc-200 underline flex items-center gap-0.5"
+                className="ml-auto text-2xs text-zinc-400 hover:text-zinc-200 underline flex items-center gap-0.5"
               >
                 Thu gọn chỉnh sửa
               </button>
@@ -291,10 +291,10 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
                 value={editBody}
                 onChange={(e) => setEditBody(e.target.value)}
                 rows={7}
-                className="w-full bg-zinc-900 border border-zinc-700 rounded p-2.5 text-zinc-100 text-[11px] leading-relaxed focus:outline-none focus:border-amber-500 font-sans"
+                className="w-full bg-zinc-900 border border-zinc-700 rounded p-2.5 text-zinc-100 text-2xs leading-relaxed focus:outline-none focus:border-amber-500 font-sans"
               />
             ) : (
-              <div className="bg-zinc-900/90 rounded p-2.5 text-zinc-200 text-[11px] leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-sans border border-zinc-800/60">
+              <div className="bg-zinc-900/90 rounded p-2.5 text-zinc-200 text-2xs leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-sans border border-zinc-800/60">
                 {editBody || proposal.payload_diff.body || "(Trống)"}
               </div>
             )}
@@ -302,7 +302,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
 
           {Array.isArray(proposal.payload_diff.attachments) && proposal.payload_diff.attachments.length > 0 && (
             <div className="pt-2 border-t border-zinc-800/80">
-              <span className="text-zinc-500 font-semibold block mb-1.5 flex items-center gap-1 text-[11px]">
+              <span className="text-zinc-500 font-semibold block mb-1.5 flex items-center gap-1 text-2xs">
                 <span>📎</span> Tệp & hình ảnh đính kèm ({proposal.payload_diff.attachments.length}):
               </span>
               <div className="flex flex-wrap gap-2">
@@ -312,12 +312,12 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
                   return (
                     <div
                       key={idx}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-700 text-[11px] text-zinc-200"
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-700 text-2xs text-zinc-200"
                     >
                       <span className="text-amber-400">🖼️</span>
                       <span className="font-mono">{fname}</span>
                       {isInline && (
-                        <span className="text-[9px] bg-blue-900/60 text-blue-300 px-1 py-0.5 rounded border border-blue-700">
+                        <span className="text-2xs bg-blue-900/60 text-blue-300 px-1 py-0.5 rounded border border-blue-700">
                           Chèn trong thư
                         </span>
                       )}
@@ -331,7 +331,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
       )}
 
       {errorMsg && (
-        <div className="mb-2 p-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[11px]">
+        <div className="mb-2 p-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 text-2xs">
           {errorMsg}
           {currentStatus === "stale_rejected" && " Hãy tạo đề xuất mới từ dữ liệu hiện tại."}
           {currentStatus === "expired" && " Hãy tạo đề xuất mới để tiếp tục."}
@@ -366,7 +366,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           {resultLink ? (
             <a
               href={resultLink}
-              className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 transition"
+              className="inline-flex items-center gap-1 text-2xs px-2 py-1 rounded bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 transition"
             >
               → Xem kết quả đã áp dụng
             </a>
@@ -375,7 +375,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           )}
           <button
             onClick={() => setShowAmendModal(true)}
-            className="text-[11px] text-zinc-400 hover:text-amber-400 underline"
+            className="text-2xs text-zinc-400 hover:text-amber-400 underline"
           >
             Đính chính / Sửa lại
           </button>

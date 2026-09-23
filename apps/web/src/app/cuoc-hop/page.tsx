@@ -1174,12 +1174,12 @@ export default function MeetingPage() {
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="nq-meeting-list__title">{m.tieu_de}</h4>
-                    <span className="text-[11px] px-2 py-0.5 rounded font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
+                    <span className="text-2xs px-2 py-0.5 rounded font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
                       ĐÃ DUYỆT
                     </span>
                   </div>
                   <p className="nq-meeting-list__meta line-clamp-1">{m.tom_tat}</p>
-                  <div className="mt-1 flex flex-wrap gap-3 text-[11px] font-mono text-[var(--nq-ink-muted)]">
+                  <div className="mt-1 flex flex-wrap gap-3 text-2xs font-mono text-[var(--nq-ink-muted)]">
                     <span>Loại: {m.loai_hop}</span>
                     <span>Việc: {m.action_items?.length || 0}</span>
                     <span>Nguồn: {m.nguon_am_thanh}</span>
