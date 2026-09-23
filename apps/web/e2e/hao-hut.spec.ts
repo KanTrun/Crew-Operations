@@ -64,12 +64,34 @@ test.describe("Hao hụt — bảng theo nguyên liệu", () => {
     await loginAs(page);
     await page.goto("/hao-phi", { waitUntil: "networkidle" });
 
+    // Chuyển sang kỳ "Toàn bộ": kỳ hôm nay có thể không có dòng nào thiếu vế, và
+    // test bị skip ở đây là test KHÔNG kiểm gì cả. Kỳ toàn bộ chắc chắn có dòng
+    // thiếu (đơn quầy rải rác, không phải ca nào cũng có phiếu kiểm kê).
+    await page.getByRole("group", { name: "Chọn kỳ xem" }).getByRole("button").nth(3).click();
+    await expect(page.locator('[data-muc-do="thieu_du_lieu"]').first()).toBeVisible({ timeout: 15000 });
+
     const thieu = page.locator('[data-muc-do="thieu_du_lieu"]').first();
-    if ((await thieu.count()) === 0) {
-      test.skip(true, "kỳ này không có dòng thiếu dữ liệu");
-    }
-    // Trong dòng thiếu dữ liệu, chỗ số phải là gạch dài, không phải "0.0".
     await expect(thieu).toContainText("—");
+
+    // Và tuyệt đối không được hiện số 0 ở chỗ chưa có dữ liệu: đó là bịa số.
+    const chu = await thieu.innerText();
+    expect(chu, "ô thiếu dữ liệu không được hiện 0").not.toMatch(/\b0([.,]0+)?\b/);
+  });
+
+  test("vế có dữ liệu hiện số thật, vế thiếu hiện gạch — trên cùng một dòng", async ({ page }) => {
+    await loginAs(page);
+    await page.goto("/hao-phi", { waitUntil: "networkidle" });
+    await page.getByRole("group", { name: "Chọn kỳ xem" }).getByRole("button").nth(3).click();
+
+    // Kỳ toàn bộ có phiếu kiểm kê (vế thực tế) nhưng có thể chưa có đơn quầy
+    // (vế lý thuyết). Dòng khi đó phải hiện **số ở vế có** và **gạch ở vế thiếu**
+    // — đây chính là điều cần chứng minh: hệ không bịa vế thiếu thành 0.
+    await expect(page.locator('[data-muc-do="thieu_du_lieu"]').first()).toBeVisible({ timeout: 15000 });
+
+    const dong = page.locator('[data-muc-do="thieu_du_lieu"]').first();
+    const chu = await dong.innerText();
+    expect(chu, "vế thiếu phải là gạch").toContain("—");
+    expect(chu, "vế có dữ liệu phải hiện chữ số").toMatch(/\d/);
   });
 
   test("mức độ render bằng nhãn tiếng Việt, không phải mã nội bộ", async ({ page }) => {
