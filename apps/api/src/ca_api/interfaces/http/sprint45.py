@@ -1393,6 +1393,19 @@ def waste_ghi(
         return rows
 
     kv_mutate("waste_notes", mut, [])
+    # Ghi dữ liệu vận hành phải để lại vết (ADR-008). `tieu_thu_ghi` cùng file đã
+    # gọi `_audit`; đường này thiếu, nên mọi lần ghi hao hụt trước đây vô hình
+    # trong sổ vết.
+    _audit(
+        "hao_hut",
+        role,
+        {
+            "entity_type": "waste_note",
+            "entity_id": note.get("id") or note.get("luc"),
+            "thu": thu,
+            "ghi_chu": ghi_chu[:200],
+        },
+    )
     return {"ok": True, **note}
 
 

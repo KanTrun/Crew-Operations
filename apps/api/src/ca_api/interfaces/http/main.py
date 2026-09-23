@@ -67,6 +67,7 @@ from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.copilot_voice import router as copilot_voice_router
 from ca_api.interfaces.http.experience import router as experience_router
 from ca_api.interfaces.http.experience_rules import router as experience_rules_router
+from ca_api.interfaces.http.hao_hut import router as hao_hut_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.ops_explain import router as ops_explain_router
@@ -244,6 +245,7 @@ async def broadcast_successful_mutation(request: Request, call_next: Any) -> Any
 
 app.include_router(sprint3_router)
 app.include_router(sprint45_router)
+app.include_router(hao_hut_router)
 app.include_router(channels_router)
 app.include_router(copilot_router)
 app.include_router(copilot_voice_router)

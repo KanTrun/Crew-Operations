@@ -105,6 +105,13 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/viec-treo": "PR10: GET_HANGING_TASKS đã phủ qua chat",
     "/api/v1/viec-treo/{treo_id}": "PR10: PROPOSE_TASK_COMPLETE đã phủ qua chat",
     "/api/v1/waste": "PR10: PROPOSE_WASTE_RECORD scope — ghi qua UI /hao-phi",
+    # ── Hao hụt định lượng (plan 260923-1736) — đọc/ghi qua UI /hao-phi ──
+    # Path API là `/hao-hut` còn deep_link capability là `/hao-phi` (route web), nên
+    # phép khớp tiền tố của cổng không tự nối được; khai exclusion kèm capability
+    # tương ứng thay vì nới cổng.
+    "/api/v1/hao-hut": "GET_LOSS_SUMMARY + PROPOSE_LOSS_RECORD — đọc/ghi qua UI /hao-phi",
+    "/api/v1/hao-hut/nguong": "GET_LOSS_THRESHOLD — ngưỡng hiển thị qua UI /hao-phi",
+    "/api/v1/hao-hut/danh-muc": "chẩn đoán nội bộ — gợi ý mã mặt hàng cho ô nhập hao hụt",
     # ── Cuộc họp — deep-link /cuoc-hop ──
     "/api/v1/meetings": "meeting — deep-link /cuoc-hop",
     "/api/v1/meetings/{meeting_id}": "meeting — deep-link /cuoc-hop",

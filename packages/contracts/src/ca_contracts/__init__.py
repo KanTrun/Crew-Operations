@@ -647,6 +647,10 @@ CAPABILITY_REGISTRY: tuple[CapabilityDefinition, ...] = (
     # ── Hao hụt ──
     _cap("ANALYZE_WASTE", "Phân tích hao hụt", "waste", "R0_READ", "/hao-phi"),
     _cap("PROPOSE_WASTE_RECORD", "Ghi hao hụt", "waste", "R2_CONFIRM", "/hao-phi"),
+    # Hao hụt định lượng (plan 260923-1736): đọc tổng hợp và ghi có nguyên nhân.
+    _cap("GET_LOSS_SUMMARY", "Hao hụt theo nguyên liệu", "waste", "R0_READ", "/hao-phi"),
+    _cap("GET_LOSS_THRESHOLD", "Ngưỡng hao hụt đang áp dụng", "waste", "R0_READ", "/hao-phi"),
+    _cap("PROPOSE_LOSS_RECORD", "Ghi hao hụt kèm nguyên nhân", "waste", "R2_CONFIRM", "/hao-phi"),
     # ── Bàn giao ──
     _cap("GET_HANDOVERS", "Xem bàn giao", "handover", "R0_READ", "/handover"),
     _cap("DRAFT_HANDOVER", "Soạn bàn giao nháp", "handover", "R1_DRAFT"),
