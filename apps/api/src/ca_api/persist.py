@@ -1142,6 +1142,12 @@ _MENU_MAC_DINH = (
     ("mon_sua", "Cà phê sữa", 30000, {"cafe_g": 16, "sua_ml": 40, "ly": 1}),
     ("mon_tra", "Trà đào", 35000, {"dao_lat": 3, "ly": 1}),
     ("mon_da", "Bạc xỉu", 32000, {"cafe_g": 12, "sua_ml": 80, "ly": 1}),
+    # Nước đóng chai: bán nguyên chai, không qua pha chế. Thiếu nhóm này thì danh
+    # mục mặc định chỉ có đồ pha — quán mới mở không bán được nước suối, và ô
+    # chọn nguyên liệu ở menu có `nuoc_dong_chai` mà không món nào dùng.
+    ("mon_nuoc_suoi", "Nước suối", 12000, {"nuoc_dong_chai": 1}),
+    # Bánh kèm: nhóm ăn kèm của quán cà phê, cũng là mặt hàng đếm theo cái.
+    ("mon_banh_quy", "Bánh quy bơ", 20000, {"banh": 1}),
 )
 
 

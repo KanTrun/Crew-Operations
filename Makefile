@@ -1,4 +1,4 @@
-.PHONY: setup contracts dev test test-unit canary lint demo demo-local demo-reset seed seed-ops seed-demo bench eval ab replay budget metrics \
+.PHONY: setup contracts dev test test-unit canary lint demo demo-local demo-reset seed seed-ops seed-demo seed-danh-muc sinh-anh bench eval ab replay budget metrics \
 	docker-up docker-down docker-logs docker-smoke docker-ps docker-reset docker-seed-ops test-fb test-fb-post \
 	review review-fast install-hooks
 
@@ -75,6 +75,16 @@ seed-ops:
 # cẩm nang và dữ liệu vận hành. Idempotent, không tạo user fixture trùng.
 seed-demo:
 	python scripts/seed_demo_data.py
+
+# Danh mục sản phẩm chuẩn (49 món: cà phê · trà · nước đóng chai · sinh tố ·
+# bánh · nguyên liệu) — upsert theo id, không đụng món ngoài danh mục.
+seed-danh-muc:
+	python scripts/seed_danh_muc.py
+
+# Ảnh thẻ sản phẩm sinh TẠI MÁY bằng Pillow — không gọi mạng, tất định (ADR-019).
+# Chỉ sinh ảnh còn thiếu; dùng `--force` để sinh lại cả ảnh đã có.
+sinh-anh:
+	python scripts/sinh_anh_mon.py
 
 bench:
 	python -m pip install -e ./packages/solver -e ./packages/playbook -q
