@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import type { MouseEvent, ReactNode } from "react";
+import { beat, springFor } from "../../lib/motion";
 
 /**
  * Nghiêng theo con trỏ — chỉ dành cho thẻ được AI chọn là việc gấp nhất.
@@ -13,25 +14,20 @@ import type { MouseEvent, ReactNode } from "react";
  * thẻ mà `computeOpsPulse` đánh dấu `highlightKpi`. Chuyển động trở thành một
  * kênh thông tin (chỗ này quan trọng) thay vì trang trí.
  *
- * Biên độ 4° và độ cứng/damping đặt theo nhịp `beat-settle` của hệ chuyển động,
- * không dùng giá trị mặc định của thư viện — mặc định có độ nảy, và độ nảy trên
- * bảng số liệu khiến con số rung khi người dùng chỉ đang rê chuột qua.
+ * Biên độ 4° là biên độ đọc được: lớn hơn thì chữ trên thẻ biến dạng, nhỏ hơn
+ * thì không ai nhận ra có chuyển động. Độ cứng và damping lấy từ
+ * `springFor("settle")` — suy ra từ chính `--nq-beat-settle`, và là tắt dần tới
+ * hạn nên không bao giờ vượt đích: bảng số liệu không được rung khi người dùng
+ * chỉ đang rê chuột qua.
  */
 const TILT_DEG = 4;
+const TILT_SPRING = springFor("settle");
 
 function useHighlightTilt(enabled: boolean) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [TILT_DEG, -TILT_DEG]), {
-    stiffness: 320,
-    damping: 30,
-    mass: 0.6,
-  });
-  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-TILT_DEG, TILT_DEG]), {
-    stiffness: 320,
-    damping: 30,
-    mass: 0.6,
-  });
+  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [TILT_DEG, -TILT_DEG]), TILT_SPRING);
+  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-TILT_DEG, TILT_DEG]), TILT_SPRING);
 
   const onMove = (e: MouseEvent<HTMLElement>) => {
     if (!enabled) return;
@@ -86,17 +82,17 @@ export function KpiCard({
       ? {
           initial: { opacity: 0, y: 10 },
           animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.42, delay, ease: [0.22, 1, 0.36, 1] as const },
+          transition: beat("focus", delay),
           style: { rotateX: tilt.rotateX, rotateY: tilt.rotateY, transformPerspective: 900 },
           onMouseMove: tilt.onMove,
           onMouseLeave: tilt.onLeave,
-          whileHover: { scale: 1.015, transition: { duration: 0.22 } },
+          whileHover: { scale: 1.015, transition: beat("settle") },
           whileTap: { scale: 0.985 },
         }
       : {
           initial: { opacity: 0, y: 10 },
           animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.42, delay, ease: [0.22, 1, 0.36, 1] as const },
+          transition: beat("focus", delay),
           whileTap: { scale: 0.985 },
         };
 
@@ -125,7 +121,7 @@ export function StatusStrip({ status, meta }: { status: ReactNode; meta?: ReactN
       aria-label="Tình trạng quán"
       initial={reduced ? {} : { opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={beat("focus")}
     >
       <div className="nq-dash-strip-glow" aria-hidden />
       <div className="nq-dash-strip-text">

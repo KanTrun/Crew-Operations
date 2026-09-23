@@ -2,8 +2,9 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { getToken } from "../../lib/session";
+import { beat } from "../../lib/motion";
 import { ActionProposalCard, ActionProposalData } from "./ActionProposalCard";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -68,6 +69,10 @@ interface CopilotDrawerProps {
 }
 
 export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
+  // Tôn trọng ý muốn giảm chuyển động: ngăn kéo vẫn mở/đóng và vẫn che nền,
+  // chỉ bỏ phần trượt. Che nền là chức năng (chặn bấm xuyên xuống), không phải
+  // trang trí, nên nó ở lại — chỉ chuyển động đi.
+  const reduced = useReducedMotion() ?? false;
   const isControlled = open !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = isControlled ? Boolean(open) : internalOpen;
@@ -308,19 +313,20 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
           <div className="fixed inset-0 z-50 flex justify-end pointer-events-none">
             {/* Backdrop */}
             <motion.div
-              initial={{ opacity: 0 }}
+              initial={reduced ? {} : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              exit={reduced ? {} : { opacity: 0 }}
+              transition={beat("settle")}
               onClick={() => setOpen(false)}
               className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"
             />
 
             {/* Chat Drawer */}
             <motion.div
-              initial={{ x: "100%" }}
+              initial={reduced ? {} : { x: "100%" }}
               animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 250 }}
+              exit={reduced ? {} : { x: "100%" }}
+              transition={beat("focus")}
               className="relative w-full md:max-w-md bg-[var(--nq-bg)] md:border-l border-[var(--nq-line)] shadow-2xl flex flex-col h-full pointer-events-auto"
             >
               {/* Header */}

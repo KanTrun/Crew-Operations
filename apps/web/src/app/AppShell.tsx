@@ -5,12 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
 import { apiGet } from "../lib/api";
 import { canAccess, clearSession, getName, getToken, isChuQuan, isManager, roleLabel } from "../lib/session";
-import { Icon, iconForHref } from "../ui/icons";
+import { beat } from "../lib/motion";import { Icon, iconForHref } from "../ui/icons";
 import { Tour } from "../ui/tour";
 import { Logo } from "../ui/Logo";
 import { CopilotPane } from "../ui/copilot/CopilotPane";
 import { FloatingChatHead } from "../ui/chat/FloatingChatHead";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 /** `short` là nhãn cho thanh dưới dạng pill — chỗ hẹp, chữ dài sẽ gãy dòng. */
 type LinkItem = { href: string; label: string; short?: string; group?: "experience" };
@@ -99,6 +99,9 @@ const MORE: LinkItem[] = [
 
 
 export function AppShell({ children }: { children: ReactNode }) {
+  // Tôn trọng ý muốn giảm chuyển động: bảng "Thêm" vẫn mở/đóng, chỉ là đổi
+  // trạng thái tức thì thay vì trượt — nội dung không đổi, chỉ bỏ phần chuyển.
+  const reduced = useReducedMotion() ?? false;
   const path = usePathname();
   const router = useRouter();
   const moreRef = useRef<HTMLDivElement>(null);
@@ -206,9 +209,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <AnimatePresence>
                   {open && (
                     <motion.div
-                      initial={{ opacity: 0, y: 8 }}
+                      initial={reduced ? {} : { opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 8 }}
+                      exit={reduced ? {} : { opacity: 0, y: 8 }}
+                      transition={beat("settle")}
                       role="menu"
                       className="nq-more-panel"
                     >

@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
+import { beat } from "../../lib/motion";
 import type { RoleSlice } from "../../lib/team-stats";
 
 function chartMotion(reduced: boolean) {
@@ -10,7 +11,7 @@ function chartMotion(reduced: boolean) {
     : {
         initial: { opacity: 0, y: 8 },
         animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+        transition: beat("focus"),
       };
 }
 
@@ -54,7 +55,7 @@ export function RoleDonutChart({ slices, total }: { slices: RoleSlice[]; total: 
                   opacity={dim ? 0.35 : 1}
                   initial={reduced ? { opacity: dim ? 0.35 : 1 } : { opacity: 0, scale: 0.92 }}
                   animate={{ opacity: dim ? 0.35 : 1, scale: activeRole === a.role ? 1.04 : 1 }}
-                  transition={{ duration: 0.35 }}
+                  transition={beat("settle")}
                   style={{ transformOrigin: `${cx}px ${cy}px`, cursor: "pointer" }}
                   onMouseEnter={() => setActiveRole(a.role)}
                   onMouseLeave={() => setActiveRole(null)}
