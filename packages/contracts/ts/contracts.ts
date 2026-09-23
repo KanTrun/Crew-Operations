@@ -618,6 +618,58 @@ export interface LivingCafeSnapshot {
   data_quality?: DataQualityNotice[];
 }
 
+export type LossBasis = "ke_hoach_kiem_ke" | "don_quay_thuc_te" | "hon_hop";
+
+export type LossLevel = "dat" | "canh_bao" | "nghiem_trong" | "thieu_du_lieu";
+
+export interface LossLine {
+  mat_hang: string;
+  ten?: string;
+  don_vi?: string;
+  ly_thuyet?: number | null;
+  thuc_te?: number | null;
+  lech?: number | null;
+  ty_le_phan_tram?: number | null;
+  muc_do?: LossLevel;
+  nguong_phan_tram?: number;
+  co_so?: LossBasis;
+  thieu_ve?: string[];
+  ghi_chu?: string;
+}
+
+export type LossCauseSource = "ghi_chu_ca" | "nguyen_nhan_ghi" | "hon_hop";
+
+export interface LossCauseRank {
+  nguyen_nhan: string;
+  ten?: string;
+  so_lan: number;
+  mat_hang_lien_quan?: string[];
+  ty_le_tong?: number;
+  nguon?: LossCauseSource;
+}
+
+export interface LossSummary {
+  ky?: string;
+  tong_dong?: number;
+  so_nghiem_trong?: number;
+  so_canh_bao?: number;
+  so_thieu_du_lieu?: number;
+  ty_le_trung_binh?: number | null;
+  dong?: LossLine[];
+  nguyen_nhan_hang_dau?: LossCauseRank[];
+  nguon?: string;
+  co_du_lieu_mau?: boolean;
+  ghi?: string;
+}
+
+export interface LossThreshold {
+  mac_dinh_phan_tram?: number;
+  nghiem_trong_phan_tram?: number;
+  theo_mat_hang?: Record<string, number>;
+  phien_ban?: string;
+  ngay_kiem?: string;
+}
+
 export interface MemoryQuery {
   store_id?: string;
   anchor_id?: string | null;

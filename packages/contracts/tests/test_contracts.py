@@ -66,6 +66,11 @@ def test_contracts_registered() -> None:
         "AIEvaluation",
         "AIRuleProposal",
         "TableReservation",
+        # Hao hụt tiêu thụ theo nguyên liệu (plan 260923-1736)
+        "LossLine",
+        "LossCauseRank",
+        "LossSummary",
+        "LossThreshold",
         # Grand AI Experience Portfolio (plan 260920-1442) — chỉ BaseModel
         "SpatialAnchor",
         "ExperienceEvent",

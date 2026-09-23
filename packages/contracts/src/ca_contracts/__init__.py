@@ -62,6 +62,15 @@ from ca_contracts.grand_experience import (
     experience_capabilities_for_role,
     experience_role_can,
 )
+from ca_contracts.loss import (
+    LossBasis,
+    LossCauseRank,
+    LossCauseSource,
+    LossLevel,
+    LossLine,
+    LossSummary,
+    LossThreshold,
+)
 from ca_contracts.ops_predict import (
     PositiveRule,
     PositiveRuleStatus,
@@ -976,6 +985,12 @@ CONTRACTS = {
     "HorizonItem": HorizonItem,
     "DataQualityNotice": DataQualityNotice,
     "LivingCafeSnapshot": LivingCafeSnapshot,
+    # ── Hao hụt tiêu thụ theo nguyên liệu (plan 260923-1736) ──
+    # Chỉ BaseModel vào CONTRACTS; LossLevel/LossBasis/LossCauseSource export qua __all__.
+    "LossLine": LossLine,
+    "LossCauseRank": LossCauseRank,
+    "LossSummary": LossSummary,
+    "LossThreshold": LossThreshold,
     # ── HỒN QUÁN Spatial Memory (Phase 05) ──
     "MemoryQuery": MemoryQuery,
     "MemoryProposal": MemoryProposal,
@@ -1053,5 +1068,9 @@ __all__ = [
     "TourPlan",
     "VoiceTurnRequest",
     "VoiceTurnResponse",
+    # Hao hụt tiêu thụ theo nguyên liệu — enum export qua __all__ (không vào CONTRACTS)
+    "LossLevel",
+    "LossBasis",
+    "LossCauseSource",
 ]
 
