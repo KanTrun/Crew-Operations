@@ -223,12 +223,73 @@ def check_reduced_motion() -> list[str]:
     return out
 
 
+# ── 5. chuyen dong 3D (react-three-fiber) ───────────────────────────────────
+
+# Tep 3D duoc phep ghi truc tiep vao `position`/`rotation`/`scale` trong `useFrame`:
+# chuyen dong o day la CHUC NANG (xoay theo trang thai, hat di len theo du lieu),
+# khong phai chuyen tiep CSS, nen khong the di qua thang nhip.
+R3F_ALLOWED_FILES = {
+    "ui/experience/quanverse/LivingMap3d.tsx",
+    "ui/experience/spatial/SpatialMap3d.tsx",
+    "ui/hom-nay/ops-pulse.tsx",
+}
+
+# Moc thoi gian tuyet doi dung trong vong ve lam pha nhịp phu thuoc thoi diem mo
+# trang. `state.clock.elapsedTime` moi la moc cua chinh khung hinh.
+_WALLCLOCK_RE = re.compile(r"(?<![-\w])Date\.now\(\)")
+# Vong lap vo han tu chay trong khong gian 3D: xoay lien tuc khong theo du lieu.
+#
+# Bat dang `rotation.x += delta * <so>` — dang ma loi that da mang. Cach nhan biet:
+# toc do la MOT HANG SO viet ngay tai cho, nen khong the phu thuoc du lieu.
+#
+# GIOI HAN DA BIET: khong bat duoc dang `const s = 0.05; ... += delta * s`. Co gang
+# bat no doi hoi phan tich luong du lieu, va se bao dong gia ngay tai
+# `LivingMap3d`/`ops-pulse` — noi toc do la `delta * (0.3 + load * 0.7)`, tuc bien
+# thien theo trang thai va HOAN TOAN dung. Tha mot cong hep ma khong bao dong gia
+# con hon mot cong rong ma khong ai tin. `prove_motion_gate.py` ghi ro gioi han nay
+# bang chinh ca kiem `xoay deu (qua bien)`.
+_IDLE_SPIN_RE = re.compile(r"rotation\.\w\s*\+=\s*delta\s*\*\s*0?\.\d+")
+
+
+def check_3d() -> list[str]:
+    out: list[str] = []
+    for p in iter_tsx():
+        text = p.read_text(encoding="utf-8")
+        if "useFrame" not in text:
+            continue
+        lines = code_lines(text)
+
+        # 5a. Đồng hồ tuyệt đối trong vòng vẽ.
+        for i, line in lines:
+            if _WALLCLOCK_RE.search(line):
+                out.append(
+                    f"{rel(p)}:{i}: dung `Date.now()` trong vong ve → pha nhịp phu "
+                    f"thuoc thoi diem mo trang, dung `state.clock.elapsedTime`"
+                )
+
+        # 5b. Vong xoay roi trong `useFrame` = chuyen dong khong ma hoa thong tin.
+        #
+        # Chi soi cac tep KHONG nam trong danh sach cho phep, de tranh bao dong
+        # gia: o `LivingMap3d`/`ops-pulse`, toc do xoay LA du lieu
+        # (`delta * (0.3 + load * 0.7)`) nen bien thien theo trang thai — dung.
+        if rel(p) in R3F_ALLOWED_FILES:
+            continue
+        for i, line in lines:
+            if _IDLE_SPIN_RE.search(line):
+                out.append(
+                    f"{rel(p)}:{i}: xoay deu trong `useFrame` voi toc do hang so "
+                    f"→ chuyen dong khong ma hoa thong tin"
+                )
+    return out
+
+
 def main() -> int:
     sections = [
         ("1. So tran cho thoi luong / duong cong", check_hardcoded()),
         ("2. Du phong trong motion.ts khop globals.css", check_fallbacks()),
         ("3. Vong lap vo han", check_infinite_loops()),
         ("4. Tep chuyen dong phai xu ly giam chuyen dong", check_reduced_motion()),
+        ("5. Chuyen dong 3D (react-three-fiber)", check_3d()),
     ]
     total = 0
     for title, problems in sections:

@@ -42,6 +42,7 @@ from ca_contracts.grand_experience import (
 )
 from fastapi import APIRouter, Header, HTTPException, Query
 
+from ca_api.interfaces.http.spatial_memory import clear_spatial_state
 from ca_api.interfaces.http.sprint3 import _require_manager, _require_role
 from ca_api.persist import kv_get, kv_mutate, kv_set
 
@@ -87,6 +88,14 @@ def quanverse_reset(
     Cùng khuôn với `/experience/rules/reset` và `replay_role`: production gọi sẽ
     nhận 403. `clear_quanverse_state()` đã làm việc này cho pytest; endpoint này
     mở nó ra cho các bài e2e dùng chung một server.
+
+    Ngoài kv, endpoint còn dựng lại **kho ký ức** (`clear_spatial_state`). Kho đó
+    nằm trong biến toàn cục của `spatial_memory.py` và `POST /memories/{id}/consent`
+    sửa thẳng vào đó, nên consent cấp cho một bản nháp cũng sống mãi. Fixture khai
+    `mem_bar_draft_01` là bản nháp chờ consent; mỗi lần một bài test cấp consent
+    cho nó là neo `bar` từ 1 ký ức đã xác nhận thành 2 — và bài
+    `grand-experience-replay` khẳng định trích dẫn chứa "1" sẽ đỏ, kể cả khi chạy
+    một mình. Reset phải trả CẢ HAI store về nguồn, không chỉ store trong kv.
     """
     import os
 
@@ -98,6 +107,7 @@ def quanverse_reset(
         raise HTTPException(status_code=403, detail="chi_cho_phep_o_che_do_replay")
     _require_role(authorization)
     clear_quanverse_state()
+    clear_spatial_state()
     return {"reset": True, "replayable": True}
 
 

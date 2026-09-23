@@ -117,6 +117,48 @@ def test_delete_memory() -> None:
     assert "mem_blender_01" not in {m["memory_id"] for m in mems}
 
 
+def test_clear_spatial_state_dung_lai_kho_ky_uc() -> None:
+    """`clear_spatial_state` phải dựng lại kho, không chỉ xoá bộ đếm tần suất.
+
+    Vì sao có bài này: `_REPO_STORE` là biến toàn cục sống suốt phiên server, và
+    `consent` sửa thẳng vào đối tượng trong đó. Bản đầu chỉ gọi `_USER_TS.clear()`
+    nên consent cấp cho bản nháp `mem_bar_draft_01` sống mãi qua mọi lần reset.
+
+    Hệ quả thật: fixture khai `mem_bar_draft_01` là draft chờ consent, nên neo
+    `bar` chỉ có ĐÚNG 1 ký ức đã xác nhận. Sau khi bị làm bẩn, neo `bar` có 2 →
+    bài `grand-experience-replay` khẳng định trích dẫn chứa "1" đỏ, và vì trạng
+    thái nằm trong tiến trình đang chạy nên nó **đỏ cả khi chạy một mình**.
+
+    Bài này chứng minh bản sửa chịu tải: làm bẩn kho, gọi clear, đo lại.
+    """
+    def so_ky_uc_da_xac_nhan_o_bar() -> int:
+        r = client.get(
+            "/api/v1/experience/memories",
+            params={"status": "confirmed"},
+            headers=headers(client, "lan"),
+        )
+        assert r.status_code == 200, r.text
+        return sum(1 for m in r.json()["memories"] if m["anchor_id"] == "bar")
+
+    # Điểm xuất phát: đúng fixture — chỉ `mem_bar_01`.
+    assert so_ky_uc_da_xac_nhan_o_bar() == 1
+
+    # Làm bẩn: cấp consent cho bản nháp ở cùng neo.
+    r = client.post(
+        "/api/v1/experience/memories/mem_bar_draft_01/consent",
+        json={"grant": True},
+        headers=headers(client, "lan"),
+    )
+    assert r.status_code == 200, r.text
+    assert so_ky_uc_da_xac_nhan_o_bar() == 2, "consent phải đưa bản nháp thành đã xác nhận"
+
+    # Bản sửa phải dọn được. Nếu chỉ xoá bộ đếm tần suất thì vẫn là 2 → đỏ.
+    clear_spatial_state()
+    assert so_ky_uc_da_xac_nhan_o_bar() == 1, (
+        "clear_spatial_state chua dung lai kho ky uc — consent song qua reset"
+    )
+
+
 def test_tour_start_grounded() -> None:
     r = client.post("/api/v1/experience/tour/start", headers=headers(client, "lan"))
     assert r.status_code == 200, r.text

@@ -18,9 +18,9 @@
  */
 
 import { OrbitControls } from "@react-three/drei";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { useMemo, useRef, useState } from "react";
-import type { Group, Mesh } from "three";
+import { Canvas } from "@react-three/fiber";
+import { useMemo, useState } from "react";
+import type { Mesh } from "three";
 import type { Tier3d } from "../useCapability3d";
 import type { Anchor2D } from "./SpatialMap2dFallback";
 
@@ -174,24 +174,29 @@ function Floor({ sizeX, sizeZ }: { sizeX: number; sizeZ: number }) {
 }
 
 /**
- * Nhịp thở rất chậm của sàn — chỉ là một lớp chuyển động nền.
+ * Sàn quán, đứng yên.
  *
- * Phải là component riêng nằm TRONG `<Canvas>`: `useFrame` là hook của
- * react-three-fiber và ném "Hooks can only be used within the Canvas component!"
- * nếu gọi ở component bao ngoài. Đây từng là lỗi làm trắng cả trang HỒN QUÁN.
+ * Bản trước là `BreathingFloor`: sàn trôi lên xuống ±1.5cm theo chu kỳ ~15 giây,
+ * với chú thích tự nhận "chỉ là một lớp chuyển động nền". Đã bỏ vì ba lẽ:
+ *
+ *  1. Biên độ 1.5cm ở khoảng cách camera ~7m chiếu ra dưới **2 pixel** — dưới
+ *     ngưỡng đọc được. Không ai nhận ra nó đang động; chỉ đo mới biết.
+ *  2. Sàn là **hệ quy chiếu** cho mọi cột mốc đứng trên nó. Cho hệ quy chiếu
+ *     trôi trong khi các neo đứng yên tương đối với nó nghĩa là toàn bộ không
+ *     gian lặng lẽ nhấp nhô — đúng thứ gây khó chịu mà không gọi tên được.
+ *  3. `useFrame` chạy ở 60 hình/giây và ghi lại `position.y` mỗi khung, tức
+ *     dựng lại ma trận của cả nhóm sàn vô ích. Trên máy yếu, một widget 3D
+ *     đứng yên là widget không tốn CPU.
+ *
+ * Chuyển động **có mã hoá thông tin** trong widget này vốn đã đủ: chiều cao cột
+ * là số ký ức, màu là loại neo, vòng đồng là neo đang chọn, điểm sáng là từng
+ * ký ức. Thêm một lớp động không nói gì chỉ làm loãng những lớp đang nói.
+ *
+ * Ghi chú kỹ thuật còn nguyên giá trị: mọi thứ gọi `useFrame` phải nằm TRONG
+ * `<Canvas>` — hook của react-three-fiber ném "Hooks can only be used within the
+ * Canvas component!" nếu ở component bao ngoài, và lỗi đó từng làm trắng cả
+ * trang HỒN QUÁN.
  */
-function BreathingFloor({ sizeX, sizeZ }: { sizeX: number; sizeZ: number }) {
-  const group = useRef<Group>(null);
-  useFrame((state) => {
-    if (!group.current) return;
-    group.current.position.y = Math.sin(state.clock.elapsedTime * 0.4) * 0.015;
-  });
-  return (
-    <group ref={group}>
-      <Floor sizeX={sizeX} sizeZ={sizeZ} />
-    </group>
-  );
-}
 
 interface Props {
   anchors: Anchor2D[];
@@ -245,7 +250,7 @@ export default function SpatialMap3d({
           decay={1.2}
           color="#8fa8a0"
         />
-        <BreathingFloor sizeX={6.2} sizeZ={5.2} />
+        <Floor sizeX={6.2} sizeZ={5.2} />
         {anchors.map((a) => {
           const place = placements.get(a.anchor_id);
           if (!place) return null;

@@ -54,8 +54,30 @@ _MAX_REQ = 20
 
 
 def clear_spatial_state() -> None:
+    """Trả kho ký ức về đúng trạng thái fixture, và xoá bộ đếm tần suất.
+
+    Vì sao phải dựng lại kho chứ không chỉ xoá bộ đếm: `_REPO_STORE` là biến
+    TOÀN CỤC SỐNG SUỐT PHIÊN SERVER. `POST /memories/{id}/consent` sửa thẳng vào
+    đối tượng trong đó (`memory.consent_status = ...`), nên một bài test xác nhận
+    consent cho bản nháp là thay đổi đó **sống mãi** — qua mọi lần gọi reset, qua
+    mọi bài test sau.
+
+    Hậu quả thật đã xảy ra: fixture khai `mem_bar_draft_01` là `status: "draft"`,
+    `consent_status: "required"`, nên neo `bar` chỉ có ĐÚNG 1 ký ức đã xác nhận
+    (`mem_bar_01`). Sau khi một bài test cấp consent cho bản nháp, neo `bar` có 2.
+    Bài `grand-experience-replay` khẳng định trích dẫn chứa "1" nên đỏ — và vì
+    trạng thái đã bẩn trong DB, bài đó **đỏ cả khi chạy một mình**, trông như lỗi
+    thật trong khi thực ra là rò trạng thái.
+
+    Đây là lần thứ ba cùng một loại lỗi trong hệ (xem `_CANDIDATES` của
+    `experience_rules`, `experience_preferences` của `quanverse`): store sống lâu
+    hơn bài test. Cách sửa luôn giống nhau — dựng lại từ nguồn, đừng chỉ xoá phần
+    phụ.
+    """
+    global _REPO_STORE
     with _LOCK:
         _USER_TS.clear()
+        _REPO_STORE = None
 
 
 def _rate_limit(user_id: str) -> None:

@@ -18,7 +18,7 @@
 
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useMemo, useRef, useState } from "react";
-import type { Group, Mesh, Points } from "three";
+import type { Mesh, Points } from "three";
 import type { ZoneUI } from "./quanverse-model";
 import type { Tier3d } from "../useCapability3d";
 
@@ -102,16 +102,32 @@ function ZoneBlock({
   );
 }
 
-/** Hạt hơi nước bốc lên từ khu vực đang tải — motif "steam-line" của quán. */
+/**
+ * Hạt hơi nước bốc lên từ khu vực **đang tải** — motif "steam-line" của quán.
+ *
+ * `zones` ở đây đã được lọc còn khu vực đang tải, và `LivingMap3d` KHÔNG vẽ lớp
+ * này khi không còn khu vực nào. Trước đây bản gốc nhận `zones` chưa lọc nên hạt
+ * bốc lên từ mọi khu vực kể cả khu vực trống — hình ảnh nói ngược với dữ liệu,
+ * đúng loại lỗi khó thấy vì cảnh vẫn đẹp.
+ */
 function Steam({ zones, tier }: { zones: ZoneUI[]; tier: Tier3d }) {
   const ref = useRef<Points>(null);
-  const group = useRef<Group>(null);
   const count = tier === "full" ? 36 : 16;
 
+  /**
+   * Rải hạt theo số khu vực đang tải, không quay vòng qua danh sách.
+   *
+   * Bản trước dùng `zones[i % zones.length]` nên khi chỉ có 1 khu vực đang tải
+   * thì CẢ 36 hạt dồn vào đúng một khối — trông như khối đó bốc cháy, không phải
+   * như quán đang có một khu vực bận. Chia đều theo chỉ số hạt giữ mật độ hạt
+   * trên mỗi khu vực ổn định, nên số khu vực đọc ra được từ lượng hơi.
+   */
   const positions = useMemo(() => {
     const arr = new Float32Array(count * 3);
+    const n = Math.max(1, zones.length);
+    const perZone = Math.ceil(count / n);
     for (let i = 0; i < count; i++) {
-      const source = zones[i % Math.max(1, zones.length)];
+      const source = zones[Math.floor(i / perZone) % n];
       const place = source ? placement(source, i) : { x: 0, z: 0, w: 1, d: 1 };
       arr[i * 3] = place.x + (Math.random() - 0.5) * place.w;
       arr[i * 3 + 1] = 0.4 + Math.random() * 1.6;
@@ -129,11 +145,10 @@ function Steam({ zones, tier }: { zones: ZoneUI[]; tier: Tier3d }) {
       }
       ref.current.geometry.attributes.position.needsUpdate = true;
     }
-    if (group.current) group.current.rotation.y += delta * 0.05;
   });
 
   return (
-    <group ref={group}>
+    <group>
       <points ref={ref}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
@@ -154,10 +169,15 @@ function Steam({ zones, tier }: { zones: ZoneUI[]; tier: Tier3d }) {
 /** Lõi đồng giữa quán — nhịp sáng theo tổng tải. */
 function Core({ load }: { load: number }) {
   const ref = useRef<Mesh>(null);
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (!ref.current) return;
     ref.current.rotation.y += delta * (0.3 + load * 0.7);
-    const pulse = 1 + Math.sin(Date.now() * 0.002) * 0.05;
+    // Nhịp phải tính theo đồng hồ của vòng vẽ, KHÔNG theo `Date.now()`: đồng hồ
+    // hệ thống là mốc tuyệt đối nên pha nhịp phụ thuộc vào thời điểm trang được
+    // mở — hai người xem cùng dữ liệu thấy hai pha khác nhau, và tải lại trang
+    // là nhịp nhảy sang chỗ khác. `state.clock.elapsedTime` là mốc của chính
+    // khung hình đang vẽ nên nhịp liền mạch và giống nhau ở mọi máy.
+    const pulse = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.05;
     ref.current.scale.setScalar(pulse);
   });
   const scale = 0.5 + load * 0.12;
@@ -186,6 +206,13 @@ export default function LivingMap3d({ zones, selectedId = null, onSelect, tier }
   const avgLoad = zones.length
     ? zones.reduce((sum, z) => sum + z.load_signal, 0) / zones.length
     : 0;
+
+  /**
+   * Chỉ khu vực ĐANG tải mới có hơi nước — và không khu vực nào thì không vẽ
+   * lớp hơi nước. Ngưỡng 0.4 khớp với `loadColor` (dưới 0.4 là màu "nhẹ"), nên
+   * hơi nước và màu khối luôn nói cùng một điều.
+   */
+  const loadedZones = useMemo(() => zones.filter((z) => z.load_signal >= 0.4), [zones]);
 
   return (
     <div className="nq-living-map__canvas" aria-hidden="true">
@@ -226,7 +253,7 @@ export default function LivingMap3d({ zones, selectedId = null, onSelect, tier }
           />
         ))}
 
-        <Steam zones={zones} tier={tier} />
+        {loadedZones.length > 0 ? <Steam zones={loadedZones} tier={tier} /> : null}
       </Canvas>
     </div>
   );

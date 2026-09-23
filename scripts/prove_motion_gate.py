@@ -80,6 +80,54 @@ export function P() {
 """,
         "KHONG xu ly giam chuyen dong",
     ),
+    (
+        "Date.now() trong vong ve 3D",
+        """import { useFrame } from "@react-three/fiber";
+export function P() {
+  useFrame(() => {
+    const pulse = 1 + Math.sin(Date.now() * 0.002) * 0.05;
+    return pulse;
+  });
+  return null;
+}
+""",
+        "Date.now()",
+    ),
+    (
+        "xoay deu trong useFrame",
+        """import { useFrame } from "@react-three/fiber";
+export function P() {
+  useFrame((_, delta) => {
+    const group = null;
+    if (group) group.rotation.y += delta * 0.05;
+  });
+  return null;
+}
+""",
+        "xoay deu",
+    ),
+]
+
+# Gioi han DA BIET cua cong, ghi lai bang mot ca kiem de khong ai tuong no rong hon.
+# Cong bat dang toc do la hang so VIET NGAY TAI CHO. Dang qua bien
+# (`const s = 0.05; ... += delta * s`) thi khong bat — vi muon bat phai phan tich
+# luong du lieu, va lam vay se bao dong gia o `LivingMap3d`/`ops-pulse` (noi toc do
+# la `delta * (0.3 + load * 0.7)`, dung). Ca kiem nay xac nhan cong VAN XANH voi
+# dang do, tuc gioi han la CO CHU DICH, khong phai lo hong bi bo sot.
+KNOWN_LIMIT_CASES: list[tuple[str, str]] = [
+    (
+        "xoay deu (qua bien) — GIOI HAN DA BIET, cong khong bat",
+        """import { useFrame } from "@react-three/fiber";
+export function P() {
+  const speed = 0.05;
+  useFrame((_, delta) => {
+    const group = null;
+    if (group) group.rotation.y += delta * speed;
+  });
+  return null;
+}
+""",
+    ),
 ]
 
 
@@ -124,10 +172,32 @@ def main() -> int:
         print(out)
 
     print()
+    print("=== Gioi han da biet cua cong (phai de cong XANH) ===")
+    for name, source in KNOWN_LIMIT_CASES:
+        PROBE.write_text(source, encoding="utf-8")
+        try:
+            code, out = run_gate()
+        finally:
+            PROBE.unlink(missing_ok=True)
+        marked = out.count("[X]")
+        if code == 0:
+            print(f"  [OK] {name} — cong xanh, dung nhu da ghi")
+        else:
+            # Cong bat duoc thi cang tot, nhung khi do phai xoa ghi chu gioi han
+            # trong audit_motion_tokens.py — de lai se noi sai ve chinh cong.
+            print(f"  [!] {name} — cong BAT duoc (tot hon ghi chu). Can cap nhat ghi chu.")
+        if PROBE.exists():
+            print(f"  [X] tep tam con sot: {PROBE}")
+            failures += 1
+
+    print()
     if failures:
         print(f"=== THAT BAI: {failures} truong hop cong khong lam dung viec ===")
     else:
-        print(f"=== DAT: ca {len(CASES)}/{len(CASES)} loai loi deu bi bat, cong xanh lai sau khi xoa ===")
+        print(
+            f"=== DAT: {len(CASES)}/{len(CASES)} loai loi deu bi bat, "
+            f"cong xanh lai sau khi xoa, {len(KNOWN_LIMIT_CASES)} gioi han da biet dung nhu ghi ==="
+        )
     return 1 if failures else 0
 
 
