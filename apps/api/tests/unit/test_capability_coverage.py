@@ -237,6 +237,10 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/experience/rules/{candidate_id}/confirm": "R3: ban hành luật qua UI /quanverse/rules (vong_doi sole writer)",
     "/api/v1/experience/rules/{candidate_id}/reject": "R2: từ chối luật qua UI /quanverse/rules",
     "/api/v1/experience/rules/{candidate_id}/revoke": "R3: thu hồi luật qua UI /quanverse/rules",
+    # Endpoint CHỈ dùng để cách ly trạng thái test, không phải bề mặt người dùng:
+    # `_CANDIDATES` là store trong bộ nhớ sống suốt phiên server nên trạng thái rò
+    # giữa các bài e2e. Endpoint tự chặn 403 khi không ở chế độ replay.
+    "/api/v1/experience/rules/reset": "test-isolation only — 403 ngoài chế độ replay",
 }
 
 _ROUTE_RE = re.compile(r'@router\.(?:get|post|patch|put|delete)\("([^"]+)"')

@@ -70,11 +70,17 @@ def main() -> int:
         fx_active = bool(fix.get(mode, {}).get("active"))
         kv_active = bool(v.get("active"))
         has_proposal = bool(v.get("proposal_status"))
-        # Xoa khi kv KHAC fixture va khong phai mot de xuat dang cho THAT SU
-        # (de xuat that thi co proposal_status va khong active).
-        stray_active = kv_active != fx_active
-        stray_proposal = has_proposal and not kv_active
-        if stray_active or stray_proposal:
+        # Xoa khi kv KHAC fixture. Ba truong hop:
+        #   1. kv bat/tat khac fixture  -> trang thai do bai test de lai
+        #   2. khong active nhung co de xuat -> de xuat do bai test de lai
+        #   3. khong active VA khong de xuat -> khoa RONG, chi la vet cua mot lan
+        #      confirm roi deactivate. Fixture von khong co khoa nay, nen giu lai
+        #      chi lam ban trang thai ban dau cua lan chay sau.
+        # Truong hop 3 tung bi bo sot: `dem_nhac` con `{active: False,
+        # proposal_status: None}` sau khi chay spec, khong khop dieu kien nao nen
+        # van nam lai trong DB.
+        stray = (kv_active != fx_active) or has_proposal or (not kv_active and not has_proposal)
+        if stray:
             cx.execute("DELETE FROM kv WHERE k=?", (k,))
             deleted += 1
     cx.commit()

@@ -36,7 +36,28 @@ def test_professional_fixture_load_is_consistent_and_idempotent(tmp_path: Path) 
             table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
             for table in ("users", "menu_mon", "don_quay", "kenh_bind")
         }
-        assert counts == {"users": 10, "menu_mon": 12, "don_quay": 6, "kenh_bind": 4}
+        # `menu_mon` = 8 món của fixture + `_MENU_MAC_DINH` mà `persist.init_db()`
+        # tự gieo khi bảng còn trống. Con số này từng ghim cứng 12 và đã LỖI THỜI:
+        # commit 7b018da thêm 2 món mặc định (nước suối, bánh quy) nhưng không cập
+        # nhật ở đây, nên test đỏ dù hành vi đúng.
+        #
+        # Đừng ghim lại một con số nữa — nó sẽ lệch lần sau. Kiểm điều THẬT SỰ cần:
+        # có ĐỦ 8 món của fixture (đã upsert, không mất), và không có món trùng id.
+        fixture_menu = json.loads(
+            (ROOT / "data" / "fixtures" / "professional" / "pos.json").read_text(encoding="utf-8")
+        )["menu_items"]
+        fixture_ids = [m["id"] for m in fixture_menu]
+        db_menu_ids = {row[0] for row in connection.execute("SELECT id FROM menu_mon")}
+        assert set(fixture_ids) <= db_menu_ids, (
+            "thiếu món của fixture sau khi nạp: "
+            + str(sorted(set(fixture_ids) - db_menu_ids))
+        )
+        assert len(db_menu_ids) == counts["menu_mon"], "menu_mon có id trùng"
+
+        assert counts["users"] == 10
+        assert counts["don_quay"] == 6
+        assert counts["kenh_bind"] == 4
+        assert counts["menu_mon"] >= len(fixture_ids)
 
         user_ids = {row[0] for row in connection.execute("SELECT nv_id FROM users")}
         order_ids = [row[0] for row in connection.execute("SELECT id FROM don_quay")]
