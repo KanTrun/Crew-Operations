@@ -183,7 +183,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                      render), dưới cả ngưỡng 24px của WCAG 2.5.8 — nhân viên đứng
                      quầy bấm trên máy tính bảng rất dễ trượt sang mục bên cạnh.
                      `rounded-full` + hover nền để vùng bấm nhìn thấy được. */
-                  className={`flex shrink-0 min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full px-2 text-2xs font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:px-3 xl:text-xs ${path === l.href ? "bg-[var(--nq-accent-soft)] text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:bg-[var(--nq-accent-soft)] hover:text-[var(--nq-fg)]"}`}
+                  className={`flex shrink-0 min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full px-2 text-2xs font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:px-3 xl:text-xs ${path === l.href ? "bg-[var(--nq-accent-soft)] text-[var(--nq-copper)] shadow-[inset_0_-2px_0_var(--nq-copper)]" : "text-[var(--nq-dim)] hover:bg-[var(--nq-accent-soft)] hover:text-[var(--nq-fg)]"}`}
                   data-tour={tourId(l.href)}
                   aria-current={path === l.href ? "page" : undefined}
                 >
