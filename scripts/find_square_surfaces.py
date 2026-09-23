@@ -38,9 +38,26 @@ def main() -> int:
         hits: list[str] = []
         for i, line in enumerate(lines, 1):
             for pat, label in PATTERNS:
-                if re.search(pat, line):
-                    hits.append(f"  {i:4}  [{label}]  {line.strip()[:96]}")
-                    break
+                if not re.search(pat, line):
+                    continue
+                # `rounded-full` = HINH TRON, khong phai khung vuong. Vien 2px quanh
+                # mot cham trang thai 8-12px la dung (tao vanh tach cham khoi avatar),
+                # khong phai loi bo goc. Neu khong loai, bo quet bao dong gia cho
+                # moi cham hien dien.
+                if "rounded-full" in line:
+                    continue
+                # Bo qua dong CHU THICH: mo ta "da bo tracking-tighter" khong phai
+                # la dang dung no. Nhan biet: dong bat dau bang mo chu thich JSX
+                # ({/* hoac *), hoac ten class nam trong backtick (cau van xuoi).
+                stripped = line.strip()
+                if stripped.startswith(("{/*", "*", "//")):
+                    continue
+                if re.search(r"`[^`]*tracking-tighter[^`]*`", line):
+                    continue
+                if "`." + "tracking-tighter" in line or "tighter`." in line:
+                    continue
+                hits.append(f"  {i:4}  [{label}]  {line.strip()[:96]}")
+                break
         if hits:
             by_file[rel] = hits
             total += len(hits)

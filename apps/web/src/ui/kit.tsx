@@ -653,7 +653,12 @@ export function PageHeader({
   return (
     <header className="mb-12 ops-animate-in" data-tour={tourId}>
       <p className="text-sm font-mono text-[var(--nq-copper)] uppercase tracking-widest mb-2">{kicker}</p>
-      <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[var(--nq-fg)] mb-4">{title}</h1>
+      {/* Tiêu đề trang dùng font display của hệ, KHÔNG dùng `font-black uppercase
+          tracking-tighter`. Kiểu cũ là dấu hiệu nhận dạng của giao diện máy dựng,
+          và với tiếng Việt thì hại thật: chữ hoa cỡ lớn cộng khoảng chữ bị siết
+          làm dấu mũ/dấu móc chồng lên nhau. Hệ đã có quy ước ở `.nq-gate-title`
+          và `.nq-h1` — theo quy ước đó. */}
+      <h1 className="nq-page-title mb-4">{title}</h1>
       {meta ? <p className="text-[var(--nq-dim)] font-mono text-sm max-w-2xl">{meta}</p> : null}
     </header>
   );

@@ -151,7 +151,7 @@ export default function HomNayPage() {
             </p>
           ) : null}
           {data.viec_cho_toi && data.viec_cho_toi.length > 0 ? (
-            <section className="mb-6 border-2 border-[var(--nq-copper)] bg-[var(--nq-surface)] p-4 md:p-5">
+            <section className="mb-6 nq-surface-block border-[var(--nq-copper)] p-4 md:p-5">
               <p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-copper)]">Hàng đợi hôm nay</p>
               <h2 className="mt-1 text-lg font-black text-[var(--nq-fg)]">Việc của bạn</h2>
               <ul className="mt-3 space-y-2">
@@ -159,7 +159,7 @@ export default function HomNayPage() {
                   <li key={v.id}>
                     <a
                       href={v.link}
-                      className="flex items-center justify-between gap-3 border-2 border-[var(--nq-dim)] bg-[var(--nq-bg)] px-4 py-3 transition-colors hover:border-[var(--nq-copper)]"
+                      className="flex items-center justify-between gap-3 nq-surface-row bg-[var(--nq-bg)] px-4 py-3 transition-colors hover:border-[var(--nq-copper)]"
                     >
                       <span>
                         <span className="block text-sm font-bold text-[var(--nq-fg)]">{v.tieu_de}</span>

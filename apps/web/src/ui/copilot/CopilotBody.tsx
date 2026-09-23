@@ -266,7 +266,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
       {/* Consent Modal for Decree 13/2023/ND-CP */}
       {showConsentModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm border-2 border-[var(--nq-copper)] bg-[var(--nq-surface)] p-5 shadow-2xl">
+          <div className="w-full max-w-sm nq-surface-block border-[var(--nq-copper)] p-5 shadow-2xl">
             <div className="flex items-center gap-2 text-[var(--nq-copper)]">
               <Icon name="microphone" size={18} />
               <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--nq-fg)]">
@@ -705,7 +705,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={loading || Boolean(streamingId) || uploading}
-                className="border-2 border-[var(--nq-dim)] bg-[var(--nq-bg)] p-2 text-[var(--nq-dim)] transition hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] disabled:opacity-40"
+                className="nq-surface-row bg-[var(--nq-bg)] p-2 text-[var(--nq-dim)] transition hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] disabled:opacity-40"
                 title="Đính kèm ảnh hoặc tài liệu"
               >
                 <Icon name="attachment" size={16} />
@@ -717,8 +717,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={attachedFile ? "Thêm ghi chú cho tệp đính kèm..." : "Nhập lệnh hoặc hỏi quy trình..."}
                 disabled={loading || Boolean(streamingId) || uploading}
-                className="flex-1 border-2 bg-[var(--nq-bg)] px-3.5 py-2 text-xs text-[var(--nq-fg)] placeholder:text-[var(--nq-dim)] focus:outline-none disabled:opacity-50"
-                style={{ borderColor: "var(--accent)" }}
+                className="flex-1 border border-[var(--nq-line-control)] rounded bg-[var(--nq-bg)] px-3.5 py-2 text-xs text-[var(--nq-fg)] placeholder:text-[var(--nq-dim)] focus:outline-none focus:border-[var(--nq-copper)] disabled:opacity-50"
               />
               {voiceEnabled && (
                 <button
@@ -755,14 +754,14 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                       : undefined
                   }
                   disabled={loading || Boolean(streamingId) || uploading || voice.state === "connecting"}
-                  className={`border-2 p-2 transition select-none disabled:opacity-40 ${
+                  className={`rounded border p-2 transition select-none disabled:opacity-40 ${
                     voiceMode === "push_to_talk" && isVoiceActive
                       ? voice.isPttSpeaking
-                        ? "border-rose-500 bg-rose-500 text-white animate-pulse scale-105"
-                        : "border-amber-500/80 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30"
+                        ? "border-[var(--nq-st-danger)] bg-[var(--nq-st-danger)] text-[var(--nq-accent-ink)] animate-pulse scale-105"
+                        : "border-[var(--nq-st-warn)] bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] hover:brightness-110"
                       : isVoiceActive
-                      ? "border-rose-500 bg-rose-500 text-white animate-pulse"
-                      : "border-[var(--nq-dim)] bg-[var(--nq-bg)] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
+                      ? "border-[var(--nq-st-danger)] bg-[var(--nq-st-danger)] text-[var(--nq-accent-ink)] animate-pulse"
+                      : "border-[var(--nq-line-control)] bg-[var(--nq-bg)] text-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
                   }`}
                   title={
                     voiceMode === "push_to_talk"
@@ -782,7 +781,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
               <button
                 type="submit"
                 disabled={loading || Boolean(streamingId) || uploading || (!input.trim() && !attachedFile)}
-                className="border-2 border-[var(--nq-copper)] bg-[var(--nq-copper)] px-3.5 py-2 text-xs font-bold uppercase text-[#0e0c0a] transition disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-[var(--nq-copper)] bg-[var(--nq-copper)] px-3.5 py-2 text-xs font-bold uppercase text-[var(--nq-accent-ink)] transition disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {uploading ? "Đang tải…" : "Gửi"}
               </button>

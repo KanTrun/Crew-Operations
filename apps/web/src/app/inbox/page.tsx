@@ -457,7 +457,7 @@ export default function InboxPage() {
       ) : null}
 
       {life?.trang_thai === "da_dong" ? (
-        <div className="mb-4 p-4 border-2 border-[var(--nq-copper)] bg-[var(--nq-copper-dim,#332211)] text-[var(--nq-fg)] rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div className="nq-surface-row mb-4 p-4 border-[var(--nq-copper)] bg-[var(--nq-copper-dim,#332211)] text-[var(--nq-fg)] flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <div>
             <div className="font-bold uppercase tracking-wider">
               Lịch tuần {life.tuan_iso ?? ""} đã đóng băng

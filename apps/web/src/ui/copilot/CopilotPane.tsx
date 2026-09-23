@@ -143,7 +143,7 @@ export function CopilotPane({ open, onClose }: Props = {}) {
           position: "fixed",
           borderRadius: 9999,
         }}
-        className="flex cursor-grab items-center justify-center border-2 border-[var(--nq-copper)] bg-[var(--nq-surface)] text-[var(--nq-copper)] shadow-[5px_5px_0_var(--nq-copper-dim)] transition hover:bg-[var(--nq-copper)] hover:text-[#0e0c0a] active:scale-95"
+        className="flex cursor-grab items-center justify-center nq-surface-block border-[var(--nq-copper)] text-[var(--nq-copper)] shadow-[var(--nq-elev-2)] transition hover:bg-[var(--nq-copper)] hover:text-[#0e0c0a] active:scale-95"
         title="Mở trợ lý vận hành"
       >
         <span className="text-sm font-black uppercase">Trợ lý</span>
@@ -154,7 +154,7 @@ export function CopilotPane({ open, onClose }: Props = {}) {
   return (
     <div
       style={{ ...style, position: "fixed" }}
-      className="flex flex-col overflow-hidden rounded-xl border-2 border-[var(--nq-copper)] bg-[var(--nq-bg-elevated)] shadow-[0_8px_32px_rgba(0,0,0,0.55),8px_8px_0_var(--nq-copper-dim)]"
+      className="nq-surface-block flex flex-col overflow-hidden bg-[var(--nq-bg-elevated)] border-[var(--nq-copper)] shadow-[var(--nq-elev-4)]"
     >
       <div className="flex h-8 shrink-0 items-center justify-between border-b border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-2">
         <div className="h-0.5 w-10 bg-[var(--nq-dim)]" />

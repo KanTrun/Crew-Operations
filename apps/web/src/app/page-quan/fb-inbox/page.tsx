@@ -325,8 +325,8 @@ export default function FbInboxPage() {
           return (
             <article
               key={it.id}
-              className={`bg-[var(--nq-surface)] border-2 p-6 ${
-                sla?.overdue ? "border-[var(--nq-red)]" : "border-[var(--nq-dim)]"
+              className={`nq-surface-block bg-[var(--nq-surface)] p-6 ${
+                sla?.overdue ? "border-[var(--nq-red)]" : ""
               }`}
             >
               <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -489,9 +489,9 @@ export default function FbInboxPage() {
 
 function StatCell({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {
   return (
-    <div className="bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-4">
+    <div className="nq-surface-row bg-[var(--nq-surface)] p-4 block">
       <p className="text-xs font-mono uppercase tracking-widest text-[var(--nq-dim)] mb-1">{label}</p>
-      <p className={`text-3xl font-black ${danger ? "text-[var(--nq-red)]" : "text-[var(--nq-fg)]"}`}>{value}</p>
+      <p className={`tabular-nums text-3xl font-black ${danger ? "text-[var(--nq-red)]" : "text-[var(--nq-fg)]"}`}>{value}</p>
     </div>
   );
 }

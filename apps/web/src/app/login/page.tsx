@@ -43,7 +43,7 @@ export default function LoginPage() {
 
       <form
         onSubmit={onSubmit}
-        className="nq-login-card relative z-10 grid w-full max-w-4xl grid-cols-1 overflow-hidden border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] md:grid-cols-2"
+        className="nq-login-card relative z-10 grid w-full max-w-4xl grid-cols-1 overflow-hidden nq-surface-block shadow-[var(--nq-elev-2)] md:grid-cols-2"
       >
         <aside className="flex flex-col justify-between border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
           <Logo />
@@ -51,7 +51,7 @@ export default function LoginPage() {
             <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-copper)] uppercase">
               Vào ca · một việc một lúc
             </p>
-            <h1 className="text-4xl font-black tracking-tighter text-[var(--nq-fg)] uppercase md:text-5xl">
+            <h1 className="nq-page-title">
               Đăng nhập
             </h1>
             <p className="mt-4 max-w-sm text-sm text-[var(--nq-dim)]">
@@ -88,7 +88,7 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             aria-busy={loading ? true : undefined}
-            className="nq-ink-on-solid mt-2 w-full border-2 border-[var(--nq-copper)] bg-[var(--nq-copper)] py-3.5 font-black tracking-widest uppercase transition-all hover:bg-transparent hover:text-[var(--nq-copper)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="nq-btn nq-btn-primary mt-2 w-full py-3.5 uppercase"
           >
             {loading ? "Đang vào…" : "Vào hệ thống"}
           </button>

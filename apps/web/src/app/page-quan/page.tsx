@@ -722,7 +722,7 @@ export default function PageQuanPage() {
           </div>
 
           {/* KHỐI 1: TÙY CHỈNH TỰ ĐỘNG QUÉT & BẢO VỆ CHỐNG QUÁ TẢI (Chức năng 4) */}
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg nq-surface-block p-4">
             <div className="flex items-center gap-3">
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -870,7 +870,7 @@ export default function PageQuanPage() {
           </div>
 
           {/* KHỐI 3: BỘ LỌC NGUỒN CÀO ĐỘC QUYỀN (Targeted Scraping) & BOOKMARK */}
-          <div className="space-y-3 rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-4">
+          <div className="space-y-3 rounded-lg nq-surface-block p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--nq-dim)] pb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--nq-copper)]">
                 Nền Tảng Cào Dữ Liệu (Chọn Độc Quyền Theo Nhu Cầu):
@@ -1010,7 +1010,7 @@ export default function PageQuanPage() {
                     <div
                       key={t.id}
                       onClick={() => setSelectedTrend(t)}
-                      className={`cursor-pointer border-2 p-4 transition-all rounded relative ${
+                      className={`cursor-pointer nq-surface-tile p-4 transition-all relative ${
                         isSelected
                           ? "border-[var(--nq-primary)] bg-[var(--nq-surface-hi)] shadow-md ring-1 ring-[var(--nq-primary)]"
                           : "border-[var(--nq-dim)] bg-[var(--nq-surface)] hover:border-[var(--nq-muted)]"
@@ -1064,11 +1064,11 @@ export default function PageQuanPage() {
             </div>
 
             {/* Cột Phải: Bảng Phân Tích Chuyên Sâu Cốt Lõi Trend */}
-            <div className="space-y-4 border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-6 lg:col-span-7">
+            <div className="space-y-4 nq-surface-block p-6 lg:col-span-7">
               {selectedTrend ? (
                 <>
                   {/* Header: Cụm từ khóa cửa miệng cốt lõi & Nút Bookmark */}
-                  <div className="rounded border-2 border-[var(--nq-copper)] bg-[var(--nq-surface)] p-4 shadow-sm">
+                  <div className="rounded nq-surface-block border-[var(--nq-copper)] p-4 shadow-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-[var(--nq-copper)]">
                         Cụm Từ Khóa Cửa Miệng Viral (Bắt Sóng Ngay)
@@ -1357,10 +1357,10 @@ export default function PageQuanPage() {
                     <div
                       key={t.id}
                       onClick={() => setSelectedTrend(t)}
-                      className={`relative rounded-lg border-2 p-4 transition-all cursor-pointer ${
+                      className={`nq-surface-tile relative p-4 transition-all cursor-pointer ${
                         isSelected
-                          ? "border-amber-400 bg-[var(--nq-surface-hi)] shadow-lg shadow-amber-500/10"
-                          : "border-[var(--nq-dim)] bg-[var(--nq-surface)] hover:border-amber-400/50 hover:bg-[var(--nq-surface-hi)]"
+                          ? "border-[var(--nq-copper)] bg-[var(--nq-surface-hi)] shadow-[var(--nq-elev-2-hover)]"
+                          : "bg-[var(--nq-surface)] hover:border-[var(--nq-copper)] hover:bg-[var(--nq-surface-hi)]"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -1404,7 +1404,7 @@ export default function PageQuanPage() {
               </div>
 
               {/* Chi tiết Trend đã chọn */}
-              <div className="space-y-4 rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-5 lg:col-span-7">
+              <div className="space-y-4 rounded-lg nq-surface-block p-5 lg:col-span-7">
                 {selectedTrend ? (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--nq-dim)] pb-3">
@@ -1506,8 +1506,8 @@ export default function PageQuanPage() {
               {threads.map((th) => (
                 <div
                   key={th.id}
-                  className={`border-2 p-4 ${
-                    th.needs_action ? "border-[var(--nq-copper)] bg-[var(--nq-surface-hi)]" : "border-[var(--nq-dim)]"
+                  className={`nq-surface-block p-4 ${
+                    th.needs_action ? "border-[var(--nq-copper)] bg-[var(--nq-surface-hi)]" : "bg-[var(--nq-surface)]"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -1645,7 +1645,7 @@ export default function PageQuanPage() {
             </div>
           </div>
 
-          <div className="border-2 border-[var(--nq-dim)] p-4 rounded">
+          <div className="nq-surface-block p-4">
             <h3 className="mb-2 text-sm font-bold">Soạn nháp bài đăng thủ công</h3>
             <Field label="Nội dung bài đăng">
               <Textarea
@@ -1695,7 +1695,7 @@ export default function PageQuanPage() {
 
       {/* TAB 4: CẤU HÌNH THÔNG TIN QUÁN */}
       {tab === "config" && manager && (
-        <div className="space-y-4 border-2 border-[var(--nq-dim)] p-4">
+        <div className="nq-surface-block space-y-4 p-4">
           <h3 className="text-sm font-bold">Cấu hình thông tin trả lời khách</h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>

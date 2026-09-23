@@ -305,7 +305,12 @@
   --nq-safe-b: env(safe-area-inset-bottom, 0px);
   --nq-safe-l: env(safe-area-inset-left, 0px);
   --nq-safe-r: env(safe-area-inset-right, 0px);
-  --nq-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  /* `--nq-grain` (feTurbulence) đã BỊ XOÁ. Nó rải hạt nhiễu ngẫu nhiên lên nền
+     tối ở 5 chỗ với opacity 0.028–0.045 — trang trí thuần, không mã hoá thông
+     tin nào, và làm chữ nhỏ trên nền tối bị rối. Chất liệu của quán được truyền
+     bằng ánh sáng có hướng (quầng sáng, vệt hơi nước) và tỉ lệ, không bằng nhiễu.
+     Nếu cần chất liệu cho một bề mặt mới, dùng gradient có hướng — đừng dựng lại
+     hạt nhiễu. */
 }
 
 * {
@@ -385,6 +390,13 @@ button.nq-ink-on-solid,
   background: color-mix(in srgb, var(--nq-copper) 16%, var(--nq-surface));
 }
 
+/* Nền trang: hai quầng sáng ấm + dải chuyển sắc xuống nền.
+   KHÔNG phủ thêm hạt nhiễu (film-grain) ở đây nữa. Lớp `body::after` trước kia
+   rải `feTurbulence` trên TOÀN BỘ ứng dụng ở opacity 0.045 — trang trí thuần,
+   không mã hoá thông tin nào, và là dấu hiệu nhận dạng của giao diện do máy
+   dựng. Chất liệu của quán được truyền bằng ánh sáng và tỉ lệ, không bằng hạt
+   nhiễu: hai quầng sáng dưới đây đã đủ tạo chiều sâu (một ấm ở đỉnh, một trầm
+   ở đáy) mà không làm nhiễu chữ trên nền tối. */
 body::before {
   content: "";
   position: fixed;
@@ -395,17 +407,6 @@ body::before {
     radial-gradient(ellipse 80% 50% at 15% -5%, rgba(196, 165, 116, 0.12) 0%, transparent 55%),
     radial-gradient(ellipse 60% 40% at 90% 100%, rgba(80, 60, 40, 0.25) 0%, transparent 50%),
     linear-gradient(180deg, var(--nq-banner-from) 0%, var(--nq-bg) 42%);
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.045;
-  background-image: var(--nq-grain);
-  background-size: 180px 180px;
 }
 
 a {
@@ -2728,8 +2729,9 @@ a:focus-visible {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--nq-grain);
-  opacity: 0.04;
+  /* Vệt sáng chéo rất nhạt thay cho hạt nhiễu: cùng tác dụng tách khối khỏi
+     nền phẳng, nhưng có hướng (ánh đèn quầy bar) thay vì nhiễu ngẫu nhiên. */
+  background: linear-gradient(112deg, rgba(232, 213, 181, 0.05) 0%, transparent 38%);
   pointer-events: none;
 }
 
@@ -3938,9 +3940,7 @@ a:focus-visible {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background:
-    radial-gradient(115% 52% at 50% -9%, rgba(196, 165, 116, 0.15) 0%, transparent 61%),
-    var(--nq-grain);
+  background: radial-gradient(115% 52% at 50% -9%, rgba(196, 165, 116, 0.15) 0%, transparent 61%);
   opacity: 0.9;
 }
 
@@ -4250,6 +4250,42 @@ a:focus-visible {
   line-height: 1.15;
   letter-spacing: -0.02em;
   color: var(--nq-ink);
+  margin: 0;
+}
+
+/* ── Tiêu đề trang ──
+   Một lớp duy nhất cho mọi `<h1>` cấp trang, để tiêu đề không còn phụ thuộc việc
+   mỗi trang có nhớ đúng chuỗi class hay không.
+
+   Vì sao KHÔNG dùng `text-4xl font-black uppercase tracking-tighter` (kiểu đang
+   rải rác ở nhiều trang): đó là công thức tiêu đề của giao diện do máy dựng — chữ
+   hoa cỡ lớn, siết khoảng chữ, không liên quan gì tới quán hay nghề vận hành. Với
+   tiếng Việt nó còn HẠI THẬT: "LỊCH TUẦN" ở cỡ 4xl với tracking âm làm dấu mũ của
+   Ị và dấu huyền chồng vào ký tự bên cạnh. Hệ đã có sẵn họ font display (Source
+   Serif 4) chỉ dành cho tiêu đề — dùng đúng nó, chữ thường, giãn nhẹ âm vừa phải
+   theo cách `.nq-gate-title` đã làm. Nhịp phân cấp do CỠ và CHẤT liệu font quyết
+   định, không do việc viết hoa mọi chữ. */
+.nq-page-title {
+  font-family: var(--nq-font-display);
+  font-weight: 400;
+  font-size: var(--nq-t-h1);
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+  color: var(--nq-ink);
+  margin: 0;
+  text-wrap: balance;
+}
+
+/* Nhãn thương hiệu (tên quán trên mặt tiền / trang vào). Đây là DẤU HIỆU nhận
+   diện, không phải tiêu đề: font display, chữ hoa, giãn khoảng chữ DƯƠNG nhẹ —
+   chữ hoa cần giãn ra chứ không siết vào, nhất là khi có dấu tiếng Việt. */
+.nq-brand-mark {
+  font-family: var(--nq-font-display);
+  font-weight: 600;
+  font-size: var(--nq-t-h2);
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  color: var(--nq-accent);
   margin: 0;
 }
 

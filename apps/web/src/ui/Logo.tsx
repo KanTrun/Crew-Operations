@@ -85,7 +85,11 @@ export function Logo({ href = "/", className = "" }: { href?: string; className?
         />
       </motion.svg>
       <div className="ml-2.5 hidden min-w-0 flex-col justify-center sm:flex">
-        <span className="text-base font-black uppercase leading-none tracking-tighter text-[var(--nq-fg)] md:text-lg">
+        {/* Tên quán ở đây là NHÃN THƯƠNG HIỆU, không phải tiêu đề trang — nhưng
+            vẫn bỏ `tracking-tighter`: với "NHỊP QUÁN" viết hoa, khoảng chữ bị siết
+            làm dấu mũ của Ị và dấu sắc của Á chồng vào ký tự bên cạnh. Giãn nhẹ
+            theo mật độ chữ hoa của hệ (xem `--nq-t-micro` / nhãn eyebrow). */}
+        <span className="text-base font-black uppercase leading-none tracking-tight text-[var(--nq-fg)] md:text-lg">
           NHỊP QUÁN
         </span>
         <span className="mt-0.5 font-mono text-2xs uppercase leading-none tracking-[0.28em] text-[var(--nq-copper)]">

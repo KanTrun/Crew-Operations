@@ -169,7 +169,7 @@ export default function AiLearningPage() {
           </section>
 
           {noLearningData ? (
-            <section className="mb-8 border-2 border-[var(--nq-copper)] bg-[var(--nq-surface)] p-5 md:p-6">
+            <section className="mb-8 nq-surface-block border-[var(--nq-copper)] p-5 md:p-6">
               <p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-copper)]">Bắt đầu vòng học</p>
               <h2 className="mt-1 text-xl font-black">Chưa có dữ liệu học</h2>
               <p className="mt-3 max-w-3xl text-sm text-[var(--nq-dim)]">
@@ -182,7 +182,7 @@ export default function AiLearningPage() {
             </section>
           ) : null}
 
-          <section className="mb-8 border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-5 md:p-6">
+          <section className="mb-8 nq-surface-row p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-copper)]">Gmail reflection</p>
@@ -198,7 +198,7 @@ export default function AiLearningPage() {
             {proposals.length === 0 ? <Empty title="Chưa có đề xuất">Chạy phản chiếu khi đã có các chỉnh sửa email lặp lại.</Empty> : (
               <div className="space-y-3">
                 {proposals.map((proposal) => (
-                  <article key={proposal.id} className="border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-5">
+                  <article key={proposal.id} className="nq-surface-row p-5">
                     <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="mb-2 flex flex-wrap gap-2"><StatusChip tone={STATUS_TONE[proposal.status] ?? "default"}>{proposal.status.replace(/_/g, " ")}</StatusChip><StatusChip>{proposal.channel}</StatusChip><span className="font-mono text-xs text-[var(--nq-dim)]">{proposal.evidence_count} bằng chứng</span></div><p className="font-semibold">{proposal.rule?.text ?? "Quy tắc không có nội dung"}</p><p className="mt-1 font-mono text-xs text-[var(--nq-dim)]">Ưu tiên {proposal.rule?.priority ?? 0} · cập nhật {new Date(proposal.updated_at).toLocaleString("vi-VN")}</p></div>
                       {owner ? <div className="flex flex-wrap gap-2">
                         {proposal.status === "pending" || proposal.status === "conflict_pending" ? <Btn onClick={() => act(proposal.id, `/api/v1/ai/rules/proposals/${proposal.id}/approve`, "Đã duyệt proposal.")} busy={busy === `${proposal.id}:/api/v1/ai/rules/proposals/${proposal.id}/approve`}>Duyệt</Btn> : null}
@@ -212,8 +212,8 @@ export default function AiLearningPage() {
           </section>
 
           <section className="mb-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-            <div className="border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-5"><p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-copper)]">Gmail gần đây</p><h2 className="mb-4 text-xl font-black">Generation đã ghi audit</h2>{generations.length === 0 ? <Empty title="Chưa có generation">Email được kiểm duyệt sẽ xuất hiện tại đây.</Empty> : <div className="space-y-3">{generations.slice(0, 8).map((generation) => <article key={generation.id} className="border-l-4 border-[var(--nq-copper)] bg-[var(--nq-surface-hi)] p-3"><p className="font-semibold">{generation.draft?.subject ?? "Không có subject"}</p><p className="mt-1 line-clamp-2 text-sm text-[var(--nq-dim)]">{generation.draft?.body ?? ""}</p><p className="mt-2 font-mono text-xs text-[var(--nq-dim)]">{generation.policy_action} · rules: {generation.rule_version}</p></article>)}</div>}</div>
-            <div className="border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-5"><p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-copper)]">Vận hành</p><h2 className="mb-4 text-xl font-black">Guardrail đang bật</h2><div className="space-y-2">{Object.entries(operations?.flags ?? {}).map(([name, enabled]) => <div key={name} className="flex items-center justify-between gap-3 border-b border-[var(--nq-dim)]/50 py-2"><span className="font-mono text-xs break-all">{name.replace("NHIPQUAN_", "")}</span><StatusChip tone={enabled ? "ok" : "default"}>{enabled ? "bật" : "tắt"}</StatusChip></div>)}</div><p className="mt-4 text-sm text-[var(--nq-dim)]">Retention hiện tại: {operations?.retention_days ?? 180} ngày. Chỉ có dry-run, không xóa tự động.</p>{owner ? <Btn variant="danger" onClick={toggleBreaker} busy={busy === "breaker"} className="mt-5">Dừng Gmail AI</Btn> : <p className="mt-5 text-sm text-[var(--nq-dim)]">Chủ quán có thể dừng khẩn cấp kênh Gmail AI.</p>}</div>
+            <div className="nq-surface-row p-5"><p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-copper)]">Gmail gần đây</p><h2 className="mb-4 text-xl font-black">Generation đã ghi audit</h2>{generations.length === 0 ? <Empty title="Chưa có generation">Email được kiểm duyệt sẽ xuất hiện tại đây.</Empty> : <div className="space-y-3">{generations.slice(0, 8).map((generation) => <article key={generation.id} className="border-l-4 border-[var(--nq-copper)] bg-[var(--nq-surface-hi)] p-3"><p className="font-semibold">{generation.draft?.subject ?? "Không có subject"}</p><p className="mt-1 line-clamp-2 text-sm text-[var(--nq-dim)]">{generation.draft?.body ?? ""}</p><p className="mt-2 font-mono text-xs text-[var(--nq-dim)]">{generation.policy_action} · rules: {generation.rule_version}</p></article>)}</div>}</div>
+            <div className="nq-surface-row p-5"><p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-copper)]">Vận hành</p><h2 className="mb-4 text-xl font-black">Guardrail đang bật</h2><div className="space-y-2">{Object.entries(operations?.flags ?? {}).map(([name, enabled]) => <div key={name} className="flex items-center justify-between gap-3 border-b border-[var(--nq-dim)]/50 py-2"><span className="font-mono text-xs break-all">{name.replace("NHIPQUAN_", "")}</span><StatusChip tone={enabled ? "ok" : "default"}>{enabled ? "bật" : "tắt"}</StatusChip></div>)}</div><p className="mt-4 text-sm text-[var(--nq-dim)]">Retention hiện tại: {operations?.retention_days ?? 180} ngày. Chỉ có dry-run, không xóa tự động.</p>{owner ? <Btn variant="danger" onClick={toggleBreaker} busy={busy === "breaker"} className="mt-5">Dừng Gmail AI</Btn> : <p className="mt-5 text-sm text-[var(--nq-dim)]">Chủ quán có thể dừng khẩn cấp kênh Gmail AI.</p>}</div>
           </section>
         </>
       ) : null}
@@ -222,5 +222,5 @@ export default function AiLearningPage() {
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return <div className="border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-5"><p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-dim)]">{label}</p><p className="mt-2 text-4xl font-black text-[var(--nq-copper)]">{value}</p></div>;
+  return <div className="nq-surface-row p-5"><p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-dim)]">{label}</p><p className="mt-2 text-4xl font-black text-[var(--nq-copper)]">{value}</p></div>;
 }

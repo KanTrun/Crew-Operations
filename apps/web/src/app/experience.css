@@ -6,13 +6,16 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Không khí nền (design-guidelines §Color & motif) ───────────────────────
-   Trước đây register này chỉ có khung viền phẳng trên nền trơn, nên mọi trang
-   trải nghiệm trông như bảng điều khiển dựng vội: không khí quán, không chiều
-   sâu, không chất liệu. Khối dưới dựng lại đúng ba thứ guideline yêu cầu —
-   grain 4%, vệt hơi nước (steam-line), và quầng sáng đồng ở đỉnh trang.
+   Ba thứ dựng không khí cho bề mặt trải nghiệm: vệt hơi nước (steam-line),
+   quầng sáng đồng ở đỉnh trang, và ánh lạnh đối ứng bên phải.
+
+   Bỏ lớp hạt nhiễu (`--nq-grain`) từng phủ ở `::after`: nó không mã hoá thông
+   tin nào, chỉ làm nền đục thêm và là dấu hiệu của giao diện do máy dựng. Vệt
+   hơi nước đã đủ tạo chất liệu, và có hướng cụ thể — đúng motif "hơi nước trên
+   quầy" của quán thay vì nhiễu ngẫu nhiên.
 
    Đặt ở lớp `::before` của chính khối trang (không phải `body`) để bề mặt trải
-   nghiệm có không khí riêng mà không đụng tới 19 route vận hành. */
+   nghiệm có không khí riêng mà không đụng tới các route vận hành. */
 .nq-quanverse,
 .nq-spatial,
 .nq-war,
@@ -44,22 +47,6 @@
     );
   mask-image: radial-gradient(120% 80% at 50% 0%, #000 30%, transparent 78%);
   -webkit-mask-image: radial-gradient(120% 80% at 50% 0%, #000 30%, transparent 78%);
-}
-.nq-quanverse::after,
-.nq-spatial::after,
-.nq-war::after,
-.nq-rules::after,
-.nq-rescue::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.04;
-  background-image: var(--nq-grain);
-  background-size: 180px 180px;
-  mask-image: linear-gradient(180deg, #000 0%, transparent 70%);
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 70%);
 }
 
 /* ── Shared: page header của experience ─────────────────────────────────── */

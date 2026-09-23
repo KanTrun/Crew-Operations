@@ -217,7 +217,7 @@ export default function SkillsPage() {
       />
 
       {/* Action bar: Tìm kiếm + Chưng cất SOP mới */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[var(--nq-surface-hi)] p-4 border-2 border-[var(--nq-dim)] mb-8 shadow-[4px_4px_0px_0px_var(--nq-copper-dim)]">
+      <div className="nq-surface-row flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 mb-8 shadow-[var(--nq-elev-2)]">
         <div className="w-full sm:w-80">
           <input
             type="text"
@@ -331,7 +331,7 @@ export default function SkillsPage() {
               return (
                 <div
                   key={skill.skill_id}
-                  className="bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] hover:border-[var(--nq-copper)] p-5 flex flex-col justify-between transition-all shadow-[4px_4px_0px_0px_var(--nq-copper-dim)]"
+                  className="bg-[var(--nq-surface)] nq-surface-tile hover:border-[var(--nq-copper)] p-5 flex flex-col justify-between transition-all shadow-[var(--nq-elev-2)]"
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
@@ -419,8 +419,8 @@ export default function SkillsPage() {
       {/* Modal chi tiết SKILL.md */}
       {selectedSkillId && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-copper)] max-w-4xl w-full max-h-[90vh] flex flex-col shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] overflow-hidden">
-            <div className="p-4 border-b-2 border-[var(--nq-dim)] flex items-center justify-between bg-[var(--nq-surface)]">
+          <div className="nq-surface-block bg-[var(--nq-surface-hi)] border-[var(--nq-copper)] max-w-4xl w-full max-h-[90vh] flex flex-col shadow-[var(--nq-elev-2)] overflow-hidden">
+            <div className="p-4 border-b border-[var(--nq-line)] flex items-center justify-between bg-[var(--nq-surface)]">
               <div>
                 <h3 className="font-black text-lg text-[var(--nq-fg)] uppercase">
                   Chi tiết Kỹ năng: {selectedSkillId}
@@ -450,14 +450,14 @@ export default function SkillsPage() {
                 <>
                   <div>
                     <Kicker>NỘI DUNG ĐỊNH NGHĨA SKILL.MD</Kicker>
-                    <pre className="p-4 bg-[var(--nq-bg)] border-2 border-[var(--nq-dim)] text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-96">
+                    <pre className="p-4 bg-[var(--nq-bg)] border border-[var(--nq-line)] text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-96">
                       {detailData.content}
                     </pre>
                   </div>
 
                   <div>
                     <Kicker>NGỮ CẢNH CHÈN VÀO AG-COPILOT (PROMPT CONTEXT)</Kicker>
-                    <pre className="p-4 bg-[var(--nq-bg)] border-2 border-[var(--nq-dim)] text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-48 text-[var(--nq-dim)]">
+                    <pre className="p-4 bg-[var(--nq-bg)] border border-[var(--nq-line)] text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-48 text-[var(--nq-dim)]">
                       {detailData.prompt_context_sample}
                     </pre>
                   </div>

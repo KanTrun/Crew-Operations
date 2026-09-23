@@ -662,8 +662,8 @@ export default function RosterPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
           <div>
             <p className="nq-kicker">Vận hành tuần</p>
-            <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-[var(--nq-copper)]">
-              {viewMode === "my_shifts" ? "Lịch Đi Làm Của Tôi" : "Lịch Toàn Quán (Full Ca)"}
+            <h1 className="nq-page-title text-[var(--nq-copper)]">
+              {viewMode === "my_shifts" ? "Lịch đi làm của tôi" : "Lịch toàn quán"}
             </h1>
             <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
               Hỏi trợ lý vận hành
