@@ -1,7 +1,7 @@
 ---
 title: "Hao hụt tiêu thụ sản phẩm — động cơ hao hụt, danh mục đầy đủ, ảnh, trang liên kết"
 description: "Nâng /hao-phi từ gom cụm ghi chú thành hệ hao hụt hoàn thiện: hợp đồng tất định, động cơ hao hụt theo nguyên liệu, agent mẹ–con, danh mục sản phẩm đầy đủ kèm ảnh, và các trang liên kết."
-status: in-progress
+status: completed
 priority: P1
 effort: "3-4 ngày"
 tags: [waste, inventory, contracts, agents, ui, seed]
@@ -75,13 +75,13 @@ hệ thống và **mỗi sản phẩm có ảnh**.
 | # | Phase | Nội dung | Phụ thuộc | Trạng thái |
 |---|-------|----------|-----------|------------|
 | 1 | [Khảo sát & bằng chứng](./phase-01-start.md) | Ghi lại hiện trạng kèm bằng chứng mã | — | ✅ |
-| 2 | [Hợp đồng hao hụt](./phase-02-hop-dong-hao-hut.md) | `loss.py` + ngưỡng cấu hình + test hợp đồng | 1 | ⬜ |
-| 3 | [Động cơ hao hụt](./phase-03-dong-co-hao-hut.md) | Toán tất định trong `ag_waste` | 2 | ⬜ |
-| 4 | [Agent mẹ–con](./phase-04-agent-me-con.md) | `ANALYZE_LOSS` nối AG-COPILOT ↔ AG-WASTE | 3 | ⬜ |
-| 5 | [API & cổng](./phase-05-api-va-cong.md) | Router hao hụt + capability + audit | 4 | ⬜ |
-| 6 | [Danh mục & hình](./phase-06-danh-muc-san-pham-va-hinh.md) | Danh mục đầy đủ + sinh ảnh tại máy | 5 | ⬜ |
-| 7 | [Giao diện & trang liên kết](./phase-07-giao-dien-va-trang-lien-ket.md) | `/hao-phi` + nối 4 trang | 6 | ⬜ |
-| 8 | [Tài liệu, kiểm chứng, commit](./phase-08-tai-lieu-kiem-chung-commit.md) | Docs + cổng + commit theo phase | 7 | ⬜ |
+| 2 | [Hợp đồng hao hụt](./phase-02-hop-dong-hao-hut.md) | `loss.py` + ngưỡng cấu hình + test hợp đồng | 1 | ✅ |
+| 3 | [Động cơ hao hụt](./phase-03-dong-co-hao-hut.md) | Toán tất định trong `ag_waste` | 2 | ✅ |
+| 4 | [Agent mẹ–con](./phase-04-agent-me-con.md) | `ANALYZE_LOSS` nối AG-COPILOT ↔ AG-WASTE | 3 | ✅ |
+| 5 | [API & cổng](./phase-05-api-va-cong.md) | Router hao hụt + capability + audit | 4 | ✅ |
+| 6 | [Danh mục & hình](./phase-06-danh-muc-san-pham-va-hinh.md) | Danh mục đầy đủ + sinh ảnh tại máy | 5 | ✅ |
+| 7 | [Giao diện & trang liên kết](./phase-07-giao-dien-va-trang-lien-ket.md) | `/hao-phi` + nối 4 trang | 6 | ✅ |
+| 8 | [Tài liệu, kiểm chứng, commit](./phase-08-tai-lieu-kiem-chung-commit.md) | Docs + cổng + commit theo phase | 7 | ✅ |
 
 ## Kiến trúc chốt
 

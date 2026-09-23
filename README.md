@@ -396,6 +396,10 @@ Quyền: 🟢 công khai · 🔵 mọi vai đã đăng nhập · 🟡 `quan_ly`+
 | POST | `/api/v1/tieu-thu` | 🟡 | Ghi tiêu thụ. Body: `hang`, `so_luong`, `don_vi` |
 | POST | `/api/v1/waste` | 🔵 | Ghi chú hao phí. Body: `thu`, `ghi_chu` |
 | GET | `/api/v1/waste` | 🔵 | Cụm hao phí (AG-WASTE) + ghi chú gốc |
+| GET | `/api/v1/hao-hut` | 🔵 | Hao hụt theo nguyên liệu: lý thuyết ↔ thực tế, mức độ, xếp hạng nguyên nhân. `?ky=hom_nay\|tuan\|thang\|all` |
+| POST | `/api/v1/hao-hut` | 🔵 | Ghi hao hụt có mặt hàng + nguyên nhân (có vết audit). Body: `mat_hang`, `so_luong`, `don_vi`, `nguyen_nhan`, `thu` |
+| GET | `/api/v1/hao-hut/nguong` | 🔵 | Ngưỡng hao hụt đang áp dụng (đọc `config/nguong-hao-hut.yaml`) |
+| GET | `/api/v1/hao-hut/danh-muc` | 🟡 | Mã mặt hàng gợi ý, gộp từ kiểm kê + ghi chú + công thức món |
 
 ### Bàn giao & cẩm nang
 
