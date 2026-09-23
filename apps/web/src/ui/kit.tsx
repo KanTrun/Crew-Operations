@@ -58,8 +58,14 @@ export function BtnLink({
   );
 }
 
+/* Dãy nút hành động của trang.
+   Phải có `flex-wrap`: ở bề rộng trung bình (768–1024px) các nút nằm cùng một
+   hàng nhưng không đủ chỗ. `.nq-btn` đặt `white-space: nowrap` (đúng — nhãn nút
+   không được ngắt dòng), nên khi hàng không đủ chỗ thì khối flex nở ra và đẩy
+   tràn cả trang. Cho phép ngắt hàng thì nút rơi xuống dòng dưới, đúng ý người
+   dùng hơn là cắt cụt hoặc tràn. Đo được: /hom-nay @768px tràn 4px trước khi sửa. */
 export function PageActions({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col sm:flex-row gap-4 mt-8">{children}</div>;
+  return <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 mt-8">{children}</div>;
 }
 
 export function Kicker({ children }: { children: ReactNode }) {

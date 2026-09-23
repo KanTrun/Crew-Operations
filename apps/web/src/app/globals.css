@@ -1503,6 +1503,13 @@ a:focus-visible {
   display: grid;
   gap: clamp(1.25rem, 2.5vw, 2rem);
   align-items: start;
+  /* `minmax(0, 1fr)` chứ không để mặc định. Không khai báo gì thì track là `auto`,
+     mà track `auto` KHÔNG co xuống dưới min-content của phần tử con: khối
+     `.nq-pos-menu` (flex, gap 1rem, tên món + giá + stepper) có min-content
+     362.1px, lớn hơn bề rộng khả dụng 339.1px, nên track phình ra và đẩy cả
+     trang tràn 5px ở 375px. Đây là bẫy grid kinh điển: `1fr` một mình vẫn giữ
+     min-width: auto, phải ghi `minmax(0, 1fr)` mới thật sự cho phép co. */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 @media (min-width: 960px) {
