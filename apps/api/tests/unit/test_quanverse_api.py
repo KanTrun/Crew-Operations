@@ -322,3 +322,73 @@ def test_ar_session_requires_qr() -> None:
     )
     assert r2.status_code == 200
     assert r2.json()["fallback"] == "map_or_qr_text"
+
+def test_propose_status_doc_lai_duoc_tu_snapshot() -> None:
+    """Đề xuất mode phải đọc lại được qua `/snapshot` — không chỉ qua `/modes`.
+
+    Lỗi đã sửa: `_project_role` chỉ lấy `active` từ kv rồi đặt
+    `proposal_status = "confirmed" if active else m.proposal_status` — khi mode
+    CHƯA bật thì nó vứt giá trị trong kv và dùng lại giá trị của FIXTURE. Nên
+    `propose` ghi `draft` thành công mà `/snapshot` (endpoint giao diện đọc) vẫn
+    trả `None`: giao diện hiện "Đang tắt" và KHÔNG hiện nút "Duyệt", vòng đời
+    đề xuất → duyệt kẹt ngay ở bước đề xuất.
+
+    Test này đóng đinh hành vi đúng cho CẢ HAI endpoint, vì sự lệch nhau giữa
+    hai endpoint chính là dạng lỗi vừa rồi.
+    """
+    mode = "dem_nhac"  # fixture: active=False, proposal_status=None
+    r = client.post(
+        f"/api/v1/experience/quanverse/modes/{mode}/propose",
+        headers=headers(client, "lan"),
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["proposal_status"] == "draft"
+
+    snap = client.get(
+        "/api/v1/experience/quanverse/snapshot", headers=headers(client, "lan")
+    )
+    assert snap.status_code == 200, snap.text
+    row = next(m for m in snap.json()["modes"] if m["mode"] == mode)
+    assert row["active"] is False
+    assert row["proposal_status"] == "draft", (
+        "snapshot phải thấy đề xuất đã ghi vào kv; nếu là None thì giao diện "
+        "sẽ không hiện nút Duyệt"
+    )
+
+    # `/modes` phải nói cùng một điều — hai endpoint lệch nhau là gốc của lỗi cũ.
+    modes = client.get(
+        "/api/v1/experience/quanverse/modes", headers=headers(client, "lan")
+    )
+    assert modes.status_code == 200, modes.text
+    row2 = next(m for m in modes.json()["modes"] if m["mode"] == mode)
+    assert row2["proposal_status"] == row["proposal_status"]
+
+    # Duyệt xong thì active + confirmed, và đề xuất cũ không còn.
+    c = client.post(
+        f"/api/v1/experience/quanverse/modes/{mode}/confirm",
+        headers=headers(client, "lan"),
+    )
+    assert c.status_code == 200, c.text
+    snap2 = client.get(
+        "/api/v1/experience/quanverse/snapshot", headers=headers(client, "lan")
+    )
+    row3 = next(m for m in snap2.json()["modes"] if m["mode"] == mode)
+    assert row3["active"] is True
+    assert row3["proposal_status"] == "confirmed"
+
+
+def test_mode_chua_active_thi_khong_bao_confirmed() -> None:
+    """`confirmed` trong khi chưa active là mâu thuẫn trạng thái, phải bỏ đi.
+
+    Nếu một mode chưa bật mà bị gán `confirmed`, giao diện đọc nó thành
+    "chờ duyệt" và hiện nút Duyệt cho một thứ không có đề xuất nào.
+    """
+    snap = client.get(
+        "/api/v1/experience/quanverse/snapshot", headers=headers(client, "lan")
+    )
+    assert snap.status_code == 200, snap.text
+    for m in snap.json()["modes"]:
+        if not m["active"]:
+            assert m["proposal_status"] != "confirmed", (
+                f"{m['mode']} chưa active nhưng proposal_status='confirmed'"
+            )

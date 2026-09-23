@@ -12,8 +12,29 @@
  */
 import { test, expect, type Page } from "@playwright/test";
 import { writeFileSync, mkdirSync } from "node:fs";
+import { resolve } from "node:path";
 
-const BASE = process.env.NQ_BASE ?? "http://localhost:3000";
+/**
+ * Mặc định PHẢI khớp `baseURL` trong `playwright.config.ts` (:3001).
+ *
+ * Bản trước ghim `http://localhost:3000` — cổng mà `next dev` dùng khi tự chạy,
+ * nhưng Playwright chỉ dựng web server ở :3001. Không ai chạy `next dev` ở :3000
+ * trong CI, nên spec này luôn đỏ ở `page.goto` với `ERR_CONNECTION_REFUSED`:
+ * nó chưa từng đo được gì trong một lần chạy chuẩn. Dùng `baseURL` của config
+ * để không bao giờ lệch cổng nữa.
+ */
+const BASE = process.env.NQ_BASE ?? "http://localhost:3001";
+
+/**
+ * Báo cáo ghi ra `<repo>/data/out/` — tính TƯƠNG ĐỐI từ file spec.
+ *
+ * Bản trước ghim cứng `"d:/CA-CÔNG-BẰNG/data/out"`, tức là chỉ chạy đúng trên
+ * đúng một máy. Máy khác (hoặc CI) sẽ tạo thư mục lạ ngoài repo.
+ * Spec nằm ở `apps/web/e2e/` nên lùi 3 cấp là gốc repo.
+ */
+const REPO_ROOT = resolve(__dirname, "..", "..", "..");
+const OUT_DIR = resolve(REPO_ROOT, "data", "out");
+const OUT_FILE = resolve(OUT_DIR, "ui-audit.json");
 
 /** Mọi route trong app — kể cả route chưa có link trên nav. */
 const ROUTES = [
@@ -159,8 +180,8 @@ test.describe("audit giao diện", () => {
       }
     }
 
-    mkdirSync("d:/CA-CÔNG-BẰNG/data/out", { recursive: true });
-    writeFileSync("d:/CA-CÔNG-BẰNG/data/out/ui-audit.json", JSON.stringify(rows, null, 2), "utf8");
+    mkdirSync(OUT_DIR, { recursive: true });
+    writeFileSync(OUT_FILE, JSON.stringify(rows, null, 2), "utf8");
 
     // Bảng gọn để đọc bằng mắt
     const pad = (s: string | number, n: number) => String(s).padEnd(n);
