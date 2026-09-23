@@ -106,6 +106,31 @@ RULES: list[tuple[str, str, str]] = [
         "m-0 border border-[var(--nq-line)]",
         "o giua vien dim -> vien 1px",
     ),
+    # ── Vien dinh huong day 2px ─────────────────────────────────────────────
+    # `border-b-2`/`border-t-2`/`border-l-2` la vach ke 2px. Vach ke khong phai
+    # be mat — no chi chia khong gian — nen phai mong va theo token duong ke, giong
+    # moi vach ke khac trong he. 2px day lam moi duong phan cach nang tri, khong
+    # phan tang duoc gi.
+    #
+    # BAY REGEX: KHONG duoc viet `\bborder-b-2` — `-` khong phai ky tu word, nen
+    # `\b` giua dau cach va `b` cua "border" ton tai, nhung y dinh "khong khop
+    # giua tu" khong dat duoc theo cach do khi dau la dau gach. Dung `(?<![-\w])`
+    # de chan khop vao duoi cua class khac (vd `nq-border-b-2`).
+    (
+        r"(?<![-\w])border-b-2 border-\[var\(--nq-dim\)\]",
+        "border-b border-[var(--nq-line)]",
+        "vach ke duoi 2px -> 1px theo token",
+    ),
+    (
+        r"(?<![-\w])border-t-2 border-dashed border-\[var\(--nq-dim\)\]",
+        "border-t border-dashed border-[var(--nq-line)]",
+        "vach ke tren 2px net dut -> 1px",
+    ),
+    (
+        r"(?<![-\w])border-t-2 border-\[var\(--nq-dim\)\]",
+        "border-t border-[var(--nq-line)]",
+        "vach ke tren 2px -> 1px theo token",
+    ),
 ]
 
 
