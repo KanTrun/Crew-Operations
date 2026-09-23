@@ -140,6 +140,12 @@
   --nq-copper-dim: rgba(196, 165, 116, 0.45);
   --nq-copper-glow: var(--nq-accent-glow);
   --nq-surface-hi: var(--nq-bg-elevated);
+  /* Alias thiếu khiến `text-[var(--nq-muted)]` và `text-[var(--nq-primary)]`
+     rơi về giá trị mặc định của trình duyệt. Phép kiểm tương phản bắt được đúng
+     triệu chứng: một phần tử ra `#000000` (đen) trên nền tối 1.17:1 — tức là
+     `color` không nhận giá trị nào và dùng mặc định. Trỏ về token thật. */
+  --nq-muted: var(--nq-ink-muted);
+  --nq-primary: var(--nq-accent);
   --nq-red: var(--nq-danger);
   --nq-red-dim: rgba(212, 93, 74, 0.35);
   /* Alias thiếu → nền ok/chip xanh trắng, chữ kế thừa cream → không đọc được */
@@ -199,6 +205,29 @@
   --nq-st-warn-soft: rgba(212, 160, 23, 0.16);
   --nq-st-danger-soft: rgba(212, 93, 74, 0.16);
   --nq-st-info-soft: rgba(109, 143, 174, 0.16);
+
+  /* Bản DÙNG LÀM CHỮ của bốn màu trạng thái.
+     `--nq-st-*` được chọn cho nét vẽ/viền trên nền sáng, nên khi làm chữ trên
+     nền tối thì thiếu tương phản: đo trên bản render thấy chip "Quá hạn" chỉ
+     đạt 3.90:1 (cần 4.5). Các giá trị dưới đây giữ nguyên sắc nhưng nâng độ
+     sáng tới mức đọc được — đo lại bằng `scripts/contrast.mjs`:
+       danger #e88274 trên nền chip #38211b = 5.62:1
+       warn   #e8c05a trên nền chip         = 8.6:1
+       ok     #9dc4a8 trên nền chip         = 6.6:1
+       info   #9db8d0 trên nền chip         = 6.4:1
+     Quy ước: VIỀN và CHẤM dùng `--nq-st-*`; CHỮ dùng `--nq-st-*-ink`. */
+  --nq-st-ok-ink: #9dc4a8;
+  --nq-st-warn-ink: #e8c05a;
+  --nq-st-danger-ink: #e88274;
+  --nq-st-info-ink: #9db8d0;
+
+  /* Bản DÙNG LÀM CHỮ NHỎ của copper.
+     `--nq-copper` (#c4a574) là màu THƯƠNG HIỆU, đúng khi làm nền/nút/viền. Khi
+     làm chữ cỡ nhỏ trên nền tối thì chỉ đạt 4.39:1 — thiếu, và cỡ 0.65rem thì
+     không được hưởng ngưỡng "chữ lớn". Bản này đạt 6.17:1 trên nền trang và
+     5.79:1 trên nền thẻ, vẫn đúng sắc đồng.
+     Quy ước: NỀN/NÚT/VIỀN dùng `--nq-copper`; CHỮ NHỎ dùng `--nq-copper-ink`. */
+  --nq-copper-ink: #ab9470;
 
   /* Đường biên của thành phần BẤM ĐƯỢC (ô nhập, select, textarea).
      `--nq-line-strong` là vạch kẻ trang trí, không phải biên điều khiển: đo ra
@@ -3686,13 +3715,16 @@ a:focus-visible {
 }
 
 .nq-btn-danger {
-  background: var(--nq-st-danger);
+  /* Nền đỏ đậm hơn `--nq-st-danger`: chữ trắng trên #d45d4a chỉ đạt 3.66:1.
+     Đây là NÚT, chữ ngắn nhưng vẫn phải đọc được — hạ nền xuống #a83a29 được
+     6.05:1. Giữ nguyên sắc đỏ để vẫn đọc ra "hành động nguy hiểm". */
+  background: #a83a29;
   color: #fff8f4;
   box-shadow: 0 4px 18px rgba(212, 93, 74, 0.28);
 }
 
 .nq-btn-danger:hover:not(:disabled) {
-  filter: brightness(1.08);
+  filter: brightness(1.18);
   box-shadow: 0 6px 26px rgba(212, 93, 74, 0.34);
 }
 
@@ -4430,49 +4462,66 @@ a:focus-visible {
    border-[var(--nq-dim)]` — viền 2px không bo góc, không đổ bóng. Chuỗi đó lặp
    lại ở 25 chỗ trong `kit.tsx` và 54 chỗ toàn app, nên toàn bộ giao diện là
    một loạt khung vuông phẳng như nhau. Ba lớp dưới đây thay thế chuỗi đó.
-   Cả ba đều bo theo token, có bậc nổi theo vai, và chuyển động theo nhịp chung. */
-.nq-surface-row {
-  display: flex;
-  align-items: center;
-  gap: var(--nq-s3);
-  padding: var(--nq-s3) var(--nq-s4);
-  border: 1px solid var(--nq-line);
-  border-radius: var(--nq-radius-bubble);
-  background: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
-  box-shadow: var(--nq-elev-1);
-}
+   Cả ba đều bo theo token, có bậc nổi theo vai, và chuyển động theo nhịp chung.
 
-.nq-surface-row--between {
-  justify-content: space-between;
-}
+   CÁC LỚP NÀY NẰM TRONG `@layer components` — KHÔNG phải chi tiết trang trí.
+   `@tailwind utilities` đứng ở đầu file (dòng 116) sinh ra các lớp utility ở vị
+   trí ĐÓ. CSS nằm ngoài `@layer` nhưng đứng SAU, cùng độ ưu tiên (một lớp), sẽ
+   THẮNG utility — bất kể utility viết gì. Hệ quả đã gặp thật: `.nq-surface-tile`
+   đặt `background:` (shorthand) nên xoá luôn `bg-[var(--nq-warn)]` của Tailwind;
+   ô KPI đánh dấu "thiếu định biên" mất nền vàng, còn chữ vẫn giữ ink tối của
+   `.nq-ink-on-solid` → chữ gần như đen trên nền tối, tương phản 1.01:1 (đo trên
+   điểm ảnh thật) — người dùng không đọc được con số.
+   Đưa primitive vào `@layer components` để utility luôn thắng là cách sửa ở tầng
+   nền: mọi `bg-*` ghép sau này đều tự đúng, không phải nhớ né từng chỗ.
+   Chỉ primitive CHUNG vào layer; modifier `--warn`/`--ok` ở lại ngoài layer để
+   chúng vẫn thắng `background` của primitive (nếu đưa cả vào cùng layer thì thứ
+   tự nguồn trong layer sẽ quyết định và primitive đứng sau vẫn đè modifier). */
+@layer components {
+  .nq-surface-row {
+    display: flex;
+    align-items: center;
+    gap: var(--nq-s3);
+    padding: var(--nq-s3) var(--nq-s4);
+    border: 1px solid var(--nq-line);
+    border-radius: var(--nq-radius-bubble);
+    background-color: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
+    box-shadow: var(--nq-elev-1);
+  }
 
-.nq-surface-block {
-  border: 1px solid var(--nq-line);
-  border-radius: var(--nq-radius-bubble);
-  background: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
-  box-shadow: var(--nq-elev-1);
-}
+  .nq-surface-row--between {
+    justify-content: space-between;
+  }
 
-/* Ô bấm được: nổi rõ hơn (elev-2) và có phản hồi hover — để mắt phân biệt được
-   "khối này bấm được" với "khối này chỉ để đọc". */
-.nq-surface-tile {
-  display: block;
-  border: 1px solid var(--nq-line);
-  border-radius: var(--nq-radius-bubble);
-  background: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
-  box-shadow: var(--nq-elev-2);
-  transition:
-    border-color var(--nq-beat-settle) var(--nq-ease-out),
-    box-shadow var(--nq-beat-settle) var(--nq-ease-out),
-    transform var(--nq-beat-ack) var(--nq-ease-out);
-}
+  .nq-surface-block {
+    border: 1px solid var(--nq-line);
+    border-radius: var(--nq-radius-bubble);
+    background-color: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
+    box-shadow: var(--nq-elev-1);
+  }
 
-.nq-surface-tile:hover {
-  border-color: var(--nq-line-strong);
-  box-shadow: var(--nq-elev-2-hover);
+  /* Ô bấm được: nổi rõ hơn (elev-2) và có phản hồi hover — để mắt phân biệt được
+     "khối này bấm được" với "khối này chỉ để đọc". */
+  .nq-surface-tile {
+    display: block;
+    border: 1px solid var(--nq-line);
+    border-radius: var(--nq-radius-bubble);
+    background-color: color-mix(in srgb, var(--nq-bg-elevated) 88%, transparent);
+    box-shadow: var(--nq-elev-2);
+    transition:
+      border-color var(--nq-beat-settle) var(--nq-ease-out),
+      box-shadow var(--nq-beat-settle) var(--nq-ease-out),
+      transform var(--nq-beat-ack) var(--nq-ease-out);
+  }
+
+  .nq-surface-tile:hover {
+    border-color: var(--nq-line-strong);
+    box-shadow: var(--nq-elev-2-hover);
+  }
 }
 
 .nq-surface-tile:active {
+
   transform: scale(var(--nq-press));
 }
 
@@ -4910,29 +4959,33 @@ a.nq-bento-surface:active {
 }
 
 /* Biến thể trạng thái: nền nhạt (soft) + chữ và viền cùng họ màu. Dạng này giữ
-   nguyên khi có chữ tiếng Việt dài, không bị "khối màu đặc" nuốt chữ. */
+   nguyên khi có chữ tiếng Việt dài, không bị "khối màu đặc" nuốt chữ.
+   Chữ dùng biến `-ink` (bản sáng hơn), KHÔNG dùng thẳng màu trạng thái: màu
+   trạng thái được chọn cho nét vẽ/viền, còn làm chữ trên nền tối thì thiếu tương
+   phản — đo được "Quá hạn" chỉ 3.90:1. Bản `-ink` giữ đúng sắc nhưng đủ sáng để
+   đọc: 5.10:1 trở lên. */
 .nq-chip--warn {
   border-color: color-mix(in srgb, var(--nq-st-warn) 46%, var(--nq-line));
   background: var(--nq-st-warn-soft);
-  color: var(--nq-st-warn);
+  color: var(--nq-st-warn-ink);
 }
 
 .nq-chip--ok {
   border-color: color-mix(in srgb, var(--nq-st-ok) 46%, var(--nq-line));
   background: var(--nq-st-ok-soft);
-  color: var(--nq-st-ok);
+  color: var(--nq-st-ok-ink);
 }
 
 .nq-chip--danger {
   border-color: color-mix(in srgb, var(--nq-st-danger) 46%, var(--nq-line));
   background: var(--nq-st-danger-soft);
-  color: var(--nq-st-danger);
+  color: var(--nq-st-danger-ink);
 }
 
 .nq-chip--info {
   border-color: color-mix(in srgb, var(--nq-st-info) 46%, var(--nq-line));
   background: var(--nq-st-info-soft);
-  color: var(--nq-st-info);
+  color: var(--nq-st-info-ink);
 }
 
 .nq-chip--accent {

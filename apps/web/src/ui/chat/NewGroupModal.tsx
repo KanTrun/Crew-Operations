@@ -137,7 +137,7 @@ export function NewGroupModal({ isOpen, onClose, onCreated }: NewGroupModalProps
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 text-xs font-bold uppercase tracking-wider bg-[var(--nq-copper)] text-white rounded-xl shadow-md hover:opacity-90 disabled:opacity-50 transition"
+              className="px-5 py-2 text-xs font-bold uppercase tracking-wider bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] rounded-xl shadow-md hover:opacity-90 disabled:opacity-50 transition"
             >
               {loading ? "Đang tạo…" : "Tạo nhóm"}
             </button>

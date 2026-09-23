@@ -232,7 +232,10 @@ export default function FbInboxPage() {
             gap: 6,
             padding: "8px 16px",
             borderRadius: 8,
-            background: "#27ae60",
+            /* `--nq-ok` (#6f9b7a) trên chữ trắng chỉ đạt 2.87:1; nền xanh đậm hơn
+               giữ nguyên sắc nhưng đạt 5.35:1. Đây là lối vào màn hình đặt bàn —
+               nút duy nhất trên khối này, không được để chữ mờ. */
+            background: "#1f7a44",
             color: "#fff",
             fontWeight: 600,
             textDecoration: "none",

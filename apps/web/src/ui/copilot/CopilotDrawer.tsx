@@ -381,7 +381,7 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                         msg.citations &&
                         msg.citations.length > 0 && (
                           <div className="mt-2 pt-2 border-t border-zinc-800/80">
-                            <p className="text-2xs uppercase tracking-wider text-zinc-500 mb-1">
+                            <p className="text-2xs uppercase tracking-wider text-[var(--nq-ink-muted)] mb-1">
                               Nguồn tham chiếu
                             </p>
                             <ul className="flex flex-wrap gap-1">
@@ -410,7 +410,7 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                         />
                       )}
                     </div>
-                    <span className="text-2xs text-zinc-500 mt-1 px-1">{msg.timestamp}</span>
+                    <span className="text-2xs text-[var(--nq-ink-muted)] mt-1 px-1">{msg.timestamp}</span>
                   </div>
                 ))}
                 {loading && (
@@ -473,7 +473,7 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                     Gửi
                   </button>
                 </form>
-                <p className="mt-1.5 text-2xs text-zinc-500 text-center">
+                <p className="mt-1.5 text-2xs text-[var(--nq-ink-muted)] text-center">
                   Ctrl/Cmd+K mở·đóng · Esc thoát
                 </p>
               </div>

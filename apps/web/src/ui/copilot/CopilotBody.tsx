@@ -453,8 +453,8 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   {msg.sender === "copilot" &&
                     msg.id === "welcome" &&
                     profile.capabilities.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-zinc-800/80">
-                        <p className="text-2xs uppercase tracking-wider text-zinc-500 mb-1">
+                      <div className="mt-2 pt-2 border-t border-[var(--nq-line)]">
+                        <p className="text-2xs uppercase tracking-wider text-[var(--nq-ink-muted)] mb-1">
                           Em làm được gì cho anh/chị
                         </p>
                         <ul className="flex flex-wrap gap-1">
@@ -468,7 +468,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                           ))}
                         </ul>
                         {profile.deniedNote ? (
-                          <p className="text-2xs text-zinc-500 mt-1.5 italic">
+                          <p className="text-2xs text-[var(--nq-ink-muted)] mt-1.5 italic">
                             {profile.deniedNote}
                           </p>
                         ) : null}
@@ -479,7 +479,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                     msg.citations &&
                     msg.citations.length > 0 && (
                       <div className="mt-2 pt-2 border-t border-zinc-800/80">
-                        <p className="text-2xs uppercase tracking-wider text-zinc-500 mb-1">
+                        <p className="text-2xs uppercase tracking-wider text-[var(--nq-ink-muted)] mb-1">
                           Nguồn tham chiếu
                         </p>
                         <ul className="flex flex-wrap gap-1">

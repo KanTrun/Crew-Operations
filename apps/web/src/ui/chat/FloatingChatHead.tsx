@@ -63,7 +63,7 @@ export function FloatingChatHead() {
       {isOpen && (
         <div className="mb-3 flex h-[min(500px,calc(100vh-7rem))] w-[calc(100vw-2rem)] max-w-[380px] flex-col overflow-hidden rounded-2xl border border-[var(--nq-dim)] bg-[var(--nq-bg-elevated)] shadow-2xl animate-fade-in">
           {/* Header */}
-          <div className="p-3 bg-[var(--nq-copper)] text-white flex items-center justify-between">
+          <div className="p-3 bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-base">💬</span>
               <div>
@@ -100,7 +100,7 @@ export function FloatingChatHead() {
                 onClick={() => setSelectedConvId(conv.id)}
                 className={`px-2 py-1 rounded-lg text-2xs font-bold truncate max-w-[100px] transition ${
                   (activeConv && activeConv.id === conv.id)
-                    ? "bg-[var(--nq-copper)] text-white"
+                    ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)]"
                     : "bg-[var(--nq-card)] text-[var(--nq-muted)] hover:text-[var(--nq-fg)]"
                 }`}
               >
@@ -147,7 +147,7 @@ export function FloatingChatHead() {
             <button
               type="submit"
               disabled={!input.trim()}
-              className="px-3 py-1.5 rounded-xl bg-[var(--nq-copper)] text-white font-bold text-xs hover:opacity-90 disabled:opacity-40 transition"
+              className="px-3 py-1.5 rounded-xl bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-bold text-xs hover:opacity-90 disabled:opacity-40 transition"
             >
               ➤
             </button>
@@ -159,7 +159,7 @@ export function FloatingChatHead() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-13 h-13 rounded-full bg-[var(--nq-copper)] text-white shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center relative p-3.5 border-2 border-white/20"
+        className="w-13 h-13 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center relative p-3.5 border-2 border-white/20"
         title="Chat nội bộ nhân viên"
       >
         <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">

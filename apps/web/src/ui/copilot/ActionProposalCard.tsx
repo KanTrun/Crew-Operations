@@ -260,7 +260,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           </div>
 
           <div className="flex items-start gap-1.5 text-zinc-300">
-            <span className="text-zinc-500 font-semibold min-w-[70px]">Người nhận:</span>
+            <span className="text-[var(--nq-ink-muted)] font-semibold min-w-[70px]">Người nhận:</span>
             <span className="text-amber-300 font-mono">
               {Array.isArray(proposal.payload_diff.to_emails) && proposal.payload_diff.to_emails.length > 0
                 ? proposal.payload_diff.to_emails.join(", ")
@@ -269,7 +269,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           </div>
 
           <div className="flex items-start gap-1.5 text-zinc-300">
-            <span className="text-zinc-500 font-semibold min-w-[70px]">Tiêu đề:</span>
+            <span className="text-[var(--nq-ink-muted)] font-semibold min-w-[70px]">Tiêu đề:</span>
             {isEditingEmail ? (
               <input
                 type="text"
@@ -285,7 +285,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           </div>
 
           <div className="pt-2 border-t border-zinc-800/80">
-            <span className="text-zinc-500 font-semibold block mb-1">Nội dung thư:</span>
+            <span className="text-[var(--nq-ink-muted)] font-semibold block mb-1">Nội dung thư:</span>
             {isEditingEmail ? (
               <textarea
                 value={editBody}
@@ -302,7 +302,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
 
           {Array.isArray(proposal.payload_diff.attachments) && proposal.payload_diff.attachments.length > 0 && (
             <div className="pt-2 border-t border-zinc-800/80">
-              <span className="text-zinc-500 font-semibold block mb-1.5 flex items-center gap-1 text-2xs">
+              <span className="text-[var(--nq-ink-muted)] font-semibold block mb-1.5 flex items-center gap-1 text-2xs">
                 <span>📎</span> Tệp & hình ảnh đính kèm ({proposal.payload_diff.attachments.length}):
               </span>
               <div className="flex flex-wrap gap-2">

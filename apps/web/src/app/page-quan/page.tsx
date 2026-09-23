@@ -637,7 +637,7 @@ export default function PageQuanPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-zinc-400">Đã tiêu thụ:</span>
                     <strong className="text-indigo-300 font-mono text-sm">${apifyUsage.usage_usd.toFixed(2)}</strong>
-                    <span className="text-zinc-500">/</span>
+                    <span className="text-[var(--nq-ink-muted)]">/</span>
                     <span className="text-zinc-300 font-mono text-sm">${apifyUsage.monthly_limit_usd.toFixed(2)}</span>
                     <span className={`rounded px-2 py-0.5 text-2xs font-bold ${
                       apifyUsage.usage_percent < 80
@@ -769,7 +769,7 @@ export default function PageQuanPage() {
                   }}
                   className={`rounded px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
                     scanIntervalMinutes === mins
-                      ? "bg-[var(--nq-copper)] text-white shadow-sm"
+                      ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] shadow-sm"
                       : "bg-[var(--nq-surface)] text-[var(--nq-muted)] hover:bg-[var(--nq-dim)]"
                   }`}
                 >
@@ -795,7 +795,7 @@ export default function PageQuanPage() {
                       push(`Đã áp dụng chu kỳ quét tùy chỉnh: ${val} phút.`);
                     }
                   }}
-                  className="rounded bg-[var(--nq-dim)] px-2 py-1 text-2xs font-bold text-[var(--nq-primary)] hover:bg-[var(--nq-muted)] hover:text-black transition cursor-pointer"
+                  className="rounded bg-[var(--nq-surface)] px-2 py-1 text-2xs font-bold text-[var(--nq-primary)] hover:bg-[var(--nq-dim)] hover:text-[var(--nq-fg)] transition cursor-pointer"
                 >
                   Đặt phút
                 </button>
@@ -832,7 +832,7 @@ export default function PageQuanPage() {
               <button
                 onClick={() => handleApplyKeywordSearch(keywordInput)}
                 disabled={isScanning}
-                className="inline-flex items-center gap-1 rounded bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-500 transition shadow cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded bg-[var(--nq-warn)] px-4 py-2 text-xs font-bold text-[var(--nq-accent-ink)] hover:brightness-110 transition shadow cursor-pointer disabled:opacity-50"
               >
                 Quét Chủ Đề Này
               </button>
@@ -880,7 +880,7 @@ export default function PageQuanPage() {
               <button
                 onClick={() => fetchTrendsData(regionFilter, categoryFilter, activeKeyword, scrapeMode, true)}
                 disabled={isScanning}
-                className="inline-flex items-center gap-1.5 rounded bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white shadow-md hover:bg-emerald-500 transition-all cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded bg-[var(--nq-ok)] px-4 py-1.5 text-xs font-bold text-[var(--nq-accent-ink)] shadow-md hover:brightness-110 transition-all cursor-pointer disabled:opacity-50"
               >
                 Cào Dữ Liệu {currentSourceLabel}
               </button>
@@ -951,7 +951,7 @@ export default function PageQuanPage() {
                     onClick={() => handleCategoryChange(c.id)}
                     className={`rounded px-2.5 py-1 transition-all cursor-pointer ${
                       categoryFilter === c.id
-                        ? "bg-[var(--nq-copper)] font-bold text-white shadow-sm"
+                        ? "bg-[var(--nq-copper)] font-bold text-[var(--nq-accent-ink)] shadow-sm"
                         : "bg-[var(--nq-surface)] text-[var(--nq-muted)] hover:bg-[var(--nq-dim)]"
                     }`}
                   >

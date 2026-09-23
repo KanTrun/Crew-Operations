@@ -139,7 +139,7 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
           type="button"
           onClick={stopAndSend}
           disabled={isSending}
-          className="text-xs bg-[var(--nq-copper)] text-white px-3 py-1 rounded-full font-bold shadow hover:opacity-90 transition"
+          className="text-xs bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] px-3 py-1 rounded-full font-bold shadow hover:opacity-90 transition"
         >
           {isSending ? "Đang gửi…" : <><Icon name="send" size={14} /> Gửi</>}
         </button>
@@ -199,7 +199,7 @@ export function VoicePlayer({ url, durationSec }: { url: string; durationSec?: n
       <button
         type="button"
         onClick={togglePlay}
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--nq-copper)] text-white hover:opacity-90 transition shrink-0"
+        className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] hover:opacity-90 transition shrink-0"
       >
         <Icon name={isPlaying ? "pause" : "play"} size={16} />
       </button>
