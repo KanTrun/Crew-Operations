@@ -96,8 +96,14 @@ def run_solver(
         input_data.nhan_vien_ids = [nv_id for nv_id in input_data.nhan_vien_ids if nv_id in allowed_ids]
         configured_frames = kv_get("khung_gio", {})
         frames = dict(_SHIFT_FRAMES)
+        _SHIFT_KEY_MAP = {"Sáng": "sang", "Chiều": "chieu", "Tối": "toi"}
         for shift, frame in frames.items():
-            configured = configured_frames.get(shift) if isinstance(configured_frames, dict) else None
+            conf_key = _SHIFT_KEY_MAP.get(shift, shift)
+            configured = (
+                (configured_frames.get(conf_key) or configured_frames.get(shift))
+                if isinstance(configured_frames, dict)
+                else None
+            )
             if isinstance(configured, dict):
                 frames[shift] = (str(configured.get("bat_dau") or frame[0]), str(configured.get("ket_thuc") or frame[1]))
         input_data.tkb = {

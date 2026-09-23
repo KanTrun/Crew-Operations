@@ -14,7 +14,10 @@ import {
   Loading,
   Notice,
   PageHeader,
+  ProgressBar,
+  TechnicalDrawer,
   Textarea,
+  Toasts,
   useToasts,
 } from "../../ui/kit";
 
@@ -92,12 +95,21 @@ type ApifyUsage = {
   has_token: boolean;
   username?: string;
   plan: string;
-  monthly_limit_usd: number;
-  usage_usd: number;
-  remaining_usd: number;
-  usage_percent: number;
+  plan_id?: string | null;
+  monthly_limit_usd: number | null;
+  usage_usd: number | null;
+  remaining_usd: number | null;
+  usage_percent: number | null;
   status_label: string;
+  usage_measured: boolean;
+  usage_source?: string;
+  usage_cycle_end_at?: string | null;
+  cu_limit?: number | null;
+  cu_used?: number | null;
   active_actors: string[];
+  note?: string;
+  cached?: boolean;
+  quota_exhausted?: boolean;
 };
 
 type TrendItem = {
@@ -154,6 +166,7 @@ export default function PageQuanPage() {
 
   // Apify Usage & Scraping Mode State
   const [apifyUsage, setApifyUsage] = useState<ApifyUsage | null>(null);
+  const [usageRefreshing, setUsageRefreshing] = useState(false);
   const [scrapeMode, setScrapeMode] = useState<"auto" | "direct_only" | "apify_force" | "browser">("auto");
 
   // Keyword / Topic Filter State (Chức năng 1)
@@ -597,6 +610,8 @@ export default function PageQuanPage() {
         meta="Cào độc quyền từng nền tảng, quét chủ đề ngách F&B, lưu trữ kịch bản marketing và bắt nhịp video/bình luận triệu view."
       />
 
+      <Toasts toasts={toasts} onDismiss={dismiss} />
+
       {error ? <Alert>{error}</Alert> : null}
       {loading ? <Loading skeleton="list">Đang đọc dữ liệu xu hướng…</Loading> : null}
 
@@ -665,138 +680,198 @@ export default function PageQuanPage() {
       {/* TAB 1: RADAR TRÍ TUỆ XU HƯỚNG & GIẢI MÃ TỪ KHÓA VIRAL */}
       {tab === "trends" && (
         <div className="space-y-6">
-          {/* KHỐI 0: GIÁM SÁT HẠN MỨC APIFY & BỘ CHUYỂN ĐỔI CHẾ ĐỘ CÀO DỮ LIỆU */}
-          <div className="rounded-xl border-2 border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-zinc-900/60 to-purple-950/30 p-4 space-y-4 shadow-lg">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-500/20 pb-3">
-              <div className="flex items-center gap-2">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-300">
-                    Bảng Giám Sát Hạn Mức Apify & Chế Độ Cào
-                  </h3>
-                  <p className="text-[11px] text-zinc-400">
-                    Theo dõi số dư điện toán (Compute Units) và chủ động chuyển đổi phương thức cào
-                  </p>
-                </div>
+          {/* KHỐI 0: PHƯƠNG THỨC CÀO DỮ LIỆU + HẠN MỨC APIFY */}
+          <section className="bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] p-4 md:p-5">
+            {/* Chọn phương thức — việc chính, đặt trước; hạn mức là ngữ cảnh đi kèm */}
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest text-[var(--nq-fg)]">
+                  Phương thức cào dữ liệu
+                </h3>
+                <p className="mt-1 text-xs text-[var(--nq-dim)]">
+                  Miễn phí là mặc định. Chỉ tốn hạn mức Apify khi bạn chọn ép hoặc khi nguồn
+                  miễn phí trả rỗng.
+                </p>
               </div>
-
-              {/* Nút Làm Mới Hạn Mức Ngay Lập Tức */}
-              <button
+              <Btn
+                variant="ghost"
                 onClick={async () => {
+                  setUsageRefreshing(true);
                   try {
-                    const res = await apiGet<{ ok: boolean; usage: ApifyUsage }>("/api/v1/trends/apify-usage");
+                    const res = await apiGet<{ ok: boolean; usage: ApifyUsage }>(
+                      "/api/v1/trends/apify-usage?refresh=true"
+                    );
                     if (res.usage) {
                       setApifyUsage(res.usage);
-                      push("Đã cập nhật số dư hạn mức Apify thời gian thực!");
+                      push(
+                        res.usage.usage_measured
+                          ? "Đã cập nhật hạn mức Apify."
+                          : "Apify không trả số liệu — xem console.apify.com để biết số chính xác."
+                      );
                     }
-                  } catch {
-                    push("Không thể kết nối máy chủ Apify.");
+                  } catch (e) {
+                    push(viError(e, { doing: "đọc hạn mức Apify" }));
+                  } finally {
+                    setUsageRefreshing(false);
                   }
                 }}
-                className="flex items-center gap-1.5 rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-2.5 py-1 text-xs font-medium text-indigo-300 hover:bg-indigo-500/20 transition cursor-pointer"
-                title="Lấy dữ liệu số dư trực tiếp từ server Apify"
+                busy={usageRefreshing}
+                busyLabel="Đang kiểm tra…"
+                className="rounded-full border-2 border-[var(--nq-dim)] bg-transparent px-4 py-2 text-xs font-bold uppercase tracking-widest text-[var(--nq-fg)] transition-all hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] disabled:opacity-50"
+                title="Đọc lại hạn mức & mức sử dụng mới nhất từ Apify"
               >
-                <span>Kiểm tra số dư</span>
-              </button>
+                Kiểm tra số dư
+              </Btn>
             </div>
 
-            {/* Chi tiết Hạn Mức & Thanh Tiến Trình (Visual Quota Progress Bar) */}
-            {apifyUsage ? (
-              <div className="space-y-2 bg-black/30 rounded-lg p-3 border border-indigo-500/20">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="text-zinc-400">Tài khoản:</span>
-                    <strong className="text-zinc-200 font-mono">{apifyUsage.username || "Apify Free"}</strong>
-                    <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-300 border border-indigo-500/30">
-                      {apifyUsage.plan}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-zinc-400">Đã tiêu thụ:</span>
-                    <strong className="text-indigo-300 font-mono text-sm">${apifyUsage.usage_usd.toFixed(2)}</strong>
-                    <span className="text-zinc-500">/</span>
-                    <span className="text-zinc-300 font-mono text-sm">${apifyUsage.monthly_limit_usd.toFixed(2)}</span>
-                    <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${
-                      apifyUsage.usage_percent < 80
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                        : apifyUsage.usage_percent < 100
-                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                        : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-                    }`}>
-                      ● {apifyUsage.status_label} (Còn ${apifyUsage.remaining_usd.toFixed(2)})
-                    </span>
-                  </div>
-                </div>
-
-                {/* Thanh đo % hạn mức */}
-                <div className="w-full bg-zinc-800/80 rounded-full h-2 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      apifyUsage.usage_percent < 70
-                        ? "bg-emerald-500"
-                        : apifyUsage.usage_percent < 90
-                        ? "bg-amber-500"
-                        : "bg-rose-500"
-                    }`}
-                    style={{ width: `${Math.min(100, Math.max(3, apifyUsage.usage_percent))}%` }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="text-xs text-zinc-400 font-mono">
-                ● Đang kết nối trạng thái hạn mức điện toán...
-              </div>
-            )}
-
-            {/* Bộ 3 Nút Chuyển Đổi Phương Thức Cào (Mode Selector) */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1">
-              <span className="font-medium text-zinc-300">
-                Phương thức cào dữ liệu áp dụng:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {[
+            {/* Bốn phương thức — chip chọn một, mô tả nằm ngay dưới nhãn */}
+            <ul className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {(
+                [
                   {
                     id: "auto",
-                    title: "Tự động (Khuyên dùng)",
-                    desc: "Google & TikWM chính (0đ) · Camoufox browser · Apify dự phòng khi lỗi",
+                    title: "Tự động",
+                    tag: "Khuyên dùng",
+                    desc: "TikWM & Google trước (0đ), chỉ gọi Apify khi nguồn miễn phí trả rỗng",
                   },
                   {
                     id: "direct_only",
-                    title: "100% Miễn phí (0đ Quota)",
-                    desc: "Chỉ dùng Google Bridge & TikWM, khóa hoàn toàn Apify",
+                    title: "Chỉ nguồn miễn phí",
+                    tag: "0đ",
+                    desc: "Không gọi Apify trong mọi trường hợp — an toàn nhất về chi phí",
                   },
                   {
                     id: "browser",
-                    title: "Camoufox (Browser thật)",
-                    desc: "Cào bằng Firefox chống-detect, miễn phí, khó bị chặn — chậm hơn (~3-10s/lượt)",
+                    title: "Trình duyệt thật",
+                    tag: "Camoufox",
+                    desc: "Firefox chống phát hiện, miễn phí, chậm hơn (~3–10 giây mỗi lượt)",
                   },
                   {
                     id: "apify_force",
-                    title: "Ép dùng Apify Actor",
-                    desc: "Bắt buộc cào sâu qua Apify scraper",
+                    title: "Ép dùng Apify",
+                    tag: "Tốn hạn mức",
+                    desc: "Cào sâu qua Apify trước — chỉ dùng khi cần dữ liệu đầy đủ nhất",
                   },
-                ].map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      const newMode = m.id as "auto" | "direct_only" | "apify_force" | "browser";
-                      setScrapeMode(newMode);
-                      push(`Đã kích hoạt: ${m.title}`);
-                      fetchTrendsData(regionFilter, categoryFilter, activeKeyword, newMode, true);
-                    }}
-                    title={m.desc}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
-                      scrapeMode === m.id
-                        ? "bg-indigo-600 text-white border-indigo-400 shadow-md ring-2 ring-indigo-500/50"
-                        : "bg-[var(--nq-surface)] text-[var(--nq-muted)] border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] hover:text-white"
-                    }`}
-                  >
-                    <span>{m.title}</span>
-                  </button>
-                ))}
-              </div>
+                ] as const
+              ).map((m) => {
+                const active = scrapeMode === m.id;
+                return (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScrapeMode(m.id);
+                        push(`Đã chuyển sang: ${m.title}`);
+                        fetchTrendsData(regionFilter, categoryFilter, activeKeyword, m.id, true);
+                      }}
+                      aria-pressed={active}
+                      className={`h-full w-full rounded-[var(--nq-radius-bubble)] border-2 p-3 text-left transition-all ${
+                        active
+                          ? "border-[var(--nq-copper)] bg-[var(--nq-accent-soft)]"
+                          : "border-[var(--nq-dim)] bg-[var(--nq-surface)] hover:border-[var(--nq-copper)]"
+                      }`}
+                    >
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-black uppercase tracking-widest text-[var(--nq-fg)]">
+                          {m.title}
+                        </span>
+                        <span className="text-[10px] font-mono text-[var(--nq-dim)]">{m.tag}</span>
+                      </span>
+                      <span className="mt-1 block text-[11px] leading-relaxed text-[var(--nq-dim)]">
+                        {m.desc}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Hạn mức Apify — luôn hiện, đây là thứ người quán cần thấy */}
+            <div className="mt-4 border-t-2 border-dashed border-[var(--nq-dim)] pt-3">
+              {apifyUsage === null ? (
+                <p className="text-xs font-mono text-[var(--nq-dim)]">Đang đọc hạn mức Apify…</p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs">
+                    <span className="font-bold uppercase tracking-widest text-[var(--nq-dim)]">
+                      Hạn mức Apify
+                    </span>
+                    <span className="text-[var(--nq-dim)]">
+                      <strong className="font-mono text-[var(--nq-fg)]">
+                        {apifyUsage.username || "—"}
+                      </strong>{" "}
+                      · {apifyUsage.plan}
+                    </span>
+                  </div>
+
+                  {apifyUsage.usage_measured ? (
+                    <>
+                      <div className="flex flex-wrap items-baseline gap-2 font-mono text-sm">
+                        <span className="text-[var(--nq-fg)]">
+                          ${(apifyUsage.usage_usd ?? 0).toFixed(2)}
+                        </span>
+                        {apifyUsage.monthly_limit_usd !== null && (
+                          <span className="text-[var(--nq-dim)]">
+                            / ${apifyUsage.monthly_limit_usd.toFixed(2)} ({apifyUsage.usage_percent}
+                            %)
+                          </span>
+                        )}
+                        {apifyUsage.remaining_usd !== null && (
+                          <span className="text-[var(--nq-dim)]">
+                            · còn ${apifyUsage.remaining_usd.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+
+                      {apifyUsage.usage_percent !== null && (
+                        <ProgressBar value={apifyUsage.usage_percent} max={100} />
+                      )}
+
+                      {apifyUsage.quota_exhausted && (
+                        <Alert kind="err">
+                          Đã chạm trần hạn mức tháng. Apify sẽ từ chối lượt cào mới cho tới khi sang
+                          chu kỳ kế tiếp — nên chuyển sang &ldquo;Chỉ nguồn miễn phí&rdquo;.
+                        </Alert>
+                      )}
+
+                      {apifyUsage.usage_cycle_end_at && (
+                        <p className="text-[11px] font-mono text-[var(--nq-dim)]">
+                          Chu kỳ làm mới:{" "}
+                          {new Date(apifyUsage.usage_cycle_end_at).toLocaleDateString("vi-VN")}
+                        </p>
+                      )}
+
+                      {apifyUsage.note && (
+                        <TechnicalDrawer
+                          summary="Chi tiết kỹ thuật hạn mức"
+                          lines={[apifyUsage.note]}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <Alert kind="info">
+                      <span className="block">
+                        {apifyUsage.note ||
+                          "Apify không trả số liệu sử dụng cho tài khoản này."}
+                      </span>
+                      <span className="mt-1 block text-xs">
+                        Số chính xác luôn xem được tại{" "}
+                        <a
+                          href="https://console.apify.com/billing/historical-usage"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline decoration-dotted hover:text-[var(--nq-copper)]"
+                        >
+                          Apify Console → Billing
+                        </a>
+                        .
+                      </span>
+                    </Alert>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
+          </section>
 
           {/* KHỐI 1: TÙY CHỈNH TỰ ĐỘNG QUÉT & BẢO VỆ CHỐNG QUÁ TẢI (Chức năng 4) */}
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-4">

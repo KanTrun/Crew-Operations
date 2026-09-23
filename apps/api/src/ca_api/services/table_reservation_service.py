@@ -19,11 +19,13 @@ import re
 import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 from ca_api.persist import (
     _conn,
+    acquire_write_lock,
     init_db,
     kenh_bind_get,
     reservation_count_no_shows,
@@ -31,6 +33,7 @@ from ca_api.persist import (
     reservation_find_active_by_psid,
     reservation_get,
     reservation_get_by_idempotency,
+    reservation_list,
     reservation_update_status,
     thong_bao_ca_create,
 )
@@ -45,6 +48,15 @@ DEFAULT_DURATION_MINUTES = 120
 HOLD_DURATION_MINUTES = 5
 MAX_ACTIVE_PER_CUSTOMER = 1
 NO_SHOW_THRESHOLD = 2
+
+# Sau bao lâu mà trưởng ca chưa xác nhận (`notification_acked_at` còn NULL) thì
+# nhắc người dự phòng trong cùng ca. Trưởng ca có thể đang bận ngoài quầy, nên
+# cần cơ chế leo thang — trước đây `backup_nv_ids` được tính rồi bỏ không dùng.
+ESCALATION_AFTER_MINUTES = 10
+
+# Seed ca mẫu (nguồn `ca_meta`: ca_id -> thứ/khung). Cùng đường dẫn với
+# `apps/api/src/ca_api/interfaces/http/sprint3.py` để một nguồn sự thật duy nhất.
+SEED_PATH = Path(__file__).resolve().parents[5] / "data" / "seed" / "sample.json"
 
 
 def auto_reservation_enabled() -> bool:
@@ -199,6 +211,9 @@ def atomic_hold_or_book_table(
     with _conn() as cx:
         # 1. Acquire exclusive write lock immediately
         cx.execute("BEGIN IMMEDIATE")
+        # SQLite: `BEGIN IMMEDIATE` ở trên đã loại trừ nhau. Postgres: cần khoá
+        # tư vấn tường minh, nếu không khe TOCTOU vẫn mở (xem `acquire_write_lock`).
+        acquire_write_lock(cx, "dat_ban")
 
         # Re-check idempotency inside lock
         cx.row_factory = sqlite3.Row
@@ -213,7 +228,7 @@ def atomic_hold_or_book_table(
         # 2. Query overlapping active reservations
         # An overlap exists when NOT (res_end <= start_dt OR res_start >= end_dt)
         now_dt = get_ict_now()
-        hold_expiry_iso = format_ict_iso(now_dt - timedelta(minutes=HOLD_DURATION_MINUTES))
+        hold_expiry_dt = now_dt - timedelta(minutes=HOLD_DURATION_MINUTES)
 
         active_res_rows = cx.execute(
             """
@@ -227,9 +242,13 @@ def atomic_hold_or_book_table(
         occupied_table_ids: set[str] = set()
         for row in active_res_rows:
             r_status = row["status"]
-            r_created = row["created_at"]
             # Discard expired holds (> 5 mins)
-            if r_status == "held" and r_created < hold_expiry_iso:
+            #
+            # So sánh bằng datetime đã parse, KHÔNG so chuỗi: `created_at` có thể
+            # là "...Z" (bản ghi cũ/`reservation_create`) hoặc "+07:00"
+            # (`format_ict_iso`). So chuỗi giữa hai định dạng này lệch 7 tiếng nên
+            # mọi hold đều bị coi là hết hạn ngay khi vừa tạo.
+            if r_status == "held" and _created_truoc_moc(row["created_at"], hold_expiry_dt):
                 continue
 
             r_start = parse_booking_datetime(row["booking_time"])
@@ -368,46 +387,165 @@ def atomic_hold_or_book_table(
     return created_record
 
 
+def _created_truoc_moc(created_at: Any, moc: datetime) -> bool:
+    """`created_at` có trước `moc` không — so sánh bằng datetime, không so chuỗi.
+
+    `created_at` trong `dat_ban` tồn tại ở hai định dạng: `...Z` (UTC, do
+    `reservation_create` ghi) và `+07:00` (`format_ict_iso`). So sánh chuỗi giữa
+    hai định dạng này sai lệch 7 tiếng. Bản ghi không parse được coi như KHÔNG
+    hết hạn — fail-closed: giữ bàn còn hơn nhận thêm khách vào bàn đã có người.
+    """
+    raw = str(created_at or "").strip()
+    if not raw:
+        return False
+    try:
+        return parse_booking_datetime(raw) < moc
+    except (TypeError, ValueError):
+        return False
+
+
+def _phan_cong_theo_tuan(
+    phan_cong: dict[str, Any],
+    phan_cong_by_week: dict[str, Any],
+    booking_dt: datetime,
+) -> dict[str, Any]:
+    """Phân công của TUẦN chứa ngày đặt bàn, ưu tiên dữ liệu theo tuần.
+
+    Vì sao cần: `solver_adapter._week_store("phan_cong_by_week", tuần, ...)` lưu
+    kết quả xếp lịch theo từng tuần, còn key phẳng `phan_cong` chỉ giữ kết quả
+    tuần GẦN NHẤT. Khách có thể đặt bàn trước cho tuần sau → tra `phan_cong`
+    sẽ chọn nhầm người trực của tuần cũ. Thứ tự ưu tiên ở đây khớp
+    `sprint3._phan_cong` và `sprint45._phan`: by_week của tuần mục tiêu trước,
+    rồi mới tới key phẳng.
+
+    Định dạng khoá tuần là ISO `YYYY-Www` (xem `_current_iso_week`).
+    """
+    tuan = booking_dt.isocalendar()
+    tuan_iso = f"{tuan.year}-W{tuan.week:02d}"
+    tuan_data = phan_cong_by_week.get(tuan_iso)
+    if isinstance(tuan_data, dict) and tuan_data:
+        return tuan_data
+    return phan_cong
+
+
+def _khung_gio_config(khung_gio_raw: Any) -> dict[str, tuple[int, int]]:
+    """Khung giờ (phút) của từng ca, ưu tiên cấu hình kv `khung_gio`.
+
+    Mặc định khớp seed `ca_mau_21` (07–12 / 12–17 / 17–22) và `_KHUNG_DEFAULTS`
+    ở tầng HTTP — hai nguồn này phải nhất quán, nếu lệch thì đơn đặt gần biên
+    khung sẽ bị gán nhầm ca trực.
+    """
+    mac_dinh: dict[str, tuple[int, int]] = {
+        "sang": (7 * 60, 12 * 60),
+        "chieu": (12 * 60, 17 * 60),
+        "toi": (17 * 60, 22 * 60),
+    }
+    if not isinstance(khung_gio_raw, dict):
+        return mac_dinh
+
+    def _phut(gia_tri: Any, fallback: int) -> int:
+        try:
+            gio, phut = str(gia_tri).split(":")[:2]
+            return int(gio) * 60 + int(phut)
+        except (TypeError, ValueError):
+            return fallback
+
+    out: dict[str, tuple[int, int]] = {}
+    for ten, (bd_mac_dinh, kt_mac_dinh) in mac_dinh.items():
+        slot = khung_gio_raw.get(ten)
+        if isinstance(slot, dict):
+            bd = _phut(slot.get("bat_dau"), bd_mac_dinh)
+            kt = _phut(slot.get("ket_thuc"), kt_mac_dinh)
+        else:
+            bd, kt = bd_mac_dinh, kt_mac_dinh
+        out[ten] = (bd, kt) if kt > bd else (bd_mac_dinh, kt_mac_dinh)
+    return out
+
+
+def _khung_theo_gio(phut_trong_ngay: int, khung_gio: dict[str, tuple[int, int]]) -> str:
+    """Chọn khung ca chứa thời điểm đặt bàn; ngoài mọi khung → ca gần nhất.
+
+    Thứ tự xét là `sang` → `chieu` → `toi`. Nếu quản lý cấu hình hai khung
+    chồng lấn nhau (vd `chieu` 12–17 và `toi` 15–23), khung xuất hiện trước
+    thắng — kết quả vẫn tất định, không phụ thuộc thứ tự dict của Python.
+    """
+    for ten, (bat_dau, ket_thuc) in khung_gio.items():
+        if bat_dau <= phut_trong_ngay < ket_thuc:
+            return ten
+
+    truoc_mo = [(bd, ten) for ten, (bd, _) in khung_gio.items() if phut_trong_ngay < bd]
+    if truoc_mo:
+        return min(truoc_mo)[1]
+    return max((kt, ten) for ten, (_, kt) in khung_gio.items())[1]
+
+
+@lru_cache(maxsize=1)
+def _ca_meta_theo_khung() -> dict[tuple[str, str], list[str]]:
+    """Map (thứ, khung) → danh sách ca_id, đọc từ seed `ca_mau_21`.
+
+    `phan_cong` trong kv key theo ca_id (`w1_c01`) nên cần bảng bắc cầu này.
+    Seed là dữ liệu tĩnh trong repo nên cache 1 lần là đủ.
+    """
+    thu_theo_ngay_offset = {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN"}
+    out: dict[tuple[str, str], list[str]] = {}
+    try:
+        seed = json.loads(SEED_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return out
+
+    for ca in seed.get("ca_mau_21") or []:
+        if not isinstance(ca, dict) or not ca.get("id"):
+            continue
+        thu = str(ca.get("thu") or thu_theo_ngay_offset.get(int(ca.get("ngay_offset") or 0), ""))
+        khung = str(ca.get("khung") or "")
+        if thu and khung:
+            out.setdefault((thu, khung), []).append(str(ca["id"]))
+    return out
+
+
 def resolve_shift_manager_and_backup(
     booking_dt: datetime, store_id: str = "quan_01"
 ) -> dict[str, Any]:
     """
     Determine which shift (sáng, chiều, tối) covers the booking time,
     and find the on-duty manager/shift lead and backup staff.
+
+    Phân công ca trong kv `phan_cong` được key theo **ca_id** (`w1_c01`), không
+    theo mã khung (`T2_sang`). Vì vậy phải bắc cầu qua `ca_mau_21` trong seed
+    để biết ca nào thuộc (thứ, khung) — nếu tra thẳng `T2_sang` thì luôn rỗng và
+    thông báo ca trực rơi hết về quản lý mặc định.
     """
     if booking_dt.tzinfo is None:
         booking_dt = booking_dt.replace(tzinfo=ICT)
     else:
         booking_dt = booking_dt.astimezone(ICT)
 
-    hour = booking_dt.hour
-    if 7 <= hour < 15:
-        khung = "sang"
-    elif 15 <= hour < 18:
-        khung = "chieu"
-    else:
-        khung = "toi"
-
     day_idx = booking_dt.weekday()  # 0=Monday, 6=Sunday
     thu_map = {0: "T2", 1: "T3", 2: "T4", 3: "T5", 4: "T6", 5: "T7", 6: "CN"}
     thu = thu_map.get(day_idx, "T2")
 
-    # Shift code pattern (e.g. T2_sang)
-    ca_id = f"{thu}_{khung}"
-
     phan_cong: dict[str, Any] = {}
+    phan_cong_by_week: dict[str, Any] = {}
+    khung_gio_raw: Any = {}
     user_role_map: dict[str, str] = {}
     store_manager = "nv_01"  # Lan - Quản lý mặc định
 
     try:
         with _conn() as cx:
             cx.row_factory = sqlite3.Row
-            row = cx.execute("SELECT v FROM kv WHERE k='phan_cong'").fetchone()
-            if row and row["v"]:
+            for row in cx.execute(
+                "SELECT k, v FROM kv WHERE k IN ('phan_cong', 'phan_cong_by_week', 'khung_gio')"
+            ).fetchall():
                 try:
-                    phan_cong = json.loads(row["v"])
+                    parsed = json.loads(row["v"])
                 except Exception:
-                    phan_cong = {}
+                    parsed = None
+                if row["k"] == "phan_cong":
+                    phan_cong = parsed if isinstance(parsed, dict) else {}
+                elif row["k"] == "phan_cong_by_week":
+                    phan_cong_by_week = parsed if isinstance(parsed, dict) else {}
+                else:
+                    khung_gio_raw = parsed
             users = cx.execute(
                 "SELECT nv_id, role, display_name FROM users WHERE store_id=?", (store_id,)
             ).fetchall()
@@ -415,7 +553,33 @@ def resolve_shift_manager_and_backup(
     except Exception:
         pass
 
-    assigned_nv_ids = phan_cong.get(ca_id, [])
+    # Phân công theo TUẦN của ngày đặt bàn (không phải tuần hiện tại — khách có
+    # thể đặt trước cho tuần sau). `solver_adapter._week_store` ghi
+    # `phan_cong_by_week[tuần]`, còn `phan_cong` chỉ giữ kết quả tuần gần nhất;
+    # `sprint3._phan_cong` và `sprint45._phan` đều ưu tiên by_week — ở đây phải
+    # nhất quán, nếu không thông báo ca trực sẽ gửi cho người của tuần CŨ.
+    phan_cong_tuan = _phan_cong_theo_tuan(phan_cong, phan_cong_by_week, booking_dt)
+
+    phut_trong_ngay = booking_dt.hour * 60 + booking_dt.minute
+    khung = _khung_theo_gio(phut_trong_ngay, _khung_gio_config(khung_gio_raw))
+
+    # Shift code pattern (e.g. T2_sang) — mã khung logic, dùng cho log/đối chiếu.
+    ca_id = f"{thu}_{khung}"
+
+    # Gộp nhân viên của TẤT CẢ ca_id thuộc (thứ, khung) này: mỗi khung có thể
+    # gồm nhiều ca theo vị trí (pha chế / thu ngân / phục vụ).
+    ca_ids = _ca_meta_theo_khung().get((thu, khung), [])
+    assigned_nv_ids: list[str] = []
+    for cid in ca_ids:
+        for nv in phan_cong_tuan.get(cid) or []:
+            if isinstance(nv, str) and nv not in assigned_nv_ids:
+                assigned_nv_ids.append(nv)
+
+    if not assigned_nv_ids:
+        # Tương thích ngược: môi trường cũ có thể ghi `phan_cong` theo mã khung.
+        legacy = phan_cong_tuan.get(ca_id)
+        if isinstance(legacy, list):
+            assigned_nv_ids = [str(nv) for nv in legacy if nv]
 
     primary_nv = None
     backup_nvs = []
@@ -439,6 +603,7 @@ def resolve_shift_manager_and_backup(
 
     return {
         "ca_id": ca_id,
+        "ca_ids": ca_ids,
         "khung": khung,
         "thu": thu,
         "primary_nv_id": primary_nv,
@@ -452,6 +617,10 @@ def dispatch_reservation_notification(
     """
     Create in-app notifications and dispatch external push (Telegram/Zalo)
     to the on-duty manager for the confirmed booking.
+
+    Người nhận chính là `notified_nv_id` (trưởng ca). Nếu trưởng ca chưa xác
+    nhận trong `ESCALATION_*`, worker sẽ nhắc thêm người dự phòng
+    (`backup_nv_ids`) — xem `notify_backup_if_unacked`.
     """
     res_id = reservation.get("id", "")
     customer = reservation.get("customer_name", "Khách hàng")
@@ -502,6 +671,104 @@ def dispatch_reservation_notification(
             dispatch_status = "telegram_failed"
 
     return {"notification_id": tb_id, "dispatch_status": dispatch_status}
+
+
+def dispatch_in_background(
+    reservation: dict[str, Any], store_id: str = "quan_01"
+) -> dict[str, Any]:
+    """Gửi thông báo đặt bàn ở luồng NỀN, không chặn response cho khách.
+
+    Vì sao: `dispatch_reservation_notification` gọi Telegram **đồng bộ**. Nếu
+    Telegram chậm/timeout, hàm gọi nó (và do đó cả lượt trả lời khách) bị treo
+    theo. Đẩy sang thread nền giữ response nhanh; lỗi gửi chỉ ghi log —
+    thông báo trong app đã tạo trước đó nên không mất dữ liệu.
+
+    Dùng ở luồng webhook/agent; ở test hoặc CLI có thể gọi hàm đồng bộ trực tiếp.
+    """
+    import threading
+
+    def _chay() -> None:
+        try:
+            dispatch_reservation_notification(reservation, store_id)
+        except Exception as e:  # noqa: BLE001
+            LOG.warning(f"Background reservation notify failed: {e}")
+
+    threading.Thread(target=_chay, name="res-notify", daemon=True).start()
+    return {"queued": True}
+
+
+def notify_backup_if_unacked(store_id: str = "quan_01") -> dict[str, Any]:
+    """Nhắc người DỰ PHÒNG của ca khi trưởng ca chưa xác nhận thông báo.
+
+    `resolve_shift_manager_and_backup` đã tính `backup_nv_ids` từ lâu nhưng
+    không nơi nào dùng — nghĩa là trưởng ca bận thì không có ai được nhắc. Hàm
+    này biến danh sách đó thành leo thang thật: đơn đã gửi thông báo quá
+    `ESCALATION_AFTER_MINUTES` mà `notification_acked_at` còn NULL thì tạo thêm
+    một thông báo cho từng người dự phòng của ca đó.
+
+    Idempotent: mỗi (đơn, người dự phòng) chỉ tạo một lần — kiểm bằng việc tìm
+    thông báo cũ có cùng `dat_ban_id` + `nv_id`.
+    """
+    init_db()
+    now_dt = get_ict_now()
+    cutoff_dt = now_dt - timedelta(minutes=ESCALATION_AFTER_MINUTES)
+
+    rows = reservation_list(store_id=store_id, status="confirmed", limit=200)
+    da_nhac: list[str] = []
+    for r in rows:
+        if r.get("notification_acked_at"):
+            continue  # trưởng ca đã xác nhận → không cần leo thang
+
+        # Chỉ leo thang đơn đã tạo đủ lâu (so bằng datetime, không so chuỗi).
+        if not _created_truoc_moc(r.get("created_at"), cutoff_dt):
+            continue
+
+        primary = r.get("notified_nv_id") or ""
+        # Dự phòng phải suy lại từ ca của đơn (chưa lưu cột riêng).
+        try:
+            booking_dt = parse_booking_datetime(str(r.get("booking_time") or ""))
+        except (TypeError, ValueError):
+            continue
+        shift = resolve_shift_manager_and_backup(booking_dt, store_id)
+        backup_ids = [nv for nv in shift.get("backup_nv_ids") or [] if nv and nv != primary]
+        if not backup_ids:
+            continue
+
+        # Đọc idempotency trong connection NGẮN rồi đóng, KHÔNG lồng với lời gọi
+        # ghi: `thong_bao_ca_create` tự mở connection riêng, lồng hai connection
+        # ghi trên SQLite dễ deadlock.
+        da_co: set[str] = set()
+        with _conn() as cx:
+            cx.row_factory = sqlite3.Row
+            for nv_id in backup_ids:
+                existed = cx.execute(
+                    "SELECT 1 FROM thong_bao_ca WHERE dat_ban_id=? AND nv_id=? LIMIT 1",
+                    (r["id"], nv_id),
+                ).fetchone()
+                if existed:
+                    da_co.add(nv_id)
+
+        for nv_id in backup_ids:
+            if nv_id in da_co:
+                continue  # đã nhắc người này rồi → idempotent
+            thong_bao_ca_create(
+                {
+                    "store_id": store_id,
+                    "dat_ban_id": r["id"],
+                    "nv_id": nv_id,
+                    "tieu_de": f"⚠️ Ca trực chưa xác nhận: {r.get('customer_name')}",
+                    "noi_dung": (
+                        f"Đơn đặt bàn của {r.get('customer_name')} "
+                        f"(bàn {', '.join(r.get('table_ids') or []) or 'chưa gán'}) "
+                        f"chưa được trưởng ca xác nhận sau {ESCALATION_AFTER_MINUTES} phút. "
+                        "Nhờ bạn kiểm tra và chuẩn bị bàn."
+                    ),
+                    "da_xem": 0,
+                }
+            )
+            da_nhac.append(f"{r['id']}:{nv_id}")
+
+    return {"escalated": da_nhac, "count": len(da_nhac)}
 
 
 def send_reservation_confirmation_email(

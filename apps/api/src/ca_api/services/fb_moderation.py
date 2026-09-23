@@ -43,6 +43,8 @@ from ca_agents.sensors.fb_questions import (
     anonymize_state,
 )
 from ca_agents.sensors.jev_sensor import JevSensor
+from ca_agents.sensors.regex_sensor import RegexSensor
+from ca_agents.sensors.sensor_chain import SensorChain
 from ca_contracts import FbPolicyAction, PolicyDecision
 
 from ca_api.persist import (
@@ -58,110 +60,125 @@ from ca_api.persist import (
 _RATE_LIMITER = SlidingWindowRateLimiter()
 _FB_POLICY_KV = "fb_policy_runtime"
 
-# Cảm biến Jev — tắt mặc định (fail-closed). Bật bằng JEV_ENABLED=true + JEV_API_KEY.
+# SensorChain — JEV làm cảm biến chính; RegexSensor làm fallback tự động khi JEV lỗi.
+# Tắt mặc định (JEV chưa được bật). Bật bằng JEV_ENABLED=true + JEV_API_KEY.
 _JEV_SENSOR: JevSensor | None = None
+_SENSOR_CHAIN: SensorChain | None = None
 
 
-def _get_jev_sensor() -> JevSensor | None:
-    """Khởi tạo JevSensor một lần (lazy). Trả None nếu Jev không được bật.
+def _get_sensor_chain() -> SensorChain:
+    """Trả SensorChain singleton (lazy). Luôn có RegexSensor; JEV tùy cấu hình.
 
-    Kiểm tra kill-switch runtime (`fb_jev_enabled`) + key mỗi lần gọi: nếu Chủ
-    quán tắt qua `/page/fb-policy` → `_JEV_SENSOR=None` → fail-closed an toàn.
+    Kiểm tra kill-switch runtime mỗi lần gọi: nếu Chủ quán tắt JEV qua
+    `/page/fb-policy` → chain tự động dùng None (chỉ Regex).
     """
-    global _JEV_SENSOR
-    if _JEV_SENSOR is None and fb_jev_enabled():
-        candidate = JevSensor()  # đọc env: enabled, api_key, base_url
-        if candidate.enabled and candidate.api_key:
-            _JEV_SENSOR = candidate
-    # Kill-switch runtime tắt → bỏ sensor cache (nếu đang bật vì env old).
+    global _JEV_SENSOR, _SENSOR_CHAIN
+
+    # Kill-switch runtime tắt JEV → xóa sensor cache ngay.
     if _JEV_SENSOR is not None and not fb_jev_enabled():
         _JEV_SENSOR = None
-    return _JEV_SENSOR
+        _SENSOR_CHAIN = None
+
+    # Khởi tạo JEV lazy nếu chưa có và đang được bật.
+    if _JEV_SENSOR is None and fb_jev_enabled():
+        candidate = JevSensor()
+        if candidate.enabled and candidate.api_key:
+            _JEV_SENSOR = candidate
+            _SENSOR_CHAIN = None  # force rebuild chain với sensor mới
+
+    # Xây chain (hoặc dùng lại nếu đã có).
+    if _SENSOR_CHAIN is None:
+        _SENSOR_CHAIN = SensorChain(
+            jev_sensor=_JEV_SENSOR,
+            regex_sensor=RegexSensor(),
+        )
+
+    return _SENSOR_CHAIN
 
 
 def _jev_flags(
     text: str, name_map: dict[str, str] | None = None
 ) -> PolicyContext:
-    """Đánh giá Jev (nếu bật) và trả PolicyContext với các flag jev_* điền sẵn.
+    """Đánh giá qua SensorChain (JEV → RegexSensor fallback) và trả PolicyContext.
 
-    Fail-closed theo kế hoạch §5:
-    - Jev TẮT (chưa cấu hình key): jev_ok=False, jev_failed=False → hành vi cũ
-      (regex vẫn là lưới an toàn). KHÔNG leo thang thêm.
-    - Jev BẬT nhưng LỖI (timeout/5xx/429/schema): jev_ok=False, jev_failed=True
-      → decide() thoái lui về hàng đợi người, KHÔNG im lặng tự trả lời.
+    Khi JEV tắt/lỗi → RegexSensor tự động thay thế (đơn điệu, không im lặng):
+    - JEV TẮT (chưa cấu hình key): source="regex", jev_ok=False, jev_failed=False.
+    - JEV BẬT nhưng LỖI: source="regex_fallback", jev_failed=True,
+      jev_fallback_used=True → decide() KHÔNG fail-closed (đã có Regex thay thế).
+    - Cả hai thất bại (cực hiếm): jev_failed=True, jev_fallback_used=False
+      → decide() fail-closed về phía con người.
     """
-    flags = PolicyContext(
-        source="jev",
-        jev_ok=False,
-        jev_failed=False,
+    chain = _get_sensor_chain()
+    # Ẩn danh hóa trước khi gửi cho bên thứ ba (§6).
+    anon_text = anonymize_state({"noi_dung_khach": text}, name_map).get(
+        "noi_dung_khach", text
     )
-    sensor = _get_jev_sensor()
-    if sensor is None:
-        # Jev tắt (chưa cấu hình) → không coi là lỗi, không fail-closed.
-        return flags
+    result = chain.evaluate(anon_text, "fb_page", FB_QUESTIONS)
 
-    # Ẩn danh hóa trước khi gửi cho bên thứ ba (§6) — chỉ gửi trường cần.
-    state = anonymize_state({"noi_dung_khach": text}, name_map)
-    r = sensor.evaluate(state, "fb_page", FB_QUESTIONS)
-    if not r.ok:
-        # Jev bật nhưng lỗi → fail-closed về phía con người (kế hoạch §5).
-        # Ghi vết để chẩn đoán (ADR-007: không ghi nội dung thô, chỉ metadata).
+    # Ghi audit theo source (ADR-007: không ghi nội dung thô).
+    if result.source == "both" or result.source == "jev":
         audit_add(
-            _now_iso(), "fb_jev_sensor", "jev_failed", {
-                "ok": False,
-                "latency_ms": r.latency_ms,
+            _now_iso(), "fb_jev_sensor", "jev_success", {
+                "ok": True,
+                "source": result.source,
+                "signals": {name: s.value for name, s in result.signals.items()},
             },
             actor_type="system", agent_name="ag_fbpage",
         )
-        return PolicyContext(source="jev", jev_ok=False, jev_failed=True)
-
-    # Replay (ADR-007): lưu phản hồi đã parse (KHÔNG text thô, KHÔNG dữ liệu
-    # cá nhân) vào audit để `make replay` tái dựng được quyết định.
-    audit_add(
-        _now_iso(), "fb_jev_sensor", "jev_success", {
-            "ok": True,
-            "latency_ms": r.latency_ms,
-            "model": r.model_version,
-            "schema": r.schema_version,
-            "signals": {
-                name: s.value for name, s in r.signals.items()
+    elif result.source == "regex_fallback":
+        audit_add(
+            _now_iso(), "fb_jev_sensor", "jev_fallback_regex", {
+                "ok": False,
+                "source": "regex_fallback",
+                "signals": {name: s.value for name, s in result.signals.items()},
             },
-        },
-        actor_type="system", agent_name="ag_fbpage",
-    )
+            actor_type="system", agent_name="ag_fbpage",
+        )
+    elif result.both_failed:
+        audit_add(
+            _now_iso(), "fb_jev_sensor", "jev_failed", {
+                "ok": False,
+                "source": "none",
+            },
+            actor_type="system", agent_name="ag_fbpage",
+        )
 
-    signals = r.signals
+    signals = result.signals
     health = signals.get("nguy_co_suc_khoe")
     legal = signals.get("de_doa_phap_ly_truyen_thong")
     hostility = signals.get("muc_gay_gat")
     ask_human = signals.get("doi_gap_nguoi_that")
     sarcasm = signals.get("co_ve_mia_mai")
-    flags = PolicyContext(
-        source="jev",
-        jev_ok=True,
-        jev_failed=False,
+
+    return PolicyContext(
+        source=result.source,
+        jev_ok=result.jev_ok,
+        jev_failed=result.jev_failed,
+        jev_fallback_used=result.fallback_used,
         jev_health_risk=float(health.value) if health is not None else 0.0,
         jev_legal_threat=float(legal.value) if legal is not None else 0.0,
         jev_hostility_score=float(hostility.value) if hostility is not None else 0.0,
         jev_ask_human=float(ask_human.value) if ask_human is not None else 0.0,
         jev_sarcasm=float(sarcasm.value) if sarcasm is not None else 0.0,
     )
-    return flags
 
 
 def _check_jev_injection(psid: str, text: str) -> bool:
-    """Kiểm tra injection/jailbreak bằng Jev (kế hoạch §4.3).
+    """Kiểm tra injection/jailbreak qua SensorChain (kế hoạch §4.3).
 
-    Fail-closed an toàn: Jev tắt/lỗi → trả False (KHÔNG chặn vô tội vạ,
-    KHÔNG cấp thêm quyền nào). Giữ regex L1 làm ranh giới chính; Jev chỉ bổ
-    trợ phát hiện cách diễn đạt khéo mà regex bỏ lọt.
+    Fail-closed an toàn cho injection: cả JEV lẫn Regex đều tắt/lỗi → False
+    (KHÔNG chặn vô tội vạ). RegexSensor KHÔNG có signal injection nên khi JEV
+    lỗi → trả False (không thể bổ trợ). Regex L1 trong guardrails là lưới chính.
     """
-    sensor = _get_jev_sensor()
-    if sensor is None:
+    # Injection check: chỉ gọi JEV (không merge với Regex vì Regex không có
+    # signal injection — tránh false positive từ chain merge).
+    jev = _JEV_SENSOR
+    if jev is None:
         return False
     state = anonymize_state({"noi_dung_khach": text})
-    r = sensor.evaluate(state, "injection_scan", INJECTION_QUESTIONS)
+    r = jev.evaluate(state, "injection_scan", INJECTION_QUESTIONS)
     if not r.ok:
+        # JEV lỗi → injection check fallback = False (không chặn vô tội vạ).
         return False
     signals = r.signals
     override = float(signals["co_gang_ghi_de_chi_dan"].value)
@@ -170,6 +187,7 @@ def _check_jev_injection(psid: str, text: str) -> bool:
     if blocked:
         _audit_block(psid, text, "jev_injection", "jev_flag")
     return blocked
+
 
 _POSITIVE_KEYWORDS = (
     "cảm ơn",
@@ -194,11 +212,18 @@ _COMMENT_ACTION_KEYWORDS = {
 }
 
 
-def analyze_comment_sentiment(text: str) -> str:
-    """Classify public-comment sentiment with a deterministic vocabulary."""
+def analyze_comment_sentiment(text: str, sensor_chain: SensorChain | None = None) -> str:
+    """Classify public-comment sentiment with deterministic vocabulary + SensorChain fallback."""
     normalized = normalize_text(text)
     if any(keyword in normalized for keyword in _NEGATIVE_KEYWORDS):
         return "negative"
+    if sensor_chain is not None:
+        res = sensor_chain.evaluate(text, "comment_sentiment", FB_QUESTIONS)
+        sigs = res.signals
+        hostility = sigs.get("muc_gay_gat")
+        sarcasm = sigs.get("co_ve_mia_mai")
+        if (hostility and float(hostility.value) >= 1.5) or (sarcasm and float(sarcasm.value) >= 0.50):
+            return "negative"
     if any(keyword in normalized for keyword in _POSITIVE_KEYWORDS):
         return "positive"
     return "neutral"
@@ -208,6 +233,7 @@ def classify_comment_action(
     text: str,
     sentiment: str,
     post_is_sensitive: bool = False,
+    sensor_chain: SensorChain | None = None,
 ) -> tuple[str, list[str]]:
     """Return a review hint; the policy engine remains authoritative."""
     normalized = normalize_text(text)
@@ -221,6 +247,23 @@ def classify_comment_action(
         reasons.append("sensitive_post")
     if any(keyword in normalized for keyword in _COMMENT_ACTION_KEYWORDS["escalate"]):
         reasons.append("escalation_keyword")
+
+    if sensor_chain is not None:
+        res = sensor_chain.evaluate(text, "comment_classify", FB_QUESTIONS)
+        sigs = res.signals
+        health = sigs.get("nguy_co_suc_khoe")
+        legal = sigs.get("de_doa_phap_ly_truyen_thong")
+        hostility = sigs.get("muc_gay_gat")
+        sarcasm = sigs.get("co_ve_mia_mai")
+        if health and float(health.value) >= 0.30:
+            reasons.append("sensor_health_risk")
+        if legal and float(legal.value) >= 0.30:
+            reasons.append("sensor_legal_threat")
+        if hostility and float(hostility.value) >= 1.5:
+            reasons.append("sensor_high_hostility")
+        if sarcasm and float(sarcasm.value) >= 0.50:
+            reasons.append("sensor_sarcasm")
+
     return ("escalate" if reasons else "reply"), reasons
 
 
@@ -298,7 +341,7 @@ def set_fb_policy_runtime(
 ) -> dict[str, Any]:
     """Ghi chính sách runtime (KV + env process) — Chủ quán chỉnh không restart."""
     cur = dict(_policy_runtime())
-    global _JEV_SENSOR
+    global _JEV_SENSOR, _SENSOR_CHAIN
     if auto_send_enabled is not None:
         cur["auto_send_enabled"] = bool(auto_send_enabled)
         os.environ["NHIPQUAN_FB_AUTO_SEND"] = "1" if auto_send_enabled else "0"
@@ -309,8 +352,9 @@ def set_fb_policy_runtime(
         # Kill-switch runtime: tắt Jev ngay không cần deploy (kế hoạch §5).
         cur["jev_enabled"] = bool(jev_enabled)
         os.environ["JEV_ENABLED"] = "1" if jev_enabled else "0"
-        # Reset sensor cache để lần gọi sau tạo/ko tạo đúng trạng thái mới.
+        # Reset cả sensor lẫn chain để lần gọi sau tạo/ko tạo đúng trạng thái.
         _JEV_SENSOR = None
+        _SENSOR_CHAIN = None
     kv_set(_FB_POLICY_KV, cur)
     return cur
 

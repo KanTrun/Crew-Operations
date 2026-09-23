@@ -1,4 +1,14 @@
-"""Reservation Management Endpoints for Store Managers and Shift Staff."""
+"""Reservation Management Endpoints for Store Managers and Shift Staff.
+
+Phân quyền (khớp UI `/page-quan/dat-ban` — `session.ts` chặn `/page-quan/*`
+với `nhan_vien`):
+
+- Nghiệp vụ đặt bàn (sơ đồ bàn, danh sách/chi tiết đơn, đổi trạng thái): chỉ
+  `quan_ly`/`chu_quan`. Dữ liệu trả về gồm tên và SĐT khách.
+- Thông báo ca trực (`notifications/me`, `notifications/{id}/ack`): mọi vai trò
+  đã đăng nhập. `resolve_shift_manager_and_backup` có thể chọn nhân viên làm
+  người trực, nên nhân viên phải tự đọc và xác nhận thông báo của chính mình.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +17,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from ca_api.interfaces.http.sprint3 import _nv_from_token, _require_role
+from ca_api.interfaces.http.sprint3 import _nv_from_token, _require_manager
 from ca_api.persist import (
     reservation_get,
     reservation_list,
@@ -24,6 +34,18 @@ class CancelBody(BaseModel):
     reason: str = Field(default="Khách hủy hoặc không liên lạc được")
 
 
+class CreateReservationBody(BaseModel):
+    """Đơn đặt bàn do quản lý tạo tại quầy (khách gọi điện / khách tới trực tiếp)."""
+
+    customer_name: str = Field(min_length=1)
+    phone: str = Field(min_length=1)
+    booking_time: str = Field(min_length=1, description="ISO hoặc YYYY-MM-DD HH:MM (giờ ICT)")
+    party_size: int = Field(ge=1, le=20)
+    duration_minutes: int = Field(default=120, ge=15, le=480)
+    email: str = ""
+    notes: str = ""
+
+
 @router.get("/api/v1/reservations")
 def get_reservations(
     date: Annotated[str | None, Query(description="Lọc theo ngày YYYY-MM-DD")] = None,
@@ -32,9 +54,50 @@ def get_reservations(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Danh sách đơn đặt bàn của quán."""
-    _require_role(authorization)
+    _require_manager(authorization)
     items = reservation_list(store_id="quan_01", date=date, status=status, limit=limit)
     return {"ok": True, "items": items, "total": len(items)}
+
+
+@router.post("/api/v1/reservations")
+def create_reservation(
+    body: CreateReservationBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Tạo đơn đặt bàn thủ công (quản lý nhập tại quầy).
+
+    Dùng lại `atomic_hold_or_book_table` nên vẫn đi qua khoá chống trùng bàn và
+    thuật toán ghép bàn — không có đường tắt ghi thẳng DB. `source` được đánh
+    `staff_manual` để phân biệt với đơn do AI tạo.
+    """
+    from ca_api.services.table_reservation_service import (
+        NoTableAvailableError,
+        TableReservationError,
+        atomic_hold_or_book_table,
+    )
+
+    _require_manager(authorization)
+    nv_id = _nv_from_token(authorization)
+
+    try:
+        res = atomic_hold_or_book_table(
+            psid=f"staff_{nv_id}",
+            customer_name=body.customer_name,
+            phone=body.phone,
+            email=body.email,
+            booking_time=body.booking_time,
+            party_size=body.party_size,
+            duration_minutes=body.duration_minutes,
+            notes=body.notes,
+            source="staff_manual",
+            status="confirmed",
+        )
+    except NoTableAvailableError as e:
+        raise HTTPException(status_code=409, detail=f"het_ban: {e}") from e
+    except (TableReservationError, ValueError) as e:
+        raise HTTPException(status_code=422, detail=f"du_lieu_khong_hop_le: {e}") from e
+
+    return {"ok": True, "reservation": res}
 
 
 @router.get("/api/v1/reservations/tables")
@@ -42,7 +105,7 @@ def get_tables(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Danh sách sơ đồ bàn của quán."""
-    _require_role(authorization)
+    _require_manager(authorization)
     tables = table_list(store_id="quan_01")
     return {"ok": True, "tables": tables}
 
@@ -53,7 +116,7 @@ def get_reservation_detail(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Xem chi tiết một đơn đặt bàn."""
-    _require_role(authorization)
+    _require_manager(authorization)
     res = reservation_get(res_id)
     if not res:
         raise HTTPException(status_code=404, detail="reservation_not_found")
@@ -66,6 +129,8 @@ def check_in_reservation(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Đánh dấu khách đã đến nhận bàn (seated)."""
+    # `_require_manager` trả về ROLE; `actor` của lịch sử phải là nv_id thật.
+    _require_manager(authorization)
     nv_id = _nv_from_token(authorization)
     success = reservation_update_status(
         res_id, new_status="seated", actor=nv_id, reason="Khách đã đến nhận bàn"
@@ -81,6 +146,7 @@ def mark_no_show_reservation(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Đánh dấu khách không đến (no_show)."""
+    _require_manager(authorization)
     nv_id = _nv_from_token(authorization)
     success = reservation_update_status(
         res_id,
@@ -99,6 +165,7 @@ def complete_reservation(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Đánh dấu bữa ăn/uống hoàn tất, giải phóng bàn."""
+    _require_manager(authorization)
     nv_id = _nv_from_token(authorization)
     success = reservation_update_status(
         res_id, new_status="completed", actor=nv_id, reason="Khách dùng xong và thanh toán"
@@ -115,6 +182,7 @@ def cancel_reservation(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Hủy đặt bàn bởi nhân viên."""
+    _require_manager(authorization)
     nv_id = _nv_from_token(authorization)
     success = reservation_update_status(
         res_id,
@@ -133,7 +201,11 @@ def get_my_notifications(
     unread_only: bool = False,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    """Danh sách thông báo ca trực của nhân viên hiện tại."""
+    """Danh sách thông báo ca trực của nhân viên hiện tại.
+
+    Cố ý chỉ cần token (không cần quyền quản lý): người trực nhận thông báo có
+    thể là nhân viên, và ai cũng chỉ đọc được thông báo gửi cho chính mình.
+    """
     nv_id = _nv_from_token(authorization)
     items = thong_bao_ca_list(nv_id=nv_id, unread_only=unread_only, store_id="quan_01")
     return {"ok": True, "notifications": items}
@@ -144,7 +216,7 @@ def ack_notification(
     thong_bao_id: str,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    """Quản lý/Ca trực xác nhận đã xem thông báo đặt bàn."""
+    """Ca trực xác nhận đã xem thông báo đặt bàn của chính mình."""
     nv_id = _nv_from_token(authorization)
     success = thong_bao_ca_ack(thong_bao_id, nv_id)
     return {"ok": success}
@@ -155,7 +227,7 @@ def get_reservation_metrics(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Các chỉ số thống kê đặt bàn của quán."""
-    _require_role(authorization)
+    _require_manager(authorization)
     all_res = reservation_list(store_id="quan_01", limit=1000)
     total = len(all_res)
     by_status: dict[str, int] = {}

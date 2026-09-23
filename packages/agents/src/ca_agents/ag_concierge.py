@@ -35,12 +35,71 @@ class ConciergeTicket:
     reservation_record: dict[str, Any] | None = None
 
 
-def handle_complaint(text: str, customer_name: str | None = None) -> ConciergeTicket:
+def handle_complaint(
+    text: str,
+    customer_name: str | None = None,
+    sensor_chain: Any | None = None,
+) -> ConciergeTicket:
     """
     Handle customer dissatisfaction and complaints with sincere empathy.
     Applies HEAR framework to de-escalate and collect contact info for management.
+    Uses SensorChain (JEV + Regex fallback) to detect critical risks (health, legal threat,
+    extreme hostility, or explicit request to meet human manager) and escalate accordingly.
     """
+    from ca_agents.sensors.fb_questions import FB_QUESTIONS
+    from ca_agents.sensors.sensor_chain import SensorChain
+
+    chain = sensor_chain
+    if chain is None:
+        chain = SensorChain()
+
+    result = chain.evaluate(text, "concierge_complaint", FB_QUESTIONS)
+    signals = result.signals
+    health = signals.get("nguy_co_suc_khoe")
+    legal = signals.get("de_doa_phap_ly_truyen_thong")
+    hostility = signals.get("muc_gay_gat")
+    ask_human = signals.get("doi_gap_nguoi_that")
+
+    is_crisis = False
+    crisis_reasons: list[str] = []
+
+    if health is not None and float(health.value) >= 0.30:
+        is_crisis = True
+        crisis_reasons.append("health_risk")
+    if legal is not None and float(legal.value) >= 0.30:
+        is_crisis = True
+        crisis_reasons.append("legal_threat")
+    if hostility is not None and float(hostility.value) >= 1.5:
+        is_crisis = True
+        crisis_reasons.append("high_hostility")
+    if ask_human is not None and float(ask_human.value) >= 0.50:
+        is_crisis = True
+        crisis_reasons.append("customer_asked_human")
+
     name = customer_name or "mình"
+
+    if is_crisis:
+        reply = (
+            f"Dạ em xin lỗi {name} chân thành vì sự việc nghiêm trọng này ạ!\n"
+            "Em đã ghi nhận và chuyển ngay thông tin tới Quản lý và Chủ quán để xử lý khẩn cấp.\n"
+            "Anh/chị cho em xin số điện thoại để Quản lý liên hệ trực tiếp hỗ trợ mình ngay ạ!"
+        )
+        return ConciergeTicket(
+            ticket_type="complaint",
+            customer_message=text,
+            extracted_data={
+                "issue_summary": text[:160],
+                "is_crisis": True,
+                "crisis_reasons": crisis_reasons,
+                "sensor_source": result.source,
+                "fallback_used": result.fallback_used,
+            },
+            suggested_reply=reply,
+            urgency="high",
+            action_type="needs_manager_review",
+            requires_human_approval=True,
+        )
+
     reply = (
         f"Dạ em thật sự xin lỗi {name} vì trải nghiệm chưa được trọn vẹn hôm nay ạ!\n"
         "Em ghi nhận góp ý này để bếp/quầy rút kinh nghiệm ngay. Lần tới ghé quán em mời mình một ly Trà đào (trong ngưỡng chăm sóc ≤ 200.000đ) để lấy lại cảm giác dễ chịu nha!\n"
@@ -49,7 +108,11 @@ def handle_complaint(text: str, customer_name: str | None = None) -> ConciergeTi
     return ConciergeTicket(
         ticket_type="complaint",
         customer_message=text,
-        extracted_data={"issue_summary": text[:160]},
+        extracted_data={
+            "issue_summary": text[:160],
+            "sensor_source": result.source,
+            "fallback_used": result.fallback_used,
+        },
         suggested_reply=reply,
         urgency="medium",
         action_type="ask_info",

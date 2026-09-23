@@ -396,9 +396,103 @@ def run_nightly_cskh_reflection(
     }
 
 
+# ── Incoming Query Supervision (SensorChain: JEV + RegexSensor fallback) ────
+
+@dataclass(frozen=True)
+class IncomingSupervisionResult:
+    """Kết quả kiểm tra query đầu vào qua SensorChain.
+
+    `is_safe=False` → tầng gọi phải chặn hoặc leo thang, không tự trả lời.
+    `fallback_used=True` → JEV lỗi nhưng RegexSensor đã thay thế (vẫn có giá trị).
+    `source` → "jev" | "regex" | "regex_fallback" | "both" | "none" (cực hiếm).
+    """
+
+    is_safe: bool
+    flagged_reason: str | None = None
+    source: str = "none"
+    fallback_used: bool = False
+
+
+def supervise_incoming_query(
+    text: str,
+    sensor_chain: Any | None = None,
+) -> IncomingSupervisionResult:
+    """Kiểm tra query khách/nhân viên qua SensorChain trước khi xử lý.
+
+    Dùng SensorChain (JEV ưu tiên → RegexSensor fallback) để phát hiện:
+    - Rủi ro sức khỏe (nguy_co_suc_khoe ≥ 0.30)
+    - Prompt injection / jailbreak (co_gang_ghi_de_chi_dan ≥ 0.50)
+    - Đe dọa pháp lý (de_doa_phap_ly_truyen_thong ≥ 0.30)
+
+    Nguyên tắc đơn điệu: chỉ *thêm* leo thang, không bao giờ *gỡ* leo thang.
+    Nếu SensorChain trả `both_failed=True` (cực hiếm) → fail-safe, coi là
+    không an toàn (là_safe=False) để tránh tự xử lý khi không có signal nào.
+
+    Args:
+        text: Nội dung cần kiểm tra (chưa ẩn danh hóa — hàm này không gửi mạng).
+        sensor_chain: SensorChain đã khởi tạo. Nếu None → tạo mới chỉ Regex.
+    """
+    # Import lazy để tránh circular (ag_supervisor không phụ thuộc sensors khi chưa cần).
+    from ca_agents.sensors.fb_questions import FB_QUESTIONS
+    from ca_agents.sensors.sensor_chain import SensorChain
+
+    chain = sensor_chain
+    if chain is None:
+        chain = SensorChain()  # chỉ Regex (JEV chưa bật)
+
+    result = chain.evaluate(text, "supervisor_incoming", FB_QUESTIONS)
+
+    # Cả hai thất bại → fail-safe: không tự xử lý.
+    if result.both_failed:
+        return IncomingSupervisionResult(
+            is_safe=False,
+            flagged_reason="sensor_chain_failed",
+            source="none",
+            fallback_used=True,
+        )
+
+    signals = result.signals
+    health = signals.get("nguy_co_suc_khoe")
+    legal = signals.get("de_doa_phap_ly_truyen_thong")
+    injection = signals.get("co_gang_ghi_de_chi_dan")
+
+    # Ngưỡng thấp cho health/legal (thà báo nhầm còn hơn bỏ sót).
+    if health is not None and float(health.value) >= 0.30:
+        return IncomingSupervisionResult(
+            is_safe=False,
+            flagged_reason="health_risk_detected",
+            source=result.source,
+            fallback_used=result.fallback_used,
+        )
+    if legal is not None and float(legal.value) >= 0.30:
+        return IncomingSupervisionResult(
+            is_safe=False,
+            flagged_reason="legal_threat_detected",
+            source=result.source,
+            fallback_used=result.fallback_used,
+        )
+    # Injection: ngưỡng 0.50 (bảo thủ hơn để tránh false positive).
+    if injection is not None and float(injection.value) >= 0.50:
+        return IncomingSupervisionResult(
+            is_safe=False,
+            flagged_reason="injection_attempt_detected",
+            source=result.source,
+            fallback_used=result.fallback_used,
+        )
+
+    return IncomingSupervisionResult(
+        is_safe=True,
+        flagged_reason=f"sensor_ok_source={result.source}" if result.fallback_used else None,
+        source=result.source,
+        fallback_used=result.fallback_used,
+    )
+
+
 __all__ = [
     "SupervisionResult",
+    "IncomingSupervisionResult",
     "supervise_outgoing_response",
+    "supervise_incoming_query",
     "check_hear_structure",
     "audit_conversations_summary",
     "run_nightly_cskh_reflection",

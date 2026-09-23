@@ -9,7 +9,6 @@ import hmac
 import json
 
 import pytest
-
 from ca_agents.messaging import InboundMessage
 from ca_api.interfaces.http.channels import process_inbound
 from ca_api.interfaces.http.main import app
@@ -142,7 +141,13 @@ def test_inbox_duyet_doi_ca_opens_swap(monkeypatch) -> None:
     assert hit.get("b") == "nv_01"
 
 
-def test_page_empty_without_fixture_seed() -> None:
+def test_page_empty_without_fixture_seed(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Neo env sạch: `.env` thật của máy có NHIPQUAN_PAGE_MODE=live +
+    # NHIPQUAN_FB_PAGE_TOKEN, và test khác (qua ensure_dotenv) có thể đã load
+    # chúng vào os.environ → `connected` thành True, phá assert "chưa nối".
+    monkeypatch.delenv("NHIPQUAN_FB_PAGE_TOKEN", raising=False)
+    monkeypatch.delenv("NHIPQUAN_FB_PAGE_ID", raising=False)
+    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "disconnected")
     ql = headers(client, "lan")
     st = client.get("/api/v1/page/status", headers=ql)
     assert st.status_code == 200
@@ -395,7 +400,13 @@ def test_staff_cannot_reply_or_create_treo_from_page() -> None:
     assert client.post("/api/v1/page/treo", json={"thread_id": "thread_1"}, headers=staff).status_code == 403
 
 
-def test_page_drafts_crud_and_ai_generate() -> None:
+def test_page_drafts_crud_and_ai_generate(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Neo env sạch: nếu `.env` thật (NHIPQUAN_PAGE_MODE=live) đã bị load vào
+    # os.environ, route duyệt draft sẽ gọi publish_page_post() THẬT lên Facebook
+    # → 502 Bad Gateway. Test chỉ kiểm tra CRUD + duyệt mock, không đụng mạng.
+    monkeypatch.delenv("NHIPQUAN_FB_PAGE_TOKEN", raising=False)
+    monkeypatch.delenv("NHIPQUAN_FB_PAGE_ID", raising=False)
+    monkeypatch.setenv("NHIPQUAN_PAGE_MODE", "disconnected")
     from ca_api.persist import kv_set
 
     kv_set("page_quan:quan_01", {"threads": [], "drafts": [], "mode": "mock"})

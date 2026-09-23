@@ -18,6 +18,7 @@ import {
   Select,
   StatusChip,
   Textarea,
+  Toasts,
   useToasts,
 } from "../../../ui/kit";
 
@@ -115,7 +116,7 @@ export default function FbInboxPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [policyBusy, setPolicyBusy] = useState(false);
-  const { push } = useToasts();
+  const { toasts, push, dismiss } = useToasts();
 
   useEffect(() => {
     setToken(getToken());
@@ -219,6 +220,7 @@ export default function FbInboxPage() {
 
   return (
     <div className="nq-page">
+      <Toasts toasts={toasts} onDismiss={dismiss} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 16 }}>
         <PageHeader
           kicker="AG-FBPAGE · Kiểm duyệt chỉn chu"

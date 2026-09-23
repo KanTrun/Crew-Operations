@@ -113,6 +113,11 @@ class PolicyContext:
     # KHÔNG im lặng fallback về "regex không thấy gì = an toàn" rồi tự trả lời.
     # Mặc định False = Jev tắt hoặc hoạt động bình thường (không kích hoạt).
     jev_failed: bool = False
+    # Jev lỗi NHƯNG SensorChain đã dùng RegexSensor thay thế thành công.
+    # Khi True: signals trong context đã là regex signals → KHÔNG fail-closed,
+    # tiếp tục xử lý bình thường. Chỉ fail-closed khi jev_failed=True AND
+    # jev_fallback_used=False (cả hai cảm biến đều thất bại — cực hiếm).
+    jev_fallback_used: bool = False
 
 
 def _has_any(text: str, keywords: tuple[str, ...]) -> bool:
@@ -256,9 +261,12 @@ def decide(
         ):
             return _priority("jev_hostile_or_ask_human", intent, confidence)
 
-    # Jev được bật NHƯNG bị lỗi (timeout/5xx/429/schema) → KHÔNG im lặng tự
-    # trả lời. Thoái lui về phía con người (hàng đợi) — kế hoạch §5.
-    if ctx.jev_failed:
+    # Jev được bật NHƯNG bị lỗi (timeout/5xx/429/schema) → kiểm tra fallback.
+    # Nếu SensorChain đã dùng RegexSensor thay thế (fallback_used=True):
+    #   → signals đã là regex signals, jev_ok=False nhưng xử lý bình thường.
+    # Nếu KHÔNG có fallback (cả hai thất bại — cực hiếm):
+    #   → fail-closed về phía con người (kế hoạch §5 gốc).
+    if ctx.jev_failed and not ctx.jev_fallback_used:
         return _queue(
             "jev_failed_fail_closed", intent, confidence,
             role="quan_ly",

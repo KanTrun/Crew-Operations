@@ -30,6 +30,7 @@ import {
   PageHeader,
   Row,
   StatusChip,
+  Toasts,
   useToasts,
 } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
@@ -209,7 +210,7 @@ export default function InboxPage() {
   const [tuChoiModalItem, setTuChoiModalItem] = useState<Item | null>(null);
   const [tuChoiLyDo, setTuChoiLyDo] = useState("");
   const [coMau, setCoMau] = useState(false);
-  const { push } = useToasts();
+  const { toasts, push, dismiss } = useToasts();
   useEffect(() => {
     setToken(getToken());
     setManager(isManager());
@@ -408,6 +409,7 @@ export default function InboxPage() {
 
   return (
     <div className="nq-page nq-page--wide">
+      <Toasts toasts={toasts} onDismiss={dismiss} />
       <PageHeader
         kicker="Người duyệt · hệ thống không tự chọn"
         title="Hộp thư ràng buộc"

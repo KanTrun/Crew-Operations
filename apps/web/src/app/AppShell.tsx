@@ -70,6 +70,7 @@ const MORE: LinkItem[] = [
   { href: "/page-quan", label: "Page quán (FB)" },
   { href: "/page-quan/fb-inbox", label: "Hộp thư Fanpage (duyệt)" },
   { href: "/page-quan/dat-ban", label: "Sơ đồ & Đặt bàn" },
+  { href: "/gmail", label: "Quản lý Gmail" },
   { href: "/ai-learning", label: "Học từ phản hồi AI" },
   { href: "/skills", label: "Bộ Kỹ năng AI (13/13)" },
   { href: "/cong-bang", label: "Công bằng" },

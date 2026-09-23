@@ -2211,8 +2211,75 @@ a:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
   border-right: 0;
   padding-inline: 0.8rem;
+  white-space: nowrap;
+}
+
+/* Dòng "Cập nhật lúc …" — cho biết trang đang tự làm mới. */
+.nq-booking-synced {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 var(--nq-s3);
+  font-size: 0.72rem;
+  color: var(--nq-dim);
+}
+
+/* Form tạo đơn thủ công tại quầy. */
+.nq-booking-create {
+  border: 2px solid var(--nq-dim);
+  border-radius: var(--nq-r2);
+  padding: var(--nq-s4);
+  margin-bottom: var(--nq-s4);
+  background: var(--nq-accent-soft);
+}
+
+.nq-booking-create-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--nq-s3);
+}
+
+.nq-booking-create-grid label,
+.nq-booking-cancel-reason {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--nq-dim);
+}
+
+.nq-booking-create-grid input,
+.nq-booking-cancel-reason input {
+  border: 2px solid var(--nq-dim);
+  background: var(--nq-bg);
+  color: var(--nq-fg);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.nq-booking-create-grid input:focus-visible,
+.nq-booking-cancel-reason input:focus-visible {
+  outline: 2px solid var(--nq-copper);
+  outline-offset: 1px;
+}
+
+.nq-booking-create-actions {
+  display: flex;
+  gap: var(--nq-s2);
+  margin-top: var(--nq-s4);
+}
+
+.nq-booking-cancel-reason {
+  margin-top: var(--nq-s3);
 }
 
 .nq-booking-reservations {
