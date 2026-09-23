@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -248,8 +249,7 @@ class TestOAuthFunctions:
         "NHIPQUAN_GMAIL_CLIENT_SECRET": "test_client_secret",
         "NHIPQUAN_GMAIL_REDIRECT_URI": "http://localhost/callback",
     })
-    @pytest.mark.asyncio
-    async def test_build_authorization_url(self):
+    def test_build_authorization_url(self) -> None:
         url = build_authorization_url(state="test_state")
         assert "accounts.google.com/o/oauth2/auth" in url
         assert "client_id=test_client_id" in url
@@ -263,8 +263,7 @@ class TestOAuthFunctions:
         "NHIPQUAN_GMAIL_REDIRECT_URI": "http://localhost/callback",
     })
     @patch("ca_agents.ag_gmail.oauth.Flow.from_client_config")
-    @pytest.mark.asyncio
-    async def test_exchange_code_for_tokens(self, mock_flow_class):
+    def test_exchange_code_for_tokens(self, mock_flow_class) -> None:
         mock_flow = MagicMock()
         mock_credentials = MagicMock()
         mock_credentials.token = FAKE_ACCESS
@@ -274,7 +273,7 @@ class TestOAuthFunctions:
         mock_flow.credentials = mock_credentials
         mock_flow_class.return_value = mock_flow
 
-        result = await exchange_code_for_tokens("ma_uuy_quyen_gia")
+        result = asyncio.run(exchange_code_for_tokens("ma_uuy_quyen_gia"))
         assert result["access_token"] == FAKE_ACCESS
         assert result["refresh_token"] == FAKE_REFRESH
         assert result["scope"] == "scope1 scope2"
@@ -287,8 +286,7 @@ class TestOAuthFunctions:
     })
     @patch("ca_agents.ag_gmail.oauth.Credentials")
     @patch("ca_agents.ag_gmail.oauth.Request")
-    @pytest.mark.asyncio
-    async def test_refresh_access_token(self, mock_request_class, mock_credentials_class):
+    def test_refresh_access_token(self, mock_request_class, mock_credentials_class) -> None:
         mock_credentials = MagicMock()
         mock_credentials.token = FAKE_NEW_ACCESS
         mock_credentials.refresh_token = FAKE_NEW_REFRESH
@@ -296,21 +294,20 @@ class TestOAuthFunctions:
         mock_credentials.scopes = ["scope1"]
         mock_credentials_class.return_value = mock_credentials
 
-        result = await refresh_access_token("refresh_gia_cu")
+        result = asyncio.run(refresh_access_token("refresh_gia_cu"))
         assert result["access_token"] == FAKE_NEW_ACCESS
         assert result["refresh_token"] == FAKE_NEW_REFRESH
         mock_credentials.refresh.assert_called_once()
 
     @patch("ca_agents.ag_gmail.oauth.httpx.AsyncClient")
-    @pytest.mark.asyncio
-    async def test_revoke_token(self, mock_client_class):
+    def test_revoke_token(self, mock_client_class) -> None:
         mock_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_client.post.return_value = mock_response
         mock_client_class.return_value.__aenter__.return_value = mock_client
 
-        result = await revoke_token(FAKE_ACCESS)
+        result = asyncio.run(revoke_token(FAKE_ACCESS))
         assert result is True
         mock_client.post.assert_called_once_with(
             "https://oauth2.googleapis.com/revoke",

@@ -26,18 +26,18 @@ from ca_agents.ag_gmail.oauth import (
 from ca_agents.ag_gmail.service import GmailService
 
 __all__ = [
+    "GmailAccount",
+    "GmailFilter",
+    "GmailLabel",
+    "GmailMessage",
     "GmailOAuthConfig",
+    "GmailOAuthTokens",
+    "GmailService",
+    "GmailSyncState",
+    "GmailThread",
     "build_authorization_url",
     "create_credentials",
     "exchange_code_for_tokens",
     "refresh_access_token",
     "revoke_token",
-    "GmailService",
-    "GmailAccount",
-    "GmailOAuthTokens",
-    "GmailMessage",
-    "GmailLabel",
-    "GmailFilter",
-    "GmailSyncState",
-    "GmailThread",
 ]

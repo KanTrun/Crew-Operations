@@ -10,13 +10,20 @@ apps/web/e2e
 **/*.pyc
 **/.pytest_cache
 **/.ruff_cache
+**/.mypy_cache
 **/*.egg-info
+# Virtualenv của máy dev — ~500MB mỗi cái, không bao giờ thuộc image.
+# Thiếu dòng này, build context phình lên hàng trăm MB và image API lên 4GB.
+.venv
+.venv312
+.hypothesis
 data/quan.db
 data/quan.db-wal
 data/quan.db-shm
 # Runtime state của máy dev — không bake vào image. Prod ghi vào /app/var.
 data/out
 data/backups
+data/uploads
 plans
 agent-transcripts
 *.md

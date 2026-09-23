@@ -15,6 +15,12 @@ dependencies = [
     # imageio-ffmpeg: decode audio (webm/opus, mp3, ogg, wav) sang PCM16 16kHz
     # cho STT Live (gemini-3.5-transcribe-live). Cung cấp ffmpeg binary qua pip.
     "imageio-ffmpeg>=0.5",
+    # AG-GMAIL (quản lý Gmail): OAuth 2.0 + gọi Gmail API.
+    # httpx: gọi endpoint thu hồi token của Google (oauth.revoke_token).
+    "google-api-python-client>=2.100.0",
+    "google-auth>=2.25.0",
+    "google-auth-oauthlib>=1.1.0",
+    "httpx>=0.27.0",
 ]
 
 [project.optional-dependencies]
