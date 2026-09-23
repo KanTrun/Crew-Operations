@@ -14,12 +14,15 @@ async function loginAs(page: Page) {
 }
 
 /**
- * Xoá ứng viên luật trong bộ nhớ server trước mỗi bài.
+ * Xoá trạng thái CỦA CẢ rules lẫn Quánverse trước mỗi bài.
  *
- * `_CANDIDATES` của API là store TRONG BỘ NHỚ, sống suốt phiên server. Các bài
- * e2e dùng chung một server nên trạng thái bài trước rò sang bài sau (bài "từ chối
- * ứng viên" chạy sau bài "thu hồi luật" sẽ thấy ứng viên đã `revoked`). Gọi
- * endpoint reset (chỉ mở ở chế độ replay) để mỗi bài bắt đầu từ trạng thái sạch.
+ * Hai store khác nhau, cùng một loại vấn đề — trạng thái sống lâu hơn bài test:
+ *   - `_CANDIDATES` (rules): store trong BỘ NHỚ, sống suốt phiên server.
+ *   - `experience_preferences` (Quánverse): trong kv/DB nên sống qua cả các LẦN CHẠY.
+ * Bài `quanverse.spec.ts` lưu một sở thích khách gắn với neo `window_table`, và nó
+ * trở thành ký ức đã xác nhận thứ hai ở neo đó — bài này hỏi về quầy pha chế và
+ * khẳng định ĐÚNG 1 trích dẫn, nên chạy sau bài kia là nhận 2 và đỏ.
+ * Endpoint reset chỉ mở ở chế độ replay nên an toàn cho production.
  */
 async function resetRuleState(page: Page) {
   const api = process.env.NQ_API ?? "http://127.0.0.1:8000";
@@ -30,11 +33,11 @@ async function resetRuleState(page: Page) {
     .catch(() => null);
   if (!res || !res.ok()) return;
   const { token } = (await res.json()) as { token: string };
-  await page.request
-    .post(`${api}/api/v1/experience/rules/reset`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .catch(() => undefined);
+  for (const path of ["/api/v1/experience/rules/reset", "/api/v1/experience/quanverse/reset"]) {
+    await page.request
+      .post(`${api}${path}`, { headers: { Authorization: `Bearer ${token}` } })
+      .catch(() => undefined);
+  }
 }
 
 test.describe("Grand AI Experience — 5-minute replay story", () => {

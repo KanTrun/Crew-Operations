@@ -241,6 +241,7 @@ EXCLUDED_ROUTES: dict[str, str] = {
     # `_CANDIDATES` là store trong bộ nhớ sống suốt phiên server nên trạng thái rò
     # giữa các bài e2e. Endpoint tự chặn 403 khi không ở chế độ replay.
     "/api/v1/experience/rules/reset": "test-isolation only — 403 ngoài chế độ replay",
+    "/api/v1/experience/quanverse/reset": "test-isolation only — 403 ngoài chế độ replay",
 }
 
 _ROUTE_RE = re.compile(r'@router\.(?:get|post|patch|put|delete)\("([^"]+)"')

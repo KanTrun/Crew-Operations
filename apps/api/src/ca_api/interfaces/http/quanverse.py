@@ -67,6 +67,40 @@ def clear_quanverse_state() -> None:
         pass
 
 
+@router.post("/api/v1/experience/quanverse/reset")
+def quanverse_reset(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Xoá trạng thái Quánverse trong bộ nhớ + kv — CHỈ khi bật chế độ replay/demo.
+
+    Vì sao cần: `experience_preferences` nằm trong kv (DB) nên **tồn tại qua các
+    lần chạy**. Bài `quanverse.spec.ts` "preference reaches stored via consent"
+    lưu một sở thích khách ("thích bàn cạnh cửa sổ yên tĩnh") và KHÔNG có bước dọn.
+    Sở thích đó gắn với neo `window_table`, nên nó trở thành một ký ức đã xác nhận
+    thứ hai ở neo đó. Bài `grand-experience-replay.spec.ts` hỏi về quầy pha chế và
+    khẳng định ĐÚNG 1 trích dẫn — chạy sau bài kia thì nhận 2 và đỏ.
+
+    Đo được: sau nhiều lần chạy, kv đã tích **8** bản ghi trùng, mỗi lần chạy thêm
+    một bản. Đây là rò trạng thái giữa các bài, không phải lỗi logic của agent —
+    API grounding vốn đã đúng (`bar` → 1 ký ức, `stockroom` → 0).
+
+    Cùng khuôn với `/experience/rules/reset` và `replay_role`: production gọi sẽ
+    nhận 403. `clear_quanverse_state()` đã làm việc này cho pytest; endpoint này
+    mở nó ra cho các bài e2e dùng chung một server.
+    """
+    import os
+
+    allowed = (
+        os.environ.get("CA_AGENT_MODE", "") == "replay"
+        or os.environ.get("NHIPQUAN_EXPERIENCE_REPLAY_ROLE", "") == "1"
+    )
+    if not allowed:
+        raise HTTPException(status_code=403, detail="chi_cho_phep_o_che_do_replay")
+    _require_role(authorization)
+    clear_quanverse_state()
+    return {"reset": True, "replayable": True}
+
+
 def _rate_limit(user_id: str) -> None:
     now = time.time()
     with _LOCK:

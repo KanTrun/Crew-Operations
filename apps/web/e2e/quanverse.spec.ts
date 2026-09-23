@@ -10,6 +10,31 @@ async function loginAs(page: Page) {
   await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
 }
 
+/**
+ * Xoá trạng thái Quánverse trong kv — CHỈ hoạt động ở chế độ replay.
+ *
+ * `experience_preferences` nằm trong kv/DB nên sống qua cả các LẦN CHẠY. Bài
+ * "preference reaches stored via consent" lưu một sở thích khách gắn với neo
+ * `window_table`, khiến neo đó có thêm một ký ức đã xác nhận — bài
+ * `grand-experience-replay` (khẳng định ĐÚNG 1 trích dẫn khi hỏi về quầy pha chế)
+ * sẽ đỏ nếu chạy sau. Gọi hàm này ở cuối bài để không rò trạng thái.
+ */
+async function clearQuanverseState(page: Page) {
+  const api = process.env.NQ_API ?? "http://127.0.0.1:8000";
+  const res = await page.request
+    .post(`${api}/api/v1/auth/login`, {
+      data: { username: "lan", password: "nhipquan" },
+    })
+    .catch(() => null);
+  if (!res || !res.ok()) return;
+  const { token } = (await res.json()) as { token: string };
+  await page.request
+    .post(`${api}/api/v1/experience/quanverse/reset`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    .catch(() => undefined);
+}
+
 test.describe("QUANVERSE", () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page);
@@ -106,6 +131,13 @@ test.describe("QUANVERSE", () => {
 
     await expect(page.getByTestId("pref-stored")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId("pref-stored")).toContainText("thích bàn cạnh cửa sổ yên tĩnh");
+
+    // DỌN sau khi kiểm: sở thích này nằm trong kv/DB nên sống qua cả các lần chạy.
+    // Không dọn thì mỗi lần chạy thêm một bản trùng, và vì nó gắn với neo
+    // `window_table` nên nó thành ký ức đã xác nhận thứ hai ở neo đó — bài
+    // `grand-experience-replay` (khẳng định ĐÚNG 1 trích dẫn) sẽ đỏ khi chạy sau.
+    // Đã đo được 8 bản trùng tích luỹ trước khi phát hiện.
+    await clearQuanverseState(page);
   });
 
   test("ar-lite fallback path", async ({ page }) => {
