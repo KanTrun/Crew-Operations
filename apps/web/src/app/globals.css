@@ -2837,11 +2837,102 @@ a:focus-visible {
 
 /* Hook e2e (.nq-bento-tile / --lg / value / label). Layout + skin: BentoTile Tailwind. */
 
-/* ── Dashboard /hom-nay (Awwwards Lite) ── */
+/* ── Dashboard /hom-nay ──
+   Bề rộng và canh giữa do `.nq-main__inner` (shell sidebar) lo; ở đây chỉ giữ
+   phần đệm dọc để nhịp trang không đổi theo bề rộng màn hình. */
 .nq-page--dashboard {
-  max-width: var(--nq-max);
-  margin: 0 auto;
-  padding: var(--nq-s4) var(--nq-s4) var(--nq-s8);
+  padding: var(--nq-s2) 0 var(--nq-s8);
+}
+
+/* ── Khối "việc của bạn" và các mảnh dùng chung cho trang chủ ── */
+
+/* Nhãn nhỏ phía trên tiêu đề khối. Chữ hoa + giãn khe là dấu hiệu NHÃN, không
+   phải dấu hiệu quan trọng — vì vậy nó dùng cỡ nhỏ nhất và màu phụ. */
+.nq-eyebrow {
+  margin: 0;
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-micro);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--nq-accent-ink-text);
+}
+
+/* Tiêu đề khối trong trang. Dùng font hiển thị (Space Grotesk) thay vì font
+   thân bài + `font-black`: tiêu đề cần KHÁC về hình dáng, không chỉ khác về độ
+   đậm — nếu cùng một font thì `font-black` chỉ làm chữ dày lên, mắt vẫn xếp nó
+   cùng hàng với nội dung. */
+.nq-block-title {
+  margin: var(--nq-s1) 0 0;
+  font-family: var(--nq-font-display);
+  font-size: var(--nq-t-h2);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--nq-ink);
+}
+
+/* Khối được NHẤN: viền accent. Dùng cho khối chứa việc người dùng phải làm —
+   viền nói "chỗ này cần bạn" mà không tô nền sau chữ (tô nền là cách chắc chắn
+   nhất để hạ tương phản). */
+.nq-block--accent {
+  border-color: color-mix(in srgb, var(--nq-accent) 45%, var(--nq-line));
+}
+
+/* Hàng bấm được trong danh sách việc: nền đặc theo token surface, hover đổi
+   nền + viền. Không dùng `bg-[var(--nq-bg)]` đè lên nền khối — hai lớp nền
+   chồng nhau làm khối mất tính liền mạch và mắt đọc ra "ô dán đè". */
+.nq-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nq-s3);
+  padding: var(--nq-s3) var(--nq-s4);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background-color: var(--nq-surface-2);
+  text-decoration: none;
+  transition:
+    background-color var(--nq-beat-settle) var(--nq-ease-out),
+    border-color var(--nq-beat-settle) var(--nq-ease-out),
+    transform var(--nq-beat-ack) var(--nq-ease-out);
+}
+
+.nq-action-row:hover {
+  background-color: var(--nq-accent-soft);
+  border-color: var(--nq-line-strong);
+}
+
+.nq-action-row:active {
+  transform: scale(var(--nq-press));
+}
+
+.nq-action-row__title {
+  display: block;
+  font-size: var(--nq-t-small);
+  font-weight: 600;
+  color: var(--nq-ink);
+}
+
+.nq-action-row__sub {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--nq-t-caption);
+  color: var(--nq-ink-muted);
+}
+
+.nq-action-row__go {
+  flex: none;
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-small);
+  color: var(--nq-accent-ink-text);
+}
+
+/* Dòng ghi chú ngắn (brief, dấu thời gian) — một dòng, chữ nhỏ, không phải khối. */
+.nq-meta-line {
+  margin: 0 0 var(--nq-s4);
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
+  color: var(--nq-ink-muted);
 }
 
 .nq-dash-hero {
