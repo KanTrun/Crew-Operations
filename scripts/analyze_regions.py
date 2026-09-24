@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from collections import Counter
 from pathlib import Path
 
@@ -20,7 +19,7 @@ try:
     from PIL import Image
 except ImportError:  # pragma: no cover
     print("Can Pillow")
-    raise SystemExit(2)
+    raise SystemExit(2) from None
 
 
 def analyse(path: Path, cols: int, rows: int) -> dict:

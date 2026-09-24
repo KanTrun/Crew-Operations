@@ -58,11 +58,7 @@ def hex_rgb(r: float, g: float, b: float) -> str:
     Không kẹp thì nội suy có thể ra giá trị âm và sinh ra chuỗi kiểu `#-2-2-3`,
     làm cả bảng màu vỡ ở chỗ khó thấy. Đây là lỗi đã xảy ra thật ở bậc neutral-950.
     """
-    return "#%02x%02x%02x" % (
-        min(255, max(0, round(r))),
-        min(255, max(0, round(g))),
-        min(255, max(0, round(b))),
-    )
+    return f"#{min(255, max(0, round(r))):02x}{min(255, max(0, round(g))):02x}{min(255, max(0, round(b))):02x}"
 
 
 def ramp(base: str, light: str, dark: str) -> dict[str, str]:
@@ -103,7 +99,7 @@ def ramp_anchored(anchors: dict[str, str]) -> dict[str, str]:
     order = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"]
     keys = sorted(anchors, key=lambda s: order.index(s))
     out: dict[str, str] = {}
-    for i, s in enumerate(keys):
+    for _i, s in enumerate(keys):
         out[s] = anchors[s]
     for i in range(len(keys) - 1):
         a, b = keys[i], keys[i + 1]
@@ -315,7 +311,7 @@ def check() -> int:
             if step not in r:
                 continue
             hx = r[step]
-            role = hint = ""
+            role = ""
             if diluted and util in ("bg",):
                 # Nền pha loãng. Hai phép đo, cả hai đều có lý:
                 #   (a) SẮC CÒN LẠI — pha loãng xong khối đó còn phân biệt được
@@ -336,17 +332,17 @@ def check() -> int:
                     level_ok, base_note = True, ""
                 ok = hues_ok and level_ok
                 note = (f"nền pha loãng, sắc còn {chroma(blended):.0f}{base_note}")
-                role, hint = "wash", "—"
+                role = "wash"
             elif diluted:
                 # Viền pha loãng ở alpha thấp là chi tiết trang trí; chỉ ghi nhận.
                 ok = True
                 note = "viền pha loãng (trang trí)"
-                role, hint = "wash-border", "—"
+                role = "wash-border"
             elif util in ("text", "fill", "stroke") and step in INK_ON_SOLID_STEPS:
                 worst = min(ratio(hx, AMBER_SOLID), ratio(hx, EMERALD_SOLID))
                 ok = worst >= TEXT_MIN
                 note = f"chữ tối trên nút sáng, tệ nhất {worst:5.2f}:1"
-                role, hint = "ink-on-solid", "phải TỐI"
+                role = "ink-on-solid"
             elif util in ("text", "fill", "stroke"):
                 worst = min(ratio(hx, BG), ratio(hx, ELEV))
                 if worst >= TEXT_MIN:
@@ -354,7 +350,7 @@ def check() -> int:
                 else:
                     ok, note = True, f"CẢNH BÁO chữ mờ, tệ nhất {worst:5.2f}:1"
                     warn += 1
-                role, hint = "bright-text", "phải SÁNG"
+                role = "bright-text"
             elif util == "bg" and step in SOLID_FILL_STEPS:
                 # `bg-*-500` trong mã có HAI cách dùng, phải chấp nhận cả hai:
                 #   (a) chấm/hình chỉ báo — không có chữ trên nó, nên chuẩn là
@@ -370,17 +366,17 @@ def check() -> int:
                             f"(chữ trên nó chỉ {best_text:4.2f}:1 — chỉ dùng được làm chấm)")
                 else:
                     note = f"nền đặc, chữ tốt nhất {best_text:5.2f}:1 / hình {as_graphic:5.2f}:1"
-                role, hint = "solid-fill", "phải SÁNG"
+                role = "solid-fill"
             elif util == "bg":
                 as_graphic = ratio(hx, BG)
                 best_text = max(ratio(INK, hx), ratio(WHITE, hx))
                 ok = as_graphic >= AA_GRAPHIC or best_text >= TEXT_MIN
                 note = f"nền tối, chữ tốt nhất {best_text:5.2f}:1 / hình {as_graphic:5.2f}:1"
-                role, hint = "dark-fill", "phải TỐI"
+                role = "dark-fill"
             else:
                 ok = True
                 note = f"viền, {min(ratio(hx, BG), ratio(hx, ELEV)):5.2f}:1"
-                role, hint = "border", "—"
+                role = "border"
             if not ok:
                 problems += 1
                 print(f"  HỎNG {util}-{fam}-{step:<4}{'/' if diluted else ' '} {hx}  {note}  "

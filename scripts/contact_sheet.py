@@ -16,7 +16,7 @@ try:
     from PIL import Image, ImageDraw
 except ImportError:  # pragma: no cover
     print("Can Pillow")
-    raise SystemExit(2)
+    raise SystemExit(2) from None
 
 
 def main() -> int:

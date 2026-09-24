@@ -13,6 +13,11 @@ ARG NEXT_PUBLIC_GEMINI_LIVE_VOICE_ENABLED=true
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_GEMINI_LIVE_VOICE_ENABLED=$NEXT_PUBLIC_GEMINI_LIVE_VOICE_ENABLED
 COPY --from=deps /app/node_modules ./node_modules
+# `apps/web/src/lib/contracts.ts` re-export `../../../../packages/contracts/ts/contracts`
+# (nguồn sự thật sinh bởi `make contracts`). Thiếu thư mục này thì `npm run build`
+# chết ở "Cannot find module '../../../../packages/contracts/ts/contracts'".
+# Build context là repo root nên copy được; giữ ĐÚNG cấu trúc đường dẫn tương đối.
+COPY packages/contracts/ts ./packages/contracts/ts
 COPY apps/web ./
 RUN npm run build
 

@@ -68,11 +68,11 @@ ui_state = (
 )
 print(f"  => UI se hien nut: {ui_state}")
 
-print(f"\n-- POST propose --")
+print("\n-- POST propose --")
 st, b = req("POST", f"/api/v1/experience/quanverse/modes/{MODE}/propose", tok)
 print(f"  -> {st}  proposal_status={b.get('proposal_status')!r}  confirmed={b.get('confirmed')}")
 
-print(f"\n-- GET lai (day la thu UI doc) --")
+print("\n-- GET lai (day la thu UI doc) --")
 row2 = show_modes("sau propose", tok)
 waiting = bool(row2 and row2.get("proposal_status") and row2["proposal_status"] != "confirmed" and not row2.get("active"))
 print(f"\n  UI co hien nut 'Duyet' khong? {waiting}")

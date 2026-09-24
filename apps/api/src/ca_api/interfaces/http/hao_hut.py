@@ -225,3 +225,68 @@ def hao_hut_danh_muc(authorization: Annotated[str | None, Header()] = None) -> d
         "tu_cong_thuc": sorted(x for x in tu_cong_thuc if x),
         "nguon": "quan",
     }
+
+
+class KiemKeRowBody(BaseModel):
+    """Một dòng mặt hàng trong phiếu kiểm kê (công thức §4.3)."""
+
+    mat_hang: str = Field(min_length=1, max_length=64)
+    dau_ca: float = 0
+    nhap_trong_ca: float = 0
+    cuoi_ca: float = 0
+    hao_hut_ghi: float = 0
+
+
+class KiemKeSeedBody(BaseModel):
+    """Phiếu kiểm kê để e2e tự dựng dữ liệu của mình."""
+
+    ngay: str = Field(min_length=10, max_length=10)
+    muc: list[KiemKeRowBody] = Field(default_factory=list)
+
+
+@router.post("/api/v1/hao-hut/kiem-ke-seed")
+def hao_hut_kiem_ke_seed(
+    body: KiemKeSeedBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Nạp một phiếu kiểm kê — CHỈ khi chạy chế độ replay/demo.
+
+    Vì sao cần: bài e2e `hao-hut.spec.ts` kiểm rằng dòng thiếu một vế hiện **gạch**
+    chứ không hiện số 0 (fail-closed). Muốn kiểm được điều đó thì phải có dữ liệu
+    kiểm kê thật, nhưng `demo_api.py` (server e2e CI dùng) chỉ seed menu/bàn —
+    `kiem_ke` nằm ở `scripts/seed_demo_data.py` mà e2e không chạy. Kết quả cũ:
+    máy dev nào đã `make seed` thì xanh, CI sạch thì đỏ — test phụ thuộc trạng thái
+    môi trường chứ không kiểm chính nó.
+
+    Khuôn giống `/experience/rules/reset`: chỉ mở khi `CA_AGENT_MODE=replay`,
+    ngoài ra trả 403 — production không gọi được để nhồi dữ liệu giả.
+
+    Phiếu nạp vào mang `nguon="mo_phong_fixture"` để UI gắn chip "dữ liệu mẫu"
+    (không ai nhầm là số đo thật), và `_la_ban_ghi_mau` nhận ra để đánh dấu.
+    """
+    if os.environ.get("CA_AGENT_MODE", "").strip().lower() != "replay":
+        raise HTTPException(status_code=403, detail="chi_cho_phep_o_che_do_replay")
+    _require_manager(authorization)
+
+    phieu = {
+        "id": f"kk_e2e_{uuid.uuid4().hex[:10]}",
+        "ngay": body.ngay,
+        "muc": [r.model_dump() for r in body.muc],
+        "nguon": "mo_phong_fixture",
+        "synthetic": True,
+    }
+
+    def mut(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        rows.append(phieu)
+        return rows
+
+    kv_mutate("kiem_ke", mut, [])
+    audit_add(
+        datetime.now(UTC).isoformat(),
+        "hao_hut_e2e_seed",
+        "kiem_ke_seed",
+        {"id": phieu["id"], "ngay": body.ngay, "so_dong": len(phieu["muc"])},
+        actor_type="system",
+        agent_name="ag_waste",
+    )
+    return {"ok": True, "id": phieu["id"], "so_dong": len(phieu["muc"])}

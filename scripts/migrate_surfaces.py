@@ -150,7 +150,7 @@ def main() -> int:
             n = sum(c for _, c in applied)
             grand += n
             print(f"\n{p.relative_to(ROOT).as_posix()}  ({n})")
-            for label, c in applied:
+            for label, _c in applied:
                 print(f"    {label}")
             if not dry:
                 p.write_text(t, encoding="utf-8")

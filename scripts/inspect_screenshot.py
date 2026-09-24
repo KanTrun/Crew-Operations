@@ -18,7 +18,7 @@ try:
     from PIL import Image
 except ImportError:  # pragma: no cover
     print("Cần Pillow: .venv\\Scripts\\python.exe -m pip install pillow")
-    raise SystemExit(2)
+    raise SystemExit(2) from None
 
 
 def describe(path: Path) -> None:

@@ -81,7 +81,6 @@ NEUTRAL_FAMS = "neutral|zinc|gray|grey|slate|stone"
 
 def status_repl(util: str, role: str, shade: str, alpha: str | None) -> str:
     """Doi mot utility trang thai sang token tuong ung."""
-    dark = int(shade) >= 500 if shade.isdigit() else True
     if util == "bg":
         # Nen dac (shade dam) -> mau trang thai; nen mo (co alpha) -> ban -soft.
         return f"bg-[var(--nq-st-{role}-soft)]" if alpha else f"bg-[var(--nq-st-{role})]"
@@ -133,8 +132,7 @@ def main() -> int:
 
             def _nt(m: re.Match[str]) -> str:
                 nonlocal changed
-                util, fam, shade = m.group(1), m.group(2), m.group(3)
-                key = fam if fam != "grey" else "gray"
+                util, shade = m.group(1), m.group(3)
                 table = NEUTRAL_TOKENS.get(util)
                 if not table:
                     return m.group(0)

@@ -14,8 +14,10 @@
 
 import { expect, test } from "@playwright/test";
 
+const API = process.env.NQ_API ?? "http://localhost:8000";
+
 async function loginAs(page: import("@playwright/test").Page, username = "lan") {
-  const res = await page.request.post("http://localhost:8000/api/v1/auth/login", {
+  const res = await page.request.post(`${API}/api/v1/auth/login`, {
     data: { username, password: "nhipquan" },
   });
   expect(res.ok(), `đăng nhập ${username} phải thành công`).toBeTruthy();
@@ -29,6 +31,38 @@ async function loginAs(page: import("@playwright/test").Page, username = "lan") 
     },
     [body.token, body.role, body.display_name, body.nv_id],
   );
+}
+
+/**
+ * Nạp một phiếu kiểm kê (có vế thực tế) nhưng KHÔNG có đơn quầy (không vế lý
+ * thuyết) — đúng trạng thái mà bài "gạch thay vì số 0" cần chứng minh.
+ *
+ * Vì sao e2e phải tự nạp: server e2e (`scripts/demo_api.py`) chỉ seed menu và
+ * bàn ăn; `kiem_ke` do `scripts/seed_demo_data.py` nạp mà CI e2e KHÔNG chạy. Nên
+ * trước đây bài này chỉ xanh trên máy dev nào tình cờ đã `make seed`, còn CI sạch
+ * thì đỏ. Tự dựng dữ liệu của mình là cách duy nhất để bài kiểm nói được điều gì
+ * chắc chắn. Endpoint chỉ mở khi `CA_AGENT_MODE=replay` (ngoài ra 403).
+ */
+async function seedKiemKeThieuVe(page: import("@playwright/test").Page): Promise<void> {
+  const login = await page.request.post(`${API}/api/v1/auth/login`, {
+    data: { username: "hung", password: "nhipquan" },
+  });
+  expect(login.ok(), "đăng nhập chủ quán để nạp kiểm kê phải thành công").toBeTruthy();
+  const { token } = (await login.json()) as { token: string };
+
+  const homNay = new Date().toISOString().slice(0, 10);
+  const res = await page.request.post(`${API}/api/v1/hao-hut/kiem-ke-seed`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      ngay: homNay,
+      muc: [
+        // Chỉ mặt hàng có trong công thức menu mặc định để "vế có" hiện số thật.
+        { mat_hang: "sua_tuoi", dau_ca: 40, nhap_trong_ca: 10, cuoi_ca: 12, hao_hut_ghi: 2 },
+        { mat_hang: "ca_phe_hat", dau_ca: 900, nhap_trong_ca: 0, cuoi_ca: 500, hao_hut_ghi: 5 },
+      ],
+    },
+  });
+  expect(res.ok(), "nạp phiếu kiểm kê e2e phải thành công (chạy ở chế độ replay)").toBeTruthy();
 }
 
 test.describe("Hao hụt — bảng theo nguyên liệu", () => {
@@ -62,6 +96,7 @@ test.describe("Hao hụt — bảng theo nguyên liệu", () => {
 
   test("dòng thiếu dữ liệu hiện gạch, KHÔNG hiện số 0", async ({ page }) => {
     await loginAs(page);
+    await seedKiemKeThieuVe(page);
     await page.goto("/hao-phi", { waitUntil: "networkidle" });
 
     // Chuyển sang kỳ "Toàn bộ": kỳ hôm nay có thể không có dòng nào thiếu vế, và
@@ -80,6 +115,7 @@ test.describe("Hao hụt — bảng theo nguyên liệu", () => {
 
   test("vế có dữ liệu hiện số thật, vế thiếu hiện gạch — trên cùng một dòng", async ({ page }) => {
     await loginAs(page);
+    await seedKiemKeThieuVe(page);
     await page.goto("/hao-phi", { waitUntil: "networkidle" });
     await page.getByRole("group", { name: "Chọn kỳ xem" }).getByRole("button").nth(3).click();
 

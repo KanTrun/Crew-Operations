@@ -12,7 +12,6 @@ Chạy:  python scripts/find_square_surfaces.py
 
 from __future__ import annotations
 
-import io
 import re
 from pathlib import Path
 
@@ -34,7 +33,7 @@ def main() -> int:
     by_file: dict[str, list[str]] = {}
     for p in sorted(SRC.rglob("*.tsx")):
         rel = p.relative_to(SRC).as_posix()
-        lines = io.open(p, encoding="utf-8").read().splitlines()
+        lines = open(p, encoding="utf-8").read().splitlines()
         hits: list[str] = []
         for i, line in enumerate(lines, 1):
             for pat, label in PATTERNS:
