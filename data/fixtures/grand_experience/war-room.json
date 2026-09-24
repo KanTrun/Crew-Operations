@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "schema": "grand_experience_war_room_v1",
+    "note": "Fixture replay War Room — mọi số mo_phong/uoc_tinh, khong phai do thuc.",
+    "labels": ["mo_phong_fixture", "replay"]
+  },
+  "snapshot_hash": "snap_20260918_war_room_001",
+  "baseline": {
+    "ca_sang": 3,
+    "ca_chieu": 3,
+    "ca_toi": 4,
+    "nhan_vien_available": 12,
+    "doanh_thu_tb_ca": 2500000
+  },
+  "scenarios_demo": [
+    {
+      "scenario_id": "demo_demand_surge",
+      "loai": "demand_surge",
+      "tham_so": {"ty_le_gia_tang": 1.3, "khung_gio": "toi"}
+    },
+    {
+      "scenario_id": "demo_heavy_rain",
+      "loai": "heavy_rain",
+      "tham_so": {"ky_vong_giam_luot": 0.6}
+    },
+    {
+      "scenario_id": "demo_add_staff",
+      "loai": "add_staff_to_shift",
+      "tham_so": {"ca_id": "t7_toi", "thu": "T7", "khung": "toi", "so_them": 1}
+    }
+  ]
+}

@@ -11,6 +11,7 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
+import { STAGGER_S, beat } from "../../lib/motion";
 import { danhMucLabel, giaVnd } from "../../lib/present";
 
 export type PhanVi = {
@@ -29,7 +30,7 @@ function chartMotion(reduced: boolean) {
     : {
         initial: { opacity: 0, y: 8 },
         animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.48, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+        transition: beat("focus"),
       };
 }
 
@@ -78,7 +79,7 @@ export function PhanViBars({ rows }: { rows: HangPhanVi[] }) {
               className="nq-dash-bar-row"
               initial={reduced ? {} : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: i * 0.05, duration: 0.4 }}
+              transition={beat("settle", i * STAGGER_S)}
               title={`${danhMucLabel(row.ten)}: P25 ${giaVnd(p25)} · P50 ${giaVnd(p50)} · P75 ${giaVnd(p75)} · ${sample_size} mẫu`}
             >
               <span className="nq-dash-bar-label">

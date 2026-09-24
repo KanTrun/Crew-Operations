@@ -322,6 +322,54 @@ export function nguyenNhanLabel(code: unknown): string {
   return pick(NGUYEN_NHAN, code, "Nguyên nhân khác");
 }
 
+/* ── Hao hụt định lượng ──
+   Ba bảng dưới đây phục vụ mặt /hao-phi mới. Mã trạng thái của máy chủ
+   (`thieu_du_lieu`, `ke_hoach_kiem_ke`...) là nội bộ — theo `docs/design-guidelines.md`
+   phải đi qua bảng nhãn, không được in thô lên UI. */
+
+const LOSS_LEVEL: Record<string, string> = {
+  dat: "Trong ngưỡng",
+  canh_bao: "Cần xem lại",
+  nghiem_trong: "Vượt ngưỡng nặng",
+  thieu_du_lieu: "Chưa đủ dữ liệu",
+};
+
+export function lossLevelLabel(code: unknown): string {
+  return pick(LOSS_LEVEL, code, "Chưa rõ mức độ");
+}
+
+export function lossLevelTone(code: unknown): "warn" | "ok" | "danger" | "default" {
+  if (code === "nghiem_trong") return "danger";
+  if (code === "canh_bao") return "warn";
+  if (code === "dat") return "ok";
+  return "default";
+}
+
+const LOSS_BASIS: Record<string, string> = {
+  ke_hoach_kiem_ke: "Từ phiếu kiểm kê",
+  don_quay_thuc_te: "Từ đơn quầy",
+  hon_hop: "Đối chiếu đơn quầy với kiểm kê",
+};
+
+export function lossBasisLabel(code: unknown): string {
+  return pick(LOSS_BASIS, code, "Chưa rõ nguồn số");
+}
+
+/** Đọc phần còn thiếu của một dòng hao hụt thành câu người hiểu. */
+export function lossThieuVeLabel(thieuVe: unknown): string {
+  if (!Array.isArray(thieuVe) || thieuVe.length === 0) return "";
+  const co = (x: string) => thieuVe.includes(x);
+  if (co("ly_thuyet") && co("thuc_te")) return "Chưa có đơn quầy và chưa có phiếu kiểm kê";
+  if (co("ly_thuyet")) return "Chưa có đơn quầy nên chưa biết lượng theo công thức";
+  if (co("thuc_te")) return "Chưa gõ phiếu kiểm kê nên chưa biết lượng đã dùng thật";
+  return "Chưa đủ dữ liệu để đối chiếu";
+}
+
+/** Bốn trường ngày của máy chủ ghi ở bốn đường khác nhau; lấy trường nào có. */
+export function lossNgay(row: { luc?: unknown; created_at?: unknown; ngay?: unknown; at?: unknown }): string {
+  return safeText(row.luc ?? row.created_at ?? row.ngay ?? row.at, "");
+}
+
 const MAT_HANG: Record<string, string> = {
   sua_tuoi: "Sữa tươi",
   ca_phe_hat: "Cà phê hạt",

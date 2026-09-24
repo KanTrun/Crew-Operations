@@ -1,0 +1,68 @@
+{
+  "$defs": {
+    "ExperienceMode": {
+      "description": "Chế độ vận hành của quán — kích hoạt cần proposal + xác nhận quản lý.",
+      "enum": [
+        "troi_mua",
+        "gio_cao_diem",
+        "khach_doan",
+        "thieu_nhan_su",
+        "quan_yen_tinh",
+        "dem_nhac"
+      ],
+      "title": "ExperienceMode",
+      "type": "string"
+    },
+    "ExperienceProposalStatus": {
+      "description": "Vòng đời của một đề xuất (proposal) — mọi mutation là proposal trước.",
+      "enum": [
+        "draft",
+        "ready",
+        "confirmed",
+        "rejected",
+        "expired"
+      ],
+      "title": "ExperienceProposalStatus",
+      "type": "string"
+    }
+  },
+  "description": "Một chế độ vận hành — kích hoạt cần proposal + xác nhận.",
+  "properties": {
+    "mode": {
+      "$ref": "#/$defs/ExperienceMode"
+    },
+    "active": {
+      "default": false,
+      "title": "Active",
+      "type": "boolean"
+    },
+    "proposed_by": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Proposed By"
+    },
+    "proposal_status": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExperienceProposalStatus"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "mode"
+  ],
+  "title": "ModeProjection",
+  "type": "object"
+}

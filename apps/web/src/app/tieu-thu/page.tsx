@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { matchSearch, matchTime, TIME_FILTER_OPTIONS, uniqueSorted, type TimeFilter } from "../../lib/list-filters";
@@ -13,6 +14,7 @@ import {
   FixtureChip,
   inputClassName,
   Loading,
+  NextSteps,
   Notice,
   OpsCard,
   PageHeader,
@@ -209,6 +211,15 @@ export default function TieuThuPage() {
           ))}
         </div>
       </OpsCard>
+
+      <NextSteps title="Làm gì tiếp" note="Đếm xong thì xem chỗ lệch">
+        <Link href="/hao-phi" className="nq-btn nq-btn-ghost">
+          Xem hao hụt theo nguyên liệu
+        </Link>
+        <Link href="/menu" className="nq-btn nq-btn-ghost">
+          Xem công thức món
+        </Link>
+      </NextSteps>
     </div>
   );
 }

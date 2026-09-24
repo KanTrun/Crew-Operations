@@ -57,6 +57,15 @@ export type IconName =
   | "warn"
   | "call"
   | "export"
+  // Bộ icon Trải nghiệm (QUÁNVERSE): khu vực quán, chế độ quán, lớp hình ảnh
+  | "cloud-rain"
+  | "volume-off"
+  | "music"
+  | "qr"
+  | "cube"
+  | "map"
+  | "door"
+  | "gauge"
   | "user"
   | "mail"
   | "tag"
@@ -219,6 +228,66 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M7 8h10l-3-3" />
       <path d="M17 16H7l3 3" />
+    </>
+  ),
+  // Mây kèm mưa — chế độ "trời mưa"
+  "cloud-rain": (
+    <>
+      <path d="M17.5 9.5a4 4 0 0 0-7.6-1.6A3.2 3.2 0 0 0 6 14.8h11a2.8 2.8 0 0 0 .5-5.3Z" />
+      <path d="M8 17.5l-.9 2.2M12 17.5l-.9 2.2M16 17.5l-.9 2.2" />
+    </>
+  ),
+  // Loa gạch chéo — chế độ "quán yên tĩnh"
+  "volume-off": (
+    <>
+      <path d="M11 5.5 6.8 9H4v6h2.8L11 18.5Z" />
+      <path d="m15.5 9.5 4 5M19.5 9.5l-4 5" />
+    </>
+  ),
+  // Nốt nhạc đôi — chế độ "đêm nhạc"
+  music: (
+    <>
+      <circle cx="7" cy="17.5" r="2.5" />
+      <circle cx="18" cy="15.5" r="2.5" />
+      <path d="M9.5 17.5V7l11-2v10.5" />
+    </>
+  ),
+  // Bốn góc định vị kèm ô vuông — mã QR / anchor AR
+  qr: (
+    <>
+      <path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" />
+      <path d="M10 10h4v4h-4Z" />
+    </>
+  ),
+  // Khối lập phương — lớp hình ảnh 3D
+  cube: (
+    <>
+      <path d="m12 3.2 7.5 4.3v8.6L12 20.4l-7.5-4.3V7.5Z" />
+      <path d="m12 12 7.5-4.5M12 12v8.4M12 12 4.5 7.5" />
+    </>
+  ),
+  // Bản đồ gấp — lớp hình ảnh 2D
+  map: (
+    <>
+      <path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8Z" />
+      <path d="M9 4.5v12.7M15 6.8v12.7" />
+    </>
+  ),
+  // Cửa mở — khu vực lối vào
+  door: (
+    <>
+      <path d="M5 20.5h14" />
+      <path d="M6.5 20.5V4.5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v16" />
+      <path d="M13.5 12.2h.01" />
+      <path d="M17.5 9.5v3" />
+    </>
+  ),
+  // Đồng hồ đo — mức tải
+  gauge: (
+    <>
+      <path d="M4 17a8 8 0 1 1 16 0" />
+      <path d="m12 14.5 4-3.5" />
+      <circle cx="12" cy="15.5" r="1.4" />
     </>
   ),
 };

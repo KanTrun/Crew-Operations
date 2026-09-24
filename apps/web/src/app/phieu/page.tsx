@@ -384,7 +384,7 @@ export default function PhieuPage() {
                       type="button"
                       disabled={busy}
                       onClick={() => startPhieu(m.ma)}
-                      className="border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 text-left transition-colors hover:border-[var(--nq-copper)] disabled:opacity-50"
+                      className="nq-surface-row p-4 text-left transition-colors hover:border-[var(--nq-copper)] disabled:opacity-50"
                     >
                       <span className="block text-base font-black text-[var(--nq-fg)]">{m.ten || m.ma}</span>
                       <span className="mt-1 block text-xs text-[var(--nq-dim)]">
@@ -415,7 +415,7 @@ export default function PhieuPage() {
             ))}
             {buocKe.length > 0 ? (
               <div className="mt-4 border-t border-[var(--nq-dim)] pt-3">
-                <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-[var(--nq-dim)]">
+                <p className="mb-2 font-mono text-2xs uppercase tracking-widest text-[var(--nq-dim)]">
                   Tiếp theo
                 </p>
                 {buocKe.map((b) => (
@@ -473,7 +473,7 @@ export default function PhieuPage() {
                       <img
                         src={anhPreview}
                         alt="Xem trước ảnh minh chứng"
-                        className="max-h-64 w-full border-2 border-[var(--nq-dim)] object-contain"
+                        className="max-h-64 w-full border border-[var(--nq-line)] rounded-lg object-contain"
                       />
                       <div className="flex flex-wrap gap-2">
                         <Btn

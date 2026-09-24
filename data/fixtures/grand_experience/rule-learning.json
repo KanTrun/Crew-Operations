@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "schema": "grand_experience_rule_learning_v1",
+    "note": "Fixture replay rule learning — sự kiện quyết định fixture, không phải thật.",
+    "labels": ["mo_phong_fixture", "replay"]
+  },
+  "snapshot_hash": "snap_20260918_rule_learning_001",
+  "decisions": [
+    {"event_id": "rl_ev_1", "event_type": "decision", "decision": "them_nguoi_gio_cao_diem", "day_part": "toi", "station": "bar", "skill": "pha_che", "demand_band": "cao", "outcome": "ok", "actor_id": "lan", "shift_id": "t7_toi"},
+    {"event_id": "rl_ev_2", "event_type": "decision", "decision": "them_nguoi_gio_cao_diem", "day_part": "toi", "station": "bar", "skill": "pha_che", "demand_band": "cao", "outcome": "ok", "actor_id": "lan", "shift_id": "t7_toi"},
+    {"event_id": "rl_ev_3", "event_type": "decision", "decision": "them_nguoi_gio_cao_diem", "day_part": "toi", "station": "bar", "skill": "pha_che", "demand_band": "cao", "outcome": "ok", "actor_id": "lan", "shift_id": "t7_toi"},
+    {"event_id": "rl_ev_4", "event_type": "decision", "decision": "dong_quay_13h", "day_part": "toi", "station": "cashier", "skill": null, "demand_band": null, "outcome": "reject", "actor_id": "hung", "shift_id": "t7_toi"}
+  ]
+}

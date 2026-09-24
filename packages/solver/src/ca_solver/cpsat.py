@@ -57,6 +57,22 @@ def _vi_pham_khoang_nghi(ma: dict[str, str], mb: dict[str, str], khoang_nghi_gio
     return 0 <= gap < khoang_nghi_gio * 60
 
 
+# Ngân sách thời gian cho CP-SAT — đọc từ `CA_SOLVER_TIME_LIMIT_S` khi có.
+#
+# Vì sao ưu tiên env: bộ giải dùng HẾT ngân sách để chứng minh phương án đã tối ưu
+# (objective = max_debt*1000 + điểm mềm). Đo trên dữ liệu thật của quán (25 nhân
+# viên / 70 ca) bằng `scripts/bench_solver_budget.py`: từ 15s trở lên cho CÙNG một
+# phương án như 60s; 45 giây còn lại chỉ để bộ giải tự chứng minh tối ưu, việc
+# không ai đọc. Vì vậy ở môi trường thật nên đặt `CA_SOLVER_TIME_LIMIT_S=15` để
+# một lượt chat không vượt ngưỡng chờ của client (60s trong
+# `scripts/e2e_http_copilot.py`), tránh `TimeoutError` chập chờn: cùng một câu hỏi,
+# lần chạy 59.9s thì lọt, lần 60.1s thì vỡ.
+#
+# Giá trị mặc định ở ĐÂY (khi không set env): 4.0 dưới pytest để test nhanh và ổn
+# định, 60.0 cho production. Đặt ở mặc định của hàm chứ không chỉ ở tầng gọi: đã
+# từng sửa `solver_adapter.py` nhưng bỏ sót `ag_copilot/tool_registry.py`, nơi gọi
+# `solve_cpsat(inp)` không truyền tham số — nên đường chat của copilot vẫn chờ đủ
+# 60s. Sửa ở mặc định thì mọi đường gọi đều đúng, kể cả đường thêm sau này.
 def solve_cpsat(data: LichInput, *, time_limit_s: float | None = None) -> SolveResult:
     if time_limit_s is None:
         env_limit = os.environ.get("CA_SOLVER_TIME_LIMIT_S")

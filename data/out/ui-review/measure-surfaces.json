@@ -1,0 +1,877 @@
+{
+ "auth": "quan_ly",
+ "rows": [
+  {
+   "route": "/copilot",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    4.5,
+    9,
+    999,
+    9999
+   ],
+   "totalSurfaces": 24,
+   "squareSurfaces": 17,
+   "shadows": 3,
+   "transitions": 45,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 71,
+   "ok": true
+  },
+  {
+   "route": "/page-quan/fb-inbox",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    6,
+    8,
+    999,
+    9999
+   ],
+   "totalSurfaces": 13,
+   "squareSurfaces": 8,
+   "shadows": 3,
+   "transitions": 30,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 62,
+   "ok": true
+  },
+  {
+   "route": "/login",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    6
+   ],
+   "totalSurfaces": 10,
+   "squareSurfaces": 6,
+   "shadows": 2,
+   "transitions": 7,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 60,
+   "ok": true
+  },
+  {
+   "route": "/chat",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 16,
+   "squareSurfaces": 8,
+   "shadows": 2,
+   "transitions": 45,
+   "animNames": [],
+   "squarePct": 50,
+   "ok": true
+  },
+  {
+   "route": "/nguoi",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    999,
+    9999
+   ],
+   "totalSurfaces": 6,
+   "squareSurfaces": 3,
+   "shadows": 2,
+   "transitions": 28,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 50,
+   "ok": true
+  },
+  {
+   "route": "/menu",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    999,
+    9999
+   ],
+   "totalSurfaces": 6,
+   "squareSurfaces": 3,
+   "shadows": 2,
+   "transitions": 28,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 50,
+   "ok": true
+  },
+  {
+   "route": "/skills",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    999,
+    9999
+   ],
+   "totalSurfaces": 6,
+   "squareSurfaces": 3,
+   "shadows": 2,
+   "transitions": 28,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 50,
+   "ok": true
+  },
+  {
+   "route": "/dang-ky",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    999,
+    9999
+   ],
+   "totalSurfaces": 6,
+   "squareSurfaces": 3,
+   "shadows": 2,
+   "transitions": 28,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 50,
+   "ok": true
+  },
+  {
+   "route": "/pha",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 8,
+   "squareSurfaces": 4,
+   "shadows": 3,
+   "transitions": 28,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 50,
+   "ok": true
+  },
+  {
+   "route": "/vet",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 413,
+   "squareSurfaces": 204,
+   "shadows": 204,
+   "transitions": 231,
+   "animNames": [
+    "nq-rise",
+    "nq-fade-in"
+   ],
+   "squarePct": 49,
+   "ok": true
+  },
+  {
+   "route": "/ai-learning",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    999,
+    9999
+   ],
+   "totalSurfaces": 27,
+   "squareSurfaces": 13,
+   "shadows": 13,
+   "transitions": 31,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 48,
+   "ok": true
+  },
+  {
+   "route": "/contracts",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 17,
+   "squareSurfaces": 8,
+   "shadows": 8,
+   "transitions": 34,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 47,
+   "ok": true
+  },
+  {
+   "route": "/phieu",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 14,
+   "squareSurfaces": 6,
+   "shadows": 6,
+   "transitions": 33,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 43,
+   "ok": true
+  },
+  {
+   "route": "/de-xuat-thong-minh",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 12,
+   "squareSurfaces": 5,
+   "shadows": 6,
+   "transitions": 29,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 42,
+   "ok": true
+  },
+  {
+   "route": "/toi",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 10,
+   "squareSurfaces": 4,
+   "shadows": 4,
+   "transitions": 30,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 40,
+   "ok": true
+  },
+  {
+   "route": "/handover",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    6,
+    999,
+    9999
+   ],
+   "totalSurfaces": 10,
+   "squareSurfaces": 4,
+   "shadows": 4,
+   "transitions": 31,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 40,
+   "ok": true
+  },
+  {
+   "route": "/huong-dan",
+   "title": "Hướng dẫn · Bản đồ NHỊP QUÁN",
+   "radii": [
+    0,
+    18,
+    50,
+    999
+   ],
+   "totalSurfaces": 39,
+   "squareSurfaces": 15,
+   "shadows": 22,
+   "transitions": 53,
+   "animNames": [],
+   "squarePct": 38,
+   "ok": true
+  },
+  {
+   "route": "/roster",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    4.5,
+    6,
+    9,
+    13.5,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 113,
+   "squareSurfaces": 43,
+   "shadows": 20,
+   "transitions": 129,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 38,
+   "ok": true
+  },
+  {
+   "route": "/lich-tuan",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    4.5,
+    6,
+    9,
+    13.5,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 113,
+   "squareSurfaces": 43,
+   "shadows": 20,
+   "transitions": 129,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 38,
+   "ok": true
+  },
+  {
+   "route": "/sop",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 14,
+   "squareSurfaces": 5,
+   "shadows": 3,
+   "transitions": 34,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 36,
+   "ok": true
+  },
+  {
+   "route": "/giai-thich",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 11,
+   "squareSurfaces": 4,
+   "shadows": 5,
+   "transitions": 29,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 36,
+   "ok": true
+  },
+  {
+   "route": "/tkb",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 15,
+   "squareSurfaces": 5,
+   "shadows": 6,
+   "transitions": 33,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 33,
+   "ok": true
+  },
+  {
+   "route": "/quanverse/rules",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 9,
+   "squareSurfaces": 3,
+   "shadows": 4,
+   "transitions": 34,
+   "animNames": [],
+   "squarePct": 33,
+   "ok": true
+  },
+  {
+   "route": "/cuoc-hop",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4.5,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 10,
+   "squareSurfaces": 3,
+   "shadows": 5,
+   "transitions": 33,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 30,
+   "ok": true
+  },
+  {
+   "route": "/quanverse/shift-rescue",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    6,
+    999,
+    9999
+   ],
+   "totalSurfaces": 10,
+   "squareSurfaces": 3,
+   "shadows": 3,
+   "transitions": 30,
+   "animNames": [],
+   "squarePct": 30,
+   "ok": true
+  },
+  {
+   "route": "/thu-nghiem-an-toan",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 15,
+   "squareSurfaces": 4,
+   "shadows": 5,
+   "transitions": 29,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 27,
+   "ok": true
+  },
+  {
+   "route": "/khao-sat-gia",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 24,
+   "squareSurfaces": 6,
+   "shadows": 9,
+   "transitions": 41,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 25,
+   "ok": true
+  },
+  {
+   "route": "/doi-ca",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 26,
+   "squareSurfaces": 6,
+   "shadows": 11,
+   "transitions": 37,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 23,
+   "ok": true
+  },
+  {
+   "route": "/hom-nay",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    18,
+    24,
+    999,
+    9999
+   ],
+   "totalSurfaces": 45,
+   "squareSurfaces": 10,
+   "shadows": 33,
+   "transitions": 60,
+   "animNames": [
+    "nq-rise",
+    "nq-dash-glow",
+    "nq-fade-in",
+    "nq-fade-plain",
+    "nq-tour-in"
+   ],
+   "squarePct": 22,
+   "ok": true
+  },
+  {
+   "route": "/quanverse/spatial-memory",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 23,
+   "squareSurfaces": 5,
+   "shadows": 3,
+   "transitions": 51,
+   "animNames": [],
+   "squarePct": 22,
+   "ok": true
+  },
+  {
+   "route": "/page-quan",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    4.5,
+    9,
+    13.5,
+    999,
+    9999
+   ],
+   "totalSurfaces": 47,
+   "squareSurfaces": 10,
+   "shadows": 12,
+   "transitions": 64,
+   "animNames": [
+    "nq-rise",
+    "pulse"
+   ],
+   "squarePct": 21,
+   "ok": true
+  },
+  {
+   "route": "/tieu-thu",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 20,
+   "squareSurfaces": 4,
+   "shadows": 8,
+   "transitions": 37,
+   "animNames": [
+    "nq-rise",
+    "nq-fade-in"
+   ],
+   "squarePct": 20,
+   "ok": true
+  },
+  {
+   "route": "/cong-bang",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 15,
+   "squareSurfaces": 3,
+   "shadows": 11,
+   "transitions": 31,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 20,
+   "ok": true
+  },
+  {
+   "route": "/",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    18,
+    999
+   ],
+   "totalSurfaces": 36,
+   "squareSurfaces": 7,
+   "shadows": 7,
+   "transitions": 41,
+   "animNames": [
+    "nq-pulse-beat"
+   ],
+   "squarePct": 19,
+   "ok": true
+  },
+  {
+   "route": "/qr",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 17,
+   "squareSurfaces": 3,
+   "shadows": 10,
+   "transitions": 36,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 18,
+   "ok": true
+  },
+  {
+   "route": "/quanverse/war-room",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 17,
+   "squareSurfaces": 3,
+   "shadows": 3,
+   "transitions": 40,
+   "animNames": [],
+   "squarePct": 18,
+   "ok": true
+  },
+  {
+   "route": "/inbox",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 108,
+   "squareSurfaces": 18,
+   "shadows": 82,
+   "transitions": 57,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 17,
+   "ok": true
+  },
+  {
+   "route": "/them",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 29,
+   "squareSurfaces": 4,
+   "shadows": 23,
+   "transitions": 66,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 14,
+   "ok": true
+  },
+  {
+   "route": "/hao-phi",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 32,
+   "squareSurfaces": 4,
+   "shadows": 20,
+   "transitions": 46,
+   "animNames": [
+    "nq-rise",
+    "nq-fade-in"
+   ],
+   "squarePct": 13,
+   "ok": true
+  },
+  {
+   "route": "/cam-nang",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 37,
+   "squareSurfaces": 4,
+   "shadows": 29,
+   "transitions": 53,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 11,
+   "ok": true
+  },
+  {
+   "route": "/page-quan/dat-ban",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 36,
+   "squareSurfaces": 4,
+   "shadows": 19,
+   "transitions": 67,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 11,
+   "ok": true
+  },
+  {
+   "route": "/quanverse",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 60,
+   "squareSurfaces": 6,
+   "shadows": 19,
+   "transitions": 118,
+   "animNames": [
+    "nq-fade-up",
+    "nq-hz-pulse"
+   ],
+   "squarePct": 10,
+   "ok": true
+  },
+  {
+   "route": "/treo",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    4,
+    6,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 53,
+   "squareSurfaces": 4,
+   "shadows": 44,
+   "transitions": 70,
+   "animNames": [
+    "nq-rise",
+    "nq-fade-in"
+   ],
+   "squarePct": 8,
+   "ok": true
+  },
+  {
+   "route": "/quay",
+   "title": "NHỊP QUÁN",
+   "radii": [
+    0,
+    6,
+    6.75,
+    18,
+    999,
+    9999
+   ],
+   "totalSurfaces": 67,
+   "squareSurfaces": 4,
+   "shadows": 17,
+   "transitions": 64,
+   "animNames": [
+    "nq-rise"
+   ],
+   "squarePct": 6,
+   "ok": true
+  }
+ ]
+}

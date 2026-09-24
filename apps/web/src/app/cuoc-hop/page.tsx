@@ -980,7 +980,7 @@ export default function MeetingPage() {
               <select
                 value={meetingType}
                 onChange={(e) => setMeetingType(e.target.value as "giao_ca" | "hop_tuan" | "dao_tao")}
-                className="bg-neutral-800 text-white text-sm p-1.5 rounded border border-neutral-700 font-mono"
+                className="bg-[var(--nq-surface)] text-white text-sm p-1.5 rounded border border-[var(--nq-line)] font-mono"
               >
                 <option value="giao_ca">Họp Giao ca (Standup)</option>
                 <option value="hop_tuan">Họp Tuần / Vận hành</option>
@@ -1005,15 +1005,15 @@ export default function MeetingPage() {
                   </Btn>
                 ) : (
                   <div className="flex items-center gap-3 flex-wrap">
-                    <span className="animate-ping w-3 h-3 rounded-full bg-red-500 inline-block" />
-                    <span className="font-mono text-red-400 font-bold text-lg">ĐANG THU: {formatTimer(recordSeconds)}</span>
+                    <span className="animate-ping w-3 h-3 rounded-full bg-[var(--nq-st-danger)] inline-block" />
+                    <span className="font-mono text-[var(--nq-st-danger-ink)] font-bold text-lg">ĐANG THU: {formatTimer(recordSeconds)}</span>
                     
                     {/* Audio Level Indicator */}
-                    <div className="flex items-center gap-1.5 bg-neutral-900/80 px-3 py-1.5 rounded border border-neutral-800">
+                    <div className="flex items-center gap-1.5 bg-[var(--nq-bg-elevated)] px-3 py-1.5 rounded border border-[var(--nq-line)]">
                       <span className="text-xs font-mono opacity-60">ÂM LƯỢNG:</span>
-                      <div className="w-20 bg-neutral-800 h-2 rounded overflow-hidden">
+                      <div className="w-20 bg-[var(--nq-surface)] h-2 rounded overflow-hidden">
                         <div
-                          className="bg-emerald-500 h-full transition-all duration-100"
+                          className="bg-[var(--nq-st-ok)] h-full transition-all duration-100"
                           style={{ width: `${volumeLevel}%` }}
                         />
                       </div>
@@ -1060,14 +1060,14 @@ export default function MeetingPage() {
                   </Btn>
                 ) : (
                   <div className="flex items-center gap-3 flex-wrap">
-                    <span className="animate-ping w-3 h-3 rounded-full bg-red-500 inline-block" />
-                    <span className="font-mono text-red-400 font-bold text-lg">ĐANG GHI ÂM: {formatTimer(recordSeconds)}</span>
+                    <span className="animate-ping w-3 h-3 rounded-full bg-[var(--nq-st-danger)] inline-block" />
+                    <span className="font-mono text-[var(--nq-st-danger-ink)] font-bold text-lg">ĐANG GHI ÂM: {formatTimer(recordSeconds)}</span>
 
-                    <div className="flex items-center gap-1.5 bg-neutral-900/80 px-3 py-1.5 rounded border border-neutral-800">
+                    <div className="flex items-center gap-1.5 bg-[var(--nq-bg-elevated)] px-3 py-1.5 rounded border border-[var(--nq-line)]">
                       <span className="text-xs font-mono opacity-60">ÂM LƯỢNG:</span>
-                      <div className="w-20 bg-neutral-800 h-2 rounded overflow-hidden">
+                      <div className="w-20 bg-[var(--nq-surface)] h-2 rounded overflow-hidden">
                         <div
-                          className="bg-cyan-500 h-full transition-all duration-100"
+                          className="bg-[var(--nq-st-info)] h-full transition-all duration-100"
                           style={{ width: `${volumeLevel}%` }}
                         />
                       </div>
@@ -1103,7 +1103,7 @@ export default function MeetingPage() {
                   type="file"
                   accept="audio/*,.mp3,.m4a,.wav,.webm"
                   onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  className="text-sm text-neutral-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-copper file:text-white hover:file:opacity-90"
+                  className="text-sm text-[var(--nq-ink)] file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-copper file:text-white hover:file:opacity-90"
                 />
               </Field>
               <Btn variant="primary" onClick={uploadFile} disabled={busy || !selectedFile}>
@@ -1174,12 +1174,12 @@ export default function MeetingPage() {
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="nq-meeting-list__title">{m.tieu_de}</h4>
-                    <span className="text-[11px] px-2 py-0.5 rounded font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
+                    <span className="text-2xs px-2 py-0.5 rounded font-mono bg-[var(--nq-st-ok-soft)] text-[var(--nq-st-ok-ink)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))]">
                       ĐÃ DUYỆT
                     </span>
                   </div>
                   <p className="nq-meeting-list__meta line-clamp-1">{m.tom_tat}</p>
-                  <div className="mt-1 flex flex-wrap gap-3 text-[11px] font-mono text-[var(--nq-ink-muted)]">
+                  <div className="mt-1 flex flex-wrap gap-3 text-2xs font-mono text-[var(--nq-ink-muted)]">
                     <span>Loại: {m.loai_hop}</span>
                     <span>Việc: {m.action_items?.length || 0}</span>
                     <span>Nguồn: {m.nguon_am_thanh}</span>

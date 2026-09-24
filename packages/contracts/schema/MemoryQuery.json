@@ -1,0 +1,132 @@
+{
+  "$defs": {
+    "ExperienceRole": {
+      "description": "Vai trò trong không gian trải nghiệm (bản chiếu theo quyền hạn).",
+      "enum": [
+        "khach",
+        "nhan_vien",
+        "quan_ly",
+        "chu_quan"
+      ],
+      "title": "ExperienceRole",
+      "type": "string"
+    },
+    "MemoryConsentStatus": {
+      "description": "Đồng thuận lưu trữ ký ức — không bao giờ ngầm định là đã đồng thuận.",
+      "enum": [
+        "required",
+        "granted",
+        "revoked",
+        "expired"
+      ],
+      "title": "MemoryConsentStatus",
+      "type": "string"
+    },
+    "MemoryStatus": {
+      "description": "Trạng thái ký ức. \"Pending\" là nhãn UI cho `draft`, không phải enum riêng.",
+      "enum": [
+        "draft",
+        "confirmed",
+        "superseded",
+        "deleted"
+      ],
+      "title": "MemoryStatus",
+      "type": "string"
+    }
+  },
+  "description": "Query ký ức theo anchor/time/status/role — deterministic filter.",
+  "properties": {
+    "store_id": {
+      "default": "quan_01",
+      "title": "Store Id",
+      "type": "string"
+    },
+    "anchor_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Anchor Id"
+    },
+    "from_time": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "From Time"
+    },
+    "to_time": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "To Time"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MemoryStatus"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "consent_status": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MemoryConsentStatus"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "role": {
+      "$ref": "#/$defs/ExperienceRole",
+      "default": "nhan_vien"
+    },
+    "requester_id": {
+      "minLength": 1,
+      "title": "Requester Id",
+      "type": "string"
+    },
+    "keyword": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Keyword"
+    }
+  },
+  "required": [
+    "requester_id"
+  ],
+  "title": "MemoryQuery",
+  "type": "object"
+}

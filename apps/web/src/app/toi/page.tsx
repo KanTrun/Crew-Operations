@@ -129,7 +129,7 @@ export default function ToiPage() {
 
       <OpsCard eyebrow="Hồ sơ cá nhân" title="Email nhận thông báo ca">
         <form onSubmit={saveEmail} className="nq-list">
-          <p className="text-sm text-stone-600 dark:text-stone-400">
+          <p className="text-sm text-[var(--nq-ink-muted)]">
             Cập nhật địa chỉ Gmail để nhận thông báo phân ca, đổi ca và nhắc việc từ quán qua email.
           </p>
           {emailMsg ? <Alert kind="ok">{emailMsg}</Alert> : null}

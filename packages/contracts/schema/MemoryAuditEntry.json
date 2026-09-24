@@ -1,0 +1,51 @@
+{
+  "description": "Audit dòng memory — không chứa raw audio/secret.",
+  "properties": {
+    "audit_id": {
+      "minLength": 1,
+      "title": "Audit Id",
+      "type": "string"
+    },
+    "memory_id": {
+      "minLength": 1,
+      "title": "Memory Id",
+      "type": "string"
+    },
+    "action": {
+      "enum": [
+        "propose",
+        "consent_grant",
+        "consent_revoke",
+        "confirm",
+        "expire",
+        "delete",
+        "supersede"
+      ],
+      "title": "Action",
+      "type": "string"
+    },
+    "actor_id": {
+      "minLength": 1,
+      "title": "Actor Id",
+      "type": "string"
+    },
+    "reason": {
+      "default": "",
+      "title": "Reason",
+      "type": "string"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "audit_id",
+    "memory_id",
+    "action",
+    "actor_id"
+  ],
+  "title": "MemoryAuditEntry",
+  "type": "object"
+}

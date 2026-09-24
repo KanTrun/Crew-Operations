@@ -63,12 +63,12 @@ export function FloatingChatHead() {
       {isOpen && (
         <div className="mb-3 flex h-[min(500px,calc(100vh-7rem))] w-[calc(100vw-2rem)] max-w-[380px] flex-col overflow-hidden rounded-2xl border border-[var(--nq-dim)] bg-[var(--nq-bg-elevated)] shadow-2xl animate-fade-in">
           {/* Header */}
-          <div className="p-3 bg-[var(--nq-copper)] text-white flex items-center justify-between">
+          <div className="p-3 bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-base">💬</span>
               <div>
                 <h4 className="font-bold text-xs truncate max-w-[200px]">{activeConv ? activeConv.display_name : "Chat Nội Bộ"}</h4>
-                <p className="text-[10px] opacity-80">NHỊP QUÁN Messenger</p>
+                <p className="text-2xs opacity-80">NHỊP QUÁN Messenger</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -98,9 +98,9 @@ export function FloatingChatHead() {
                 key={conv.id}
                 type="button"
                 onClick={() => setSelectedConvId(conv.id)}
-                className={`px-2 py-1 rounded-lg text-[10px] font-bold truncate max-w-[100px] transition ${
+                className={`px-2 py-1 rounded-lg text-2xs font-bold truncate max-w-[100px] transition ${
                   (activeConv && activeConv.id === conv.id)
-                    ? "bg-[var(--nq-copper)] text-white"
+                    ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)]"
                     : "bg-[var(--nq-card)] text-[var(--nq-muted)] hover:text-[var(--nq-fg)]"
                 }`}
               >
@@ -116,7 +116,7 @@ export function FloatingChatHead() {
               const isMine = msg.sender_id === currentNvId;
               if (isSystem) {
                 return (
-                  <div key={msg.id} className="text-center text-[10px] text-[var(--nq-muted)] italic my-1">
+                  <div key={msg.id} className="text-center text-2xs text-[var(--nq-muted)] italic my-1">
                     {msg.content}
                   </div>
                 );
@@ -124,11 +124,11 @@ export function FloatingChatHead() {
               return (
                 <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
                   <div className={`w-fit max-w-[82%] rounded-xl border p-2 ${isMine ? "border-[var(--nq-copper)] bg-[var(--nq-copper)] text-[#0e0c0a]" : "border-[var(--nq-dim)] bg-[var(--nq-card)] text-[var(--nq-fg)]"}`}>
-                    <div className={`mb-0.5 flex gap-3 text-[10px] ${isMine ? "justify-end text-[#0e0c0a]/70" : "justify-between text-[var(--nq-muted)]"}`}>
+                    <div className={`mb-0.5 flex gap-3 text-2xs ${isMine ? "justify-end text-[#0e0c0a]/70" : "justify-between text-[var(--nq-muted)]"}`}>
                       {!isMine ? <span className="font-bold text-[var(--nq-copper)]">{msg.sender_name || msg.sender_id}</span> : null}
                       <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                     </div>
-                    <p className="break-words text-[11px] leading-relaxed">{msg.content}</p>
+                    <p className="break-words text-2xs leading-relaxed">{msg.content}</p>
                   </div>
                 </div>
               );
@@ -147,7 +147,7 @@ export function FloatingChatHead() {
             <button
               type="submit"
               disabled={!input.trim()}
-              className="px-3 py-1.5 rounded-xl bg-[var(--nq-copper)] text-white font-bold text-xs hover:opacity-90 disabled:opacity-40 transition"
+              className="px-3 py-1.5 rounded-xl bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-bold text-xs hover:opacity-90 disabled:opacity-40 transition"
             >
               ➤
             </button>
@@ -159,14 +159,14 @@ export function FloatingChatHead() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-13 h-13 rounded-full bg-[var(--nq-copper)] text-white shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center relative p-3.5 border-2 border-white/20"
+        className="w-13 h-13 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center relative p-3.5 border-2 border-white/20"
         title="Chat nội bộ nhân viên"
       >
         <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
           <path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.909 1.455 5.512 3.736 7.172v3.57c0 .545.6.89 1.05.584l3.96-2.64c.405.07.82.114 1.254.114 5.523 0 10-4.145 10-9.258C22 6.145 17.523 2 12 2zm1 13h-2v-2h2v2zm0-4h-2V7h2v4z" />
         </svg>
         {unreadTotal > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center shadow">
+          <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-[var(--nq-st-danger)] text-[var(--nq-accent-ink)] text-2xs font-extrabold flex items-center justify-center shadow">
             {unreadTotal > 9 ? "9+" : unreadTotal}
           </span>
         )}

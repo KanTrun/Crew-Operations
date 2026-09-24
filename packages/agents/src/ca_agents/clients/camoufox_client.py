@@ -125,7 +125,7 @@ def _try_launch() -> None:
         ) from e
 
     try:
-        cm = Camoufox(headless=True)  # type: ignore[no-untyped-call]
+        cm = Camoufox(headless=True)
         browser = cm.__enter__()
         browser.new_page()  # verify binary + system deps thật sự chạy
         cm.__exit__(None, None, None)

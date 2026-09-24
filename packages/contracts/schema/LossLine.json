@@ -1,0 +1,137 @@
+{
+  "$defs": {
+    "LossBasis": {
+      "description": "Dòng hao hụt này tính từ nguồn nào.\n\nNói rõ nguồn để người đọc biết độ tin của con số; đơn quầy là số **ước lượng**\n(`nguon=\"uoc_luong_tu_quay\"`), không phải số bán thật từ Grab/ShopeeFood.",
+      "enum": [
+        "ke_hoach_kiem_ke",
+        "don_quay_thuc_te",
+        "hon_hop"
+      ],
+      "title": "LossBasis",
+      "type": "string"
+    },
+    "LossLevel": {
+      "description": "Mức độ hao hụt của một nguyên liệu, so với ngưỡng đang áp dụng.\n\n`THIEU_DU_LIEU` là nhánh **bắt buộc**: thiếu một vế thì không được suy ra\n\"đạt\" (không có bằng chứng không phải là bằng chứng đạt — fail-closed).",
+      "enum": [
+        "dat",
+        "canh_bao",
+        "nghiem_trong",
+        "thieu_du_lieu"
+      ],
+      "title": "LossLevel",
+      "type": "string"
+    }
+  },
+  "description": "Một dòng hao hụt cho **một mặt hàng**, so lý thuyết với thực tế.\n\n`ly_thuyet` = Σ(BOM nguyên liệu × số phần đã bán); `thuc_te` = lượng đã dùng\nsuy ra từ phiếu kiểm kê.\n\n`lech` được phép **âm**: lệch âm nghĩa là thực tế dùng **ít hơn** lý thuyết —\ndấu hiệu đếm dư hoặc công thức chưa khớp, không phải lỗi dữ liệu.",
+  "properties": {
+    "mat_hang": {
+      "description": "Mã mặt hàng, vd sua_tuoi",
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Mat Hang",
+      "type": "string"
+    },
+    "ten": {
+      "default": "",
+      "description": "Tên người đọc, vd Sữa tươi",
+      "maxLength": 120,
+      "title": "Ten",
+      "type": "string"
+    },
+    "don_vi": {
+      "default": "đơn vị",
+      "description": "Đơn vị tính, vd ml, g, hộp",
+      "maxLength": 16,
+      "title": "Don Vi",
+      "type": "string"
+    },
+    "ly_thuyet": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Lượng theo công thức; None = chưa có đơn để đối chiếu",
+      "title": "Ly Thuyet"
+    },
+    "thuc_te": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Lượng theo kiểm kê; None = chưa gõ phiếu kiểm kê",
+      "title": "Thuc Te"
+    },
+    "lech": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "thuc_te - ly_thuyet; âm = dùng ít hơn lý thuyết",
+      "title": "Lech"
+    },
+    "ty_le_phan_tram": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "lech / ly_thuyet * 100; None khi không có vế lý thuyết",
+      "title": "Ty Le Phan Tram"
+    },
+    "muc_do": {
+      "$ref": "#/$defs/LossLevel",
+      "default": "thieu_du_lieu"
+    },
+    "nguong_phan_tram": {
+      "default": 5.0,
+      "description": "Ngưỡng đang áp dụng cho mặt hàng này",
+      "minimum": 0.0,
+      "title": "Nguong Phan Tram",
+      "type": "number"
+    },
+    "co_so": {
+      "$ref": "#/$defs/LossBasis",
+      "default": "ke_hoach_kiem_ke"
+    },
+    "thieu_ve": {
+      "description": "Vế còn thiếu: 'ly_thuyet' | 'thuc_te'. Rỗng khi đủ hai vế.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Thieu Ve",
+      "type": "array"
+    },
+    "ghi_chu": {
+      "default": "",
+      "maxLength": 300,
+      "title": "Ghi Chu",
+      "type": "string"
+    }
+  },
+  "required": [
+    "mat_hang"
+  ],
+  "title": "LossLine",
+  "type": "object"
+}

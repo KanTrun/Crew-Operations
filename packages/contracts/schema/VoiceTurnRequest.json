@@ -1,0 +1,62 @@
+{
+  "$defs": {
+    "ExperienceRole": {
+      "description": "Vai trò trong không gian trải nghiệm (bản chiếu theo quyền hạn).",
+      "enum": [
+        "khach",
+        "nhan_vien",
+        "quan_ly",
+        "chu_quan"
+      ],
+      "title": "ExperienceRole",
+      "type": "string"
+    }
+  },
+  "description": "Một lượt voice — transcript + context; trả grounded answer.",
+  "properties": {
+    "conversation_id": {
+      "minLength": 1,
+      "title": "Conversation Id",
+      "type": "string"
+    },
+    "transcript": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Transcript",
+      "type": "string"
+    },
+    "store_id": {
+      "default": "quan_01",
+      "title": "Store Id",
+      "type": "string"
+    },
+    "anchor_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Anchor Id"
+    },
+    "role": {
+      "$ref": "#/$defs/ExperienceRole",
+      "default": "nhan_vien"
+    },
+    "requester_id": {
+      "minLength": 1,
+      "title": "Requester Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "conversation_id",
+    "transcript",
+    "requester_id"
+  ],
+  "title": "VoiceTurnRequest",
+  "type": "object"
+}

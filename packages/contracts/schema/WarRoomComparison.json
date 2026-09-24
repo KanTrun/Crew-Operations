@@ -1,0 +1,163 @@
+{
+  "$defs": {
+    "WarRoomOption": {
+      "description": "Một phương án tất định so sánh với baseline.",
+      "properties": {
+        "option_id": {
+          "minLength": 1,
+          "title": "Option Id",
+          "type": "string"
+        },
+        "scenario_id": {
+          "minLength": 1,
+          "title": "Scenario Id",
+          "type": "string"
+        },
+        "input_assumptions": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Input Assumptions",
+          "type": "object"
+        },
+        "outputs": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Outputs",
+          "type": "object"
+        },
+        "staffing": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Staffing",
+          "type": "object"
+        },
+        "load": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Load",
+          "type": "object"
+        },
+        "fairness_impact": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Fairness Impact",
+          "type": "object"
+        },
+        "estimated_cost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Cost"
+        },
+        "estimated_revenue": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Revenue"
+        },
+        "risk": {
+          "default": "",
+          "title": "Risk",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "stale_data": {
+          "default": false,
+          "title": "Stale Data",
+          "type": "boolean"
+        },
+        "constraint_violations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Constraint Violations",
+          "type": "array"
+        },
+        "labels": {
+          "items": {
+            "enum": [
+              "mo_phong",
+              "uoc_tinh"
+            ],
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "array"
+        }
+      },
+      "required": [
+        "option_id",
+        "scenario_id"
+      ],
+      "title": "WarRoomOption",
+      "type": "object"
+    }
+  },
+  "description": "Kết quả so sánh đa phương án: baseline + ít nhất hai option.",
+  "properties": {
+    "simulation_id": {
+      "minLength": 1,
+      "title": "Simulation Id",
+      "type": "string"
+    },
+    "baseline_snapshot_hash": {
+      "minLength": 8,
+      "title": "Baseline Snapshot Hash",
+      "type": "string"
+    },
+    "baseline": {
+      "additionalProperties": true,
+      "title": "Baseline",
+      "type": "object"
+    },
+    "options": {
+      "items": {
+        "$ref": "#/$defs/WarRoomOption"
+      },
+      "title": "Options",
+      "type": "array"
+    }
+  },
+  "required": [
+    "simulation_id",
+    "baseline_snapshot_hash"
+  ],
+  "title": "WarRoomComparison",
+  "type": "object"
+}

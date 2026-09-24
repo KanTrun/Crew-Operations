@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal, cast
 
 from ca_contracts import DongDon, DonQuay, MonNuoc
-from fastapi import APIRouter, File, Header, HTTPException, UploadFile
+from fastapi import APIRouter, File, Header, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -45,6 +45,7 @@ from ca_api.persist import (
 from ca_api.persist import (
     session as auth_session,
 )
+from ca_api.services.menu_image import bytes_anh
 
 router = APIRouter()
 
@@ -298,12 +299,60 @@ def nguoi_deactivate(
 
 
 @router.get("/api/v1/menu/{mon_id}/anh")
-def menu_anh_get(mon_id: str) -> FileResponse:
-    """Ảnh món — public read để <img> không cần Bearer."""
+def menu_anh_get(mon_id: str) -> Response:
+    """Ảnh món — public read để `<img>` không cần Bearer.
+
+    Ba bậc, theo thứ tự ưu tiên:
+
+    1. Ảnh quán tự tải lên (mọi định dạng đã nhận) — luôn thắng ảnh tự sinh.
+    2. Ảnh tự sinh `menu_images/<id>.png` (do `scripts/sinh_anh_mon.py` ghi).
+    3. Sinh **tại chỗ** bằng Pillow, không gọi mạng.
+
+    Bậc 3 là chỗ chốt ràng buộc demo offline (§14.9): máy chưa chạy script sinh
+    ảnh vẫn phải trả ảnh thật, không để lưới menu rơi về chữ cái đầu. Vì hàm vẽ
+    dùng chung `ca_api.services.menu_image`, ảnh ở bậc 2 và bậc 3 giống hệt nhau.
+    """
     path = _menu_image_path(mon_id)
-    if not path:
+    if path:
+        return FileResponse(path)
+
+    mid = mon_id.strip().lower()
+    if not _MON_ID.fullmatch(mid):
         raise HTTPException(status_code=404, detail="khong_co_anh")
-    return FileResponse(path)
+    mon = menu_get(mid)
+    if not mon:
+        raise HTTPException(status_code=404, detail="khong_co_anh")
+
+    cay = {
+        "id": mid,
+        "ten": mon.get("ten") or mid,
+        "gia": mon.get("gia"),
+        "nhom": _nhom_suy_tu_bom(mon.get("bom")),
+    }
+    return Response(
+        content=bytes_anh(cay),
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
+def _nhom_suy_tu_bom(bom: Any) -> str:
+    """Suy nhóm sản phẩm từ công thức để chọn hình đại diện.
+
+    Món không khai nhóm (đường PUT chỉ nhận tên/giá/bom) nên phải suy: có cà phê
+    là nhóm cà phê, có trà/matcha là nhóm trà, chỉ có bánh/kem là nhóm bánh, còn
+    lại mặc định nhóm ly nước. Chỉ ảnh hưởng hình vẽ, không tham gia phép tính.
+    """
+    khoa = {str(k) for k in (bom or {}) if isinstance(bom, dict)}
+    if khoa & {"ca_phe_hat", "ca_phe", "cafe_g"}:
+        return "ca_phe"
+    if khoa & {"tra", "matcha", "tra_g"}:
+        return "tra"
+    if khoa & {"banh", "kem"} and not khoa & {"ly"}:
+        return "banh"
+    if "nuoc_dong_chai" in khoa:
+        return "nuoc_dong_chai"
+    return "tra"
 
 
 @router.post("/api/v1/menu/{mon_id}/anh")

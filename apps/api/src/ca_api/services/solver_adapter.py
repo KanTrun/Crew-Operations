@@ -15,6 +15,29 @@ from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import kv_get, kv_mutate, kv_set
 
 _ROOT = Path(__file__).resolve().parents[5]
+
+# Ngân sách thời gian cho CP-SAT.
+#
+# Vì sao không để 60s: `solve_cpsat` dùng HẾT ngân sách để chứng minh phương án
+# đã tối ưu (objective = max_debt*1000 + điểm mềm). Đo trên dữ liệu thật của quán
+# (25 nhân viên / 70 ca) bằng `scripts/bench_solver_budget.py`:
+#
+#     ngân sách   thời gian thực   objective   vi phạm
+#        2.0s          1.63s        200014        0
+#        8.0s          7.64s        200006        0
+#       15.0s         14.65s        200002        0
+#       60.0s         59.66s        200002        0
+#
+# Từ 15s trở lên cho ra CÙNG một phương án như 60s (chênh 0, cùng 0 vi phạm).
+# 45 giây còn lại không mua thêm gì — chỉ để solver tự chứng minh tối ưu, việc
+# không ai đọc. Đổi lại, 60s đẩy tổng thời gian một lượt chat vượt ngưỡng chờ
+# của client (60s trong `scripts/e2e_http_copilot.py`), gây `TimeoutError` chập
+# chờn: cùng một câu hỏi, lần chạy 59.9s thì lọt, lần chạy 60.1s thì vỡ.
+# 15s vừa giữ nguyên chất lượng lịch, vừa chừa biên an toàn gấp ~4 lần.
+#
+# Đặt qua `CA_SOLVER_TIME_LIMIT_S` (mặc định `_DEFAULT_TIME_LIMIT_S` trong
+# `ca_solver.cpsat`) để mọi đường gọi — kể cả copilot — dùng cùng một ngân sách.
+
 _DAYS = ("T2", "T3", "T4", "T5", "T6", "T7", "CN")
 _SHIFT_FRAMES = {
     "Sáng": ("06:30", "12:00"),

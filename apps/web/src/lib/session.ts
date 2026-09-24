@@ -70,6 +70,9 @@ const STAFF_ACCESS = new Set([
   "/them",
   "/contracts",
   "/chat",
+  // Grand AI Experience — HỒN QUÁN Spatial Memory + Living Map mở cho mọi vai trò
+  "/quanverse",
+  "/quanverse/spatial-memory",
 ]);
 const MANAGER_ONLY = new Set([
   "/lich-tuan",
@@ -88,6 +91,10 @@ const MANAGER_ONLY = new Set([
   "/giai-thich",
   "/de-xuat-thong-minh",
   "/thu-nghiem-an-toan",
+  // Grand AI Experience Portfolio — War Room / Shift Rescue / luật là manager-only
+  "/quanverse/war-room",
+  "/quanverse/shift-rescue",
+  "/quanverse/rules",
 ]);
 const OWNER_ONLY = new Set(["/menu", "/nguoi"]);
 

@@ -25,6 +25,7 @@ from ca_agents.ag_pricing.job_manager import get_job_store as _get_job_store
 from ca_agents.ag_sop import answer as _sop_answer
 from ca_agents.ag_tkb.extract import extract_tkb as _extract_tkb
 from ca_agents.ag_waste import cluster as _waste_cluster
+from ca_agents.ag_waste import tinh_tu_nguon as _loss_engine
 from ca_agents.clients.serpapi_client import (
     get_circuit_breaker as _get_circuit_breaker,
 )
@@ -64,12 +65,16 @@ from ca_api.interfaces.http.channels import router as channels_router
 from ca_api.interfaces.http.chat import router as chat_router
 from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.copilot_voice import router as copilot_voice_router
+from ca_api.interfaces.http.experience import router as experience_router
+from ca_api.interfaces.http.experience_rules import router as experience_rules_router
 from ca_api.interfaces.http.gmail import router as gmail_router
+from ca_api.interfaces.http.hao_hut import router as hao_hut_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.ops_explain import router as ops_explain_router
 from ca_api.interfaces.http.ops_predict import router as ops_predict_router
 from ca_api.interfaces.http.pos import router as pos_router
+from ca_api.interfaces.http.quanverse import router as quanverse_router
 
 try:
     from ca_api.interfaces.http.pricing_radar import (
@@ -82,10 +87,13 @@ except ImportError:
     pricing_radar_router = None  # type: ignore[assignment]
     serpapi_system_router = None  # type: ignore[assignment]
 from ca_api.interfaces.http.reservations import router as reservations_router
+from ca_api.interfaces.http.shift_rescue import router as shift_rescue_router
 from ca_api.interfaces.http.skills import router as skills_router
+from ca_api.interfaces.http.spatial_memory import router as spatial_memory_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
 from ca_api.interfaces.http.trends import router as trends_router
+from ca_api.interfaces.http.war_room import router as war_room_router
 from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import (
     DangKyLoi,
@@ -241,13 +249,18 @@ async def broadcast_successful_mutation(request: Request, call_next: Any) -> Any
 
 app.include_router(sprint3_router)
 app.include_router(sprint45_router)
+app.include_router(hao_hut_router)
 app.include_router(channels_router)
 app.include_router(copilot_router)
 app.include_router(copilot_voice_router)
 app.include_router(pos_router)
+app.include_router(quanverse_router)
 app.include_router(meeting_router)
 app.include_router(ops_explain_router)
 app.include_router(ops_predict_router)
+app.include_router(experience_router)
+app.include_router(experience_rules_router)
+app.include_router(war_room_router)
 app.include_router(trends_router)
 if pricing_radar_router:
     app.include_router(pricing_radar_router)
@@ -258,6 +271,8 @@ app.include_router(gmail_router)
 app.include_router(ai_learning_router)
 app.include_router(chat_router)
 app.include_router(reservations_router)
+app.include_router(shift_rescue_router)
+app.include_router(spatial_memory_router)
 app.include_router(skills_router)
 
 
@@ -419,6 +434,9 @@ configure_data_sources(
     de_xuat=_de_xuat,
     sop_answer=_sop_answer,
     waste_cluster=_waste_cluster,
+    # Động cơ hao hụt: CÙNG hàm mà GET /api/v1/hao-hut gọi, nên câu trả lời của
+    # agent mẹ và con số trên trang Hao phí không thể lệch nhau.
+    loss_engine=_loss_engine,
     list_ca_meta=_list_ca_meta,
     draft_mail=_draft_mail_with_active_rules,
     get_user_emails=get_user_emails,

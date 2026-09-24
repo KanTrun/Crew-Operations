@@ -670,8 +670,8 @@ export default function RosterPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
           <div>
             <p className="nq-kicker">Vận hành tuần</p>
-            <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-[var(--nq-copper)]">
-              {viewMode === "my_shifts" ? "Lịch Đi Làm Của Tôi" : "Lịch Toàn Quán (Full Ca)"}
+            <h1 className="nq-page-title text-[var(--nq-copper)]">
+              {viewMode === "my_shifts" ? "Lịch đi làm của tôi" : "Lịch toàn quán"}
             </h1>
             <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
               Hỏi trợ lý vận hành
@@ -679,14 +679,14 @@ export default function RosterPage() {
           </div>
 
           {/* Mode Switcher: My Shifts vs Full Roster */}
-          <div className="flex items-center gap-1.5 p-1 bg-neutral-900/80 border border-neutral-800 rounded-lg">
+          <div className="flex items-center gap-1.5 p-1 bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] rounded-lg">
             <button
               type="button"
               onClick={() => setViewMode("my_shifts")}
               className={`px-3 py-1.5 text-xs font-bold rounded transition-all ${
                 viewMode === "my_shifts"
-                  ? "bg-amber-600 text-neutral-950 shadow"
-                  : "text-neutral-400 hover:text-neutral-200"
+                  ? "bg-[var(--nq-st-warn)] text-[var(--nq-accent-ink)] shadow"
+                  : "text-[var(--nq-ink-muted)] hover:text-[var(--nq-ink)]"
               }`}
             >
               Lịch của tôi ({totalMyShifts} ca)
@@ -696,8 +696,8 @@ export default function RosterPage() {
               onClick={() => setViewMode("all")}
               className={`px-3 py-1.5 text-xs font-bold rounded transition-all ${
                 viewMode === "all"
-                  ? "bg-amber-600 text-neutral-950 shadow"
-                  : "text-neutral-400 hover:text-neutral-200"
+                  ? "bg-[var(--nq-st-warn)] text-[var(--nq-accent-ink)] shadow"
+                  : "text-[var(--nq-ink-muted)] hover:text-[var(--nq-ink)]"
               }`}
             >
               Toàn quán
@@ -820,14 +820,14 @@ export default function RosterPage() {
               <summary className="nq-btn px-3 py-1 text-sm cursor-pointer list-none">
                 {icsBusy ? "Đang xuất…" : "Xuất lịch"}
               </summary>
-              <div className="absolute right-0 z-20 mt-2 min-w-48 rounded border border-neutral-700 bg-neutral-950 p-2 shadow-xl">
+              <div className="absolute right-0 z-20 mt-2 min-w-48 rounded border border-[var(--nq-line)] bg-[var(--nq-bg)] p-2 shadow-xl">
                 {(["ics", "xlsx", "pdf"] as const).map((format) => (
                   <button
                     key={format}
                     type="button"
                     disabled={icsBusy}
                     onClick={() => void taiLich(format)}
-                    className="block w-full rounded px-3 py-2 text-left text-sm text-neutral-200 hover:bg-neutral-800"
+                    className="block w-full rounded px-3 py-2 text-left text-sm text-[var(--nq-ink)] hover:bg-[var(--nq-surface)]"
                   >
                     {format === "ics" ? "Lịch điện tử (.ics)" : format === "xlsx" ? "Excel (.xlsx)" : "PDF (.pdf)"}
                   </button>
@@ -850,7 +850,7 @@ export default function RosterPage() {
             </p>
           ) : null}
           {data?.solver?.status ? (
-            <p className="font-mono text-[10px] text-[var(--nq-dim)]">
+            <p className="font-mono text-2xs text-[var(--nq-dim)]">
               Nguồn: máy xếp {data.solver.status}
               {data.solver.elapsed_s != null ? ` · ${data.solver.elapsed_s}s` : ""}
             </p>
@@ -860,9 +860,9 @@ export default function RosterPage() {
 
       {/* Cảnh báo nhân sự chưa chốt lịch (Dành cho Quản lý) */}
       {canWrite && (data?.chua_xac_nhan?.length ?? 0) > 0 && (
-        <div className="mb-6 p-4 rounded-xl bg-amber-950/30 border border-amber-500/50 shadow-md space-y-3 ops-animate-in">
+        <div className="mb-6 p-4 rounded-xl bg-[var(--nq-st-warn-soft)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] shadow-md space-y-3 ops-animate-in">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
+            <div className="flex items-center gap-2 text-[var(--nq-st-warn-ink)] font-bold text-sm">
               <Icon name="warn" size={16} />
               <span>
                 Phát hiện {data?.chua_xac_nhan?.length} nhân sự chưa xác nhận lịch tuần {currentDisplayWeek}
@@ -873,7 +873,7 @@ export default function RosterPage() {
                 type="button"
                 disabled={nvStatusBusy}
                 onClick={() => void handleNvStatus("all", "xac_nhan")}
-                className="py-1.5 px-3 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                className="py-1.5 px-3 rounded bg-[var(--nq-st-ok)] hover:bg-[var(--nq-st-ok)] text-[var(--nq-accent-ink)] text-xs font-bold transition-all shadow flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 title="Xác nhận giữ ca cho toàn bộ nhân sự đang chờ"
               >
                 ✓ Xác nhận giữ ca cho tất cả ({data?.chua_xac_nhan?.length} nhân sự)
@@ -882,7 +882,7 @@ export default function RosterPage() {
                 <button
                   type="button"
                   onClick={() => setShowAllUnconfirmed(!showAllUnconfirmed)}
-                  className="py-1.5 px-3 rounded border border-amber-600/60 bg-amber-950/60 hover:bg-amber-900 text-amber-200 text-xs font-semibold transition-all cursor-pointer"
+                  className="py-1.5 px-3 rounded border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-warn-soft)] hover:bg-[var(--nq-st-warn)] text-[var(--nq-st-warn-ink)] text-xs font-semibold transition-all cursor-pointer"
                 >
                   {showAllUnconfirmed ? "▲ Thu gọn bớt" : `▼ Xem tất cả (${data?.chua_xac_nhan?.length})`}
                 </button>
@@ -890,7 +890,7 @@ export default function RosterPage() {
             </div>
           </div>
 
-          <p className="text-xs text-neutral-400 italic">
+          <p className="text-xs text-[var(--nq-ink-muted)] italic">
             Đã xếp dự thảo theo ca mẫu/lịch sử — Quản lý có thể bấm xác nhận giữ ca tất cả hoặc điều chỉnh từng người:
           </p>
 
@@ -898,26 +898,26 @@ export default function RosterPage() {
             {(showAllUnconfirmed ? data?.chua_xac_nhan : data?.chua_xac_nhan?.slice(0, 6))?.map((nv) => (
               <div
                 key={nv.id}
-                className="p-3 rounded-lg bg-neutral-900/90 border border-amber-800/40 flex flex-col justify-between gap-2.5 shadow-sm"
+                className="p-3 rounded-lg bg-[var(--nq-bg-elevated)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] flex flex-col justify-between gap-2.5 shadow-sm"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-sm text-neutral-100">{nv.ten}</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700">
+                    <span className="font-bold text-sm text-[var(--nq-ink)]">{nv.ten}</span>
+                    <span className="text-2xs font-mono px-2 py-0.5 rounded bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]">
                       {nv.so_ca_du_kien} ca dự kiến
                     </span>
                   </div>
-                  <p className="text-[11px] text-neutral-400 mt-1">
+                  <p className="text-2xs text-[var(--nq-ink-muted)] mt-1">
                     Chưa đăng ký ca hoặc chưa gửi lịch bận tuần này.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-1.5 pt-2 border-t border-neutral-800">
+                <div className="flex items-center gap-1.5 pt-2 border-t border-[var(--nq-line)]">
                   <button
                     type="button"
                     disabled={nvStatusBusy}
                     onClick={() => void handleNvStatus(nv.id, "xac_nhan")}
-                    className="flex-1 py-1 px-2 rounded bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1"
+                    className="flex-1 py-1 px-2 rounded bg-[var(--nq-st-ok-soft)] hover:bg-[var(--nq-st-ok)] text-[var(--nq-st-ok-ink)] text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1"
                     title="Xác nhận nhân viên này đồng ý làm các ca đã xếp"
                   >
                     <Icon name="check" size={12} /> Giữ ca
@@ -926,7 +926,7 @@ export default function RosterPage() {
                     type="button"
                     disabled={nvStatusBusy}
                     onClick={() => void handleNvStatus(nv.id, "du_bi")}
-                    className="flex-1 py-1 px-2 rounded bg-amber-900/80 hover:bg-amber-800 text-amber-200 text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1"
+                    className="flex-1 py-1 px-2 rounded bg-[var(--nq-st-warn-soft)] hover:bg-[var(--nq-st-warn)] text-[var(--nq-st-warn-ink)] text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1"
                     title="Tháo khỏi ca cố định, đưa vào danh sách On-Call sẵn sàng thay ca"
                   >
                     <Icon name="call" size={12} /> Dự bị
@@ -935,7 +935,7 @@ export default function RosterPage() {
                     type="button"
                     disabled={nvStatusBusy}
                     onClick={() => void handleNvStatus(nv.id, "bo_ca")}
-                    className="flex-1 py-1 px-2 rounded bg-neutral-800 hover:bg-rose-950 text-neutral-300 hover:text-rose-300 text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1"
+                    className="flex-1 py-1 px-2 rounded bg-[var(--nq-surface)] hover:bg-[var(--nq-st-danger)] text-[var(--nq-accent-ink)] hover:text-[var(--nq-st-danger-ink)] text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1"
                     title="Không xếp ca cho nhân viên này tuần này"
                   >
                     <Icon name="x-mark" size={12} /> Bỏ ca
@@ -950,7 +950,7 @@ export default function RosterPage() {
               <button
                 type="button"
                 onClick={() => setShowAllUnconfirmed(true)}
-                className="text-xs text-amber-400 hover:text-amber-300 underline font-medium cursor-pointer"
+                className="text-xs text-[var(--nq-st-warn-ink)] hover:text-[var(--nq-st-warn-ink)] underline font-medium cursor-pointer"
               >
                 ... và còn {(data?.chua_xac_nhan?.length ?? 0) - 6} nhân sự khác chưa chốt. Bấm để xem toàn bộ danh sách.
               </button>
@@ -961,17 +961,17 @@ export default function RosterPage() {
 
       {/* Danh sách nhân sự Dự bị On-Call tuần này */}
       {canWrite && (data?.du_bi?.length ?? 0) > 0 && (
-        <div className="mb-6 p-3 rounded-lg bg-neutral-900/60 border border-neutral-800 flex items-center justify-between flex-wrap gap-2 ops-animate-in">
+        <div className="mb-6 p-3 rounded-lg bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] flex items-center justify-between flex-wrap gap-2 ops-animate-in">
           <div className="flex items-center gap-2 flex-wrap">
             <Icon name="phone" size={16} />
-            <span className="text-xs font-bold text-neutral-300">
+            <span className="text-xs font-bold text-[var(--nq-ink)]">
               Nhân sự Trực dự bị (On-Call) tuần {currentDisplayWeek} ({data?.du_bi?.length}):
             </span>
             <div className="flex flex-wrap gap-1.5">
               {data?.du_bi?.map((nv) => (
                 <span
                   key={nv.id}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-neutral-800 border border-neutral-700 text-xs text-amber-200 font-medium"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--nq-surface)] border border-[var(--nq-line)] text-xs text-[var(--nq-st-warn-ink)] font-medium"
                 >
                   {nv.ten}
                   <button
@@ -979,7 +979,7 @@ export default function RosterPage() {
                     disabled={nvStatusBusy}
                     onClick={() => void handleNvStatus(nv.id, "dat_lai")}
                     title="Hoàn tác đưa về chưa xác nhận"
-                    className="text-neutral-400 hover:text-rose-300 ml-0.5 font-bold"
+                    className="text-[var(--nq-ink-muted)] hover:text-[var(--nq-st-danger-ink)] ml-0.5 font-bold"
                   >
                     ×
                   </button>
@@ -987,7 +987,7 @@ export default function RosterPage() {
               ))}
             </div>
           </div>
-          <p className="text-[11px] text-neutral-400">
+          <p className="text-2xs text-[var(--nq-ink-muted)]">
             Sẵn sàng gọi tăng cường khi có người báo ốm hoặc bận đột xuất.
           </p>
         </div>
@@ -1003,7 +1003,7 @@ export default function RosterPage() {
             <div>
               <h3>6 ràng buộc cứng — bắt buộc đạt</h3>
               <p>Không trùng lịch học; đủ người và kỹ năng; không trùng ca; đủ thời gian nghỉ; không vượt giờ tuần; tôn trọng nghỉ đã duyệt.</p>
-              <p className={data?.kiem_tra?.hard?.passed ? "text-emerald-300" : "text-amber-300"}>
+              <p className={data?.kiem_tra?.hard?.passed ? "text-[var(--nq-st-ok-ink)]" : "text-[var(--nq-st-warn-ink)]"}>
                 Kết quả: {data?.kiem_tra?.hard?.passed ? "Đạt C01–C06" : "Chưa có lần kiểm tra đạt"}
               </p>
             </div>
@@ -1015,8 +1015,8 @@ export default function RosterPage() {
               </p>
             </div>
           </div>
-          <div className="mt-3 border-t border-neutral-800 pt-3 text-xs text-neutral-400">
-            <strong className="text-neutral-200">VF không phải ràng buộc CP-SAT.</strong>{" "}
+          <div className="mt-3 border-t border-[var(--nq-line)] pt-3 text-xs text-[var(--nq-ink-muted)]">
+            <strong className="text-[var(--nq-ink)]">VF không phải ràng buộc CP-SAT.</strong>{" "}
             {data?.kiem_tra?.vf?.message ?? "VF-SCHEMA, TRACE, CONF, CONFLICT kiểm dữ liệu agent; VF-NUM kiểm lời giải thích; VF-RULE kiểm luật học."}
           </div>
         </details>
@@ -1029,13 +1029,13 @@ export default function RosterPage() {
         <div className="space-y-4">
           {/* Employee self-confirmation banner */}
           {data?.nv_status_map?.[targetNvId] === "chua_xac_nhan" && totalMyShifts > 0 && (
-            <div className="p-4 rounded-lg bg-amber-950/30 border border-amber-600/50 flex items-center justify-between flex-wrap gap-3">
+            <div className="p-4 rounded-lg bg-[var(--nq-st-warn-soft)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] flex items-center justify-between flex-wrap gap-3">
               <div>
-                <h4 className="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                <h4 className="text-sm font-bold text-[var(--nq-st-warn-ink)] flex items-center gap-1.5">
                   <Icon name="warn" size={16} />
                   Bạn chưa xác nhận lịch đi làm tuần này
                 </h4>
-                <p className="text-xs text-neutral-300 mt-0.5">
+                <p className="text-xs text-[var(--nq-ink)] mt-0.5">
                   Hệ thống đã xếp dự thảo <strong>{totalMyShifts} ca</strong> cho bạn. Bấm xác nhận bên cạnh để Quản lý chốt lịch chính thức.
                 </p>
               </div>
@@ -1043,7 +1043,7 @@ export default function RosterPage() {
                 type="button"
                 disabled={nvStatusBusy}
                 onClick={() => void handleSelfConfirm()}
-                className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-neutral-950 text-xs font-bold shadow transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                className="px-4 py-2 rounded bg-[var(--nq-st-ok)] hover:bg-[var(--nq-st-ok)] text-[var(--nq-accent-ink)] text-xs font-bold shadow transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
               >
                 {nvStatusBusy ? "Đang lưu…" : <><Icon name="check" size={14} /> Xác nhận đi làm các ca trên</>}
               </button>
@@ -1051,19 +1051,19 @@ export default function RosterPage() {
           )}
 
           {/* Summary Card */}
-          <div className="p-4 rounded-lg bg-emerald-950/20 border border-emerald-700/40 flex items-center justify-between flex-wrap gap-3">
+          <div className="p-4 rounded-lg bg-[var(--nq-st-ok-soft)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h3 className="text-sm font-bold text-emerald-300">
+              <h3 className="text-sm font-bold text-[var(--nq-st-ok-ink)]">
                 Tuần {currentDisplayWeek} của bạn
               </h3>
-              <p className="text-xs text-neutral-300 mt-0.5">
+              <p className="text-xs text-[var(--nq-ink)] mt-0.5">
                 Bạn có <strong>{myAssignedDays.length} ngày đi làm</strong> với tổng cộng <strong>{totalMyShifts} ca làm việc</strong>.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setViewMode("all")}
-              className="text-xs font-mono px-3 py-1.5 rounded bg-emerald-900/60 text-emerald-200 border border-emerald-600 hover:bg-emerald-800"
+              className="text-xs font-mono px-3 py-1.5 rounded bg-[var(--nq-st-ok-soft)] text-[var(--nq-st-ok-ink)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] hover:bg-[var(--nq-st-ok)]"
             >
               Xem lịch toàn quán →
             </button>
@@ -1075,31 +1075,31 @@ export default function RosterPage() {
               {myAssignedDays.map((item) => (
                 <div
                   key={item.day}
-                  className="p-4 rounded-lg bg-neutral-900/80 border border-emerald-800/40 shadow-sm hover:border-emerald-600 transition-all space-y-3"
+                  className="p-4 rounded-lg bg-[var(--nq-bg-elevated)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] shadow-sm hover:border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] transition-all space-y-3"
                 >
-                  <div className="flex justify-between items-center pb-2 border-b border-neutral-800">
-                    <span className="font-bold text-base text-emerald-300">
+                  <div className="flex justify-between items-center pb-2 border-b border-[var(--nq-line)]">
+                    <span className="font-bold text-base text-[var(--nq-st-ok-ink)]">
                       {dayTitle(item.day)}
                     </span>
-                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-neutral-800 text-neutral-300">
+                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-[var(--nq-surface)] text-[var(--nq-ink)]">
                       {item.dateStr}
                     </span>
                   </div>
 
                   <div className="space-y-2.5">
                     {item.shifts.map(({ shift, coworkers }, sIdx) => (
-                        <div key={sIdx} className="p-2.5 rounded bg-neutral-950/60 border border-neutral-800 space-y-1.5">
+                        <div key={sIdx} className="p-2.5 rounded bg-[var(--nq-bg)] border border-[var(--nq-line)] space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-bold text-neutral-200">
+                            <span className="text-xs font-bold text-[var(--nq-ink)]">
                               {shiftRowLabel(shift, shift.khung ?? "", khungGio)}
                             </span>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-900/70 text-emerald-300 font-bold border border-emerald-700">
+                            <span className="text-2xs font-mono px-2 py-0.5 rounded bg-[var(--nq-st-ok-soft)] text-[var(--nq-st-ok-ink)] font-bold border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))]">
                               {viTriLabel(shift.vi_tri)}
                             </span>
                           </div>
 
                           {coworkers.length > 0 && (
-                            <p className="text-[11px] text-neutral-400">
+                            <p className="text-2xs text-[var(--nq-ink-muted)]">
                               Cùng ca: {coworkers.map((id) => nvName(id)).join(", ")}
                             </p>
                           )}
@@ -1110,12 +1110,12 @@ export default function RosterPage() {
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center bg-neutral-900/40 rounded-lg border border-neutral-800 space-y-2">
-              <p className="text-neutral-400 text-sm">Tuần này bạn chưa có ca làm việc nào được phân công.</p>
+            <div className="p-8 text-center bg-[var(--nq-bg-elevated)] rounded-lg border border-[var(--nq-line)] space-y-2">
+              <p className="text-[var(--nq-ink-muted)] text-sm">Tuần này bạn chưa có ca làm việc nào được phân công.</p>
               <button
                 type="button"
                 onClick={() => setViewMode("all")}
-                className="text-xs font-bold text-amber-400 hover:underline"
+                className="text-xs font-bold text-[var(--nq-st-warn-ink)] hover:underline"
               >
                 Nhấn vào đây để xem toàn bộ lịch quán
               </button>
@@ -1139,10 +1139,10 @@ export default function RosterPage() {
           />
 
           {canWrite && (data?.open_shifts?.length ?? 0) > 0 ? (
-            <section className="border border-amber-700/50 bg-amber-950/20 p-4">
+            <section className="border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-warn-soft)] p-4">
               <div className="mb-3">
-                <h3 className="text-sm font-bold text-amber-300">Ca còn thiếu người</h3>
-                <p className="mt-1 text-xs text-neutral-400">
+                <h3 className="text-sm font-bold text-[var(--nq-st-warn-ink)]">Ca còn thiếu người</h3>
+                <p className="mt-1 text-xs text-[var(--nq-ink-muted)]">
                   Lịch chưa thể duyệt khi còn ca mở. Chọn một nhân sự phù hợp để ghim và chạy lại lịch.
                 </p>
               </div>
@@ -1150,18 +1150,18 @@ export default function RosterPage() {
                 {data?.open_shifts?.map((openShift) => {
                   const shift = shifts.find((item) => item.id === openShift.ca_id);
                   return (
-                    <div key={openShift.id} className="grid gap-2 border-t border-amber-900/50 pt-3 sm:grid-cols-[1fr_minmax(12rem,18rem)_auto] sm:items-center">
+                    <div key={openShift.id} className="grid gap-2 border-t border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] pt-3 sm:grid-cols-[1fr_minmax(12rem,18rem)_auto] sm:items-center">
                       <div>
-                        <p className="text-sm font-semibold text-neutral-100">
+                        <p className="text-sm font-semibold text-[var(--nq-ink)]">
                           {shift ? shiftRowLabel(shift, shift.khung, khungGio) : openShift.ca_id}
                         </p>
-                        <p className="text-xs text-neutral-500">Hạn nhận: {new Date(openShift.deadline_at).toLocaleString("vi-VN")}</p>
+                        <p className="text-xs text-[var(--nq-ink-muted)]">Hạn nhận: {new Date(openShift.deadline_at).toLocaleString("vi-VN")}</p>
                       </div>
                       <select
                         aria-label={`Nhân sự cho ${openShift.ca_id}`}
                         value={gapStaff[openShift.id] ?? openShift.claimed_by ?? ""}
                         onChange={(event) => setGapStaff((current) => ({ ...current, [openShift.id]: event.target.value }))}
-                        className="min-h-10 border border-neutral-700 bg-neutral-950 px-3 text-sm text-neutral-100"
+                        className="min-h-10 border border-[var(--nq-line)] bg-[var(--nq-bg)] px-3 text-sm text-[var(--nq-ink)]"
                       >
                         <option value="">Chọn nhân sự</option>
                         {data?.nhan_vien?.map((employee) => (
@@ -1172,7 +1172,7 @@ export default function RosterPage() {
                         type="button"
                         disabled={gapBusy !== null || !(gapStaff[openShift.id] ?? openShift.claimed_by) || !data?.schedule_run}
                         onClick={() => void resolveGap(openShift)}
-                        className="min-h-10 bg-amber-500 px-4 text-xs font-bold text-neutral-950 hover:bg-amber-400 disabled:opacity-50"
+                        className="min-h-10 bg-[var(--nq-st-warn)] px-4 text-xs font-bold text-[var(--nq-accent-ink)] hover:bg-[var(--nq-st-warn)] disabled:opacity-50"
                       >
                         {gapBusy === openShift.id ? "Đang chạy…" : openShift.claimed_by ? "Duyệt và chạy lại" : "Ghim và chạy lại"}
                       </button>
@@ -1256,13 +1256,13 @@ export default function RosterPage() {
             onClick={(event) => event.stopPropagation()}
           >
             {/* Header — ngày dễ đọc + trạng thái lịch bằng lời */}
-            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-neutral-800 bg-neutral-900 p-4 sm:p-6 sm:pb-4">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--nq-line)] bg-[var(--nq-bg-elevated)] p-4 sm:p-6 sm:pb-4">
               <div>
-                <h3 id="roster-day-title" className="text-lg font-bold text-amber-400">
+                <h3 id="roster-day-title" className="text-lg font-bold text-[var(--nq-st-warn-ink)]">
                   {dayTitle(selectedDay)} · {dayDate(monday, dayOffsets[days.indexOf(selectedDay)])}
                 </h3>
-                <p className="text-xs text-neutral-400">
-                  Trạng thái lịch: <strong className="text-neutral-200">{lifeLabel(trangThai)}</strong>
+                <p className="text-xs text-[var(--nq-ink-muted)]">
+                  Trạng thái lịch: <strong className="text-[var(--nq-ink)]">{lifeLabel(trangThai)}</strong>
                   {data?.nguon_lich === "chua_xep"
                     ? " — chưa chạy máy xếp, lịch đang trống"
                     : data?.solver?.status
@@ -1273,7 +1273,7 @@ export default function RosterPage() {
               <button
                 type="button"
                 onClick={() => setSelectedDay(null)}
-                className="px-3 py-1 text-xs font-bold uppercase tracking-widest text-neutral-400 hover:text-amber-400 inline-flex items-center gap-1"
+                className="px-3 py-1 text-xs font-bold uppercase tracking-widest text-[var(--nq-ink-muted)] hover:text-[var(--nq-st-warn-ink)] inline-flex items-center gap-1"
               >
                 Đóng <Icon name="close" size={14} />
               </button>
@@ -1283,12 +1283,12 @@ export default function RosterPage() {
 
             {/* Kết quả thao tác hiện NGAY trong modal — không bao giờ bị che */}
             {error ? (
-              <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-sm">
+              <div className="p-3 rounded-lg bg-[var(--nq-st-danger-soft)] border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] text-[var(--nq-st-danger-ink)] text-sm">
                 {error}
               </div>
             ) : null}
             {lifecycleMsg ? (
-              <div className="p-3 rounded-lg bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-sm">
+              <div className="p-3 rounded-lg bg-[var(--nq-st-ok-soft)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] text-[var(--nq-st-ok-ink)] text-sm">
                 {lifecycleMsg}
               </div>
             ) : null}
@@ -1300,9 +1300,9 @@ export default function RosterPage() {
                 return (
                   <div key={khung} className="space-y-3">
                     {shifts.length === 0 ? (
-                      <div className="p-4 rounded-lg bg-neutral-950 border border-neutral-800">
-                        <span className="font-bold text-sm text-neutral-200">{KHUNG_TEN[khung]}</span>
-                        <span className="shrink-0 text-xs text-neutral-500 italic">
+                      <div className="p-4 rounded-lg bg-[var(--nq-bg)] border border-[var(--nq-line)]">
+                        <span className="font-bold text-sm text-[var(--nq-ink)]">{KHUNG_TEN[khung]}</span>
+                        <span className="shrink-0 text-xs text-[var(--nq-ink-muted)] italic">
                           Không có ca này trong mẫu tuần
                         </span>
                       </div>
@@ -1312,22 +1312,22 @@ export default function RosterPage() {
                       const soNguoi = assigned.length;
                       const khacCa = data?.nhan_vien?.filter((nv) => !assigned.includes(nv.id)) ?? [];
                       return (
-                        <div key={shift.id} className="p-4 rounded-lg bg-neutral-950 border border-neutral-800 space-y-3">
+                        <div key={shift.id} className="p-4 rounded-lg bg-[var(--nq-bg)] border border-[var(--nq-line)] space-y-3">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-bold text-sm text-neutral-200 truncate">
+                              <span className="font-bold text-sm text-[var(--nq-ink)] truncate">
                                 {shiftRowLabel(shift, khung, khungGio)}
                               </span>
-                              <span className="shrink-0 text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 uppercase">
+                              <span className="shrink-0 text-2xs font-mono px-2 py-0.5 rounded bg-[var(--nq-surface)] text-[var(--nq-ink)] uppercase">
                                 {viTriLabel(shift.vi_tri)}
                               </span>
                             </div>
                             {soNguoi >= can ? (
-                              <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-300 border border-emerald-700">Đủ {soNguoi}/{can} người</span>
+                              <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-[var(--nq-st-ok-soft)] text-[var(--nq-st-ok-ink)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))]">Đủ {soNguoi}/{can} người</span>
                             ) : soNguoi > 0 ? (
-                              <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700">Thiếu {can - soNguoi} (cần {can})</span>
+                              <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]">Thiếu {can - soNguoi} (cần {can})</span>
                             ) : (
-                              <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-rose-900/60 text-rose-300 border border-rose-700">Chưa có ai (cần {can})</span>
+                              <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-[var(--nq-st-danger-soft)] text-[var(--nq-st-danger-ink)] border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))]">Chưa có ai (cần {can})</span>
                             )}
                           </div>
 
@@ -1336,15 +1336,15 @@ export default function RosterPage() {
                         {assigned.map((nv_id) => (
                           <span
                             key={nv_id}
-                            className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-neutral-900 border border-neutral-700 text-xs text-neutral-100 font-medium"
+                            className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] text-xs text-[var(--nq-ink)] font-medium"
                           >
                             {nvName(nv_id)}
                             {pinSet.has(`${shift.id}|${nv_id}`) ? (
-                              <span className="text-[10px] text-amber-300">Đã ghim</span>
+                              <span className="text-2xs text-[var(--nq-st-warn-ink)]">Đã ghim</span>
                             ) : null}
                             {data?.nv_status_map?.[nv_id] === "chua_xac_nhan" && (
                               <span
-                                className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/60"
+                                className="inline-flex items-center gap-1 text-2xs font-mono px-1.5 py-0.5 rounded bg-[var(--nq-st-warn)] text-[var(--nq-st-warn-ink)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]"
                                 title="Nhân viên chưa gửi lịch bận / xác nhận đi làm tuần này"
                               >
                                 <Icon name="warn" size={10} /> Chưa chốt
@@ -1360,7 +1360,7 @@ export default function RosterPage() {
                                   nv_id,
                                   !pinSet.has(`${shift.id}|${nv_id}`),
                                 )}
-                                className="rounded bg-neutral-800 px-2 py-1 text-[10px] text-neutral-300 hover:text-amber-300"
+                                className="rounded bg-[var(--nq-surface)] px-2 py-1 text-2xs text-[var(--nq-ink)] hover:text-[var(--nq-st-warn-ink)]"
                               >
                                 {pinSet.has(`${shift.id}|${nv_id}`) ? "Bỏ ghim" : "Ghim"}
                               </button>
@@ -1371,14 +1371,14 @@ export default function RosterPage() {
                     ) : null}
 
                         {canWrite && ["nhap", "cho_duyet"].includes(trangThai) ? (
-                      <div className="pt-2 border-t border-neutral-900">
+                      <div className="pt-2 border-t border-[var(--nq-line)]">
                         <details className="group">
-                          <summary className="cursor-pointer text-xs font-bold text-amber-400 hover:text-amber-300 list-none inline-flex items-center gap-1">
+                          <summary className="cursor-pointer text-xs font-bold text-[var(--nq-st-warn-ink)] hover:text-[var(--nq-st-warn-ink)] list-none inline-flex items-center gap-1">
                             <Icon name="plus" size={14} /> Thêm người vào ca
                           </summary>
                           <div className="mt-2 flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
                             {khacCa.length === 0 ? (
-                              <p className="text-xs text-neutral-500 italic">Mọi nhân viên đã ở trong ca này.</p>
+                              <p className="text-xs text-[var(--nq-ink-muted)] italic">Mọi nhân viên đã ở trong ca này.</p>
                             ) : (
                               khacCa.map((nv) => (
                                 <button
@@ -1386,7 +1386,7 @@ export default function RosterPage() {
                                   type="button"
                                   disabled={pinBusy}
                                   onClick={() => handlePin(shift.id, nv.id, true)}
-                                  className="px-2.5 py-1 rounded-full bg-neutral-900 border border-neutral-700 text-xs text-neutral-200 hover:border-amber-500 hover:text-amber-300 transition-colors disabled:opacity-50"
+                                  className="px-2.5 py-1 rounded-full bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] text-xs text-[var(--nq-ink)] hover:border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] hover:text-[var(--nq-st-warn-ink)] transition-colors disabled:opacity-50"
                                 >
                                   + {nv.ten || nv.id}
                                 </button>
@@ -1407,14 +1407,14 @@ export default function RosterPage() {
             </div>
 
             {/* Footer: điều hướng ngày + 1 hành động lifecycle duy nhất */}
-            <div className="flex shrink-0 items-center justify-between gap-2 border-t border-neutral-800 bg-neutral-900 p-4 sm:px-6">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-t border-[var(--nq-line)] bg-[var(--nq-bg-elevated)] p-4 sm:px-6">
               <button
                 type="button"
                 onClick={() => {
                   const currentIdx = days.indexOf(selectedDay);
                   setSelectedDay(days[(currentIdx - 1 + days.length) % days.length]);
                 }}
-                className="px-3 py-1.5 text-xs font-bold rounded bg-neutral-800 text-neutral-200 hover:bg-neutral-700"
+                className="px-3 py-1.5 text-xs font-bold rounded bg-[var(--nq-surface)] text-[var(--nq-ink)] hover:bg-[var(--nq-line)]"
               >
                 ← {dayTitle(days[(days.indexOf(selectedDay) - 1 + days.length) % days.length])}
               </button>
@@ -1424,7 +1424,7 @@ export default function RosterPage() {
                   type="button"
                   disabled={lifecycleBusy}
                   onClick={() => void handleLifecycle(nextAction.next, currentDisplayWeek)}
-                  className="px-4 py-1.5 text-xs font-bold rounded bg-amber-600 hover:bg-amber-500 text-neutral-950 disabled:opacity-50"
+                  className="px-4 py-1.5 text-xs font-bold rounded bg-[var(--nq-st-warn)] hover:bg-[var(--nq-st-warn)] text-[var(--nq-accent-ink)] disabled:opacity-50"
                 >
                   {nextAction.label}
                 </button>
@@ -1432,7 +1432,7 @@ export default function RosterPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedDay(null)}
-                  className="px-4 py-1.5 text-xs font-bold rounded bg-amber-600 hover:bg-amber-500 text-neutral-950"
+                  className="px-4 py-1.5 text-xs font-bold rounded bg-[var(--nq-st-warn)] hover:bg-[var(--nq-st-warn)] text-[var(--nq-accent-ink)]"
                 >
                   Đóng
                 </button>
@@ -1444,7 +1444,7 @@ export default function RosterPage() {
                   const currentIdx = days.indexOf(selectedDay);
                   setSelectedDay(days[(currentIdx + 1) % days.length]);
                 }}
-                className="px-3 py-1.5 text-xs font-bold rounded bg-neutral-800 text-neutral-200 hover:bg-neutral-700"
+                className="px-3 py-1.5 text-xs font-bold rounded bg-[var(--nq-surface)] text-[var(--nq-ink)] hover:bg-[var(--nq-line)]"
               >
                 {dayTitle(days[(days.indexOf(selectedDay) + 1) % days.length])} →
               </button>
@@ -1467,31 +1467,31 @@ export default function RosterPage() {
             className="nq-roster-dialog-panel nq-reopen-panel"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-neutral-800 bg-neutral-900 p-4 sm:p-6 sm:pb-4">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--nq-line)] bg-[var(--nq-bg-elevated)] p-4 sm:p-6 sm:pb-4">
               <div>
-                <h3 id="roster-reopen-title" className="text-lg font-bold text-amber-400">
+                <h3 id="roster-reopen-title" className="text-lg font-bold text-[var(--nq-st-warn-ink)]">
                   Mở lại lịch để điều chỉnh
                 </h3>
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-[var(--nq-ink-muted)]">
                   Tuần {currentDisplayWeek} · {lifeLabel(trangThai)}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setReopenOpen(false)}
-                className="px-3 py-1 text-xs font-bold uppercase tracking-widest text-neutral-400 hover:text-amber-400 inline-flex items-center gap-1"
+                className="px-3 py-1 text-xs font-bold uppercase tracking-widest text-[var(--nq-ink-muted)] hover:text-[var(--nq-st-warn-ink)] inline-flex items-center gap-1"
               >
                 Đóng <Icon name="close" size={14} />
               </button>
             </div>
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
-              <p className="text-sm text-neutral-300">
+              <p className="text-sm text-[var(--nq-ink)]">
                 Lịch đã được duyệt/công bố. Để mở lại và chỉnh sửa, vui lòng ghi rõ lý do.
                 Thao tác này sẽ được ghi lại trong nhật ký hệ thống.
               </p>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-neutral-400">
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-[var(--nq-ink-muted)]">
                   Lý do mở lại lịch
                 </span>
                 <textarea
@@ -1500,16 +1500,16 @@ export default function RosterPage() {
                   rows={3}
                   autoFocus
                   placeholder="VD: Có nhân viên xin nghỉ, cần sắp xếp lại ca…"
-                  className="w-full rounded-lg border border-neutral-700 bg-neutral-950 p-3 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-amber-500 focus:outline-none"
+                  className="w-full rounded-lg border border-[var(--nq-line)] bg-[var(--nq-bg)] p-3 text-sm text-[var(--nq-ink)] placeholder:text-[var(--nq-ink-muted)] focus:border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] focus:outline-none"
                 />
               </label>
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-neutral-800 bg-neutral-900 p-4 sm:px-6">
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[var(--nq-line)] bg-[var(--nq-bg-elevated)] p-4 sm:px-6">
               <button
                 type="button"
                 onClick={() => setReopenOpen(false)}
-                className="px-4 py-1.5 text-xs font-bold rounded bg-neutral-800 text-neutral-200 hover:bg-neutral-700"
+                className="px-4 py-1.5 text-xs font-bold rounded bg-[var(--nq-surface)] text-[var(--nq-ink)] hover:bg-[var(--nq-line)]"
               >
                 Huỷ
               </button>
@@ -1517,7 +1517,7 @@ export default function RosterPage() {
                 type="button"
                 disabled={lifecycleBusy || !reopenReason.trim()}
                 onClick={() => void confirmReopen()}
-                className="px-4 py-1.5 text-xs font-bold rounded bg-amber-600 hover:bg-amber-500 text-neutral-950 disabled:opacity-50"
+                className="px-4 py-1.5 text-xs font-bold rounded bg-[var(--nq-st-warn)] hover:bg-[var(--nq-st-warn)] text-[var(--nq-accent-ink)] disabled:opacity-50"
               >
                 {lifecycleBusy ? "Đang lưu…" : "Mở lại lịch"}
               </button>

@@ -1,0 +1,91 @@
+{
+  "$defs": {
+    "ExperienceProposalStatus": {
+      "description": "Vòng đời của một đề xuất (proposal) — mọi mutation là proposal trước.",
+      "enum": [
+        "draft",
+        "ready",
+        "confirmed",
+        "rejected",
+        "expired"
+      ],
+      "title": "ExperienceProposalStatus",
+      "type": "string"
+    }
+  },
+  "description": "Đề xuất hành động — bắt buộc trước mọi mutation. Có snapshot hash + evidence.",
+  "properties": {
+    "proposal_id": {
+      "minLength": 1,
+      "title": "Proposal Id",
+      "type": "string"
+    },
+    "action_type": {
+      "minLength": 1,
+      "title": "Action Type",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/ExperienceProposalStatus",
+      "default": "draft"
+    },
+    "snapshot_hash": {
+      "minLength": 8,
+      "title": "Snapshot Hash",
+      "type": "string"
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "deterministic_result": {
+      "additionalProperties": true,
+      "title": "Deterministic Result",
+      "type": "object"
+    },
+    "explanation": {
+      "default": "",
+      "title": "Explanation",
+      "type": "string"
+    },
+    "requested_by": {
+      "minLength": 1,
+      "title": "Requested By",
+      "type": "string"
+    },
+    "store_id": {
+      "default": "quan_01",
+      "title": "Store Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expires At"
+    }
+  },
+  "required": [
+    "proposal_id",
+    "action_type",
+    "snapshot_hash",
+    "requested_by"
+  ],
+  "title": "ExperienceActionProposal",
+  "type": "object"
+}

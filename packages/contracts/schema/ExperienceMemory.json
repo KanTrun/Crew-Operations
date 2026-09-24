@@ -1,0 +1,112 @@
+{
+  "$defs": {
+    "MemoryConsentStatus": {
+      "description": "Đồng thuận lưu trữ ký ức — không bao giờ ngầm định là đã đồng thuận.",
+      "enum": [
+        "required",
+        "granted",
+        "revoked",
+        "expired"
+      ],
+      "title": "MemoryConsentStatus",
+      "type": "string"
+    },
+    "MemoryStatus": {
+      "description": "Trạng thái ký ức. \"Pending\" là nhãn UI cho `draft`, không phải enum riêng.",
+      "enum": [
+        "draft",
+        "confirmed",
+        "superseded",
+        "deleted"
+      ],
+      "title": "MemoryStatus",
+      "type": "string"
+    },
+    "MemoryVisibility": {
+      "description": "Phạm vi hiển thị của ký ức (chiếu theo vai trò ở read boundary).",
+      "enum": [
+        "private",
+        "staff",
+        "manager",
+        "public"
+      ],
+      "title": "MemoryVisibility",
+      "type": "string"
+    }
+  },
+  "description": "Ký ức vận hành — mọi bản ghi phải có owner, consent, visibility, retention.",
+  "properties": {
+    "memory_id": {
+      "minLength": 1,
+      "title": "Memory Id",
+      "type": "string"
+    },
+    "anchor_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Anchor Id"
+    },
+    "owner_scope": {
+      "minLength": 1,
+      "title": "Owner Scope",
+      "type": "string"
+    },
+    "content": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Content",
+      "type": "string"
+    },
+    "source_event_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Event Ids",
+      "type": "array"
+    },
+    "consent_status": {
+      "$ref": "#/$defs/MemoryConsentStatus",
+      "default": "required"
+    },
+    "visibility": {
+      "$ref": "#/$defs/MemoryVisibility",
+      "default": "staff"
+    },
+    "status": {
+      "$ref": "#/$defs/MemoryStatus",
+      "default": "draft"
+    },
+    "retention_until": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Until"
+    },
+    "created_by": {
+      "default": "",
+      "title": "Created By",
+      "type": "string"
+    }
+  },
+  "required": [
+    "memory_id",
+    "owner_scope",
+    "content"
+  ],
+  "title": "ExperienceMemory",
+  "type": "object"
+}

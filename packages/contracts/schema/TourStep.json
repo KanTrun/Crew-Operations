@@ -1,0 +1,34 @@
+{
+  "description": "Một bước tour — anchor deterministic + narration có nguồn.",
+  "properties": {
+    "step_id": {
+      "minLength": 1,
+      "title": "Step Id",
+      "type": "string"
+    },
+    "anchor_id": {
+      "minLength": 1,
+      "title": "Anchor Id",
+      "type": "string"
+    },
+    "narrative": {
+      "minLength": 1,
+      "title": "Narrative",
+      "type": "string"
+    },
+    "citation_memory_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Citation Memory Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "step_id",
+    "anchor_id",
+    "narrative"
+  ],
+  "title": "TourStep",
+  "type": "object"
+}

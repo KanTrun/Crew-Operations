@@ -17,7 +17,7 @@ Hồ sơ §11 (`apps/web` constraints-inbox / run-form / today / playbook / sop-
 | swap-market | `/doi-ca` | Ba nhánh |
 | QR | `/qr` | Quản lý phát, NV dùng |
 | tieu_thu | `/tieu-thu` | Số lượng, không kế toán |
-| waste | `/hao-phi` | Ghi chú → cụm |
+| waste | `/hao-phi` | Hao hụt theo nguyên liệu: công thức ↔ kiểm kê, mức độ, xếp hạng nguyên nhân |
 | handover | `/handover` | SBAR |
 | agent-trace | `/vet` | Append-only audit |
 | overflow | `/them` | Nav ≤5 trên điện thoại |

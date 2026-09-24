@@ -316,25 +316,25 @@ export default function TkbPage() {
                 return (
                   <div
                     key={t}
-                    className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-3 opacity-70"
+                    className="rounded-lg border border-[var(--nq-line)] bg-[var(--nq-bg)] p-3 opacity-70"
                   >
-                    <p className="text-xs font-bold uppercase tracking-wide text-neutral-300">
+                    <p className="text-xs font-bold uppercase tracking-wide text-[var(--nq-ink)]">
                       {THU_TEN[t]}
                     </p>
-                    <p className="mt-1 text-xs text-neutral-500">Rảnh cả ngày</p>
+                    <p className="mt-1 text-xs text-[var(--nq-ink-muted)]">Rảnh cả ngày</p>
                   </div>
                 );
               }
               return (
-                <div key={t} className="rounded-lg border border-amber-700/50 bg-amber-950/20 p-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-amber-300">
+                <div key={t} className="rounded-lg border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-warn-soft)] p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-[var(--nq-st-warn-ink)]">
                     {THU_TEN[t]}
                   </p>
                   <ul className="mt-1.5 space-y-1">
                     {khungTrongNgay.map((k, i) => (
                       <li
                         key={`${k.thu}-${k.start}-${i}`}
-                        className="rounded bg-neutral-900/80 px-2 py-1 font-mono text-xs text-neutral-200"
+                        className="rounded bg-[var(--nq-bg-elevated)] px-2 py-1 font-mono text-xs text-[var(--nq-ink)]"
                       >
                         {k.start} – {k.end}
                       </li>
@@ -430,9 +430,9 @@ export default function TkbPage() {
           {unrecognizedDayRows.map((row) => (
             <div
               key={row._i}
-              className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-red-800/60 bg-red-950/20 p-3"
+              className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] bg-[var(--nq-st-danger-soft)] p-3"
             >
-              <span className="text-sm text-red-200">
+              <span className="text-sm text-[var(--nq-st-danger-ink)]">
                 Không nhận diện được ngày “{safeText(row.thu, "trống")}” cho khung {safeText(row.start, "—")}–
                 {safeText(row.end, "—")}.
               </span>
@@ -468,8 +468,8 @@ export default function TkbPage() {
                   key={t}
                   className={`rounded-lg border p-3 space-y-2 ${
                     khungTrongNgay.length > 0
-                      ? "border-amber-700/50 bg-amber-950/20"
-                      : "border-neutral-800 bg-neutral-950/50"
+                      ? "border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-warn-soft)]"
+                      : "border-[var(--nq-line)] bg-[var(--nq-bg)]"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -481,7 +481,7 @@ export default function TkbPage() {
                     </div>
                     <button
                       type="button"
-                      className="rounded px-1.5 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-950"
+                      className="rounded px-1.5 py-0.5 text-2xs font-bold text-[var(--nq-st-warn-ink)] hover:bg-[var(--nq-st-warn)]"
                       title={`Thêm khung bận cho ${THU_TEN[t]}`}
                       onClick={() => setRows((prev) => [...prev, { thu: t, start: "", end: "" }])}
                     >
@@ -489,7 +489,7 @@ export default function TkbPage() {
                     </button>
                   </div>
                   {khungTrongNgay.length === 0 ? (
-                    <p className="text-xs text-neutral-500">Không có khung bận</p>
+                    <p className="text-xs text-[var(--nq-ink-muted)]">Không có khung bận</p>
                   ) : (
                     khungTrongNgay.map((r) => (
                       <div key={r._i}>
@@ -520,7 +520,7 @@ export default function TkbPage() {
                           </Btn>
                         </div>
                         {rowErrors[r._i].map((message) => (
-                          <p key={message} className="mt-1 text-xs text-red-300" role="alert">
+                          <p key={message} className="mt-1 text-xs text-[var(--nq-st-danger-ink)]" role="alert">
                             {message}
                           </p>
                         ))}

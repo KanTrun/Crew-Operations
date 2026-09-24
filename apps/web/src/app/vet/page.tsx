@@ -476,7 +476,7 @@ export default function VetPage() {
                     </div>
                   </div>
                   {it.id ? (
-                    <span className="font-mono" style={{ fontSize: "0.65rem", color: "var(--nq-copper)", opacity: 0.7, flexShrink: 0 }}>
+                    <span className="font-mono" style={{ fontSize: "0.65rem", color: "var(--nq-copper-ink)", flexShrink: 0 }}>
                       #{it.id}
                     </span>
                   ) : null}

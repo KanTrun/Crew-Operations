@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend, apiUpload } from "../../lib/api";
 import { menuImageUrl } from "../../lib/menu-image";
 import { viError } from "../../lib/present";
 import { getToken } from "../../lib/session";
 import { BomEditor, bomToRows, rowsToBom, type BomRow } from "../../ui/bom-editor";
-import { Alert, Btn, Empty, Field, Input, Loading, PageHeader } from "../../ui/kit";
+import { Alert, Btn, Empty, Field, Input, Loading, NextSteps, PageHeader } from "../../ui/kit";
 
 type Mon = { id: string; ten: string; gia: number; an: boolean; bom: Record<string, number>; hinh_url?: string };
 
@@ -53,7 +54,7 @@ function MenuThumb({ mon, selected }: { mon: Mon; selected: boolean }) {
         </div>
       )}
       {selected ? (
-        <span className="absolute inset-x-0 bottom-0 bg-[var(--nq-copper)] py-0.5 text-center text-[10px] font-bold uppercase text-black">
+        <span className="absolute inset-x-0 bottom-0 bg-[var(--nq-copper)] py-0.5 text-center text-2xs font-bold uppercase text-black">
           Đang sửa
         </span>
       ) : null}
@@ -279,6 +280,15 @@ export default function MenuPage() {
           </form>
         </aside>
       </div>
+
+      <NextSteps title="Làm gì tiếp" note="Công thức ở đây là cơ sở tính hao hụt">
+        <Link href="/hao-phi" className="nq-btn nq-btn-ghost">
+          Xem hao hụt theo nguyên liệu
+        </Link>
+        <Link href="/tieu-thu" className="nq-btn nq-btn-ghost">
+          Gõ phiếu kiểm kê
+        </Link>
+      </NextSteps>
     </section>
   );
 }

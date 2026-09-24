@@ -1,0 +1,578 @@
+﻿02 unit	Set up job	∩╗┐2026-09-17T11:18:32.7010713Z Current runner version: '2.337.0'
+02 unit	Set up job	2026-09-17T11:18:32.7035381Z ##[group]Runner Image Provisioner
+02 unit	Set up job	2026-09-17T11:18:32.7036201Z Hosted Compute Agent
+02 unit	Set up job	2026-09-17T11:18:32.7036773Z Version: 20260828.587
+02 unit	Set up job	2026-09-17T11:18:32.7037347Z Commit: abac92662cab4cc7352de4f9f9d2e2419aad9c29
+02 unit	Set up job	2026-09-17T11:18:32.7038175Z Build Date: 2026-08-28T16:44:25Z
+02 unit	Set up job	2026-09-17T11:18:32.7038853Z Worker ID: {b3b04e29-613a-42fe-a67d-8126d28b2738}
+02 unit	Set up job	2026-09-17T11:18:32.7039502Z Azure Region: westcentralus
+02 unit	Set up job	2026-09-17T11:18:32.7040058Z ##[endgroup]
+02 unit	Set up job	2026-09-17T11:18:32.7041478Z ##[group]Operating System
+02 unit	Set up job	2026-09-17T11:18:32.7042058Z Ubuntu
+02 unit	Set up job	2026-09-17T11:18:32.7042601Z 24.04.5
+02 unit	Set up job	2026-09-17T11:18:32.7043056Z LTS
+02 unit	Set up job	2026-09-17T11:18:32.7043524Z ##[endgroup]
+02 unit	Set up job	2026-09-17T11:18:32.7044024Z ##[group]Runner Image
+02 unit	Set up job	2026-09-17T11:18:32.7044612Z Image: ubuntu-24.04
+02 unit	Set up job	2026-09-17T11:18:32.7045171Z Version: 20260907.300.1
+02 unit	Set up job	2026-09-17T11:18:32.7046107Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260907.300/images/ubuntu/Ubuntu2404-Readme.md
+02 unit	Set up job	2026-09-17T11:18:32.7047659Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260907.300
+02 unit	Set up job	2026-09-17T11:18:32.7048675Z ##[endgroup]
+02 unit	Set up job	2026-09-17T11:18:32.7049770Z ##[group]GITHUB_TOKEN Permissions
+02 unit	Set up job	2026-09-17T11:18:32.7051598Z Contents: read
+02 unit	Set up job	2026-09-17T11:18:32.7052508Z Metadata: read
+02 unit	Set up job	2026-09-17T11:18:32.7053005Z Packages: read
+02 unit	Set up job	2026-09-17T11:18:32.7053569Z ##[endgroup]
+02 unit	Set up job	2026-09-17T11:18:32.7055546Z Secret source: Actions
+02 unit	Set up job	2026-09-17T11:18:32.7056353Z Cache mode: write
+02 unit	Set up job	2026-09-17T11:18:32.7057086Z Prepare workflow directory
+02 unit	Set up job	2026-09-17T11:18:32.7428907Z Prepare all required actions
+02 unit	Set up job	2026-09-17T11:18:32.7479638Z Getting action download info
+02 unit	Set up job	2026-09-17T11:18:33.0608220Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+02 unit	Set up job	2026-09-17T11:18:33.1488278Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+02 unit	Set up job	2026-09-17T11:18:33.2150731Z Download action repository 'actions/cache@v4' (SHA:0057852bfaa89a56745cba8c7296529d2fc39830)
+02 unit	Set up job	2026-09-17T11:18:33.3856147Z Complete job name: 02 unit
+02 unit	Run actions/checkout@v4	∩╗┐2026-09-17T11:18:33.4639546Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4648783Z ##[group]Run actions/checkout@v4
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4649443Z with:
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4649846Z   repository: KanTrun/Crew-Operations
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4653671Z   token: ***
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4654047Z   ssh-strict: true
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4654431Z   ssh-user: git
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4654829Z   persist-credentials: true
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4655441Z   clean: true
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4655827Z   sparse-checkout-cone-mode: true
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4656283Z   fetch-depth: 1
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4656668Z   fetch-tags: false
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4657062Z   show-progress: true
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4657470Z   lfs: false
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4658035Z   submodules: false
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4658610Z   set-safe-directory: true
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4659069Z   allow-unsafe-pr-checkout: false
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4659818Z env:
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4660254Z   CA_AGENT_MODE: replay
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.4660804Z ##[endgroup]
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5613794Z Syncing repository: KanTrun/Crew-Operations
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5615545Z ##[group]Getting Git version info
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5616247Z Working directory is '/home/runner/work/Crew-Operations/Crew-Operations'
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5617212Z [command]/usr/bin/git version
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5740357Z git version 2.55.0
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5770663Z ##[endgroup]
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5787888Z Temporarily overriding HOME='/home/runner/work/_temp/b5405af6-9700-4fe3-94ac-b5920afe2934' before making global git config changes
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5789224Z Adding repository directory to the temporary git global config as a safe directory
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5794203Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Crew-Operations/Crew-Operations
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5849280Z Deleting the contents of '/home/runner/work/Crew-Operations/Crew-Operations'
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5854096Z ##[group]Initializing the repository
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5859470Z [command]/usr/bin/git init /home/runner/work/Crew-Operations/Crew-Operations
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5982900Z hint: Using 'master' as the name for the initial branch. This default branch name
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5985520Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5987342Z hint: to use in all of your new repositories, which will suppress this warning,
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5988550Z hint: call:
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5989347Z hint:
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5990414Z hint: 	git config --global init.defaultBranch <name>
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5991330Z hint:
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5992520Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5994197Z hint: 'development'. The just-created branch can be renamed via this command:
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5995417Z hint:
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5996280Z hint: 	git branch -m <name>
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5997147Z hint:
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.5998403Z hint: Disable this message with "git config set advice.defaultBranchName false"
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6000131Z Initialized empty Git repository in /home/runner/work/Crew-Operations/Crew-Operations/.git/
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6003016Z [command]/usr/bin/git remote add origin https://github.com/KanTrun/Crew-Operations
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6050931Z ##[endgroup]
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6051694Z ##[group]Disabling automatic garbage collection
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6055523Z [command]/usr/bin/git config --local gc.auto 0
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6082725Z ##[endgroup]
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6083435Z ##[group]Setting up auth
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6091538Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6122913Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6475688Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6512382Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6709375Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6742527Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6922383Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6952359Z ##[endgroup]
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6961468Z ##[group]Fetching the repository
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:33.6963898Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a6ee707a664b71558e72eff4ac334b63193b03a2:refs/remotes/origin/main
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:34.9952412Z From https://github.com/KanTrun/Crew-Operations
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:34.9954459Z  * [new ref]         a6ee707a664b71558e72eff4ac334b63193b03a2 -> origin/main
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:34.9959285Z ##[endgroup]
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:34.9960540Z ##[group]Determining the checkout info
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:34.9962032Z ##[endgroup]
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:34.9967668Z [command]/usr/bin/git sparse-checkout disable
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:35.0018028Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:35.0046382Z ##[group]Checking out the ref
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:35.0052103Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:35.0873881Z Switched to a new branch 'main'
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:35.0878524Z branch 'main' set up to track 'origin/main'.
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:35.0883860Z ##[endgroup]
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:35.0922562Z [command]/usr/bin/git log -1 --format=%H
+02 unit	Run actions/checkout@v4	2026-09-17T11:18:35.0943492Z a6ee707a664b71558e72eff4ac334b63193b03a2
+02 unit	Run actions/setup-python@v5	∩╗┐2026-09-17T11:18:35.1274727Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.1279619Z ##[group]Run actions/setup-python@v5
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.1280772Z with:
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.1281704Z   python-version: 3.12
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.1282737Z   check-latest: false
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.1291347Z   token: ***
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.1292342Z   update-environment: true
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.1293444Z   allow-prereleases: false
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.1294521Z   freethreaded: false
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.1295501Z env:
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.1296403Z   CA_AGENT_MODE: replay
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.1297356Z ##[endgroup]
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.2620317Z ##[group]Installed versions
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.2730026Z (node:2231) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.2733404Z (Use `node --trace-deprecation ...` to show where the warning was created)
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.2736097Z Successfully set up CPython (3.12.14)
+02 unit	Run actions/setup-python@v5	2026-09-17T11:18:35.2741024Z ##[endgroup]
+02 unit	Cache pip	∩╗┐2026-09-17T11:18:35.3711187Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+02 unit	Cache pip	2026-09-17T11:18:35.3715008Z ##[group]Run actions/cache@v4
+02 unit	Cache pip	2026-09-17T11:18:35.3715968Z with:
+02 unit	Cache pip	2026-09-17T11:18:35.3716772Z   path: ~/.cache/pip
+02 unit	Cache pip	2026-09-17T11:18:35.3718513Z   key: pip-unit-Linux-401709aa0cea91a843128c262b898e02c31d20a51e3b14fef49f6ffd29c45d1c
+02 unit	Cache pip	2026-09-17T11:18:35.3720178Z   restore-keys: pip-unit-Linux-
+02 unit	Cache pip	2026-09-17T11:18:35.3721221Z   enableCrossOsArchive: false
+02 unit	Cache pip	2026-09-17T11:18:35.3722217Z   fail-on-cache-miss: false
+02 unit	Cache pip	2026-09-17T11:18:35.3723172Z   lookup-only: false
+02 unit	Cache pip	2026-09-17T11:18:35.3724053Z   save-always: false
+02 unit	Cache pip	2026-09-17T11:18:35.3724937Z env:
+02 unit	Cache pip	2026-09-17T11:18:35.3725715Z   CA_AGENT_MODE: replay
+02 unit	Cache pip	2026-09-17T11:18:35.3726807Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.14/x64
+02 unit	Cache pip	2026-09-17T11:18:35.3728686Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib/pkgconfig
+02 unit	Cache pip	2026-09-17T11:18:35.3730211Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+02 unit	Cache pip	2026-09-17T11:18:35.3731593Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+02 unit	Cache pip	2026-09-17T11:18:35.3732987Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+02 unit	Cache pip	2026-09-17T11:18:35.3734399Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib
+02 unit	Cache pip	2026-09-17T11:18:35.3735589Z ##[endgroup]
+02 unit	Cache pip	2026-09-17T11:18:35.4806991Z (node:2251) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+02 unit	Cache pip	2026-09-17T11:18:35.4809439Z (Use `node --trace-deprecation ...` to show where the warning was created)
+02 unit	Cache pip	2026-09-17T11:18:35.6982102Z Cache hit for restore-key: pip-unit-Linux-f90c408864d75b62dbf449390669ed54c1b6616bb103b1b6b10e2b5bb30dbd53
+02 unit	Cache pip	2026-09-17T11:18:35.7082117Z (node:2251) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+02 unit	Cache pip	2026-09-17T11:18:36.9214938Z Received 37748736 of 98279177 (38.4%), 36.0 MBs/sec
+02 unit	Cache pip	2026-09-17T11:18:37.2879821Z Received 98279177 of 98279177 (100.0%), 68.6 MBs/sec
+02 unit	Cache pip	2026-09-17T11:18:37.2881536Z Cache Size: ~94 MB (98279177 B)
+02 unit	Cache pip	2026-09-17T11:18:37.2923723Z [command]/usr/bin/tar -xf /home/runner/work/_temp/3db5e3b1-11f9-426d-b151-bdcc56391eda/cache.tzst -P -C /home/runner/work/Crew-Operations/Crew-Operations --use-compress-program unzstd
+02 unit	Cache pip	2026-09-17T11:18:37.3995818Z Cache restored successfully
+02 unit	Cache pip	2026-09-17T11:18:37.4109580Z Cache restored from key: pip-unit-Linux-f90c408864d75b62dbf449390669ed54c1b6616bb103b1b6b10e2b5bb30dbd53
+02 unit	Install workspace	∩╗┐2026-09-17T11:18:37.4223993Z ##[group]Run pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api pytest pytest-xdist httpx pyyaml ortools hypothesis
+02 unit	Install workspace	2026-09-17T11:18:37.4225472Z [36;1mpip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api pytest pytest-xdist httpx pyyaml ortools hypothesis[0m
+02 unit	Install workspace	2026-09-17T11:18:37.4259954Z shell: /usr/bin/bash -e {0}
+02 unit	Install workspace	2026-09-17T11:18:37.4260272Z env:
+02 unit	Install workspace	2026-09-17T11:18:37.4260492Z   CA_AGENT_MODE: replay
+02 unit	Install workspace	2026-09-17T11:18:37.4260795Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.14/x64
+02 unit	Install workspace	2026-09-17T11:18:37.4261304Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib/pkgconfig
+02 unit	Install workspace	2026-09-17T11:18:37.4261755Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+02 unit	Install workspace	2026-09-17T11:18:37.4262142Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+02 unit	Install workspace	2026-09-17T11:18:37.4262560Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+02 unit	Install workspace	2026-09-17T11:18:37.4262984Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib
+02 unit	Install workspace	2026-09-17T11:18:37.4263303Z ##[endgroup]
+02 unit	Install workspace	2026-09-17T11:18:38.2203459Z Obtaining file:///home/runner/work/Crew-Operations/Crew-Operations/packages/contracts
+02 unit	Install workspace	2026-09-17T11:18:38.2217631Z   Installing build dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:38.9166666Z   Installing build dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:38.9173112Z   Checking if build backend supports build_editable: started
+02 unit	Install workspace	2026-09-17T11:18:38.9538084Z   Checking if build backend supports build_editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:38.9543776Z   Getting requirements to build editable: started
+02 unit	Install workspace	2026-09-17T11:18:39.0878794Z   Getting requirements to build editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:39.0895389Z   Installing backend dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:39.5404176Z   Installing backend dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:39.5412510Z   Preparing editable metadata (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:39.7143975Z   Preparing editable metadata (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:39.7170990Z Obtaining file:///home/runner/work/Crew-Operations/Crew-Operations/packages/solver
+02 unit	Install workspace	2026-09-17T11:18:39.7183665Z   Installing build dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:40.1860989Z   Installing build dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:40.1865502Z   Checking if build backend supports build_editable: started
+02 unit	Install workspace	2026-09-17T11:18:40.2247134Z   Checking if build backend supports build_editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:40.2250360Z   Getting requirements to build editable: started
+02 unit	Install workspace	2026-09-17T11:18:40.3631981Z   Getting requirements to build editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:40.3642468Z   Installing backend dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:40.7205084Z   Installing backend dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:40.7212507Z   Preparing editable metadata (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:40.8723277Z   Preparing editable metadata (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:40.8768890Z Obtaining file:///home/runner/work/Crew-Operations/Crew-Operations/packages/agents
+02 unit	Install workspace	2026-09-17T11:18:40.8789228Z   Installing build dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:41.3535208Z   Installing build dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:41.3540288Z   Checking if build backend supports build_editable: started
+02 unit	Install workspace	2026-09-17T11:18:41.3896222Z   Checking if build backend supports build_editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:41.3904601Z   Getting requirements to build editable: started
+02 unit	Install workspace	2026-09-17T11:18:41.5261132Z   Getting requirements to build editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:41.5273943Z   Installing backend dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:41.8871113Z   Installing backend dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:41.8879145Z   Preparing editable metadata (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:42.0403343Z   Preparing editable metadata (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:42.0428772Z Obtaining file:///home/runner/work/Crew-Operations/Crew-Operations/packages/gates
+02 unit	Install workspace	2026-09-17T11:18:42.0440970Z   Installing build dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:42.5118193Z   Installing build dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:42.5125242Z   Checking if build backend supports build_editable: started
+02 unit	Install workspace	2026-09-17T11:18:42.5480886Z   Checking if build backend supports build_editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:42.5485868Z   Getting requirements to build editable: started
+02 unit	Install workspace	2026-09-17T11:18:42.6818288Z   Getting requirements to build editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:42.6827950Z   Installing backend dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:43.0372353Z   Installing backend dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:43.0378043Z   Preparing editable metadata (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:43.1884272Z   Preparing editable metadata (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:43.1910715Z Obtaining file:///home/runner/work/Crew-Operations/Crew-Operations/packages/opsengine
+02 unit	Install workspace	2026-09-17T11:18:43.1924197Z   Installing build dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:43.6611322Z   Installing build dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:43.6616270Z   Checking if build backend supports build_editable: started
+02 unit	Install workspace	2026-09-17T11:18:43.6964654Z   Checking if build backend supports build_editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:43.6972323Z   Getting requirements to build editable: started
+02 unit	Install workspace	2026-09-17T11:18:43.8313665Z   Getting requirements to build editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:43.8326414Z   Installing backend dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:44.1859107Z   Installing backend dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:44.1866631Z   Preparing editable metadata (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:44.3350255Z   Preparing editable metadata (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:44.3377552Z Obtaining file:///home/runner/work/Crew-Operations/Crew-Operations/packages/playbook
+02 unit	Install workspace	2026-09-17T11:18:44.3393378Z   Installing build dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:44.8042774Z   Installing build dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:44.8047330Z   Checking if build backend supports build_editable: started
+02 unit	Install workspace	2026-09-17T11:18:44.8410079Z   Checking if build backend supports build_editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:44.8413580Z   Getting requirements to build editable: started
+02 unit	Install workspace	2026-09-17T11:18:44.9741781Z   Getting requirements to build editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:44.9753323Z   Installing backend dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:45.3304629Z   Installing backend dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:45.3311359Z   Preparing editable metadata (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:45.4811746Z   Preparing editable metadata (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:45.4838460Z Obtaining file:///home/runner/work/Crew-Operations/Crew-Operations/apps/api
+02 unit	Install workspace	2026-09-17T11:18:45.4852552Z   Installing build dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:45.9869830Z   Installing build dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:45.9875403Z   Checking if build backend supports build_editable: started
+02 unit	Install workspace	2026-09-17T11:18:46.0231472Z   Checking if build backend supports build_editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:46.0237204Z   Getting requirements to build editable: started
+02 unit	Install workspace	2026-09-17T11:18:46.1606188Z   Getting requirements to build editable: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:46.1616834Z   Installing backend dependencies: started
+02 unit	Install workspace	2026-09-17T11:18:46.5167438Z   Installing backend dependencies: finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:46.5173225Z   Preparing editable metadata (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:46.6674887Z   Preparing editable metadata (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:46.7934018Z Collecting pytest
+02 unit	Install workspace	2026-09-17T11:18:46.7947374Z   Using cached pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+02 unit	Install workspace	2026-09-17T11:18:46.8261219Z Collecting pytest-xdist
+02 unit	Install workspace	2026-09-17T11:18:46.8273950Z   Using cached pytest_xdist-3.8.0-py3-none-any.whl.metadata (3.0 kB)
+02 unit	Install workspace	2026-09-17T11:18:46.8587999Z Collecting httpx
+02 unit	Install workspace	2026-09-17T11:18:46.8600641Z   Using cached httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+02 unit	Install workspace	2026-09-17T11:18:46.9055735Z Collecting pyyaml
+02 unit	Install workspace	2026-09-17T11:18:46.9069169Z   Using cached pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+02 unit	Install workspace	2026-09-17T11:18:46.9458718Z Collecting ortools
+02 unit	Install workspace	2026-09-17T11:18:46.9471040Z   Using cached ortools-9.15.6755-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (3.3 kB)
+02 unit	Install workspace	2026-09-17T11:18:47.2452445Z Collecting hypothesis
+02 unit	Install workspace	2026-09-17T11:18:47.2467011Z   Using cached hypothesis-6.168.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.7 kB)
+02 unit	Install workspace	2026-09-17T11:18:47.3496853Z Collecting pydantic>=2.9.0 (from ca-contracts==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:47.3510257Z   Using cached pydantic-2.13.5-py3-none-any.whl.metadata (110 kB)
+02 unit	Install workspace	2026-09-17T11:18:47.5305394Z Collecting numpy>=2.0 (from ca-agents==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:47.5318939Z   Using cached numpy-2.5.3-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (6.6 kB)
+02 unit	Install workspace	2026-09-17T11:18:47.6527209Z Collecting websockets>=15.0 (from ca-agents==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:47.6541012Z   Using cached websockets-17.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (6.3 kB)
+02 unit	Install workspace	2026-09-17T11:18:47.6900809Z Collecting alembic>=1.13.0 (from ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:47.6919874Z   Using cached alembic-1.20.0-py3-none-any.whl.metadata (7.3 kB)
+02 unit	Install workspace	2026-09-17T11:18:47.7778909Z Collecting fastapi>=0.115.0 (from ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:47.7793208Z   Using cached fastapi-0.141.1-py3-none-any.whl.metadata (27 kB)
+02 unit	Install workspace	2026-09-17T11:18:47.8115013Z Collecting openpyxl>=3.1.5 (from ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:47.8127900Z   Using cached openpyxl-3.1.5-py2.py3-none-any.whl.metadata (2.5 kB)
+02 unit	Install workspace	2026-09-17T11:18:47.8413453Z Collecting psycopg>=3.2.0 (from psycopg[binary]>=3.2.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:47.8424443Z   Using cached psycopg-3.3.5-py3-none-any.whl.metadata (4.3 kB)
+02 unit	Install workspace	2026-09-17T11:18:47.8718525Z Collecting python-multipart>=0.0.9 (from ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:47.8730785Z   Using cached python_multipart-0.0.32-py3-none-any.whl.metadata (2.1 kB)
+02 unit	Install workspace	2026-09-17T11:18:47.9085998Z Collecting redis>=5.0.0 (from ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:47.9097599Z   Using cached redis-8.1.0-py3-none-any.whl.metadata (16 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.0116894Z Collecting reportlab>=4.2.5 (from ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:48.0129943Z   Using cached reportlab-5.0.1-py3-none-any.whl.metadata (1.6 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.2504842Z Collecting sqlalchemy>=2.0.0 (from ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:48.2518335Z   Using cached sqlalchemy-2.0.54-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (9.7 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.2899409Z Collecting uvicorn>=0.32.0 (from uvicorn[standard]>=0.32.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:48.2911701Z   Using cached uvicorn-0.53.0-py3-none-any.whl.metadata (6.6 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.3172295Z Collecting iniconfig>=1.0.1 (from pytest)
+02 unit	Install workspace	2026-09-17T11:18:48.3183805Z   Using cached iniconfig-2.3.0-py3-none-any.whl.metadata (2.5 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.3256634Z Collecting packaging>=22 (from pytest)
+02 unit	Install workspace	2026-09-17T11:18:48.3268949Z   Using cached packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.3318133Z Collecting pluggy<2,>=1.5 (from pytest)
+02 unit	Install workspace	2026-09-17T11:18:48.3329584Z   Using cached pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.3634335Z Collecting pygments>=2.7.2 (from pytest)
+02 unit	Install workspace	2026-09-17T11:18:48.3646017Z   Using cached pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.3909287Z Collecting execnet>=2.1 (from pytest-xdist)
+02 unit	Install workspace	2026-09-17T11:18:48.3920515Z   Using cached execnet-2.1.2-py3-none-any.whl.metadata (2.9 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.4256986Z Collecting anyio (from httpx)
+02 unit	Install workspace	2026-09-17T11:18:48.4269090Z   Using cached anyio-4.15.1-py3-none-any.whl.metadata (4.7 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.4574677Z Collecting certifi (from httpx)
+02 unit	Install workspace	2026-09-17T11:18:48.4586356Z   Using cached certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.4870078Z Collecting httpcore==1.* (from httpx)
+02 unit	Install workspace	2026-09-17T11:18:48.4882624Z   Using cached httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.5171226Z Collecting idna (from httpx)
+02 unit	Install workspace	2026-09-17T11:18:48.5183034Z   Using cached idna-3.19-py3-none-any.whl.metadata (9.2 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.5442188Z Collecting h11>=0.16 (from httpcore==1.*->httpx)
+02 unit	Install workspace	2026-09-17T11:18:48.5453859Z   Using cached h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.5744344Z Collecting absl-py>=2.0.0 (from ortools)
+02 unit	Install workspace	2026-09-17T11:18:48.5756281Z   Using cached absl_py-2.5.0-py3-none-any.whl.metadata (3.3 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.7125584Z Collecting pandas>=2.0.0 (from ortools)
+02 unit	Install workspace	2026-09-17T11:18:48.7138307Z   Using cached pandas-3.0.5-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (79 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.8682525Z Collecting protobuf<6.34,>=6.33.1 (from ortools)
+02 unit	Install workspace	2026-09-17T11:18:48.8695398Z   Using cached protobuf-6.33.6-cp39-abi3-manylinux2014_x86_64.whl.metadata (593 bytes)
+02 unit	Install workspace	2026-09-17T11:18:48.8984837Z Collecting typing-extensions>=4.12 (from ortools)
+02 unit	Install workspace	2026-09-17T11:18:48.8998441Z   Using cached typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.9254011Z Collecting immutabledict>=3.0.0 (from ortools)
+02 unit	Install workspace	2026-09-17T11:18:48.9265904Z   Using cached immutabledict-4.3.1-py3-none-any.whl.metadata (3.5 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.9538561Z Collecting sortedcontainers<3.0.0,>=2.1.0 (from hypothesis)
+02 unit	Install workspace	2026-09-17T11:18:48.9550685Z   Using cached sortedcontainers-2.4.0-py2.py3-none-any.whl.metadata (10 kB)
+02 unit	Install workspace	2026-09-17T11:18:48.9866486Z Collecting Mako (from alembic>=1.13.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:48.9878722Z   Using cached mako-1.4.1-py3-none-any.whl.metadata (2.9 kB)
+02 unit	Install workspace	2026-09-17T11:18:49.0249048Z Collecting starlette>=0.46.0 (from fastapi>=0.115.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:49.0261601Z   Using cached starlette-1.6.0-py3-none-any.whl.metadata (6.4 kB)
+02 unit	Install workspace	2026-09-17T11:18:49.0529142Z Collecting typing-inspection>=0.4.2 (from fastapi>=0.115.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:49.0541256Z   Using cached typing_inspection-0.4.4-py3-none-any.whl.metadata (2.6 kB)
+02 unit	Install workspace	2026-09-17T11:18:49.0778743Z Collecting annotated-doc>=0.0.2 (from fastapi>=0.115.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:49.0790341Z   Using cached annotated_doc-0.0.5-py3-none-any.whl.metadata (6.5 kB)
+02 unit	Install workspace	2026-09-17T11:18:49.1058372Z Collecting et-xmlfile (from openpyxl>=3.1.5->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:49.1070338Z   Using cached et_xmlfile-2.0.0-py3-none-any.whl.metadata (2.7 kB)
+02 unit	Install workspace	2026-09-17T11:18:49.1364363Z Collecting python-dateutil>=2.8.2 (from pandas>=2.0.0->ortools)
+02 unit	Install workspace	2026-09-17T11:18:49.1376062Z   Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+02 unit	Install workspace	2026-09-17T11:18:49.2840947Z Collecting psycopg-binary==3.3.5 (from psycopg[binary]>=3.2.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:49.2853813Z   Using cached psycopg_binary-3.3.5-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.7 kB)
+02 unit	Install workspace	2026-09-17T11:18:49.3105800Z Collecting annotated-types>=0.6.0 (from pydantic>=2.9.0->ca-contracts==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:49.3116803Z   Using cached annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+02 unit	Install workspace	2026-09-17T11:18:49.8949225Z Collecting pydantic-core==2.46.5 (from pydantic>=2.9.0->ca-contracts==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:49.8963275Z   Using cached pydantic_core-2.46.5-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.6 kB)
+02 unit	Install workspace	2026-09-17T11:18:49.9257360Z Collecting six>=1.5 (from python-dateutil>=2.8.2->pandas>=2.0.0->ortools)
+02 unit	Install workspace	2026-09-17T11:18:49.9270396Z   Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.0773637Z Collecting pillow>=9.0.0 (from reportlab>=4.2.5->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:50.0788152Z   Using cached pillow-12.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (9.1 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.2366794Z Collecting charset-normalizer (from reportlab>=4.2.5->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:50.2380087Z   Using cached charset_normalizer-3.5.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (45 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.4042802Z Collecting greenlet>=1 (from sqlalchemy>=2.0.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:50.4055540Z   Using cached greenlet-3.5.6-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (3.8 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.4445971Z Collecting click>=7.0 (from uvicorn>=0.32.0->uvicorn[standard]>=0.32.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:50.4458125Z   Using cached click-8.5.0-py3-none-any.whl.metadata (2.6 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.4882705Z Collecting httptools>=0.8.0 (from uvicorn[standard]>=0.32.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:50.4895530Z   Using cached httptools-0.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (3.5 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.5182924Z Collecting python-dotenv>=0.13 (from uvicorn[standard]>=0.32.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:50.5195126Z   Using cached python_dotenv-1.2.3-py3-none-any.whl.metadata (29 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.5675587Z Collecting uvloop>=0.15.1 (from uvicorn[standard]>=0.32.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:50.5688132Z   Using cached uvloop-0.22.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (4.9 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.6444411Z Collecting watchfiles>=0.20 (from uvicorn[standard]>=0.32.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:50.6456933Z   Using cached watchfiles-1.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.9 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7100380Z Collecting MarkupSafe>=2.0 (from Mako->alembic>=1.13.0->ca-api==0.1.0)
+02 unit	Install workspace	2026-09-17T11:18:50.7113541Z   Using cached markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.7 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7153180Z Using cached pytest-9.1.1-py3-none-any.whl (386 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7165776Z Using cached pluggy-1.6.0-py3-none-any.whl (20 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7176194Z Using cached pytest_xdist-3.8.0-py3-none-any.whl (46 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7186549Z Using cached httpx-0.28.1-py3-none-any.whl (73 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7197005Z Using cached httpcore-1.0.9-py3-none-any.whl (78 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7208099Z Using cached pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (807 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7221705Z Using cached ortools-9.15.6755-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (29.8 MB)
+02 unit	Install workspace	2026-09-17T11:18:50.7346984Z Using cached protobuf-6.33.6-cp39-abi3-manylinux2014_x86_64.whl (323 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7359342Z Using cached hypothesis-6.168.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.2 MB)
+02 unit	Install workspace	2026-09-17T11:18:50.7374500Z Using cached sortedcontainers-2.4.0-py2.py3-none-any.whl (29 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7384665Z Using cached absl_py-2.5.0-py3-none-any.whl (137 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7395603Z Using cached alembic-1.20.0-py3-none-any.whl (268 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7406656Z Using cached execnet-2.1.2-py3-none-any.whl (40 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7417103Z Using cached fastapi-0.141.1-py3-none-any.whl (131 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7427672Z Using cached annotated_doc-0.0.5-py3-none-any.whl (5.3 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7437674Z Using cached h11-0.16.0-py3-none-any.whl (37 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7447958Z Using cached immutabledict-4.3.1-py3-none-any.whl (5.0 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7457999Z Using cached iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7468436Z Using cached numpy-2.5.3-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (16.7 MB)
+02 unit	Install workspace	2026-09-17T11:18:50.7543176Z Using cached openpyxl-3.1.5-py2.py3-none-any.whl (250 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7555609Z Using cached packaging-26.3-py3-none-any.whl (129 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7566679Z Using cached pandas-3.0.5-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (11.0 MB)
+02 unit	Install workspace	2026-09-17T11:18:50.7621232Z Using cached psycopg-3.3.5-py3-none-any.whl (213 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7632205Z Using cached psycopg_binary-3.3.5-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.2 MB)
+02 unit	Install workspace	2026-09-17T11:18:50.7661937Z Using cached pydantic-2.13.5-py3-none-any.whl (472 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7673973Z Using cached pydantic_core-2.46.5-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+02 unit	Install workspace	2026-09-17T11:18:50.7692203Z Using cached annotated_types-0.8.0-py3-none-any.whl (13 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7702067Z Using cached pygments-2.21.0-py3-none-any.whl (1.3 MB)
+02 unit	Install workspace	2026-09-17T11:18:50.7716884Z Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7727996Z Using cached python_multipart-0.0.32-py3-none-any.whl (30 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7738216Z Using cached redis-8.1.0-py3-none-any.whl (560 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7750631Z Using cached reportlab-5.0.1-py3-none-any.whl (2.0 MB)
+02 unit	Install workspace	2026-09-17T11:18:50.7768852Z Using cached pillow-12.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (6.9 MB)
+02 unit	Install workspace	2026-09-17T11:18:50.7807223Z Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7817639Z Using cached sqlalchemy-2.0.54-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (3.5 MB)
+02 unit	Install workspace	2026-09-17T11:18:50.7841538Z Using cached greenlet-3.5.6-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (621 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7854199Z Using cached starlette-1.6.0-py3-none-any.whl (75 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7864623Z Using cached anyio-4.15.1-py3-none-any.whl (132 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7875464Z Using cached idna-3.19-py3-none-any.whl (68 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7885957Z Using cached typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7896891Z Using cached typing_inspection-0.4.4-py3-none-any.whl (14 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7907596Z Using cached uvicorn-0.53.0-py3-none-any.whl (87 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7919215Z Using cached click-8.5.0-py3-none-any.whl (125 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7931428Z Using cached httptools-0.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (523 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7945060Z Using cached python_dotenv-1.2.3-py3-none-any.whl (22 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.7957308Z Using cached uvloop-0.22.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (4.4 MB)
+02 unit	Install workspace	2026-09-17T11:18:50.7987117Z Using cached watchfiles-1.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (456 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.8000885Z Using cached websockets-17.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (224 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.8012468Z Using cached certifi-2026.7.22-py3-none-any.whl (136 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.8024593Z Using cached charset_normalizer-3.5.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (248 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.8036337Z Using cached et_xmlfile-2.0.0-py3-none-any.whl (18 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.8047060Z Using cached mako-1.4.1-py3-none-any.whl (80 kB)
+02 unit	Install workspace	2026-09-17T11:18:50.8058879Z Using cached markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (22 kB)
+02 unit	Install workspace	2026-09-17T11:18:51.0304651Z Building wheels for collected packages: ca-contracts, ca-solver, ca-agents, ca-gates, ca-ops, ca-playbook, ca-api
+02 unit	Install workspace	2026-09-17T11:18:51.0311761Z   Building editable for ca-contracts (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:51.0666827Z   Building editable for ca-contracts (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:51.0671430Z   Created wheel for ca-contracts: filename=ca_contracts-0.1.0-py3-none-any.whl size=1048 sha256=e6985992e702156008d0c255ae928f11468c702f4bc10010ab62b937bbae49f2
+02 unit	Install workspace	2026-09-17T11:18:51.0673693Z   Stored in directory: /tmp/pip-ephem-wheel-cache-o5ha0apv/wheels/ae/31/3e/c90099f82aa608ba604815fec62068d75bab82b240dc2a2cd6
+02 unit	Install workspace	2026-09-17T11:18:51.0691495Z   Building editable for ca-solver (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:51.1023109Z   Building editable for ca-solver (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:51.1029052Z   Created wheel for ca-solver: filename=ca_solver-0.1.0-py3-none-any.whl size=1028 sha256=6a80af0f7c3310b1929b55bf406766a2eacba1d8e8de408f8d53ff65cc071d68
+02 unit	Install workspace	2026-09-17T11:18:51.1030709Z   Stored in directory: /tmp/pip-ephem-wheel-cache-o5ha0apv/wheels/24/dd/b7/73d4129de13b6b8f553654f8b235a6569fe6440efd35ae8f6f
+02 unit	Install workspace	2026-09-17T11:18:51.1048638Z   Building editable for ca-agents (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:51.1384486Z   Building editable for ca-agents (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:51.1390649Z   Created wheel for ca-agents: filename=ca_agents-0.1.0-py3-none-any.whl size=1079 sha256=97cbb170c64ab31351a09aa939ccc03921d023c3734d4b21044db463523bf5eb
+02 unit	Install workspace	2026-09-17T11:18:51.1392300Z   Stored in directory: /tmp/pip-ephem-wheel-cache-o5ha0apv/wheels/7d/74/45/097989308b6b90c0a1b2ac54580ddccf77df0c68c4c591fb75
+02 unit	Install workspace	2026-09-17T11:18:51.1409533Z   Building editable for ca-gates (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:51.1754357Z   Building editable for ca-gates (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:51.1760275Z   Created wheel for ca-gates: filename=ca_gates-0.1.0-py3-none-any.whl size=983 sha256=a88aaee0837d39e8b5ff400afca45e78fe64f2fd8a425acb81d3605a556a7ae7
+02 unit	Install workspace	2026-09-17T11:18:51.1761912Z   Stored in directory: /tmp/pip-ephem-wheel-cache-o5ha0apv/wheels/3c/98/6e/da1ae25287c2a97e4673f588b6d11befba1ecc0a9e78790f59
+02 unit	Install workspace	2026-09-17T11:18:51.1779589Z   Building editable for ca-ops (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:51.2115475Z   Building editable for ca-ops (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:51.2121031Z   Created wheel for ca-ops: filename=ca_ops-0.1.0-py3-none-any.whl size=988 sha256=87b2d0bd80c60e37650299ac3378290b45ef9205d91da7f6e97d378fa9fdfab9
+02 unit	Install workspace	2026-09-17T11:18:51.2122641Z   Stored in directory: /tmp/pip-ephem-wheel-cache-o5ha0apv/wheels/bc/bf/a6/9a8940687cb526a2e770189f6bb62d9662084e9802ca609132
+02 unit	Install workspace	2026-09-17T11:18:51.2139745Z   Building editable for ca-playbook (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:51.2473467Z   Building editable for ca-playbook (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:51.2478021Z   Created wheel for ca-playbook: filename=ca_playbook-0.1.0-py3-none-any.whl size=1015 sha256=5ddb64b35755e16a64c285f4a891989adc0768c0ceee6bdc2ce2e191d3befb1d
+02 unit	Install workspace	2026-09-17T11:18:51.2479433Z   Stored in directory: /tmp/pip-ephem-wheel-cache-o5ha0apv/wheels/a6/47/36/dd0db4bb9605425b2141d20b3b5f5d9e0628c0f9ee002736f4
+02 unit	Install workspace	2026-09-17T11:18:51.2495838Z   Building editable for ca-api (pyproject.toml): started
+02 unit	Install workspace	2026-09-17T11:18:51.2836614Z   Building editable for ca-api (pyproject.toml): finished with status 'done'
+02 unit	Install workspace	2026-09-17T11:18:51.2839141Z   Created wheel for ca-api: filename=ca_api-0.1.0-py3-none-any.whl size=1126 sha256=5fa845276ae14b3783b82d08c812bb5f32d1bd38295cca12dcc11656926deb3d
+02 unit	Install workspace	2026-09-17T11:18:51.2840900Z   Stored in directory: /tmp/pip-ephem-wheel-cache-o5ha0apv/wheels/14/dc/31/15fa128282adf8c964a77e8499ec61783d8c71fa4efe063d1a
+02 unit	Install workspace	2026-09-17T11:18:51.2854507Z Successfully built ca-contracts ca-solver ca-agents ca-gates ca-ops ca-playbook ca-api
+02 unit	Install workspace	2026-09-17T11:18:51.3954664Z Installing collected packages: sortedcontainers, websockets, uvloop, typing-extensions, six, redis, pyyaml, python-multipart, python-dotenv, pygments, psycopg-binary, protobuf, pluggy, pillow, packaging, numpy, MarkupSafe, iniconfig, immutabledict, idna, hypothesis, httptools, h11, greenlet, execnet, et-xmlfile, click, charset-normalizer, certifi, ca-playbook, ca-gates, annotated-types, annotated-doc, absl-py, uvicorn, typing-inspection, sqlalchemy, reportlab, python-dateutil, pytest, pydantic-core, psycopg, openpyxl, Mako, httpcore, ca-ops, ca-agents, anyio, watchfiles, starlette, pytest-xdist, pydantic, pandas, httpx, alembic, ortools, fastapi, ca-contracts, ca-solver, ca-api
+02 unit	Install workspace	2026-09-17T11:19:04.8068722Z 
+02 unit	Install workspace	2026-09-17T11:19:04.8115366Z Successfully installed Mako-1.4.1 MarkupSafe-3.0.3 absl-py-2.5.0 alembic-1.20.0 annotated-doc-0.0.5 annotated-types-0.8.0 anyio-4.15.1 ca-agents-0.1.0 ca-api-0.1.0 ca-contracts-0.1.0 ca-gates-0.1.0 ca-ops-0.1.0 ca-playbook-0.1.0 ca-solver-0.1.0 certifi-2026.7.22 charset-normalizer-3.5.1 click-8.5.0 et-xmlfile-2.0.0 execnet-2.1.2 fastapi-0.141.1 greenlet-3.5.6 h11-0.16.0 httpcore-1.0.9 httptools-0.8.0 httpx-0.28.1 hypothesis-6.168.0 idna-3.19 immutabledict-4.3.1 iniconfig-2.3.0 numpy-2.5.3 openpyxl-3.1.5 ortools-9.15.6755 packaging-26.3 pandas-3.0.5 pillow-12.3.0 pluggy-1.6.0 protobuf-6.33.6 psycopg-3.3.5 psycopg-binary-3.3.5 pydantic-2.13.5 pydantic-core-2.46.5 pygments-2.21.0 pytest-9.1.1 pytest-xdist-3.8.0 python-dateutil-2.9.0.post0 python-dotenv-1.2.3 python-multipart-0.0.32 pyyaml-6.0.3 redis-8.1.0 reportlab-5.0.1 six-1.17.0 sortedcontainers-2.4.0 sqlalchemy-2.0.54 starlette-1.6.0 typing-extensions-4.16.0 typing-inspection-0.4.4 uvicorn-0.53.0 uvloop-0.22.1 watchfiles-1.2.0 websockets-17.1
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	∩╗┐2026-09-17T11:19:05.0626647Z ##[group]Run CA_AGENT_MODE=replay pytest -q -n auto
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:05.0627076Z [36;1mCA_AGENT_MODE=replay pytest -q -n auto[0m
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:05.0651392Z shell: /usr/bin/bash -e {0}
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:05.0651667Z env:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:05.0651865Z   CA_AGENT_MODE: replay
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:05.0652163Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.14/x64
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:05.0652579Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib/pkgconfig
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:05.0652991Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:05.0653363Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:05.0653827Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:05.0654225Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:05.0654576Z ##[endgroup]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:17.4896806Z bringing up nodes...
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:17.4925188Z bringing up nodes...
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:17.4935690Z 
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:20.7188827Z ........................................................................ [  4%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:19:31.0488859Z ........................................................................ [  8%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:20:15.9128874Z .....................................F.................................. [ 12%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:22:40.9278778Z ........................................................................ [ 17%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:22:42.1358838Z ........................................................................ [ 21%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:22:43.9189165Z ........................................................................ [ 25%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:22:48.9048989Z ........................................................................ [ 30%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:22:49.7938782Z ........................................................................ [ 34%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:22:50.8928900Z ........................................................................ [ 38%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:22:52.8319084Z ........................................................................ [ 43%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:22:53.8138996Z ........................................................................ [ 47%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:24:19.8568840Z ........................................................................ [ 51%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:24:27.0978768Z ........................................................................ [ 55%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:24:28.3668855Z ........................................................................ [ 60%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:24:29.7698825Z ........................................................................ [ 64%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:24:32.1458816Z ........................................................................ [ 68%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:24:32.8488902Z ........................................................................ [ 73%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:24:34.0138798Z ........................................................................ [ 77%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:24:36.1478933Z ........................................................................ [ 81%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:26:01.4598829Z ........................................................................ [ 86%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:26:24.8238869Z ........................................................................ [ 90%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:26:38.0928826Z ........................................................................ [ 94%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:32.0666093Z ........................................................................ [ 98%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7226042Z ..................                                                       [100%]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7226815Z =================================== FAILURES ===================================
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7227678Z __________________ test_copilot_voice_concurrency_superseded ___________________
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7228550Z [gw0] linux -- Python 3.12.14 /opt/hostedtoolcache/Python/3.12.14/x64/bin/python
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7228898Z 
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7229154Z monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f3a5bf699a0>
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7229957Z 
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7230294Z     def test_copilot_voice_concurrency_superseded(monkeypatch: pytest.MonkeyPatch) -> None:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7230909Z         import ca_api.interfaces.http.copilot_voice as voice_module
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7231291Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7231524Z         class FakeLiveSession:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7231861Z             def __init__(self, context: object) -> None:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7232208Z                 pass
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7232440Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7232673Z             async def open(self) -> None:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7232986Z                 return None
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7233241Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7233501Z             async def receive(self) -> dict[str, object]:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7233880Z                 await __import__("asyncio").sleep(60)
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7234217Z                 return {}
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7234464Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7234731Z             async def send_audio(self, audio: bytes) -> None:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7235093Z                 return None
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7235339Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7235593Z             async def send_text(self, text: str) -> None:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7235939Z                 return None
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7236183Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7236409Z             async def close(self) -> None:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7236712Z                 return None
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7236964Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7237324Z         monkeypatch.setattr(voice_module, "GeminiLiveSession", FakeLiveSession)
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7238052Z         token = _login_manager()
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7238394Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7238715Z >       with client.websocket_connect("/api/v1/copilot/voice") as ws1:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7239152Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7239394Z 
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7239541Z apps/api/tests/unit/test_copilot_api.py:165: 
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7239944Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7240589Z /opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/starlette/testclient.py:131: in __exit__
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7241199Z     return self.exit_stack.__exit__(*args)
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7241513Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7241979Z /opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/contextlib.py:610: in __exit__
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7242449Z     raise exc_details[1]
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7242867Z /opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/contextlib.py:595: in __exit__
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7243326Z     if cb(*exc_details):
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7243589Z        ^^^^^^^^^^^^^^^^
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7244022Z /opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/contextlib.py:478: in _exit_wrapper
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7244751Z     callback(*args, **kwds)
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7245091Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7245362Z 
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7245481Z self = None, timeout = None
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7245659Z 
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7245788Z     def result(self, timeout=None):
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7246180Z         """Return the result of the call that the future represents.
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7246553Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7246767Z         Args:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7247119Z             timeout: The number of seconds to wait for the result if the future
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7247622Z                 isn't done. If None, then there is no limit on the wait time.
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7248205Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7248428Z         Returns:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7248736Z             The result of the call that the future represents.
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7249080Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7249281Z         Raises:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7249573Z             CancelledError: If the future was cancelled.
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7250053Z             TimeoutError: If the future didn't finish executing before the given
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7250467Z                 timeout.
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7250962Z             Exception: If the call raised then that exception will be raised.
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7251367Z         """
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7251588Z         try:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7251834Z             with self._condition:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7252240Z                 if self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7252744Z                     raise CancelledError()
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7253079Z                 elif self._state == FINISHED:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7253417Z                     return self.__get_result()
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7253727Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7253966Z                 self._condition.wait(timeout)
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7254275Z     
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7254565Z                 if self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]:
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7254969Z >                   raise CancelledError()
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7255341Z E                   concurrent.futures._base.CancelledError
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7255595Z 
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7255929Z /opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/concurrent/futures/_base.py:454: CancelledError
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7256539Z =========================== short test summary info ============================
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7257400Z FAILED apps/api/tests/unit/test_copilot_api.py::test_copilot_voice_concurrency_superseded - concurrent.futures._base.CancelledError
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7258189Z 1 failed, 1673 passed in 688.00s (0:11:28)
+02 unit	Run CA_AGENT_MODE=replay pytest -q -n auto	2026-09-17T11:30:33.7996567Z ##[error]Process completed with exit code 1.
+02 unit	Post Run actions/checkout@v4	∩╗┐2026-09-17T11:30:33.8141324Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.8142499Z Post job cleanup.
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.8992388Z [command]/usr/bin/git version
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.9031082Z git version 2.55.0
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.9068536Z Temporarily overriding HOME='/home/runner/work/_temp/0598f504-fdf4-4a91-a662-61340eea660a' before making global git config changes
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.9070054Z Adding repository directory to the temporary git global config as a safe directory
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.9072288Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Crew-Operations/Crew-Operations
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.9108039Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.9139181Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.9360760Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.9388171Z http.https://github.com/.extraheader
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.9401023Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.9431750Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.9638088Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+02 unit	Post Run actions/checkout@v4	2026-09-17T11:30:33.9684797Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+02 unit	Complete job	∩╗┐2026-09-17T11:30:34.0076547Z Cleaning up orphan processes
+02 unit	Complete job	2026-09-17T11:30:34.0308455Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/cache@v4, actions/checkout@v4, actions/setup-python@v5. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

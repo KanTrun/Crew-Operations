@@ -1,0 +1,39 @@
+{
+  "description": "Ngưỡng hao hụt đang áp dụng — đọc từ `config/nguong-hao-hut.yaml`.\n\nNgưỡng **không** hard-code trong mã nghiệp vụ: đổi quy định của quán thì sửa\nfile cấu hình, không sửa mã (cùng nguyên tắc với `config/tham-so-lao-dong.yaml`).",
+  "properties": {
+    "mac_dinh_phan_tram": {
+      "default": 5.0,
+      "minimum": 0.0,
+      "title": "Mac Dinh Phan Tram",
+      "type": "number"
+    },
+    "nghiem_trong_phan_tram": {
+      "default": 15.0,
+      "minimum": 0.0,
+      "title": "Nghiem Trong Phan Tram",
+      "type": "number"
+    },
+    "theo_mat_hang": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "description": "mat_hang -> ngưỡng riêng, thắng ngưỡng mặc định",
+      "title": "Theo Mat Hang",
+      "type": "object"
+    },
+    "phien_ban": {
+      "default": "",
+      "maxLength": 32,
+      "title": "Phien Ban",
+      "type": "string"
+    },
+    "ngay_kiem": {
+      "default": "",
+      "maxLength": 32,
+      "title": "Ngay Kiem",
+      "type": "string"
+    }
+  },
+  "title": "LossThreshold",
+  "type": "object"
+}

@@ -1,15 +1,19 @@
 # mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import cast
 
+import pytest
 from ca_api.interfaces.http.main import app
 from ca_api.persist import kv_get, kv_set
 from fastapi.testclient import TestClient
 
 from unit.auth_util import headers
+
+ROOT = Path(__file__).resolve().parents[4]
 
 client = TestClient(app)
 PHOTO = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
@@ -202,3 +206,45 @@ def test_phieu_seq_unique_under_parallel() -> None:
     with ThreadPoolExecutor(max_workers=8) as pool:
         ids = list(pool.map(lambda _: start(), range(8)))
     assert len(ids) == len(set(ids))
+
+
+def test_phan_cong_doc_lich_tuan_theo_tmp_path_cua_test(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`_phan_cong()` phải đọc lịch tuần từ ĐƯỜNG DẪN CỦA BÀI TEST, không phải file thật.
+
+    Vì sao có bài này: `_lich_out()` từng chốt đường dẫn ở CẤP MODULE
+    (`LICH = ROOT / "data" / "out" / "lich_tuan.json"`), nên `NHIPQUAN_LICH_TUAN_OUT`
+    mà conftest set theo từng bài **không bao giờ được thấy**. Test đọc thẳng vào
+    file thật của quán.
+
+    Hậu quả thật: `_phan_cong()` ưu tiên file lịch tuần hơn seed. Một file sót lại từ
+    lần chạy demo trước đã che seed vĩnh viễn — file thật có `w1_c01 = ['nv_03','nv_38']`
+    còn seed nói `['nv_07','nv_19']`. Nên `test_ghi_nhan_after_nha` nhận `nv_03` đã ở
+    trong ca và trả **409 `da_trong_ca`**, đỏ trên mọi máy có file đó.
+
+    Bài này chốt lại hợp đồng: file lịch tuần giả do bài test đặt PHẢI được đọc, và
+    file thật KHÔNG được đụng tới.
+    """
+    from ca_api.interfaces.http import sprint3
+
+    fake = tmp_path / "lich_tuan.json"
+    fake.write_text(
+        json.dumps({"phan_cong": {"ca_gia": ["nv_gia_01"]}}), encoding="utf-8"
+    )
+    monkeypatch.setenv("NHIPQUAN_LICH_TUAN_OUT", str(fake))
+    # Bỏ kv để `_phan_cong()` rơi xuống nhánh đọc file.
+    kv_set("phan_cong", None)
+
+    assert sprint3._lich_out() == fake, (
+        "_lich_out() khong doc NHIPQUAN_LICH_TUAN_OUT — duong dan dang bi chot o cap module"
+    )
+    assert sprint3._phan_cong() == {"ca_gia": ["nv_gia_01"]}, (
+        "_phan_cong() khong doc file lich tuan cua bai test"
+    )
+    # Và file THẬT của quán không được đụng tới.
+    that = ROOT / "data" / "out" / "lich_tuan.json"
+    if that.exists():
+        assert "ca_gia" not in that.read_text(encoding="utf-8"), (
+            "bai test da ghi vao file lich tuan THAT cua quan"
+        )

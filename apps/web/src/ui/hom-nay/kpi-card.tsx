@@ -3,15 +3,34 @@
 import Link from "next/link";
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import type { MouseEvent, ReactNode } from "react";
+import { beat, springFor } from "../../lib/motion";
 
-function useTilt(reduced: boolean) {
+/**
+ * Nghiêng theo con trỏ — chỉ dành cho thẻ được AI chọn là việc gấp nhất.
+ *
+ * Vì sao không áp cho mọi thẻ: bản cũ nghiêng cả bốn thẻ KPI như nhau, nên "thẻ
+ * nào quan trọng" không đọc ra được từ chuyển động — mọi thứ đều động thì không
+ * gì nổi bật. Nay đúng một thẻ mỗi trang có khoảnh khắc này, và nó trùng với
+ * thẻ mà `computeOpsPulse` đánh dấu `highlightKpi`. Chuyển động trở thành một
+ * kênh thông tin (chỗ này quan trọng) thay vì trang trí.
+ *
+ * Biên độ 4° là biên độ đọc được: lớn hơn thì chữ trên thẻ biến dạng, nhỏ hơn
+ * thì không ai nhận ra có chuyển động. Độ cứng và damping lấy từ
+ * `springFor("settle")` — suy ra từ chính `--nq-beat-settle`, và là tắt dần tới
+ * hạn nên không bao giờ vượt đích: bảng số liệu không được rung khi người dùng
+ * chỉ đang rê chuột qua.
+ */
+const TILT_DEG = 4;
+const TILT_SPRING = springFor("settle");
+
+function useHighlightTilt(enabled: boolean) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [6, -6]), { stiffness: 260, damping: 22 });
-  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-6, 6]), { stiffness: 260, damping: 22 });
+  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [TILT_DEG, -TILT_DEG]), TILT_SPRING);
+  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-TILT_DEG, TILT_DEG]), TILT_SPRING);
 
   const onMove = (e: MouseEvent<HTMLElement>) => {
-    if (reduced) return;
+    if (!enabled) return;
     const rect = e.currentTarget.getBoundingClientRect();
     x.set((e.clientX - rect.left) / rect.width - 0.5);
     y.set((e.clientY - rect.top) / rect.height - 0.5);
@@ -39,14 +58,15 @@ export function KpiCard({
   "data-highlight"?: string;
 }) {
   const reduced = useReducedMotion() ?? false;
-  const tilt = useTilt(reduced);
+  const isHighlight = dataHighlight === "on";
+  const tilt = useHighlightTilt(isHighlight && !reduced);
   const tileCls =
     accent === "warn"
       ? "nq-bento-tile nq-dash-kpi nq-dash-kpi--warn nq-ink-on-solid"
       : accent === "ok"
         ? "nq-bento-tile nq-dash-kpi nq-dash-kpi--ok nq-ink-on-solid"
         : "nq-bento-tile nq-dash-kpi";
-  const highlightCls = dataHighlight === "on" ? " nq-dash-kpi--pulse-hi" : "";
+  const highlightCls = isHighlight ? " nq-dash-kpi--pulse-hi" : "";
 
   const inner = (
     <>
@@ -55,18 +75,26 @@ export function KpiCard({
     </>
   );
 
+  // Thẻ thường: chỉ vào nhẹ + phản hồi bấm. Thẻ được đánh dấu: thêm nghiêng.
   const motionProps = reduced
     ? {}
-    : {
-        initial: { opacity: 0, y: 14 },
-        animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.42, delay, ease: [0.22, 1, 0.36, 1] as const },
-        style: { rotateX: tilt.rotateX, rotateY: tilt.rotateY, transformPerspective: 900 },
-        onMouseMove: tilt.onMove,
-        onMouseLeave: tilt.onLeave,
-        whileHover: { scale: 1.02, transition: { duration: 0.2 } },
-        whileTap: { scale: 0.98 },
-      };
+    : isHighlight
+      ? {
+          initial: { opacity: 0, y: 10 },
+          animate: { opacity: 1, y: 0 },
+          transition: beat("focus", delay),
+          style: { rotateX: tilt.rotateX, rotateY: tilt.rotateY, transformPerspective: 900 },
+          onMouseMove: tilt.onMove,
+          onMouseLeave: tilt.onLeave,
+          whileHover: { scale: 1.015, transition: beat("settle") },
+          whileTap: { scale: 0.985 },
+        }
+      : {
+          initial: { opacity: 0, y: 10 },
+          animate: { opacity: 1, y: 0 },
+          transition: beat("focus", delay),
+          whileTap: { scale: 0.985 },
+        };
 
   if (href) {
     return (
@@ -93,7 +121,7 @@ export function StatusStrip({ status, meta }: { status: ReactNode; meta?: ReactN
       aria-label="Tình trạng quán"
       initial={reduced ? {} : { opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={beat("focus")}
     >
       <div className="nq-dash-strip-glow" aria-hidden />
       <div className="nq-dash-strip-text">

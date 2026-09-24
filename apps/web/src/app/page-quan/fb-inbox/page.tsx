@@ -235,7 +235,10 @@ export default function FbInboxPage() {
             gap: 6,
             padding: "8px 16px",
             borderRadius: 8,
-            background: "#27ae60",
+            /* `--nq-ok` (#6f9b7a) trên chữ trắng chỉ đạt 2.87:1; nền xanh đậm hơn
+               giữ nguyên sắc nhưng đạt 5.35:1. Đây là lối vào màn hình đặt bàn —
+               nút duy nhất trên khối này, không được để chữ mờ. */
+            background: "#1f7a44",
             color: "#fff",
             fontWeight: 600,
             textDecoration: "none",
@@ -358,8 +361,8 @@ export default function FbInboxPage() {
           return (
             <article
               key={it.id}
-              className={`bg-[var(--nq-surface)] border-2 p-6 ${
-                sla?.overdue ? "border-[var(--nq-red)]" : "border-[var(--nq-dim)]"
+              className={`nq-surface-block bg-[var(--nq-surface)] p-6 ${
+                sla?.overdue ? "border-[var(--nq-red)]" : ""
               }`}
             >
               <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -522,9 +525,9 @@ export default function FbInboxPage() {
 
 function StatCell({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {
   return (
-    <div className="bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-4">
+    <div className="nq-surface-row bg-[var(--nq-surface)] p-4 block">
       <p className="text-xs font-mono uppercase tracking-widest text-[var(--nq-dim)] mb-1">{label}</p>
-      <p className={`text-3xl font-black ${danger ? "text-[var(--nq-red)]" : "text-[var(--nq-fg)]"}`}>{value}</p>
+      <p className={`tabular-nums text-3xl font-black ${danger ? "text-[var(--nq-red)]" : "text-[var(--nq-fg)]"}`}>{value}</p>
     </div>
   );
 }

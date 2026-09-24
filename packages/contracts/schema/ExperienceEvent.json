@@ -1,0 +1,97 @@
+{
+  "$defs": {
+    "ExperienceRole": {
+      "description": "Vai trò trong không gian trải nghiệm (bản chiếu theo quyền hạn).",
+      "enum": [
+        "khach",
+        "nhan_vien",
+        "quan_ly",
+        "chu_quan"
+      ],
+      "title": "ExperienceRole",
+      "type": "string"
+    }
+  },
+  "description": "Sự kiện trải nghiệm gắn với anchor (nếu có), có nguồn và bằng chứng.",
+  "properties": {
+    "event_id": {
+      "minLength": 1,
+      "title": "Event Id",
+      "type": "string"
+    },
+    "event_type": {
+      "title": "Event Type",
+      "type": "string"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "actor_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actor Id"
+    },
+    "role": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExperienceRole"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "anchor_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Anchor Id"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "title": "Payload",
+      "type": "object"
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "source": {
+      "enum": [
+        "replay",
+        "user",
+        "system",
+        "agent"
+      ],
+      "title": "Source",
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_id",
+    "event_type",
+    "occurred_at",
+    "source"
+  ],
+  "title": "ExperienceEvent",
+  "type": "object"
+}

@@ -22,7 +22,7 @@ export interface Ca {
 
 export interface LichTuan {
   tuan_iso: string;
-  trang_thai?: "nhap" | "dang_giai" | "cho_duyet" | "da_cong_bo" | "da_dong";
+  trang_thai?: "may_sinh" | "nhap" | "dang_giai" | "cho_duyet" | "da_duyet" | "da_cong_bo" | "da_dong";
   phan_cong?: Record<string, string[]>;
 }
 
@@ -227,7 +227,7 @@ export interface CopilotMessage {
 
 export type ActionProposalStatus = "draft" | "ready_for_approval" | "amendment_ready" | "executing" | "executed" | "execution_failed" | "rejected" | "expired" | "stale_rejected";
 
-export type CopilotIntent = "SCHEDULE_SOLVE" | "APPROVE_SHIFT_SWAP" | "GENERATE_DAILY_BRIEF" | "QUERY_SOP" | "ANALYZE_WASTE" | "CREATE_RULE_PROPOSAL" | "INVENTORY_RESTOCK_CHECK" | "SEND_MAIL" | "GET_MY_PROFILE" | "LIST_STAFF" | "QUERY_MENU" | "GET_INVENTORY" | "GET_SHIFT_SWAPS" | "GET_HANGING_TASKS" | "GET_HANDOVERS" | "PROPOSE_HANGING_TASK" | "PROPOSE_TASK_COMPLETE" | "PROPOSE_CONSUMPTION_RECORD" | "PROPOSE_TIME_OFF" | "PROPOSE_MENU_UPDATE" | "PROPOSE_ORDER_TRANSITION" | "PROPOSE_PIN" | "GET_PAGE_STATUS" | "PROPOSE_PAGE_SYNC" | "PROPOSE_PAGE_DRAFT" | "PROPOSE_TKB_CONFIRM" | "PROPOSE_SWAP_CONSENT" | "PROPOSE_HANDOVER" | "GET_SCHEDULE" | "GET_MY_SHIFTS" | "GET_CONSTRAINT_CANDIDATES" | "RUN_CATCHMENT_SURVEY" | "GET_SERPAPI_QUOTA" | "GET_SURVEY_RESULT" | "OUT_OF_SCOPE";
+export type CopilotIntent = "SCHEDULE_SOLVE" | "APPROVE_SHIFT_SWAP" | "GENERATE_DAILY_BRIEF" | "QUERY_SOP" | "ANALYZE_WASTE" | "CREATE_RULE_PROPOSAL" | "INVENTORY_RESTOCK_CHECK" | "SEND_MAIL" | "GET_MY_PROFILE" | "LIST_STAFF" | "QUERY_MENU" | "GET_INVENTORY" | "GET_SHIFT_SWAPS" | "GET_HANGING_TASKS" | "GET_HANDOVERS" | "PROPOSE_HANGING_TASK" | "PROPOSE_TASK_COMPLETE" | "PROPOSE_CONSUMPTION_RECORD" | "PROPOSE_TIME_OFF" | "PROPOSE_MENU_UPDATE" | "PROPOSE_ORDER_TRANSITION" | "PROPOSE_PIN" | "GET_PAGE_STATUS" | "PROPOSE_PAGE_SYNC" | "PROPOSE_PAGE_DRAFT" | "PROPOSE_TKB_CONFIRM" | "PROPOSE_SWAP_CONSENT" | "PROPOSE_HANDOVER" | "GET_SCHEDULE" | "GET_MY_SHIFTS" | "GET_CONSTRAINT_CANDIDATES" | "RUN_CATCHMENT_SURVEY" | "GET_SERPAPI_QUOTA" | "GET_SURVEY_RESULT" | "QUERY_AUDIT" | "OUT_OF_SCOPE";
 
 export interface ActionProposal {
   action_id: string;
@@ -406,5 +406,350 @@ export interface TableReservation {
   cancelled_reason?: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface SpatialAnchor {
+  anchor_id: string;
+  khu_vuc: string;
+  label: string;
+  x: number;
+  y: number;
+  z?: number;
+  kind: string;
+  active?: boolean;
+}
+
+export type ExperienceRole = "khach" | "nhan_vien" | "quan_ly" | "chu_quan";
+
+export interface ExperienceEvent {
+  event_id: string;
+  event_type: string;
+  occurred_at: string;
+  actor_id?: string | null;
+  role?: ExperienceRole | null;
+  anchor_id?: string | null;
+  payload?: Record<string, JsonValue>;
+  evidence_refs?: string[];
+  source: "replay" | "user" | "system" | "agent";
+}
+
+export interface VoiceTurn {
+  turn_id: string;
+  conversation_id: string;
+  transcript: string;
+  response_text?: string;
+  audio_ref?: string | null;
+  intent?: string | null;
+  confidence?: number;
+  proposal_id?: string | null;
+}
+
+export type MemoryConsentStatus = "required" | "granted" | "revoked" | "expired";
+
+export type MemoryStatus = "draft" | "confirmed" | "superseded" | "deleted";
+
+export type MemoryVisibility = "private" | "staff" | "manager" | "public";
+
+export interface ExperienceMemory {
+  memory_id: string;
+  anchor_id?: string | null;
+  owner_scope: string;
+  content: string;
+  source_event_ids?: string[];
+  consent_status?: MemoryConsentStatus;
+  visibility?: MemoryVisibility;
+  status?: MemoryStatus;
+  retention_until?: string | null;
+  created_by?: string;
+}
+
+export type ExperienceProposalStatus = "draft" | "ready" | "confirmed" | "rejected" | "expired";
+
+export interface ExperienceActionProposal {
+  proposal_id: string;
+  action_type: string;
+  status?: ExperienceProposalStatus;
+  snapshot_hash: string;
+  evidence_refs?: string[];
+  deterministic_result?: Record<string, JsonValue>;
+  explanation?: string;
+  requested_by: string;
+  store_id?: string;
+  created_at?: string;
+  expires_at?: string | null;
+}
+
+export type WarRoomScenarioType = "demand_surge" | "add_staff_to_shift" | "remove_staff_from_shift" | "equipment_outage" | "heavy_rain" | "large_group_arrival";
+
+export interface WarRoomScenario {
+  scenario_id: string;
+  loai: WarRoomScenarioType;
+  tham_so?: Record<string, string | number | boolean>;
+}
+
+export interface WarRoomOption {
+  option_id: string;
+  scenario_id: string;
+  input_assumptions?: Record<string, string | number | boolean>;
+  outputs?: Record<string, number>;
+  staffing?: Record<string, number>;
+  load?: Record<string, number>;
+  fairness_impact?: Record<string, number>;
+  estimated_cost?: number | null;
+  estimated_revenue?: number | null;
+  risk?: string;
+  evidence_refs?: string[];
+  stale_data?: boolean;
+  constraint_violations?: string[];
+  labels?: Array<"mo_phong" | "uoc_tinh">;
+}
+
+export interface WarRoomComparison {
+  simulation_id: string;
+  baseline_snapshot_hash: string;
+  baseline?: Record<string, JsonValue>;
+  options?: WarRoomOption[];
+}
+
+export type PositiveRuleStatus = "de_xuat" | "qua_vf_rule" | "du_tap_su" | "hieu_luc" | "tu_choi" | "da_go";
+
+export interface ShadowTestResult {
+  before?: Record<string, number>;
+  after?: Record<string, number>;
+  diffs?: Record<string, number>;
+  hard_constraints_ok?: boolean;
+  fairness_delta?: number;
+  workload_delta?: number;
+  operational_delta?: number;
+  notes?: string[];
+}
+
+export interface RuleCandidate {
+  candidate_id: string;
+  condition: Record<string, string | number | boolean>;
+  effect: Record<string, string | number | boolean>;
+  sentence: string;
+  evidence_refs?: string[];
+  counterexample_refs?: string[];
+  confidence?: number;
+  source_kind: "decision" | "rescue" | "twin" | "episode";
+  playbook_status?: PositiveRuleStatus;
+  shadow_result?: ShadowTestResult | null;
+  rule_version?: string;
+  created_from_snapshot_hash: string;
+}
+
+export interface RescueCandidate {
+  candidate_id: string;
+  nv_id: string;
+  nv_ten?: string;
+  safe?: boolean;
+  reason_passes?: string[];
+  reason_blocks?: string[];
+  fairness_delta?: number;
+  added_hours?: number;
+  skill_coverage?: Record<string, boolean>;
+}
+
+export type RescueCaseStatus = "reported" | "resolving" | "candidates_ready" | "proposed" | "invited" | "responded" | "confirmed" | "expired" | "cancelled";
+
+export interface RescueCase {
+  case_id: string;
+  store_id?: string;
+  status?: RescueCaseStatus;
+  absence_nv_id: string;
+  shift_id: string;
+  reported_by: string;
+  schedule_snapshot_hash: string;
+  candidates?: RescueCandidate[];
+  selected_candidate_id?: string | null;
+}
+
+export interface ZoneProjection {
+  zone_id: string;
+  label: string;
+  kind: string;
+  active?: boolean;
+  load_signal?: number;
+}
+
+export interface PublicEventProjection {
+  event_id: string;
+  event_type: string;
+  status: string;
+  occurred_at: string;
+  source: "replay" | "user" | "system" | "agent";
+  summary?: string;
+  zone_id?: string | null;
+}
+
+export type ExperienceMode = "troi_mua" | "gio_cao_diem" | "khach_doan" | "thieu_nhan_su" | "quan_yen_tinh" | "dem_nhac";
+
+export interface ModeProjection {
+  mode: ExperienceMode;
+  active?: boolean;
+  proposed_by?: string | null;
+  proposal_status?: ExperienceProposalStatus | null;
+}
+
+export interface HorizonItem {
+  item_id: string;
+  kind?: "event" | "signal" | "handover" | "mode_proposal";
+  title: string;
+  starts_at: string;
+  source: "replay" | "user" | "system" | "agent";
+}
+
+export interface DataQualityNotice {
+  code: string;
+  level?: "info" | "warning" | "error";
+  message: string;
+}
+
+export interface LivingCafeSnapshot {
+  snapshot_id: string;
+  store_id?: string;
+  generated_at?: string;
+  role: ExperienceRole;
+  zones?: ZoneProjection[];
+  events?: PublicEventProjection[];
+  modes?: ModeProjection[];
+  next_horizon?: HorizonItem[];
+  data_quality?: DataQualityNotice[];
+}
+
+export type LossBasis = "ke_hoach_kiem_ke" | "don_quay_thuc_te" | "hon_hop";
+
+export type LossLevel = "dat" | "canh_bao" | "nghiem_trong" | "thieu_du_lieu";
+
+export interface LossLine {
+  mat_hang: string;
+  ten?: string;
+  don_vi?: string;
+  ly_thuyet?: number | null;
+  thuc_te?: number | null;
+  lech?: number | null;
+  ty_le_phan_tram?: number | null;
+  muc_do?: LossLevel;
+  nguong_phan_tram?: number;
+  co_so?: LossBasis;
+  thieu_ve?: string[];
+  ghi_chu?: string;
+}
+
+export type LossCauseSource = "ghi_chu_ca" | "nguyen_nhan_ghi" | "hon_hop";
+
+export interface LossCauseRank {
+  nguyen_nhan: string;
+  ten?: string;
+  so_lan: number;
+  mat_hang_lien_quan?: string[];
+  ty_le_tong?: number;
+  nguon?: LossCauseSource;
+}
+
+export interface LossSummary {
+  ky?: string;
+  tong_dong?: number;
+  so_nghiem_trong?: number;
+  so_canh_bao?: number;
+  so_thieu_du_lieu?: number;
+  ty_le_trung_binh?: number | null;
+  dong?: LossLine[];
+  nguyen_nhan_hang_dau?: LossCauseRank[];
+  nguon?: string;
+  co_du_lieu_mau?: boolean;
+  ghi?: string;
+}
+
+export interface LossThreshold {
+  mac_dinh_phan_tram?: number;
+  nghiem_trong_phan_tram?: number;
+  theo_mat_hang?: Record<string, number>;
+  phien_ban?: string;
+  ngay_kiem?: string;
+}
+
+export interface MemoryQuery {
+  store_id?: string;
+  anchor_id?: string | null;
+  from_time?: string | null;
+  to_time?: string | null;
+  status?: MemoryStatus | null;
+  consent_status?: MemoryConsentStatus | null;
+  role?: ExperienceRole;
+  requester_id: string;
+  keyword?: string | null;
+}
+
+export interface MemoryProposal {
+  proposal_id: string;
+  anchor_id: string;
+  store_id?: string;
+  content: string;
+  owner_scope: string;
+  visibility?: "private" | "staff" | "manager" | "public";
+  proposed_by: string;
+  source_event_ids?: string[];
+  snapshot_hash: string;
+}
+
+export interface MemoryConsentRequest {
+  memory_id: string;
+  consent: MemoryConsentStatus;
+  actor_id: string;
+  actor_role?: ExperienceRole;
+  reason?: string;
+}
+
+export interface MemoryAuditEntry {
+  audit_id: string;
+  memory_id: string;
+  action: "propose" | "consent_grant" | "consent_revoke" | "confirm" | "expire" | "delete" | "supersede";
+  actor_id: string;
+  reason?: string;
+  occurred_at?: string;
+}
+
+export interface GroundedAnswer {
+  answer_id: string;
+  answer_text: string;
+  citations?: string[];
+  memory_ids?: string[];
+  proposal_id?: string | null;
+  unsupported_claims?: string[];
+  grounded?: boolean;
+}
+
+export interface TourStep {
+  step_id: string;
+  anchor_id: string;
+  narrative: string;
+  citation_memory_ids?: string[];
+}
+
+export interface TourPlan {
+  tour_id: string;
+  steps: TourStep[];
+  grounded?: boolean;
+}
+
+export interface VoiceTurnRequest {
+  conversation_id: string;
+  transcript: string;
+  store_id?: string;
+  anchor_id?: string | null;
+  role?: ExperienceRole;
+  requester_id: string;
+}
+
+export interface VoiceTurnResponse {
+  turn_id: string;
+  transcript: string;
+  response_text: string;
+  citations?: string[];
+  audio_ref?: string | null;
+  proposal?: MemoryProposal | null;
+  grounded?: boolean;
 }
 

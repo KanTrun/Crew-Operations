@@ -1,0 +1,58 @@
+{
+  "$defs": {
+    "ExperienceRole": {
+      "description": "Vai trò trong không gian trải nghiệm (bản chiếu theo quyền hạn).",
+      "enum": [
+        "khach",
+        "nhan_vien",
+        "quan_ly",
+        "chu_quan"
+      ],
+      "title": "ExperienceRole",
+      "type": "string"
+    },
+    "MemoryConsentStatus": {
+      "description": "Đồng thuận lưu trữ ký ức — không bao giờ ngầm định là đã đồng thuận.",
+      "enum": [
+        "required",
+        "granted",
+        "revoked",
+        "expired"
+      ],
+      "title": "MemoryConsentStatus",
+      "type": "string"
+    }
+  },
+  "description": "Khách/manager cấp hoặc thu hồi consent — có audit.",
+  "properties": {
+    "memory_id": {
+      "minLength": 1,
+      "title": "Memory Id",
+      "type": "string"
+    },
+    "consent": {
+      "$ref": "#/$defs/MemoryConsentStatus"
+    },
+    "actor_id": {
+      "minLength": 1,
+      "title": "Actor Id",
+      "type": "string"
+    },
+    "actor_role": {
+      "$ref": "#/$defs/ExperienceRole",
+      "default": "nhan_vien"
+    },
+    "reason": {
+      "default": "",
+      "title": "Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "memory_id",
+    "consent",
+    "actor_id"
+  ],
+  "title": "MemoryConsentRequest",
+  "type": "object"
+}

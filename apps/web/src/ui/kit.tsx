@@ -16,18 +16,36 @@ export const textareaClassName = "nq-input nq-textarea";
 
 type BtnVariant = "primary" | "ghost" | "danger";
 
+/**
+ * Lớp nút dùng chung — toàn bộ nút trong app đi qua đây.
+ *
+ * Vì sao phải viết lại: bản cũ dựng nút bằng Tailwind trần —
+ * `border-2` không bo góc, cộng bóng cứng `8px 8px 0 0` và dịch chuyển -2px khi
+ * hover (kiểu brutalist). Đo trên bản render: 73/79 phần tử có bề mặt trên mặt
+ * tiền là hình vuông góc cạnh, và mọi nút trong app đều mang cùng kiểu bóng
+ * cứng đó. Đó chính là cảm giác "toàn khung vuông như máy dựng": một khối
+ * vuông, một bóng lệch cứng, lặp lại ở mọi nút.
+ *
+ * Nay nút dùng hệ hình dạng của thiết kế: bo tròn hoàn toàn (pill), bóng mềm
+ * theo bậc nổi, lún nhẹ khi bấm, và độ nổi tăng khi hover — đúng ngôn ngữ
+ * chuyển động đã khai trong `globals.css`. Chữ giữ nguyên chữ hoa + giãn chữ vì
+ * đó là nét nhận diện của quán, không phải lỗi.
+ */
 function btnClass(variant: BtnVariant, block?: boolean) {
-  const base =
-    "font-black uppercase tracking-widest py-3 px-6 md:py-4 md:px-8 border-2 transition-all text-center inline-flex items-center justify-center gap-2";
-  const w = block ? "w-full" : "";
-
-  if (variant === "primary") {
-    return `${base} ${w} nq-ink-on-solid bg-[var(--nq-copper)] border-[var(--nq-copper)] hover:bg-transparent hover:text-[var(--nq-copper)] shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-copper-dim)] disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0`;
-  }
-  if (variant === "danger") {
-    return `${base} ${w} nq-ink-on-solid bg-[var(--nq-red)] border-[var(--nq-red)] hover:bg-transparent hover:text-[var(--nq-red)] shadow-[8px_8px_0px_0px_var(--nq-red-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-red-dim)] disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0`;
-  }
-  return `${base} ${w} bg-transparent text-[var(--nq-fg)] border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] disabled:opacity-50`;
+  const base = "nq-btn";
+  const w = block ? " nq-btn-block" : "";
+  // `nq-ink-on-solid` phải có mặt trên mọi nút nền đặc, KHÔNG chỉ nằm trong
+  // `.nq-btn-primary` ở CSS. Hai lý do:
+  //   1. Nó là HỢP ĐỒNG được kiểm bằng test thật
+  //      (`e2e/flows.spec.ts` → `a.nq-ink-on-solid` phải có độ sáng < 0.35, tức
+  //      chữ tối trên nền sáng, không được là chữ đen trên nền tối). Class này
+  //      từng bị bỏ khi nút chuyển sang `.nq-btn-primary`, làm hợp đồng đó mất
+  //      vật mang và test đỏ.
+  //   2. Nó là móc ổn định cho công cụ đo: `scripts/contrast.mjs` và các spec
+  //      dùng nó để nhận diện "nút nền đặc" mà không phải bám vào tên biến thể.
+  if (variant === "primary") return `${base} nq-btn-primary nq-ink-on-solid${w}`;
+  if (variant === "danger") return `${base} nq-btn-danger nq-ink-on-solid${w}`;
+  return `${base} nq-btn-ghost${w}`;
 }
 
 export function BtnLink({
@@ -50,8 +68,14 @@ export function BtnLink({
   );
 }
 
+/* Dãy nút hành động của trang.
+   Phải có `flex-wrap`: ở bề rộng trung bình (768–1024px) các nút nằm cùng một
+   hàng nhưng không đủ chỗ. `.nq-btn` đặt `white-space: nowrap` (đúng — nhãn nút
+   không được ngắt dòng), nên khi hàng không đủ chỗ thì khối flex nở ra và đẩy
+   tràn cả trang. Cho phép ngắt hàng thì nút rơi xuống dòng dưới, đúng ý người
+   dùng hơn là cắt cụt hoặc tràn. Đo được: /hom-nay @768px tràn 4px trước khi sửa. */
 export function PageActions({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col sm:flex-row gap-4 mt-8">{children}</div>;
+  return <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 mt-8">{children}</div>;
 }
 
 export function Kicker({ children }: { children: ReactNode }) {
@@ -68,11 +92,11 @@ export function EditorialBanner({
   meta?: ReactNode;
 }) {
   return (
-    <section className="nq-ink-on-solid bg-[var(--nq-copper)] p-6 md:p-10 mb-10 md:mb-12 shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] w-full" aria-label="Tình trạng">
+    <section className="nq-editorial p-6 md:p-10 mb-10 md:mb-12 w-full" aria-label="Tình trạng">
       <div className="w-full max-w-none">
-        <p className="text-sm font-mono uppercase tracking-widest mb-3 opacity-80">{wordmark}</p>
-        <p className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4 leading-none">{status}</p>
-        {meta ? <p className="text-base md:text-lg font-mono opacity-90 max-w-3xl">{meta}</p> : null}
+        <p className="nq-editorial__wordmark">{wordmark}</p>
+        <p className="nq-editorial__status">{status}</p>
+        {meta ? <p className="nq-editorial__meta">{meta}</p> : null}
       </div>
     </section>
   );
@@ -91,17 +115,21 @@ export function BentoTile({
   large?: boolean;
   href?: string;
 }) {
+  // Bậc nổi phân biệt THÔNG TIN: ô cảnh báo/lỗi (warn/ok) là nền đặc vì nó
+  // đang báo có chuyện; ô thường chỉ là bề mặt elev-2. Bản cũ dùng `border-2`
+  // vuông cộng bóng lệch cứng cho cả hai, nên ô "bình thường" và ô "có cảnh
+  // báo" chỉ khác màu chữ — mắt không thấy mức độ khác nhau.
   const bg =
     accent === "warn"
-      ? "nq-ink-on-solid bg-[var(--nq-warn)]"
+      ? "nq-ink-on-solid bg-[var(--nq-st-warn)]"
       : accent === "ok"
-        ? "nq-ink-on-solid bg-[var(--nq-green)]"
-        : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)] border-2 border-[var(--nq-dim)] hover:border-[var(--nq-copper)]";
+        ? "nq-ink-on-solid bg-[var(--nq-st-ok)]"
+        : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)]";
 
   const span = large
     ? "nq-bento-tile nq-bento-tile--lg col-span-12 sm:col-span-6 lg:col-span-8 lg:row-span-2 min-h-[200px]"
     : "nq-bento-tile col-span-12 sm:col-span-6 lg:col-span-4 min-h-[140px]";
-  const cls = `${span} flex flex-col justify-between p-6 shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] transition-all ${bg}`;
+  const cls = `${span} nq-bento-surface flex flex-col justify-between p-6 ${bg}`;
 
   const inner = (
     <>
@@ -185,14 +213,14 @@ export function MaskedCode({
   }
 
   return (
-    <div className="flex items-center gap-4 bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] p-4">
+    <div className="nq-surface-row">
       <span className="font-mono text-2xl tracking-widest text-[var(--nq-fg)]" aria-label={`${label} đã được che`}>
         {masked}
       </span>
-      <button 
+      <button
         type="button"
         onClick={copy}
-        className="ml-auto bg-transparent text-[var(--nq-dim)] font-bold uppercase tracking-widest py-2 px-4 border-2 border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] transition-all"
+        className="ml-auto nq-filter-clear"
       >
         {copied ? "Đã chép" : "Sao chép"}
       </button>
@@ -265,7 +293,7 @@ function SkeletonRows({ rows = 4, groups = 1 }: { rows?: number; groups?: number
         <div key={g} className="space-y-4">
           <div className="h-6 w-1/3 bg-[var(--nq-dim)]/20 rounded mb-4" />
           {Array.from({ length: rows }, (_, i) => (
-            <div key={i} className="flex justify-between items-center p-4 bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)]">
+            <div key={i} className="nq-surface-row nq-surface-row--between">
               <div className="space-y-2 w-1/2">
                 <div className="h-5 bg-[var(--nq-dim)]/20 rounded w-full" />
                 <div className="h-4 bg-[var(--nq-dim)]/20 rounded w-2/3" />
@@ -283,7 +311,7 @@ function SkeletonCard({ cards = 1, form }: { cards?: number; form?: boolean }) {
   return (
     <div aria-hidden="true" className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {Array.from({ length: cards }, (_, i) => (
-        <div key={i} className="bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] p-6">
+        <div key={i} className="nq-surface-block p-6">
           <div className="h-4 w-1/4 bg-[var(--nq-dim)]/20 rounded mb-4" />
           <div className="h-8 w-2/3 bg-[var(--nq-dim)]/20 rounded mb-6" />
           {form ? (
@@ -306,8 +334,8 @@ function SkeletonCard({ cards = 1, form }: { cards?: number; form?: boolean }) {
 
 function SkeletonTable({ rows = 3 }: { rows?: number }) {
   return (
-    <div className="w-full bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)]" aria-hidden="true">
-      <div className="flex border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 gap-4">
+    <div className="nq-skeleton nq-skeleton--block w-full" aria-hidden="true">
+      <div className="flex border-b border-[var(--nq-line)] bg-[var(--nq-surface)] p-4 gap-4">
         {Array.from({ length: 5 }, (_, i) => (
           <div key={i} className="h-4 bg-[var(--nq-dim)]/20 rounded flex-1" />
         ))}
@@ -361,18 +389,28 @@ export function Loading({
   );
 }
 
+/**
+ * Màn hình chặn khi chưa có phiên.
+ *
+ * Đây là bề mặt có lưu lượng cao nhất trong nhóm "không đăng nhập" — mọi route
+ * vận hành đều rơi vào đây khi phiên hết hạn, mà phiên chỉ sống trong
+ * sessionStorage nên hết hạn là chuyện thường ngày. Bản cũ dựng bằng Tailwind
+ * trần: chữ hoa cỡ 3xl, hai nút vuông `border-2` có bóng cứng 8px — vuông góc,
+ * lệch hẳn với phần còn lại của hệ, và trông như một trang khác của sản phẩm
+ * khác. Nay dùng đúng thang chữ và hệ nút chung.
+ */
 export function AuthGate() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-[var(--nq-bg)]">
-      <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-[var(--nq-fg)] mb-3">Cần phiên làm việc</h1>
-      <p className="text-base md:text-lg text-[var(--nq-dim)] mb-8 max-w-md">
+    <div className="nq-gate">
+      <h1 className="nq-gate-title">Cần phiên làm việc</h1>
+      <p className="nq-gate-lead">
         Trang này đọc dữ liệu quán qua phiên của bạn. Đăng nhập để tiếp tục.
       </p>
-      <div className="flex flex-col sm:flex-row gap-4">
-        <BtnLink href="/login" className="nq-ink-on-solid bg-[var(--nq-copper)] font-black uppercase tracking-widest py-4 px-8 border-2 border-[var(--nq-copper)] hover:bg-transparent hover:text-[var(--nq-copper)] transition-all shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_var(--nq-copper-dim)]">
+      <div className="nq-gate-actions">
+        <BtnLink href="/login" variant="primary">
           Đăng nhập
         </BtnLink>
-        <BtnLink href="/dang-ky" className="bg-transparent text-[var(--nq-fg)] font-black uppercase tracking-widest py-4 px-8 border-2 border-[var(--nq-dim)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] transition-all">
+        <BtnLink href="/dang-ky" variant="ghost">
           Tạo tài khoản
         </BtnLink>
       </div>
@@ -424,7 +462,7 @@ export function Select({
 export function ProgressBar({ value, max, className = "" }: { value: number; max: number; className?: string }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
-    <div className={`w-full h-4 bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] overflow-hidden ${className}`.trim()} role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
+    <div className={`nq-progress w-full ${className}`.trim()} role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
       <div className="h-full bg-[var(--nq-copper)] transition-all duration-500 ease-out" style={{ width: `${pct}%` }} />
     </div>
   );
@@ -530,9 +568,9 @@ export function Stat({
         ? "nq-ink-on-solid bg-[var(--nq-green)]"
         : tone === "danger"
           ? "nq-ink-on-solid bg-[var(--nq-red)]"
-          : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)] border-2 border-[var(--nq-dim)]";
+          : "nq-surface-row text-[var(--nq-fg)]";
   return (
-    <li className={`flex flex-col p-4 shadow-[4px_4px_0px_0px_var(--nq-copper-dim)] ${bg}`}>
+    <li className={`nq-surface-tile flex flex-col p-4 ${bg}`}>
       <span className="text-3xl font-black mb-1 tabular-nums">{value}</span>
       <span className="text-xs font-mono uppercase tracking-widest opacity-80">{label}</span>
     </li>
@@ -607,7 +645,7 @@ export function NextSteps({
   children: ReactNode;
 }) {
   return (
-    <div className="bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] p-6 md:p-8 mt-12 shadow-[8px_8px_0px_0px_var(--nq-copper-dim)]">
+    <div className="nq-surface-block p-6 md:p-8 mt-12">
       <h2 className="text-2xl font-black uppercase mb-2 text-[var(--nq-fg)]">{title}</h2>
       {note ? <p className="text-[var(--nq-dim)] font-mono text-sm mb-6 uppercase tracking-widest">{note}</p> : null}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -631,14 +669,19 @@ export function PageHeader({
   return (
     <header className="mb-12 ops-animate-in" data-tour={tourId}>
       <p className="text-sm font-mono text-[var(--nq-copper)] uppercase tracking-widest mb-2">{kicker}</p>
-      <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-[var(--nq-fg)] mb-4">{title}</h1>
+      {/* Tiêu đề trang dùng font display của hệ, KHÔNG dùng `font-black uppercase
+          tracking-tighter`. Kiểu cũ là dấu hiệu nhận dạng của giao diện máy dựng,
+          và với tiếng Việt thì hại thật: chữ hoa cỡ lớn cộng khoảng chữ bị siết
+          làm dấu mũ/dấu móc chồng lên nhau. Hệ đã có quy ước ở `.nq-gate-title`
+          và `.nq-h1` — theo quy ước đó. */}
+      <h1 className="nq-page-title mb-4">{title}</h1>
       {meta ? <p className="text-[var(--nq-dim)] font-mono text-sm max-w-2xl">{meta}</p> : null}
     </header>
   );
 }
 
 export function TabBar({ children }: { children: ReactNode }) {
-  return <div className="flex border-b-2 border-[var(--nq-dim)] mb-8">{children}</div>;
+  return <div className="flex border-b border-[var(--nq-line)] mb-8">{children}</div>;
 }
 
 export function TabButton({
@@ -698,8 +741,8 @@ export function OpsCard({
     </div>
   ) : null;
   return (
-    <section className="mb-10 w-full border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] p-6 shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] md:mb-12 md:p-8" data-tour={tourId}>
-      {eyebrow ? <p className="text-[var(--nq-dim)] font-mono text-sm mb-2 uppercase tracking-widest">{eyebrow}</p> : null}
+    <section className="nq-surface-block mb-10 w-full p-6 md:mb-12 md:p-8" data-tour={tourId}>
+      {eyebrow ? <p className="nq-eyebrow text-[var(--nq-dim)]">{eyebrow}</p> : null}
       {head}
       {children}
     </section>
@@ -708,7 +751,7 @@ export function OpsCard({
 
 export function StepDone({ label, timingMs }: { label: string; timingMs?: number }) {
   return (
-    <div className="flex items-center justify-between p-4 bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] text-[var(--nq-dim)]">
+    <div className="nq-surface-row nq-surface-row--between text-[var(--nq-dim)]">
       <div className="flex items-center gap-3">
         <span className="text-[var(--nq-green)] font-black text-xl" aria-hidden="true">
           ✓
@@ -724,7 +767,7 @@ export function StepDone({ label, timingMs }: { label: string; timingMs?: number
 
 export function FixedBottomBar({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed bottom-0 left-0 w-full p-4 bg-[var(--nq-bg)]/80 backdrop-blur-md border-t-2 border-[var(--nq-dim)] z-50">
+    <div className="fixed bottom-0 left-0 w-full p-4 bg-[var(--nq-bg)]/80 backdrop-blur-md border-t border-[var(--nq-line)] z-50">
       <div className="max-w-2xl mx-auto flex gap-4">
         {children}
       </div>
@@ -732,26 +775,32 @@ export function FixedBottomBar({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Chip trạng thái — bốn tone lấy từ `--nq-st-*` (xem `globals.css`).
+ *
+ * Trước đây component này dựng chip bằng Tailwind nền đặc (`bg-[var(--nq-warn)]`
+ * + chữ tối), trong khi CSS `.nq-chip--warn` dựng chip bằng viền + chữ màu. Hai
+ * dạng cho cùng một trạng thái nên "Quá hạn" trông nặng hơn "Thiếu người" dù
+ * hai bên ngang cấp. Nay cả hai đi qua `.nq-chip`, phân biệt bằng modifier.
+ */
 export function StatusChip({
   tone = "default",
   children,
 }: {
-  tone?: "default" | "warn" | "ok" | "danger";
+  tone?: "default" | "warn" | "ok" | "danger" | "info";
   children: ReactNode;
 }) {
-  const bg =
-    tone === "warn"
-      ? "nq-ink-on-solid bg-[var(--nq-warn)]"
-      : tone === "ok"
-        ? "nq-ink-on-solid bg-[var(--nq-green)]"
-        : tone === "danger"
-          ? "nq-ink-on-solid bg-[var(--nq-red)]"
-          : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)] border border-[var(--nq-dim)]";
-  return (
-    <span className={`inline-block px-2 py-1 text-xs font-bold uppercase tracking-widest ${bg}`}>
-      {children}
-    </span>
-  );
+  const mod =
+    tone === "default"
+      ? ""
+      : tone === "warn"
+        ? " nq-chip--warn"
+        : tone === "ok"
+          ? " nq-chip--ok"
+          : tone === "danger"
+            ? " nq-chip--danger"
+            : " nq-chip--info";
+  return <span className={`nq-chip${mod}`}>{children}</span>;
 }
 
 /**
@@ -783,7 +832,7 @@ export function LinkGrid({ children }: { children: ReactNode }) {
 
 export function LinkTile({ href, children, className = "" }: { href: string; children: ReactNode; className?: string }) {
   return (
-    <Link href={href} className={`bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] p-6 hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] transition-all group hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0px_0px_var(--nq-copper-dim)] ${className}`.trim()}>
+    <Link href={href} className={`nq-surface-tile p-6 transition-colors group ${className}`.trim()}>
       <span className="font-bold uppercase tracking-widest text-sm group-hover:text-[var(--nq-copper)] text-[var(--nq-fg)] transition-colors">{children}</span>
     </Link>
   );
@@ -827,12 +876,12 @@ export function Summary({
               ? "nq-ink-on-solid bg-[var(--nq-green)]"
               : c.tone === "danger"
                 ? "nq-ink-on-solid bg-[var(--nq-red)]"
-                : "bg-[var(--nq-surface-hi)] text-[var(--nq-fg)] border-2 border-[var(--nq-dim)]";
+                : "nq-surface-row text-[var(--nq-fg)]";
         return (
           <div
             key={c.k}
             data-tone={c.tone ?? "default"}
-            className={`nq-summary-cell flex min-w-[140px] flex-1 flex-col p-4 shadow-[4px_4px_0px_0px_var(--nq-copper-dim)] ${bg}`}
+            className={`nq-summary-cell nq-surface-tile flex min-w-[140px] flex-1 flex-col p-4 ${bg}`}
           >
             <span className="nq-summary-n mb-1 text-3xl font-black tabular-nums">{c.n}</span>
             <span className="nq-summary-k text-xs font-mono uppercase tracking-widest opacity-80">{c.k}</span>
@@ -890,7 +939,7 @@ export function PickCard({
       type="button" 
       disabled={disabled} 
       onClick={onClick}
-      className="w-full text-left bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] p-6 shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] transition-all flex flex-col justify-between disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[8px_8px_0px_0px_var(--nq-copper-dim)]"
+      className="nq-surface-tile flex w-full flex-col justify-between p-6 text-left disabled:opacity-50"
     >
       <div className="mb-6">
         <span className="text-2xl font-black text-[var(--nq-copper)] mb-2 block">
@@ -899,7 +948,7 @@ export function PickCard({
         <span className="text-xl font-bold uppercase text-[var(--nq-fg)] block mb-2">{name}</span>
         <span className="text-sm font-mono text-[var(--nq-dim)] block">{what}</span>
       </div>
-      <span className="text-sm font-bold uppercase tracking-widest text-[var(--nq-copper)] border-2 border-[var(--nq-copper)] py-2 text-center hover:bg-[var(--nq-copper)] hover:text-[#0e0c0a] transition-colors">{go}</span>
+      <span className="nq-cta nq-cta--ghost nq-cta--sm">{go}</span>
     </button>
   );
 }
@@ -918,11 +967,11 @@ export function DataTable({
 }) {
   return (
     <div className="mb-8">
-      <div className="overflow-x-auto bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] shadow-[8px_8px_0px_0px_var(--nq-copper-dim)]">
+      <div className="nq-surface-frame overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <caption className="sr-only">{caption}</caption>
           <thead>
-            <tr className="border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)]">
+            <tr className="border-b border-[var(--nq-line)] bg-[var(--nq-surface)]">
               {head.map((h) => (
                 <th key={h.label} scope="col" className={`p-4 font-black uppercase tracking-widest text-[var(--nq-dim)] ${h.num ? "text-right" : ""}`}>
                   {h.label}
@@ -1047,18 +1096,15 @@ export function Toasts({
   if (toasts.length === 0) return null;
   return (
     <div
-      className="fixed top-20 left-1/2 z-[100] flex w-full max-w-md -translate-x-1/2 flex-col gap-2 px-4 pointer-events-none md:top-24"
+      className="nq-toasts"
       role="status"
       aria-live="polite"
     >
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`pointer-events-auto flex items-start justify-between gap-3 border-2 p-4 shadow-[6px_6px_0_0_rgba(0,0,0,0.35)] ${
-            t.kind === "ok"
-              ? "nq-ink-on-solid bg-[var(--nq-ok)] border-[var(--nq-ok)]"
-              : "nq-ink-on-solid bg-[var(--nq-danger)] border-[var(--nq-danger)]"
-          }`}
+          data-tone={t.kind === "ok" ? "ok" : "danger"}
+          className="nq-toast"
         >
           <p className="text-sm font-semibold leading-snug tracking-normal normal-case">{t.text}</p>
           <button

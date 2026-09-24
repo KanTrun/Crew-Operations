@@ -1,9 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
+import { LINEAR, LOOP_PERIOD_S, beat, beatSeconds } from "../lib/motion";
 
+/**
+ * Bước so le của dấu quán: mỗi nét vào sau nét trước đúng một nhịp `settle`.
+ *
+ * Dùng lại `beat-settle` làm bước thay vì đặt một số mới — dấu quán chỉ có ba
+ * nét, không đáng có thang riêng, và mượn nhịp có sẵn thì khi `--nq-beat-settle`
+ * đổi, dấu quán đổi theo.
+ */
+const LOGO_STEP_S = beatSeconds("settle");
+
+/**
+ * Dấu quán: khung tròn nét gạch, nét chữ N, và một chấm đỏ.
+ *
+ * Chuyển động ở đây **chỉ mở một lần khi tải trang** rồi đứng yên. Bản trước để
+ * hai vòng lặp `repeat: Infinity` chạy mãi: chấm đỏ phồng lên xẹp xuống liên tục,
+ * và vòng gạch quay không ngừng khi trỏ vào. Logo nằm trong thanh trên cùng của
+ * **mọi trang**, nên đó là hai chuyển động không bao giờ dừng mà người dùng
+ * không tài nào tắt — và cả hai đều không mang thông tin gì: chấm to lên không
+ * báo hiệu việc gì đang xảy ra. Nay chúng chạy **theo yêu cầu** (trỏ vào mới quay)
+ * và **tôn trọng ý muốn giảm chuyển động** của hệ điều hành, giống bốn biểu đồ
+ * trong hệ — trước đây chỉ riêng logo là không.
+ */
 export function Logo({ href = "/", className = "" }: { href?: string; className?: string }) {
+  const reduced = useReducedMotion() ?? false;
   return (
     <Link
       href={href}
@@ -30,18 +53,21 @@ export function Logo({ href = "/", className = "" }: { href?: string; className?
           strokeWidth="2"
           strokeDasharray="4 8"
           variants={{
-            hidden: { pathLength: 0, rotate: -90, opacity: 0 },
+            hidden: reduced ? { pathLength: 1, rotate: 0, opacity: 1 } : { pathLength: 0, rotate: -90, opacity: 0 },
             visible: {
               pathLength: 1,
               rotate: 0,
               opacity: 1,
-              transition: { duration: 2, ease: "easeInOut" },
+              transition: beat("chapter"),
             },
-            hover: {
-              rotate: 180,
-              strokeWidth: 4,
-              transition: { duration: 1, ease: "linear", repeat: Infinity },
-            },
+            hover:
+              reduced
+                ? {}
+                : {
+                    rotate: 180,
+                    strokeWidth: 4,
+                    transition: { duration: LOOP_PERIOD_S, ease: LINEAR, repeat: Infinity },
+                  },
           }}
         />
         <motion.path
@@ -51,16 +77,16 @@ export function Logo({ href = "/", className = "" }: { href?: string; className?
           strokeLinecap="square"
           strokeLinejoin="miter"
           variants={{
-            hidden: { pathLength: 0, opacity: 0 },
+            hidden: reduced ? { pathLength: 1, opacity: 1 } : { pathLength: 0, opacity: 0 },
             visible: {
               pathLength: 1,
               opacity: 1,
-              transition: { duration: 1.5, ease: "circOut", delay: 0.5 },
+              transition: beat("chapter", LOGO_STEP_S),
             },
             hover: {
               stroke: "var(--nq-copper)",
               scale: 1.1,
-              transition: { duration: 0.3 },
+              transition: beat("settle"),
             },
           }}
         />
@@ -72,23 +98,27 @@ export function Logo({ href = "/", className = "" }: { href?: string; className?
           variants={{
             hidden: { scale: 0, opacity: 0 },
             visible: {
-              scale: [1, 1.5, 1],
+              scale: reduced ? 1 : [0, 1.35, 1],
               opacity: 1,
-              transition: { duration: 2, repeat: Infinity, ease: "easeInOut", delay: 1 },
+              transition: beat("focus", LOGO_STEP_S * 2),
             },
             hover: {
               scale: 2,
               fill: "var(--nq-copper)",
-              transition: { duration: 0.3 },
+              transition: beat("settle"),
             },
           }}
         />
       </motion.svg>
       <div className="ml-2.5 hidden min-w-0 flex-col justify-center sm:flex">
-        <span className="text-base font-black uppercase leading-none tracking-tighter text-[var(--nq-fg)] md:text-lg">
+        {/* Tên quán ở đây là NHÃN THƯƠNG HIỆU, không phải tiêu đề trang — nhưng
+            vẫn bỏ `tracking-tighter`: với "NHỊP QUÁN" viết hoa, khoảng chữ bị siết
+            làm dấu mũ của Ị và dấu sắc của Á chồng vào ký tự bên cạnh. Giãn nhẹ
+            theo mật độ chữ hoa của hệ (xem `--nq-t-micro` / nhãn eyebrow). */}
+        <span className="text-base font-black uppercase leading-none tracking-tight text-[var(--nq-fg)] md:text-lg">
           NHỊP QUÁN
         </span>
-        <span className="mt-0.5 font-mono text-[9px] uppercase leading-none tracking-[0.28em] text-[var(--nq-copper)]">
+        <span className="mt-0.5 font-mono text-2xs uppercase leading-none tracking-[0.28em] text-[var(--nq-copper)]">
           Digital System
         </span>
       </div>

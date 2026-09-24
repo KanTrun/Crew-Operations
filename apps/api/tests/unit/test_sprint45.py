@@ -491,6 +491,72 @@ def test_hom_nay_preview_fields() -> None:
     assert "treo_theo_trang_thai" in body
     assert "sua_gan_day" in body
     assert "ton_tom_tat" in body
+    assert "hao_hut" in body, "bảng Hôm nay phải nối được sang mặt hao hụt"
+
+
+def test_hom_nay_hao_hut_khop_voi_trang_hao_phi() -> None:
+    """Bảng Hôm nay và trang Hao phí phải ra CÙNG số.
+
+    Cả hai gọi `ag_waste.tinh_tu_nguon`; test này chốt rằng không ai lỡ tay tính
+    riêng ở một trong hai chỗ. Hai đường tự tính là hai cơ hội để lệch số.
+    """
+    from datetime import datetime
+
+    from ca_api.persist import kv_mutate
+
+    hom_nay = datetime.now().date().isoformat()
+
+    def nap_kk(rows: list[dict]) -> list[dict]:
+        rows.append(
+            {
+                "id": "kk_hom_nay_check",
+                "ngay": hom_nay,
+                "muc": [{"mat_hang": "sua_tuoi", "dau_ca": 25, "nhap_trong_ca": 8, "cuoi_ca": 26, "hao_hut_ghi": 0}],
+            }
+        )
+        return rows
+
+    kv_mutate("kiem_ke", nap_kk, [])
+
+    ql = headers(client, "lan")
+    hom_nay_body = client.get("/api/v1/hom-nay", headers=ql).json()
+    hao_phi_body = client.get("/api/v1/hao-hut?ky=hom_nay", headers=ql).json()
+
+    hh = hom_nay_body["hao_hut"]
+    assert hh["co_du_lieu"] is True
+    assert hh["tong_dong"] == hao_phi_body["tong_dong"]
+    assert hh["so_thieu_du_lieu"] == hao_phi_body["so_thieu_du_lieu"]
+    assert hh["so_nghiem_trong"] == hao_phi_body["so_nghiem_trong"]
+    assert hh["so_canh_bao"] == hao_phi_body["so_canh_bao"]
+
+
+def test_hom_nay_hao_hut_khong_bia_so_khi_rong() -> None:
+    """Không có dữ liệu ⇒ `co_du_lieu` false, KHÔNG trả số 0 như thể đã đo."""
+    ql = headers(client, "lan")
+    body = client.get("/api/v1/hom-nay", headers=ql).json()
+    hh = body["hao_hut"]
+    assert hh["co_du_lieu"] is False
+    assert hh.get("tong_dong", 0) == 0
+
+
+def test_hom_nay_khong_sap_khi_hao_hut_loi(monkeypatch) -> None:
+    """Lỗi ở phần hao hụt KHÔNG được làm sập bảng Hôm nay.
+
+    Đây là trang mở đầu sau đăng nhập — hỏng nó là hỏng cả ca làm việc. Phần hao
+    hụt phải tự hạ xuống chứ không kéo cả payload theo.
+    """
+    from ca_api.interfaces.http import sprint45
+
+    def no(*_a, **_k):
+        raise RuntimeError("nguon hao hut hong")
+
+    monkeypatch.setattr(sprint45, "_hao_hut_hom_nay", no)
+    ql = headers(client, "lan")
+    r = client.get("/api/v1/hom-nay", headers=ql)
+    assert r.status_code == 200, r.text
+    hh = r.json()["hao_hut"]
+    assert hh["co_du_lieu"] is False
+    assert hh.get("ly_do") == "khong_doc_duoc"
 
 
 def test_hom_nay_so_treo_chi_tinh_viec_dang_mo() -> None:

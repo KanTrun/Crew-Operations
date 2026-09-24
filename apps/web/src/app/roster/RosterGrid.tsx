@@ -1,7 +1,7 @@
 "use client";
 
 import type { KhungGio, RosterShift } from "../../lib/roster";
-import { khungOrder, rosterCellSummary, shiftRowLabel } from "../../lib/roster";
+import { initialsOf, khungOrder, rosterCellSummary, shiftRowLabel } from "../../lib/roster";
 import { Icon } from "../../ui/icons";
 
 const KHUNGS = ["sang", "chieu", "toi"] as const;
@@ -121,25 +121,50 @@ export function RosterGrid({
                       {shifts.length > 0 ? (
                         <button
                           type="button"
-                          className={`nq-roster-slot-btn nq-roster-slot-btn--${summary.tone} ${hasUnconfirmed ? "ring-1 ring-amber-500/70" : ""}`}
+                          className={`nq-roster-slot-btn nq-roster-slot-btn--${summary.tone}`}
+                          data-unconfirmed={hasUnconfirmed ? "1" : undefined}
                           onClick={() => onSelectDay(d)}
                           aria-label={`${dayLabels[DAYS.indexOf(d)]?.title} ${rowLabel}: ${summary.countLabel}, ${roleLabel}${hasUnconfirmed ? " (Có nhân sự chưa xác nhận lịch)" : ""}`}
                         >
-                          <span className="nq-roster-slot-count inline-flex items-center justify-center gap-1">
-                            {assigned.length >= required
-                              ? `Đủ ${assigned.length}/${required}`
-                              : `Thiếu ${required - assigned.length} · ${assigned.length}/${required}`}
+                          <span className="nq-roster-slot-head">
+                            <span className="nq-roster-slot-count">
+                              {assigned.length >= required
+                                ? `Đủ ${assigned.length}/${required}`
+                                : `Thiếu ${required - assigned.length} · ${assigned.length}/${required}`}
+                            </span>
                             {hasUnconfirmed && (
-                              <span className="text-amber-400" title="Có nhân sự chưa xác nhận lịch">
-                                <Icon name="warn" size={10} />
+                              <span className="nq-roster-slot-flag" title="Có nhân sự chưa xác nhận lịch">
+                                <Icon name="warn" size={11} />
                               </span>
                             )}
                           </span>
-                          <span className="nq-roster-slot-role">{summary.roleLabel}</span>
-                          <span className="nq-roster-slot-people">
-                            {assigned.length > 0
-                              ? assigned.map((id) => `${nvName(id)}${pinnedIds.has(id) ? " · ghim" : ""}`).join(", ")
-                              : "Chưa có nhân viên"}
+                          {/* Viết tắt thay vì tên đầy đủ: giữ đủ số người trong ô,
+                              tên đầy đủ nằm ở `title` và bảng chi tiết ngày. */}
+                          <span className="nq-roster-slot-crew">
+                            {assigned.length > 0 ? (
+                              <>
+                                {assigned.slice(0, 4).map((id) => (
+                                  <span
+                                    key={id}
+                                    className="nq-avatar"
+                                    data-pinned={pinnedIds.has(id) ? "1" : undefined}
+                                    title={`${nvName(id)}${pinnedIds.has(id) ? " · ghim ca" : ""}`}
+                                  >
+                                    {initialsOf(nvName(id))}
+                                  </span>
+                                ))}
+                                {assigned.length > 4 && (
+                                  <span
+                                    className="nq-avatar nq-avatar--more"
+                                    title={assigned.map((id) => nvName(id)).join(", ")}
+                                  >
+                                    +{assigned.length - 4}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="nq-roster-slot-none">Chưa có nhân viên</span>
+                            )}
                           </span>
                         </button>
                       ) : (

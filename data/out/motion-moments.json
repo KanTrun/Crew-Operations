@@ -1,0 +1,1780 @@
+{
+  "base": "http://localhost:3001",
+  "results": [
+    {
+      "route": "/",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 720,
+          "area": 530634,
+          "tag": "section",
+          "cls": "nq-chapter.nq-chapter--opening",
+          "firstSeenMs": 96
+        },
+        {
+          "iter": 1,
+          "dur": 720,
+          "area": 279366,
+          "tag": "section",
+          "cls": "nq-chapter",
+          "firstSeenMs": 96
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2400,
+          "area": 61,
+          "tag": "span",
+          "cls": "",
+          "firstSeenMs": 39
+        }
+      ],
+      "waves": [
+        {
+          "t0": 96,
+          "size": 2,
+          "durMax": 720,
+          "areaMax": 530634
+        }
+      ]
+    },
+    {
+      "route": "/ai-learning",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 12
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 576329,
+          "tag": "div",
+          "cls": "nq-page",
+          "firstSeenMs": 75
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 180521,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 75
+        }
+      ],
+      "waves": [
+        {
+          "t0": 12,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 576329
+        }
+      ]
+    },
+    {
+      "route": "/cam-nang",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 13
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page.nq-page--cam-nang",
+          "firstSeenMs": 57
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 484937,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 57
+        }
+      ],
+      "waves": [
+        {
+          "t0": 13,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 985728
+        }
+      ]
+    },
+    {
+      "route": "/chat",
+      "total": 5,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 196980,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 14
+        },
+        {
+          "iter": 1,
+          "dur": 150,
+          "area": 32972,
+          "tag": "div",
+          "cls": "p-3.cursor-pointer.flex",
+          "firstSeenMs": 197
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 14,
+          "size": 1,
+          "durMax": 420,
+          "areaMax": 196980
+        },
+        {
+          "t0": 197,
+          "size": 1,
+          "durMax": 150,
+          "areaMax": 32972
+        }
+      ]
+    },
+    {
+      "route": "/cong-bang",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 11
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 587520,
+          "tag": "div",
+          "cls": "nq-page.nq-page--run",
+          "firstSeenMs": 50
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 289035,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 50
+        }
+      ],
+      "waves": [
+        {
+          "t0": 11,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 587520
+        }
+      ]
+    },
+    {
+      "route": "/contracts",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 12
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 926649,
+          "tag": "div",
+          "cls": "nq-page",
+          "firstSeenMs": 76
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 484937,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 76
+        }
+      ],
+      "waves": [
+        {
+          "t0": 12,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 926649
+        }
+      ]
+    },
+    {
+      "route": "/copilot",
+      "total": 5,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 13
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page.max-w-5xl.mx-auto",
+          "firstSeenMs": 62
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 13,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 985728
+        }
+      ]
+    },
+    {
+      "route": "/cuoc-hop",
+      "total": 5,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 196980,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 12
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 1084632,
+          "tag": "div",
+          "cls": "nq-page.nq-page--wide.space-y-6",
+          "firstSeenMs": 78
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 12,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 1084632
+        }
+      ]
+    },
+    {
+      "route": "/dang-ky",
+      "total": 4,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 21
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 21,
+          "size": 1,
+          "durMax": 420,
+          "areaMax": 185900
+        }
+      ]
+    },
+    {
+      "route": "/de-xuat-thong-minh",
+      "total": 5,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 12
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page.space-y-6",
+          "firstSeenMs": 77
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 12,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 985728
+        }
+      ]
+    },
+    {
+      "route": "/doi-ca",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 15
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 587520,
+          "tag": "div",
+          "cls": "nq-page.nq-page--run",
+          "firstSeenMs": 56
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 189137,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 57
+        }
+      ],
+      "waves": [
+        {
+          "t0": 15,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 587520
+        }
+      ]
+    },
+    {
+      "route": "/giai-thich",
+      "total": 5,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 18
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page.space-y-6",
+          "firstSeenMs": 56
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 18,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 985728
+        }
+      ]
+    },
+    {
+      "route": "/handover",
+      "total": 5,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 15
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 587520,
+          "tag": "div",
+          "cls": "nq-page.nq-page--run",
+          "firstSeenMs": 57
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 15,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 587520
+        }
+      ]
+    },
+    {
+      "route": "/hao-phi",
+      "total": 8,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 17
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page",
+          "firstSeenMs": 117
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 205095,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 117
+        },
+        {
+          "iter": "inf",
+          "dur": 1600,
+          "area": 158104,
+          "tag": "div",
+          "cls": "nq-skeleton.nq-skeleton--block.w-full",
+          "firstSeenMs": 117
+        }
+      ],
+      "waves": [
+        {
+          "t0": 17,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 985728
+        }
+      ]
+    },
+    {
+      "route": "/hom-nay",
+      "total": 20,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 15
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 882369,
+          "tag": "div",
+          "cls": "nq-page.nq-page--dashboard",
+          "firstSeenMs": 78
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 89854,
+          "tag": "header",
+          "cls": "nq-dash-strip",
+          "firstSeenMs": 90
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 29372,
+          "tag": "div",
+          "cls": "nq-dash-kpi-cell",
+          "firstSeenMs": 192
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 29372,
+          "tag": "div",
+          "cls": "nq-dash-kpi-cell.nq-bento-tile.nq-dash-kpi",
+          "firstSeenMs": 192
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 86390,
+          "tag": "div",
+          "cls": "nq-dash-chart",
+          "firstSeenMs": 192
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 57595,
+          "tag": "div",
+          "cls": "nq-dash-chart.nq-dash-chart--interactive",
+          "firstSeenMs": 192
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 25250,
+          "tag": "section",
+          "cls": "nq-dash-timeline.nq-dash-chart",
+          "firstSeenMs": 192
+        },
+        {
+          "iter": 1,
+          "dur": 180,
+          "area": 29372,
+          "tag": "div",
+          "cls": "nq-dash-kpi-cell.nq-bento-tile.nq-dash-kpi",
+          "firstSeenMs": 364
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 1296000,
+          "tag": "div",
+          "cls": "nq-tour-mask",
+          "firstSeenMs": 413
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 195832,
+          "tag": "div",
+          "cls": "nq-tour-box",
+          "firstSeenMs": 413
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 588515,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 78
+        },
+        {
+          "iter": "inf",
+          "dur": 1200,
+          "area": 56306,
+          "tag": "div",
+          "cls": "nq-ops-pulse.nq-ops-pulse--loading",
+          "firstSeenMs": 138
+        }
+      ],
+      "waves": [
+        {
+          "t0": 15,
+          "size": 3,
+          "durMax": 420,
+          "areaMax": 882369
+        },
+        {
+          "t0": 192,
+          "size": 5,
+          "durMax": 420,
+          "areaMax": 86390
+        },
+        {
+          "t0": 364,
+          "size": 3,
+          "durMax": 420,
+          "areaMax": 1296000
+        }
+      ]
+    },
+    {
+      "route": "/huong-dan",
+      "total": 3,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 700,
+          "area": 605556,
+          "tag": "header",
+          "cls": "nq-map-hero.nq-map-visible",
+          "firstSeenMs": 95
+        },
+        {
+          "iter": 1,
+          "dur": 700,
+          "area": 55971,
+          "tag": "h2",
+          "cls": "nq-map-section-title.nq-map-visible",
+          "firstSeenMs": 95
+        },
+        {
+          "iter": 1,
+          "dur": 700,
+          "area": 60811,
+          "tag": "div",
+          "cls": "nq-map-roles.nq-map-visible",
+          "firstSeenMs": 95
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 95,
+          "size": 3,
+          "durMax": 700,
+          "areaMax": 605556
+        }
+      ]
+    },
+    {
+      "route": "/inbox",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 196980,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 16
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 1116288,
+          "tag": "div",
+          "cls": "nq-page.nq-page--wide",
+          "firstSeenMs": 109
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 546260,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 109
+        }
+      ],
+      "waves": [
+        {
+          "t0": 16,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 1116288
+        }
+      ]
+    },
+    {
+      "route": "/khao-sat-gia",
+      "total": 5,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 11
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page",
+          "firstSeenMs": 67
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 11,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 985728
+        }
+      ]
+    },
+    {
+      "route": "/lich-tuan",
+      "total": 8,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 196980,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 14
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 1052313,
+          "tag": "div",
+          "cls": "nq-page.nq-page--wide",
+          "firstSeenMs": 69
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 352175,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 69
+        },
+        {
+          "iter": "inf",
+          "dur": 1600,
+          "area": 295488,
+          "tag": "div",
+          "cls": "nq-skeleton.nq-skeleton--block.w-full",
+          "firstSeenMs": 69
+        }
+      ],
+      "waves": [
+        {
+          "t0": 14,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 1052313
+        }
+      ]
+    },
+    {
+      "route": "/login",
+      "total": 4,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 720,
+          "area": 505796,
+          "tag": "form",
+          "cls": "nq-login-card.relative.z-10",
+          "firstSeenMs": 15
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 15,
+          "size": 1,
+          "durMax": 720,
+          "areaMax": 505796
+        }
+      ]
+    },
+    {
+      "route": "/menu",
+      "total": 4,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 20
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 20,
+          "size": 1,
+          "durMax": 420,
+          "areaMax": 185900
+        }
+      ]
+    },
+    {
+      "route": "/nguoi",
+      "total": 4,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 15
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 15,
+          "size": 1,
+          "durMax": 420,
+          "areaMax": 185900
+        }
+      ]
+    },
+    {
+      "route": "/page-quan",
+      "total": 9,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 14
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page",
+          "firstSeenMs": 86
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 484937,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 86
+        },
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 0,
+          "tag": "div",
+          "cls": "rounded.border.border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))]",
+          "firstSeenMs": 86
+        }
+      ],
+      "waves": [
+        {
+          "t0": 14,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 985728
+        }
+      ]
+    },
+    {
+      "route": "/page-quan/dat-ban",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 11
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 868738,
+          "tag": "div",
+          "cls": "nq-page.nq-booking-page",
+          "firstSeenMs": 55
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 541620,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 55
+        }
+      ],
+      "waves": [
+        {
+          "t0": 11,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 868738
+        }
+      ]
+    },
+    {
+      "route": "/page-quan/fb-inbox",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 28
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 971345,
+          "tag": "div",
+          "cls": "nq-page",
+          "firstSeenMs": 57
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 484937,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 57
+        }
+      ],
+      "waves": [
+        {
+          "t0": 28,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 971345
+        }
+      ]
+    },
+    {
+      "route": "/pha",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 12
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 869345,
+          "tag": "section",
+          "cls": "nq-page",
+          "firstSeenMs": 71
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 534465,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 71
+        }
+      ],
+      "waves": [
+        {
+          "t0": 12,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 869345
+        }
+      ]
+    },
+    {
+      "route": "/phieu",
+      "total": 5,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 13
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 983652,
+          "tag": "div",
+          "cls": "nq-page.nq-page--run-has-bar",
+          "firstSeenMs": 50
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 13,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 983652
+        }
+      ]
+    },
+    {
+      "route": "/qr",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 11
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 587520,
+          "tag": "div",
+          "cls": "nq-page.nq-page--run",
+          "firstSeenMs": 50
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 55839,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 50
+        }
+      ],
+      "waves": [
+        {
+          "t0": 11,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 587520
+        }
+      ]
+    },
+    {
+      "route": "/quanverse",
+      "total": 8,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 11
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 1600,
+          "area": 315288,
+          "tag": "div",
+          "cls": "nq-skeleton",
+          "firstSeenMs": 72
+        },
+        {
+          "iter": "inf",
+          "dur": 1300,
+          "area": 19569,
+          "tag": "div",
+          "cls": "nq-skeleton__head",
+          "firstSeenMs": 72
+        },
+        {
+          "iter": "inf",
+          "dur": 1300,
+          "area": 23642,
+          "tag": "div",
+          "cls": "nq-skeleton__row",
+          "firstSeenMs": 72
+        },
+        {
+          "iter": "inf",
+          "dur": 1800,
+          "area": 676,
+          "tag": "span",
+          "cls": "nq-horizon__dot",
+          "firstSeenMs": 151
+        }
+      ],
+      "waves": [
+        {
+          "t0": 11,
+          "size": 1,
+          "durMax": 420,
+          "areaMax": 185900
+        }
+      ]
+    },
+    {
+      "route": "/quanverse/rules",
+      "total": 7,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 13
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 1600,
+          "area": 201132,
+          "tag": "div",
+          "cls": "nq-skeleton",
+          "firstSeenMs": 76
+        },
+        {
+          "iter": "inf",
+          "dur": 1300,
+          "area": 19569,
+          "tag": "div",
+          "cls": "nq-skeleton__head",
+          "firstSeenMs": 76
+        },
+        {
+          "iter": "inf",
+          "dur": 1300,
+          "area": 23642,
+          "tag": "div",
+          "cls": "nq-skeleton__row",
+          "firstSeenMs": 76
+        }
+      ],
+      "waves": [
+        {
+          "t0": 13,
+          "size": 1,
+          "durMax": 420,
+          "areaMax": 185900
+        }
+      ]
+    },
+    {
+      "route": "/quanverse/shift-rescue",
+      "total": 7,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 11
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 1600,
+          "area": 201132,
+          "tag": "div",
+          "cls": "nq-skeleton",
+          "firstSeenMs": 83
+        },
+        {
+          "iter": "inf",
+          "dur": 1300,
+          "area": 19569,
+          "tag": "div",
+          "cls": "nq-skeleton__head",
+          "firstSeenMs": 83
+        },
+        {
+          "iter": "inf",
+          "dur": 1300,
+          "area": 23642,
+          "tag": "div",
+          "cls": "nq-skeleton__row",
+          "firstSeenMs": 83
+        }
+      ],
+      "waves": [
+        {
+          "t0": 11,
+          "size": 1,
+          "durMax": 420,
+          "areaMax": 185900
+        }
+      ]
+    },
+    {
+      "route": "/quanverse/spatial-memory",
+      "total": 7,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 15
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 1600,
+          "area": 690372,
+          "tag": "div",
+          "cls": "nq-skeleton",
+          "firstSeenMs": 57
+        },
+        {
+          "iter": "inf",
+          "dur": 1300,
+          "area": 19569,
+          "tag": "div",
+          "cls": "nq-skeleton__head",
+          "firstSeenMs": 57
+        },
+        {
+          "iter": "inf",
+          "dur": 1300,
+          "area": 97848,
+          "tag": "div",
+          "cls": "nq-skeleton__row",
+          "firstSeenMs": 57
+        }
+      ],
+      "waves": [
+        {
+          "t0": 15,
+          "size": 1,
+          "durMax": 420,
+          "areaMax": 185900
+        }
+      ]
+    },
+    {
+      "route": "/quanverse/war-room",
+      "total": 7,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 11
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 1600,
+          "area": 315288,
+          "tag": "div",
+          "cls": "nq-skeleton",
+          "firstSeenMs": 71
+        },
+        {
+          "iter": "inf",
+          "dur": 1300,
+          "area": 19569,
+          "tag": "div",
+          "cls": "nq-skeleton__head",
+          "firstSeenMs": 71
+        },
+        {
+          "iter": "inf",
+          "dur": 1300,
+          "area": 23642,
+          "tag": "div",
+          "cls": "nq-skeleton__row",
+          "firstSeenMs": 71
+        }
+      ],
+      "waves": [
+        {
+          "t0": 11,
+          "size": 1,
+          "durMax": 420,
+          "areaMax": 185900
+        }
+      ]
+    },
+    {
+      "route": "/quay",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 196980,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 11
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 1116288,
+          "tag": "section",
+          "cls": "nq-page.nq-page--wide",
+          "firstSeenMs": 79
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 684599,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 79
+        }
+      ],
+      "waves": [
+        {
+          "t0": 11,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 1116288
+        }
+      ]
+    },
+    {
+      "route": "/roster",
+      "total": 8,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 196980,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 12
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 1052313,
+          "tag": "div",
+          "cls": "nq-page.nq-page--wide",
+          "firstSeenMs": 76
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 352175,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 76
+        },
+        {
+          "iter": "inf",
+          "dur": 1600,
+          "area": 295488,
+          "tag": "div",
+          "cls": "nq-skeleton.nq-skeleton--block.w-full",
+          "firstSeenMs": 76
+        }
+      ],
+      "waves": [
+        {
+          "t0": 12,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 1052313
+        }
+      ]
+    },
+    {
+      "route": "/skills",
+      "total": 4,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 11
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 11,
+          "size": 1,
+          "durMax": 420,
+          "areaMax": 185900
+        }
+      ]
+    },
+    {
+      "route": "/sop",
+      "total": 5,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 18
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 411604,
+          "tag": "div",
+          "cls": "nq-page.nq-page--run.nq-sop-copilot",
+          "firstSeenMs": 64
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 18,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 411604
+        }
+      ]
+    },
+    {
+      "route": "/them",
+      "total": 5,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 11
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page",
+          "firstSeenMs": 57
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 11,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 985728
+        }
+      ]
+    },
+    {
+      "route": "/thu-nghiem-an-toan",
+      "total": 5,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 17
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page.space-y-6",
+          "firstSeenMs": 87
+        }
+      ],
+      "infinite": [],
+      "waves": [
+        {
+          "t0": 17,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 985728
+        }
+      ]
+    },
+    {
+      "route": "/tieu-thu",
+      "total": 7,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 11
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page",
+          "firstSeenMs": 68
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 0,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 68
+        }
+      ],
+      "waves": [
+        {
+          "t0": 11,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 985728
+        }
+      ]
+    },
+    {
+      "route": "/tkb",
+      "total": 6,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 12
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 940032,
+          "tag": "div",
+          "cls": "nq-page.nq-page--tkb",
+          "firstSeenMs": 60
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 462456,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 60
+        }
+      ],
+      "waves": [
+        {
+          "t0": 12,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 940032
+        }
+      ]
+    },
+    {
+      "route": "/toi",
+      "total": 7,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 13
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page",
+          "firstSeenMs": 52
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 72906,
+          "tag": "article",
+          "cls": "nq-item",
+          "firstSeenMs": 82
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 299924,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 52
+        }
+      ],
+      "waves": [
+        {
+          "t0": 13,
+          "size": 3,
+          "durMax": 420,
+          "areaMax": 985728
+        }
+      ]
+    },
+    {
+      "route": "/treo",
+      "total": 9,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 14
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page",
+          "firstSeenMs": 67
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 70219,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 67
+        }
+      ],
+      "waves": [
+        {
+          "t0": 14,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 985728
+        }
+      ]
+    },
+    {
+      "route": "/vet",
+      "total": 7,
+      "entrance": [
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 185900,
+          "tag": "div",
+          "cls": "nq-page.nq-page--center.py-16",
+          "firstSeenMs": 12
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 985728,
+          "tag": "div",
+          "cls": "nq-page",
+          "firstSeenMs": 80
+        },
+        {
+          "iter": 1,
+          "dur": 420,
+          "area": 170756,
+          "tag": "article",
+          "cls": "nq-item",
+          "firstSeenMs": 163
+        }
+      ],
+      "infinite": [
+        {
+          "iter": "inf",
+          "dur": 2000,
+          "area": 222051,
+          "tag": "div",
+          "cls": "animate-pulse",
+          "firstSeenMs": 80
+        }
+      ],
+      "waves": [
+        {
+          "t0": 12,
+          "size": 2,
+          "durMax": 420,
+          "areaMax": 985728
+        },
+        {
+          "t0": 163,
+          "size": 1,
+          "durMax": 420,
+          "areaMax": 170756
+        }
+      ]
+    }
+  ]
+}

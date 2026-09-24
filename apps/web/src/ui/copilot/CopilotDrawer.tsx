@@ -2,8 +2,9 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { getToken } from "../../lib/session";
+import { beat } from "../../lib/motion";
 import { ActionProposalCard, ActionProposalData } from "./ActionProposalCard";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -68,6 +69,10 @@ interface CopilotDrawerProps {
 }
 
 export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
+  // Tôn trọng ý muốn giảm chuyển động: ngăn kéo vẫn mở/đóng và vẫn che nền,
+  // chỉ bỏ phần trượt. Che nền là chức năng (chặn bấm xuyên xuống), không phải
+  // trang trí, nên nó ở lại — chỉ chuyển động đi.
+  const reduced = useReducedMotion() ?? false;
   const isControlled = open !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = isControlled ? Boolean(open) : internalOpen;
@@ -295,7 +300,7 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
       {/* Floating Trigger Button */}
       <button
         onClick={() => setOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold shadow-lg shadow-amber-500/20 transition transform hover:scale-105 active:scale-95"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--nq-st-warn)] hover:brightness-110 text-[var(--nq-accent-ink)] font-bold shadow-[var(--nq-elev-4)] transition transform hover:scale-105 active:scale-95"
         title="Mở Trợ lý AG-COPILOT"
       >
         <span className="text-lg">✨</span>
@@ -308,31 +313,32 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
           <div className="fixed inset-0 z-50 flex justify-end pointer-events-none">
             {/* Backdrop */}
             <motion.div
-              initial={{ opacity: 0 }}
+              initial={reduced ? {} : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              exit={reduced ? {} : { opacity: 0 }}
+              transition={beat("settle")}
               onClick={() => setOpen(false)}
               className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"
             />
 
             {/* Chat Drawer */}
             <motion.div
-              initial={{ x: "100%" }}
+              initial={reduced ? {} : { x: "100%" }}
               animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 250 }}
-              className="relative w-full md:max-w-md bg-zinc-950 md:border-l border-zinc-800 shadow-2xl flex flex-col h-full pointer-events-auto"
+              exit={reduced ? {} : { x: "100%" }}
+              transition={beat("focus")}
+              className="relative w-full md:max-w-md bg-[var(--nq-bg)] md:border-l border-[var(--nq-line)] shadow-2xl flex flex-col h-full pointer-events-auto"
             >
               {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/60">
+              <div className="flex items-center justify-between p-4 border-b border-[var(--nq-line)] bg-[var(--nq-bg-elevated)]">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold text-sm">
+                  <div className="w-8 h-8 rounded-full bg-[var(--nq-st-warn-soft)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] flex items-center justify-center text-[var(--nq-st-warn-ink)] font-bold text-sm">
                     ✨
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-zinc-100">AG-COPILOT</h3>
-                    <p className="text-[11px] text-emerald-400 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>{" "}
+                    <h3 className="text-sm font-semibold text-[var(--nq-ink)]">AG-COPILOT</h3>
+                    <p className="text-2xs text-[var(--nq-st-ok-ink)] flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--nq-st-ok)]"></span>{" "}
                       Trực tuyến · Điều hành 1-Click
                     </p>
                   </div>
@@ -341,14 +347,14 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                   <button
                     onClick={clearHistory}
                     title="Xoá lịch sử hội thoại"
-                    className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 transition text-xs"
+                    className="p-1.5 rounded-lg text-[var(--nq-ink-muted)] hover:text-[var(--nq-st-danger-ink)] hover:bg-[var(--nq-surface)] transition text-xs"
                   >
                     🗑
                   </button>
                   <button
                     onClick={() => setOpen(false)}
                     title="Đóng (Esc)"
-                    className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition text-sm"
+                    className="p-1.5 rounded-lg text-[var(--nq-ink-muted)] hover:text-[var(--nq-ink)] hover:bg-[var(--nq-surface)] transition text-sm"
                   >
                     ✕
                   </button>
@@ -365,14 +371,14 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                     <div
                       className={`max-w-[85%] p-3 rounded-2xl ${
                         msg.sender === "user"
-                          ? "bg-amber-600 text-white rounded-br-none"
-                          : "bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-bl-none"
+                          ? "bg-[var(--nq-st-warn)] text-[var(--nq-accent-ink)] rounded-br-none"
+                          : "bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] text-[var(--nq-ink)] rounded-bl-none"
                       }`}
                     >
                       <p className="whitespace-pre-wrap leading-relaxed">
                         {msg.text}
                         {streamingId === msg.id && (
-                          <span className="ml-0.5 inline-block w-1.5 h-3 align-middle bg-amber-400 animate-pulse" />
+                          <span className="ml-0.5 inline-block w-1.5 h-3 align-middle bg-[var(--nq-st-warn)] animate-pulse" />
                         )}
                       </p>
 
@@ -380,15 +386,15 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                       {msg.sender === "copilot" &&
                         msg.citations &&
                         msg.citations.length > 0 && (
-                          <div className="mt-2 pt-2 border-t border-zinc-800/80">
-                            <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">
+                          <div className="mt-2 pt-2 border-t border-[var(--nq-line)]">
+                            <p className="text-2xs uppercase tracking-wider text-[var(--nq-ink-muted)] mb-1">
                               Nguồn tham chiếu
                             </p>
                             <ul className="flex flex-wrap gap-1">
                               {msg.citations.map((c, i) => (
                                 <li
                                   key={`${msg.id}-cit-${i}`}
-                                  className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/80 text-amber-300 border border-amber-500/20"
+                                  className="text-2xs px-1.5 py-0.5 rounded bg-[var(--nq-surface)] text-[var(--nq-st-warn-ink)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]"
                                 >
                                   📎 {c}
                                 </li>
@@ -410,25 +416,25 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                         />
                       )}
                     </div>
-                    <span className="text-[9px] text-zinc-500 mt-1 px-1">{msg.timestamp}</span>
+                    <span className="text-2xs text-[var(--nq-ink-muted)] mt-1 px-1">{msg.timestamp}</span>
                   </div>
                 ))}
                 {loading && (
-                  <div className="flex items-center gap-2 text-zinc-400 text-xs italic bg-zinc-900/60 p-2 rounded-xl border border-zinc-800 w-fit">
-                    <span className="animate-spin text-amber-400">⏳</span> AG-COPILOT đang suy nghĩ và kiểm tra solver...
+                  <div className="flex items-center gap-2 text-[var(--nq-ink-muted)] text-xs italic bg-[var(--nq-bg-elevated)] p-2 rounded-xl border border-[var(--nq-line)] w-fit">
+                    <span className="animate-spin text-[var(--nq-st-warn-ink)]">⏳</span> AG-COPILOT đang suy nghĩ và kiểm tra solver...
                   </div>
                 )}
                 <div ref={messagesEndRef} />
               </div>
 
               {/* Quick Prompts */}
-              <div className="px-4 py-2 border-t border-zinc-900 bg-zinc-900/30 overflow-x-auto flex gap-1.5 no-scrollbar">
+              <div className="px-4 py-2 border-t border-[var(--nq-line)] bg-[var(--nq-bg-elevated)] overflow-x-auto flex gap-1.5 no-scrollbar">
                 {QUICK_PROMPTS.map((qp, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleSendMessage(qp)}
                     disabled={loading || Boolean(streamingId)}
-                    className="whitespace-nowrap text-[11px] px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-amber-300 hover:border-amber-500/40 transition disabled:opacity-50"
+                    className="whitespace-nowrap text-2xs px-2.5 py-1 rounded-full bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] text-[var(--nq-ink-muted)] hover:text-[var(--nq-st-warn-ink)] hover:border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] transition disabled:opacity-50"
                   >
                     {qp}
                   </button>
@@ -436,7 +442,7 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
               </div>
 
               {/* Input Footer */}
-              <div className="p-3 border-t border-zinc-800 bg-zinc-900/40">
+              <div className="p-3 border-t border-[var(--nq-line)] bg-[var(--nq-bg-elevated)]">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -451,7 +457,7 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                     onChange={(e) => setInputMessage(e.target.value)}
                     placeholder="Nhập lệnh hoặc hỏi quy trình..."
                     disabled={loading || Boolean(streamingId)}
-                    className="flex-1 px-3.5 py-2 text-xs bg-zinc-900 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500 disabled:opacity-50"
+                    className="flex-1 px-3.5 py-2 text-xs bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] rounded-xl text-[var(--nq-ink)] placeholder-zinc-500 focus:outline-none focus:border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] disabled:opacity-50"
                   />
                   <button
                     type="button"
@@ -459,8 +465,8 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                     title="Nhập bằng giọng nói"
                     className={`p-2 rounded-xl border transition ${
                       isListening
-                        ? "bg-rose-500 text-white border-rose-400 animate-pulse"
-                        : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
+                        ? "bg-[var(--nq-st-danger)] text-[var(--nq-accent-ink)] border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] animate-pulse"
+                        : "bg-[var(--nq-surface)] hover:bg-[var(--nq-line)] text-[var(--nq-ink)] border-[var(--nq-line)]"
                     }`}
                   >
                     🎙️
@@ -468,12 +474,12 @@ export function CopilotDrawer({ open, onClose }: CopilotDrawerProps = {}) {
                   <button
                     type="submit"
                     disabled={loading || Boolean(streamingId) || !inputMessage.trim()}
-                    className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold text-xs transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-3.5 py-2 rounded-xl bg-[var(--nq-st-warn)] hover:bg-[var(--nq-st-warn)] text-[var(--nq-accent-ink)] font-semibold text-xs transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Gửi
                   </button>
                 </form>
-                <p className="mt-1.5 text-[10px] text-zinc-500 text-center">
+                <p className="mt-1.5 text-2xs text-[var(--nq-ink-muted)] text-center">
                   Ctrl/Cmd+K mở·đóng · Esc thoát
                 </p>
               </div>

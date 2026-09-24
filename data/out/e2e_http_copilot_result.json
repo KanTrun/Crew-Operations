@@ -35,22 +35,22 @@
     [
       "manager xếp lịch -> SCHEDULE_SOLVE",
       true,
-      "200 {'reply_text': 'Dạ em đã hoàn thành bước chuẩn bị: Đã xếp thành công 92 lượt phân công cho tuần 2026-W39. Anh/chị xem qua và bấm duyệt để áp dụng nhé!', 'intent': 'SCHEDULE_SOLVE', 'confidence': 0.92, 'action_proposal': {'action_id': 'act_06aecc12', 'intent': 'SCHEDULE_SOLVE', 'status': 'ready_f"
+      "200 {'reply_text': 'Dạ em đã hoàn thành bước chuẩn bị: Đã xếp thành công 92 lượt phân công cho tuần 2026-W40. Anh/chị xem qua và bấm duyệt để áp dụng nhé!', 'intent': 'SCHEDULE_SOLVE', 'confidence': 0.92, 'action_proposal': {'action_id': 'act_5e2a28d0', 'intent': 'SCHEDULE_SOLVE', 'status': 'ready_f"
     ],
     [
       "manager có proposal",
       true,
-      "{'reply_text': 'Dạ em đã hoàn thành bước chuẩn bị: Đã xếp thành công 92 lượt phân công cho tuần 2026-W39. Anh/chị xem qua và bấm duyệt để áp dụng nhé!', 'intent': 'SCHEDULE_SOLVE', 'confidence': 0.92, 'action_proposal': {'action_id': 'act_06aecc12', 'intent': 'SCHEDULE_SOLVE', 'status': 'ready_for_a"
+      "{'reply_text': 'Dạ em đã hoàn thành bước chuẩn bị: Đã xếp thành công 92 lượt phân công cho tuần 2026-W40. Anh/chị xem qua và bấm duyệt để áp dụng nhé!', 'intent': 'SCHEDULE_SOLVE', 'confidence': 0.92, 'action_proposal': {'action_id': 'act_5e2a28d0', 'intent': 'SCHEDULE_SOLVE', 'status': 'ready_for_a"
     ],
     [
       "duyệt xếp lịch -> executed",
       true,
-      "200 {'ok': True, 'action_id': 'act_06aecc12', 'status': 'executed', 'message': 'Đã phê duyệt và thực thi hành động thành công!', 'result_link': '/roster', 'payload_diff': {'tuan': '2026-W39', 'tuan_iso': '2026-W39', 'status': 'OPTIMAL', 'phan_cong': {'w1_c01': ['nv_02', 'nv_10'], 'w1_c02': ['nv_12']"
+      "200 {'ok': True, 'action_id': 'act_5e2a28d0', 'status': 'executed', 'message': 'Đã phê duyệt và thực thi hành động thành công!', 'result_link': '/roster', 'payload_diff': {'tuan': '2026-W40', 'tuan_iso': '2026-W40', 'status': 'FEASIBLE', 'phan_cong': {'w1_c01': ['nv_09', 'nv_10'], 'w1_c02': ['nv_04'"
     ],
     [
       "GET /api/v1/tkb/tuan = 200",
       true,
-      "200 {'nv_id': 'tuan', 'item': None, 'nguon': 'quan'}"
+      "200 {'nv_id': 'tuan', 'tuan_iso': '2026-W39', 'item': None, 'nguon': 'quan'}"
     ],
     [
       "LIST_STAFF",
@@ -100,7 +100,7 @@
     [
       "duyệt treo việc -> executed",
       true,
-      "200 {'ok': True, 'action_id': 'act_e9353f8e', 'status': 'executed', 'message': 'Đã phê duyệt và thực thi hành động thành công!', 'result_link': '/treo', 'payload_diff': {'snapshot_version': 'live-v1', 'noi_dung': 'vệ sinh tủ lạnh cuối ngày', 'nv_id': 'nv_01'}}"
+      "200 {'ok': True, 'action_id': 'act_f9c0e9f3', 'status': 'executed', 'message': 'Đã phê duyệt và thực thi hành động thành công!', 'result_link': '/treo', 'payload_diff': {'snapshot_version': 'live-v1', 'noi_dung': 'vệ sinh tủ lạnh cuối ngày', 'nv_id': 'nv_01'}}"
     ],
     [
       "prompt injection -> OUT_OF_SCOPE",
@@ -110,7 +110,7 @@
     [
       "GET /copilot/audit = 200",
       true,
-      "200 [{'action_id': 'act_e9353f8e', 'actor_user_id': 'nv_01', 'store_id': 'quan_01', 'intent': 'PROPOSE_HANGING_TASK', 'decision': 'approve', 'payload_diff': {'snapshot_version': 'live-v1', 'noi_dung': 'vệ"
+      "200 [{'action_id': 'act_f9c0e9f3', 'actor_user_id': 'nv_01', 'store_id': 'quan_01', 'intent': 'PROPOSE_HANGING_TASK', 'decision': 'approve', 'payload_diff': {'snapshot_version': 'live-v1', 'noi_dung': 'vệ"
     ],
     [
       "GET /copilot/permissions = 200",
@@ -130,17 +130,17 @@
     [
       "SSE có event: meta",
       true,
-      "event: meta\ndata: {\"intent\": \"GET_SCHEDULE\", \"confidence\": 0.9, \"action_proposal\": null, \"citations\": [], \"direct_answer\": \"Lịch tuần 2026-W38 (Trạng thái: Đã duyệt): 70 ca đã phân công (92 lượt phân "
+      "event: meta\ndata: {\"intent\": \"GET_SCHEDULE\", \"confidence\": 0.92, \"action_proposal\": null, \"citations\": [], \"direct_answer\": \"Lịch tuần 2026-W39 (Trạng thái: Đã duyệt): 70 ca đã phân công (92 lượt phân"
     ],
     [
       "SSE có event: delta",
       true,
-      "event: meta\ndata: {\"intent\": \"GET_SCHEDULE\", \"confidence\": 0.9, \"action_proposal\": null, \"citations\": [], \"direct_answer\": \"Lịch tuần 2026-W38 (Trạng thái: Đã duyệt): 70 ca đã phân công (92 lượt phân "
+      "event: meta\ndata: {\"intent\": \"GET_SCHEDULE\", \"confidence\": 0.92, \"action_proposal\": null, \"citations\": [], \"direct_answer\": \"Lịch tuần 2026-W39 (Trạng thái: Đã duyệt): 70 ca đã phân công (92 lượt phân"
     ],
     [
       "SSE có event: done",
       true,
-      "event: meta\ndata: {\"intent\": \"GET_SCHEDULE\", \"confidence\": 0.9, \"action_proposal\": null, \"citations\": [], \"direct_answer\": \"Lịch tuần 2026-W38 (Trạng thái: Đã duyệt): 70 ca đã phân công (92 lượt phân "
+      "event: meta\ndata: {\"intent\": \"GET_SCHEDULE\", \"confidence\": 0.92, \"action_proposal\": null, \"citations\": [], \"direct_answer\": \"Lịch tuần 2026-W39 (Trạng thái: Đã duyệt): 70 ca đã phân công (92 lượt phân"
     ],
     [
       "intent PROPOSE_SWAP_CONSENT",
@@ -160,12 +160,12 @@
     [
       "intent GET_SHIFT_SWAPS",
       true,
-      "200 got=GET_SHIFT_SWAPS want=GET_SHIFT_SWAPS :: 12 yêu cầu đổi ca đang chờ xử lý."
+      "200 got=GET_SHIFT_SWAPS want=GET_SHIFT_SWAPS :: 0 yêu cầu đổi ca đang chờ xử lý."
     ],
     [
       "intent GET_MY_PROFILE",
       true,
-      "200 got=GET_MY_PROFILE want=GET_MY_PROFILE :: Hồ sơ: Lan — quản lý (quan_ly)."
+      "200 got=GET_MY_PROFILE want=GET_MY_PROFILE :: Hồ sơ: Lan Nguyễn (quan_ly)."
     ],
     [
       "intent PROPOSE_TIME_OFF",
@@ -215,17 +215,17 @@
     [
       "intent GET_HANDOVERS",
       true,
-      "200 got=GET_HANDOVERS want=GET_HANDOVERS :: 65 bản ghi sửa lịch/bàn giao gần nhất."
+      "200 got=GET_HANDOVERS want=GET_HANDOVERS :: 85 bản ghi sửa lịch/bàn giao gần nhất."
     ],
     [
       "intent GET_CONSTRAINT_CANDIDATES",
       true,
-      "200 got=GET_CONSTRAINT_CANDIDATES want=GET_CONSTRAINT_CANDIDATES :: 3 ràng buộc chờ duyệt — xem chi tiết tại /inbox."
+      "200 got=GET_CONSTRAINT_CANDIDATES want=GET_CONSTRAINT_CANDIDATES :: 5 ràng buộc chờ duyệt — xem chi tiết tại /inbox."
     ],
     [
       "intent GET_SERPAPI_QUOTA",
       true,
-      "200 got=GET_SERPAPI_QUOTA want=GET_SERPAPI_QUOTA :: Hạn ngạch SerpApi tháng 2026-09: Đã dùng 2/250 lượt (còn 238 lượt). Trạng thái Circuit Breaker: CLOSED. Lượt dùng Cache: 0."
+      "200 got=GET_SERPAPI_QUOTA want=GET_SERPAPI_QUOTA :: Hạn ngạch SerpApi tháng 2026-09: Đã dùng 0/250 lượt (còn 240 lượt). Trạng thái Circuit Breaker: CLOSED. Lượt dùng Cache: 0."
     ],
     [
       "intent GET_SURVEY_RESULT",
@@ -235,7 +235,7 @@
     [
       "intent APPROVE_SHIFT_SWAP",
       true,
-      "200 got=APPROVE_SHIFT_SWAP want=APPROVE_SHIFT_SWAP :: None"
+      "200 got=APPROVE_SHIFT_SWAP want=APPROVE_SHIFT_SWAP :: Hiện không có yêu cầu đổi ca nào đang chờ duyệt."
     ],
     [
       "intent CREATE_RULE_PROPOSAL",

@@ -187,8 +187,8 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         : "border-amber-500/30 bg-amber-500/5"
     }`}>
       <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="font-semibold text-amber-400 flex items-center gap-1.5">
-          <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        <span className="font-semibold text-[var(--nq-st-warn-ink)] flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-[var(--nq-st-warn)] animate-pulse"></span>
           Đề xuất: {proposal.intent}
         </span>
         <div className="flex items-center gap-2">
@@ -202,12 +202,12 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
             </span>
           )}
           <span
-            className={`text-[10px] font-medium px-2 py-0.5 rounded ${
+            className={`text-2xs font-medium px-2 py-0.5 rounded ${
               currentStatus === "executed"
-                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                ? "bg-[var(--nq-st-ok-soft)] text-[var(--nq-st-ok-ink)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))]"
                 : currentStatus === "rejected" || currentStatus === "execution_failed" || currentStatus === "stale_rejected" || currentStatus === "expired"
-                ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-                : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                ? "bg-[var(--nq-st-danger-soft)] text-[var(--nq-st-danger-ink)] border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))]"
+                : "bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]"
             }`}
           >
             {currentStatus === "executed"
@@ -237,27 +237,27 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         </p>
       )}
 
-      <p className="text-zinc-100 font-medium mb-1">
+      <p className="text-[var(--nq-ink)] font-medium mb-1">
         <ChatText text={proposal.summary} />
       </p>
       {proposal.explanation && (
-        <p className="text-zinc-400 text-[11px] mb-2 leading-relaxed italic">
+        <p className="text-[var(--nq-ink-muted)] text-2xs mb-2 leading-relaxed italic">
           <ChatText text={proposal.explanation} />
         </p>
       )}
 
       {proposal.intent === "SEND_MAIL" && proposal.payload_diff && (
-        <div className="my-2 p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 text-xs font-sans space-y-2.5">
+        <div className="my-2 p-3 rounded-lg bg-[var(--nq-bg)] border border-[var(--nq-line)] text-xs font-sans space-y-2.5">
           {/* Metadata Badges: Live Context & Learned Style */}
-          <div className="flex flex-wrap items-center gap-1.5 pb-1 border-b border-zinc-800/60">
+          <div className="flex flex-wrap items-center gap-1.5 pb-1 border-b border-[var(--nq-line)]">
             {proposal.payload_diff.ops_context_summary && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-800/60 text-cyan-300 text-[10px] font-medium">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--nq-st-info-soft)] border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))] text-[var(--nq-st-info-ink)] text-2xs font-medium">
                 <span>⚡ Dữ liệu sống:</span>
                 <span>{proposal.payload_diff.ops_context_summary}</span>
               </span>
             )}
             {proposal.payload_diff.has_learned_style && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-950/80 border border-purple-800/60 text-purple-300 text-[10px] font-medium">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--nq-st-info-soft)] border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))] text-[var(--nq-st-info-ink)] text-2xs font-medium">
                 <span>✨ Đã áp dụng văn phong ưa thích</span>
               </span>
             )}
@@ -265,7 +265,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
               <button
                 type="button"
                 onClick={() => setIsEditingEmail(true)}
-                className="ml-auto text-[10px] text-amber-400 hover:text-amber-300 underline flex items-center gap-0.5"
+                className="ml-auto text-2xs text-[var(--nq-st-warn-ink)] hover:text-[var(--nq-st-warn-ink)] underline flex items-center gap-0.5"
               >
                 ✏️ Sửa trước khi duyệt
               </button>
@@ -274,57 +274,57 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
               <button
                 type="button"
                 onClick={() => setIsEditingEmail(false)}
-                className="ml-auto text-[10px] text-zinc-400 hover:text-zinc-200 underline flex items-center gap-0.5"
+                className="ml-auto text-2xs text-[var(--nq-ink-muted)] hover:text-[var(--nq-ink)] underline flex items-center gap-0.5"
               >
                 Thu gọn chỉnh sửa
               </button>
             )}
           </div>
 
-          <div className="flex items-start gap-1.5 text-zinc-300">
-            <span className="text-zinc-500 font-semibold min-w-[70px]">Người nhận:</span>
-            <span className="text-amber-300 font-mono">
+          <div className="flex items-start gap-1.5 text-[var(--nq-ink)]">
+            <span className="text-[var(--nq-ink-muted)] font-semibold min-w-[70px]">Người nhận:</span>
+            <span className="text-[var(--nq-st-warn-ink)] font-mono">
               {Array.isArray(proposal.payload_diff.to_emails) && proposal.payload_diff.to_emails.length > 0
                 ? proposal.payload_diff.to_emails.join(", ")
                 : proposal.payload_diff.recip_label || "Chưa có email"}
             </span>
           </div>
 
-          <div className="flex items-start gap-1.5 text-zinc-300">
-            <span className="text-zinc-500 font-semibold min-w-[70px]">Tiêu đề:</span>
+          <div className="flex items-start gap-1.5 text-[var(--nq-ink)]">
+            <span className="text-[var(--nq-ink-muted)] font-semibold min-w-[70px]">Tiêu đề:</span>
             {isEditingEmail ? (
               <input
                 type="text"
                 value={editSubject}
                 onChange={(e) => setEditSubject(e.target.value)}
-                className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 text-xs focus:outline-none focus:border-amber-500"
+                className="flex-1 bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] rounded px-2 py-1 text-[var(--nq-ink)] text-xs focus:outline-none focus:border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]"
               />
             ) : (
-              <span className="text-zinc-100 font-medium">
+              <span className="text-[var(--nq-ink)] font-medium">
                 {editSubject || proposal.payload_diff.subject || "(Chưa có tiêu đề)"}
               </span>
             )}
           </div>
 
-          <div className="pt-2 border-t border-zinc-800/80">
-            <span className="text-zinc-500 font-semibold block mb-1">Nội dung thư:</span>
+          <div className="pt-2 border-t border-[var(--nq-line)]">
+            <span className="text-[var(--nq-ink-muted)] font-semibold block mb-1">Nội dung thư:</span>
             {isEditingEmail ? (
               <textarea
                 value={editBody}
                 onChange={(e) => setEditBody(e.target.value)}
                 rows={7}
-                className="w-full bg-zinc-900 border border-zinc-700 rounded p-2.5 text-zinc-100 text-[11px] leading-relaxed focus:outline-none focus:border-amber-500 font-sans"
+                className="w-full bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] rounded p-2.5 text-[var(--nq-ink)] text-2xs leading-relaxed focus:outline-none focus:border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] font-sans"
               />
             ) : (
-              <div className="bg-zinc-900/90 rounded p-2.5 text-zinc-200 text-[11px] leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-sans border border-zinc-800/60">
+              <div className="bg-[var(--nq-bg-elevated)] rounded p-2.5 text-[var(--nq-ink)] text-2xs leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-sans border border-[var(--nq-line)]">
                 {editBody || proposal.payload_diff.body || "(Trống)"}
               </div>
             )}
           </div>
 
           {Array.isArray(proposal.payload_diff.attachments) && proposal.payload_diff.attachments.length > 0 && (
-            <div className="pt-2 border-t border-zinc-800/80">
-              <span className="text-zinc-500 font-semibold block mb-1.5 flex items-center gap-1 text-[11px]">
+            <div className="pt-2 border-t border-[var(--nq-line)]">
+              <span className="text-[var(--nq-ink-muted)] font-semibold block mb-1.5 flex items-center gap-1 text-2xs">
                 <span>📎</span> Tệp & hình ảnh đính kèm ({proposal.payload_diff.attachments.length}):
               </span>
               <div className="flex flex-wrap gap-2">
@@ -334,12 +334,12 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
                   return (
                     <div
                       key={idx}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-700 text-[11px] text-zinc-200"
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] text-2xs text-[var(--nq-ink)]"
                     >
-                      <span className="text-amber-400">🖼️</span>
+                      <span className="text-[var(--nq-st-warn-ink)]">🖼️</span>
                       <span className="font-mono">{fname}</span>
                       {isInline && (
-                        <span className="text-[9px] bg-blue-900/60 text-blue-300 px-1 py-0.5 rounded border border-blue-700">
+                        <span className="text-2xs bg-[var(--nq-st-info-soft)] text-[var(--nq-st-info-ink)] px-1 py-0.5 rounded border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))]">
                           Chèn trong thư
                         </span>
                       )}
@@ -359,7 +359,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
       )}
 
       {errorMsg && (
-        <div className="mb-2 p-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[11px]">
+        <div className="mb-2 p-2 rounded bg-[var(--nq-st-danger-soft)] border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] text-[var(--nq-st-danger-ink)] text-2xs">
           {errorMsg}
           {currentStatus === "stale_rejected" && " Hãy tạo đề xuất mới từ dữ liệu hiện tại."}
           {currentStatus === "expired" && " Hãy tạo đề xuất mới để tiếp tục."}
@@ -368,11 +368,11 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
       )}
 
       {isPending && (
-        <div className="flex items-center gap-2 pt-2 border-t border-zinc-800">
+        <div className="flex items-center gap-2 pt-2 border-t border-[var(--nq-line)]">
           <button
             onClick={() => handleDecision("approve")}
             disabled={loading}
-            className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold text-white transition disabled:opacity-50"
+            className="flex-1 py-1.5 px-3 rounded-lg bg-[var(--nq-st-ok)] hover:bg-[var(--nq-st-ok)] font-semibold text-[var(--nq-accent-ink)] transition disabled:opacity-50"
           >
             {loading
               ? "Đang gửi..."
@@ -383,18 +383,18 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           <button
             onClick={() => handleDecision("reject")}
             disabled={loading}
-            className="py-1.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition disabled:opacity-50"
+            className="py-1.5 px-3 rounded-lg bg-[var(--nq-surface)] hover:bg-[var(--nq-line)] text-[var(--nq-ink)] transition disabled:opacity-50"
           >
             ✕ Từ chối
           </button>
         </div>
       )}
       {currentStatus === "executed" && (
-        <div className="pt-2 border-t border-zinc-800 flex items-center justify-between gap-2">
+        <div className="pt-2 border-t border-[var(--nq-line)] flex items-center justify-between gap-2">
           {resultLink ? (
             <a
               href={resultLink}
-              className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 transition"
+              className="inline-flex items-center gap-1 text-2xs px-2 py-1 rounded bg-[var(--nq-st-ok-soft)] text-[var(--nq-st-ok-ink)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] hover:bg-[var(--nq-st-ok-soft)] transition"
             >
               → Xem kết quả đã áp dụng
             </a>
@@ -403,7 +403,7 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           )}
           <button
             onClick={() => setShowAmendModal(true)}
-            className="text-[11px] text-zinc-400 hover:text-amber-400 underline"
+            className="text-2xs text-[var(--nq-ink-muted)] hover:text-[var(--nq-st-warn-ink)] underline"
           >
             Đính chính / Sửa lại
           </button>
@@ -413,25 +413,25 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
       {/* Amend Modal */}
       {showAmendModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-4 max-w-sm w-full">
-            <h4 className="text-sm font-semibold text-zinc-100 mb-2">Đính chính hành động</h4>
+          <div className="bg-[var(--nq-bg-elevated)] border border-[var(--nq-line)] rounded-xl p-4 max-w-sm w-full">
+            <h4 className="text-sm font-semibold text-[var(--nq-ink)] mb-2">Đính chính hành động</h4>
             <textarea
               value={amendReason}
               onChange={(e) => setAmendReason(e.target.value)}
               placeholder="Nhập lý do đính chính (vd: Nhân viên đổi ý, sửa lại ca...)"
-              className="w-full h-20 p-2 text-xs bg-zinc-800 border border-zinc-700 rounded text-zinc-100 mb-3 focus:outline-none focus:border-amber-500"
+              className="w-full h-20 p-2 text-xs bg-[var(--nq-surface)] border border-[var(--nq-line)] rounded text-[var(--nq-ink)] mb-3 focus:outline-none focus:border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]"
             />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowAmendModal(false)}
-                className="px-3 py-1 text-xs rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                className="px-3 py-1 text-xs rounded bg-[var(--nq-surface)] text-[var(--nq-ink)] hover:bg-[var(--nq-line)]"
               >
                 Hủy
               </button>
               <button
                 onClick={handleAmend}
                 disabled={loading || !amendReason.trim()}
-                className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-medium disabled:opacity-50"
+                className="px-3 py-1 text-xs rounded bg-[var(--nq-st-warn)] hover:bg-[var(--nq-st-warn)] text-[var(--nq-accent-ink)] font-medium disabled:opacity-50"
               >
                 Gửi đính chính
               </button>

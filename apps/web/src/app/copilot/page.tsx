@@ -31,7 +31,7 @@ export default function CopilotPage() {
     <div className="nq-page max-w-5xl mx-auto p-4 md:p-8">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-widest text-[var(--nq-copper)]">
+          <p className="text-2xs uppercase tracking-widest text-[var(--nq-copper)]">
             Trợ lý điều hành
           </p>
           <h1 className="text-2xl font-bold text-[var(--nq-fg)]">
@@ -44,14 +44,14 @@ export default function CopilotPage() {
         </div>
         <Link
           href="/hom-nay"
-          className="border-2 border-[var(--nq-dim)] px-3 py-1.5 text-xs text-[var(--nq-fg)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
+          className="nq-surface-row px-3 py-1.5 text-xs text-[var(--nq-fg)] hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)]"
         >
           Về Hôm nay
         </Link>
       </div>
 
       <div
-        className="overflow-hidden border-2 border-[var(--nq-dim)] bg-[var(--nq-bg)] shadow-[8px_8px_0_var(--nq-copper-dim)]"
+        className="overflow-hidden nq-surface-row bg-[var(--nq-bg)] shadow-[var(--nq-elev-2)]"
         style={{
           height: "calc(100vh - 220px)",
           minHeight: 540,

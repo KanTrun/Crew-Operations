@@ -105,7 +105,7 @@ export default function ThuNghiemAnToanPage() {
             <select
               value={loai}
               onChange={(e) => setLoai(e.target.value)}
-              className="bg-neutral-800 text-white text-sm p-2 rounded border border-neutral-700"
+              className="bg-[var(--nq-surface)] text-white text-sm p-2 rounded border border-[var(--nq-line)]"
             >
               <option value="tang_gia">Tăng giá</option>
               <option value="giam_gia">Giảm giá</option>
@@ -117,16 +117,16 @@ export default function ThuNghiemAnToanPage() {
           {(loai === "tang_gia" || loai === "giam_gia") && (
             <div className="grid grid-cols-2 gap-3">
               <Field label="Giá cũ (đ)">
-                <input type="number" value={giaCu} onChange={(e) => setGiaCu(e.target.value)} className="bg-neutral-800 text-white text-sm p-2 rounded border border-neutral-700" />
+                <input type="number" value={giaCu} onChange={(e) => setGiaCu(e.target.value)} className="bg-[var(--nq-surface)] text-white text-sm p-2 rounded border border-[var(--nq-line)]" />
               </Field>
               <Field label="Giá mới (đ)">
-                <input type="number" value={giaMoi} onChange={(e) => setGiaMoi(e.target.value)} className="bg-neutral-800 text-white text-sm p-2 rounded border border-neutral-700" />
+                <input type="number" value={giaMoi} onChange={(e) => setGiaMoi(e.target.value)} className="bg-[var(--nq-surface)] text-white text-sm p-2 rounded border border-[var(--nq-line)]" />
               </Field>
               <Field label="Lượng bán cũ">
-                <input type="number" value={luongCu} onChange={(e) => setLuongCu(e.target.value)} className="bg-neutral-800 text-white text-sm p-2 rounded border border-neutral-700" />
+                <input type="number" value={luongCu} onChange={(e) => setLuongCu(e.target.value)} className="bg-[var(--nq-surface)] text-white text-sm p-2 rounded border border-[var(--nq-line)]" />
               </Field>
               <Field label="Chi phí biến đổi (đ)">
-                <input type="number" value={chiPhi} onChange={(e) => setChiPhi(e.target.value)} className="bg-neutral-800 text-white text-sm p-2 rounded border border-neutral-700" />
+                <input type="number" value={chiPhi} onChange={(e) => setChiPhi(e.target.value)} className="bg-[var(--nq-surface)] text-white text-sm p-2 rounded border border-[var(--nq-line)]" />
               </Field>
             </div>
           )}
@@ -134,10 +134,10 @@ export default function ThuNghiemAnToanPage() {
           {(loai === "them_nhan_su" || loai === "bot_nhan_su") && (
             <div className="grid grid-cols-2 gap-3">
               <Field label="Doanh thu tăng thêm (đ)">
-                <input type="number" value={doanhThuTang} onChange={(e) => setDoanhThuTang(e.target.value)} className="bg-neutral-800 text-white text-sm p-2 rounded border border-neutral-700" />
+                <input type="number" value={doanhThuTang} onChange={(e) => setDoanhThuTang(e.target.value)} className="bg-[var(--nq-surface)] text-white text-sm p-2 rounded border border-[var(--nq-line)]" />
               </Field>
               <Field label="Chi phí nhân sự (đ)">
-                <input type="number" value={chiPhiNhanSu} onChange={(e) => setChiPhiNhanSu(e.target.value)} className="bg-neutral-800 text-white text-sm p-2 rounded border border-neutral-700" />
+                <input type="number" value={chiPhiNhanSu} onChange={(e) => setChiPhiNhanSu(e.target.value)} className="bg-[var(--nq-surface)] text-white text-sm p-2 rounded border border-[var(--nq-line)]" />
               </Field>
             </div>
           )}
@@ -157,7 +157,7 @@ export default function ThuNghiemAnToanPage() {
               <div key={s.scenario_id} className="nq-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="font-bold">{s.loai}</h4>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700">
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--nq-surface)] text-[var(--nq-ink)] border border-[var(--nq-line)]">
                     {s.scenario_id}
                   </span>
                 </div>
@@ -165,7 +165,7 @@ export default function ThuNghiemAnToanPage() {
                   {JSON.stringify(s.ket_qua, null, 2)}
                 </pre>
                 {s.rui_ro && (
-                  <p className="text-xs text-amber-400 mt-2">⚠️ {s.rui_ro}</p>
+                  <p className="text-xs text-[var(--nq-st-warn-ink)] mt-2">⚠️ {s.rui_ro}</p>
                 )}
               </div>
             ))}
