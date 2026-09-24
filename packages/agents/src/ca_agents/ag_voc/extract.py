@@ -19,6 +19,10 @@ from __future__ import annotations
 
 import unicodedata
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ca_agents.sensors.sensor_chain import SensorChain
 
 # ── Nhóm sự cố vận hành ───────────────────────────────────────────────────
 # Khoá = mã sự cố · giá trị = từ khoá không dấu, chữ thường.
@@ -149,7 +153,7 @@ def phan_loai_lo(phan_hoi_list: list[str]) -> list[VocResult]:
 
 def phan_loai_nang_cao(
     phan_hoi: str,
-    sensor_chain: object | None = None,
+    sensor_chain: SensorChain | None = None,
 ) -> VocResult:
     """Phân loại nâng cao: regex trước, SensorChain bổ sung sau (opt-in).
 
