@@ -32,6 +32,19 @@ type SuaPreview = { loai?: string; luc?: string; ai?: string };
 type TonRow = { hang?: string; so_luong?: number; don_vi?: string; duoi_nguong?: boolean };
 type TreoBreakdown = { trang_thai: string; so_luong: number };
 
+/** Rút gọn hao hụt hôm nay — máy chủ dùng CÙNG hàm với /hao-phi và agent mẹ. */
+type HaoHut = {
+  co_du_lieu?: boolean;
+  tong_dong?: number;
+  so_nghiem_trong?: number;
+  so_canh_bao?: number;
+  so_thieu_du_lieu?: number;
+  ty_le_trung_binh?: number | null;
+  mat_hang_vuot?: { ten: string; ty_le: number | null; muc_do: string }[];
+  nguyen_nhan_hang_dau?: { ten: string; so_lan: number }[];
+  ly_do?: string;
+};
+
 type Today = {
   ngay: string;
   lich: { trang_thai?: string; nguon?: string; solver?: { status?: string } };
@@ -44,6 +57,7 @@ type Today = {
   treo_theo_trang_thai?: TreoBreakdown[];
   sua_gan_day?: SuaPreview[];
   ton_tom_tat?: TonRow[];
+  hao_hut?: HaoHut;
   co_du_lieu_mau?: boolean;
   viec_cho_toi?: { id: string; tieu_de: string; chi_tiet: string; link: string; muc?: number }[];
   brief_hom_nay?: { ngay: string; so_ca: number; so_treo_mo: number; ton_canh_bao?: string[]; treo_dau?: string[] } | null;
@@ -122,6 +136,7 @@ export default function HomNayPage() {
   const kpi2Label = chuQuan ? "Nhân viên chờ xem xét" : manager ? "Mục chờ duyệt" : "Luật cẩm nang";
   const kpi2Href = chuQuan ? "/nguoi" : manager ? "/inbox" : "/cam-nang";
   const highlight = pulseModel?.highlightKpi;
+  const haoHut = data?.hao_hut;
 
   return (
     <div className="nq-page nq-page--dashboard">
@@ -244,6 +259,36 @@ export default function HomNayPage() {
                 </Alert>
               ) : (
                 <p className="nq-muted nq-dash-aside-note">Chưa có cảnh báo tồn từ sổ tiêu thụ.</p>
+              )}
+
+              {/* Hao hụt: chỉ báo khi có chuyện. Dòng "chưa đủ dữ liệu" nói thẳng
+                  là chưa kết luận được, không im lặng coi như đạt. */}
+              {haoHut && haoHut.co_du_lieu ? (
+                haoHut.so_nghiem_trong || haoHut.so_canh_bao ? (
+                  <Alert kind="info">
+                    Hao hụt cần xem:{" "}
+                    {(haoHut.mat_hang_vuot ?? [])
+                      .map((x) => (x.ty_le === null ? x.ten : `${x.ten} ${x.ty_le}%`))
+                      .join(", ") || `${(haoHut.so_nghiem_trong ?? 0) + (haoHut.so_canh_bao ?? 0)} nguyên liệu`}
+                    .
+                    {haoHut.so_thieu_du_lieu ? (
+                      <span className="block mt-2">
+                        {haoHut.so_thieu_du_lieu} nguyên liệu chưa kết luận được vì thiếu một vế.
+                      </span>
+                    ) : null}
+                    <BtnLink href="/hao-phi" variant="ghost">
+                      Mở bảng hao hụt
+                    </BtnLink>
+                  </Alert>
+                ) : (
+                  <Link href="/hao-phi" className="nq-dash-aside-link">
+                    Hao hụt hôm nay trong ngưỡng — xem bảng →
+                  </Link>
+                )
+              ) : (
+                <Link href="/hao-phi" className="nq-dash-aside-link">
+                  Hao hụt: chưa đủ dữ liệu để đối chiếu — gõ phiếu kiểm kê →
+                </Link>
               )}
 
               <SuaTimeline items={sua} formatLuc={formatLuc} ghiNhanLabel={ghiNhanLabel} actorLabel={actorLabel} />

@@ -139,6 +139,45 @@ def _audit(hanh: str, ai: str, payload: dict[str, Any]) -> None:
     audit_add(_clock.now_iso(), ai, hanh, payload)
 
 
+def _hao_hut_hom_nay() -> dict[str, Any]:
+    """Bản rút gọn của hao hụt hôm nay cho bảng Hôm nay.
+
+    Gọi **đúng hàm** mà `/api/v1/hao-hut` và agent mẹ gọi
+    (`ca_agents.ag_waste.tinh_tu_nguon`), nên con số trên trang Hôm nay không thể
+    lệch với trang Hao phí. Chỉ trả phần cần cho một dòng tóm tắt; chi tiết theo
+    nguyên liệu vẫn nằm ở `/hao-phi`.
+    """
+    from ca_agents.ag_waste import tinh_tu_nguon
+
+    from ca_api.interfaces.http.hao_hut import _ds, _ds_don, _nguong
+    from ca_api.persist import menu_list
+
+    tom_tat = tinh_tu_nguon(
+        kiem_ke=_ds("kiem_ke"),
+        don_quay=_ds_don(),
+        menu=menu_list(gom_an=True),
+        waste_notes=_ds("waste_notes"),
+        nguong=_nguong(),
+        ky="hom_nay",
+    )
+    vuot = [d for d in tom_tat.dong if d.muc_do in {"canh_bao", "nghiem_trong"}]
+    return {
+        "co_du_lieu": tom_tat.tong_dong > 0,
+        "tong_dong": tom_tat.tong_dong,
+        "so_nghiem_trong": tom_tat.so_nghiem_trong,
+        "so_canh_bao": tom_tat.so_canh_bao,
+        "so_thieu_du_lieu": tom_tat.so_thieu_du_lieu,
+        "ty_le_trung_binh": tom_tat.ty_le_trung_binh,
+        "mat_hang_vuot": [
+            {"ten": d.ten or d.mat_hang, "ty_le": d.ty_le_phan_tram, "muc_do": d.muc_do}
+            for d in vuot[:5]
+        ],
+        "nguyen_nhan_hang_dau": [
+            {"ten": c.ten, "so_lan": c.so_lan} for c in tom_tat.nguyen_nhan_hang_dau[:3]
+        ],
+    }
+
+
 def _week_value(key: str, tuan_iso: str, default: Any) -> Any:
     """Read week-scoped KV with a one-way compatible fallback to legacy data."""
     raw = kv_get(key, None)
@@ -1235,6 +1274,15 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
         st = str(t.get("trang_thai") or "dang_cho")
         treo_counts[st] = treo_counts.get(st, 0) + 1
     treo_theo_trang_thai = [{"trang_thai": k, "so_luong": v} for k, v in sorted(treo_counts.items(), key=lambda x: -x[1])]
+
+    # Hao hụt hôm nay: mặt hàng nào vượt ngưỡng, bao nhiêu mặt hàng chưa kết luận
+    # được vì thiếu vế. Bọc `try` vì đây là trang mở đầu sau đăng nhập — hỏng
+    # phần hao hụt không được phép làm sập cả bảng hôm nay.
+    try:
+        hao_hut = _hao_hut_hom_nay()
+    except Exception:
+        hao_hut = {"co_du_lieu": False, "ly_do": "khong_doc_duoc"}
+
     # Hàng đợi "Việc của bạn hôm nay" — quản lý/chủ quán thấy ngay việc chờ mình.
     # Mỗi mục: việc gì, vì sao, bấm vào đâu. NV chỉ thấy việc ca của mình.
     viec_cho_toi: list[dict[str, Any]] = []
@@ -1317,6 +1365,7 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
         "treo_theo_trang_thai": treo_theo_trang_thai,
         "sua_gan_day": sua_gan_day,
         "ton_tom_tat": ton_tom_tat,
+        "hao_hut": hao_hut,
         "viec_cho_toi": viec_cho_toi,
         "brief_hom_nay": kv_get("brief_hom_nay", None),
         "de_xuat_lich": de_xuat_lich,
