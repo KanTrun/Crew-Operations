@@ -10,39 +10,40 @@ from typing import Any
 
 from ca_api.persist import _conn, init_db, kv_get, kv_set
 
-DEFAULT_STORE_PROFILE = {
-    "ten_quan": "Nhịp Quán",
-    "dia_chi": "123 Đường Cà Phê, Phường 5, Quận 3, TP. Hồ Chí Minh",
-    "hotline": "0901234567",
-    "gio_mo_cua": "07:00 - 22:30 (Mở cửa tất cả các ngày trong tuần)",
-    "wifi_ssid": "NhipQuan_Guest",
-    "wifi_pass": "nhipquan2026",
-    "mo_ta": "Cà phê sạch, không gian yên tĩnh làm việc và gặp gỡ bạn bè.",
-    "chinh_sach_dat_ban": "Nhận đặt bàn trước qua hotline hoặc tin nhắn fanpage cho nhóm từ 4 người trở lên.",
+# ADR-008: profile mặc định PHẢI rỗng — quán chưa cấu hình thì bot trả lời
+# "chưa cập nhật" thay vì bịa địa chỉ/hotline/wifi (đã từng rò rỉ ra khách thật).
+# Quản lý/chủ quán nhập thông tin thật tại trang /cau-hinh-quan.
+DEFAULT_STORE_PROFILE: dict[str, Any] = {
+    "ten_quan": "",
+    "dia_chi": "",
+    "hotline": "",
+    "gio_mo_cua": "",
+    "wifi_ssid": "",
+    "wifi_pass": "",
+    "mo_ta": "",
+    "chinh_sach_dat_ban": "",
+    # Hướng dẫn riêng của chủ quán cho AI agent (giọng văn, quy tắc trả lời,
+    # thông tin đặc biụt...) — tự do, không convert, đi thẳng vào prompt.
+    "huong_dan_agent": "",
 }
 
-DEFAULT_PROMOTIONS = [
-    {
-        "id": "km_01",
-        "tieu_de": "Combo Sáng Tỉnh Táo",
-        "chi_tiet": "Giảm 10% khi mua Cà phê sữa + Bánh mì trước 09:00",
-        "hieu_luc": "07:00 - 09:00 hàng ngày",
-    },
-    {
-        "id": "km_02",
-        "tieu_de": "Ưu đãi Đi Nhóm",
-        "chi_tiet": "Mua 4 ly tặng 1 ly cùng loại cho hóa đơn từ 120.000đ",
-        "hieu_luc": "Thứ 2 đến Thứ 6",
-    },
-]
+# Các trường profile quán được phép ghi qua API — chặn key lạ.
+PROFILE_FIELDS = frozenset(DEFAULT_STORE_PROFILE.keys())
+
+DEFAULT_PROMOTIONS: list[dict[str, Any]] = []
 
 
 def get_public_menu() -> list[dict[str, Any]]:
-    """Retrieve active menu items with public details only (ten, gia). BOM and costs are hidden."""
+    """Retrieve active menu items with public details only (ten, gia). BOM and costs are hidden.
+
+    Lọc món fixture (`fx_*`) — dữ liệu mô phỏng KP Const không được phục vụ
+    ra khách (trùng món + mâu thuẫn giá với menu thật).
+    """
     init_db()
     with _conn() as cx:
         rows = cx.execute(
-            "SELECT id, ten, gia FROM menu_mon WHERE an = 0 ORDER BY ten ASC"
+            "SELECT id, ten, gia FROM menu_mon WHERE an = 0 AND id NOT LIKE 'fx\\_%' ESCAPE '\\'"
+            " ORDER BY ten ASC"
         ).fetchall()
     return [
         {"id": str(r[0]), "ten": str(r[1]), "gia": int(r[2]), "gia_formatted": f"{int(r[2]):,}đ"}
@@ -61,18 +62,18 @@ def get_store_profile() -> dict[str, Any]:
 
 
 def set_store_profile(profile: dict[str, Any]) -> None:
-    """Update store profile configuration."""
+    """Update store profile configuration — chỉ nhận các trường hợp lệ."""
     current = get_store_profile()
-    current.update(profile)
+    current.update({k: v for k, v in profile.items() if k in PROFILE_FIELDS})
     kv_set("store_profile", current)
 
 
 def get_active_promotions() -> list[dict[str, Any]]:
-    """Retrieve ongoing promotional campaigns."""
+    """Retrieve ongoing promotional campaigns — rỗng khi quán chưa cấu hình (ADR-008)."""
     res = kv_get("store_promotions", DEFAULT_PROMOTIONS)
     if isinstance(res, list):
-        return res
-    return DEFAULT_PROMOTIONS.copy()
+        return [p for p in res if isinstance(p, dict)]
+    return []
 
 
 def set_active_promotions(promotions: list[dict[str, Any]]) -> None:
@@ -92,17 +93,29 @@ def format_public_context_for_prompt() -> str:
         for p in promos
     ]
 
+    def _f(label: str, value: Any) -> str:
+        """Trường rỗng → không dựng dòng giả; bot tự nói 'chưa cập nhật'."""
+        s = str(value or "").strip()
+        return f"{label}: {s}" if s else f"{label}: (chưa cập nhật)"
+
+    huong_dan = str(profile.get("huong_dan_agent") or "").strip()
+    huong_dan_block = (
+        f"\n\n=== HƯỚNG DẪN RIÊNG CỦA CHỦ QUÁN CHO BẠN (BẮT BUỘC TUÂN THỦ) ===\n{huong_dan}"
+        if huong_dan
+        else ""
+    )
+
     return f"""=== THÔNG TIN QUÁN (CÔNG KHAI) ===
-Tên quán: {profile.get("ten_quan")}
-Địa chỉ: {profile.get("dia_chi")}
-Hotline: {profile.get("hotline")}
-Giờ mở cửa: {profile.get("gio_mo_cua")}
-Wifi: {profile.get("wifi_ssid")} (Mật khẩu: {profile.get("wifi_pass")})
-Chính sách đặt bàn: {profile.get("chinh_sach_dat_ban")}
+{_f("Tên quán", profile.get("ten_quan"))}
+{_f("Địa chỉ", profile.get("dia_chi"))}
+{_f("Hotline", profile.get("hotline"))}
+{_f("Giờ mở cửa", profile.get("gio_mo_cua"))}
+{_f("Wifi", profile.get("wifi_ssid"))}
+{_f("Chính sách đặt bàn", profile.get("chinh_sach_dat_ban"))}
 
 === MENU ĐỒ UỐNG HIỆN HÀNH ===
 {chr(10).join(menu_lines) if menu_lines else "Đang cập nhật"}
 
 === CHƯƠNG TRÌNH KHUYẾN MÃI ===
-{chr(10).join(promo_lines) if promo_lines else "Hiện chưa có khuyến mãi mới"}
+{chr(10).join(promo_lines) if promo_lines else "Hiện chưa có khuyến mãi mới"}{huong_dan_block}
 """

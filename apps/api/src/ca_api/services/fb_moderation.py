@@ -444,7 +444,7 @@ def _kb_has_fact(public_context: dict[str, Any] | None, text: str) -> bool:
     if any(k in low for k in ("ở đâu", "o dau", "địa chỉ", "dia chi", "vị trí", "vi tri")):
         return bool(str(profile.get("dia_chi") or "").strip())
     if "wifi" in low:
-        return bool(str(profile.get("wifi") or "").strip())
+        return bool(str(profile.get("wifi_ssid") or "").strip())
     if any(k in low for k in ("giá", "gia", "tiền", "tien", "menu", "bao nhiêu", "bao nhieu")):
         return bool(menu)
     return bool(menu) or bool(profile)
