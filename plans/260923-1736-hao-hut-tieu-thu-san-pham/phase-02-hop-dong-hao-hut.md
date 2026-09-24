@@ -1,32 +1,32 @@
-﻿---
+---
 phase: 2
-title: "Há»£p Ä‘á»“ng hao há»¥t"
+title: "Hợp đồng hao hụt"
 status: completed
 priority: P1
-effort: "0.5 ngÃ y"
+effort: "0.5 ngày"
 dependencies: [1]
 ---
 
-# Phase 2: Há»£p Ä‘á»“ng hao há»¥t
+# Phase 2: Hợp đồng hao hụt
 
 ## Overview
 
-Äá»‹nh hÃ¬nh `LossLine` / `LossSummary` / `LossCauseRank` vÃ  **ngÆ°á»¡ng hao há»¥t cÃ³
-nguá»“n** trÆ°á»›c khi viáº¿t báº¥t ká»³ logic nÃ o (ADR-003).
+Định hình `LossLine` / `LossSummary` / `LossCauseRank` và **ngưỡng hao hụt có
+nguồn** trước khi viết bất kỳ logic nào (ADR-003).
 
 ## Requirements
 
-- Functional: mÃ´ táº£ Ä‘Æ°á»£c má»™t dÃ²ng hao há»¥t theo nguyÃªn liá»‡u; má»™t tá»•ng; má»™t háº¡ng má»¥c
-  nguyÃªn nhÃ¢n.
-- Functional: ngÆ°á»¡ng láº¥y tá»« `config/` â€” khÃ´ng hard-code trong mÃ£ nghiá»‡p vá»¥.
-- Non-functional: schema JSON sinh ra Ä‘Æ°á»£c, TS sinh ra Ä‘Æ°á»£c, round-trip pydantic.
-- Non-functional: enum `LossLevel` pháº£i cÃ³ nhÃ¡nh `thieu_du_lieu` â€” khÃ´ng cho phÃ©p
-  biá»ƒu diá»…n "khÃ´ng biáº¿t" báº±ng sá»‘ 0.
+- Functional: mô tả được một dòng hao hụt theo nguyên liệu; một tổng; một hạng mục
+  nguyên nhân.
+- Functional: ngưỡng lấy từ `config/` — không hard-code trong mã nghiệp vụ.
+- Non-functional: schema JSON sinh ra được, TS sinh ra được, round-trip pydantic.
+- Non-functional: enum `LossLevel` phải có nhánh `thieu_du_lieu` — không cho phép
+  biểu diễn "không biết" bằng số 0.
 
 ## Architecture
 
-Enum vÃ  model thuáº§n dá»¯ liá»‡u, **khÃ´ng** chá»©a suy luáº­n (ADR-002). NgÆ°á»¡ng lÃ  tham sá»‘
-cáº¥u hÃ¬nh truyá»n vÃ o hÃ m, khÃ´ng pháº£i háº±ng sá»‘ trong model.
+Enum và model thuần dữ liệu, **không** chứa suy luận (ADR-002). Ngưỡng là tham số
+cấu hình truyền vào hàm, không phải hằng số trong model.
 
 ```text
 ca_contracts/loss.py
@@ -40,7 +40,7 @@ ca_contracts/loss.py
                  nguon, co_du_lieu_mau
 ```
 
-`*` = `float | None`. `None` nghÄ©a lÃ  **chÆ°a cÃ³ dá»¯ liá»‡u**, khÃ¡c háº³n `0.0`.
+`*` = `float | None`. `None` nghĩa là **chưa có dữ liệu**, khác hẳn `0.0`.
 
 ## Related Code Files
 
@@ -48,30 +48,30 @@ ca_contracts/loss.py
 - Create: `packages/contracts/tests/test_loss_contracts.py`
 - Create: `config/nguong-hao-hut.yaml`
 - Modify: `packages/contracts/src/ca_contracts/__init__.py` (import + `CONTRACTS` + `__all__`)
-- Modify: `packages/contracts/tests/test_contracts.py` (bá»• sung tÃªn vÃ o set ká»³ vá»ng)
-- Modify: `packages/contracts/schema/index.json` + `packages/contracts/ts/contracts.ts` (sinh tá»± Ä‘á»™ng)
+- Modify: `packages/contracts/tests/test_contracts.py` (bổ sung tên vào set kỳ vọng)
+- Modify: `packages/contracts/schema/index.json` + `packages/contracts/ts/contracts.ts` (sinh tự động)
 
 ## Implementation Steps
 
-1. Viáº¿t `loss.py` vá»›i 3 enum + 3 model, `Field` cÃ³ rÃ ng buá»™c (`ge=0`, mÃ´ táº£ tiáº¿ng Viá»‡t).
-2. Viáº¿t test há»£p Ä‘á»“ng: round-trip, `None` khÃ¡c `0.0`, `ty_le_phan_tram` Ã¢m há»£p lá»‡
-   (hao há»¥t Ã¢m = Ä‘áº¿m dÆ°), tá»« chá»‘i giÃ¡ trá»‹ ngoÃ i enum.
-3. ÄÄƒng kÃ½ vÃ o `CONTRACTS`, `__all__`, vÃ  set ká»³ vá»ng trong `test_contracts.py`.
-4. Viáº¿t `config/nguong-hao-hut.yaml` theo house style cá»§a `tham-so-lao-dong.yaml`
-   (cÃ³ `phien_ban`, `ngay_kiem`, `nguon`, `ghi_chu`).
-5. Cháº¡y `make contracts`; kiá»ƒm `contracts.ts` cÃ³ interface má»›i, khÃ´ng cÃ³ `unknown` stub.
+1. Viết `loss.py` với 3 enum + 3 model, `Field` có ràng buộc (`ge=0`, mô tả tiếng Việt).
+2. Viết test hợp đồng: round-trip, `None` khác `0.0`, `ty_le_phan_tram` âm hợp lệ
+   (hao hụt âm = đếm dư), từ chối giá trị ngoài enum.
+3. Đăng ký vào `CONTRACTS`, `__all__`, và set kỳ vọng trong `test_contracts.py`.
+4. Viết `config/nguong-hao-hut.yaml` theo house style của `tham-so-lao-dong.yaml`
+   (có `phien_ban`, `ngay_kiem`, `nguon`, `ghi_chu`).
+5. Chạy `make contracts`; kiểm `contracts.ts` có interface mới, không có `unknown` stub.
 
 ## Success Criteria
 
-- [ ] `pytest packages/contracts -q` xanh.
-- [ ] `test_contracts_registered` xanh sau khi thÃªm tÃªn.
-- [ ] `make contracts` cháº¡y láº¡i khÃ´ng táº¡o drift (cháº¡y hai láº§n, `git diff` rá»—ng láº§n hai).
-- [ ] `config/nguong-hao-hut.yaml` parse Ä‘Æ°á»£c báº±ng `yaml.safe_load`, cÃ³ ngÆ°á»¡ng máº·c Ä‘á»‹nh + theo máº·t hÃ ng.
+- [x] `pytest packages/contracts -q` xanh.
+- [x] `test_contracts_registered` xanh sau khi thêm tên.
+- [x] `make contracts` chạy lại không tạo drift (chạy hai lần, `git diff` rỗng lần hai).
+- [x] `config/nguong-hao-hut.yaml` parse được bằng `yaml.safe_load`, có ngưỡng mặc định + theo mặt hàng.
 
 ## Risk Assessment
 
-Rá»§i ro: sá»­a `test_contracts.py` (set ká»³ vá»ng cá»©ng) cÃ³ thá»ƒ va cháº¡m náº¿u nhÃ¡nh khÃ¡c
-cÅ©ng thÃªm contract. **TÃ­n hiá»‡u:** `git status` tháº¥y file nÃ y Ä‘Ã£ Ä‘á»•i trÆ°á»›c khi mÃ¬nh
-sá»­a. **Pháº£n á»©ng:** Ä‘á»c láº¡i file ngay trÆ°á»›c khi sá»­a, chÃ¨n theo thá»© tá»± chá»¯ cÃ¡i trong
-khá»‘i, khÃ´ng viáº¿t láº¡i cáº£ set.
+Rủi ro: sửa `test_contracts.py` (set kỳ vọng cứng) có thể va chạm nếu nhánh khác
+cũng thêm contract. **Tín hiệu:** `git status` thấy file này đã đổi trước khi mình
+sửa. **Phản ứng:** đọc lại file ngay trước khi sửa, chèn theo thứ tự chữ cái trong
+khối, không viết lại cả set.
 

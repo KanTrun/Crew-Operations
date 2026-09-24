@@ -1,73 +1,73 @@
-﻿---
+---
 phase: 3
-title: "Äá»™ng cÆ¡ hao há»¥t"
+title: "Động cơ hao hụt"
 status: completed
 priority: P1
-effort: "0.5 ngÃ y"
+effort: "0.5 ngày"
 dependencies: [2]
 ---
 
-# Phase 3: Äá»™ng cÆ¡ hao há»¥t
+# Phase 3: Động cơ hao hụt
 
 ## Overview
 
-Cho AG-WASTE kháº£ nÄƒng **tÃ­nh** hao há»¥t theo nguyÃªn liá»‡u, khÃ´ng chá»‰ gom cá»¥m ghi chÃº.
-ToÃ¡n táº¥t Ä‘á»‹nh, thuáº§n, unit-test Ä‘Æ°á»£c (ADR-002).
+Cho AG-WASTE khả năng **tính** hao hụt theo nguyên liệu, không chỉ gom cụm ghi chú.
+Toán tất định, thuần, unit-test được (ADR-002).
 
 ## Requirements
 
-- Functional: tÃ­nh lÆ°á»£ng lÃ½ thuyáº¿t tá»« BOM Ã— sá»‘ mÃ³n Ä‘Ã£ bÃ¡n.
-- Functional: so vá»›i lÆ°á»£ng thá»±c táº¿ tá»« `kiem_ke`; ra lá»‡ch, tá»· lá»‡, má»©c Ä‘á»™.
-- Functional: xáº¿p háº¡ng nguyÃªn nhÃ¢n tá»« `waste_notes` theo máº·t hÃ ng.
-- Functional: **gá»™p nguyÃªn liá»‡u theo `mat_hang`** Ä‘á»ƒ ná»‘i Ä‘Æ°á»£c BOM â†” kiá»ƒm kÃª â†” ghi chÃº.
-- Non-functional: hÃ m thuáº§n, khÃ´ng I/O, khÃ´ng Ä‘á»c DB, khÃ´ng gá»i máº¡ng.
-- Non-functional: thiáº¿u má»™t váº¿ â‡’ `LossLevel.thieu_du_lieu`, cÃ¡c trÆ°á»ng sá»‘ lÃ  `None`.
+- Functional: tính lượng lý thuyết từ BOM × số món đã bán.
+- Functional: so với lượng thực tế từ `kiem_ke`; ra lệch, tỷ lệ, mức độ.
+- Functional: xếp hạng nguyên nhân từ `waste_notes` theo mặt hàng.
+- Functional: **gộp nguyên liệu theo `mat_hang`** để nối được BOM ↔ kiểm kê ↔ ghi chú.
+- Non-functional: hàm thuần, không I/O, không đọc DB, không gọi mạng.
+- Non-functional: thiếu một vế ⇒ `LossLevel.thieu_du_lieu`, các trường số là `None`.
 
 ## Architecture
 
-Ba hÃ m thuáº§n trong `ag_waste`, Äƒn khá»›p há»£p Ä‘á»“ng phase 2:
+Ba hàm thuần trong `ag_waste`, ăn khớp hợp đồng phase 2:
 
 ```text
-loc_theo_mat_hang(rows)        -> dict[mat_hang, float]      # gá»™p nhiá»u dÃ²ng cÃ¹ng máº·t hÃ ng
+loc_theo_mat_hang(rows)        -> dict[mat_hang, float]      # gộp nhiều dòng cùng mặt hàng
 tinh_ly_thuyet(ban_theo_mon, bom_theo_mon) -> dict[mat_hang, float]
 so_hao_hut(ly_thuyet, thuc_te, nguong)     -> list[LossLine]
 xep_hang_nguyen_nhan(notes)                -> list[LossCauseRank]
 ```
 
-`so_hao_hut` lÃ  trÃ¡i tim: vá»›i má»—i máº·t hÃ ng xuáº¥t hiá»‡n á»Ÿ **má»™t trong hai** váº¿, sinh
-má»™t `LossLine`. Máº·t hÃ ng chá»‰ cÃ³ má»™t váº¿ â‡’ sá»‘ cá»§a váº¿ kia lÃ  `None` â‡’ `thieu_du_lieu`.
+`so_hao_hut` là trái tim: với mỗi mặt hàng xuất hiện ở **một trong hai** vế, sinh
+một `LossLine`. Mặt hàng chỉ có một vế ⇒ số của vế kia là `None` ⇒ `thieu_du_lieu`.
 
-NgÆ°á»¡ng: máº·c Ä‘á»‹nh tá»« config, cho phÃ©p ghi Ä‘Ã¨ theo máº·t hÃ ng.
+Ngưỡng: mặc định từ config, cho phép ghi đè theo mặt hàng.
 
 ## Related Code Files
 
 - Modify: `packages/agents/src/ca_agents/ag_waste/extract.py`
 - Modify: `packages/agents/src/ca_agents/ag_waste/__init__.py`
-- Modify: `packages/agents/src/ca_agents/ag_waste/PHAM_VI.md` (khai nÄƒng lá»±c má»›i)
+- Modify: `packages/agents/src/ca_agents/ag_waste/PHAM_VI.md` (khai năng lực mới)
 - Create: `packages/agents/tests/test_ag_waste_loss.py`
-- Modify: `packages/agents/tests/test_ag_waste.py` (giá»¯ nguyÃªn test cÅ© â€” pháº£i cÃ²n xanh)
+- Modify: `packages/agents/tests/test_ag_waste.py` (giữ nguyên test cũ — phải còn xanh)
 
 ## Implementation Steps
 
-1. Viáº¿t `loc_theo_mat_hang`, `tinh_ly_thuyet` â€” thuáº§n cá»™ng dá»“n, Ã©p `float`, bá» giÃ¡ trá»‹ â‰¤ 0.
-2. Viáº¿t `so_hao_hut` â€” xá»­ lÃ½ bá»‘n nhÃ¡nh má»©c Ä‘á»™, `None` cho váº¿ thiáº¿u, giá»¯ `ty_le` Ã¢m.
-3. Viáº¿t `xep_hang_nguyen_nhan` â€” Ä‘áº¿m theo `nguyen_nhan`, gom `mat_hang` liÃªn quan, sáº¯p giáº£m dáº§n.
-4. Test: hai váº¿ Ä‘á»§; chá»‰ má»™t váº¿; cáº£ hai rá»—ng; Ä‘áº¿m dÆ° (lá»‡ch Ã¢m); vÆ°á»£t ngÆ°á»¡ng nghiÃªm trá»ng;
-   hai dÃ²ng cÃ¹ng máº·t hÃ ng Ä‘Æ°á»£c gá»™p; ngÆ°á»¡ng riÃªng theo máº·t hÃ ng tháº¯ng ngÆ°á»¡ng máº·c Ä‘á»‹nh.
-5. Cáº­p nháº­t `PHAM_VI.md`: thÃªm nhiá»‡m vá»¥ tÃ­nh hao há»¥t; giá»¯ nguyÃªn dÃ²ng "Cáº¥m".
+1. Viết `loc_theo_mat_hang`, `tinh_ly_thuyet` — thuần cộng dồn, ép `float`, bỏ giá trị ≤ 0.
+2. Viết `so_hao_hut` — xử lý bốn nhánh mức độ, `None` cho vế thiếu, giữ `ty_le` âm.
+3. Viết `xep_hang_nguyen_nhan` — đếm theo `nguyen_nhan`, gom `mat_hang` liên quan, sắp giảm dần.
+4. Test: hai vế đủ; chỉ một vế; cả hai rỗng; đếm dư (lệch âm); vượt ngưỡng nghiêm trọng;
+   hai dòng cùng mặt hàng được gộp; ngưỡng riêng theo mặt hàng thắng ngưỡng mặc định.
+5. Cập nhật `PHAM_VI.md`: thêm nhiệm vụ tính hao hụt; giữ nguyên dòng "Cấm".
 
 ## Success Criteria
 
-- [ ] `pytest packages/agents -q` xanh, test `test_ag_waste.py` cÅ© váº«n xanh.
-- [ ] KhÃ´ng hÃ m nÃ o cháº¡m I/O â€” kiá»ƒm báº±ng cÃ¡ch Ä‘á»c mÃ£, vÃ  test cháº¡y khÃ´ng cáº§n fixture DB.
-- [ ] `so_hao_hut` vá»›i hai dict rá»—ng tráº£ `[]`, khÃ´ng raise.
-- [ ] Máº·t hÃ ng thiáº¿u váº¿ cÃ³ `muc_do == thieu_du_lieu` vÃ  trÆ°á»ng sá»‘ lÃ  `None`.
-- [ ] `ruff check packages/agents` sáº¡ch.
+- [x] `pytest packages/agents -q` xanh, test `test_ag_waste.py` cũ vẫn xanh.
+- [x] Không hàm nào chạm I/O — kiểm bằng cách đọc mã, và test chạy không cần fixture DB.
+- [x] `so_hao_hut` với hai dict rỗng trả `[]`, không raise.
+- [x] Mặt hàng thiếu vế có `muc_do == thieu_du_lieu` và trường số là `None`.
+- [x] `ruff check packages/agents` sạch.
 
 ## Risk Assessment
 
-Rá»§i ro: tÃªn máº·t hÃ ng khÃ´ng khá»›p giá»¯a ba nguá»“n (`sua_tuoi` á»Ÿ kiá»ƒm kÃª vs `sua_ml` á»Ÿ
-BOM). **TÃ­n hiá»‡u:** dÃ²ng hao há»¥t ra `thieu_du_lieu` hÃ ng loáº¡t dÃ¹ dá»¯ liá»‡u cÃ³ tháº­t.
-**Pháº£n á»©ng:** thÃªm báº£ng bÃ­ danh (`ALIAS`) trong `ag_waste` vÃ  test riÃªng cho nÃ³;
-khÃ´ng tá»± Ä‘á»™ng fuzzy-match vÃ¬ fuzzy sáº½ ghÃ©p sai im láº·ng.
+Rủi ro: tên mặt hàng không khớp giữa ba nguồn (`sua_tuoi` ở kiểm kê vs `sua_ml` ở
+BOM). **Tín hiệu:** dòng hao hụt ra `thieu_du_lieu` hàng loạt dù dữ liệu có thật.
+**Phản ứng:** thêm bảng bí danh (`ALIAS`) trong `ag_waste` và test riêng cho nó;
+không tự động fuzzy-match vì fuzzy sẽ ghép sai im lặng.
 
