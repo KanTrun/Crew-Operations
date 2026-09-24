@@ -163,6 +163,28 @@ test.describe("Trang liên kết trỏ về hao hụt", () => {
     await page.goto("/menu", { waitUntil: "networkidle" });
     await expect(page.locator('a[href="/hao-phi"]').first()).toBeVisible();
   });
+
+  test("/hom-nay nối được sang hao hụt", async ({ page }) => {
+    // Bảng Hôm nay là trang mở đầu sau đăng nhập — đây là chỗ người quản lý nhìn
+    // thấy hao hụt sớm nhất, nên thiếu lối đi ở đây là thiếu chỗ quan trọng nhất.
+    await loginAs(page);
+    await page.goto("/hom-nay", { waitUntil: "networkidle" });
+    await expect(page.locator('a[href="/hao-phi"]').first()).toBeVisible();
+  });
+
+  test("/hom-nay không vỡ khi phần hao hụt lỗi", async ({ page }) => {
+    // Chặn API hao hụt để mô phỏng nguồn hỏng: bảng Hôm nay vẫn phải hiện, vì
+    // đây là trang mở đầu — hỏng nó là hỏng cả ca làm việc.
+    await loginAs(page);
+    await page.route("**/api/v1/hom-nay*", async (route) => {
+      const res = await route.fetch();
+      const body = await res.json();
+      body.hao_hut = { co_du_lieu: false, ly_do: "khong_doc_duoc" };
+      await route.fulfill({ response: res, json: body });
+    });
+    await page.goto("/hom-nay", { waitUntil: "networkidle" });
+    await expect(page.locator('a[href="/hao-phi"]').first()).toBeVisible();
+  });
 });
 
 test.describe("Ảnh sản phẩm", () => {
