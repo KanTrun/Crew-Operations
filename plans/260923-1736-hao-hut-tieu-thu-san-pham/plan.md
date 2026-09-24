@@ -133,9 +133,33 @@ flowchart TB
 
 ## Success criteria
 
-- [ ] Chủ quán trả lời được "tuần này hao hụt bao nhiêu, nguyên liệu nào, do đâu" **bằng số thật**.
-- [ ] Không có chỗ nào hiển thị hoặc trả về con số bịa khi thiếu dữ liệu — phải nói `thieu_du_lieu`.
-- [ ] Mọi món trong menu đều có ảnh, kể cả khi máy đang rút mạng.
-- [ ] Không vỡ cổng nào đang xanh; mọi phase có commit riêng.
+- [x] Chủ quán trả lời được "tuần này hao hụt bao nhiêu, nguyên liệu nào, do đâu" **bằng số thật** — bảng `/hao-phi` + agent mẹ `ANALYZE_WASTE` gọi cùng hàm `ag_waste.tinh_tu_nguon`.
+- [x] Không có chỗ nào hiển thị hoặc trả về con số bịa khi thiếu dữ liệu — `null` in gạch, `0` in số 0, thiếu vế mang `thieu_du_lieu` kèm `thieu_ve`. Có 4 test API + 2 e2e chốt.
+- [x] Mọi món trong menu đều có ảnh, kể cả khi máy đang rút mạng — sinh tại máy bằng Pillow, ba bậc phục vụ, bậc ba sinh tại chỗ (ADR-019).
+- [x] Không vỡ cổng nào đang xanh; mọi phase có commit riêng.
+
+## Nhật ký thi công
+
+| Commit | Nội dung |
+|---|---|
+| `9a4699c` | Hợp đồng hao hụt + ngưỡng cấu hình |
+| `55f4a39` | Động cơ hao hụt AG-WASTE |
+| `3df702d` | Agent mẹ AG-COPILOT trả lời bằng số thật |
+| `7ab6432` | Bề mặt API `/api/v1/hao-hut` + vá 2 lỗ audit/khoá ngày |
+| `7b018da` | Danh mục 49 món + ảnh sinh tại máy |
+| `9f22a84` | Dựng lại `/hao-phi` + nối 3 trang |
+| `8a194fc` | ADR-019 + tài liệu |
+| `303c7d4` | e2e chốt ràng buộc null-vs-zero |
+| `c14e5a3` | **Nối `/hom-nay`** — bù tiêu chí 7 còn thiếu |
+| `a30addd` | e2e chốt lối `/hom-nay` + chịu được lỗi nguồn |
+
+### Ghi chú sau khi đối chiếu tiêu chí
+
+Tiêu chí số 7 liệt kê bốn trang phải nối tới (`/tieu-thu`, `/menu`, `/hom-nay`,
+`/huong-dan`) nhưng phase 7 chỉ làm được ba trang đầu — `/hom-nay` bị bỏ sót. Đã
+bù ở `c14e5a3`: `GET /api/v1/hom-nay` trả thêm khối `hao_hut`, và bảng Hôm nay
+hiện cảnh báo kèm lối mở bảng hao hụt. Khối này gọi cùng hàm với `/hao-hut` nên
+ba bề mặt không thể lệch số, và được bọc `try` để nguồn hỏng không kéo sập trang
+mở đầu sau đăng nhập.
 
 <!-- slug: hao-hut-tieu-thu-san-pham -->
