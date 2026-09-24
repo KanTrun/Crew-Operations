@@ -58,11 +58,7 @@ def hex_rgb(r: float, g: float, b: float) -> str:
     Không kẹp thì nội suy có thể ra giá trị âm và sinh ra chuỗi kiểu `#-2-2-3`,
     làm cả bảng màu vỡ ở chỗ khó thấy. Đây là lỗi đã xảy ra thật ở bậc neutral-950.
     """
-    return "#%02x%02x%02x" % (
-        min(255, max(0, round(r))),
-        min(255, max(0, round(g))),
-        min(255, max(0, round(b))),
-    )
+    return f"#{min(255, max(0, round(r))):02x}{min(255, max(0, round(g))):02x}{min(255, max(0, round(b))):02x}"
 
 
 def ramp(base: str, light: str, dark: str) -> dict[str, str]:
@@ -103,7 +99,7 @@ def ramp_anchored(anchors: dict[str, str]) -> dict[str, str]:
     order = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"]
     keys = sorted(anchors, key=lambda s: order.index(s))
     out: dict[str, str] = {}
-    for i, s in enumerate(keys):
+    for s in keys:
         out[s] = anchors[s]
     for i in range(len(keys) - 1):
         a, b = keys[i], keys[i + 1]
@@ -384,7 +380,7 @@ def check() -> int:
             if not ok:
                 problems += 1
                 print(f"  HỎNG {util}-{fam}-{step:<4}{'/' if diluted else ' '} {hx}  {note}  "
-                      f"[vai {role}]")
+                      f"[vai {role} · {hint}]")
             elif "CẢNH BÁO" in note:
                 print(f"  CẢNH BÁO {util}-{fam}-{step:<4}{'/' if diluted else ' '} {hx}  {note}")
 

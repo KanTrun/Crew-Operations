@@ -24,7 +24,6 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from ca_agents.ag_spatial_memory import (  # noqa: E402
-    MemoryStore,
     build_grounded_answer,
     retrieve_filtered,
 )
@@ -50,9 +49,8 @@ def main() -> int:
         print(f"\n== Hoi ve anchor '{anchor}' ==")
         q = {"store_id": "quan_01", "anchor_id": anchor, "role": "quan_ly", "requester_id": "quan_ly"}
         try:
-            found = retrieve_filtered(q) if not isinstance(q, dict) else None
+            retrieve_filtered(q) if not isinstance(q, dict) else None
         except Exception as e:  # pragma: no cover
-            found = None
             print(f"   retrieve_filtered(dict) loi: {type(e).__name__}: {e}")
 
         try:

@@ -18,7 +18,7 @@ try:
     from PIL import Image
 except ImportError:  # pragma: no cover
     print("Can Pillow")
-    raise SystemExit(2)
+    raise SystemExit(2) from None
 
 
 def lum(c: tuple[int, int, int]) -> float:

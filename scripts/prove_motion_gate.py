@@ -12,9 +12,7 @@ chinh cong hong.
 
 from __future__ import annotations
 
-import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -228,7 +226,6 @@ def main() -> int:
             code, out = run_gate()
         finally:
             PROBE.unlink(missing_ok=True)
-        marked = out.count("[X]")
         if code == 0:
             print(f"  [OK] {name} — cong xanh, dung nhu da ghi")
         else:

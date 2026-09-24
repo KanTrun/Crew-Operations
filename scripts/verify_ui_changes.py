@@ -11,8 +11,6 @@ Trả về exit 0 nếu mọi dấu hiệu đều có mặt.
 
 from __future__ import annotations
 
-import io
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]

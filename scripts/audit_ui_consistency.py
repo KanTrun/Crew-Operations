@@ -89,7 +89,7 @@ def audit_emoji() -> dict[str, object]:
         r = rel(p)
         text = p.read_text(encoding="utf-8")
         for i, line in enumerate(text.splitlines(), 1):
-            for ch in EMOJI.findall(line):
+            for _ch in EMOJI.findall(line):
                 per_file[r] += 1
                 if len(samples[r]) < 4:
                     samples[r].append(f"{i}: {line.strip()[:70]}")

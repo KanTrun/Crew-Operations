@@ -9,7 +9,6 @@ Chạy một lần: python scripts/patch_kit_surfaces.py
 
 from __future__ import annotations
 
-import io
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,7 +69,7 @@ PAIRS: list[tuple[str, str]] = [
 
 
 def main() -> int:
-    text = io.open(TARGET, encoding="utf-8").read()
+    text = open(TARGET, encoding="utf-8").read()
     applied = 0
     for old, new in PAIRS:
         if old in text:
@@ -78,7 +77,7 @@ def main() -> int:
             applied += 1
         else:
             print("KHÔNG KHỚP:", old[:88])
-    io.open(TARGET, "w", encoding="utf-8", newline="\n").write(text)
+    open(TARGET, "w", encoding="utf-8", newline="\n").write(text)
     print(f"Đã thay {applied}/{len(PAIRS)} chuỗi trong {TARGET.name}")
     return 0 if applied == len(PAIRS) else 1
 

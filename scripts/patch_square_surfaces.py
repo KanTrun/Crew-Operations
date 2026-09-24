@@ -16,7 +16,6 @@ Chạy:  python scripts/patch_square_surfaces.py [--dry]
 
 from __future__ import annotations
 
-import io
 import re
 import sys
 from pathlib import Path
@@ -93,13 +92,13 @@ def main() -> int:
     total = 0
     changed: list[str] = []
     for p in sorted(SRC.rglob("*.tsx")):
-        original = io.open(p, encoding="utf-8").read()
+        original = open(p, encoding="utf-8").read()
         patched, n = patch(original)
         if n and patched != original:
             total += n
             changed.append(f"{p.relative_to(SRC).as_posix()}  ({n} chỗ)")
             if not dry:
-                io.open(p, "w", encoding="utf-8", newline="\n").write(patched)
+                open(p, "w", encoding="utf-8", newline="\n").write(patched)
     print(f"{'[DRY] ' if dry else ''}Đã thay {total} chuỗi trong {len(changed)} file:")
     for c in changed:
         print("   ", c)

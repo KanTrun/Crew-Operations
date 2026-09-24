@@ -15,10 +15,8 @@ Không sửa gì.
 
 from __future__ import annotations
 
-import json
 import re
 import sys
-from itertools import combinations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -105,11 +103,7 @@ def composite(fg: tuple[float, float, float, float], bg_hex: str) -> str:
     """Hợp nhất màu bán trong suốt lên nền đặc, trả về hex."""
     br, bg_g, bb = hex_to_rgb(bg_hex)
     r, g, b, a = fg
-    return "#%02x%02x%02x" % (
-        round(r * a + br * (1 - a)),
-        round(g * a + bg_g * (1 - a)),
-        round(b * a + bb * (1 - a)),
-    )
+    return f"#{round(r * a + br * (1 - a)):02x}{round(g * a + bg_g * (1 - a)):02x}{round(b * a + bb * (1 - a)):02x}"
 
 
 # Các cặp (nhãn, chữ, nền, chuẩn) hệ thống thực sự dùng.

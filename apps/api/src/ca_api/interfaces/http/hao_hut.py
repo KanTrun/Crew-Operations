@@ -82,10 +82,45 @@ def _ds(key: str) -> list[dict[str, Any]]:
     return [x for x in raw if isinstance(x, dict)]
 
 
+def _seed_kiem_ke() -> list[dict[str, Any]]:
+    """Phiếu kiểm kê cho môi trường test/demo — có khi kv trống và cờ seed bật.
+
+    `NHIPQUAN_HAO_HUT_SEED_FIXTURE` theo cùng lối với `NHIPQUAN_INBOX_SEED_FIXTURE`:
+    chỉ nhồi khi kv thật trống, để không bao giờ ghi đè dữ liệu của quán.
+
+    Vì sao cần: tóm tắt hao hụt ghép *lý thuyết* (công thức món × số phần đã bán,
+    đọc từ đơn quầy) với *thực tế* (phiếu kiểm kê). Trên cơ sở dữ liệu mới, không
+    có phiếu nào ⇒ không dòng nào có vế thực tế, nên không dòng nào ở mức
+    `thieu_du_lieu` — đúng về logic nhưng làm màn hao hụt rỗng và e2e không còn
+    gì để kiểm.
+
+    Danh sách mặt hàng cố ý gồm **hai nhóm** theo `_MENU_MAC_DINH`:
+      - `cafe_g`, `sua_ml`, `ly` — có trong công thức món, nên khi quán có đơn
+        quầy thì đủ hai vế ⇒ dòng hiện **số thật** (e2e "vế có dữ liệu hiện số").
+      - `dao_lat`, `banh` — không món nào trong menu mặc định dùng, nên thiếu vế
+        lý thuyết ⇒ dòng ở mức `thieu_du_lieu` (e2e "thiếu dữ liệu hiện gạch").
+    """
+    items = _ds("kiem_ke")
+    if items:
+        return items
+    if os.environ.get("NHIPQUAN_HAO_HUT_SEED_FIXTURE", "0").strip().lower() not in {"1", "true", "yes"}:
+        return []
+    mat_hangs = ["cafe_g", "sua_ml", "ly", "dao_lat", "banh"]
+    return [
+        {
+            "id": f"kk_fx_{i + 1}",
+            "khung": "sang" if i % 2 == 0 else "toi",
+            "luc": f"2026-09-{20 + i:02d}T08:00:00+00:00",
+            "muc": [{"mat_hang": m, "dau_ca": 10.0, "nhap_trong_ca": 5.0, "cuoi_ca": 12.0}],
+        }
+        for i, m in enumerate(mat_hangs)
+    ]
+
+
 def _dung_tong(ky: str) -> dict[str, Any]:
     """Ghép bốn nguồn thật thành tóm tắt hao hụt — dùng chung với agent mẹ."""
     summary = tinh_tu_nguon(
-        kiem_ke=_ds("kiem_ke"),
+        kiem_ke=_seed_kiem_ke(),
         don_quay=_ds_don(),
         menu=menu_list(gom_an=True),
         waste_notes=_ds("waste_notes"),
@@ -209,7 +244,7 @@ def hao_hut_danh_muc(authorization: Annotated[str | None, Header()] = None) -> d
     đã có, và nguyên liệu trong công thức món.
     """
     _require_manager(authorization)
-    tu_kiem_ke = {str(r.get("mat_hang") or "") for phieu in _ds("kiem_ke") for r in (phieu.get("muc") or []) if isinstance(r, dict)}
+    tu_kiem_ke = {str(r.get("mat_hang") or "") for phieu in _seed_kiem_ke() for r in (phieu.get("muc") or []) if isinstance(r, dict)}
     tu_ghi_chu = {str(r.get("mat_hang") or "") for r in _ds("waste_notes")}
     tu_cong_thuc: set[str] = set()
     for mon in menu_list(gom_an=True):
