@@ -34,6 +34,11 @@ def api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("NHIPQUAN_FB_APP_SECRET", "secret_test")
     monkeypatch.setenv("NHIPQUAN_AUTO_RESERVATION", "0")
     monkeypatch.setenv("NHIPQUAN_DB", str(tmp_path / f"t_{uuid.uuid4().hex[:8]}.db"))
+    # Cô lập auto-send: .env dev có thể bật NHIPQUAN_FB_AUTO_SEND=1 (kv policy
+    # runtime cũng ghi env process) — không neo thì test này pass/fail phụ
+    # trạng thái env máy chạy (khác CI) — test pollution đã xảy ra thật.
+    monkeypatch.setenv("NHIPQUAN_FB_AUTO_SEND", "0")
+    monkeypatch.delenv("NHIPQUAN_ENCRYPTION_KEY", raising=False)
 
     # init_db() gate bằng cờ toàn cục — DB temp mới cần reset để tạo bảng
     import ca_api.persist as persist
