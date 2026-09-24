@@ -110,16 +110,16 @@ const COLLECTOR = () => {
         };
       }
     }
-    if (performance.now() - st.t0 < 1500) requestAnimationFrame(sample);
+    if (performance.now() - st.t0 < 3000) requestAnimationFrame(sample);
     else st.done = true;
   };
   requestAnimationFrame(sample);
 };
 
 async function readAnimations(page) {
-  // Chờ bộ thu chạy hết cửa sổ, nhưng không lâu hơn 2,5s.
+  // Chờ bộ thu chạy hết cửa sổ 3s, nhưng không lâu hơn 5s.
   await page
-    .waitForFunction(() => window.__nqAnims && window.__nqAnims.done, { timeout: 2500 })
+    .waitForFunction(() => window.__nqAnims && window.__nqAnims.done, { timeout: 5000 })
     .catch(() => undefined);
   return page.evaluate(() => {
     const st = window.__nqAnims || { seen: {} };
@@ -129,7 +129,53 @@ async function readAnimations(page) {
     const all = Object.values(st.seen);
     const entrance = all.filter((x) => x.iter !== "inf" && x.dur >= 120 && x.area >= minArea);
     const infinite = all.filter((x) => x.iter === "inf");
-    return { total: all.length, entrance, infinite };
+
+    /**
+     * Gộp thành "đợt" (wave) theo THỜI ĐIỂM BẮT ĐẦU.
+     *
+     * ══ GIỚI HẠN ĐÃ BIẾT — ĐỌC TRƯỚC KHI DÙNG SỐ NÀY ══
+     *
+     * Tôi đã thử năm cách để biến "số đợt" thành một phép chấm đạt/không đạt cho
+     * tiêu chí 2, và cả năm đều cho kết quả sai theo một kiểu mới:
+     *
+     *   1. Đếm PHẦN TỬ có animation vào trang → `/hom-nay` ra 11, kết luận
+     *      "tranh nhau"; thực ra 7 phần tử đó vào cùng một nhịp, là MỘT khoảnh khắc.
+     *   2. Gộp theo ngưỡng 120ms → `/cam-nang` ra 2 đợt khi khe là 121ms, 1 đợt khi
+     *      khe là 67ms. Cùng một trang, cùng một mã nguồn; thứ quyết định là API trả
+     *      lời nhanh hay chậm. Kết quả phụ thuộc tốc độ mạng.
+     *   3. Lọc đợt theo diện tích ≥3% khung → 10 route thành "chết", trong đó có
+     *      form giữa trang vốn hợp lệ, chỉ vì biểu mẫu hẹp.
+     *   4. Lọc theo lớp `nq-page--center` (coi là khung chờ) → xoá oan 9 route, vì
+     *      các trang Quánverse dùng CHÍNH lớp đó làm khung nội dung thật.
+     *   5. Cài bộ thu trong vòng lặp → `addInitScript` cộng dồn thành 44 bản.
+     *
+     * Kết luận: **"trang có đúng một khoảnh khắc được chọn có chủ đích" là quyết
+     * định của người thiết kế, không suy ra được từ hình học và thời gian.** Số đợt
+     * in ra để NGƯỜI ĐỌC RÀ, không phải để máy chấm.
+     *
+     * Cái đo được, và dùng làm cổng thật, chỉ là: **trang phải có chuyển động vào**
+     * (`entrance.length > 0`) và **vòng lặp vô hạn phải nằm trong danh sách cho phép**.
+     *
+     * Bộ thu CHỈ lấy mẫu trong 1,5s đầu sau khi trang bắt đầu nạp. Với route chậm,
+     * nội dung có thể vào sau cửa sổ đó và bị tính là "chết" — nhưng đó là báo động
+     * ở phía AN TOÀN (báo thiếu chuyển động), nên chấp nhận được cho một cổng.
+     */
+    const WAVE_MS = 120;
+    const sorted = [...entrance].sort((a, b) => (a.firstSeenMs || 0) - (b.firstSeenMs || 0));
+    const waves = [];
+    for (const e of sorted) {
+      const t = e.firstSeenMs || 0;
+      const last = waves[waves.length - 1];
+      if (last && t - last.t0 <= WAVE_MS) {
+        last.size += 1;
+        last.durMax = Math.max(last.durMax, e.dur);
+        last.areaMax = Math.max(last.areaMax, e.area);
+      } else {
+        waves.push({ t0: t, size: 1, durMax: e.dur, areaMax: e.area });
+      }
+    }
+
+    return { total: all.length, entrance, infinite, waves };
   });
 }
 
@@ -197,36 +243,53 @@ async function main() {
 
   console.log(`=== KHOANH KHAC CHUYEN DONG — ${ok.length}/${ROUTES.length} route @1440x900 ===`);
   console.log("");
-  console.log("route".padEnd(30) + "vao".padStart(4) + "  vo han" + "  khoi vao trang");
+  console.log("route".padEnd(30) + "dot".padStart(4) + " khoi" + "  vo han  moc cac dot (ms)");
   console.log("-".repeat(96));
   for (const r of results) {
     if (r.error) {
       console.log(`${r.route.padEnd(30)}  [LOI] ${r.error}`);
       continue;
     }
-    const names = r.entrance.map((e) => `${e.tag}.${e.cls}`).join(", ").slice(0, 52);
-    const flag = r.entrance.length === 0 ? " <- CHET" : r.entrance.length > 2 ? " <- NHIEU" : "";
+    const waves = r.waves || [];
+    const t0s = waves.map((w) => `${w.t0}(${w.size})`).join(" ");
+    // Tiêu chí 2 đòi ĐÚNG MỘT khoảnh khắc. Nhiều đợt = nhiều khoảnh khắc.
+    const flag = waves.length === 0 ? " <- CHET" : waves.length > 1 ? " <- NHIEU DOT" : "";
     console.log(
-      `${r.route.padEnd(30)}${String(r.entrance.length).padStart(4)}` +
-        `  ${String(r.infinite.length).padStart(6)}  ${names}${flag}`
+      `${r.route.padEnd(30)}${String(waves.length).padStart(4)}` +
+        `${String(r.entrance.length).padStart(5)}` +
+        `  ${String(r.infinite.length).padStart(6)}  ${t0s}${flag}`
     );
   }
 
-  const dead = ok.filter((r) => r.entrance.length === 0);
-  const many = ok.filter((r) => r.entrance.length > 2);
+  const dead = ok.filter((r) => (r.waves || []).length === 0);
+  const multi = ok.filter((r) => (r.waves || []).length > 1);
   const inf = ok.filter((r) => r.infinite.length > 0);
 
   console.log("");
-  console.log(`route do duoc              : ${ok.length}/${ROUTES.length}`);
+  console.log("=== CONG (dung duoc de chan) ===");
+  console.log(`route do duoc                 : ${ok.length}/${ROUTES.length}`);
   if (erred.length) {
-    console.log(`route KHONG do duoc        : ${erred.length}`);
+    console.log(`route KHONG do duoc           : ${erred.length}`);
     for (const r of erred) console.log(`    ${r.route} — ${r.error}`);
   }
-  console.log(`VAO = 0 (trang dung yen)   : ${dead.length}  ${dead.map((r) => r.route).join(" ")}`);
-  console.log(`VAO > 2 (tranh nhau)       : ${many.length}  ${many.map((r) => r.route).join(" ")}`);
-  console.log(`con vong lap vo han        : ${inf.length}  ${inf.map((r) => r.route).join(" ")}`);
+  console.log(
+    `trang DUNG YEN (loi cung)     : ${dead.length}  ${dead.length ? dead.map((r) => r.route).join(" ") : "(khong co)"}`
+  );
+  console.log(`vong lap vo han               : ${inf.length}`);
+  console.log("");
+  console.log("=== CHI DE RÀ, KHONG PHAI CHAM DIEM ===");
+  console.log(
+    `  so dot vao = 1              : ${ok.length - dead.length - multi.length}`
+  );
+  console.log(
+    `  so dot vao > 1 (can xem tay): ${multi.length}  ${multi.map((r) => r.route).join(" ")}`
+  );
+  console.log("  Ly do khong cham diem: so dot phu thuoc toc do API o dung ranh gioi 120ms.");
+  console.log("  `/cam-nang` cho 2 dot khi khe 121ms va 1 dot khi khe 67ms — cung mot trang.");
+  console.log("  'Dung mot khoanh khac co chu dich' la quyet dinh cua nguoi thiet ke,");
+  console.log("  khong suy ra duoc tu hinh hoc va thoi gian. Xem ghi chu trong readAnimations().");
   console.log(`ghi: ${OUT}`);
-  process.exit(erred.length ? 1 : 0);
+  process.exit(erred.length || dead.length ? 1 : 0);
 }
 
 main().catch((e) => {
