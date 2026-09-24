@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests for AG-FBPAGE Human Persona and Psychological Profiling."""
 
 import asyncio

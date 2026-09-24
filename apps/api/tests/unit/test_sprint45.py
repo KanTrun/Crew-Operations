@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -18,7 +19,9 @@ client = TestClient(app)
 
 def test_successful_week_resolves_claimed_shifts_without_touching_other_weeks() -> None:
     from ca_api.persist import (
-        open_shift_create, open_shift_list, open_shift_resolve_for_week,
+        open_shift_create,
+        open_shift_list,
+        open_shift_resolve_for_week,
         shift_application_claim_first,
     )
 
@@ -176,7 +179,10 @@ def test_publish_creates_exact_week_notification_and_ack(_du_nhan_vien_xep_lich:
     assert notifications.status_code == 200, notifications.text
     items = [item for item in notifications.json()["notifications"] if item["tuan_iso"] == week]
     assert len(items) == 1
-    assert items[0]["url"] == f"/lich-tuan?tuan={week}"
+    # `minh` là nhân viên (nhan_vien) → nhận link xem lịch CỦA MÌNH (/toi).
+    # Quản lý/chủ quán nhận /lich-tuan (xem toàn quán) — xem
+    # test_publish_notification_role_based_links trong test_schedule_consistency.py.
+    assert items[0]["url"] == f"/toi?tuan={week}"
 
     acked = client.post(f"/api/v1/lich/thong-bao/{items[0]['id']}/ack", headers=headers(client, "minh"))
     assert acked.status_code == 200 and acked.json()["ok"] is True
@@ -641,7 +647,8 @@ def test_manager_sees_claimed_shifts_employee_does_not(_du_nhan_vien_xep_lich: N
         store_id="quan_01", schedule_run_id="vis-test-1", tuan_iso=week,
         ca_id="w1_c01", deadline_at="2026-11-01T00:00:00Z",
     )
-    shift2 = open_shift_create(
+    # Ca thứ 2 chỉ để tạo dữ liệu cho test đếm (không cần giữ id).
+    open_shift_create(
         store_id="quan_01", schedule_run_id="vis-test-2", tuan_iso=week,
         ca_id="w1_c02", deadline_at="2026-11-01T00:00:00Z",
     )

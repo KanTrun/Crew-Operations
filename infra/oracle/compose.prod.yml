@@ -11,8 +11,16 @@
 # - `restart: always` — sống sót qua reboot VM (Oracle thỉnh thoảng bảo trì).
 # - NHIPQUAN_CORS_ORIGINS phải khớp origin web public.
 
+x-logging: &default-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "20m"
+      max-file: "3"
+
 services:
   postgres:
+    <<: *default-logging
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: nhipquan
@@ -28,6 +36,7 @@ services:
     restart: always
 
   redis:
+    <<: *default-logging
     image: redis:7-alpine
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -37,6 +46,7 @@ services:
     restart: always
 
   api:
+    <<: *default-logging
     image: ghcr.io/kantrun/crew-operations/nhipquan-api:${IMAGE_TAG:-latest}
     env_file:
       - path: /opt/nhipquan/.env
@@ -64,6 +74,7 @@ services:
     restart: always
 
   worker:
+    <<: *default-logging
     image: ghcr.io/kantrun/crew-operations/nhipquan-api:${IMAGE_TAG:-latest}
     command: ["python", "-m", "ca_api.worker"]
     env_file:
@@ -85,6 +96,7 @@ services:
     restart: always
 
   web:
+    <<: *default-logging
     image: ghcr.io/kantrun/crew-operations/nhipquan-web:${IMAGE_TAG:-latest}
     expose:
       - "3000"
@@ -101,6 +113,7 @@ services:
     restart: always
 
   caddy:
+    <<: *default-logging
     image: caddy:2-alpine
     env_file:
       - path: /opt/nhipquan/.env

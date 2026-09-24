@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """E2E tests — FB moderation pipeline: L0 → L5, review queue, inbox decide, RBAC.
 
 Replay mode; không gọi mạng thật (send_messenger_text monkeypatch).

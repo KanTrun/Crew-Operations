@@ -16,7 +16,7 @@ except ImportError:
     from datetime import datetime, timezone
     UTC = timezone.utc
 from pathlib import Path
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Literal, cast
 
 from ca_agents.ag_fbpage import (
     FBMessageInput,
@@ -55,7 +55,16 @@ from ca_agents.messaging import (
     parse_zalo_webhook,
     should_enqueue_constraint,
 )
-from ca_contracts import AIEvaluation, AIFeedbackEvent, AIGenerationRecord
+from ca_contracts import (
+    AIEvaluation,
+    AIEvaluationScores,
+    AIFeedbackContent,
+    AIFeedbackEvent,
+    AIGenerationDraft,
+    AIGenerationRecord,
+    AIModelVersion,
+    FbPolicyAction,
+)
 from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
@@ -102,6 +111,7 @@ from ca_api.services.fb_attachment_processor import (
 from ca_api.services.fb_moderation import (
     analyze_comment_sentiment,
     classify_comment_action,
+    fb_jev_enabled,
     moderate_fb_message,
     queue_fb_non_text,
 )
@@ -154,11 +164,12 @@ def _record_fb_feedback(
         ).hexdigest()
         repository.save(AIFeedbackEvent(
             id=f"fb-feedback-{fingerprint[:24]}", store_id=store_id, generation_id=str(generation["id"]),
-            channel="facebook", type=feedback_type, original={"body": original} if original else None,
-            final={"body": final} if final else None,
-            edited_fields=["body"] if original and final and original != final else [],
+            channel="facebook", type=cast(Literal["manager_approve", "manager_edit", "manager_reject", "customer_positive", "customer_negative", "customer_followup", "send_success", "send_failure", "manual_rating"], feedback_type),
+            original=cast(AIFeedbackContent | None, {"body": original} if original else None),
+            final=cast(AIFeedbackContent | None, {"body": final} if final else None),
+            edited_fields=cast(list[Literal["subject", "body"]], ["body"] if original and final and original != final else []),
             materially_edited=bool(original and final and original != final), actor_user_id=actor_user_id,
-            actor_role=actor_role, send_status=send_status, failure_code=failure_code,
+            actor_role=cast(Literal["chu_quan", "quan_ly", "system", "customer"], actor_role), send_status=cast(Literal["not_applicable", "sent", "failed"], send_status), failure_code=failure_code,
             idempotency_key=f"fb-feedback:{fingerprint}", created_at=_now(),
         ))
     except Exception:
@@ -482,7 +493,12 @@ def _page_store(store_id: str = "quan_01") -> dict[str, Any]:
         return cast(dict[str, Any], stored)
     legacy = kv_get("page_quan", None)
     if legacy and isinstance(legacy, dict) and (legacy.get("threads") or legacy.get("drafts")):
-        return cast(dict[str, Any], legacy)
+        # Tương thích ngược: khi store scoped chưa tồn tại mà legacy có dữ liệu,
+        # migrate luôn sang key scoped để MỌI thao tác ghi (reply/approve/draft)
+        # về sau đi chung 1 key — tránh tình trạng ghi vào key legacy nhưng
+        # đọc không thấy (bug mất trả lời).
+        kv_set(key, legacy)
+        return cast(dict[str, Any], kv_get(key, legacy))
     seed = os.environ.get("NHIPQUAN_PAGE_SEED_FIXTURE", "").strip() in {"1", "true", "yes"}
     if seed and PAGE_FIXTURE.exists():
         data = json.loads(PAGE_FIXTURE.read_text(encoding="utf-8"))
@@ -793,18 +809,18 @@ async def _execute_fb_pipeline(
     learning_repository.save(AIGenerationRecord(
         id=generation_id, store_id=store_id, channel="facebook",
         conversation_id=sender, request_kind="facebook_message", external_event_hash=hashlib.sha256(mid.encode()).hexdigest(),
-        draft={"body": out.suggested_reply or out.response or "Đã chuyển quản lý xử lý."}, context_snapshot_hash=fingerprint,
+        draft=cast(AIGenerationDraft, {"body": out.suggested_reply or out.response or "Đã chuyển quản lý xử lý."}), context_snapshot_hash=fingerprint,
         agent_version="ag-fbpage", prompt_version="fb-messenger-v1",
         rule_version=",".join(str(rule.get("id")) for rule in active_rules) or "none",
-        rollout_bucket=rollout_bucket, model={"provider": agent_mode(), "model_id": "ag-fbpage", "temperature": 0, "tool_context_hash": fingerprint},
-        policy_action=policy_action, idempotency_key=f"generation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
+        rollout_bucket=cast(Literal["control", "canary_10", "canary_50", "active_100"], rollout_bucket), model=cast(AIModelVersion, {"provider": agent_mode(), "model_id": "ag-fbpage", "temperature": 0, "tool_context_hash": fingerprint}),
+        policy_action=cast(FbPolicyAction, policy_action), idempotency_key=f"generation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
     ))
     if moderation.get("review_id"):
         fb_review_link_generation(int(moderation["review_id"]), generation_id=generation_id)
     learning_repository.save(AIEvaluation(
         id=f"facebook-evaluation-{fingerprint[:20]}", store_id=store_id, generation_id=f"facebook-{fingerprint[:24]}", channel="facebook",
-        scores={"accuracy": out.confidence, "safety": 1.0}, aggregate_score=out.confidence,
-        passed=out.action == "auto_respond", action=policy_action,
+        scores=cast(AIEvaluationScores, {"accuracy": out.confidence, "safety": 1.0}), aggregate_score=out.confidence,
+        passed=out.action == "auto_respond", action=cast(FbPolicyAction, policy_action),
         flags=[] if out.action == "auto_respond" else ["manager_review_required"], threshold_version="facebook-policy-v1",
         calibration_version="deterministic-v1", sample_count=0, evaluation_window="per_messenger_event",
         evaluator="ag-fbpage-policy", idempotency_key=f"evaluation:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
@@ -1230,6 +1246,66 @@ async def facebook_webhook(request: Request) -> Any:
     return {"ok": True, "n": n}
 
 
+def _thread_display_name(thread: dict[str, Any]) -> str:
+    """Tên hiển thị ưu tiên cho 1 hội thoại Messenger.
+
+    Thứ tự ưu tiên (fallback liên tục để không bao giờ để trống):
+      1. `sender_name` đã lưu sẵn (nếu có — sync Graph / test), loại bỏ sentinel "Khách".
+      2. `customer_name` — trường tên khách từ fixture/vận hành.
+      3. `from` tên khách Graph trả về khi sync (fetch_conversations).
+      4. `customer_profile.ten_khach` — AI trích xuất từ tin nhắn (customer_memory).
+      5. Mã PSID rút gọn để vẫn phân biệt được ai đang nhắn (tránh "Khách" chung chung).
+    """
+    raw = thread.get("sender_name") or thread.get("customer_name") or thread.get("from") or ""
+    if isinstance(raw, str) and raw.strip() and raw.strip() not in {"Khách", "Khách hàng", "Customer"}:
+        return raw.strip()
+    prof = thread.get("customer_profile")
+    if isinstance(prof, dict):
+        ten = prof.get("ten_khach")
+        if isinstance(ten, str) and ten.strip():
+            return ten.strip()
+    psid = str(thread.get("psid") or thread.get("sender_id") or "")
+    if psid:
+        return f"Khách {psid[-4:]}"
+    return "Khách"
+
+
+def _thread_display_avatar(thread: dict[str, Any]) -> str:
+    """Ảnh đại diện người nhắn: ưu tiên URL đã lưu, fallback về URL ổn định theo PSID.
+
+    Messenger Profile API của Meta (POST /{psid}?fields=profile_pic) chỉ gọi được khi
+    khách đã tương tác trong 24h — nên với khách cũ chúng ta dùng URL trừu tượng ổn định
+    theo PSID để giao diện vẫn có avatar riêng cho từng người.
+    """
+    existing = thread.get("sender_avatar") or (thread.get("customer_profile") or {}).get("avatar_url")
+    if isinstance(existing, str) and existing.strip():
+        return existing.strip()
+    psid = str(thread.get("psid") or thread.get("sender_id") or "")
+    if not psid:
+        return ""
+    import hashlib
+
+    digest = hashlib.sha1(psid.encode("utf-8")).hexdigest()  # noqa: S324 — chỉ để tạo màu nền, không dùng cho bảo mật
+    return f"https://api.dicebear.com/9.x/initials/svg?seed={digest}&backgroundColor=7c5c3e,8d6e63,bcaaa4,5d4037,6d4c41"
+
+
+def _enrich_threads_for_display(threads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Bổ sung trường hiển thị (sender_name, sender_avatar) cho từng hội thoại.
+
+    KHÔNG ghi đè dữ liệu gốc trong store — chỉ làm giàu ở tầng API trả về,
+    giữ nguyên fail-closed (không phụ thuộc Graph thời gian thực).
+    """
+    out: list[dict[str, Any]] = []
+    for t in threads:
+        display = dict(t)
+        display["sender_name"] = _thread_display_name(t)
+        avatar = _thread_display_avatar(t)
+        if avatar:
+            display["sender_avatar"] = avatar
+        out.append(display)
+    return out
+
+
 @router.get("/api/v1/page/threads")
 def page_threads(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_manager(authorization)
@@ -1240,7 +1316,12 @@ def page_threads(authorization: Annotated[str | None, Header()] = None) -> dict[
     # Update is_within_24h dynamic flag
     for t in threads:
         t["is_within_24h"] = is_within_24h_window(t.get("last_message_ts"))
-    return {"items": threads, "mode": _page_mode(), "nguon": "quan", "store_id": store_id}
+    return {
+        "items": _enrich_threads_for_display(threads),
+        "mode": _page_mode(),
+        "nguon": "quan",
+        "store_id": store_id,
+    }
 
 
 class PageReplyBody(BaseModel):
@@ -1285,7 +1366,9 @@ def page_reply(
                 break
         return doc
 
-    kv_mutate("page_quan", mut, _page_store(store_id))
+    # Ghi vào ĐÚNG key mà _page_store đọc (page_quan:{store_id}) — tránh mất
+    # tin trả lời vì ghi vào key legacy "page_quan" không ai đọc.
+    kv_mutate(f"page_quan:{store_id}", mut, _page_store(store_id))
     if not found:
         raise HTTPException(status_code=404, detail="thread")
     graph_sent = False
@@ -1352,7 +1435,8 @@ def page_thread_approve(
 
     page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
     store_id = resolve_store_id_from_page_id(page_id_cfg)
-    kv_mutate("page_quan", mut, _page_store(store_id))
+    # Ghi vào ĐÚNG key _page_store đọc (page_quan:{store_id}) — chống mất trả lời.
+    kv_mutate(f"page_quan:{store_id}", mut, _page_store(store_id))
     if not found:
         raise HTTPException(status_code=404, detail="thread")
 
@@ -1611,6 +1695,7 @@ async def fb_inbox_decide(
 class FbPolicyBody(BaseModel):
     auto_send_enabled: bool | None = None
     auto_price_cap_vnd: int | None = None
+    jev_enabled: bool | None = None
     note: str | None = None
 
 
@@ -1621,6 +1706,7 @@ def _fb_policy_get() -> dict[str, Any]:
         "auto_price_cap_vnd": int(
             os.environ.get("NHIPQUAN_FB_AUTO_PRICE_CAP_VND", "100000")
         ),
+        "jev_enabled": fb_jev_enabled(),
         "page_mode": _page_mode(),
         "intent_thresholds": {
             "chao_hoi": 0.90,
@@ -1667,15 +1753,22 @@ def fb_policy_set(
 
     if body.auto_price_cap_vnd is not None and body.auto_price_cap_vnd < 0:
         raise HTTPException(status_code=400, detail="price_cap_am")
-    if body.auto_send_enabled is not None or body.auto_price_cap_vnd is not None:
+    if (
+        body.auto_send_enabled is not None
+        or body.auto_price_cap_vnd is not None
+        or body.jev_enabled is not None
+    ):
         set_fb_policy_runtime(
             auto_send_enabled=body.auto_send_enabled,
             auto_price_cap_vnd=body.auto_price_cap_vnd,
+            jev_enabled=body.jev_enabled,
         )
     if body.auto_send_enabled is not None:
         changes["auto_send_enabled"] = body.auto_send_enabled
     if body.auto_price_cap_vnd is not None:
         changes["auto_price_cap_vnd"] = int(body.auto_price_cap_vnd)
+    if body.jev_enabled is not None:
+        changes["jev_enabled"] = body.jev_enabled
     _audit(
         s["nv_id"],
         "fb_policy_update",

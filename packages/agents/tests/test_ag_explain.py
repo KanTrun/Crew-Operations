@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """AG-EXPLAIN — soạn câu tiếng Việt từ mã lý do, VF-NUM phải luôn qua."""
 
 from __future__ import annotations

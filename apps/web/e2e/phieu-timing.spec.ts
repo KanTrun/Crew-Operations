@@ -24,21 +24,50 @@ test.describe("Phiếu demo — latency mở form (#7 nhóm A)", () => {
     const t0 = Date.now();
     await page.goto("/phieu");
     await expect(
-      page.getByRole("heading", { name: /Phiếu ca làm việc|Mở phiếu/i }),
+      page.getByRole("heading", { name: /Phiếu ca làm việc|Mở phiếu|Phiếu «/i }),
     ).toBeVisible();
-    // Luồng mới: xác nhận có mặt → chọn phiếu "Mở quán" → thấy bước đầu.
+
+    // Nếu đã ở bước đầu (ví dụ khôi phục phiếu đang làm dở từ phiên trước)
+    const buocDau = page.getByText(/Bước \d+ \//).first();
+    if (await buocDau.isVisible()) {
+      const elapsed_ms = Date.now() - t0;
+      console.log(`PHIEU_DEMO_MS=${elapsed_ms}`);
+      expect(elapsed_ms).toBeLessThan(30_000);
+      return;
+    }
+
+    // Nếu đang ở màn hình hoàn thành của phiếu cũ, bấm làm phiếu khác
+    const lamKhacBtn = page.getByRole("button", { name: /Làm phiếu khác/i });
+    if (await lamKhacBtn.isVisible().catch(() => false)) {
+      await lamKhacBtn.click();
+    }
+
+    // Chờ danh sách mẫu phiếu nạp xong từ API
+    const startBtn = page.getByRole("button", { name: /Mở quán/i }).first();
+    await expect(startBtn).toBeVisible({ timeout: 15_000 });
+
+    // Điểm danh có mặt nếu nút "Tôi đã có mặt" hiển thị
     const coMatBtn = page.getByRole("button", { name: /Tôi đã có mặt/i });
     if (await coMatBtn.isVisible()) {
       await coMatBtn.click();
-      await expect(
-        page.getByRole("button", { name: /Mở quán/i }).first(),
-      ).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(/Đã ghi có mặt/i)).toBeVisible({ timeout: 10_000 });
     }
-    const startBtn = page.getByRole("button", { name: /Mở quán/i }).first();
-    if (await startBtn.isVisible()) {
-      await startBtn.click();
-      await expect(page.getByText(/Bước \d+ \//).first()).toBeVisible({ timeout: 15_000 });
+
+    // Chọn phiếu "Mở quán"
+    await startBtn.click();
+
+    // Phòng ngừa trường hợp chưa ghi nhận điểm danh kịp thời
+    const chuaDiemDanh = page.getByText(/Chưa có mặt hôm nay/i);
+    if (await chuaDiemDanh.isVisible().catch(() => false)) {
+      if (await coMatBtn.isVisible()) {
+        await coMatBtn.click();
+        await expect(page.getByText(/Đã ghi có mặt/i)).toBeVisible({ timeout: 10_000 });
+        await startBtn.click();
+      }
     }
+
+    // Đảm bảo hiển thị bước đầu tiên của phiếu
+    await expect(page.getByText(/Bước \d+ \//).first()).toBeVisible({ timeout: 15_000 });
     const elapsed_ms = Date.now() - t0;
     console.log(`PHIEU_DEMO_MS=${elapsed_ms}`);
     expect(elapsed_ms).toBeLessThan(30_000);

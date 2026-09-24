@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Architecture rules — agents must not import DB/API/gates or other agents."""
 
 from __future__ import annotations
@@ -129,6 +130,8 @@ def test_agent_khong_goi_agent_va_khong_ghi_db() -> None:
     }
     for tep in ROOT.rglob("*.py"):
         hien_tai = next((p for p in tep.parts if p.startswith("ag_")), None)
+        if hien_tai is None:
+            continue
         tree = ast.parse(tep.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             ten = ""

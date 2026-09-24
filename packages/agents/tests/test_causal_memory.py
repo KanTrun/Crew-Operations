@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho Causal Memory (Self-Explaining System) — plan 260918 mục 3.
 
 ADR-002: câu trả lời "tại sao" tất định, từ dữ liệu thật, không LLM.

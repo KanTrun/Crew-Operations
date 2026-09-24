@@ -268,18 +268,26 @@ export default function RosterPage() {
           headers: authHeader(),
         });
         if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
+          if (res.status === 401) {
             clearSession();
             setToken("");
+            return;
+          }
+          if (res.status === 403) {
+            setError("Bạn không có quyền quản lý để xem bảng phân công toàn quán. Vui lòng vào trang 'Lịch của tôi' (/toi) để xem ca làm cá nhân.");
             return;
           }
           throw new Error("fetch_failed");
         }
         setData((await res.json()) as LichData);
       } catch (error) {
-        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        if (error instanceof ApiError && error.status === 401) {
           clearSession();
           setToken("");
+          return;
+        }
+        if (error instanceof ApiError && error.status === 403) {
+          setError("Bạn không có quyền quản lý để xem bảng phân công toàn quán. Vui lòng vào trang 'Lịch của tôi' (/toi) để xem ca làm cá nhân.");
           return;
         }
         setError("Không tải được lịch tuần.");

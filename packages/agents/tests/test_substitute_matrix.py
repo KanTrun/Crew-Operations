@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Kiểm thử cho ma trận món thay thế liên ngành (Substitute Matrix) và chỉ số AMBI."""
 
 from __future__ import annotations

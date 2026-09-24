@@ -6,7 +6,7 @@ import json
 import os
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from ca_playbook import list_luat
 from ca_solver import apply_luat, build_lich_input, solve_cpsat
@@ -34,7 +34,9 @@ _ROOT = Path(__file__).resolve().parents[5]
 # của client (60s trong `scripts/e2e_http_copilot.py`), gây `TimeoutError` chập
 # chờn: cùng một câu hỏi, lần chạy 59.9s thì lọt, lần chạy 60.1s thì vỡ.
 # 15s vừa giữ nguyên chất lượng lịch, vừa chừa biên an toàn gấp ~4 lần.
-_SOLVER_TIME_LIMIT_S = 15.0
+#
+# Đặt qua `CA_SOLVER_TIME_LIMIT_S` (mặc định `_DEFAULT_TIME_LIMIT_S` trong
+# `ca_solver.cpsat`) để mọi đường gọi — kể cả copilot — dùng cùng một ngân sách.
 
 _DAYS = ("T2", "T3", "T4", "T5", "T6", "T7", "CN")
 _SHIFT_FRAMES = {
@@ -51,8 +53,6 @@ def _week_value(key: str, week: str, default: Any) -> Any:
     if key.endswith("_by_week"):
         legacy = kv_get(key.removesuffix("_by_week"), None)
         if legacy is not None:
-            if isinstance(legacy, dict) and "tuan_iso" in legacy:
-                return legacy if legacy.get("tuan_iso") == week else default
             return legacy
     return default
 
@@ -104,6 +104,7 @@ def run_solver(
     extra_pin: tuple[str, str] | None = None,
     confirmed_availability: dict[str, dict[str, list[str]]] | None = None,
     store_id: str = "quan_01",
+    time_limit_s: float | None = None,
 ) -> dict[str, Any]:
     """Build the authoritative input, solve it, and persist the result.
 
@@ -118,8 +119,14 @@ def run_solver(
         input_data.nhan_vien_ids = [nv_id for nv_id in input_data.nhan_vien_ids if nv_id in allowed_ids]
         configured_frames = kv_get("khung_gio", {})
         frames = dict(_SHIFT_FRAMES)
+        _SHIFT_KEY_MAP = {"Sáng": "sang", "Chiều": "chieu", "Tối": "toi"}
         for shift, frame in frames.items():
-            configured = configured_frames.get(shift) if isinstance(configured_frames, dict) else None
+            conf_key = _SHIFT_KEY_MAP.get(shift, shift)
+            configured = (
+                (configured_frames.get(conf_key) or configured_frames.get(shift))
+                if isinstance(configured_frames, dict)
+                else None
+            )
             if isinstance(configured, dict):
                 frames[shift] = (str(configured.get("bat_dau") or frame[0]), str(configured.get("ket_thuc") or frame[1]))
         input_data.tkb = {
@@ -134,11 +141,11 @@ def run_solver(
 
     configured_frames = kv_get("khung_gio", {})
     if isinstance(configured_frames, dict):
-        for meta in input_data.ca_meta.values():
-            frame = configured_frames.get(meta.get("khung", ""))
-            if isinstance(frame, dict):
-                meta["bat_dau"] = str(frame.get("bat_dau") or meta["bat_dau"])
-                meta["ket_thuc"] = str(frame.get("ket_thuc") or meta["ket_thuc"])
+        for meta in cast(dict[str, dict[str, str]], input_data.ca_meta).values():
+            configured_frame = configured_frames.get(meta.get("khung", ""))
+            if isinstance(configured_frame, dict):
+                meta["bat_dau"] = str(configured_frame.get("bat_dau") or meta["bat_dau"])
+                meta["ket_thuc"] = str(configured_frame.get("ket_thuc") or meta["ket_thuc"])
 
     debt = _week_value("fairness_debt_by_week", week, {})
     if isinstance(debt, dict) and debt:
@@ -184,10 +191,10 @@ def run_solver(
     for item in inbox_items if isinstance(inbox_items, list) else []:
         if not isinstance(item, dict) or item.get("trang_thai") != "duyet":
             continue
-        effective = item.get("hieu_luc") if isinstance(item.get("hieu_luc"), dict) else {}
+        effective = cast(dict[str, Any], item.get("hieu_luc")) if isinstance(item.get("hieu_luc"), dict) else {}
         if effective.get("loai") != "rang_buoc_cho_solver":
             continue
-        constraint = item.get("rang_buoc") if isinstance(item.get("rang_buoc"), dict) else {}
+        constraint = cast(dict[str, Any], item.get("rang_buoc")) if isinstance(item.get("rang_buoc"), dict) else {}
         if (constraint.get("tuan_id") or effective.get("tuan_id")) not in {None, week}:
             continue
         nv_id = str(item.get("nv_id") or effective.get("nv_id") or "")
@@ -221,7 +228,7 @@ def run_solver(
             input_data.phan_cong[ca_id].append(nv_id)
 
     input_data, applied = apply_luat(input_data, list_luat())
-    result = solve_cpsat(input_data, time_limit_s=_SOLVER_TIME_LIMIT_S)
+    result = solve_cpsat(input_data, time_limit_s=time_limit_s)
     gaps: list[str] = []
     if not result.ok or "INFEASIBLE" in result.status:
         for ca_id in input_data.ca_ids:

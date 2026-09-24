@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """PR13 coverage gate — mọi route user-facing phải có capability hoặc exclusion.
 
 Kế hoạch §PR13: "CI fail khi thêm chức năng user-facing mà không khai báo
@@ -155,6 +156,23 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/me/profile": "R0: hồ sơ qua UI /toi",
     "/api/v1/me/profile/email": "R2: cập nhật email qua UI /toi",
     "/api/v1/users/emails": "R0: danh sách email qua UI /nguoi",
+    # ── Quản lý Gmail — deep-link /gmail ──
+    "/api/v1/gmail/accounts": "Gmail — deep-link /gmail (tab Tài khoản)",
+    "/api/v1/gmail/accounts/{account_id}": "Gmail — deep-link /gmail (tab Tài khoản)",
+    "/api/v1/gmail/accounts/{account_id}/messages": "Gmail — deep-link /gmail (tab Hộp thư)",
+    "/api/v1/gmail/accounts/{account_id}/messages/{message_id}": "Gmail — deep-link /gmail (tab Hộp thư)",
+    "/api/v1/gmail/accounts/{account_id}/messages/{message_id}/read": "Gmail — deep-link /gmail (tab Hộp thư)",
+    "/api/v1/gmail/accounts/{account_id}/messages/{message_id}/star": "Gmail — deep-link /gmail (tab Hộp thư)",
+    "/api/v1/gmail/accounts/{account_id}/labels": "Gmail — deep-link /gmail (tab Nhãn)",
+    "/api/v1/gmail/accounts/{account_id}/labels/{label_id}": "Gmail — deep-link /gmail (tab Nhãn)",
+    "/api/v1/gmail/accounts/{account_id}/filters": "Gmail — deep-link /gmail (tab Bộ lọc)",
+    "/api/v1/gmail/accounts/{account_id}/filters/{filter_id}": "Gmail — deep-link /gmail (tab Bộ lọc)",
+    "/api/v1/gmail/accounts/{account_id}/sync-state": "Gmail — deep-link /gmail (tab Đồng bộ)",
+    "/api/v1/gmail/accounts/{account_id}/send": "Gmail — deep-link /gmail (gửi qua Gmail API)",
+    "/api/v1/gmail/sync": "Gmail — deep-link /gmail (tab Đồng bộ)",
+    "/api/v1/gmail/oauth/authorize": "Gmail OAuth — luồng cấp quyền qua UI /gmail",
+    "/api/v1/gmail/oauth/callback": "Gmail OAuth — Google redirect về (GET, hạ tầng)",
+    "/api/v1/gmail/oauth/revoke": "Gmail OAuth — thu hồi qua UI /gmail",
     # ── Đổi ca chi tiết — deep-link /doi-ca ──
     "/api/v1/cho-doi-ca": "R2: chợ đổi ca qua UI /doi-ca",
     "/api/v1/cho-doi-ca/{swap_id}/dong-y": "PR10: PROPOSE_SWAP_CONSENT đã phủ qua chat",

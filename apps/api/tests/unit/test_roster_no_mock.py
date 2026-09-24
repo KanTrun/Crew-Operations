@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Pin nhận users thật + lịch chưa xếp trả khung trống (hết mock roster)."""
 
 from __future__ import annotations

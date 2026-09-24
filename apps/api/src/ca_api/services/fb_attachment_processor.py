@@ -16,6 +16,7 @@ from ca_agents.ag_pricing.vision_menu_extractor import (
     VisionExtractionResult,
     extract_menu_from_image,
 )
+from ca_contracts.catchment_survey_v2 import ChannelMode
 
 logger = logging.getLogger(__name__)
 
@@ -137,14 +138,14 @@ async def process_image_attachment(
             store_id=os.environ.get("NHIPQUAN_DEFAULT_STORE_ID", "quan_01"),
             image_url=url,
             image_mime=mime_type or "image/jpeg",
-            source_channel="messenger",
+            source_channel=ChannelMode.DINE_IN_VISION,
             photo_source="all_photos_filtered",
         )
         summary = None
         if ocr_result.ok and ocr_result.snapshot:
-            dishes = ocr_result.snapshot.dishes
+            dishes = ocr_result.snapshot.extracted_items
             if dishes:
-                dish_names = [d.name for d in dishes[:5]]
+                dish_names = [d.item_name_raw for d in dishes[:5]]
                 summary = f"Menu OCR: {len(dishes)} món ({', '.join(dish_names)}{'...' if len(dishes) > 5 else ''})"
             else:
                 summary = "Ảnh menu nhưng OCR không đọc được món nào"
@@ -296,7 +297,7 @@ def format_attachment_for_review(att_info: AttachmentInfo) -> tuple[str, list[st
 
     if att_info.attachment_type == "image" and att_info.ocr_result:
         if att_info.ocr_result.ok and att_info.ocr_result.snapshot:
-            dishes = att_info.ocr_result.snapshot.dishes
+            dishes = att_info.ocr_result.snapshot.extracted_items
             if dishes:
                 flagged.append("menu_detected")
                 if any(d.original_price_vnd is None for d in dishes):

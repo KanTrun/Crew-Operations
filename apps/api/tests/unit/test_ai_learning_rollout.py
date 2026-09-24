@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 from __future__ import annotations
 
 from ca_api.ai_learning.rollout import select_active_rules

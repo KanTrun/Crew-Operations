@@ -6,7 +6,7 @@ import logging
 import re
 import uuid
 from datetime import date, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 try:
     from datetime import UTC
@@ -273,7 +273,7 @@ def parse_availability_details(text: str, *, reference_date: date | None = None)
 
 def parse_availability_text(text: str) -> dict[str, list[str]]:
     """Backward-compatible shift-only view of parsed availability."""
-    return parse_availability_details(text)["availability"]
+    return cast(dict[str, list[str]], parse_availability_details(text)["availability"])
 
 
 def collect_recent_availabilities(conv_id: str) -> dict[str, dict[str, list[str]]]:

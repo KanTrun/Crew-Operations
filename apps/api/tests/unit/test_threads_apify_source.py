@@ -1,10 +1,12 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests cho threads_apify_source.py — mock Apify client & Threads mapping."""
 
 from __future__ import annotations
 
 from unittest.mock import patch
-import pytest
 
+import pytest
+from ca_agents.ag_trend import _scrape_threads_smart
 from ca_agents.clients.apify_client import ApifyError
 from ca_agents.sources.threads_apify_source import (
     _build_input,
@@ -14,7 +16,6 @@ from ca_agents.sources.threads_apify_source import (
     _format_replies,
     scrape_threads_apify,
 )
-from ca_agents.ag_trend import _scrape_threads_smart
 
 
 def _apify_threads_item(
@@ -151,7 +152,7 @@ def test_scrape_threads_direct_primary():
         def read(self) -> bytes:
             return self._body
 
-        def __enter__(self) -> "_FakeResp":
+        def __enter__(self) -> _FakeResp:
             return self
 
         def __exit__(self, *args: object) -> None:

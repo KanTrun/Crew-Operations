@@ -1,4 +1,5 @@
-﻿"""Unit tests for Chat AI Scheduler Agent."""
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
+"""Unit tests for Chat AI Scheduler Agent."""
 
 from __future__ import annotations
 

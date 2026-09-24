@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 import importlib.util
 from pathlib import Path
 
@@ -6,6 +7,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_PATH = REPO_ROOT / "skills" / "repositories" / "repo-skills" / "solver-scheduling" / "scripts" / "validate_solver_payload.py"
 
 spec = importlib.util.spec_from_file_location("validate_solver_payload", SCRIPT_PATH)
+assert spec is not None and spec.loader is not None
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 validate_solver_payload = mod.validate_solver_payload

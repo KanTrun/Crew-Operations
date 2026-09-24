@@ -23,6 +23,7 @@ Hồ sơ §11 (`apps/web` constraints-inbox / run-form / today / playbook / sop-
 | overflow | `/them` | Nav ≤5 trên điện thoại |
 | channels bind | `/toi` (mục Nối Zalo/Telegram) | NV lấy mã bind; ưu tiên Zalo OA |
 | page-quan | `/page-quan` | Facebook Page quán — trống tới khi nối Meta |
+| gmail | `/gmail` | Quản lý/chủ quán — tài khoản Gmail, hộp thư, nhãn, bộ lọc, đồng bộ |
 
 Trang `/` chỉ đưa vào đăng nhập hoặc chuyển `/hom-nay`. Không dump 10 liên kết.
 

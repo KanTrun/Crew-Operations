@@ -51,6 +51,7 @@
         "RUN_CATCHMENT_SURVEY",
         "GET_SERPAPI_QUOTA",
         "GET_SURVEY_RESULT",
+        "QUERY_AUDIT",
         "OUT_OF_SCOPE"
       ],
       "title": "CopilotIntent",

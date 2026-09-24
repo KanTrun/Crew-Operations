@@ -1,16 +1,22 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 from __future__ import annotations
 
 import importlib.util
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from ca_contracts import (
     CONTRACTS,
     ActionItem,
     AIEvaluation,
+    AIEvaluationScores,
     AIFeedbackEvent,
+    AIGenerationDraft,
     AIGenerationRecord,
+    AIModelVersion,
+    AIRuleDefinition,
     AIRuleProposal,
     Ca,
     CuocHop,
@@ -18,6 +24,7 @@ from ca_contracts import (
     DoanThoaiTranscript,
     DongDon,
     DonQuay,
+    FbPolicyAction,
     LichTuan,
     MinhChungLoai,
     MonNuoc,
@@ -100,12 +107,32 @@ def test_contracts_registered() -> None:
         "TourPlan",
         "VoiceTurnRequest",
         "VoiceTurnResponse",
+        # Gmail Management
+        "GmailAccount",
+        "GmailOAuthTokens",
+        "GmailSyncState",
+        "GmailMessage",
+        "GmailLabel",
+        "GmailFilter",
+        "GmailThread",
+        "GmailOAuthAuthorizeRequest",
+        "GmailOAuthAuthorizeResponse",
+        "GmailOAuthCallbackRequest",
+        "GmailOAuthCallbackResponse",
+        "GmailAccountCreateRequest",
+        "GmailAccountUpdateRequest",
+        "GmailMessageListParams",
+        "GmailLabelCreateRequest",
+        "GmailLabelUpdateRequest",
+        "GmailFilterCreateRequest",
+        "GmailSyncRequest",
+        "GmailSendMessageRequest",
     }
 
 
 def test_typescript_export_has_real_types_without_unknown_stub() -> None:
     exporter = _load_export_contracts()
-    schemas = {name: model.model_json_schema() for name, model in CONTRACTS.items()}
+    schemas = {name: cast(Any, model).model_json_schema() for name, model in CONTRACTS.items()}
 
     output = exporter.ts_types_from_schemas(schemas)
 
@@ -145,16 +172,16 @@ def test_ai_learning_contracts_require_store_id_and_round_trip() -> None:
         "created_at": "2026-09-04T10:00:00Z",
     }
     generation = AIGenerationRecord(
-        **common,
+        **cast(dict[str, Any], common),
         request_kind="gmail_request",
-        draft={"body": "Chào Minh"},
+        draft=cast(AIGenerationDraft, {"body": "Chào Minh"}),
         context_snapshot_hash="ctx_hash",
         agent_version="mailwriter-v1",
         prompt_version="mail-v1",
         rule_version="none",
         rollout_bucket="control",
-        model={"provider": "replay", "model_id": "replay-v1", "temperature": 0, "tool_context_hash": "tool_hash"},
-        policy_action="queue_review",
+        model=cast(AIModelVersion, {"provider": "replay", "model_id": "replay-v1", "temperature": 0, "tool_context_hash": "tool_hash"}),
+        policy_action=cast(FbPolicyAction, "queue_review"),
         idempotency_key="idem_gen_01",
     )
     feedback = AIFeedbackEvent(
@@ -172,10 +199,10 @@ def test_ai_learning_contracts_require_store_id_and_round_trip() -> None:
         store_id="quan_01",
         generation_id=generation.id,
         channel="gmail",
-        scores={"accuracy": 1, "safety": 1},
+        scores=cast(AIEvaluationScores, {"accuracy": 1, "safety": 1}),
         aggregate_score=1,
         passed=True,
-        action="queue_review",
+        action=cast(FbPolicyAction, "queue_review"),
         threshold_version="quality-v1",
         calibration_version="calibration-v1",
         sample_count=0,
@@ -189,7 +216,7 @@ def test_ai_learning_contracts_require_store_id_and_round_trip() -> None:
         store_id="quan_01",
         channel="gmail",
         rule_type="style",
-        rule={"text": "Ngắn gọn", "intent_scope": ["notify_shift"], "audience_scope": ["employee"], "priority": 100},
+        rule=cast(AIRuleDefinition, {"text": "Ngắn gọn", "intent_scope": ["notify_shift"], "audience_scope": ["employee"], "priority": 100}),
         evidence_count=1,
         evidence_ids=[feedback.id],
         confidence=0.9,
@@ -206,7 +233,7 @@ def test_ai_learning_contracts_require_store_id_and_round_trip() -> None:
 
 def test_ai_learning_contracts_reject_missing_store_id() -> None:
     with pytest.raises(ValidationError):
-        AIFeedbackEvent(
+        AIFeedbackEvent(  # type: ignore[call-arg]
             id="feedback_01",
             generation_id="gen_01",
             channel="gmail",

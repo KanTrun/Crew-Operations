@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Nhánh bỏ qua của apply_luat: luật thiếu so_nguoi, ca sai vị trí / sai khung."""
 
 from __future__ import annotations

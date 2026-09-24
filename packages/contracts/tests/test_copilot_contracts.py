@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 from __future__ import annotations
 
 import json
@@ -54,4 +55,5 @@ def test_copilot_pydantic_models() -> None:
         confidence=0.95,
         action_proposal=prop,
     )
+    assert resp.action_proposal is not None
     assert resp.action_proposal.action_id == "act_001"

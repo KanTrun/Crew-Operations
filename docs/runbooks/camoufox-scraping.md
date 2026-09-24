@@ -247,7 +247,7 @@ print('camoufox:', 'OK' if is_available() else 'NOT INSTALLED')
 | Hoạt động | Chi phí | Latency |
 |---|---|---|
 | 1 lần scrape Camoufox | **0đ** | ~3-10s (chậm hơn HTTP client ~10x) |
-| 1 lần scrape Apify | ~0.5-2 CU ($5 free/tháng) | ~10-30s |
+| 1 lần scrape Apify | ~0.5-2 CU (hạn mức gói Free đọc từ `/users/me/limits`) | ~10-30s |
 
 **Đánh đổi:** Camoufox miễn phí + khó chặn, đổi lại nặng RAM (~500MB-1GB/instance) và chậm. Đó là lý do nó là tier **trung gian**, không phải primary.
 

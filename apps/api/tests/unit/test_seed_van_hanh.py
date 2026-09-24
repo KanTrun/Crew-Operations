@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Sáu bề mặt vận hành phải CÓ GÌ MÀ XEM, và phải tất định.
 
 Người dùng phàn nàn "web rất nhiều chỗ trống". Nguyên nhân không phải CSS: sáu

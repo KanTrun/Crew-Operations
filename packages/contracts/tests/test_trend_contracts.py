@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Test validation cho TrendItem contract và StoreCandidate contract mở rộng (ADR-003)."""
 
 from __future__ import annotations

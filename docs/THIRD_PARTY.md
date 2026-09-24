@@ -18,6 +18,9 @@
 | Thu thập Google Maps / ShopeeFood / Grab | ToS từng nền tảng | Thu thập tự động **không** giả định được phép | 2026-08-21 | AG-VOC chỉ nhận phản hồi quán tự chuyển |
 | Camoufox (Firefox chống-detect) | MPL-2.0 | Binary ~300MB sau `camoufox fetch`; không có API hạn mức | 2026-09-10 | Optional — tier cào browser-thật AG-TREND; Linux cần system deps (libgtk-3-0, libasound2, libdbus-glib-1-2, libx11-xcb1, fonts) — runbook `docs/runbooks/camoufox-scraping.md` |
 | Pillow | MIT-CMU (HPND) | n/a | 2026-09-23 | Ảnh sản phẩm sinh **tại máy** — ADR-019. Đã có sẵn trong venv/CI qua `reportlab`; không gọi mạng nên không có hạn mức nào bị thu hồi |
+| google-api-python-client | Apache-2.0 | Gmail API free tier: 1 tỷ quota units/ngày/project; 250 quota units/user/giây | 2026-09-19 | Quản lý Gmail (`ag_gmail`): đọc/gửi/labels/filters; cần OAuth client `NHIPQUAN_GMAIL_CLIENT_ID` |
+| google-auth / google-auth-oauthlib | Apache-2.0 | n/a | 2026-09-19 | OAuth 2.0 flow cho Gmail; refresh token tự động |
+| cryptography (Fernet) | Apache-2.0 / BSD-3-Clause | n/a | 2026-09-19 | Mã hoá OAuth token trong DB; key qua `NHIPQUAN_ENCRYPTION_KEY` |
 
 ## Kết luận vận hành (không phải lời hứa marketing)
 

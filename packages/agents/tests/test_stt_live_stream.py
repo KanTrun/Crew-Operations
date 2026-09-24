@@ -1,9 +1,11 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit test cho STT Live Streaming (plan 260918 — streaming realtime)."""
 
 from __future__ import annotations
 
 import asyncio
 import json
+from typing import Any
 
 import pytest
 from ca_agents.ag_meeting.stt_live_stream import (
@@ -18,7 +20,7 @@ class FakeStreamWS:
     def __init__(self) -> None:
         self.sent: list[str | bytes] = []
         self.closed = False
-        self._responses: list[dict] = [
+        self._responses: list[dict[str, Any]] = [
             {"serverContent": {"interimInputTranscription": {"text": "Bài"}}},
             {"serverContent": {"finalInputTranscription": {"text": "Bài 1."}}},
             {"serverContent": {"turnComplete": True}},
@@ -55,7 +57,7 @@ def test_session_open_and_receive(monkeypatch: pytest.MonkeyPatch) -> None:
 
     session = MeetingStreamSession("test-key")
     fake = FakeStreamWS()
-    session._ws = fake  # type: ignore[attr-defined]
+    session._ws = fake
 
     async def exercise() -> None:
         # Setup đã có trong fake responses
@@ -77,7 +79,7 @@ def test_session_open_and_receive(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_session_end_audio() -> None:
     session = MeetingStreamSession("test-key")
     fake = FakeStreamWS()
-    session._ws = fake  # type: ignore[attr-defined]
+    session._ws = fake
 
     async def exercise() -> None:
         await session.end_audio()

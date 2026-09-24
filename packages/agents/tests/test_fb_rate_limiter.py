@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests for fb_rate_limiter — sliding window, strikes, blacklist (plan §3.5).
 
 All time is injected via now_fn — no real clock (ADR-002, deterministic tests).

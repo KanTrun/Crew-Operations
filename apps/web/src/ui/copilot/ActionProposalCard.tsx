@@ -173,9 +173,19 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
   }
 
   const isPending = currentStatus === "draft" || currentStatus === "ready_for_approval" || currentStatus === "amendment_ready";
+  // Hiện cảnh báo đỏ khi còn ít hơn 10 phút
+  const isUrgent = isPending && timeLeft && (() => {
+    const parts = timeLeft.split(":");
+    const minutes = parseInt(parts[0] ?? "999", 10);
+    return minutes < 10;
+  })();
 
   return (
-    <div className="mt-3 p-3.5 rounded-xl border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-warn-soft)] text-xs text-[var(--nq-ink)]">
+    <div className={`mt-3 p-3.5 rounded-xl border text-xs text-zinc-200 ${
+      isUrgent
+        ? "border-rose-500/40 bg-rose-500/5"
+        : "border-amber-500/30 bg-amber-500/5"
+    }`}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <span className="font-semibold text-[var(--nq-st-warn-ink)] flex items-center gap-1.5">
           <span className="inline-block w-2 h-2 rounded-full bg-[var(--nq-st-warn)] animate-pulse"></span>
@@ -183,8 +193,12 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         </span>
         <div className="flex items-center gap-2">
           {timeLeft && isPending && (
-            <span className="text-2xs px-1.5 py-0.5 rounded bg-[var(--nq-surface)] text-[var(--nq-ink-muted)]">
-              ⏳ {timeLeft}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+              isUrgent
+                ? "bg-rose-900/60 text-rose-300 border border-rose-500/40"
+                : "bg-zinc-800 text-zinc-400"
+            }`}>
+              {isUrgent ? "⚠️" : "⏳"} {timeLeft}
             </span>
           )}
           <span
@@ -214,6 +228,14 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           </span>
         </div>
       </div>
+      {/* Hint text: hướng dẫn duyệt qua chat */}
+      {isPending && (
+        <p className={`text-[10px] mb-2 ${isUrgent ? "text-rose-400" : "text-zinc-500"}`}>
+          {isUrgent
+            ? `⚠️ Còn ${timeLeft} — nhắn "Duyệt" hoặc bấm nút bên dưới trước khi hết hạn!`
+            : `💬 Nhắn "Duyệt" hoặc bấm nút bên dưới để xác nhận`}
+        </p>
+      )}
 
       <p className="text-[var(--nq-ink)] font-medium mb-1">
         <ChatText text={proposal.summary} />
@@ -330,6 +352,12 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
         </div>
       )}
 
+      {/* Chi tiết payload_diff cho MỌI intent (trừ SEND_MAIL đã có hiển thị riêng).
+          Giúp người duyệt thấy nội dung THẬT sẽ được ghi, không chỉ bản tóm tắt. */}
+      {proposal.intent !== "SEND_MAIL" && proposal.payload_diff && (
+        <PayloadDetail payload={proposal.payload_diff} intent={proposal.intent} />
+      )}
+
       {errorMsg && (
         <div className="mb-2 p-2 rounded bg-[var(--nq-st-danger-soft)] border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] text-[var(--nq-st-danger-ink)] text-2xs">
           {errorMsg}
@@ -411,6 +439,137 @@ export function ActionProposalCard({ proposal, onExecuted }: ActionProposalCardP
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Hiển thị chi tiết payload_diff cho mọi intent ───────────────────────────
+// Mục đích: người duyệt thấy nội dung THẬT sẽ được ghi vào hệ thống (không chỉ
+// bản tóm tắt summary/explanation), để tránh duyệt nhầm khi AI hiểu sai ý.
+
+const PAYLOAD_LABELS: Record<string, string> = {
+  // Chung
+  snapshot_version: "Phiên bản dữ liệu",
+  // Xếp lịch
+  tuan: "Tuần",
+  tuan_iso: "Tuần (ISO)",
+  status: "Trạng thái",
+  phan_cong: "Phân công ca",
+  uu_tien: "Ưu tiên nhân sự",
+  meeting_adjustments: "Điều chỉnh từ cuộc họp",
+  rules_applied: "Luật đã áp dụng",
+  // Đổi ca
+  swap_id: "Mã lượt đổi ca",
+  ca_id: "Mã ca",
+  tu_nv: "Nhân viên nhả ca",
+  nhan_nv: "Nhân viên nhận ca",
+  trung_gian: "Nhân viên trung gian",
+  dong_y: "Đã đồng ý",
+  kiem_tra_5_dieu_kien: "Kiểm tra 5 điều kiện",
+  thoa_man_5_dieu_kien: "Thỏa mãn 5 điều kiện",
+  // Việc treo / bàn giao
+  noi_dung: "Nội dung",
+  treo_id: "Mã việc treo",
+  nv_id: "Nhân viên",
+  text: "Nội dung bàn giao",
+  // Tiêu thụ
+  hang: "Mặt hàng",
+  so_luong: "Số lượng",
+  don_vi: "Đơn vị",
+  // Menu
+  hanh_dong: "Hành động",
+  ten_mon: "Tên món",
+  mon_id: "Mã món",
+  gia: "Giá mới",
+  gia_cu: "Giá cũ",
+  an: "Ẩn món",
+  // Đơn quầy
+  don_id: "Mã đơn",
+  trang_thai: "Trạng thái đích",
+  trang_thai_hien_tai: "Trạng thái hiện tại",
+  ly_do_huy: "Lý do hủy",
+  // Ghim ca
+  pinned: "Ghim",
+  // TKB
+  khoang_ban: "Khoảng bận",
+  source_id: "Nguồn",
+  upload_id: "Mã tệp tải lên",
+  // Xin nghỉ
+  thu: "Thứ",
+  ly_do: "Lý do",
+  // Khảo sát giá
+  category_keyword: "Ngành hàng",
+  radius_km: "Bán kính (km)",
+  channel_mode: "Kênh khảo sát",
+  include_substitutes: "Bao gồm sản phẩm thay thế",
+  quota_cost: "Chi phí hạn ngạch",
+  quota_remaining: "Hạn ngạch còn lại",
+  quota_warning: "Cảnh báo hạn ngạch",
+  requested_by: "Người yêu cầu",
+  requested_role: "Vai trò yêu cầu",
+  // Fanpage
+  topic: "Chủ đề",
+  tone: "Giọng văn",
+  so_ky_tu: "Số ký tự",
+  // Luật
+  de_xuat: "Đề xuất luật",
+  so_lan_sua: "Số lần sửa",
+  so_mau: "Số mẫu lặp",
+  co_de_xuat: "Có đề xuất",
+};
+
+// Các trường nội bộ không cần hiển thị cho người duyệt.
+const PAYLOAD_HIDDEN = new Set([
+  "snapshot_version",
+  "co_du_lieu",
+  "co_de_xuat",
+  "quota_warning",
+]);
+
+function formatValue(value: any): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "boolean") return value ? "Có" : "Không";
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+function PayloadDetail({ payload, intent }: { payload: Record<string, any>; intent: string }) {
+  const entries = Object.entries(payload).filter(
+    ([key, value]) =>
+      !PAYLOAD_HIDDEN.has(key) &&
+      value !== null &&
+      value !== undefined &&
+      !(typeof value === "object" && Object.keys(value).length === 0)
+  );
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="my-2 p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 text-xs font-sans">
+      <div className="flex items-center gap-1.5 pb-1.5 mb-1.5 border-b border-zinc-800/60 text-zinc-400 text-[10px] font-medium">
+        <span>📋</span>
+        <span>Chi tiết nội dung sẽ được áp dụng ({intent})</span>
+      </div>
+      <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+        {entries.map(([key, value]) => {
+          const label = PAYLOAD_LABELS[key] || key;
+          const isObject = typeof value === "object" && value !== null;
+          return (
+            <div key={key} className="flex items-start gap-2">
+              <span className="text-zinc-500 font-semibold min-w-[110px] shrink-0">{label}:</span>
+              <span className={`text-zinc-200 break-words ${isObject ? "font-mono text-[10px] whitespace-pre-wrap" : ""}`}>
+                {formatValue(value)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

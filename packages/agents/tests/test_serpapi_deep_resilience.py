@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Bộ kiểm thử chuyên sâu (Deep Resilience & Robustness Testing) cho SerpApi v2.0.
 
 Nội dung kiểm thử:

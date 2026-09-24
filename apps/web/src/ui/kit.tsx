@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CSSProperties, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes, useCallback, useEffect, useRef, useState } from "react";
 import { API } from "../lib/api";
+import { Icon, type IconName } from "./icons";
 
 export const btnPrimary: CSSProperties = {};
 export const btnGhost: CSSProperties = {};
@@ -1118,4 +1119,189 @@ export function Toasts({
       ))}
     </div>
   );
+}
+
+// ── Additional UI Components for Gmail Page ──────────────────────────────
+
+export interface TableColumn<T = Record<string, unknown>> {
+  key: string;
+  header: string;
+  width?: number | string;
+  render?: (value: any, row: T) => ReactNode;
+  align?: "left" | "center" | "right";
+}
+
+export function Table<T extends Record<string, any> = Record<string, any>>({
+  columns,
+  rows,
+  emptyMessage = "Không có dữ liệu",
+  emptyHint = "",
+  className = "",
+}: {
+  columns: TableColumn<T>[];
+  rows: T[];
+  emptyMessage?: string;
+  emptyHint?: string;
+  className?: string;
+}) {
+  if (rows.length === 0) {
+    return <Empty title={emptyMessage}>{emptyHint}</Empty>;
+  }
+
+  return (
+    <div className={`overflow-x-auto bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] ${className}`}>
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)]">
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                scope="col"
+                style={{ width: col.width }}
+                className={`p-4 font-black uppercase tracking-widest text-[var(--nq-dim)] ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : ""}`}
+              >
+                {col.header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex} className="border-b border-[var(--nq-dim)]/30 hover:bg-[var(--nq-surface)]/50">
+              {columns.map((col) => (
+                <td key={col.key} style={{ width: col.width }} className={`p-4 ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : ""}`}>
+                  {col.render ? col.render(row[col.key], row) : String(row[col.key] ?? "")}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function Badge({
+  children,
+  variant = "outline",
+  size = "md",
+  className = "",
+}: {
+  children: ReactNode;
+  variant?: "primary" | "success" | "warning" | "danger" | "outline";
+  size?: "xs" | "sm" | "md" | "lg";
+  className?: string;
+}) {
+  const base = "inline-flex items-center font-bold uppercase tracking-widest";
+  const sizes = {
+    xs: "px-1.5 py-0.5 text-[10px]",
+    sm: "px-2 py-1 text-xs",
+    md: "px-3 py-1.5 text-sm",
+    lg: "px-4 py-2 text-base",
+  };
+  const variants = {
+    primary: "nq-ink-on-solid bg-[var(--nq-copper)] border-[var(--nq-copper)]",
+    success: "nq-ink-on-solid bg-[var(--nq-green)] border-[var(--nq-green)]",
+    warning: "nq-ink-on-solid bg-[var(--nq-warn)] border-[var(--nq-warn)]",
+    danger: "nq-ink-on-solid bg-[var(--nq-red)] border-[var(--nq-red)]",
+    outline: "bg-transparent text-[var(--nq-fg)] border-[var(--nq-dim)]",
+  };
+  return (
+    <span className={`${base} ${sizes[size]} border-2 ${variants[variant]} ${className}`}>
+      {children}
+    </span>
+  );
+}
+
+export function Tooltip({
+  children,
+  content,
+  position = "top",
+}: {
+  children: ReactNode;
+  content: ReactNode;
+  position?: "top" | "bottom" | "left" | "right";
+}) {
+  const [visible, setVisible] = useState(false);
+  const positions = {
+    top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
+    bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
+    left: "right-full top-1/2 -translate-y-1/2 mr-2",
+    right: "left-full top-1/2 -translate-y-1/2 ml-2",
+  };
+  return (
+    <div className="relative inline-block" onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}>
+      {children}
+      {visible && (
+        <div
+          className={`absolute ${positions[position]} z-10 px-2 py-1 text-xs font-mono text-[var(--nq-bg)] bg-[var(--nq-fg)] rounded whitespace-nowrap shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)]`}
+          role="tooltip"
+        >
+          {content}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function LoadingOverlay({
+  className = "",
+  message = "Đang tải...",
+}: {
+  className?: string;
+  message?: string;
+}) {
+  return (
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-[var(--nq-bg)]/80 backdrop-blur-sm ${className}`}>
+      <div className="bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-8 flex flex-col items-center gap-4 shadow-[12px_12px_0px_0px_var(--nq-copper-dim)]">
+        <Spinner />
+        <p className="font-mono text-sm text-[var(--nq-copper)] uppercase tracking-widest">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+export function Tabs({
+  value,
+  onChange,
+  tabs,
+  className = "",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  tabs: { id: string; label: string; icon?: IconName; disabled?: boolean }[];
+  className?: string;
+}) {
+  return (
+    <div className={`flex gap-2 border-b-2 border-[var(--nq-dim)] ${className}`}>
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          className={`flex items-center gap-2 px-4 py-3 font-black uppercase tracking-widest text-sm border-b-2 transition-colors ${
+            value === tab.id
+              ? "border-[var(--nq-copper)] text-[var(--nq-copper)]"
+              : tab.disabled
+                ? "text-[var(--nq-dim)]/40 cursor-not-allowed"
+                : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)] hover:border-[var(--nq-copper)]"
+          }`}
+          onClick={() => !tab.disabled && onChange(tab.id)}
+          disabled={tab.disabled}
+        >
+          {tab.icon ? <Icon name={tab.icon} size={16} /> : null}
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function TabPanel({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={`mt-6 ${className}`}>{children}</div>;
 }

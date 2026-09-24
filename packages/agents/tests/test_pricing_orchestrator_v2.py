@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Kiểm thử orchestrator v2 — state machine, NEEDS_REVIEW, mã lỗi (plan mục 2.4, 5.3).
 
 Toàn bộ nguồn cào + OCR đều bị mock: KHÔNG có network, KHÔNG tốn chi phí.

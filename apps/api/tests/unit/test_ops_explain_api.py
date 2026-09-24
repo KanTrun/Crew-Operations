@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit & Integration tests cho Ops Explain API (plan 260918 mục 3)."""
 
 from __future__ import annotations

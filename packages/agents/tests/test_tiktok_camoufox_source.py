@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Test tiktok_camoufox_source — không mở browser thật (CA_AGENT_MODE=replay).
 
 Cover theo PR 2 §IV:

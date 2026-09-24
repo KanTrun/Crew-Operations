@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Tests for ca-gates VF pipeline — VF-SCHEMA, VF-TRACE, VF-CONF."""
 
 from __future__ import annotations

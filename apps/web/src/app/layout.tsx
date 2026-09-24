@@ -9,6 +9,10 @@ export const metadata: Metadata = {
   title: "NHỊP QUÁN",
   description: "Ca làm việc · cẩm nang sống",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

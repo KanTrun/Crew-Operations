@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Contract test cho hợp đồng dữ liệu v2.1 (plan mục 3.1–3.5).
 
 ADR-003: các test này PHẢI tồn tại và pass trước khi `ag_pricing` viết bất kỳ

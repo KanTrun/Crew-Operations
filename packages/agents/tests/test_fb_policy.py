@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests for fb_policy — every branch of the moderation matrix (plan §3.2).
 
 Deterministic: no LLM, no I/O, no system clock (ADR-002).
@@ -296,7 +297,7 @@ def test_decision_contract_roundtrip() -> None:
 
     d = decide("chao_hoi", 0.95, "hi quán", ctx())
     contract = ContractDecision(
-        action=d.action.value,
+        action=d.action,
         reason=d.reason,
         intent=d.intent,
         confidence=d.confidence,
@@ -306,3 +307,117 @@ def test_decision_contract_roundtrip() -> None:
     )
     assert contract.action == "auto_send"
     assert 0.0 <= contract.confidence <= 1.0
+
+
+# ── 11. Tín hiệu Jev (kế hoạch JEV v2 §4.2) ─────────────────────────────────
+
+
+def test_jev_disabled_no_escalation() -> None:
+    """Jev chưa bật (jev_ok=False) → không leo thang thêm, giữ auto."""
+    d = decide("chao_hoi", 0.90, "hi quán", ctx())
+    assert d.action == FbPolicyAction.AUTO_SEND
+
+
+def test_jev_health_risk_escalates_owner() -> None:
+    """Jev báo nguy cơ sức khỏe cao → ESCALATE_OWNER (ngưỡng thấp)."""
+    d = decide(
+        "chao_hoi",
+        0.90,
+        "hi quán",
+        ctx(jev_ok=True, jev_health_risk=0.35),
+    )
+    assert d.action == FbPolicyAction.ESCALATE_OWNER
+    assert d.reason == "jev_health_or_legal"
+
+
+def test_jev_legal_threat_escalates_owner() -> None:
+    d = decide(
+        "chao_hoi",
+        0.90,
+        "hi quán",
+        ctx(jev_ok=True, jev_legal_threat=0.40),
+    )
+    assert d.action == FbPolicyAction.ESCALATE_OWNER
+
+
+def test_jev_hostile_escalates_priority() -> None:
+    """Jev báo gay gắt cao → PRIORITY_REVIEW (Quản lý)."""
+    d = decide(
+        "chao_hoi",
+        0.90,
+        "hi quán",
+        ctx(jev_ok=True, jev_hostility_score=2.0),
+    )
+    assert d.action == FbPolicyAction.PRIORITY_REVIEW
+    assert d.reason == "jev_hostile_or_ask_human"
+
+
+def test_jev_ask_human_escalates_priority() -> None:
+    d = decide(
+        "chao_hoi",
+        0.90,
+        "hi quán",
+        ctx(jev_ok=True, jev_ask_human=0.6),
+    )
+    assert d.action == FbPolicyAction.PRIORITY_REVIEW
+
+
+def test_jev_low_signal_no_escalation() -> None:
+    """Jev OK nhưng tín hiệu thấp → không leo thang, giữ auto."""
+    d = decide(
+        "chao_hoi",
+        0.90,
+        "hi quán",
+        ctx(jev_ok=True, jev_health_risk=0.05, jev_hostility_score=0.0),
+    )
+    assert d.action == FbPolicyAction.AUTO_SEND
+
+
+def test_jev_monotone_regex_still_wins() -> None:
+    """Regex trúng sức khỏe → ESCALATE_OWNER, bất kể Jev nói gì (đơn điệu)."""
+    d = decide(
+        "chao_hoi",
+        0.90,
+        "cả nhà tôi đau bụng",
+        ctx(jev_ok=True, jev_health_risk=0.0),  # Jev nói không nguy hiểm
+    )
+    assert d.action == FbPolicyAction.ESCALATE_OWNER
+    assert d.reason == "health_safety"
+
+
+# ── 12. Jev lỗi → fail-closed về hàng đợi (kế hoạch §5) ────────────────────
+
+
+def test_jev_failed_queues_not_auto() -> None:
+    """Jev bật nhưng LỖI → QUEUE_REVIEW (người duyệt), KHÔNG im lặng tự trả lời."""
+    d = decide(
+        "chao_hoi",
+        0.90,
+        "hi quán",
+        ctx(jev_ok=False, jev_failed=True),
+    )
+    assert d.action == FbPolicyAction.QUEUE_REVIEW
+    assert "jev_sensor_failed" in d.flagged_reasons
+
+
+def test_jev_off_not_failed_keeps_auto() -> None:
+    """Jev TẮT (chưa cấu hình) → không coi là lỗi, giữ auto (hành vi cũ)."""
+    d = decide(
+        "chao_hoi",
+        0.90,
+        "hi quán",
+        ctx(jev_ok=False, jev_failed=False),
+    )
+    assert d.action == FbPolicyAction.AUTO_SEND
+
+
+def test_jev_failed_regex_still_wins() -> None:
+    """Jev lỗi nhưng regex trúng sức khỏe → vẫn ESCALATE_OWNER (đơn điệu)."""
+    d = decide(
+        "chao_hoi",
+        0.90,
+        "cả nhà tôi đau bụng",
+        ctx(jev_ok=False, jev_failed=True),
+    )
+    assert d.action == FbPolicyAction.ESCALATE_OWNER
+    assert d.reason == "health_safety"

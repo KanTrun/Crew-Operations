@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 from __future__ import annotations
 
 import asyncio
@@ -101,6 +102,11 @@ def test_copilot_voice_uses_server_verified_identity(monkeypatch: pytest.MonkeyP
         async def send_text(self, text: str) -> None:
             return None
 
+        async def send_function_response(
+            self, call_id: str, reply_text: str, proposal: object | None = None
+        ) -> None:
+            return None
+
         async def close(self) -> None:
             return None
 
@@ -159,6 +165,11 @@ def test_copilot_voice_concurrency_superseded(monkeypatch: pytest.MonkeyPatch) -
         async def send_text(self, text: str) -> None:
             return None
 
+        async def send_function_response(
+            self, call_id: str, reply_text: str, proposal: object | None = None
+        ) -> None:
+            return None
+
         async def close(self) -> None:
             self._closed = True
             self._close_event.set()
@@ -212,6 +223,11 @@ def test_copilot_voice_handles_activity_start_and_end(monkeypatch: pytest.Monkey
         async def send_activity_end(self) -> None:
             activity_events.append("end")
 
+        async def send_function_response(
+            self, call_id: str, reply_text: str, proposal: object | None = None
+        ) -> None:
+            return None
+
         async def close(self) -> None:
             return None
 
@@ -227,6 +243,84 @@ def test_copilot_voice_handles_activity_start_and_end(monkeypatch: pytest.Monkey
         ws.send_text(json.dumps({"event": "stop"}))
 
     assert activity_events == ["start", "end"]
+
+
+def test_copilot_voice_runs_pipeline_on_function_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Voice phải chạy run_copilot() khi Gemini gọi tool run_copilot_pipeline,
+    gửi kết quả về Gemini (đọc thành tiếng) + gửi voice:proposal về client."""
+    import ca_api.interfaces.http.copilot_voice as voice_module
+
+    sent_responses: list[dict[str, object]] = []
+    upstream_events: list[dict[str, object]] = [
+        {
+            "serverContent": {
+                "modelTurn": {
+                    "parts": [
+                        {
+                            "functionCall": {
+                                "id": "call_abc",
+                                "name": "run_copilot_pipeline",
+                                "args": {"message": "Báo cáo hao hụt sữa hôm nay"},
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+    ]
+
+    class FakeLiveSession:
+        def __init__(self, context: object) -> None:
+            self.context = context
+
+        async def open(self) -> None:
+            return None
+
+        async def receive(self) -> dict[str, object]:
+            if upstream_events:
+                return upstream_events.pop(0)
+            await __import__("asyncio").sleep(60)
+            return {}
+
+        async def send_audio(self, audio: bytes) -> None:
+            return None
+
+        async def send_text(self, text: str) -> None:
+            return None
+
+        async def send_function_response(
+            self, call_id: str, reply_text: str, proposal: object | None = None
+        ) -> None:
+            sent_responses.append(
+                {"call_id": call_id, "reply_text": reply_text, "proposal": proposal}
+            )
+
+        async def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(voice_module, "GeminiLiveSession", FakeLiveSession)
+    token = _login_manager()
+
+    with client.websocket_connect("/api/v1/copilot/voice") as ws:
+        ws.send_text(json.dumps({"event": "auth", "token": token}))
+        assert ws.receive_json()["event"] == "voice:ready"
+
+        # Nhận voice:upstream (function call) rồi voice:proposal (kết quả pipeline)
+        upstream = ws.receive_json()
+        assert upstream["event"] == "voice:upstream"
+        proposal = ws.receive_json()
+        assert proposal["event"] == "voice:proposal"
+        assert proposal["data"]["reply_text"]
+        assert proposal["data"]["intent"]
+
+        ws.send_text(json.dumps({"event": "stop"}))
+
+    # Server phải trả kết quả về Gemini để đọc thành tiếng
+    assert len(sent_responses) == 1
+    assert sent_responses[0]["call_id"] == "call_abc"
+    assert sent_responses[0]["reply_text"]
 
 
 def test_copilot_execution_receipt_lifecycle_and_isolation() -> None:
@@ -792,6 +886,36 @@ def test_copilot_action_and_audit_reads_require_tenant_scoped_auth(_du_nhan_vien
 
     cross_store_action = copilot_draft_get(action_id)
     assert cross_store_action["store_id"] == "quan_01"
+
+
+def test_copilot_query_audit_manager_can_read() -> None:
+    """QUERY_AUDIT: quản lý/chủ quán tra cứu vết hệ thống qua chat."""
+    token = _login_manager()
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "kiểm tra nhật ký đổi ca và xuất nhập kho", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    body = res.json()
+    assert res.status_code == 200
+    assert body["intent"] == "QUERY_AUDIT"
+    assert body["action_proposal"] is None
+    assert body["direct_answer"] is not None
+    assert "vết" in body["direct_answer"] or "nhật ký" in body["direct_answer"]
+
+
+def test_copilot_query_audit_staff_denied() -> None:
+    """QUERY_AUDIT: nhân viên bị chặn (fail-closed, role matrix)."""
+    token = _login_staff()
+    res = client.post(
+        "/api/v1/copilot/message",
+        json={"message": "kiểm tra nhật ký đổi ca", "channel": "web"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    body = res.json()
+    assert res.status_code == 200
+    assert body["intent"] == "OUT_OF_SCOPE"
+    assert "vượt phạm vi vai trò" in body["reply_text"]
 
 
 def test_copilot_vf_stale_detection(_du_nhan_vien_xep_lich: None) -> None:  # noqa: ANN001

@@ -46,15 +46,21 @@ export default function ToiPage() {
   useEffect(() => {
     setToken(getToken());
     if (!getToken()) setLoading(false);
+    const requestedWeek = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("tuan") ?? ""
+      : "";
+    if (/^\d{4}-W\d{2}$/.test(requestedWeek)) setWeek(requestedWeek);
   }, []);
 
-  const load = useCallback(() => {
+  const load = useCallback((targetWeek?: string) => {
     if (!getToken()) return;
-    apiGet<{ ca?: Ca[]; tuan_iso?: string } | Ca[]>("/api/v1/toi/lich")
+    const w = targetWeek !== undefined ? targetWeek : week;
+    const url = w ? `/api/v1/toi/lich?tuan=${encodeURIComponent(w)}` : "/api/v1/toi/lich";
+    apiGet<{ ca?: Ca[]; tuan_iso?: string; trang_thai?: string } | Ca[]>(url)
       .then((d) => {
         const list = Array.isArray(d) ? d : d.ca ?? [];
         setCa(list);
-        if (!Array.isArray(d)) setWeek(d.tuan_iso ?? "");
+        if (!Array.isArray(d) && d.tuan_iso) setWeek(d.tuan_iso);
       })
       .catch(() => setError("Không tải được lịch của bạn."))
       .finally(() => setLoading(false));
@@ -66,7 +72,7 @@ export default function ToiPage() {
         setEmailInput(em);
       })
       .catch(() => {});
-  }, []);
+  }, [week]);
 
   async function saveEmail(e: React.FormEvent) {
     e.preventDefault();

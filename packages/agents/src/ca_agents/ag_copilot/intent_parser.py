@@ -52,6 +52,8 @@ PROPOSE_HANDOVER = "PROPOSE_HANDOVER"
 RUN_CATCHMENT_SURVEY = "RUN_CATCHMENT_SURVEY"
 GET_SERPAPI_QUOTA = "GET_SERPAPI_QUOTA"
 GET_SURVEY_RESULT = "GET_SURVEY_RESULT"
+# Audit / vết hệ thống — chỉ quản lý & chủ quán (R0_READ, tenant-scoped)
+QUERY_AUDIT = "QUERY_AUDIT"
 OUT_OF_SCOPE = "OUT_OF_SCOPE"
 # Patterns detecting attempts to bypass two-phase approval
 _BYPASS_PATTERNS = [
@@ -126,6 +128,21 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
     (
         PROPOSE_HANDOVER,
         ["bàn giao ca", "ban giao ca", "ghi bàn giao", "ghi ban giao", "soạn bàn giao", "soan ban giao", "gửi bàn giao", "gui ban giao"],
+        0.9,
+    ),
+    # QUERY_AUDIT — tra cứu vết hệ thống / nhật ký thay đổi (chỉ quản lý & chủ quán).
+    # Đặt TRƯỚC các intent đọc khác để "nhật ký đổi ca" không rơi vào GET_SHIFT_SWAPS.
+    (
+        QUERY_AUDIT,
+        [
+            "nhật ký", "nhat ky", "nhật kí", "nhat ki",
+            "vết hệ thống", "vet he thong", "vết audit", "vet audit",
+            "lịch sử thay đổi", "lich su thay doi", "lịch sử đổi ca", "lich su doi ca",
+            "lịch sử xuất nhập kho", "lich su xuat nhap kho", "xuất nhập kho", "xuat nhap kho",
+            "ai sửa", "ai sua", "ai thay đổi", "ai thay doi",
+            "tra cứu vết", "tra cuu vet", "xem vết", "xem vet", "xem nhật ký", "xem nhat ky",
+            "kiểm tra nhật ký", "kiem tra nhat ky", "kiểm tra vết", "kiem tra vet",
+        ],
         0.9,
     ),
     (

@@ -14,7 +14,10 @@ import {
   Loading,
   Notice,
   PageHeader,
+  ProgressBar,
+  TechnicalDrawer,
   Textarea,
+  Toasts,
   useToasts,
 } from "../../ui/kit";
 
@@ -29,11 +32,20 @@ type Status = {
 type Thread = {
   id: string;
   psid?: string;
+  from?: string;
+  customer_name?: string;
+  status?: string;
+  unread?: boolean;
+  last_message?: string;
   sender_name: string;
   sender_avatar?: string;
-  last_message_at: string;
-  is_within_24h: boolean;
-  needs_action: boolean;
+  last_message_at?: string;
+  last_message_ts?: number;
+  is_within_24h?: boolean;
+  needs_action?: boolean;
+  pending_approval?: boolean;
+  tom_tat?: string;
+  intent?: string;
   suggested_reply?: string;
   customer_profile?: {
     ten_khach?: string;
@@ -83,12 +95,21 @@ type ApifyUsage = {
   has_token: boolean;
   username?: string;
   plan: string;
-  monthly_limit_usd: number;
-  usage_usd: number;
-  remaining_usd: number;
-  usage_percent: number;
+  plan_id?: string | null;
+  monthly_limit_usd: number | null;
+  usage_usd: number | null;
+  remaining_usd: number | null;
+  usage_percent: number | null;
   status_label: string;
+  usage_measured: boolean;
+  usage_source?: string;
+  usage_cycle_end_at?: string | null;
+  cu_limit?: number | null;
+  cu_used?: number | null;
   active_actors: string[];
+  note?: string;
+  cached?: boolean;
+  quota_exhausted?: boolean;
 };
 
 type TrendItem = {
@@ -145,6 +166,7 @@ export default function PageQuanPage() {
 
   // Apify Usage & Scraping Mode State
   const [apifyUsage, setApifyUsage] = useState<ApifyUsage | null>(null);
+  const [usageRefreshing, setUsageRefreshing] = useState(false);
   const [scrapeMode, setScrapeMode] = useState<"auto" | "direct_only" | "apify_force" | "browser">("auto");
 
   // Keyword / Topic Filter State (Chức năng 1)
@@ -164,6 +186,11 @@ export default function PageQuanPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { toasts, push, dismiss } = useToasts();
+
+  // Hội thoại Messenger: hội thoại đang chọn & bộ lọc
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [threadFilter, setThreadFilter] = useState<"all" | "needs_action" | "within_24h">("all");
+  const [sendingReplyId, setSendingReplyId] = useState<string | null>(null);
 
   // Load Saved Trends from localStorage
   useEffect(() => {
@@ -359,19 +386,23 @@ export default function PageQuanPage() {
   async function reply(id: string) {
     const text = (replyDraft[id] ?? "").trim();
     if (!text) return;
+    setSendingReplyId(id);
     try {
       await apiSend(`/api/v1/page/threads/${id}/reply`, { text });
-      push("Đã gửi trả lời.");
+      push("Đã gửi trả lời cho khách.");
       setReplyDraft((m) => ({ ...m, [id]: "" }));
       load();
     } catch (e) {
       setError(viError(e, { doing: "gửi được trả lời" }));
+    } finally {
+      setSendingReplyId(null);
     }
   }
 
   async function approveSuggestion(th: Thread) {
     const text = (replyDraft[th.id] || th.suggested_reply || "").trim();
     if (!text) return;
+    setSendingReplyId(th.id);
     try {
       await apiSend(`/api/v1/page/threads/${th.id}/approve`, {
         final_reply: text,
@@ -382,6 +413,8 @@ export default function PageQuanPage() {
       load();
     } catch (e) {
       setError(viError(e, { doing: "duyệt trả lời" }));
+    } finally {
+      setSendingReplyId(null);
     }
   }
 
@@ -512,6 +545,48 @@ export default function PageQuanPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  // ── Hội thoại Messenger: tiện ích hiển thị ────────────────────────────────
+  const threadTime = (th: Thread): string => {
+    const raw =
+      th.last_message_at ||
+      (th.replies && th.replies.length > 0 ? th.replies[th.replies.length - 1].at : "") ||
+      "";
+    if (!raw) return "";
+    const t = new Date(raw.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(raw) ? raw : `${raw}Z`);
+    if (Number.isNaN(t.getTime())) return "";
+    const now = new Date();
+    const sameDay = t.toDateString() === now.toDateString();
+    if (sameDay) {
+      return t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+    return t.toLocaleDateString([], { day: "2-digit", month: "2-digit" });
+  };
+
+  const avatarFor = (th: Thread): { fallback: string; src?: string } => {
+    const name = th.sender_name || "Khách";
+    const fallback = name.trim().charAt(0).toUpperCase();
+    return { fallback, src: th.sender_avatar || undefined };
+  };
+
+  const isCustomerMsg = (th: Thread, m: NonNullable<Thread["replies"]>[number]): boolean => {
+    const by = String(m.by || "");
+    if (by === th.psid || by === th.id || by.startsWith("fb_")) return true;
+    const profTen = th.customer_profile?.ten_khach;
+    if (profTen && by === profTen) return true;
+    // Tin do nhân viên/QL/chatbot gửi đi — không phải khách
+    if (by.includes("Quản lý") || by.includes("Chatbot") || by.includes("Copilot") || by.includes("Agent")) return false;
+    // Có thời điểm tin nhắn `at` nhưng sender lạ — ưu tiên xem là khách khi chưa khớp ai
+    return !by || by === th.sender_name || by === th.from;
+  };
+
+  const filteredThreads = threads.filter((th) => {
+    if (threadFilter === "needs_action") return Boolean(th.needs_action || th.pending_approval);
+    if (threadFilter === "within_24h") return th.is_within_24h !== false;
+    return true;
+  });
+
+  const activeThread = filteredThreads.find((t) => t.id === activeThreadId) || null;
+
   const displayedTrends = showSavedOnly ? savedTrends : trends;
 
   const currentSourceLabel =
@@ -534,6 +609,8 @@ export default function PageQuanPage() {
         title="Page Quán & Radar Trí Tuệ Xu Hướng Viral"
         meta="Cào độc quyền từng nền tảng, quét chủ đề ngách F&B, lưu trữ kịch bản marketing và bắt nhịp video/bình luận triệu view."
       />
+
+      <Toasts toasts={toasts} onDismiss={dismiss} />
 
       {error ? <Alert>{error}</Alert> : null}
       {loading ? <Loading skeleton="list">Đang đọc dữ liệu xu hướng…</Loading> : null}
@@ -558,8 +635,23 @@ export default function PageQuanPage() {
         >
           Kho Xu Hướng Đã Lưu ({savedTrends.length})
         </Btn>
-        <Btn variant={tab === "threads" ? "primary" : "ghost"} onClick={() => setTab("threads")}>
+        <Btn
+          variant={tab === "threads" ? "primary" : "ghost"}
+          onClick={() => setTab("threads")}
+          className={
+            tab === "threads"
+              ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-bold shadow-md"
+              : threads.filter((t) => t.needs_action || t.pending_approval).length > 0
+              ? "text-amber-300 hover:bg-amber-500/10 border border-amber-500/30"
+              : undefined
+          }
+        >
           Hội thoại Messenger ({threads.length})
+          {threads.filter((t) => t.needs_action || t.pending_approval).length > 0 ? (
+            <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-black text-black">
+              {threads.filter((t) => t.needs_action || t.pending_approval).length}
+            </span>
+          ) : null}
         </Btn>
         <Btn variant={tab === "drafts" ? "primary" : "ghost"} onClick={() => setTab("drafts")}>
           Nháp bài Fanpage ({drafts.length})
@@ -588,138 +680,198 @@ export default function PageQuanPage() {
       {/* TAB 1: RADAR TRÍ TUỆ XU HƯỚNG & GIẢI MÃ TỪ KHÓA VIRAL */}
       {tab === "trends" && (
         <div className="space-y-6">
-          {/* KHỐI 0: GIÁM SÁT HẠN MỨC APIFY & BỘ CHUYỂN ĐỔI CHẾ ĐỘ CÀO DỮ LIỆU */}
-          <div className="rounded-xl border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))] bg-[var(--nq-st-info-soft)] p-4 space-y-4 shadow-[var(--nq-elev-1)]">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))] pb-3">
-              <div className="flex items-center gap-2">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--nq-st-info-ink)]">
-                    Bảng Giám Sát Hạn Mức Apify & Chế Độ Cào
-                  </h3>
-                  <p className="text-2xs text-[var(--nq-ink-muted)]">
-                    Theo dõi số dư điện toán (Compute Units) và chủ động chuyển đổi phương thức cào
-                  </p>
-                </div>
+          {/* KHỐI 0: PHƯƠNG THỨC CÀO DỮ LIỆU + HẠN MỨC APIFY */}
+          <section className="bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] p-4 md:p-5">
+            {/* Chọn phương thức — việc chính, đặt trước; hạn mức là ngữ cảnh đi kèm */}
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest text-[var(--nq-fg)]">
+                  Phương thức cào dữ liệu
+                </h3>
+                <p className="mt-1 text-xs text-[var(--nq-dim)]">
+                  Miễn phí là mặc định. Chỉ tốn hạn mức Apify khi bạn chọn ép hoặc khi nguồn
+                  miễn phí trả rỗng.
+                </p>
               </div>
-
-              {/* Nút Làm Mới Hạn Mức Ngay Lập Tức */}
-              <button
+              <Btn
+                variant="ghost"
                 onClick={async () => {
+                  setUsageRefreshing(true);
                   try {
-                    const res = await apiGet<{ ok: boolean; usage: ApifyUsage }>("/api/v1/trends/apify-usage");
+                    const res = await apiGet<{ ok: boolean; usage: ApifyUsage }>(
+                      "/api/v1/trends/apify-usage?refresh=true"
+                    );
                     if (res.usage) {
                       setApifyUsage(res.usage);
-                      push("Đã cập nhật số dư hạn mức Apify thời gian thực!");
+                      push(
+                        res.usage.usage_measured
+                          ? "Đã cập nhật hạn mức Apify."
+                          : "Apify không trả số liệu — xem console.apify.com để biết số chính xác."
+                      );
                     }
-                  } catch {
-                    push("Không thể kết nối máy chủ Apify.");
+                  } catch (e) {
+                    push(viError(e, { doing: "đọc hạn mức Apify" }));
+                  } finally {
+                    setUsageRefreshing(false);
                   }
                 }}
-                className="flex items-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))] bg-[var(--nq-st-info-soft)] px-2.5 py-1 text-xs font-medium text-[var(--nq-st-info-ink)] hover:bg-[var(--nq-st-info-soft)] transition cursor-pointer"
-                title="Lấy dữ liệu số dư trực tiếp từ server Apify"
+                busy={usageRefreshing}
+                busyLabel="Đang kiểm tra…"
+                className="rounded-full border-2 border-[var(--nq-dim)] bg-transparent px-4 py-2 text-xs font-bold uppercase tracking-widest text-[var(--nq-fg)] transition-all hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] disabled:opacity-50"
+                title="Đọc lại hạn mức & mức sử dụng mới nhất từ Apify"
               >
-                <span>Kiểm tra số dư</span>
-              </button>
+                Kiểm tra số dư
+              </Btn>
             </div>
 
-            {/* Chi tiết Hạn Mức & Thanh Tiến Trình (Visual Quota Progress Bar) */}
-            {apifyUsage ? (
-              <div className="space-y-2 bg-black/30 rounded-lg p-3 border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))]">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[var(--nq-ink-muted)]">Tài khoản:</span>
-                    <strong className="text-[var(--nq-ink)] font-mono">{apifyUsage.username || "Apify Free"}</strong>
-                    <span className="rounded bg-[var(--nq-st-info-soft)] px-2 py-0.5 text-2xs font-bold text-[var(--nq-st-info-ink)] border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))]">
-                      {apifyUsage.plan}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-[var(--nq-ink-muted)]">Đã tiêu thụ:</span>
-                    <strong className="text-[var(--nq-st-info-ink)] font-mono text-sm">${apifyUsage.usage_usd.toFixed(2)}</strong>
-                    <span className="text-[var(--nq-ink-muted)]">/</span>
-                    <span className="text-[var(--nq-ink)] font-mono text-sm">${apifyUsage.monthly_limit_usd.toFixed(2)}</span>
-                    <span className={`rounded px-2 py-0.5 text-2xs font-bold ${
-                      apifyUsage.usage_percent < 80
-                        ? "bg-[var(--nq-st-ok-soft)] text-[var(--nq-st-ok-ink)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))]"
-                        : apifyUsage.usage_percent < 100
-                        ? "bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]"
-                        : "bg-[var(--nq-st-danger-soft)] text-[var(--nq-st-danger-ink)] border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))]"
-                    }`}>
-                      ● {apifyUsage.status_label} (Còn ${apifyUsage.remaining_usd.toFixed(2)})
-                    </span>
-                  </div>
-                </div>
-
-                {/* Thanh đo % hạn mức */}
-                <div className="w-full bg-[var(--nq-surface)] rounded-full h-2 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      apifyUsage.usage_percent < 70
-                        ? "bg-[var(--nq-st-ok)]"
-                        : apifyUsage.usage_percent < 90
-                        ? "bg-[var(--nq-st-warn)]"
-                        : "bg-[var(--nq-st-danger)]"
-                    }`}
-                    style={{ width: `${Math.min(100, Math.max(3, apifyUsage.usage_percent))}%` }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="text-xs text-[var(--nq-ink-muted)] font-mono">
-                ● Đang kết nối trạng thái hạn mức điện toán...
-              </div>
-            )}
-
-            {/* Bộ 3 Nút Chuyển Đổi Phương Thức Cào (Mode Selector) */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1">
-              <span className="font-medium text-[var(--nq-ink)]">
-                Phương thức cào dữ liệu áp dụng:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {[
+            {/* Bốn phương thức — chip chọn một, mô tả nằm ngay dưới nhãn */}
+            <ul className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {(
+                [
                   {
                     id: "auto",
-                    title: "Tự động (Khuyên dùng)",
-                    desc: "Google & TikWM chính (0đ) · Camoufox browser · Apify dự phòng khi lỗi",
+                    title: "Tự động",
+                    tag: "Khuyên dùng",
+                    desc: "TikWM & Google trước (0đ), chỉ gọi Apify khi nguồn miễn phí trả rỗng",
                   },
                   {
                     id: "direct_only",
-                    title: "100% Miễn phí (0đ Quota)",
-                    desc: "Chỉ dùng Google Bridge & TikWM, khóa hoàn toàn Apify",
+                    title: "Chỉ nguồn miễn phí",
+                    tag: "0đ",
+                    desc: "Không gọi Apify trong mọi trường hợp — an toàn nhất về chi phí",
                   },
                   {
                     id: "browser",
-                    title: "Camoufox (Browser thật)",
-                    desc: "Cào bằng Firefox chống-detect, miễn phí, khó bị chặn — chậm hơn (~3-10s/lượt)",
+                    title: "Trình duyệt thật",
+                    tag: "Camoufox",
+                    desc: "Firefox chống phát hiện, miễn phí, chậm hơn (~3–10 giây mỗi lượt)",
                   },
                   {
                     id: "apify_force",
-                    title: "Ép dùng Apify Actor",
-                    desc: "Bắt buộc cào sâu qua Apify scraper",
+                    title: "Ép dùng Apify",
+                    tag: "Tốn hạn mức",
+                    desc: "Cào sâu qua Apify trước — chỉ dùng khi cần dữ liệu đầy đủ nhất",
                   },
-                ].map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      const newMode = m.id as "auto" | "direct_only" | "apify_force" | "browser";
-                      setScrapeMode(newMode);
-                      push(`Đã kích hoạt: ${m.title}`);
-                      fetchTrendsData(regionFilter, categoryFilter, activeKeyword, newMode, true);
-                    }}
-                    title={m.desc}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
-                      scrapeMode === m.id
-                        ? "bg-[var(--nq-st-info)] text-[var(--nq-accent-ink)] border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))] shadow-md ring-2 ring-[var(--nq-st-info)]"
-                        : "bg-[var(--nq-surface)] text-[var(--nq-muted)] border-[var(--nq-dim)] hover:bg-[var(--nq-dim)] hover:text-white"
-                    }`}
-                  >
-                    <span>{m.title}</span>
-                  </button>
-                ))}
-              </div>
+                ] as const
+              ).map((m) => {
+                const active = scrapeMode === m.id;
+                return (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScrapeMode(m.id);
+                        push(`Đã chuyển sang: ${m.title}`);
+                        fetchTrendsData(regionFilter, categoryFilter, activeKeyword, m.id, true);
+                      }}
+                      aria-pressed={active}
+                      className={`h-full w-full rounded-[var(--nq-radius-bubble)] border-2 p-3 text-left transition-all ${
+                        active
+                          ? "border-[var(--nq-copper)] bg-[var(--nq-accent-soft)]"
+                          : "border-[var(--nq-dim)] bg-[var(--nq-surface)] hover:border-[var(--nq-copper)]"
+                      }`}
+                    >
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-black uppercase tracking-widest text-[var(--nq-fg)]">
+                          {m.title}
+                        </span>
+                        <span className="text-[10px] font-mono text-[var(--nq-dim)]">{m.tag}</span>
+                      </span>
+                      <span className="mt-1 block text-[11px] leading-relaxed text-[var(--nq-dim)]">
+                        {m.desc}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Hạn mức Apify — luôn hiện, đây là thứ người quán cần thấy */}
+            <div className="mt-4 border-t-2 border-dashed border-[var(--nq-dim)] pt-3">
+              {apifyUsage === null ? (
+                <p className="text-xs font-mono text-[var(--nq-dim)]">Đang đọc hạn mức Apify…</p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs">
+                    <span className="font-bold uppercase tracking-widest text-[var(--nq-dim)]">
+                      Hạn mức Apify
+                    </span>
+                    <span className="text-[var(--nq-dim)]">
+                      <strong className="font-mono text-[var(--nq-fg)]">
+                        {apifyUsage.username || "—"}
+                      </strong>{" "}
+                      · {apifyUsage.plan}
+                    </span>
+                  </div>
+
+                  {apifyUsage.usage_measured ? (
+                    <>
+                      <div className="flex flex-wrap items-baseline gap-2 font-mono text-sm">
+                        <span className="text-[var(--nq-fg)]">
+                          ${(apifyUsage.usage_usd ?? 0).toFixed(2)}
+                        </span>
+                        {apifyUsage.monthly_limit_usd !== null && (
+                          <span className="text-[var(--nq-dim)]">
+                            / ${apifyUsage.monthly_limit_usd.toFixed(2)} ({apifyUsage.usage_percent}
+                            %)
+                          </span>
+                        )}
+                        {apifyUsage.remaining_usd !== null && (
+                          <span className="text-[var(--nq-dim)]">
+                            · còn ${apifyUsage.remaining_usd.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+
+                      {apifyUsage.usage_percent !== null && (
+                        <ProgressBar value={apifyUsage.usage_percent} max={100} />
+                      )}
+
+                      {apifyUsage.quota_exhausted && (
+                        <Alert kind="err">
+                          Đã chạm trần hạn mức tháng. Apify sẽ từ chối lượt cào mới cho tới khi sang
+                          chu kỳ kế tiếp — nên chuyển sang &ldquo;Chỉ nguồn miễn phí&rdquo;.
+                        </Alert>
+                      )}
+
+                      {apifyUsage.usage_cycle_end_at && (
+                        <p className="text-[11px] font-mono text-[var(--nq-dim)]">
+                          Chu kỳ làm mới:{" "}
+                          {new Date(apifyUsage.usage_cycle_end_at).toLocaleDateString("vi-VN")}
+                        </p>
+                      )}
+
+                      {apifyUsage.note && (
+                        <TechnicalDrawer
+                          summary="Chi tiết kỹ thuật hạn mức"
+                          lines={[apifyUsage.note]}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <Alert kind="info">
+                      <span className="block">
+                        {apifyUsage.note ||
+                          "Apify không trả số liệu sử dụng cho tài khoản này."}
+                      </span>
+                      <span className="mt-1 block text-xs">
+                        Số chính xác luôn xem được tại{" "}
+                        <a
+                          href="https://console.apify.com/billing/historical-usage"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline decoration-dotted hover:text-[var(--nq-copper)]"
+                        >
+                          Apify Console → Billing
+                        </a>
+                        .
+                      </span>
+                    </Alert>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
+          </section>
 
           {/* KHỐI 1: TÙY CHỈNH TỰ ĐỘNG QUÉT & BẢO VỆ CHỐNG QUÁ TẢI (Chức năng 4) */}
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg nq-surface-block p-4">
@@ -1490,88 +1642,380 @@ export default function PageQuanPage() {
       {/* TAB 2: HỘI THOẠI MESSENGER */}
       {tab === "threads" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-[var(--nq-muted)]">
-              {connected ? "Đã nối Page Messenger" : "Chưa nối Fanpage"}
-            </span>
-            <Btn variant="ghost" onClick={load}>
-              Làm mới
-            </Btn>
+          {/* Thanh trạng thái kết nối + bộ lọc */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span
+                className={`inline-block h-2.5 w-2.5 rounded-full ${
+                  connected ? "bg-emerald-500" : "bg-[var(--nq-danger)]"
+                }`}
+                aria-hidden="true"
+              />
+              <span className="text-sm font-bold text-[var(--nq-primary)]">
+                {connected ? `Đã nối ${status?.page_name || "Messenger"}` : "Chưa nối Fanpage"}
+              </span>
+              {connected ? (
+                <span className="hidden sm:inline-block rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-mono text-emerald-400">
+                  {threads.filter((t) => t.needs_action || t.pending_approval).length} cần xử lý
+                </span>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex rounded-lg border border-[var(--nq-dim)] overflow-hidden text-xs">
+                {(
+                  [
+                    { id: "all", label: "Tất cả" },
+                    { id: "needs_action", label: "Cần xử lý" },
+                    { id: "within_24h", label: "Trong 24h" },
+                  ] as const
+                ).map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setThreadFilter(f.id)}
+                    className={`px-3 py-1.5 font-bold transition cursor-pointer ${
+                      threadFilter === f.id
+                        ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)]"
+                        : "text-[var(--nq-muted)] hover:bg-[var(--nq-dim)] hover:text-white"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              <Btn variant="ghost" onClick={load}>
+                Làm mới
+              </Btn>
+            </div>
           </div>
 
-          {threads.length === 0 ? (
-            <Empty>Không có hội thoại nào cần xử lý.</Empty>
+          {filteredThreads.length === 0 ? (
+            <Empty title="Chưa có hội thoại">
+              {connected
+                ? "Không có hội thoại nào khớp bộ lọc. Bấm Làm mới để đồng bộ tin mới từ Messenger."
+                : "Chưa nối Fanpage nên chưa có tin nhắn. Xem hướng dẫn kết nối trong docs/runbooks/facebook-page-connect.md."}
+            </Empty>
           ) : (
-            <div className="space-y-4">
-              {threads.map((th) => (
-                <div
-                  key={th.id}
-                  className={`nq-surface-block p-4 ${
-                    th.needs_action ? "border-[var(--nq-copper)] bg-[var(--nq-surface-hi)]" : "bg-[var(--nq-surface)]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-[var(--nq-primary)]">{th.sender_name}</span>
-                      {th.customer_profile?.is_vip_or_regular && (
-                        <span className="rounded-full bg-[var(--nq-st-warn-soft)] px-2 py-0.5 text-2xs font-bold text-[var(--nq-st-warn-ink)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]">
-                          Khách quen ({th.customer_profile.visit_count} lần)
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* CỘT TRÁI: DANH SÁCH HỘI THOẠI */}
+              <div
+                className={`${
+                  activeThread ? "hidden lg:flex" : "flex"
+                } lg:col-span-4 flex-col rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] overflow-hidden max-h-[70vh]`}
+              >
+                <div className="flex items-center justify-between border-b border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 py-3">
+                  <span className="text-xs font-bold uppercase tracking-widest text-[var(--nq-copper)]">
+                    Hội thoại ({filteredThreads.length})
+                  </span>
+                  <span className="text-[11px] font-mono text-[var(--nq-muted)]">
+                    {threads.filter((t) => t.is_within_24h).length} trong 24h
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto divide-y divide-[var(--nq-dim)]/40">
+                  {filteredThreads.map((th) => {
+                    const isActive = activeThread?.id === th.id;
+                    const { fallback, src } = avatarFor(th);
+                    const lastMsg = (th.replies && th.replies[th.replies.length - 1]) || null;
+                    const isCustLastMsg = lastMsg ? isCustomerMsg(th, lastMsg) : true;
+                    return (
+                      <button
+                        key={th.id}
+                        type="button"
+                        onClick={() => setActiveThreadId(th.id)}
+                        className={`w-full flex items-start gap-3 px-4 py-3 text-left transition cursor-pointer ${
+                          isActive
+                            ? "bg-[var(--nq-accent-soft)] border-l-4 border-[var(--nq-copper)]"
+                            : "hover:bg-[var(--nq-bg)] border-l-4 border-transparent"
+                        }`}
+                      >
+                        {/* Avatar */}
+                        <span className="relative shrink-0">
+                          {src ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={src}
+                              alt=""
+                              className="w-11 h-11 rounded-full object-cover border border-[var(--nq-dim)]"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <span className="w-11 h-11 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-black flex items-center justify-center text-base border border-[var(--nq-copper-dim)]">
+                              {fallback}
+                            </span>
+                          )}
+                          {(th.needs_action || th.pending_approval) && (
+                            <span
+                              className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--nq-copper)] border-2 border-[var(--nq-surface)]"
+                              title="Cần xử lý"
+                              aria-label="Cần xử lý"
+                            />
+                          )}
                         </span>
-                      )}
-                      {th.customer_profile?.favorite_drinks && th.customer_profile.favorite_drinks.length > 0 && (
-                        <span className="rounded bg-[var(--nq-st-info-soft)] px-1.5 py-0.5 text-2xs text-[var(--nq-st-info-ink)] border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))]">
-                          {th.customer_profile.favorite_drinks.join(", ")}
+
+                        {/* Tên + tin cuối */}
+                        <span className="flex-1 min-w-0">
+                          <span className="flex items-center justify-between gap-1">
+                            <span className="font-bold text-xs text-[var(--nq-fg)] truncate">
+                              {th.sender_name}
+                            </span>
+                            <span className="shrink-0 text-[10px] font-mono text-[var(--nq-muted)]">
+                              {threadTime(th)}
+                            </span>
+                          </span>
+                          <span className="flex items-center gap-1.5 mt-0.5">
+                            {th.customer_profile?.is_vip_or_regular && (
+                              <span className="rounded-full bg-amber-500/20 px-1.5 py-px text-[9px] font-bold text-amber-300 border border-amber-500/40 whitespace-nowrap">
+                                Quen · {th.customer_profile.visit_count}
+                              </span>
+                            )}
+                            <span className="text-[11px] text-[var(--nq-muted)] truncate leading-tight">
+                              {th.tom_tat || (lastMsg ? lastMsg.text : "")}
+                            </span>
+                          </span>
+                          <span className="flex items-center gap-1.5 mt-1">
+                            {th.is_within_24h ? (
+                              <span className="text-[10px] font-mono text-emerald-500/90">● trong 24h</span>
+                            ) : (
+                              <span className="text-[10px] font-mono text-[var(--nq-muted)]">hết 24h — cần tag</span>
+                            )}
+                            {th.intent ? (
+                              <span className="rounded bg-[var(--nq-dim)]/50 px-1.5 py-px text-[9px] text-[var(--nq-primary)]">
+                                {th.intent.replace(/_/g, " ")}
+                              </span>
+                            ) : null}
+                          </span>
                         </span>
-                      )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* CỘT PHẢI: KHUNG HỘI THOẠI CHI TIẾT */}
+              {activeThread ? (
+                <div className={`${activeThread ? "flex" : "hidden"} lg:col-span-8 lg:flex flex-col rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-bg)] overflow-hidden max-h-[70vh]`}>
+                  {/* Header hội thoại */}
+                  <div className="flex items-center gap-3 border-b border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => setActiveThreadId(null)}
+                      className="lg:hidden shrink-0 rounded border border-[var(--nq-dim)] px-2 py-1 text-xs font-bold text-[var(--nq-muted)] hover:bg-[var(--nq-dim)] hover:text-white transition cursor-pointer"
+                      aria-label="Quay lại danh sách"
+                    >
+                      ← Quay lại
+                    </button>
+                    {(() => {
+                      const { fallback, src } = avatarFor(activeThread);
+                      return src ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={src}
+                          alt=""
+                          className="w-10 h-10 rounded-full object-cover border border-[var(--nq-dim)]"
+                        />
+                      ) : (
+                        <span className="w-10 h-10 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-black flex items-center justify-center text-sm">
+                          {fallback}
+                        </span>
+                      );
+                    })()}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-sm text-[var(--nq-fg)] truncate">{activeThread.sender_name}</h3>
+                      <p className="text-[11px] text-[var(--nq-muted)] truncate">
+                        {activeThread.customer_profile?.ten_khach
+                          ? `Hồ sơ: ${activeThread.customer_profile.ten_khach}`
+                          : activeThread.psid
+                          ? `PSID ····${activeThread.psid.slice(-4)}`
+                          : activeThread.id}
+                      </p>
                     </div>
-                    <span className="text-xs text-[var(--nq-muted)]">
-                      {th.is_within_24h ? "Trong 24h" : "Hết 24h (cần tag)"}
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold border ${
+                        activeThread.is_within_24h
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                          : "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                      }`}
+                    >
+                      {activeThread.is_within_24h ? "Trong 24h" : "Hết 24h · tag"}
                     </span>
+                    {(activeThread.needs_action || activeThread.pending_approval) && (
+                      <span className="shrink-0 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] px-2.5 py-1 text-[10px] font-bold">
+                        Cần xử lý
+                      </span>
+                    )}
                   </div>
 
-                  <div className="my-3 max-h-48 space-y-2 overflow-y-auto border border-[var(--nq-dim)] p-2">
-                    {(th.replies ?? []).map((m) => {
-                      const fromCustomer = m.by === th.psid;
+                  {/* Hồ sơ khách gọn (khách quen / món quen / lưu ý) */}
+                  {activeThread.customer_profile &&
+                    (activeThread.customer_profile.is_vip_or_regular ||
+                      (activeThread.customer_profile.favorite_drinks || []).length > 0 ||
+                      (activeThread.customer_profile.special_notes || []).length > 0) && (
+                      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--nq-dim)] bg-[var(--nq-surface)] px-4 py-2">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--nq-copper)]">
+                          Hồ sơ khách
+                        </span>
+                        {activeThread.customer_profile.is_vip_or_regular && (
+                          <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/40">
+                            Khách quen · {activeThread.customer_profile.visit_count} lần
+                          </span>
+                        )}
+                        {(activeThread.customer_profile.favorite_drinks || []).map((d) => (
+                          <span
+                            key={d}
+                            className="rounded border border-cyan-800/40 bg-cyan-950/60 px-1.5 py-0.5 text-[10px] text-cyan-300"
+                          >
+                            ☕ {d}
+                          </span>
+                        ))}
+                        {(activeThread.customer_profile.special_notes || []).map((n) => (
+                          <span
+                            key={n}
+                            className="rounded border border-purple-800/40 bg-purple-950/60 px-1.5 py-0.5 text-[10px] text-purple-300"
+                          >
+                            {n}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                  {/* Chuỗi tin nhắn */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {(activeThread.replies ?? []).map((m) => {
+                      const fromCustomer = isCustomerMsg(activeThread, m);
                       return (
                         <div
-                          key={m.id}
-                          className={`text-xs ${
-                            fromCustomer ? "text-[var(--nq-primary)]" : "text-right text-[var(--nq-copper)]"
-                          }`}
+                          key={m.id || `${m.at}-${m.text}-${m.by}`}
+                          className={`flex items-end gap-2 ${fromCustomer ? "" : "flex-row-reverse"}`}
                         >
-                          <span className="font-bold">{fromCustomer ? "Khách: " : "Quán: "}</span>
-                          {m.text}
+                          {fromCustomer ? (
+                            (() => {
+                              const { fallback, src } = avatarFor(activeThread);
+                              return src ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={src}
+                                  alt=""
+                                  className="w-7 h-7 rounded-full object-cover border border-[var(--nq-dim)] shrink-0"
+                                />
+                              ) : (
+                                <span className="w-7 h-7 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-bold text-[10px] flex items-center justify-center shrink-0">
+                                  {fallback}
+                                </span>
+                              );
+                            })()
+                          ) : null}
+                          <div
+                            className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed shadow-sm ${
+                              fromCustomer
+                                ? "bg-[var(--nq-surface)] border border-[var(--nq-dim)] text-[var(--nq-fg)] rounded-bl-sm"
+                                : "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] rounded-br-sm font-medium"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-3 mb-0.5">
+                              <span
+                                className={`text-[9px] font-bold uppercase tracking-wider ${
+                                  fromCustomer ? "text-[var(--nq-copper)]" : "text-[var(--nq-accent-ink)]/70"
+                                }`}
+                              >
+                                {fromCustomer ? activeThread.sender_name : m.by || "Quán"}
+                              </span>
+                              {m.at ? (
+                                <span
+                                  className={`text-[9px] font-mono ${
+                                    fromCustomer ? "text-[var(--nq-dim)]" : "text-[var(--nq-accent-ink)]/60"
+                                  }`}
+                                >
+                                  {(() => {
+                                    const raw = String(m.at || "");
+                                    const t = new Date(raw.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(raw) ? raw : `${raw}Z`);
+                                    return Number.isNaN(t.getTime())
+                                      ? ""
+                                      : t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                                  })()}
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="whitespace-pre-wrap break-words">{m.text}</p>
+                            {m.mock ? (
+                              <span className="block mt-1 text-[9px] font-mono opacity-60 italic">(mock — replay)</span>
+                            ) : null}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
 
-                  {th.suggested_reply ? (
-                    <div className="mb-2 rounded bg-[var(--nq-surface)] p-2 text-xs">
-                      <span className="font-bold text-[var(--nq-copper)]">Gợi ý trả lời: </span>
-                      {th.suggested_reply}
+                  {/* Gợi ý trả lời của AI */}
+                  {activeThread.suggested_reply ? (
+                    <div className="border-t border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 py-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 shrink-0 rounded bg-indigo-500/20 border border-indigo-500/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-indigo-300">
+                          AI
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] text-[var(--nq-primary)] leading-relaxed">
+                            {activeThread.suggested_reply}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Btn
+                              variant="primary"
+                              busy={sendingReplyId === activeThread.id}
+                              onClick={() => approveSuggestion(activeThread)}
+                            >
+                              Duyệt & gửi
+                            </Btn>
+                            <Btn
+                              variant="ghost"
+                              onClick={() => setReplyDraft((d) => ({ ...d, [activeThread.id]: activeThread.suggested_reply || "" }))}
+                            >
+                              Chỉnh trước khi gửi
+                            </Btn>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ) : null}
 
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      className="nq-input flex-1 text-xs"
-                      placeholder="Nhập nội dung trả lời..."
-                      value={replyDraft[th.id] ?? th.suggested_reply ?? ""}
-                      onChange={(e) => setReplyDraft({ ...replyDraft, [th.id]: e.target.value })}
+                  {/* Hộp soạn trả lời */}
+                  <div className="flex items-end gap-2 border-t border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 py-3">
+                    <textarea
+                      rows={2}
+                      className="nq-input flex-1 resize-none text-xs"
+                      placeholder="Nhập nội dung trả lời cho khách…"
+                      value={replyDraft[activeThread.id] ?? ""}
+                      onChange={(e) => setReplyDraft({ ...replyDraft, [activeThread.id]: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          reply(activeThread.id);
+                        }
+                      }}
                     />
-                    <Btn variant="primary" onClick={() => reply(th.id)}>
+                    <Btn
+                      variant="primary"
+                      disabled={!String(replyDraft[activeThread.id] ?? "").trim()}
+                      busy={sendingReplyId === activeThread.id}
+                      onClick={() => reply(activeThread.id)}
+                    >
                       Gửi
                     </Btn>
-                    {th.suggested_reply ? (
-                      <Btn variant="ghost" onClick={() => approveSuggestion(th)}>
-                        Duyệt gợi ý
-                      </Btn>
+                    {!activeThread.is_within_24h ? (
+                      <span
+                        className="hidden md:inline-block max-w-[140px] text-[10px] leading-tight text-[var(--nq-muted)]"
+                        title="Gửi ngoài 24h sẽ tự gắn tag CONFIRMED_EVENT_UPDATE trên Messenger"
+                      >
+                        Hết 24h — hệ thống tự gắn tag khi gửi
+                      </span>
                     ) : null}
                   </div>
                 </div>
-              ))}
+              ) : (
+                <div className="hidden lg:block lg:col-span-8">
+                  <Empty title="Chọn hội thoại">
+                    Chọn một hội thoại bên trái để đọc tin nhắn và trả lời khách.
+                  </Empty>
+                </div>
+              )}
             </div>
           )}
         </div>

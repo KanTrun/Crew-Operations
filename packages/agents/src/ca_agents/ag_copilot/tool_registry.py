@@ -26,7 +26,7 @@ except ImportError:
 
     UTC = timezone.utc
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 WHITELISTED_INTENTS = {
     "SCHEDULE_SOLVE": "tool_solve_weekly_schedule",
@@ -273,8 +273,8 @@ def tool_solve_weekly_schedule(
                 continue
             # `hieu_luc`/`rang_buoc` có thể là chuỗi ngày (fixture) chứ không
             # phải dict — guard isinstance giống main.py/_detect_staff_availability.
-            hl = it.get("hieu_luc") if isinstance(it.get("hieu_luc"), dict) else {}
-            rb = it.get("rang_buoc") if isinstance(it.get("rang_buoc"), dict) else {}
+            hl = cast(dict[str, Any], it.get("hieu_luc")) if isinstance(it.get("hieu_luc"), dict) else {}
+            rb = cast(dict[str, Any], it.get("rang_buoc")) if isinstance(it.get("rang_buoc"), dict) else {}
             it_tuan = rb.get("tuan_id") or hl.get("tuan_id")
             if it_tuan and it_tuan != tuan:
                 continue
@@ -1414,6 +1414,51 @@ def tool_get_handovers(
     )
 
 
+def tool_query_audit(
+    store_id: str = "quan_01",
+    limit: int = 20,
+    **kwargs: Any,
+) -> ToolExecutionResult:
+    """QUERY_AUDIT: tra cứu vết hệ thống / nhật ký thay đổi (tenant-scoped).
+
+    Chỉ quản lý & chủ quán được gọi (đã chặn ở tầng role matrix). Đọc từ
+    `audit_list` được inject qua data source — không import trực tiếp ca_api.
+    """
+    audit_list = _src("audit_list")
+    if audit_list is None:
+        return _read_result(
+            "QUERY_AUDIT", "tool_query_audit", {"so_vet": 0, "vet": []},
+            "Em chưa có nguồn vết hệ thống để tra cứu trong môi trường này.",
+            "Không có data source audit_list được inject.",
+        )
+    try:
+        vet = list(audit_list(limit=limit) or [])
+    except Exception as e:  # noqa: BLE001
+        return _read_result(
+            "QUERY_AUDIT", "tool_query_audit", {"so_vet": 0, "vet": [], "loi": str(e)},
+            "Em gặp lỗi khi đọc vết hệ thống.",
+            f"audit_list() ném lỗi: {e}",
+        )
+    # Redact payload nhạy cảm trước khi trả về qua chat (ADR-008: không lộ dữ liệu).
+    safe = []
+    for v in vet:
+        item = dict(v)
+        payload = item.get("payload")
+        if isinstance(payload, dict):
+            # Chỉ giữ các trường an toàn, bỏ token/body nhạy cảm.
+            safe_payload = {
+                k: val for k, val in payload.items()
+                if k not in {"token", "password", "secret", "body", "content", "text"}
+            }
+            item["payload"] = safe_payload
+        safe.append(item)
+    return _read_result(
+        "QUERY_AUDIT", "tool_query_audit", {"so_vet": len(safe), "vet": safe},
+        f"Em tìm thấy {len(safe)} vết hệ thống gần nhất.",
+        "Đọc từ audit_list (vết hệ thống, tenant-scoped, đã redact payload nhạy cảm).",
+    )
+
+
 def _tuan_hien_tai() -> str:
     """ISO week 'YYYY-Wnn' của hôm nay — không hardcode."""
     iso = datetime.now(UTC).isocalendar()
@@ -1476,12 +1521,12 @@ def tool_get_schedule(
     if isinstance(inbox_items, list):
         for it in inbox_items:
             if isinstance(it, dict):
-                rb = it.get("rang_buoc") if isinstance(it.get("rang_buoc"), dict) else {}
-                hl = it.get("hieu_luc") if isinstance(it.get("hieu_luc"), dict) else {}
+                rb = cast(dict[str, Any], it.get("rang_buoc")) if isinstance(it.get("rang_buoc"), dict) else {}
+                hl = cast(dict[str, Any], it.get("hieu_luc")) if isinstance(it.get("hieu_luc"), dict) else {}
                 if (rb.get("tuan_id") or hl.get("tuan_id") or it.get("tuan_id")) == tuan_iso:
-                    nvid = it.get("nv_id") or hl.get("nv_id")
-                    if nvid:
-                        inbox_submitted_nv.add(str(nvid))
+                    nvid_raw = it.get("nv_id") or hl.get("nv_id")
+                    if nvid_raw:
+                        inbox_submitted_nv.add(str(nvid_raw))
 
     tkb_by_week = _kv_get("tkb_nv_by_week", {}) or {}
     tkb_nv = tkb_by_week.get(tuan_iso, {}) if isinstance(tkb_by_week, dict) else {}
@@ -1683,6 +1728,8 @@ _READ_TOOLS: dict[str, Callable[..., ToolExecutionResult]] = {
     "GET_SCHEDULE": tool_get_schedule,
     "GET_MY_SHIFTS": tool_get_my_shifts,
     "GET_CONSTRAINT_CANDIDATES": tool_get_constraint_candidates,
+    # Audit / vết hệ thống — chỉ quản lý & chủ quán (R0_READ, tenant-scoped)
+    "QUERY_AUDIT": tool_query_audit,
 }
 
 _TOOLS.update(_READ_TOOLS)
@@ -2502,7 +2549,10 @@ def tool_propose_catchment_survey(
             store_id=store_id,
             category_keyword=category_keyword,
             radius_km=float(radius_km),
-            channel_mode=channel_mode if channel_mode in ("dine_in_vision", "delivery_platform", "hybrid") else "hybrid",
+            channel_mode=cast(
+                Literal["dine_in_vision", "delivery_platform", "hybrid"],
+                channel_mode if channel_mode in ("dine_in_vision", "delivery_platform", "hybrid") else "hybrid",
+            ),
             include_substitutes=bool(include_substitutes),
             quota_cost=1,
         )

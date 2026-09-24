@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Tests for LLM model and provider cooldown handling during rate limits."""
 
 from __future__ import annotations

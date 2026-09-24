@@ -7,6 +7,7 @@ Mặc định TỰ XỬ LÝ. Chỉ chuyển người khi khớp đúng danh sác
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from ca_contracts import FbPolicyAction, PolicyDecision
 
@@ -97,6 +98,26 @@ class PolicyContext:
     reservation_auto_eligible: bool = False
     booking_system_down: bool = False
     compensation_above_limit: bool = False
+    # ── Tín hiệu Jev (kế hoạch JEV v2 §4.2) ─────────────────────────────────
+    # Jev là cảm biến xác suất, đầu ra là dữ liệu đầu vào không tin cậy cho
+    # bảng quyết định tất định này. Mặc định False/0.0 = không leo thang thêm
+    # (an toàn khi Jev chưa bật). Nguyên tắc đơn điệu: chỉ thêm, không bớt.
+    jev_health_risk: float = 0.0
+    jev_legal_threat: float = 0.0
+    jev_hostility_score: float = 0.0
+    jev_ask_human: float = 0.0
+    jev_sarcasm: float = 0.0
+    jev_ok: bool = False
+    # Jev đã được bật cấu hình NHƯNG đánh giá thất bại (timeout/5xx/429/schema
+    # lỗi). Theo kế hoạch §5: Jev lỗi → thoái lui về phía con người (hàng đợi),
+    # KHÔNG im lặng fallback về "regex không thấy gì = an toàn" rồi tự trả lời.
+    # Mặc định False = Jev tắt hoặc hoạt động bình thường (không kích hoạt).
+    jev_failed: bool = False
+    # Jev lỗi NHƯNG SensorChain đã dùng RegexSensor thay thế thành công.
+    # Khi True: signals trong context đã là regex signals → KHÔNG fail-closed,
+    # tiếp tục xử lý bình thường. Chỉ fail-closed khi jev_failed=True AND
+    # jev_fallback_used=False (cả hai cảm biến đều thất bại — cực hiếm).
+    jev_fallback_used: bool = False
 
 
 def _has_any(text: str, keywords: tuple[str, ...]) -> bool:
@@ -113,7 +134,7 @@ def _queue(
     reason: str,
     intent: str,
     confidence: float,
-    role: str = "quan_ly",
+    role: Literal["quan_ly", "chu_quan"] = "quan_ly",
     sla: int = SLA_MINUTES_QUEUE_REVIEW,
     flagged: tuple[str, ...] = (),
 ) -> PolicyDecision:
@@ -224,6 +245,33 @@ def decide(
             reason="out_of_scope",
             intent=intent,
             confidence=confidence,
+        )
+
+    # ── Tín hiệu Jev (kế hoạch JEV v2 §4.2) ─────────────────────────────────
+    # Chỉ chạy khi Jev OK (jev_ok=True). Nguyên tắc đơn điệu: Jev chỉ *thêm*
+    # leo thang, không bao giờ *gỡ* leo thang do regex đã quyết định ở trên.
+    # Ngưỡng sức khỏe/pháp lý thấp (thà báo nhầm còn hơn bỏ sót).
+    if ctx.jev_ok:
+        if ctx.jev_health_risk >= 0.30 or ctx.jev_legal_threat >= 0.30:
+            return _escalate("jev_health_or_legal", intent, confidence, ("jev_signal",))
+        if (
+            ctx.jev_hostility_score >= 1.5
+            or ctx.jev_ask_human >= 0.50
+            or ctx.jev_sarcasm >= 0.50
+        ):
+            return _priority("jev_hostile_or_ask_human", intent, confidence)
+
+    # Jev được bật NHƯNG bị lỗi (timeout/5xx/429/schema) → kiểm tra fallback.
+    # Nếu SensorChain đã dùng RegexSensor thay thế (fallback_used=True):
+    #   → signals đã là regex signals, jev_ok=False nhưng xử lý bình thường.
+    # Nếu KHÔNG có fallback (cả hai thất bại — cực hiếm):
+    #   → fail-closed về phía con người (kế hoạch §5 gốc).
+    if ctx.jev_failed and not ctx.jev_fallback_used:
+        return _queue(
+            "jev_failed_fail_closed", intent, confidence,
+            role="quan_ly",
+            sla=SLA_MINUTES_QUEUE_REVIEW,
+            flagged=("jev_sensor_failed",),
         )
 
     return _auto("autonomous_default", intent, confidence)

@@ -13,7 +13,7 @@ skill/
 └── scripts/       # Mã thực thi Python kiểm thử offline, smoke checks, validator
 ```
 
-## Danh mục 13 Kỹ năng Hoàn chỉnh (100% Verified)
+## Danh mục 14 Kỹ năng Hoàn chỉnh (100% Verified)
 
 | Kỹ năng | Vị trí thư mục | Nguồn mã nguồn | Nghiệp vụ cốt lõi |
 |---|---|---|---|

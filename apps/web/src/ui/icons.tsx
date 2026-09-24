@@ -65,7 +65,17 @@ export type IconName =
   | "cube"
   | "map"
   | "door"
-  | "gauge";
+  | "gauge"
+  | "user"
+  | "mail"
+  | "tag"
+  | "filter"
+  | "refresh-cw"
+  | "rotate-ccw"
+  | "external-link"
+  | "star"
+  | "mail-open"
+  | "paperclip";
 
 const PATHS: Record<IconName, ReactNode> = {
   attachment: <path d="m20.5 11.5-8.9 8.9a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 0 1-2.8-2.8l8.8-8.8" />,
@@ -108,6 +118,26 @@ const PATHS: Record<IconName, ReactNode> = {
   call: <><path d="M4 13a8 8 0 0 1 16 0" /><path d="M4 13v3a2 2 0 0 0 2 2h1v-5H6a2 2 0 0 0-2 2ZM20 13v3a2 2 0 0 1-2 2h-1v-5h1a2 2 0 0 1 2 2Z" /></>,
   // Lịch + mũi tên ra — xuất file .ics
   export: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18M12 13v5m0 0 2.5-2.5M12 18l-2.5-2.5" /></>,
+  // User icon
+  user: <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />,
+  // Mail icon
+  mail: <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm0 2v.51l7 4.2 7-4.2V6H4zm8 8.5-5-3 5-3 5 3-5 3z" />,
+  // Tag icon
+  tag: <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7a3 3 0 1 1 6 0 3 3 0 0 1-6 0z" />,
+  // Filter icon
+  filter: <path d="M3 3h18v2H3zm0 16h18v2H3zm0-8h18v2H3z" />,
+  // Refresh CW
+  "refresh-cw": <path d="M20 11a8 8 0 0 0-14.8-3.8L4 9M4 5v4h4M4 13a8 8 0 0 0 14.8 3.8L20 15M20 19v-4h-4" />,
+  // Rotate CCW
+  "rotate-ccw": <path d="M4 13a8 8 0 0 1 14.8-3.8L20 15M20 19v-4h-4M4 11a8 8 0 0 0-14.8 3.8L4 15M4 5v4h4" />,
+  // External link
+  "external-link": <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3" />,
+  // Star
+  star: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />,
+  // Mail open
+  "mail-open": <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm0 2v.51l7 4.2 7-4.2V6H4zm8 8.5-5-3 5-3 5 3-5 3z" />,
+  // Paperclip
+  paperclip: <path d="M20.5 11.5l-8.9 8.9a6 6 0 0 1-8.5-8.5l9.4-9.4a4 4 0 0 1 5.7 5.7l-9.4 9.4a2 2 0 0 1-2.8-2.8l8.8-8.8" />,
   // Bong bóng hội thoại — chat nội bộ
   chat: (
     <>
@@ -262,10 +292,10 @@ const PATHS: Record<IconName, ReactNode> = {
   ),
 };
 
-export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
+export function Icon({ name, size = 20, className = "" }: { name: IconName; size?: number; className?: string }) {
   return (
     <svg
-      className="nq-icon"
+      className={className ? `nq-icon ${className}` : "nq-icon"}
       width={size}
       height={size}
       viewBox="0 0 24 24"

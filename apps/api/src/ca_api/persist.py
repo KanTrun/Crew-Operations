@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sqlite3
+import threading
 import uuid
 from collections.abc import Callable
 from contextvars import ContextVar, Token
@@ -18,7 +19,7 @@ except ImportError:
     from datetime import datetime, timedelta, timezone
     UTC = timezone.utc
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from ca_api.audit_trace import ActorType, resolve_actor_type
 
@@ -38,6 +39,41 @@ except ImportError:
 
 # Giờ Việt Nam — dùng cho các khoá kv theo ngày (điểm danh, tổng kết...).
 _VN_TZ = timezone(timedelta(hours=7))
+
+# ── Encryption for sensitive data (OAuth tokens) ──────────────────────────
+# Sử dụng Fernet (AES-128-GCM) từ cryptography. Key lấy từ env NHIPQUAN_ENCRYPTION_KEY
+# (base64-encoded 32 bytes). Nếu chưa có, tự sinh và cảnh báo (chỉ dev).
+try:
+    from cryptography.fernet import Fernet
+    _ENCRYPTION_KEY = os.environ.get("NHIPQUAN_ENCRYPTION_KEY")
+    if _ENCRYPTION_KEY:
+        _FERNET = Fernet(_ENCRYPTION_KEY.encode())
+    else:
+        # Dev fallback: sinh key tạm (KHÔNG dùng production)
+        import warnings
+        _FERNET = Fernet(Fernet.generate_key())
+        warnings.warn(
+            "NHIPQUAN_ENCRYPTION_KEY not set; using ephemeral key. "
+            "Tokens will be unreadable after restart. Set NHIPQUAN_ENCRYPTION_KEY in production.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+except ImportError:
+    _FERNET = None  # type: ignore
+
+
+def _encrypt(plaintext: str) -> str:
+    """Mã hoá chuỗi nhạy cảm (OAuth token). Trả về base64 string."""
+    if _FERNET is None:
+        raise RuntimeError("cryptography not installed; cannot encrypt")
+    return _FERNET.encrypt(plaintext.encode()).decode()
+
+
+def _decrypt(ciphertext: str) -> str:
+    """Giải mã chuỗi đã mã hoá."""
+    if _FERNET is None:
+        raise RuntimeError("cryptography not installed; cannot decrypt")
+    return _FERNET.decrypt(ciphertext.encode()).decode()
 
 USERS = (
     ("lan", "nhipquan", "quan_ly", "nv_01", "Lan — quản lý"),
@@ -199,18 +235,51 @@ def _conn() -> Any:
     path.parent.mkdir(parents=True, exist_ok=True)
     cx = sqlite3.connect(path, timeout=30)
     cx.execute("PRAGMA journal_mode=WAL")
+    # SQLite TẮT foreign key mặc định ⇒ `ON DELETE CASCADE` vô hiệu âm thầm,
+    # xoá tài khoản Gmail sẽ bỏ lại token/email/nhãn/bộ lọc mồ côi. Bật tường
+    # minh cho MỌI kết nối (pragma theo connection, không theo database).
+    cx.execute("PRAGMA foreign_keys=ON")
     return cx
 
 
+def acquire_write_lock(cx: Any, scope: str) -> None:
+    """Giành quyền ghi độc quyền theo `scope` trong transaction hiện tại.
+
+    Vì sao cần: SQLite có `BEGIN IMMEDIATE` để lấy write lock NGAY khi mở
+    transaction. Postgres không có cú pháp tương đương — `_PostgresConnection`
+    hạ nó xuống `BEGIN` (transaction thường), nên pattern đọc-rồi-ghi vẫn có
+    khe TOCTOU: hai request cùng đọc "bàn còn trống" rồi cùng ghi.
+
+    Dùng `pg_advisory_xact_lock` với khoá băm từ `scope` — đúng cơ chế
+    `kv_mutate` đã dùng. Khoá tự nhả khi transaction kết thúc. Trên SQLite hàm
+    này là no-op vì `BEGIN IMMEDIATE` đã lo việc đó.
+    """
+    if not _database_url():
+        return
+    lock_id = int.from_bytes(
+        hashlib.sha256(scope.encode()).digest()[:8], byteorder="big", signed=True
+    )
+    cx.execute("SELECT pg_advisory_xact_lock(?)", (lock_id,))
+
+
 _INITIALIZED_PATHS: set[str] = set()
+_INIT_DB_LOCK = threading.Lock()
 
 
 def init_db() -> None:
-    global _INITIALIZED
     p_str = str(db_path())
     if p_str in _INITIALIZED_PATHS:
         return
+    with _INIT_DB_LOCK:
+        if p_str in _INITIALIZED_PATHS:
+            return
+        _init_db_locked(p_str)
+
+
+def _init_db_locked(p_str: str) -> None:
+    global _INITIALIZED
     with _conn() as cx:
+        acquire_write_lock(cx, "nhipquan_init_db")
         # Luôn chạy DDL IF NOT EXISTS — thêm bảng mới (kenh_bind) không bị kẹt
         # vì cờ _INITIALIZED sớm trên DB cũ.
         if not _database_url():
@@ -325,6 +394,81 @@ def init_db() -> None:
                 completed_at TEXT,
                 PRIMARY KEY (store_id, idempotency_key)
             );
+            CREATE TABLE IF NOT EXISTS gmail_accounts (
+                id TEXT PRIMARY KEY,
+                store_id TEXT NOT NULL DEFAULT 'quan_01',
+                nv_id TEXT NOT NULL,
+                email TEXT NOT NULL,
+                display_name TEXT NOT NULL DEFAULT '',
+                is_primary INTEGER NOT NULL DEFAULT 0,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_gmail_accounts_store_nv ON gmail_accounts(store_id, nv_id, is_active);
+            CREATE TABLE IF NOT EXISTS gmail_oauth_tokens (
+                account_id TEXT PRIMARY KEY REFERENCES gmail_accounts(id) ON DELETE CASCADE,
+                access_token_enc TEXT NOT NULL,
+                refresh_token_enc TEXT,
+                expires_at TEXT NOT NULL,
+                scope TEXT NOT NULL DEFAULT '',
+                token_type TEXT NOT NULL DEFAULT 'Bearer',
+                updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS gmail_sync_state (
+                account_id TEXT PRIMARY KEY REFERENCES gmail_accounts(id) ON DELETE CASCADE,
+                last_history_id TEXT,
+                last_sync_at TEXT,
+                sync_cursor TEXT,
+                total_messages INTEGER NOT NULL DEFAULT 0,
+                unread_count INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS gmail_messages (
+                id TEXT PRIMARY KEY,
+                account_id TEXT NOT NULL REFERENCES gmail_accounts(id) ON DELETE CASCADE,
+                thread_id TEXT NOT NULL,
+                label_ids TEXT NOT NULL DEFAULT '[]',
+                snippet TEXT NOT NULL DEFAULT '',
+                from_email TEXT NOT NULL DEFAULT '',
+                to_emails TEXT NOT NULL DEFAULT '[]',
+                cc_emails TEXT NOT NULL DEFAULT '[]',
+                subject TEXT NOT NULL DEFAULT '',
+                body_text TEXT,
+                body_html TEXT,
+                internal_date TEXT NOT NULL,
+                is_read INTEGER NOT NULL DEFAULT 0,
+                is_starred INTEGER NOT NULL DEFAULT 0,
+                has_attachment INTEGER NOT NULL DEFAULT 0,
+                raw_headers TEXT,
+                created_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_gmail_messages_account_thread ON gmail_messages(account_id, thread_id);
+            CREATE INDEX IF NOT EXISTS idx_gmail_messages_account_date ON gmail_messages(account_id, internal_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_gmail_messages_unread ON gmail_messages(account_id, is_read, internal_date DESC);
+            CREATE TABLE IF NOT EXISTS gmail_labels (
+                id TEXT PRIMARY KEY,
+                account_id TEXT NOT NULL REFERENCES gmail_accounts(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                label_type TEXT NOT NULL DEFAULT 'user',
+                message_list_visibility TEXT NOT NULL DEFAULT 'show',
+                label_list_visibility TEXT NOT NULL DEFAULT 'labelShow',
+                color_background TEXT,
+                color_text TEXT,
+                total_messages INTEGER NOT NULL DEFAULT 0,
+                unread_messages INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_gmail_labels_account ON gmail_labels(account_id);
+            CREATE TABLE IF NOT EXISTS gmail_filters (
+                id TEXT PRIMARY KEY,
+                account_id TEXT NOT NULL REFERENCES gmail_accounts(id) ON DELETE CASCADE,
+                criteria TEXT NOT NULL DEFAULT '{}',
+                action TEXT NOT NULL DEFAULT '{}',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_gmail_filters_account ON gmail_filters(account_id);
             CREATE TABLE IF NOT EXISTS fb_review_queue (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 store_id TEXT NOT NULL DEFAULT 'quan_01',
@@ -482,6 +626,7 @@ def init_db() -> None:
                 psid TEXT NOT NULL DEFAULT '',
                 customer_name TEXT NOT NULL,
                 phone TEXT NOT NULL,
+                email TEXT NOT NULL DEFAULT '',
                 booking_time TEXT NOT NULL,
                 duration_minutes INTEGER NOT NULL DEFAULT 120,
                 party_size INTEGER NOT NULL,
@@ -566,33 +711,23 @@ def init_db() -> None:
 
 def _ensure_scheduling_schema(cx: Any) -> None:
     """Create the additive scheduling tables used by the authoritative flow."""
-    # Check if table exists first to avoid PostgreSQL composite type collision
-    # CREATE TABLE IF NOT EXISTS still tries to create the composite type which fails if type exists
-    # Use database-agnostic approach: try CREATE TABLE IF NOT EXISTS first, catch duplicate type error
-    try:
-        cx.execute(
-            """
-            CREATE TABLE IF NOT EXISTS availability_confirmations (
-                id TEXT PRIMARY KEY,
-                store_id TEXT NOT NULL,
-                nv_id TEXT NOT NULL,
-                tuan_iso TEXT NOT NULL,
-                availability TEXT NOT NULL,
-                status TEXT NOT NULL,
-                source TEXT NOT NULL DEFAULT 'chat',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                UNIQUE(store_id, nv_id, tuan_iso)
-            )
-            """
+    acquire_write_lock(cx, "nhipquan_ensure_scheduling_schema")
+    cx.execute(
+        """
+        CREATE TABLE IF NOT EXISTS availability_confirmations (
+            id TEXT PRIMARY KEY,
+            store_id TEXT NOT NULL,
+            nv_id TEXT NOT NULL,
+            tuan_iso TEXT NOT NULL,
+            availability TEXT NOT NULL,
+            status TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'chat',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(store_id, nv_id, tuan_iso)
         )
-    except Exception as e:
-        # PostgreSQL raises UniqueViolation for duplicate composite type
-        # SQLite doesn't have this issue with IF NOT EXISTS
-        # If it's a duplicate type error, table already exists, continue
-        error_msg = str(e).lower()
-        if "duplicate" not in error_msg and "already exists" not in error_msg:
-            raise
+        """
+    )
     cx.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_availability_week
@@ -1002,7 +1137,7 @@ def open_shift_mark_escalated(open_shift_id: str, *, store_id: str, escalated_at
                WHERE id=? AND store_id=? AND status='open' AND escalated_at IS NULL""",
             (escalated_at, open_shift_id, store_id),
         )
-    return result.rowcount == 1
+    return bool(result.rowcount == 1)
 
 
 def shift_application_claim_eligible(
@@ -1031,6 +1166,16 @@ def _migrate_schema(cx: sqlite3.Connection) -> None:
     if "status" not in ucols:
         _safe_alter("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
     cx.execute("UPDATE users SET store_id=? WHERE TRIM(store_id)=''", (DEFAULT_STORE_ID,))
+    # dat_ban: thêm cột email riêng (trước đây email bị nhét vào notes, khiến
+    # record đọc lại từ DB không có field email → không gửi được phiếu xác nhận).
+    dcols = {r[1] for r in cx.execute("PRAGMA table_info(dat_ban)")}
+    if "email" not in dcols:
+        _safe_alter("ALTER TABLE dat_ban ADD COLUMN email TEXT NOT NULL DEFAULT ''")
+        # Backfill email đã lưu trong notes dạng "Email: xxx@yyy.zz"
+        cx.execute(
+            "UPDATE dat_ban SET email=TRIM(SUBSTR(notes, 8)) "
+            "WHERE email='' AND notes LIKE 'Email: %@%'"
+        )
     scols = {r[1] for r in cx.execute("PRAGMA table_info(sessions)")}
     if "store_id" not in scols:
         _safe_alter("ALTER TABLE sessions ADD COLUMN store_id TEXT NOT NULL DEFAULT 'quan_01'")
@@ -1449,9 +1594,9 @@ def _session_expired(created_at: str) -> bool:
 
 
 def session(authorization: str | None) -> dict[str, str] | None:
-    init_db()
     if not authorization:
         return None
+    init_db()
     raw = authorization.removeprefix("Bearer ").strip()
     with _conn() as cx:
         row = cx.execute(
@@ -1738,6 +1883,27 @@ def thong_bao_lich_list(
         return [dict(row) for row in cx.execute(sql, params).fetchall()]
 
 
+def thong_bao_lich_list_for_week(
+    tuan_iso: str, *, store_id: str = DEFAULT_STORE_ID,
+) -> list[dict[str, Any]]:
+    """Liệt kê MỌI thông báo của một tuần trong quán (không lọc theo nhân viên).
+
+    Dùng để kiểm tra công bố lịch đã phát đủ cho từng VAI TRÒ chưa: quản lý nhận
+    link `/lich-tuan` (xem cả quán), nhân viên nhận link `/toi` (lịch của mình).
+    `thong_bao_lich_list` không trả được câu trả lời đó vì nó buộc lọc một nv_id.
+    """
+    init_db()
+    with _conn() as cx:
+        cx.row_factory = sqlite3.Row
+        rows = cx.execute(
+            """SELECT * FROM thong_bao_lich
+               WHERE store_id=? AND tuan_iso=?
+               ORDER BY created_at DESC LIMIT 200""",
+            (store_id, tuan_iso),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
 def thong_bao_lich_ack(notification_id: str, nv_id: str, *, store_id: str = DEFAULT_STORE_ID) -> bool:
     init_db()
     with _conn() as cx:
@@ -1745,7 +1911,7 @@ def thong_bao_lich_ack(notification_id: str, nv_id: str, *, store_id: str = DEFA
             "UPDATE thong_bao_lich SET da_xem=1 WHERE id=? AND store_id=? AND nv_id=?",
             (notification_id, store_id, nv_id),
         )
-        return cur.rowcount > 0
+        return bool(cur.rowcount > 0)
 
 
 def set_user_email(username: str, email: str) -> dict[str, str]:
@@ -1771,6 +1937,766 @@ def get_user_emails() -> dict[str, str]:
             "SELECT nv_id, email FROM users WHERE email != ''"
         ).fetchall()
     return {str(r[0]): str(r[1]) for r in rows}
+
+
+# ── Gmail Account Management ──────────────────────────────────────────────
+
+def gmail_account_create(
+    *,
+    store_id: str,
+    nv_id: str,
+    email: str,
+    display_name: str = "",
+    is_primary: bool = False,
+) -> dict[str, Any]:
+    """Tạo tài khoản Gmail mới cho nhân viên."""
+    import uuid
+    from datetime import UTC, datetime
+    init_db()
+    with _conn() as cx:
+        # Nếu set is_primary, bỏ primary của account cũ
+        if is_primary:
+            cx.execute(
+                "UPDATE gmail_accounts SET is_primary=0 WHERE store_id=? AND nv_id=?",
+                (store_id, nv_id),
+            )
+        account_id = f"gmail_{uuid.uuid4().hex[:16]}"
+        now = datetime.now(UTC).isoformat()
+        cx.execute(
+            """INSERT INTO gmail_accounts
+               (id, store_id, nv_id, email, display_name, is_primary, is_active, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (account_id, store_id, nv_id, email, display_name, 1 if is_primary else 0, 1, now, now),
+        )
+    return {
+        "id": account_id,
+        "store_id": store_id,
+        "nv_id": nv_id,
+        "email": email,
+        "display_name": display_name,
+        "is_primary": is_primary,
+        "is_active": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+
+def gmail_account_list(store_id: str, nv_id: str | None = None) -> list[dict[str, Any]]:
+    """Liệt kê tài khoản Gmail của quán hoặc nhân viên."""
+    init_db()
+    with _conn() as cx:
+        if nv_id:
+            rows = cx.execute(
+                """SELECT id, store_id, nv_id, email, display_name, is_primary, is_active, created_at, updated_at
+                   FROM gmail_accounts WHERE store_id=? AND nv_id=? AND is_active=1
+                   ORDER BY is_primary DESC, created_at DESC""",
+                (store_id, nv_id),
+            ).fetchall()
+        else:
+            rows = cx.execute(
+                """SELECT id, store_id, nv_id, email, display_name, is_primary, is_active, created_at, updated_at
+                   FROM gmail_accounts WHERE store_id=? AND is_active=1
+                   ORDER BY nv_id, is_primary DESC, created_at DESC""",
+                (store_id,),
+            ).fetchall()
+    return [
+        {
+            "id": str(r[0]),
+            "store_id": str(r[1]),
+            "nv_id": str(r[2]),
+            "email": str(r[3]),
+            "display_name": str(r[4]),
+            "is_primary": bool(r[5]),
+            "is_active": bool(r[6]),
+            "created_at": str(r[7]),
+            "updated_at": str(r[8]),
+        }
+        for r in rows
+    ]
+
+
+def gmail_account_get(account_id: str) -> dict[str, Any] | None:
+    """Lấy chi tiết tài khoản Gmail."""
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            """SELECT id, store_id, nv_id, email, display_name, is_primary, is_active, created_at, updated_at
+               FROM gmail_accounts WHERE id=?""",
+            (account_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "id": str(row[0]),
+        "store_id": str(row[1]),
+        "nv_id": str(row[2]),
+        "email": str(row[3]),
+        "display_name": str(row[4]),
+        "is_primary": bool(row[5]),
+        "is_active": bool(row[6]),
+        "created_at": str(row[7]),
+        "updated_at": str(row[8]),
+    }
+
+
+def gmail_account_update(
+    account_id: str,
+    *,
+    display_name: str | None = None,
+    is_primary: bool | None = None,
+    is_active: bool | None = None,
+) -> dict[str, Any] | None:
+    """Cập nhật tài khoản Gmail."""
+    from datetime import UTC, datetime
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT store_id, nv_id FROM gmail_accounts WHERE id=?", (account_id,)
+        ).fetchone()
+        if not row:
+            return None
+        store_id, nv_id = str(row[0]), str(row[1])
+        if is_primary:
+            cx.execute(
+                "UPDATE gmail_accounts SET is_primary=0 WHERE store_id=? AND nv_id=?",
+                (store_id, nv_id),
+            )
+        sets = []
+        params: list[str | int] = []
+        if display_name is not None:
+            sets.append("display_name=?")
+            params.append(display_name)
+        if is_primary is not None:
+            sets.append("is_primary=?")
+            params.append(1 if is_primary else 0)
+        if is_active is not None:
+            sets.append("is_active=?")
+            params.append(1 if is_active else 0)
+        if not sets:
+            return gmail_account_get(account_id)
+        sets.append("updated_at=?")
+        params.append(datetime.now(UTC).isoformat())
+        params.append(account_id)
+        cx.execute(f"UPDATE gmail_accounts SET {', '.join(sets)} WHERE id=?", params)
+    return gmail_account_get(account_id)
+
+
+def gmail_account_delete(account_id: str) -> bool:
+    """Xoá tài khoản Gmail kèm toàn bộ dữ liệu con.
+
+    Xoá con TƯỜNG MINH thay vì trông cậy `ON DELETE CASCADE`: DB tạo trước khi
+    có ràng buộc FK (hoặc Postgres chưa migrate) vẫn phải dọn sạch, nếu không
+    token/email mồ côi sẽ tồn tại vĩnh viễn trong DB.
+    """
+    init_db()
+    with _conn() as cx:
+        for table in (
+            "gmail_oauth_tokens",
+            "gmail_messages",
+            "gmail_labels",
+            "gmail_filters",
+            "gmail_sync_state",
+        ):
+            cx.execute(f"DELETE FROM {table} WHERE account_id=?", (account_id,))
+        cur = cx.execute("DELETE FROM gmail_accounts WHERE id=?", (account_id,))
+    return bool(cur.rowcount > 0)
+
+
+# ── Gmail OAuth Tokens ────────────────────────────────────────────────────
+
+def gmail_token_save(
+    account_id: str,
+    *,
+    access_token: str,
+    refresh_token: str | None,
+    expires_at: str,
+    scope: str = "",
+    token_type: str = "Bearer",
+) -> None:
+    """Lưu OAuth token (đã mã hoá) cho tài khoản Gmail."""
+    from datetime import UTC, datetime
+
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            """INSERT INTO gmail_oauth_tokens
+               (account_id, access_token_enc, refresh_token_enc, expires_at, scope, token_type, updated_at)
+               VALUES (?,?,?,?,?,?,?)
+               ON CONFLICT(account_id) DO UPDATE SET
+                 access_token_enc=excluded.access_token_enc,
+                 refresh_token_enc=excluded.refresh_token_enc,
+                 expires_at=excluded.expires_at,
+                 scope=excluded.scope,
+                 token_type=excluded.token_type,
+                 updated_at=excluded.updated_at""",
+            (
+                account_id,
+                _encrypt(access_token),
+                _encrypt(refresh_token) if refresh_token else None,
+                expires_at,
+                scope,
+                token_type,
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+
+
+def gmail_token_get(account_id: str) -> dict[str, Any] | None:
+    """Lấy OAuth token (giải mã) cho tài khoản Gmail."""
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            """SELECT access_token_enc, refresh_token_enc, expires_at, scope, token_type, updated_at
+               FROM gmail_oauth_tokens WHERE account_id=?""",
+            (account_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "access_token": _decrypt(str(row[0])),
+        "refresh_token": _decrypt(str(row[1])) if row[1] else None,
+        "expires_at": str(row[2]),
+        "scope": str(row[3]),
+        "token_type": str(row[4]),
+        "updated_at": str(row[5]),
+    }
+
+
+def gmail_token_health(account_id: str) -> str | None:
+    """Sức khoẻ token: `None` (chưa có), `"ok"`, hay `"broken"` (không giải mã được).
+
+    Gọi sau `gmail_token_status` khi cần biết token có DÙNG ĐƯỢC hay không —
+    ví dụ khoá mã hoá đã đổi thì UI phải mời người dùng kết nối lại thay vì
+    hiển thị "Đã kết nối" rồi để mọi thao tác thất bại.
+    """
+    if gmail_token_status(account_id) is None:
+        return None
+    try:
+        tokens = gmail_token_get(account_id)
+    except Exception:  # noqa: BLE001 — InvalidToken của Fernet khi khoá đổi
+        return "broken"
+    return "ok" if tokens and tokens.get("access_token") else "broken"
+
+
+def gmail_token_status_bulk(account_ids: list[str]) -> dict[str, dict[str, Any]]:
+    """Trạng thái token cho NHIỀU tài khoản trong MỘT truy vấn.
+
+    Tránh N+1 khi liệt kê tài khoản: gọi `gmail_token_status` cho từng tài khoản
+    tốn 1 query mỗi lần, nên danh sách 20 tài khoản thành 20+ query.
+    """
+    if not account_ids:
+        return {}
+    init_db()
+    placeholders = ",".join("?" * len(account_ids))
+    with _conn() as cx:
+        rows = cx.execute(
+            f"""SELECT account_id, expires_at, scope, token_type,
+                       refresh_token_enc IS NOT NULL, updated_at
+                FROM gmail_oauth_tokens WHERE account_id IN ({placeholders})""",
+            tuple(account_ids),
+        ).fetchall()
+    return {
+        str(r[0]): {
+            "expires_at": str(r[1]) if r[1] else None,
+            "scope": str(r[2]),
+            "token_type": str(r[3]),
+            "has_refresh_token": bool(r[4]),
+            "updated_at": str(r[5]),
+        }
+        for r in rows
+    }
+
+
+def gmail_token_delete(account_id: str) -> bool:
+    """Xoá OAuth token."""
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute("DELETE FROM gmail_oauth_tokens WHERE account_id=?", (account_id,))
+    return bool(cur.rowcount > 0)
+
+
+def gmail_token_status(account_id: str) -> dict[str, Any] | None:
+    """Trạng thái token KHÔNG giải mã — an toàn để hiển thị trên UI.
+
+    Dùng cho các endpoint chỉ cần biết "đã kết nối chưa" và "hết hạn chưa".
+    Không bao giờ gọi `_decrypt` ở đây: nếu khoá mã hoá đã đổi (hoặc key tạm
+    sinh rồi restart), giải mã sẽ ném `InvalidToken` và làm sập cả trang, khiến
+    người dùng KHÔNG mở được UI để kết nối lại.
+    """
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            """SELECT expires_at, scope, token_type, refresh_token_enc IS NOT NULL, updated_at
+               FROM gmail_oauth_tokens WHERE account_id=?""",
+            (account_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "expires_at": str(row[0]) if row[0] else None,
+        "scope": str(row[1]),
+        "token_type": str(row[2]),
+        "has_refresh_token": bool(row[3]),
+        "updated_at": str(row[4]),
+    }
+
+
+# ── Gmail Sync State ──────────────────────────────────────────────────────
+
+def gmail_sync_state_get(account_id: str) -> dict[str, Any] | None:
+    """Lấy trạng thái đồng bộ Gmail."""
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            """SELECT account_id, last_history_id, last_sync_at, sync_cursor, total_messages, unread_count, updated_at
+               FROM gmail_sync_state WHERE account_id=?""",
+            (account_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "account_id": str(row[0]),
+        "last_history_id": str(row[1]) if row[1] else None,
+        "last_sync_at": str(row[2]) if row[2] else None,
+        "sync_cursor": str(row[3]) if row[3] else None,
+        "total_messages": int(row[4]),
+        "unread_count": int(row[5]),
+        "updated_at": str(row[6]),
+    }
+
+
+def gmail_sync_state_upsert(
+    account_id: str,
+    *,
+    last_history_id: str | None = None,
+    last_sync_at: str | None = None,
+    sync_cursor: str | None = None,
+    total_messages: int | None = None,
+    unread_count: int | None = None,
+) -> dict[str, Any]:
+    """Cập nhật trạng thái đồng bộ Gmail.
+
+    `total_messages`/`unread_count` chỉ ghi khi được truyền tường minh. Truyền
+    `None` (ví dụ đồng bộ tăng dần chỉ biết history id) phải GIỮ giá trị cũ,
+    không được hạ về 0.
+    """
+    from datetime import UTC, datetime
+    init_db()
+    with _conn() as cx:
+        now = datetime.now(UTC).isoformat()
+        cx.execute(
+            """INSERT INTO gmail_sync_state
+               (account_id, last_history_id, last_sync_at, sync_cursor, total_messages, unread_count, updated_at)
+               VALUES (?,?,?,?,COALESCE(?,0),COALESCE(?,0),?)
+               ON CONFLICT(account_id) DO UPDATE SET
+                 last_history_id=COALESCE(excluded.last_history_id, gmail_sync_state.last_history_id),
+                 last_sync_at=COALESCE(excluded.last_sync_at, gmail_sync_state.last_sync_at),
+                 sync_cursor=COALESCE(excluded.sync_cursor, gmail_sync_state.sync_cursor),
+                 total_messages=COALESCE(?, gmail_sync_state.total_messages),
+                 unread_count=COALESCE(?, gmail_sync_state.unread_count),
+                 updated_at=excluded.updated_at""",
+            (
+                account_id,
+                last_history_id,
+                last_sync_at or now,
+                sync_cursor,
+                total_messages,
+                unread_count,
+                now,
+                total_messages,
+                unread_count,
+            ),
+        )
+    return gmail_sync_state_get(account_id) or {}
+
+
+# ── Gmail Messages ────────────────────────────────────────────────────────
+
+def gmail_message_upsert(
+    account_id: str,
+    *,
+    message_id: str,
+    thread_id: str,
+    label_ids: list[str],
+    snippet: str,
+    from_email: str,
+    to_emails: list[str],
+    cc_emails: list[str],
+    subject: str,
+    body_text: str | None,
+    body_html: str | None,
+    internal_date: str,
+    is_read: bool,
+    is_starred: bool,
+    has_attachment: bool,
+    raw_headers: str | None = None,
+) -> None:
+    """Upsert email message."""
+    import json
+    from datetime import UTC, datetime
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            """INSERT INTO gmail_messages
+               (id, account_id, thread_id, label_ids, snippet, from_email, to_emails, cc_emails,
+                subject, body_text, body_html, internal_date, is_read, is_starred, has_attachment, raw_headers, created_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(id) DO UPDATE SET
+                 thread_id=excluded.thread_id,
+                 label_ids=excluded.label_ids,
+                 snippet=excluded.snippet,
+                 from_email=excluded.from_email,
+                 to_emails=excluded.to_emails,
+                 cc_emails=excluded.cc_emails,
+                 subject=excluded.subject,
+                 body_text=excluded.body_text,
+                 body_html=excluded.body_html,
+                 internal_date=excluded.internal_date,
+                 is_read=excluded.is_read,
+                 is_starred=excluded.is_starred,
+                 has_attachment=excluded.has_attachment,
+                 raw_headers=excluded.raw_headers""",
+            (
+                message_id,
+                account_id,
+                thread_id,
+                json.dumps(label_ids, ensure_ascii=False),
+                snippet,
+                from_email,
+                json.dumps(to_emails, ensure_ascii=False),
+                json.dumps(cc_emails, ensure_ascii=False),
+                subject,
+                body_text,
+                body_html,
+                internal_date,
+                1 if is_read else 0,
+                1 if is_starred else 0,
+                1 if has_attachment else 0,
+                raw_headers,
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+
+
+def gmail_messages_list(
+    account_id: str,
+    *,
+    label_ids: list[str] | None = None,
+    query: str | None = None,
+    is_read: bool | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    """Liệt kê email với bộ lọc."""
+    import json
+    init_db()
+    with _conn() as cx:
+        where = ["account_id=?"]
+        params: list[Any] = [account_id]
+        if label_ids:
+            # `label_ids` lưu dạng JSON array. So khớp phần tử chính xác bằng
+            # cặp dấu ngoặc kép bao quanh, và escape ký tự đại diện của LIKE
+            # để nhãn chứa `%`/`_` không khớp nhầm.
+            like_conditions = " OR ".join(["label_ids LIKE ? ESCAPE '\\'"] * len(label_ids))
+            where.append(f"({like_conditions})")
+            for lid in label_ids:
+                escaped = str(lid).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                params.append(f'%"{escaped}"%')
+        if query:
+            where.append(
+                "(subject LIKE ? ESCAPE '\\' OR snippet LIKE ? ESCAPE '\\' "
+                "OR from_email LIKE ? ESCAPE '\\')"
+            )
+            escaped = str(query).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            q = f"%{escaped}%"
+            params.extend([q, q, q])
+        if is_read is not None:
+            where.append("is_read=?")
+            params.append(1 if is_read else 0)
+        sql = f"""SELECT id, account_id, thread_id, label_ids, snippet, from_email, to_emails, cc_emails,
+                         subject, body_text, body_html, internal_date, is_read, is_starred, has_attachment, raw_headers, created_at
+                  FROM gmail_messages
+                  WHERE {' AND '.join(where)}
+                  ORDER BY internal_date DESC
+                  LIMIT ? OFFSET ?"""
+        params.extend([limit, offset])
+        rows = cx.execute(sql, params).fetchall()
+    return [
+        {
+            "id": str(r[0]),
+            "account_id": str(r[1]),
+            "thread_id": str(r[2]),
+            "label_ids": json.loads(r[3]),
+            "snippet": str(r[4]),
+            "from_email": str(r[5]),
+            "to_emails": json.loads(r[6]),
+            "cc_emails": json.loads(r[7]),
+            "subject": str(r[8]),
+            "body_text": r[9],
+            "body_html": r[10],
+            "internal_date": str(r[11]),
+            "is_read": bool(r[12]),
+            "is_starred": bool(r[13]),
+            "has_attachment": bool(r[14]),
+            "raw_headers": r[15],
+            "created_at": str(r[16]),
+        }
+        for r in rows
+    ]
+
+
+def gmail_message_get(account_id: str, message_id: str) -> dict[str, Any] | None:
+    """Lấy chi tiết một email."""
+    import json
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            """SELECT id, account_id, thread_id, label_ids, snippet, from_email, to_emails, cc_emails,
+                         subject, body_text, body_html, internal_date, is_read, is_starred, has_attachment, raw_headers, created_at
+                  FROM gmail_messages WHERE account_id=? AND id=?""",
+            (account_id, message_id),
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "id": str(row[0]),
+        "account_id": str(row[1]),
+        "thread_id": str(row[2]),
+        "label_ids": json.loads(row[3]),
+        "snippet": str(row[4]),
+        "from_email": str(row[5]),
+        "to_emails": json.loads(row[6]),
+        "cc_emails": json.loads(row[7]),
+        "subject": str(row[8]),
+        "body_text": row[9],
+        "body_html": row[10],
+        "internal_date": str(row[11]),
+        "is_read": bool(row[12]),
+        "is_starred": bool(row[13]),
+        "has_attachment": bool(row[14]),
+        "raw_headers": row[15],
+        "created_at": str(row[16]),
+    }
+
+
+def gmail_message_mark_read(account_id: str, message_id: str, is_read: bool = True) -> bool:
+    """Đánh dấu email đã đọc/chưa đọc."""
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            "UPDATE gmail_messages SET is_read=? WHERE account_id=? AND id=?",
+            (1 if is_read else 0, account_id, message_id),
+        )
+    return bool(cur.rowcount > 0)
+
+
+def gmail_message_star(account_id: str, message_id: str, is_starred: bool = True) -> bool:
+    """Gắn/bỏ sao email."""
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            "UPDATE gmail_messages SET is_starred=? WHERE account_id=? AND id=?",
+            (1 if is_starred else 0, account_id, message_id),
+        )
+    return bool(cur.rowcount > 0)
+
+
+def gmail_message_delete(account_id: str, message_id: str) -> bool:
+    """Xoá một email (Gmail báo đã xoá vĩnh viễn qua history)."""
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            "DELETE FROM gmail_messages WHERE account_id=? AND id=?", (account_id, message_id)
+        )
+    return bool(cur.rowcount > 0)
+
+
+def gmail_message_apply_labels(account_id: str, message_id: str, label_ids: list[str]) -> bool:
+    """Ghi lại tập nhãn mới và suy ra `is_read`/`is_starred` từ nhãn.
+
+    Gmail biểu diễn "chưa đọc" bằng nhãn `UNREAD` và "có sao" bằng `STARRED`,
+    nên khi history báo đổi nhãn thì trạng thái đọc/sao phải cập nhật theo —
+    nếu không, hộp thư trong app sẽ mãi hiển thị trạng thái cũ.
+    """
+    import json
+
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute(
+            """UPDATE gmail_messages
+               SET label_ids=?, is_read=?, is_starred=?
+               WHERE account_id=? AND id=?""",
+            (
+                json.dumps(label_ids, ensure_ascii=False),
+                0 if "UNREAD" in label_ids else 1,
+                1 if "STARRED" in label_ids else 0,
+                account_id,
+                message_id,
+            ),
+        )
+    return bool(cur.rowcount > 0)
+
+
+def gmail_message_exists(account_id: str, message_id: str) -> bool:
+    """Email đã có trong DB local chưa."""
+    init_db()
+    with _conn() as cx:
+        row = cx.execute(
+            "SELECT 1 FROM gmail_messages WHERE account_id=? AND id=?", (account_id, message_id)
+        ).fetchone()
+    return row is not None
+
+
+# ── Gmail Labels ──────────────────────────────────────────────────────────
+
+def gmail_label_upsert(
+    account_id: str,
+    *,
+    label_id: str,
+    name: str,
+    label_type: str = "user",
+    message_list_visibility: str = "show",
+    label_list_visibility: str = "labelShow",
+    color_background: str | None = None,
+    color_text: str | None = None,
+    total_messages: int = 0,
+    unread_messages: int = 0,
+) -> None:
+    """Upsert Gmail label."""
+    from datetime import UTC, datetime
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            """INSERT INTO gmail_labels
+               (id, account_id, name, label_type, message_list_visibility, label_list_visibility,
+                color_background, color_text, total_messages, unread_messages, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(id) DO UPDATE SET
+                 name=excluded.name,
+                 label_type=excluded.label_type,
+                 message_list_visibility=excluded.message_list_visibility,
+                 label_list_visibility=excluded.label_list_visibility,
+                 color_background=excluded.color_background,
+                 color_text=excluded.color_text,
+                 total_messages=excluded.total_messages,
+                 unread_messages=excluded.unread_messages,
+                 updated_at=excluded.updated_at""",
+            (
+                label_id,
+                account_id,
+                name,
+                label_type,
+                message_list_visibility,
+                label_list_visibility,
+                color_background,
+                color_text,
+                total_messages,
+                unread_messages,
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+
+
+def gmail_labels_list(account_id: str) -> list[dict[str, Any]]:
+    """Liệt kê labels của tài khoản."""
+    init_db()
+    with _conn() as cx:
+        rows = cx.execute(
+            """SELECT id, account_id, name, label_type, message_list_visibility, label_list_visibility,
+                      color_background, color_text, total_messages, unread_messages, updated_at
+               FROM gmail_labels WHERE account_id=?
+               ORDER BY name""",
+            (account_id,),
+        ).fetchall()
+    return [
+        {
+            "id": str(r[0]),
+            "account_id": str(r[1]),
+            "name": str(r[2]),
+            "label_type": str(r[3]),
+            "message_list_visibility": str(r[4]),
+            "label_list_visibility": str(r[5]),
+            "color_background": r[6],
+            "color_text": r[7],
+            "total_messages": int(r[8]),
+            "unread_messages": int(r[9]),
+            "updated_at": str(r[10]),
+        }
+        for r in rows
+    ]
+
+
+def gmail_label_delete(account_id: str, label_id: str) -> bool:
+    """Xoá label."""
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute("DELETE FROM gmail_labels WHERE account_id=? AND id=?", (account_id, label_id))
+    return bool(cur.rowcount > 0)
+
+
+# ── Gmail Filters ─────────────────────────────────────────────────────────
+
+def gmail_filter_upsert(
+    account_id: str,
+    *,
+    filter_id: str,
+    criteria: dict[str, Any],
+    action: dict[str, Any],
+) -> None:
+    """Upsert Gmail filter."""
+    import json
+    from datetime import UTC, datetime
+    init_db()
+    with _conn() as cx:
+        cx.execute(
+            """INSERT INTO gmail_filters
+               (id, account_id, criteria, action, created_at, updated_at)
+               VALUES (?,?,?,?,?,?)
+               ON CONFLICT(id) DO UPDATE SET
+                 criteria=excluded.criteria,
+                 action=excluded.action,
+                 updated_at=excluded.updated_at""",
+            (
+                filter_id,
+                account_id,
+                json.dumps(criteria, ensure_ascii=False),
+                json.dumps(action, ensure_ascii=False),
+                datetime.now(UTC).isoformat(),
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+
+
+def gmail_filters_list(account_id: str) -> list[dict[str, Any]]:
+    """Liệt kê filters của tài khoản."""
+    import json
+    init_db()
+    with _conn() as cx:
+        rows = cx.execute(
+            """SELECT id, account_id, criteria, action, created_at, updated_at
+               FROM gmail_filters WHERE account_id=?
+               ORDER BY created_at DESC""",
+            (account_id,),
+        ).fetchall()
+    return [
+        {
+            "id": str(r[0]),
+            "account_id": str(r[1]),
+            "criteria": json.loads(r[2]),
+            "action": json.loads(r[3]),
+            "created_at": str(r[4]),
+            "updated_at": str(r[5]),
+        }
+        for r in rows
+    ]
+
+
+def gmail_filter_delete(account_id: str, filter_id: str) -> bool:
+    """Xoá filter."""
+    init_db()
+    with _conn() as cx:
+        cur = cx.execute("DELETE FROM gmail_filters WHERE account_id=? AND id=?", (account_id, filter_id))
+    return bool(cur.rowcount > 0)
 
 
 class NangVaiLoi(ValueError):
@@ -2049,7 +2975,7 @@ def ghi_diem_danh(nv_id: str) -> None:
         if nv_id not in hom_nay_list:
             hom_nay_list.append(nv_id)
         dd[hom_nay] = hom_nay_list
-        return dd
+        return cast(dict[str, list[str]], dd)
 
     kv_mutate("diem_danh", mut, {})
 

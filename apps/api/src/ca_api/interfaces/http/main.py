@@ -67,6 +67,7 @@ from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.copilot_voice import router as copilot_voice_router
 from ca_api.interfaces.http.experience import router as experience_router
 from ca_api.interfaces.http.experience_rules import router as experience_rules_router
+from ca_api.interfaces.http.gmail import router as gmail_router
 from ca_api.interfaces.http.hao_hut import router as hao_hut_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
@@ -83,8 +84,8 @@ try:
         system_router as serpapi_system_router,
     )
 except ImportError:
-    pricing_radar_router = None
-    serpapi_system_router = None
+    pricing_radar_router = None  # type: ignore[assignment]
+    serpapi_system_router = None  # type: ignore[assignment]
 from ca_api.interfaces.http.reservations import router as reservations_router
 from ca_api.interfaces.http.shift_rescue import router as shift_rescue_router
 from ca_api.interfaces.http.skills import router as skills_router
@@ -97,6 +98,7 @@ from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import (
     DangKyLoi,
     audit_add,
+    audit_list,
     audit_request_begin,
     audit_request_end,
     audit_request_had_entry,
@@ -188,6 +190,8 @@ async def broadcast_successful_mutation(request: Request, call_next: Any) -> Any
     actor_session = (
         auth_session(request.headers.get("authorization"))
         if is_mutation_method
+        and path not in _AUDIT_SKIP_PATHS
+        and request.headers.get("authorization")
         else None
     )
     generic_audit_added = False
@@ -263,6 +267,7 @@ if pricing_radar_router:
 if serpapi_system_router:
     app.include_router(serpapi_system_router)
 app.include_router(mail_router)
+app.include_router(gmail_router)
 app.include_router(ai_learning_router)
 app.include_router(chat_router)
 app.include_router(reservations_router)
@@ -291,15 +296,8 @@ def _week_value(key: str, week: str, default: Any) -> Any:
     raw = kv_get(key, None)
     if isinstance(raw, dict) and raw:
         return raw.get(week, default)
-    if key.endswith("_by_week"):
-        legacy = kv_get(key.removesuffix("_by_week"), None)
-        if legacy is not None:
-            # Legacy doc có tuan_iso: chỉ fallback khi đúng tuần được hỏi,
-            # tránh tuần mới thừa hưởng trạng thái của tuần cũ.
-            if isinstance(legacy, dict) and "tuan_iso" in legacy:
-                return legacy if legacy.get("tuan_iso") == week else default
-            return legacy
-    return default
+    legacy = kv_get(key.removesuffix("_by_week"), None) if key.endswith("_by_week") else None
+    return legacy if legacy is not None else default
 
 
 def _pin_map(tuan_iso: str) -> dict[tuple[str, str], bool]:
@@ -451,6 +449,8 @@ configure_data_sources(
     ],
     list_nhan_vien_ops=list_nhan_vien_ops,
     menu_list=menu_list,
+    # QUERY_AUDIT provider — vết hệ thống (tenant-scoped, đã redact ở tool)
+    audit_list=audit_list,
     # PR11 admin providers — đơn quầy cho snapshot/validate
     don_list=don_list,
     don_get=don_get,
@@ -577,8 +577,8 @@ def _detect_staff_availability(
         for it in inbox_items:
             if not isinstance(it, dict):
                 continue
-            rb = it.get("rang_buoc") if isinstance(it.get("rang_buoc"), dict) else {}
-            hl = it.get("hieu_luc") if isinstance(it.get("hieu_luc"), dict) else {}
+            rb = cast(dict[str, Any], it.get("rang_buoc")) if isinstance(it.get("rang_buoc"), dict) else {}
+            hl = cast(dict[str, Any], it.get("hieu_luc")) if isinstance(it.get("hieu_luc"), dict) else {}
             it_tuan = rb.get("tuan_id") or hl.get("tuan_id") or it.get("tuan_id")
             if it_tuan == tuan_iso:
                 nvid = it.get("nv_id") or hl.get("nv_id")

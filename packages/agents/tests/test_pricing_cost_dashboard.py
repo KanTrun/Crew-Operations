@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Test cost dashboard & KPI khảo sát giá (plan `260913-1455` mục 9 và 12).
 
 Ba điều test này phải chứng minh, vì đây là chỗ dễ "làm cho đẹp số liệu" nhất:

@@ -41,7 +41,7 @@ Hệ thống cào TikTok có **3 nguồn thật + 1 tầng tĩnh last-resort**, 
 ### 1. Đăng ký Apify
 
 1. Vào https://console.apify.com/sign-up
-2. Đăng ký bằng email (free tier $5/tháng)
+2. Đăng ký bằng email (gói Free — hạn mức thật xem ở `/page-quan` hoặc `GET /api/v1/trends/apify-usage`)
 3. Vào **Settings → Integrations → Token** → copy token
 
 ### 2. Cấu hình `.env`

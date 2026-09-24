@@ -34,6 +34,58 @@ const TYPING_TICK_MS = 30;
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+// ── Text-based Approval Detection (Fix #1) ───────────────────────────────────
+// Khi người dùng nhắn một trong các cụm dưới đây VÀ có ActionProposal đang
+// chờ duyệt trong lịch sử chat → tự động gọi execute-action thay vì gửi AI.
+const APPROVAL_KEYWORDS = new Set([
+  // Tiếng Việt phổ biến
+  "duyệt", "duyet", "duyệt đi", "duyet di", "duyệt nha", "duyet nha",
+  "duyệt nhé", "duyet nhe", "duyệt luôn", "duyet luon",
+  "đồng ý", "dong y", "đồng ý nhé", "dong y nhe", "đồng ý nha", "dong y nha",
+  "chấp thuận", "chap thuan",
+  "xác nhận", "xac nhan", "xác nhận nha", "xac nhan nha",
+  "ok", "oke", "ok đi", "oke đi", "ok luôn", "oke luôn",
+  "ok em", "oke em", "ok nha", "oke nha", "ok nhé", "oke nhé",
+  "ừ duyệt", "u duyet", "ừ", "u",
+  "vâng", "vang", "vâng duyệt", "vang duyet",
+  "thì duyệt đi", "thi duyet di",
+  "cho duyệt", "cho duyet",
+  "làm đi", "lam di",
+  // Tiếng Anh
+  "approve", "yes", "confirm",
+]);
+
+const REJECT_KEYWORDS = new Set([
+  "từ chối", "tu choi", "không duyệt", "khong duyet",
+  "hủy", "huy", "hủy đi", "huy di",
+  "thôi", "thoi", "bỏ", "bo",
+  "không", "khong", "không cần", "khong can",
+  "không làm nữa", "khong lam nua",
+  "reject", "no", "cancel",
+]);
+
+/**
+ * Tìm ActionProposal đang chờ duyệt gần nhất trong lịch sử chat.
+ * Trả về { msgId, proposal } hoặc null nếu không có.
+ */
+function findPendingProposal(
+  messages: ChatMessage[]
+): { msgId: string; proposal: ActionProposalData } | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (
+      msg.sender === "copilot" &&
+      msg.action_proposal &&
+      (msg.action_proposal.status === "ready_for_approval" ||
+        msg.action_proposal.status === "amendment_ready")
+    ) {
+      return { msgId: msg.id, proposal: msg.action_proposal };
+    }
+  }
+  return null;
+}
+
+
 // Mỗi nhân viên có lịch sử riêng; không đọc khóa chung cũ để tránh lộ hội thoại.
 function storageKey(mode: Mode, nvId: string): string | null {
   const employeeId = nvId.trim();
@@ -194,6 +246,95 @@ export function useCopilotChat(mode: Mode = "pane") {
       setMessages((prev) => [...prev, userMsg]);
       if (!textToSend) setInput("");
       setLoading(true);
+
+      // ── Text-based Approval (Fix #1) ──────────────────────────────────────
+      // Kiểm tra tin nhắn có phải lệnh duyệt/từ chối không. Nếu có pending
+      // proposal → tự động gọi execute-action, không gửi lên AI.
+      const normalizedText = text.toLowerCase().trim();
+      const pendingResult = findPendingProposal(messagesRef.current);
+
+      if (pendingResult && !attachments) {
+        const isApprove = APPROVAL_KEYWORDS.has(normalizedText);
+        const isReject = REJECT_KEYWORDS.has(normalizedText);
+
+        if (isApprove || isReject) {
+          const decision = isApprove ? "approve" : "reject";
+          const copilotId = `copilot_${Date.now()}`;
+          setMessages((prev) => [
+            ...prev,
+            { id: copilotId, sender: "copilot", text: "⏳ Đang xử lý...", timestamp: now },
+          ]);
+
+          try {
+            const token = getToken();
+            const idempotencyKey = `${decision}_${pendingResult.proposal.action_id}_${Date.now()}`;
+            const res = await fetch(`${API_BASE}/api/v1/copilot/execute-action`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                action_id: pendingResult.proposal.action_id,
+                decision,
+                idempotency_key: idempotencyKey,
+              }),
+            });
+
+            const data = await res.json();
+            let replyText: string;
+            let updatedProposal: ActionProposalData = {
+              ...pendingResult.proposal,
+              status: "executed",
+            };
+
+            if (res.ok && data.ok) {
+              if (decision === "approve") {
+                replyText = `✅ Dạ em đã duyệt xong rồi ạ! ${data.message || "Hành động đã được thực thi thành công."}`
+                  + (data.result_link ? ` Anh/chị xem kết quả tại **${data.result_link}** nhé!` : "");
+              } else {
+                replyText = "✅ Dạ em đã hủy đề xuất theo yêu cầu của anh/chị rồi ạ!";
+                updatedProposal = { ...pendingResult.proposal, status: "rejected" };
+              }
+            } else {
+              const detail = String(data.detail || "");
+              if (detail.includes("stale_rejected")) {
+                replyText = "⚠️ Dữ liệu đã bị thay đổi trước khi anh/chị duyệt. Anh/chị yêu cầu lại để em tạo đề xuất mới nhé!";
+                updatedProposal = { ...pendingResult.proposal, status: "stale_rejected" };
+              } else if (detail.includes("expired")) {
+                replyText = "⚠️ Đề xuất đã hết hạn rồi ạ. Anh/chị nhắn lại lệnh để em tạo đề xuất mới nhé!";
+                updatedProposal = { ...pendingResult.proposal, status: "expired" };
+              } else {
+                replyText = `⚠️ Có lỗi xảy ra: ${data.detail || "Không thể thực thi. Anh/chị thử bấm nút trực tiếp trên thẻ đề xuất nhé!"}`;
+                updatedProposal = { ...pendingResult.proposal };
+              }
+            }
+
+            // Cập nhật trạng thái proposal trong message cũ
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === pendingResult.msgId
+                  ? { ...m, action_proposal: updatedProposal }
+                  : m.id === copilotId
+                  ? { ...m, text: replyText }
+                  : m
+              )
+            );
+          } catch (err: any) {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === copilotId
+                  ? { ...m, text: `⚠️ Lỗi kết nối: ${err.message || "Không thể thực thi. Anh/chị thử bấm nút trên thẻ đề xuất nhé!"}` }
+                  : m
+              )
+            );
+          } finally {
+            setLoading(false);
+          }
+          return; // Không gọi AI sau khi đã xử lý approval
+        }
+      }
+      // ─────────────────────────────────────────────────────────────────────
 
       const copilotId = `copilot_${Date.now()}`;
       setMessages((prev) => [

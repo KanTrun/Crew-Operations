@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 import importlib.util
 from pathlib import Path
 
@@ -6,6 +7,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_PATH = REPO_ROOT / "skills" / "repositories" / "repo-skills" / "vf-gates-audit" / "scripts" / "run_fail_closed_audit.py"
 
 spec = importlib.util.spec_from_file_location("run_fail_closed_audit", SCRIPT_PATH)
+assert spec is not None and spec.loader is not None
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 audit_extraction = mod.audit_extraction

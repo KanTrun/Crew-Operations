@@ -1,10 +1,10 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Unit tests cho tiktok_apify_source.py — mock Apify client."""
 from __future__ import annotations
 
 from unittest.mock import patch
 
 import pytest
-
 from ca_agents.clients.apify_client import ApifyError
 from ca_agents.sources.tiktok_apify_source import (
     _build_input,
@@ -13,7 +13,6 @@ from ca_agents.sources.tiktok_apify_source import (
     _format_count,
     scrape_tiktok_apify,
 )
-
 
 # ─── Fixtures ───────────────────────────────────────────────────────
 

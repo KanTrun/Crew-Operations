@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Literal, cast
 
 try:
     from datetime import UTC, datetime
@@ -15,7 +15,16 @@ except ImportError:
 
 from ca_agents.ag_mail import send_mail
 from ca_agents.ag_mailwriter import evaluate_gmail, feedback_diff
-from ca_contracts import AIEvaluation, AIFeedbackEvent, AIGenerationRecord
+from ca_contracts import (
+    AIEvaluation,
+    AIEvaluationScores,
+    AIFeedbackContent,
+    AIFeedbackEvent,
+    AIGenerationDraft,
+    AIGenerationRecord,
+    AIModelVersion,
+    FbPolicyAction,
+)
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
@@ -76,15 +85,17 @@ def execute_supervised_mail(
     generation_id = f"gmail-{fingerprint[:24]}"
     repository.save(AIGenerationRecord(
         id=generation_id, store_id=store_id, channel="gmail", request_kind="gmail_request",
-        draft={"subject": subject, "body": body}, context_snapshot_hash=fingerprint,
-        agent_version="ag-mailwriter", prompt_version=prompt_version, rule_version=rule_version, rollout_bucket=rollout_bucket,
-        model={"provider": "deterministic", "model_id": "gmail-quality-gate", "temperature": 0, "tool_context_hash": fingerprint},
-        policy_action=policy_action, idempotency_key=f"generation:{fingerprint}", created_at=now,
+        draft=cast(AIGenerationDraft, {"subject": subject, "body": body}), context_snapshot_hash=fingerprint,
+        agent_version="ag-mailwriter", prompt_version=prompt_version, rule_version=rule_version, rollout_bucket=cast(
+            Literal["control", "canary_10", "canary_50", "active_100"], rollout_bucket
+        ),
+        model=cast(AIModelVersion, {"provider": "deterministic", "model_id": "gmail-quality-gate", "temperature": 0, "tool_context_hash": fingerprint}),
+        policy_action=cast(FbPolicyAction, policy_action), idempotency_key=f"generation:{fingerprint}", created_at=now,
     ))
     repository.save(AIEvaluation(
         id=f"evaluation-{fingerprint[:24]}", store_id=store_id, generation_id=generation_id,
-        channel="gmail", scores=gate.scores or {}, aggregate_score=gate.score, passed=gate.passed,
-        action=policy_action, hard_fail_flags=gate.hard_fail_flags, flags=gate.flags,
+        channel="gmail", scores=cast(AIEvaluationScores, gate.scores or {}), aggregate_score=gate.score, passed=gate.passed,
+        action=cast(FbPolicyAction, policy_action), hard_fail_flags=gate.hard_fail_flags, flags=gate.flags,
         threshold_version=gate.threshold_version, calibration_version="deterministic-v1", sample_count=0,
         evaluation_window=f"per_send:{gate.threshold_store_id}", evaluator="ag-mailwriter-quality-gate",
         idempotency_key=f"evaluation:{fingerprint}", created_at=now,
@@ -97,9 +108,10 @@ def execute_supervised_mail(
         feedback_type = "manager_reject"
     repository.save(AIFeedbackEvent(
         id=f"feedback-{fingerprint[:24]}-{feedback_type}", store_id=store_id, generation_id=generation_id,
-        channel="gmail", type=feedback_type, original=diff["original"], final=diff["final"],
+        channel="gmail", type=cast(Literal["manager_approve", "manager_edit", "manager_reject", "customer_positive", "customer_negative", "customer_followup", "send_success", "send_failure", "manual_rating"], feedback_type),
+        original=cast(AIFeedbackContent | None, diff["original"]), final=cast(AIFeedbackContent | None, diff["final"]),
         edited_fields=diff["edited_fields"], materially_edited=diff["materially_edited"], actor_user_id=actor_user_id,
-        actor_role=actor_role, idempotency_key=f"{feedback_type}:{fingerprint}", created_at=now,
+        actor_role=cast(Literal["chu_quan", "quan_ly", "system", "customer"], actor_role), idempotency_key=f"{feedback_type}:{fingerprint}", created_at=now,
     ))
     if gate.action != "send":
         return {"ok": False, "mode": os.environ.get("CA_AGENT_MODE", "replay"), "reason": "quality_gate", "quality_gate": gate.__dict__, "generation_id": generation_id}
@@ -153,7 +165,8 @@ def execute_supervised_mail(
     outcome_name = "send_success" if res.ok else "send_failure"
     repository.save(AIFeedbackEvent(
         id=f"feedback-{fingerprint[:24]}-{outcome_name}", store_id=store_id, generation_id=generation_id,
-        channel="gmail", type=outcome_name, actor_role="system", send_status="sent" if res.ok else "failed",
+        channel="gmail", type=cast(Literal["manager_approve", "manager_edit", "manager_reject", "customer_positive", "customer_negative", "customer_followup", "send_success", "send_failure", "manual_rating"], outcome_name),
+        actor_role="system", send_status=cast(Literal["not_applicable", "sent", "failed"], "sent" if res.ok else "failed"),
         failure_code=None if res.ok else res.reason, idempotency_key=f"{outcome_name}:{fingerprint}", created_at=datetime.now(UTC).isoformat(),
     ))
     return outcome

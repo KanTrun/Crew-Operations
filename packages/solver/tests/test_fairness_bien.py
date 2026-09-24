@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Nhánh biên của fairness debt: ca vụn, max_debt, debt_spread rỗng."""
 
 from __future__ import annotations

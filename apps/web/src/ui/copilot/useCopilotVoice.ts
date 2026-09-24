@@ -26,12 +26,23 @@ export interface MicDeviceInfo {
   label: string;
 }
 
+export interface VoiceProposalData {
+  reply_text: string;
+  intent: string;
+  action_proposal: import("./ActionProposalCard").ActionProposalData | null;
+  citations: string[];
+  agent_mode: string;
+}
+
 export interface UseCopilotVoiceOptions {
   onTranscript?: (role: "user" | "copilot", text: string, isFinal: boolean) => void;
   onInterrupted?: () => void;
+  onProposal?: (data: VoiceProposalData) => void;
   inputMode?: VoiceInputMode;
   deviceId?: string;
   noiseFloor?: number;
+  /** Callback nhận mức amplitude (0-1) của audio trợ lý đang phát, dùng cho lip-sync avatar. */
+  onAudioLevel?: (level: number) => void;
 }
 
 export const DEFAULT_NOISE_FLOOR = 0.01;
@@ -108,6 +119,7 @@ function playPcm16(
   nextTime: { value: number },
   sources: Set<AudioBufferSourceNode>,
   onQueueEnded: () => void,
+  analyser?: AnalyserNode,
 ): void {
   const binary = atob(data);
   const samples = new Int16Array(binary.length / 2);
@@ -119,7 +131,15 @@ function playPcm16(
   for (let index = 0; index < samples.length; index += 1) channel[index] = samples[index] / 0x8000;
   const source = context.createBufferSource();
   source.buffer = buffer;
-  source.connect(context.destination);
+  // Chèn AnalyserNode vào đường audio để đo amplitude cho lip-sync avatar.
+  // LƯU Ý: analyser đã được connect tới destination MỘT LẦN tại lúc tạo
+  // (trong start()). Ở đây chỉ connect source → analyser, KHÔNG connect
+  // analyser → destination nữa để tránh audio bị phát gấp đôi.
+  if (analyser) {
+    source.connect(analyser);
+  } else {
+    source.connect(context.destination);
+  }
   sources.add(source);
   source.onended = () => {
     sources.delete(source);
@@ -140,6 +160,8 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
   deviceIdRef.current = options?.deviceId;
   const noiseFloorRef = useRef<number>(options?.noiseFloor ?? DEFAULT_NOISE_FLOOR);
   noiseFloorRef.current = options?.noiseFloor ?? DEFAULT_NOISE_FLOOR;
+  const onAudioLevelRef = useRef<((level: number) => void) | undefined>(options?.onAudioLevel);
+  onAudioLevelRef.current = options?.onAudioLevel;
   const isPttSpeakingRef = useRef(false);
   const [availableMics, setAvailableMics] = useState<MicDeviceInfo[]>([]);
   const [isPttSpeaking, setIsPttSpeaking] = useState(false);
@@ -161,6 +183,11 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
   const failedRef = useRef(false);
   const userStoppedRef = useRef(false);
   const tabHiddenRef = useRef(false);
+  // Lip-sync: AnalyserNode đo amplitude audio trợ lý đang phát.
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioLevelRef = useRef(0);
+  const levelTimerRef = useRef<number | null>(null);
+  const [audioLevel, setAudioLevel] = useState(0);
 
   // Pause audio sending when tab is hidden for > 15s to save quota
   useEffect(() => {
@@ -203,6 +230,13 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
     outputSourcesRef.current.clear();
     turnCompleteRef.current = false;
     nextOutputTimeRef.current.value = 0;
+    if (levelTimerRef.current) {
+      window.clearInterval(levelTimerRef.current);
+      levelTimerRef.current = null;
+    }
+    analyserRef.current = null;
+    audioLevelRef.current = 0;
+    setAudioLevel(0);
     void inputContextRef.current?.close();
     void outputContextRef.current?.close();
     inputContextRef.current = null;
@@ -232,6 +266,15 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
     failedRef.current = false;
     setState("connecting");
     try {
+      // Xin quyền micro TRƯỚC TIÊN, ngay trong ngữ cảnh click của người dùng.
+      // Nếu gọi sau khi await WebSocket + chờ voice:ready, transient activation
+      // đã hết hạn → trình duyệt từ chối im lặng (NotAllowedError) mà KHÔNG hiện
+      // hộp thoại hỏi quyền micro.
+      const stream = await acquireMicStream(deviceIdRef.current);
+      void enumerateMics().then((mics) => {
+        if (mics.length > 0) setAvailableMics(mics);
+      });
+
       const socket = new WebSocket(voiceUrl());
       socket.binaryType = "arraybuffer";
       socketRef.current = socket;
@@ -239,6 +282,41 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
       const outputContext = new AudioContext();
       inputContextRef.current = inputContext;
       outputContextRef.current = outputContext;
+      // Lip-sync: tạo AnalyserNode trên đường audio phát để đo amplitude.
+      // Connect analyser → destination đúng MỘT LẦN; các audio chunk chỉ
+      // connect source → analyser (xem playPcm16).
+      const analyser = outputContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.6;
+      analyser.connect(outputContext.destination);
+      analyserRef.current = analyser;
+      const levelBuffer = new Uint8Array(analyser.frequencyBinCount);
+      // Dọn interval cũ (nếu có) trước khi tạo mới để tránh chồng chất.
+      if (levelTimerRef.current) {
+        window.clearInterval(levelTimerRef.current);
+        levelTimerRef.current = null;
+      }
+      const LEVEL_UPDATE_THRESHOLD = 0.02;
+      let lastReported = 0;
+      const levelTimer = window.setInterval(() => {
+        if (analyserRef.current !== analyser) return;
+        analyser.getByteTimeDomainData(levelBuffer);
+        let peak = 0;
+        for (let i = 0; i < levelBuffer.length; i += 1) {
+          const v = Math.abs(levelBuffer[i] - 128) / 128;
+          if (v > peak) peak = v;
+        }
+        // Làm mượt: giữ mức cao hơn một chút để miệng không nhấp nháy quá nhanh.
+        const smoothed = Math.max(peak, audioLevelRef.current * 0.7);
+        audioLevelRef.current = smoothed;
+        // Chỉ báo trạng thái khi có thay đổi đáng kể để tránh re-render liên tục.
+        if (Math.abs(smoothed - lastReported) >= LEVEL_UPDATE_THRESHOLD) {
+          lastReported = smoothed;
+          setAudioLevel(smoothed);
+          onAudioLevelRef.current?.(smoothed);
+        }
+      }, 40);
+      levelTimerRef.current = levelTimer;
       await new Promise<void>((resolve, reject) => {
         let ready = false;
         const fail = (reason: string) => {
@@ -271,6 +349,9 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
             if (payload.data?.code === "max_duration_reached") {
               stop();
             }
+          } else if (payload.event === "voice:proposal") {
+            // Kết quả pipeline nghiệp vụ (reply + ActionProposal) từ server.
+            optionsRef.current?.onProposal?.(payload.data as VoiceProposalData);
           } else if (payload.event === "voice:upstream") {
             const event = payload.data || {};
             const serverContent = event.serverContent || {};
@@ -332,6 +413,7 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
                   () => {
                     if (turnCompleteRef.current) setState("listening");
                   },
+                  analyser,
                 );
               }
             }
@@ -353,10 +435,6 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
         };
       });
 
-      const stream = await acquireMicStream(deviceIdRef.current);
-      void enumerateMics().then((mics) => {
-        if (mics.length > 0) setAvailableMics(mics);
-      });
       if (socketRef.current !== socket || socket.readyState !== WebSocket.OPEN) {
         stream.getTracks().forEach((track) => track.stop());
         return;
@@ -443,5 +521,6 @@ export function useCopilotVoice(options?: UseCopilotVoiceOptions) {
     isPttSpeaking,
     availableMics,
     changeMic,
+    audioLevel,
   };
 }

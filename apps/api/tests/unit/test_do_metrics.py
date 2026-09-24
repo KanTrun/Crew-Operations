@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 """Bộ đo 12 số §18.2 phải TẤT ĐỊNH và luôn khai nguồn.
 
 Hồ sơ §18.2 tự đặt hai luật: "Cấm số phỏng đoán" và mọi con số phải phát lại

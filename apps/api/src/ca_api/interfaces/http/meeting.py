@@ -12,6 +12,7 @@ try:
 except ImportError:
     from datetime import datetime, timezone
     UTC = timezone.utc
+import os
 import uuid
 from pathlib import Path
 from typing import Annotated, Any, cast
@@ -114,7 +115,8 @@ def _get_roster_data() -> tuple[dict[str, list[str]], list[dict[str, Any]]]:
 
     phan_cong: dict[str, list[str]] = dict(kv_get("phan_cong", {}) or {})
     if not phan_cong:
-        lich_tuan_out = ROOT / "data" / "out" / "lich_tuan.json"
+        _env_out = os.environ.get("NHIPQUAN_LICH_TUAN_OUT")
+        lich_tuan_out = Path(_env_out) if _env_out else ROOT / "data" / "out" / "lich_tuan.json"
         if lich_tuan_out.exists():
             try:
                 sol_data = json.loads(lich_tuan_out.read_text(encoding="utf-8"))
