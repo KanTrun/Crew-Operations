@@ -223,6 +223,66 @@ def check_reduced_motion() -> list[str]:
     return out
 
 
+# ── 4b. vong lap vo han trong CSS ───────────────────────────────────────────
+#
+# Vi sao can rieng muc nay: phep kiem so 3 chi soi chuoi `repeat: Infinity` trong
+# tep dung `framer-motion`. No KHONG he doc `animation: ... infinite` trong CSS.
+# Hau qua that: toi da khang dinh "khong con vong lap vo han ngoai danh sach cho
+# phep" trong khi 17 route van con animation CSS chay mai — khang dinh do SAI, va
+# chi lo ra khi do bang `document.getAnimations()` tren ban render
+# (`scripts/audit_motion_moments.mjs`). Cong doc ma nguon khong thay duoc dieu ma
+# trinh duyet thay.
+#
+# Cho phep: vong lap bao TRANG THAI DANG TAI (skeleton, shimmer, "dang tai...").
+# Do la thiet ke dung — nguoi dung can biet may dang lam viec.
+# Cam: vong lap trang tri tren phan tu luon hien.
+
+# Ten animation duoc phep chay vo han, kem ly do. Them vao day PHAI co ly do.
+#
+# Ba nhom duoc phep, va chi ba nhom nay:
+#   1. BAO DANG TAI — nguoi dung can biet may dang lam viec.
+#   2. MA HOA TRANG THAI — vong lap chi ton tai khi co dieu kien (vd `is-urgent`).
+#   3. BIEU TUONG THUONG HIEU — gan voi dung viec he thong lam, khong phai hat sang.
+# Vong lap trang tri tren phan tu luon hien thi khong thuoc nhom nao.
+CSS_INFINITE_ALLOWED = {
+    # 1. bao dang tai
+    "pulse": "Tailwind animate-pulse — bao dang tai",
+    "nq-shimmer": "skeleton bao dang tai",
+    "nq-pulse-load": "bao dang tai du lieu",
+    "nq-spin": "spinner cua nut dang gui (.nq-spin) va khoi cho (.nq-demo__pending) — 700ms, co aria-busy",
+    # 2. ma hoa trang thai
+    "nq-hz-pulse":
+        "chi chay tren .nq-horizon__item.is-urgent — dong hoa tiet diem qua han",
+    "nq-ops-ring-spin":
+        "chi chay tren .nq-ops-pulse__ring--ai — vong bao tro ly AI dang hoat dong",
+    # 3. bieu tuong thuong hieu
+    "nq-pulse-beat":
+        "nam vach nhịp o trang chu — bieu tuong 'giu nhịp ca', aria-hidden, la khoanh khac chuyen dong chinh cua trang",
+    "nq-ar-spin":
+        "o ngam AR xoay cham (8s) — bieu tuong thiet bi quet khong gian, gan voi dung viec dang lam",
+}
+
+_CSS_INFINITE_RE = re.compile(r"animation\s*:\s*([\w-]+)[^;]*\binfinite\b")
+
+
+def check_css_infinite() -> list[str]:
+    out: list[str] = []
+    for p in sorted(WEB_SRC.rglob("*.css")):
+        if "node_modules" in p.parts:
+            continue
+        for i, line in code_lines(p.read_text(encoding="utf-8")):
+            m = _CSS_INFINITE_RE.search(line)
+            if not m:
+                continue
+            name = m.group(1)
+            if name not in CSS_INFINITE_ALLOWED:
+                out.append(
+                    f"{rel(p)}:{i}: `animation: {name} ... infinite` khong nam trong "
+                    f"danh sach cho phep → vong lap trang tri chay mai"
+                )
+    return out
+
+
 # ── 5. chuyen dong 3D (react-three-fiber) ───────────────────────────────────
 
 # Tep 3D duoc phep ghi truc tiep vao `position`/`rotation`/`scale` trong `useFrame`:
@@ -287,8 +347,9 @@ def main() -> int:
     sections = [
         ("1. So tran cho thoi luong / duong cong", check_hardcoded()),
         ("2. Du phong trong motion.ts khop globals.css", check_fallbacks()),
-        ("3. Vong lap vo han", check_infinite_loops()),
+        ("3. Vong lap vo han trong JS (framer-motion)", check_infinite_loops()),
         ("4. Tep chuyen dong phai xu ly giam chuyen dong", check_reduced_motion()),
+        ("4b. Vong lap vo han trong CSS", check_css_infinite()),
         ("5. Chuyen dong 3D (react-three-fiber)", check_3d()),
     ]
     total = 0

@@ -21,6 +21,8 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB_SRC = ROOT / "apps" / "web" / "src"
 GATE = ROOT / "scripts" / "audit_motion_tokens.py"
 PROBE = WEB_SRC / "ui" / "_probe_motion_gate.tsx"
+# Tep tam cho cac ca kiem CSS. Dat trong `app/` vi cong quet `**/*.css` tu WEB_SRC.
+PROBE_CSS = WEB_SRC / "app" / "_probe_motion_gate.css"
 
 
 def run_gate() -> tuple[int, str]:
@@ -32,6 +34,23 @@ def run_gate() -> tuple[int, str]:
         cwd=str(ROOT),
     )
     return r.returncode, (r.stdout or "") + (r.stderr or "")
+
+
+# Ca kiem CSS: tiem mot vong lap vo han KHONG nam trong danh sach cho phep, va mot
+# vong lap CO nam trong danh sach. Ca thu hai phai de cong XANH — neu khong thi
+# cong dang cam ca nhung animation dung.
+CASES_CSS: list[tuple[str, str, str | None]] = [
+    (
+        "CSS: vong lap trang tri khong duoc phep",
+        ".nq-probe-spin { animation: nq-probe-unknown-spin 2s linear infinite; }\n",
+        "khong nam trong danh sach cho phep",
+    ),
+    (
+        "CSS: vong lap DANG TAI duoc phep (phai de cong XANH)",
+        ".nq-probe-load { animation: pulse 2s ease-in-out infinite; }\n",
+        None,
+    ),
+]
 
 
 CASES: list[tuple[str, str, str]] = [
@@ -164,6 +183,36 @@ def main() -> int:
             failures += 1
         print()
 
+    print("=== Cac ca kiem CSS ===")
+    for name, source, expect in CASES_CSS:
+        PROBE_CSS.write_text(source, encoding="utf-8")
+        try:
+            code, out = run_gate()
+        finally:
+            PROBE_CSS.unlink(missing_ok=True)
+
+        if expect is None:
+            # Ca nay phai de cong XANH.
+            good = code == 0
+            print(f"=== {name} ===")
+            print(f"  {'[OK]' if good else '[X]'} cong exit={code}, {'xanh dung' if good else 'DO sai'}")
+            if not good:
+                failures += 1
+                for line in out.splitlines():
+                    if "[X]" in line:
+                        print(f"  {line}")
+        else:
+            caught = code != 0 and expect in out
+            print(f"=== {name} ===")
+            print(f"  {'[OK]' if caught else '[X]'} cong exit={code}, {'bat duoc' if caught else 'KHONG bat duoc'}")
+            if not caught:
+                failures += 1
+                print(out)
+        if PROBE_CSS.exists():
+            print(f"  [X] tep tam CSS con sot: {PROBE_CSS}")
+            failures += 1
+        print()
+
     print("=== Buoc cuoi: cong phai XANH lai sau khi xoa het loi tiem ===")
     code, out = run_gate()
     print(f"  exit={code} {'[OK]' if code == 0 else '[X]'}")
@@ -194,9 +243,11 @@ def main() -> int:
     if failures:
         print(f"=== THAT BAI: {failures} truong hop cong khong lam dung viec ===")
     else:
+        total = len(CASES) + len(CASES_CSS)
         print(
-            f"=== DAT: {len(CASES)}/{len(CASES)} loai loi deu bi bat, "
-            f"cong xanh lai sau khi xoa, {len(KNOWN_LIMIT_CASES)} gioi han da biet dung nhu ghi ==="
+            f"=== DAT: {len(CASES)}/{len(CASES)} ca TSX + {len(CASES_CSS)}/{len(CASES_CSS)} ca CSS "
+            f"= {total} ca deu dung, cong xanh lai sau khi xoa, "
+            f"{len(KNOWN_LIMIT_CASES)} gioi han da biet dung nhu ghi ==="
         )
     return 1 if failures else 0
 
