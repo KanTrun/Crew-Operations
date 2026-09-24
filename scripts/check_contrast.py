@@ -85,7 +85,7 @@ def read_tokens() -> dict[str, str]:
                         out[name] = raw2
 
     # Hợp nhất các token rgba lên nền trang (và lên bề mặt thẻ khi cần).
-    bg = out.get("bg", "#0e0c0a")
+    bg = out.get("bg", "#070d12")
     for name, raw in raw_map.items():
         if name in out:
             continue
@@ -142,20 +142,34 @@ PAIRS: list[tuple[str, str, str, float | None]] = [
 ]
 
 # Lớp Tailwind ngoài token đang có trong mã, để so trước/sau khi ánh xạ.
-TAILWIND_SHADES: dict[str, dict[str, str]] = {
-    "amber":   {"300": "#fcd34d", "400": "#fbbf24", "500": "#f59e0b", "600": "#d97706", "950": "#451a03"},
-    "emerald": {"300": "#6ee7b7", "400": "#34d399", "500": "#10b981", "600": "#059669", "950": "#022c22"},
-    "rose":    {"300": "#fda4af", "400": "#fb7185", "500": "#f43f5e", "950": "#4c0519"},
-    "red":     {"400": "#f87171", "500": "#ef4444", "950": "#450a0a"},
-    "zinc":    {"100": "#f4f4f5", "300": "#d4d4d8", "400": "#a1a1aa", "500": "#71717a",
-                "700": "#3f3f46", "800": "#27272a", "900": "#18181b"},
-    "neutral": {"400": "#a3a3a3", "500": "#737373", "800": "#262626", "900": "#171717"},
-    "purple":  {"300": "#d8b4fe", "500": "#a855f7", "600": "#9333ea", "950": "#3b0764"},
-    "indigo":  {"300": "#a5b4fc", "400": "#818cf8", "500": "#6366f1", "600": "#4f46e5"},
-    "blue":    {"300": "#93c5fd", "400": "#60a5fa", "500": "#3b82f6"},
-    "cyan":    {"300": "#67e8f9", "500": "#06b6d4"},
-    "green":   {"500": "#22c55e"},
-}
+#
+# Bảng này ĐỌC TỪ `scripts/gen_tailwind_palette.py` — nguồn sự thật của bảng
+# màu đang phục vụ. Chép cứng bảng mặc định Tailwind vào đây (bản trước) khiến
+# script đo một bảng màu KHÔNG TỒN TẠI: sau khi thay bảng màu ở tailwind.config,
+# script vẫn báo đúng 5 "lỗi" của bảng mặc định cũ, và người đọc tưởng bảng mới
+# hỏng. Đọc từ nguồn thì con số luôn khớp thứ đang chạy.
+def _tailwind_shades() -> dict[str, dict[str, str]]:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "_gen_palette", str(ROOT / "scripts" / "gen_tailwind_palette.py")
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    # Chỉ đo các họ mà mã THỰC SỰ dùng, và chỉ các bậc đang xuất hiện trong mã —
+    # đo bậc không ai dùng là tạo việc giả.
+    used = mod.actual_usage()
+    out: dict[str, dict[str, str]] = {}
+    for fam, combos in used.items():
+        ramp = mod.RAMPS.get(fam)
+        if not ramp:
+            continue
+        steps = {step for _, step, _ in combos}
+        out[fam] = {s: ramp[s] for s in sorted(steps) if s in ramp}
+    return out
+
+
+TAILWIND_SHADES: dict[str, dict[str, str]] = _tailwind_shades()
 
 
 def report_tokens() -> int:
@@ -186,7 +200,7 @@ def report_tokens() -> int:
     return fails
 
 
-def report_palette() -> int:
+def report_palette(tokens: dict[str, str]) -> int:
     """Lớp Tailwind ngoài token đang có trong mã — đo để đối chiếu trước/sau.
 
     Không phải lớp nào cũng sai. Mã dùng chúng theo hai vai trái ngược:
@@ -198,8 +212,8 @@ def report_palette() -> int:
     Vì vậy script chỉ chấm lỗi tương phản cho nhóm có thể làm chữ, còn nhóm nền
     tối thì đếm riêng là "lệch bảng màu".
     """
-    bg = "#0e0c0a"
-    elev = "#1a1612"
+    bg = tokens.get("bg", "#070d12")
+    elev = tokens.get("bg-elevated", "#0b141b")
     print(f"== Lớp Tailwind ngoài token, đo trên nền trang {bg} / bề mặt {elev} ==")
     text_fail: list[str] = []
     bg_only = 0
@@ -224,12 +238,13 @@ def report_palette() -> int:
 
 
 def main() -> int:
+    tokens = read_tokens()
     if "--palette" in sys.argv:
-        report_palette()
+        report_palette(tokens)
         return 0
     fails = report_tokens()
     print()
-    report_palette()
+    report_palette(tokens)
     return 1 if fails else 0
 
 

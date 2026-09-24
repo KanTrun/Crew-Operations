@@ -75,7 +75,7 @@ function PulseScene({ model }: { model: OpsPulseModel }) {
   return (
     <>
       <ambientLight intensity={0.45} />
-      <pointLight position={[2, 2, 2]} intensity={0.7} color="#d4b888" />
+      <pointLight position={[2, 2, 2]} intensity={0.7} color="#2dd4bf" />
       <pointLight position={[-2, -1, 1]} intensity={0.35} color={color} />
       <AiCore model={model} />
       <OrbitParticles count={model.particleCount} active={model.aiActive || model.severity !== "ok"} color={color} />

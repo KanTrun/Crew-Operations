@@ -1,5 +1,5 @@
 == Kiểm chứng theo TỔ HỢP THỰC DÙNG trong mã ==
-   nền trang #0e0c0a · bề mặt thẻ #1a1612
+   nền trang #070d12 · bề mặt thẻ #0e1b22
 
 == Tính đơn điệu của thang (sáng → tối) ==
   amber     OK — giảm đều
@@ -27,10 +27,6 @@
   zinc      OK — giảm đều
 
 == Từng tổ hợp đang dùng, chấm theo vai của chính nó ==
-  CẢNH BÁO text-amber-600   #9d7612  CẢNH BÁO chữ mờ, tệ nhất  4.31:1
-  CẢNH BÁO text-neutral-500   #6f675e  CẢNH BÁO chữ mờ, tệ nhất  3.24:1
-  CẢNH BÁO text-neutral-600   #544d46  CẢNH BÁO chữ mờ, tệ nhất  2.16:1
-  CẢNH BÁO text-stone-600   #544d46  CẢNH BÁO chữ mờ, tệ nhất  2.16:1
-  CẢNH BÁO text-zinc-500   #6f675e  CẢNH BÁO chữ mờ, tệ nhất  3.24:1
+  CẢNH BÁO text-zinc-500   #5f7180  CẢNH BÁO chữ mờ, tệ nhất  3.47:1
 
-  Tổ hợp hỏng: 0 · cảnh báo chữ mờ: 5
+  Tổ hợp hỏng: 0 · cảnh báo chữ mờ: 1

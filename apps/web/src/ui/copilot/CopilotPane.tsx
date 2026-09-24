@@ -143,7 +143,7 @@ export function CopilotPane({ open, onClose }: Props = {}) {
           position: "fixed",
           borderRadius: 9999,
         }}
-        className="flex cursor-grab items-center justify-center nq-surface-block border-[var(--nq-copper)] text-[var(--nq-copper)] shadow-[var(--nq-elev-2)] transition hover:bg-[var(--nq-copper)] hover:text-[#0e0c0a] active:scale-95"
+        className="flex cursor-grab items-center justify-center nq-surface-block border-[var(--nq-copper)] text-[var(--nq-copper)] shadow-[var(--nq-elev-2)] transition hover:bg-[var(--nq-copper)] hover:text-[var(--nq-accent-ink)] active:scale-95"
         title="Mở trợ lý vận hành"
       >
         <span className="text-sm font-black uppercase">Trợ lý</span>

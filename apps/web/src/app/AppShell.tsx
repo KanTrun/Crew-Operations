@@ -171,7 +171,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--nq-bg)] text-[var(--nq-fg)] font-sans selection:bg-[var(--nq-copper)] selection:text-[#0e0c0a] flex flex-col relative z-10">
+    <div className="min-h-screen bg-[var(--nq-bg)] text-[var(--nq-fg)] font-sans selection:bg-[var(--nq-copper)] selection:text-[var(--nq-accent-ink)] flex flex-col relative z-10">
       <header className="fixed top-0 left-0 w-full z-40 border-b border-[var(--nq-line)] bg-[var(--nq-bg)]/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 md:gap-4 md:px-8">
           <Logo href={token ? "/hom-nay" : "/"} />

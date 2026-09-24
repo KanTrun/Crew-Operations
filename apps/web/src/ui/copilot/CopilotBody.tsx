@@ -360,7 +360,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   setShowConsentModal(false);
                   void voice.start();
                 }}
-                className="border border-[var(--nq-copper)] bg-[var(--nq-copper)] px-3.5 py-1.5 text-2xs font-bold uppercase text-[#0e0c0a] transition hover:brightness-110"
+                className="border border-[var(--nq-copper)] bg-[var(--nq-copper)] px-3.5 py-1.5 text-2xs font-bold uppercase text-[var(--nq-accent-ink)] transition hover:brightness-110"
               >
                 Đồng ý & Bắt đầu
               </button>
@@ -452,7 +452,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 <div
                   className={`max-w-[85%] sm:max-w-[72%] rounded-lg border p-3 ${
                     msg.sender === "user"
-                      ? "border-[var(--nq-copper)] bg-[var(--nq-copper)] text-[#0e0c0a]"
+                      ? "border-[var(--nq-copper)] bg-[var(--nq-copper)] text-[var(--nq-accent-ink)]"
                       : "border-[var(--nq-dim)] bg-[var(--nq-surface)] text-[var(--nq-fg)]"
                   }`}
                 >
@@ -645,7 +645,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                       onClick={() => handleModeChange("open_mic")}
                       className={`px-2 py-0.5 font-bold uppercase transition rounded-sm ${
                         voiceMode === "open_mic"
-                          ? "bg-[var(--nq-copper)] text-[#0e0c0a]"
+                          ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)]"
                           : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"
                       }`}
                       title="Thu âm liên tục rảnh tay"
@@ -657,7 +657,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                       onClick={() => handleModeChange("push_to_talk")}
                       className={`px-2 py-0.5 font-bold uppercase transition rounded-sm ${
                         voiceMode === "push_to_talk"
-                          ? "bg-[var(--nq-copper)] text-[#0e0c0a]"
+                          ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)]"
                           : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"
                       }`}
                       title="Giữ nút khi nói, chống nhiễu quán ăn"

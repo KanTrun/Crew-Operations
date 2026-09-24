@@ -10,7 +10,11 @@ type TreoBreakdown = { trang_thai: string; so_luong: number };
 type SuaPreview = { loai?: string; luc?: string; ai?: string };
 
 const TON_COLORS = { ok: "var(--nq-ok)", warn: "var(--nq-warn)" };
-const TREO_COLORS = ["#c4a574", "#d4a017", "#6f9b7a", "#d45d4a", "#8b7355", "#5c7a8a"];
+/* Bảng màu cho các lát của biểu đồ việc treo. Xếp từ "cần xử lý ngay" tới
+   "chờ đủ điều kiện": đỏ → cam → ngọc → xanh dương → xám. Mỗi lát phải khác
+   nhau về cả SẮC lẫn ĐỘ SÁNG vì người dùng phân biệt lát bằng cả hai, và in
+   đen trắng vẫn phải tách được. */
+const TREO_COLORS = ["#ef4444", "#f59e0b", "#14b8a6", "#38bdf8", "#7c8a99", "#3d6f6a"];
 
 function chartMotion(reduced: boolean) {
   return reduced

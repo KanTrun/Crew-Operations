@@ -32,9 +32,9 @@ const KIND_RADIUS: Record<string, number> = {
 };
 
 function kindColor(kind: string): string {
-  if (kind === "thiet_bi") return "#8fa8a0";
-  if (kind === "ban") return "#c4a574";
-  return "#e8d5b5";
+  if (kind === "thiet_bi") return "#7c8a99";
+  if (kind === "ban") return "#14b8a6";
+  return "#7dd3fc";
 }
 
 interface Placement {
@@ -136,7 +136,7 @@ function Marker({
           <cylinderGeometry
             args={[radius * 1.5, radius * 1.5, place.height * 1.06, 20]}
           />
-          <meshBasicMaterial color="#e8d5b5" wireframe transparent opacity={0.85} />
+          <meshBasicMaterial color="#5eead4" wireframe transparent opacity={0.85} />
         </mesh>
       ) : null}
       {/* Chấm ký ức — mỗi ký ức một điểm sáng trên đỉnh cột. */}
@@ -150,7 +150,7 @@ function Marker({
           ]}
         >
           <sphereGeometry args={[0.035, 10, 10]} />
-          <meshBasicMaterial color="#c4a574" />
+          <meshBasicMaterial color="#14b8a6" />
         </mesh>
       ))}
     </group>
@@ -163,11 +163,11 @@ function Floor({ sizeX, sizeZ }: { sizeX: number; sizeZ: number }) {
     <group>
       <mesh position={[0, -0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[sizeX, sizeZ]} />
-        <meshStandardMaterial color="#171310" metalness={0.2} roughness={0.85} />
+        <meshStandardMaterial color="#0b141b" metalness={0.2} roughness={0.85} />
       </mesh>
       <mesh position={[0, -0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[Math.min(sizeX, sizeZ) / 2 - 0.06, Math.min(sizeX, sizeZ) / 2, 64]} />
-        <meshBasicMaterial color="#c4a574" transparent opacity={0.3} />
+        <meshBasicMaterial color="#14b8a6" transparent opacity={0.3} />
       </mesh>
     </group>
   );
@@ -234,13 +234,13 @@ export default function SpatialMap3d({
         shadows={full}
       >
         <ambientLight intensity={0.55} />
-        <hemisphereLight args={["#e8d5b5", "#171310", 0.5]} />
+        <hemisphereLight args={["#5eead4", "#0b141b", 0.5]} />
         <pointLight
           position={[4, 5.5, 3]}
           intensity={1.6}
           distance={20}
           decay={1.2}
-          color="#d4b888"
+          color="#2dd4bf"
           castShadow={full}
         />
         <pointLight
@@ -248,7 +248,7 @@ export default function SpatialMap3d({
           intensity={0.7}
           distance={18}
           decay={1.2}
-          color="#8fa8a0"
+          color="#7c8a99"
         />
         <Floor sizeX={6.2} sizeZ={5.2} />
         {anchors.map((a) => {

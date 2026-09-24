@@ -123,8 +123,8 @@ export function FloatingChatHead() {
               }
               return (
                 <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                  <div className={`w-fit max-w-[82%] rounded-xl border p-2 ${isMine ? "border-[var(--nq-copper)] bg-[var(--nq-copper)] text-[#0e0c0a]" : "border-[var(--nq-dim)] bg-[var(--nq-card)] text-[var(--nq-fg)]"}`}>
-                    <div className={`mb-0.5 flex gap-3 text-2xs ${isMine ? "justify-end text-[#0e0c0a]/70" : "justify-between text-[var(--nq-muted)]"}`}>
+                  <div className={`w-fit max-w-[82%] rounded-xl border p-2 ${isMine ? "border-[var(--nq-copper)] bg-[var(--nq-copper)] text-[var(--nq-accent-ink)]" : "border-[var(--nq-dim)] bg-[var(--nq-card)] text-[var(--nq-fg)]"}`}>
+                    <div className={`mb-0.5 flex gap-3 text-2xs ${isMine ? "justify-end text-[var(--nq-accent-ink)]/70" : "justify-between text-[var(--nq-muted)]"}`}>
                       {!isMine ? <span className="font-bold text-[var(--nq-copper)]">{msg.sender_name || msg.sender_id}</span> : null}
                       <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                     </div>

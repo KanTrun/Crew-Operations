@@ -36,7 +36,7 @@
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(70% 45% at 20% -8%, rgba(196, 165, 116, 0.16), transparent 62%),
+    radial-gradient(70% 45% at 20% -8%, rgba(20, 184, 166, 0.16), transparent 62%),
     radial-gradient(50% 40% at 92% 4%, rgba(143, 168, 160, 0.10), transparent 60%),
     /* Vệt hơi nước: ba dải mảnh nghiêng, rất nhạt — motif "steam-line" của quán */
     repeating-linear-gradient(
@@ -73,12 +73,12 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   /* Quầng ấm rất nhẹ phía sau chữ — chất liệu "đêm quán" thay vì chữ phẳng. */
-  text-shadow: 0 0 44px rgba(196, 165, 116, 0.18);
-  color: var(--nq-fg, #f5ead8);
+  text-shadow: 0 0 44px rgba(20, 184, 166, 0.18);
+  color: var(--nq-fg, #e6edf3);
 }
 .nq-exp-header p {
   margin: 0;
-  color: var(--nq-dim, rgba(245, 234, 216, 0.68));
+  color: var(--nq-dim, rgba(230, 237, 243, 0.62));
   font-size: 0.95rem;
   line-height: 1.6;
   max-width: 48rem;
@@ -160,8 +160,8 @@
 }
 .nq-war-picker__card:hover { border-color: var(--nq-line-strong); transform: translateY(-1px); }
 .nq-war-picker__card.is-active {
-  border-color: var(--nq-copper, #c4a574);
-  background: var(--nq-copper-dim, rgba(196, 165, 116, 0.16));
+  border-color: var(--nq-accent, #14b8a6);
+  background: var(--nq-copper-dim, rgba(20, 184, 166, 0.16));
 }
 .nq-war-picker__title { font-weight: 700; }
 .nq-war-picker__desc { color: var(--nq-dim); font-size: 0.85rem; line-height: 1.5; }
@@ -370,7 +370,7 @@
 .nq-map2d__svg { display: block; width: 100%; height: auto; color: var(--nq-fg); }
 .nq-map2d__anchor { cursor: pointer; outline: none; }
 .nq-map2d__anchor:focus-visible circle { stroke: var(--nq-fg); stroke-width: 3; }
-.nq-map2d__anchor.is-selected circle { fill: var(--nq-copper); color: #1a1612; }
+.nq-map2d__anchor.is-selected circle { fill: var(--nq-copper); color: #0b141b; }
 .nq-map2d__label { font-size: 11px; fill: currentColor; opacity: 0.85; }
 
 .nq-anchor, .nq-tour {
@@ -585,7 +585,7 @@
   /* Ba lớp: quầng đồng trên đỉnh, vệt sáng dưới sàn, và nền tối dần về đáy —
      để khối 3D có chỗ đứng trong một căn phòng, không trôi giữa khoảng đen. */
   background:
-    radial-gradient(90% 60% at 50% 8%, rgba(196, 165, 116, 0.2), transparent 62%),
+    radial-gradient(90% 60% at 50% 8%, rgba(20, 184, 166, 0.2), transparent 62%),
     radial-gradient(70% 40% at 50% 96%, rgba(143, 168, 160, 0.12), transparent 70%),
     linear-gradient(180deg, #1b1712 0%, #14110e 45%, #0d0b09 100%);
   overflow: hidden;
@@ -599,8 +599,8 @@
   height: 58%;
   pointer-events: none;
   background:
-    repeating-linear-gradient(90deg, transparent 0 38px, rgba(196, 165, 116, 0.055) 38px 39px),
-    repeating-linear-gradient(0deg, transparent 0 26px, rgba(196, 165, 116, 0.045) 26px 27px);
+    repeating-linear-gradient(90deg, transparent 0 38px, rgba(20, 184, 166, 0.055) 38px 39px),
+    repeating-linear-gradient(0deg, transparent 0 26px, rgba(20, 184, 166, 0.045) 26px 27px);
   transform: perspective(340px) rotateX(62deg);
   transform-origin: bottom center;
   mask-image: linear-gradient(180deg, transparent, #000 55%);
@@ -678,9 +678,9 @@
 .nq-living-map__zone:nth-child(4) { animation-delay: 210ms; }
 
 /* Tông theo mức tải: viền trái đổi màu, mắt đọc được trước khi đọc số */
-.nq-living-map__zone--load-low { border-left: 4px solid #8fa8a0; }
+.nq-living-map__zone--load-low { border-left: 4px solid #7c8a99; }
 .nq-living-map__zone--load-mid { border-left: 4px solid var(--nq-copper); }
-.nq-living-map__zone--load-high { border-left: 4px solid #e0885f; }
+.nq-living-map__zone--load-high { border-left: 4px solid #f59e0b; }
 
 .nq-living-map__glyph {
   display: grid; place-items: center;
@@ -690,8 +690,8 @@
   color: var(--nq-copper);
   border: 1px solid var(--nq-line);
 }
-.nq-living-map__zone--load-high .nq-living-map__glyph { background: color-mix(in srgb, #e0885f 16%, transparent); color: #e0885f; }
-.nq-living-map__zone--load-low .nq-living-map__glyph { background: color-mix(in srgb, #8fa8a0 14%, transparent); color: #8fa8a0; }
+.nq-living-map__zone--load-high .nq-living-map__glyph { background: color-mix(in srgb, #f59e0b 16%, transparent); color: #f59e0b; }
+.nq-living-map__zone--load-low .nq-living-map__glyph { background: color-mix(in srgb, #7c8a99 14%, transparent); color: #7c8a99; }
 .nq-living-map__body { display: grid; gap: 0.25rem; min-width: 0; }
 .nq-living-map__label { font-weight: 700; font-size: 0.98rem; }
 .nq-living-map__meta { display: flex; align-items: center; gap: var(--nq-s2); flex-wrap: wrap; }
@@ -727,18 +727,18 @@
   background: var(--nq-copper);
   transition: height 520ms var(--nq-ease-spring);
 }
-.nq-loadbar--low .nq-loadbar__fill { background: #8fa8a0; }
+.nq-loadbar--low .nq-loadbar__fill { background: #7c8a99; }
 .nq-loadbar--mid .nq-loadbar__fill { background: var(--nq-copper); }
-.nq-loadbar--high .nq-loadbar__fill { background: linear-gradient(180deg, #f0a878, #e0885f); }
+.nq-loadbar--high .nq-loadbar__fill { background: linear-gradient(180deg, #fbbf5c, #f59e0b); }
 
 .nq-living-map__legend {
   display: flex; align-items: center; gap: var(--nq-s2); flex-wrap: wrap;
   margin: 0; font-size: 0.76rem; color: var(--nq-dim);
 }
 .nq-loadbar__key { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
-.nq-loadbar__key--low { background: #8fa8a0; }
+.nq-loadbar__key--low { background: #7c8a99; }
 .nq-loadbar__key--mid { background: var(--nq-copper); }
-.nq-loadbar__key--high { background: #e0885f; }
+.nq-loadbar__key--high { background: #f59e0b; }
 .nq-living-map__legend-hint { margin-left: auto; font-style: italic; }
 
 /* ── Chi tiết khu vực ───────────────────────────────────────────────────── */
@@ -769,9 +769,9 @@
   font-family: var(--nq-font-mono, monospace); font-size: 0.72rem; font-weight: 500;
   border-radius: 999px; padding: 0.14rem 0.55rem;
 }
-.nq-loadchip--low { color: #8fa8a0; background: color-mix(in srgb, #8fa8a0 16%, transparent); }
+.nq-loadchip--low { color: #7c8a99; background: color-mix(in srgb, #7c8a99 16%, transparent); }
 .nq-loadchip--mid { color: var(--nq-copper); background: var(--nq-accent-soft); }
-.nq-loadchip--high { color: #e0885f; background: color-mix(in srgb, #e0885f 18%, transparent); }
+.nq-loadchip--high { color: #f59e0b; background: color-mix(in srgb, #f59e0b 18%, transparent); }
 .nq-zone-detail__hint { margin: 0; font-size: 0.85rem; color: var(--nq-dim); line-height: 1.55; }
 .nq-zone-detail__advice {
   margin: 0; padding: 0.6rem 0.8rem;
@@ -780,8 +780,8 @@
   background: color-mix(in srgb, var(--nq-copper) 10%, transparent);
   font-size: 0.88rem; line-height: 1.5;
 }
-.nq-zone-detail__advice--high { border-left-color: #e0885f; background: color-mix(in srgb, #e0885f 12%, transparent); }
-.nq-zone-detail__advice--low { border-left-color: #8fa8a0; background: color-mix(in srgb, #8fa8a0 10%, transparent); }
+.nq-zone-detail__advice--high { border-left-color: #f59e0b; background: color-mix(in srgb, #f59e0b 12%, transparent); }
+.nq-zone-detail__advice--low { border-left-color: #7c8a99; background: color-mix(in srgb, #7c8a99 10%, transparent); }
 .nq-zone-detail__meter { display: flex; align-items: flex-end; gap: var(--nq-s3); }
 .nq-loadbar__axis { font-family: var(--nq-font-mono, monospace); font-size: 0.68rem; color: var(--nq-dim); }
 .nq-zone-detail__subhead {
@@ -1095,7 +1095,7 @@
   background:
     repeating-linear-gradient(0deg, transparent 0 23px, color-mix(in srgb, var(--nq-copper) 14%, transparent) 23px 24px),
     repeating-linear-gradient(90deg, transparent 0 23px, color-mix(in srgb, var(--nq-copper) 14%, transparent) 23px 24px),
-    radial-gradient(120% 90% at 50% 60%, rgba(196, 165, 116, 0.16), transparent 65%),
+    radial-gradient(120% 90% at 50% 60%, rgba(20, 184, 166, 0.16), transparent 65%),
     linear-gradient(180deg, #14110e, #0b0908);
   overflow: hidden;
 }
@@ -1183,7 +1183,7 @@
   border: 2px solid var(--nq-line);
   border-radius: var(--nq-radius-bubble, 18px);
   background:
-    radial-gradient(120% 90% at 50% 15%, rgba(196, 165, 116, 0.12), transparent 68%),
+    radial-gradient(120% 90% at 50% 15%, rgba(20, 184, 166, 0.12), transparent 68%),
     linear-gradient(180deg, #16120f, #0b0908);
   overflow: hidden;
 }
@@ -1440,7 +1440,7 @@
   font-size: clamp(1.5rem, 4vw, 2.25rem);
   font-weight: 700;
   letter-spacing: -0.02em;
-  text-shadow: 0 0 44px rgba(196, 165, 116, 0.18);
+  text-shadow: 0 0 44px rgba(20, 184, 166, 0.18);
 }
 .nq-war__header p, .nq-rules__header p, .nq-rescue__header p,
 .nq-spatial__header p {
