@@ -2,20 +2,102 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { apiGet } from "../lib/api";
 import { canAccess, clearSession, getName, getToken, isChuQuan, isManager, roleLabel } from "../lib/session";
-import { beat } from "../lib/motion";import { Icon, iconForHref } from "../ui/icons";
+import { Icon, iconForHref } from "../ui/icons";
 import { Tour } from "../ui/tour";
 import { Logo } from "../ui/Logo";
 import { CopilotPane } from "../ui/copilot/CopilotPane";
 import { FloatingChatHead } from "../ui/chat/FloatingChatHead";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
-/** `short` là nhãn cho thanh dưới dạng pill — chỗ hẹp, chữ dài sẽ gãy dòng. */
-type LinkItem = { href: string; label: string; short?: string; group?: "experience" };
+const COLLAPSE_KEY = "nq_side_collapsed";
 
-const EXP_GROUP: LinkItem["group"] = "experience";
+/**
+ * Một mục điều hướng.
+ *
+ * `group` chỉ dùng để đánh dấu mục thuộc "Trải nghiệm AI" — chúng vẫn nằm trong
+ * nhóm logic của mình (AI & tự động hoá), chỉ thêm một chấm accent để người
+ * dùng quen với cách phân vùng cũ còn nhận ra.
+ */
+type LinkItem = { href: string; label: string; badge?: string };
+
+/**
+ * Bốn nhóm theo CÁCH DÙNG, không theo thứ tự chữ cái.
+ *
+ * Nhóm là thứ người vận hành nhớ được: "việc mình làm hằng ngày" khác "việc
+ * lịch và nhân sự" khác "phần máy tự làm". Nhãn nhóm viết như việc, không viết
+ * như danh mục kỹ thuật — không có nhóm nào tên "Cấu hình" chứa lẫn lộn menu,
+ * người dùng và hợp đồng dữ liệu.
+ */
+const GROUPS: { title: string; items: LinkItem[] }[] = [
+  {
+    title: "Vận hành hằng ngày",
+    items: [
+      { href: "/hom-nay", label: "Hôm nay" },
+      { href: "/quay", label: "Ghi đơn quầy" },
+      { href: "/pha", label: "Pha chế" },
+      { href: "/phieu", label: "Phiếu trong ca" },
+      { href: "/treo", label: "Việc treo" },
+      { href: "/cuoc-hop", label: "Họp & giao ca" },
+      { href: "/handover", label: "Bàn giao ca" },
+      { href: "/chat", label: "Trao đổi nội bộ" },
+    ],
+  },
+  {
+    title: "Lịch & nhân sự",
+    items: [
+      { href: "/lich-tuan", label: "Lịch tuần" },
+      { href: "/toi", label: "Ca của tôi" },
+      { href: "/doi-ca", label: "Chợ đổi ca" },
+      { href: "/qr", label: "Điểm danh QR" },
+      { href: "/cong-bang", label: "Công bằng ca" },
+      { href: "/tkb", label: "Lịch bận (ảnh)" },
+      { href: "/nguoi", label: "Người dùng" },
+    ],
+  },
+  {
+    title: "AI & tự động hoá",
+    items: [
+      { href: "/copilot", label: "Trợ lý điều hành" },
+      { href: "/sop", label: "Hỏi quy trình" },
+      { href: "/cam-nang", label: "Cẩm nang quán" },
+      { href: "/skills", label: "Bộ kỹ năng AI" },
+      { href: "/ai-learning", label: "Học từ phản hồi" },
+      { href: "/de-xuat-thong-minh", label: "Đề xuất thông minh" },
+      { href: "/giai-thich", label: "Hệ thống tự giải thích" },
+      { href: "/thu-nghiem-an-toan", label: "Thử nghiệm an toàn" },
+      { href: "/inbox", label: "Hộp thư ràng buộc" },
+      { href: "/quanverse", label: "Quánverse · Living Map" },
+      { href: "/quanverse/war-room", label: "War Room" },
+      { href: "/quanverse/shift-rescue", label: "Cứu ca" },
+      { href: "/quanverse/rules", label: "Quán tự viết luật" },
+      { href: "/quanverse/spatial-memory", label: "Hồn quán · Ký ức" },
+    ],
+  },
+  {
+    title: "Hàng hoá & chứng từ",
+    items: [
+      { href: "/menu", label: "Menu & giá" },
+      { href: "/tieu-thu", label: "Sổ tiêu thụ" },
+      { href: "/hao-phi", label: "Hao phí" },
+      { href: "/khao-sat-gia", label: "Khảo sát giá" },
+      { href: "/page-quan", label: "Page quán" },
+      { href: "/page-quan/fb-inbox", label: "Duyệt bài Fanpage" },
+      { href: "/page-quan/dat-ban", label: "Sơ đồ & đặt bàn" },
+      { href: "/gmail", label: "Quản lý Gmail" },
+    ],
+  },
+  {
+    title: "Hệ thống",
+    items: [
+      { href: "/vet", label: "Vết hệ thống" },
+      { href: "/contracts", label: "Hợp đồng dữ liệu" },
+      { href: "/huong-dan", label: "Bản đồ hệ thống" },
+      { href: "/them", label: "Tất cả lối vào" },
+    ],
+  },
+];
 
 const COPILOT_LAUNCHER_ROUTES = new Set([
   "/lich-tuan",
@@ -35,82 +117,22 @@ function tourId(href: string): string {
   return `nav-${href.replace(/^\//, "")}`;
 }
 
-const STAFF_PRIMARY: LinkItem[] = [
-  { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/chat", label: "Chat nội bộ", short: "Chat" },
-  { href: "/cuoc-hop", label: "Họp & Giao ca", short: "Họp" },
-  { href: "/quay", label: "Quầy", short: "Quầy" },
-  { href: "/pha", label: "Pha chế", short: "Pha" },
-  { href: "/tkb", label: "Lịch bận", short: "Lịch bận" },
-];
-const MANAGER_PRIMARY: LinkItem[] = [
-  { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/lich-tuan", label: "Lịch tuần", short: "Lịch" },
-  { href: "/phieu", label: "Phiếu", short: "Phiếu" },
-  { href: "/inbox", label: "Trao đổi", short: "Duyệt" },
-  { href: "/copilot", label: "Trợ lý", short: "Trợ lý" },
-];
-
-const ADMIN_PRIMARY: LinkItem[] = [
-  { href: "/hom-nay", label: "Hôm nay" },
-  { href: "/lich-tuan", label: "Lịch tuần", short: "Lịch" },
-  { href: "/phieu", label: "Phiếu", short: "Phiếu" },
-  { href: "/inbox", label: "Trao đổi", short: "Duyệt" },
-  { href: "/cam-nang", label: "Cẩm nang", short: "Luật" },
-  { href: "/copilot", label: "Trợ lý", short: "Trợ lý" },
-];
-
-const MORE: LinkItem[] = [
-  { href: "/chat", label: "Chat nội bộ" },
-  { href: "/huong-dan", label: "Bản đồ hệ thống" },
-  { href: "/cuoc-hop", label: "Họp & gửi nhóm" },
-  { href: "/tkb", label: "Tải ảnh lịch bận" },
-  { href: "/quay", label: "Quầy" },
-  { href: "/pha", label: "Pha chế" },
-  { href: "/inbox", label: "Hộp thư" },
-  { href: "/lich-tuan", label: "Lịch tuần" },
-  { href: "/page-quan", label: "Page quán (FB)" },
-  { href: "/page-quan/fb-inbox", label: "Hộp thư Fanpage (duyệt)" },
-  { href: "/page-quan/dat-ban", label: "Sơ đồ & Đặt bàn" },
-  { href: "/gmail", label: "Quản lý Gmail" },
-  { href: "/ai-learning", label: "Học từ phản hồi AI" },
-  { href: "/skills", label: "Bộ Kỹ năng AI (13/13)" },
-  { href: "/cong-bang", label: "Công bằng" },
-  { href: "/toi", label: "Ca của tôi" },
-  { href: "/phieu", label: "Phiếu" },
-  { href: "/treo", label: "Việc treo" },
-  { href: "/doi-ca", label: "Chợ đổi ca" },
-  { href: "/qr", label: "Điểm danh QR" },
-  { href: "/tieu-thu", label: "Sổ tiêu thụ" },
-  { href: "/hao-phi", label: "Hao phí" },
-  { href: "/sop", label: "Hỏi SOP" },
-  { href: "/handover", label: "Bàn giao" },
-  { href: "/vet", label: "Vết hệ thống" },
-  { href: "/cam-nang", label: "Cẩm nang" },
-  { href: "/menu", label: "Menu & giá" },
-  { href: "/khao-sat-gia", label: "Khảo sát giá" },
-  { href: "/nguoi", label: "Người dùng" },
-  // ── Grand AI Experience ──
-  { href: "/quanverse", label: "QUÁNVERSE · Living Map", group: EXP_GROUP },
-  { href: "/quanverse/war-room", label: "War Room · Mô phỏng", group: EXP_GROUP },
-  { href: "/quanverse/shift-rescue", label: "Shift Rescue · Cứu ca", group: EXP_GROUP },
-  { href: "/quanverse/rules", label: "Quán tự viết luật", group: EXP_GROUP },
-  { href: "/quanverse/spatial-memory", label: "HỒN QUÁN · Ký ức & Tour", group: EXP_GROUP },
-];
-
-
 export function AppShell({ children }: { children: ReactNode }) {
-  // Tôn trọng ý muốn giảm chuyển động: bảng "Thêm" vẫn mở/đóng, chỉ là đổi
-  // trạng thái tức thì thay vì trượt — nội dung không đổi, chỉ bỏ phần chuyển.
-  const reduced = useReducedMotion() ?? false;
   const path = usePathname();
   const router = useRouter();
-  const moreRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
-  const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [token, setToken] = useState("");
+  /** Thu gọn sidebar. Mặc định mở: người mới cần thấy hết lối vào trước khi
+   *  tự quyết định thu gọn. Lưu vào localStorage để giữ nguyên giữa các trang —
+   *  sidebar tự thu lại sau mỗi lần điều hướng thì không ai dùng. */
+  const [collapsed, setCollapsed] = useState(false);
+  /** Sidebar trượt ra ở màn hẹp. Tách khỏi `collapsed` vì hai trạng thái này
+   *  độc lập: màn rộng thu gọn còn icon, màn hẹp đóng hẳn. */
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const burgerRef = useRef<HTMLButtonElement>(null);
+  const sideRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -152,18 +174,60 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, [path]);
 
+  /** Đọc trạng thái thu gọn SAU khi gắn, không trong `useState` khởi tạo:
+   *  đọc localStorage lúc render đầu làm HTML máy chủ và HTML máy khách khác
+   *  nhau → React báo hydration mismatch và giao diện nhảy một nhịp. */
   useEffect(() => {
-    if (!open) return;
-    function onPointerDown(e: MouseEvent) {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setOpen(false);
+    try {
+      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
+    } catch {
+      /* Chế độ riêng tư chặn localStorage — dùng mặc định, không sập trang. */
     }
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [open]);
+  }, []);
 
-  const primary = isChuQuan(role) ? ADMIN_PRIMARY : isManager(role) ? MANAGER_PRIMARY : STAFF_PRIMARY;
-  const more = MORE.filter((x) => !primary.some((p) => p.href === x.href) && canAccess(role, x.href));
-  const wide = path === "/lich-tuan" || path === "/roster" || path === "/cuoc-hop" || path === "/inbox" || path === "/quay" || path === "/chat";
+  /** Đóng drawer mỗi khi đổi trang: người dùng vừa chọn xong một mục, giữ
+   *  drawer mở nghĩa là nội dung mới bị che ngay sau cú bấm. */
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [path]);
+
+  /** Đóng drawer bằng Escape, và chặn cuộn nền khi drawer đang mở. */
+  useEffect(() => {
+    if (!drawerOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setDrawerOpen(false);
+        burgerRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [drawerOpen]);
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
+      } catch {
+        /* Không lưu được thì thôi; trạng thái vẫn đúng trong phiên này. */
+      }
+      return next;
+    });
+  }, []);
+
+  const wide =
+    path === "/lich-tuan" ||
+    path === "/roster" ||
+    path === "/cuoc-hop" ||
+    path === "/inbox" ||
+    path === "/quay" ||
+    path === "/chat";
 
   function logout() {
     clearSession();
@@ -171,151 +235,141 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--nq-bg)] text-[var(--nq-fg)] font-sans selection:bg-[var(--nq-copper)] selection:text-[var(--nq-accent-ink)] flex flex-col relative z-10">
-      <header className="fixed top-0 left-0 w-full z-40 border-b border-[var(--nq-line)] bg-[var(--nq-bg)]/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 md:gap-4 md:px-8">
+    <div
+      className="nq-app min-h-screen font-sans"
+      data-collapsed={collapsed ? "1" : "0"}
+    >
+      {/* Nút mở sidebar — chỉ hiện ở màn hẹp (điều khiển bằng CSS). */}
+      <button
+        ref={burgerRef}
+        type="button"
+        className="nq-side__burger"
+        onClick={() => setDrawerOpen(true)}
+        aria-label="Mở điều hướng"
+        aria-expanded={drawerOpen}
+        aria-controls="nq-side"
+      >
+        <Icon name="menu" size={20} />
+      </button>
+
+      {/* Màn chắn: chỉ hiện ở màn hẹp khi drawer mở. Là <button> để bấm được
+          bằng bàn phím và công cụ hỗ trợ, không phải <div onClick>. */}
+      <button
+        type="button"
+        className="nq-side__scrim"
+        data-shown={drawerOpen ? "1" : "0"}
+        aria-label="Đóng điều hướng"
+        tabIndex={drawerOpen ? 0 : -1}
+        onClick={() => setDrawerOpen(false)}
+      />
+
+      <aside
+        id="nq-side"
+        ref={sideRef}
+        className="nq-side"
+        data-collapsed={collapsed ? "1" : "0"}
+        data-open={drawerOpen ? "1" : "0"}
+        aria-label="Điều hướng chính"
+      >
+        <div className="nq-side__head">
           <Logo href={token ? "/hom-nay" : "/"} />
-
-          {token ? (
-            <nav className="hidden min-w-0 flex-1 items-center justify-center gap-2 lg:flex xl:gap-4" aria-label="Chính">
-              {primary.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  /* `min-h-11` (44px) + padding: vùng bấm của điều hướng chính phải
-                     đủ lớn cho ngón tay. Trước đây link chỉ cao 21px (đo trên bản
-                     render), dưới cả ngưỡng 24px của WCAG 2.5.8 — nhân viên đứng
-                     quầy bấm trên máy tính bảng rất dễ trượt sang mục bên cạnh.
-                     `rounded-full` + hover nền để vùng bấm nhìn thấy được. */
-                  className={`flex shrink-0 min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full px-2 text-2xs font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:px-3 xl:text-xs ${path === l.href ? "bg-[var(--nq-accent-soft)] text-[var(--nq-copper)] shadow-[inset_0_-2px_0_var(--nq-copper)]" : "text-[var(--nq-dim)] hover:bg-[var(--nq-accent-soft)] hover:text-[var(--nq-fg)]"}`}
-                  data-tour={tourId(l.href)}
-                  aria-current={path === l.href ? "page" : undefined}
-                >
-                  <Icon name={iconForHref(l.href)} size={16} />
-                  <span className="hidden xl:inline">{l.label}</span>
-                  <span className="xl:hidden">{l.short ?? l.label}</span>
-                </Link>
-              ))}
-              <div className="relative shrink-0" ref={moreRef}>
-                <button
-                  type="button"
-                  onClick={() => setOpen((v) => !v)}
-                  className={`flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full px-2 text-2xs font-bold uppercase tracking-wide transition-colors xl:gap-2 xl:px-3 xl:text-xs ${open ? "bg-[var(--nq-accent-soft)] text-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:bg-[var(--nq-accent-soft)] hover:text-[var(--nq-fg)]"}`}
-                  aria-expanded={open}
-                  data-tour="nav-them"
-                >
-                  <Icon name="them" size={16} />
-                  Thêm
-                </button>
-                <AnimatePresence>
-                  {open && (
-                    <motion.div
-                      initial={reduced ? {} : { opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={reduced ? {} : { opacity: 0, y: 8 }}
-                      transition={beat("settle")}
-                      role="menu"
-                      className="nq-more-panel"
-                    >
-                      {more.map((l, i) => (
-                        <Fragment key={l.href}>
-                          {l.group === "experience" &&
-                            (i === 0 || more[i - 1]?.group !== "experience") && (
-                              <div className="nq-more-group" role="presentation">
-                                Trải nghiệm AI
-                              </div>
-                            )}
-                          <Link
-                            href={l.href}
-                            role="menuitem"
-                            onClick={() => setOpen(false)}
-                          >
-                            {l.group === "experience" ? (
-                              <span className="flex items-center gap-1.5">
-                                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--nq-copper)]" />
-                                <span>{l.label.replace(/^QUÁNVERSE · |^War Room · |^Shift Rescue · |^HỒN QUÁN · /, "")}</span>
-                              </span>
-                            ) : (
-                              l.label
-                            )}
-                          </Link>
-                        </Fragment>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </nav>
-          ) : (
-            <div className="flex-1" />
-          )}
-
-          <div className="ml-auto flex shrink-0 items-center gap-2 text-2xs font-mono uppercase tracking-wide md:gap-3 xl:text-xs">
-            {ready && token ? (
-              <>
-                <span className="hidden max-w-[10rem] truncate text-[var(--nq-dim)] lg:inline-block xl:max-w-[14rem]">
-                  {name} <span className="text-[var(--nq-copper)]">[{roleLabel(role)}]</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="nq-cta nq-cta--ghost nq-cta--sm"
-                >
-                  Thoát
-                </button>
-              </>
-            ) : (
-              <Link href="/login" className="nq-cta nq-cta--primary nq-cta--sm">
-                Đăng nhập
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
-      <main className={`flex-1 px-4 md:px-8 pt-16 ${wide ? "w-full max-w-none" : "max-w-[1280px] mx-auto w-full"}`} id="nq-content">
-        {!ready ? (
-          <div className="nq-page nq-page--center py-16 text-center" role="status">
-            <p className="nq-muted" style={{ margin: 0 }}>Đang kiểm tra quyền truy cập…</p>
-          </div>
-        ) : token && role && !canAccess(role, path) ? (
-          <div className="nq-page nq-page--center py-16 text-center">
-            <h1 className="nq-gate-title">Không đủ quyền truy cập</h1>
-            <p className="nq-muted mx-auto" style={{ margin: "var(--nq-s3) auto 0", maxWidth: "46ch" }}>
-              {path === "/vet"
-                ? "Bạn không được uỷ quyền để xem vết hệ thống. Chỉ Quản lý và Chủ quán được phép truy cập."
-                : "Tài khoản hiện tại không có quyền truy cập trang này."}
-            </p>
-          </div>
-        ) : (
-          children
-        )}
-      </main>
-      {token ? (
-        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[var(--nq-bg)]/90 backdrop-blur-md border-t border-[var(--nq-line)] flex justify-around items-center p-2 z-40 pb-safe" aria-label="Lối tắt">
-          {primary.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`flex flex-col items-center gap-1 p-2 transition-colors ${path === l.href ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)]"}`}
-              data-tour={tourId(l.href)}
-              aria-current={path === l.href ? "page" : undefined}
-              aria-label={l.label}
-            >
-              <Icon name={iconForHref(l.href)} size={24} />
-              <span className="text-2xs font-bold uppercase tracking-widest">{l.short ?? l.label}</span>
-            </Link>
-          ))}
-          <Link
-            href="/them"
-            className={`flex flex-col items-center gap-1 p-2 transition-colors ${path === "/them" ? "text-[var(--nq-copper)]" : "text-[var(--nq-dim)]"}`}
-            data-tour="nav-them"
-            aria-current={path === "/them" ? "page" : undefined}
+          <button
+            type="button"
+            className="nq-side__toggle"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Mở rộng điều hướng" : "Thu gọn điều hướng"}
+            aria-pressed={collapsed}
+            title={collapsed ? "Mở rộng" : "Thu gọn"}
           >
-            <Icon name="them" size={24} />
-            <span className="text-2xs font-bold uppercase tracking-widest">Thêm</span>
-          </Link>
+            <Icon name={collapsed ? "arrow-right" : "arrow-left"} size={18} />
+          </button>
+        </div>
+
+        <nav className="nq-side__scroll" aria-label="Các khu vực">
+          {GROUPS.map((g) => {
+            // Lọc theo quyền TRƯỚC khi vẽ: một nhóm rỗng không được để lại
+            // tiêu đề trơ trọi — người dùng đọc tiêu đề nhóm rồi mới biết ruột
+            // trống là tín hiệu sai về hệ thống.
+            const allowed = g.items.filter((x) => canAccess(role, x.href));
+            if (!allowed.length) return null;
+            return (
+              <Fragment key={g.title}>
+                <div className="nq-side__group">{g.title}</div>
+                {allowed.map((l) => {
+                  const on = path === l.href;
+                  const exp = l.href.startsWith("/quanverse");
+                  return (
+                    <Link
+                      key={l.href}
+                      href={l.href}
+                      className="nq-side__link"
+                      data-tour={tourId(l.href)}
+                      aria-current={on ? "page" : undefined}
+                      /* `title` cho chế độ thu gọn: nhãn bị ẩn bằng CSS nhưng
+                         vẫn nằm trong DOM nên trình đọc màn hình đọc được;
+                         title phục vụ người dùng chuột khi chỉ thấy icon. */
+                      title={collapsed ? l.label : undefined}
+                    >
+                      <Icon name={exp ? "cube" : iconForHref(l.href)} size={18} />
+                      <span className="nq-side__label">{l.label}</span>
+                      {exp ? <span className="nq-side__dot" aria-hidden="true" /> : null}
+                    </Link>
+                  );
+                })}
+              </Fragment>
+            );
+          })}
         </nav>
-      ) : null}
+
+        <div className="nq-side__foot">
+          {ready && token ? (
+            <>
+              <div className="nq-side__user">
+                <Icon name="user" size={16} />
+                <span className="nq-side__user-name">
+                  {name}{" "}
+                  <span className="nq-side__user-role">[{roleLabel(role)}]</span>
+                </span>
+              </div>
+              <button type="button" onClick={logout} className="nq-cta nq-cta--ghost nq-cta--sm">
+                Thoát
+              </button>
+            </>
+          ) : (
+            <Link href="/login" className="nq-cta nq-cta--primary nq-cta--sm">
+              Đăng nhập
+            </Link>
+          )}
+        </div>
+      </aside>
+
+      {/* KHÔNG đặt `mx-auto` ở đây: `margin-left` đã do `.nq-main` khai để
+          nhường chỗ sidebar, mà `mx-auto` ghi `margin-right: auto` — cặp
+          `margin-left: 258px` + `margin-right: auto` trên phần tử rộng 100%
+          đẩy nội dung vượt 258px khỏi màn hình (đo được `scrollWidth 1698`
+          trên khung 1440). Việc canh giữa nội dung do khối bên trong lo, còn
+          vùng `main` chỉ cần chừa lề trái cho sidebar. */}
+      <main className="nq-main" id="nq-content">
+        <div className={`nq-main__inner${wide ? " nq-main__inner--wide" : ""}`}>
+          {!ready ? (
+            <div className="nq-page nq-page--center py-16 text-center" role="status">
+              <p className="nq-muted" style={{ margin: 0 }}>Đang kiểm tra quyền truy cập…</p>
+            </div>
+          ) : token && role && !canAccess(role, path) ? (
+            <div className="nq-page nq-page--center py-16 text-center">
+              <h1 className="nq-gate-title">Không đủ quyền truy cập</h1>
+              <p className="nq-muted mx-auto" style={{ margin: "var(--nq-s3) auto 0", maxWidth: "46ch" }}>
+                {path === "/vet"
+                  ? "Bạn không được uỷ quyền để xem vết hệ thống. Chỉ Quản lý và Chủ quán được phép truy cập."
+                  : "Tài khoản hiện tại không có quyền truy cập trang này."}
+              </p>
+            </div>
+          ) : (
+            children
+          )}
+        </div>
+      </main>
+
       {token ? (
         <>
           {!COPILOT_LAUNCHER_ROUTES.has(path) ? <CopilotPane /> : null}

@@ -174,6 +174,11 @@
   --nq-banner-to: #070d12;
   --nq-max: min(1600px, 100%);
   --nq-max-narrow: min(720px, 100%);
+  /* Bề rộng sidebar. Hai giá trị thay vì một vì trạng thái thu gọn đổi cả
+     bề rộng LẪN cách hiển thị nhãn — khai một chỗ để nội dung và sidebar
+     không lệch nhịp khi chuyển trạng thái. */
+  --nq-side-w: 258px;
+  --nq-side-w-min: 68px;
 
   /* ── Thang chữ ──
      Trước đây chỉ có h1 (đổi theo từng trang) và h2 cứng 1.2rem, còn tiêu đề
@@ -734,17 +739,14 @@ a:focus-visible {
   transform: scale(var(--nq-press));
 }
 
-.nq-main {
-  flex: 1;
-  width: 100%;
-  max-width: var(--nq-max);
-  margin: 0 auto;
-  padding: 0 clamp(1rem, 4vw, 2rem) calc(7rem + var(--nq-safe-b));
-}
-
-.nq-main[data-wide="1"] {
-  max-width: none;
-}
+/* `.nq-main` CŨ ĐÃ BỊ XOÁ.
+   Bản trước (shell thanh ngang) khai `flex: 1; max-width: var(--nq-max);
+   margin: 0 auto` — canh giữa nội dung trong một khung dọc. Shell mới dùng
+   sidebar, nên `.nq-main` phải chừa `margin-left` cho sidebar; để lại `margin:
+   0 auto` thì nó ghi `margin-right: auto` chồng lên, và trên phần tử rộng 100%
+   cặp `margin-left: 258px` + `margin-right: auto` đẩy nội dung vượt 258px khỏi
+   màn hình (đo được `scrollWidth 1683` trên khung 1440). Canh giữa giờ do
+   `.nq-main__inner` lo — xem khối SIDEBAR ở cuối file. */
 
 /* Thanh dưới kiểu iOS: pill nổi, tách khỏi đáy, kính mờ, tôn safe-area.
    Tách khỏi đáy để ngón tay không chạm trúng gesture bar của máy. */
@@ -6206,10 +6208,6 @@ a.nq-bento-surface:active {
   margin-top: var(--nq-s7);
 }
 
-.nq-more-panel {
-  animation: nq-rise var(--nq-dur-t0) var(--nq-ease-out) both;
-}
-
 @media (max-width: 820px) {
   /* Trên máy nhỏ có cả thanh điều hướng pill ở đáy: nâng thanh hành động của
      phiếu lên trên nó, để hai thanh không đè nhau. */
@@ -8045,6 +8043,360 @@ a.nq-bento-surface:active {
     transform: none !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SIDEBAR — điều hướng dọc thay thanh ngang.
+
+   Vì sao đổi: thanh ngang buộc mọi mục điều hướng nằm trên MỘT dòng, nên số
+   mục hiển thị được bị chặn bởi bề rộng màn hình — hệ thống có 44 route, và
+   thanh ngang chỉ chứa nổi 5–6 mục rồi phần còn lại phải nhét vào menu "Thêm"
+   dạng lưới hai cột. Người vận hành phải mở menu, quét 29 dòng chữ, rồi mới
+   tìm ra việc mình cần. Sidebar dọc cho phép hiện hết mục theo NHÓM, và nhóm
+   là thứ người dùng nhớ ("việc hằng ngày", "lịch & nhân sự") chứ không phải
+   thứ tự chữ cái.
+
+   Kính: sidebar là lớp NỔI trên nội dung nên dùng kính. Ba bậc trong suốt có
+   chủ đích — xem `--nq-glass-*` trong :root.
+   ══════════════════════════════════════════════════════════════════════════ */
+.nq-side {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--nq-side-w);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nq-s2);
+  padding: var(--nq-s4) var(--nq-s3);
+  background: var(--nq-glass-2);
+  backdrop-filter: var(--nq-blur-2);
+  -webkit-backdrop-filter: var(--nq-blur-2);
+  border-right: 1px solid var(--nq-line);
+  /* Vệt sáng phản chiếu dọc mép phải: cho bề mặt một "cạnh" thay vì chỉ là
+     mảng mờ. Cùng vai với `--nq-frontier` ở mép trên. */
+  box-shadow: inset -1px 0 0 var(--nq-specular);
+  transition: width var(--nq-beat-settle) var(--nq-ease-out);
+}
+
+.nq-side__head {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s2);
+  min-height: 44px;
+  padding: 0 var(--nq-s1);
+  flex: none;
+}
+
+/* Nút thu gọn: nằm sát mép phải của đầu sidebar, đủ lớn để bấm. */
+.nq-side__toggle {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--nq-radius);
+  background: transparent;
+  color: var(--nq-ink-muted);
+  cursor: pointer;
+  transition:
+    background var(--nq-beat-settle) var(--nq-ease-out),
+    color var(--nq-beat-settle) var(--nq-ease-out),
+    transform var(--nq-beat-ack) var(--nq-ease-out);
+}
+
+.nq-side__toggle:hover {
+  background: var(--nq-accent-soft);
+  color: var(--nq-ink);
+}
+
+.nq-side__toggle:active {
+  transform: scale(var(--nq-press));
+}
+
+.nq-side__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nq-s1);
+  scrollbar-width: thin;
+  scrollbar-color: var(--nq-line-strong) transparent;
+}
+
+.nq-side__group {
+  margin-top: var(--nq-s3);
+  padding: var(--nq-s2) var(--nq-s2) var(--nq-s1);
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-micro);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--nq-ink-muted);
+}
+
+.nq-side__group:first-child {
+  margin-top: 0;
+}
+
+.nq-side__link {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s3);
+  min-height: 40px;
+  padding: 0 var(--nq-s3);
+  border-radius: var(--nq-radius-bubble);
+  color: var(--nq-ink-muted);
+  text-decoration: none;
+  font-size: var(--nq-t-small);
+  line-height: 1.25;
+  white-space: nowrap;
+  transition:
+    background var(--nq-beat-settle) var(--nq-ease-out),
+    color var(--nq-beat-settle) var(--nq-ease-out),
+    transform var(--nq-beat-ack) var(--nq-ease-out);
+}
+
+.nq-side__link:hover {
+  background: var(--nq-accent-soft);
+  color: var(--nq-ink);
+}
+
+.nq-side__link:active {
+  transform: scale(var(--nq-press));
+}
+
+/* Mục đang xem: nền accent nhạt + vạch trái đặc. Vạch trái ở ĐÂY hợp lệ —
+   nó đánh dấu VỊ TRÍ trong một danh sách dọc, không phải trang trí một thẻ
+   dữ liệu (đó mới là thứ bị cấm). */
+.nq-side__link[aria-current="page"] {
+  background: var(--nq-accent-soft);
+  color: var(--nq-accent-ink-text);
+  box-shadow: inset 2px 0 0 var(--nq-accent);
+}
+
+.nq-side__link[aria-current="page"] .nq-icon {
+  opacity: 1;
+  color: var(--nq-accent);
+}
+
+.nq-side__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Chấm đánh dấu mục thuộc "Trải nghiệm AI" — giữ dấu hiệu nhóm cũ. */
+.nq-side__dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--nq-radius-pill);
+  background: var(--nq-accent);
+}
+
+.nq-side__foot {
+  flex: none;
+  border-top: 1px solid var(--nq-line);
+  padding-top: var(--nq-s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nq-s2);
+}
+
+.nq-side__user {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s2);
+  padding: 0 var(--nq-s2);
+  min-width: 0;
+  font-size: var(--nq-t-caption);
+  color: var(--nq-ink-muted);
+}
+
+.nq-side__user-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Vai trò đi kèm tên, tô accent để tách khỏi tên người — cùng quy ước với
+   nhãn vai trò ở nơi khác trong hệ. */
+.nq-side__user-role {
+  color: var(--nq-accent-ink-text);
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-micro);
+  letter-spacing: 0.06em;
+}
+
+/* ── Trạng thái THU GỌN ──
+   Chỉ còn icon; nhãn ẩn nhưng KHÔNG bỏ khỏi DOM — trình đọc màn hình vẫn đọc
+   được, và `title` cho chuột. Bề rộng 68px đủ chứa icon + padding, và vẫn để
+   lộ vạch accent của mục đang xem. */
+.nq-side[data-collapsed="1"] {
+  width: var(--nq-side-w-min);
+  padding-left: var(--nq-s2);
+  padding-right: var(--nq-s2);
+}
+
+.nq-side[data-collapsed="1"] .nq-side__label,
+.nq-side[data-collapsed="1"] .nq-side__dot {
+  display: none;
+}
+
+.nq-side[data-collapsed="1"] .nq-side__group {
+  height: 1px;
+  margin: var(--nq-s2) var(--nq-s3);
+  padding: 0;
+  overflow: hidden;
+  font-size: 0;
+  background: var(--nq-line);
+  color: transparent;
+}
+
+.nq-side[data-collapsed="1"] .nq-side__link {
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+}
+
+.nq-side[data-collapsed="1"] .nq-side__user-name {
+  display: none;
+}
+
+/* ── Vùng nội dung ──
+   `margin-left` bằng bề rộng sidebar; đổi cùng nhịp với sidebar nên không có
+   khoảnh khắc nội dung nhảy trước khi sidebar co xong.
+
+   KHÔNG dùng `mx-auto` cho vùng này: `margin-left` đã là lề nhường sidebar, mà
+   `mx-auto` ghi `margin-right: auto` — trên phần tử rộng 100% thì cặp đó đẩy
+   nội dung vượt khỏi màn hình đúng bằng bề rộng sidebar (đo được `scrollWidth
+   1698` trên khung 1440, tức tràn 258px). Canh giữa bằng `max-width` +
+   `margin-inline: auto` ĐẶT TRONG khối chứa nội dung, không đặt trên chính
+   `main`. */
+.nq-main {
+  min-height: 100dvh;
+  margin-left: var(--nq-side-w);
+  transition: margin-left var(--nq-beat-settle) var(--nq-ease-out);
+  padding: var(--nq-s5) clamp(1rem, 2.5vw, 2rem) var(--nq-s8);
+}
+
+/* Khối bọc nội dung: giữ bề rộng đọc được và canh giữa trong phần còn lại.
+   Trang rộng (lịch tuần, roster, chat…) bỏ giới hạn qua `.nq-main__wide`. */
+.nq-main__inner {
+  width: 100%;
+  max-width: var(--nq-max);
+  margin-inline: auto;
+  min-width: 0;
+}
+
+.nq-main__inner--wide {
+  max-width: none;
+}
+
+.nq-app[data-collapsed="1"] .nq-main {
+  margin-left: var(--nq-side-w-min);
+}
+
+.nq-side__scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  border: none;
+  padding: 0;
+  background: rgba(2, 6, 10, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  cursor: pointer;
+}
+
+.nq-side__burger {
+  display: none;
+  position: fixed;
+  top: var(--nq-s3);
+  left: var(--nq-s3);
+  z-index: 38;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-glass-3);
+  backdrop-filter: var(--nq-blur-1);
+  -webkit-backdrop-filter: var(--nq-blur-1);
+  color: var(--nq-ink);
+  cursor: pointer;
+  box-shadow: var(--nq-glassy-shadow);
+}
+
+/* ── Màn hẹp: sidebar trượt ra, có màn chắn ──
+   Dưới 900px, sidebar rời khỏi luồng: đóng thì ngoài màn hình, mở thì trượt
+   vào kèm lớp mờ chắn nội dung. Ngưỡng 900px (không phải 768px) vì ở 768px
+   bảng số liệu vẫn cần chỗ đọc, mà sidebar mở rộng chiếm mất 260px. */
+@media (max-width: 900px) {
+  .nq-side {
+    transform: translateX(-100%);
+    transition: transform var(--nq-beat-settle) var(--nq-ease-out);
+  }
+
+  .nq-side[data-open="1"] {
+    transform: translateX(0);
+    width: var(--nq-side-w);
+  }
+
+  /* Trên màn hẹp, thu gọn vô nghĩa (sidebar vốn đã trượt ra ngoài) — luôn hiện
+     đủ nhãn khi mở, để người dùng không phải đoán icon. */
+  .nq-side[data-collapsed="1"] {
+    width: var(--nq-side-w);
+  }
+
+  .nq-side[data-collapsed="1"] .nq-side__label,
+  .nq-side[data-collapsed="1"] .nq-side__dot,
+  .nq-side[data-collapsed="1"] .nq-side__user-name {
+    display: revert;
+  }
+
+  .nq-side[data-collapsed="1"] .nq-side__group {
+    height: auto;
+    margin: var(--nq-s3) 0 0;
+    padding: var(--nq-s2) var(--nq-s2) var(--nq-s1);
+    overflow: visible;
+    font-size: var(--nq-t-micro);
+    background: transparent;
+    color: var(--nq-ink-muted);
+  }
+
+  .nq-side[data-collapsed="1"] .nq-side__link {
+    justify-content: flex-start;
+    gap: var(--nq-s3);
+    padding: 0 var(--nq-s3);
+  }
+
+  .nq-side__scrim[data-shown="1"] {
+    display: block;
+  }
+
+  .nq-side__burger {
+    display: inline-flex;
+  }
+
+  .nq-main,
+  .nq-app[data-collapsed="1"] .nq-main {
+    margin-left: 0;
+    /* Chừa chỗ cho nút mở sidebar, nếu không tiêu đề trang nằm dưới nó. */
+    padding-top: calc(var(--nq-s8) + var(--nq-s2));
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HẾT SIDEBAR.
+   ══════════════════════════════════════════════════════════════════════════ */
 
 /* ══════════════════════════════════════════════════════════════════════════
    prefers-reduced-motion — PHẢI là khối cuối file.
