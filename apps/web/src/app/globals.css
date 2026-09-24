@@ -246,6 +246,14 @@
   --nq-st-warn-ink: #fbbf5c;
   --nq-st-danger-ink: #fca5a5;
   --nq-st-info-ink: #7dd3fc;
+  /* Bản chữ ĐẬM hơn của cảnh báo, cho chữ vàng đặt trên NỀN VÀNG (chip cảnh báo).
+     `--nq-st-warn-ink` (#fbbf5c) trên `--nq-st-warn` (#f59e0b) chỉ đạt 1.28:1;
+     bản này đạt 5.4:1. Cùng một họ, hai nền khác nhau thì cần hai độ sáng. */
+  --nq-st-warn-ink-strong: #4a2c02;
+
+  /* Chữ đặt trên NỀN ĐỎ ĐẶC của nút nguy hiểm. `--nq-accent-ink` (gần đen) trên
+     #b02a2a chỉ đạt 1.75:1 — nền tối cần chữ sáng. #fff5f5 trên #b02a2a = 7.9:1. */
+  --nq-ink-on-danger: #fff5f5;
 
   /* Bản DÙNG LÀM CHỮ NHỎ của accent.
      `--nq-accent` (#14b8a6) là màu THƯƠNG HIỆU, đúng khi làm nền/nút/viền. Khi
@@ -411,10 +419,15 @@ button,
 }
 
 /*
-  Chữ trên nền solid (copper/warn/ok/red): ink tối.
+  Chữ trên nền solid (accent/warn/ok/red): ink tối.
   Không dùng !important — `a:hover` toàn cục + !important từng giữ chữ ink
   khi hover:bg-transparent, gần như vô hình trên nền trang.
   Specificity a.nq-ink-on-solid thắng `a`; hover:text-* (hai class) thắng lúc hover.
+
+  Không phải nền solid nào cũng cần chữ TỐI. Nền accent ngọc (#14b8a6) sáng nên
+  chữ tối là đúng; nhưng nền đỏ nguy hiểm (#b02a2a) TỐI nên chữ tối trên đó chỉ
+  đạt 1.75:1. Vì vậy mặc định là chữ tối, và mỗi họ nền TỐI tự khai lại chữ SÁNG
+  bằng `--nq-ink-on-*-solid` bên dưới. Đây là lỗi đo được thật, không phải phòng xa.
 */
 a.nq-ink-on-solid,
 button.nq-ink-on-solid,
@@ -424,6 +437,23 @@ button.nq-ink-on-solid,
 
 .nq-ink-on-solid > * {
   color: inherit;
+}
+
+/* Nền đỏ nguy hiểm cần chữ SÁNG. `#b02a2a` + `#fff5f5` = 7.9:1. */
+.nq-btn-danger.nq-ink-on-solid,
+button.nq-btn-danger,
+a.nq-btn-danger {
+  color: var(--nq-ink-on-danger);
+}
+
+/* Nền vàng cảnh báo ĐẶC (#f59e0b) là nền SÁNG → giữ chữ tối, đã đúng mặc định.
+   Nhưng chữ vàng cảnh báo đặt trên CHÍNH nó (nền warn nhạt) thì phải dùng bản
+   `-ink`; nếu không thì `#fbbf5c` trên `#f59e0b` chỉ đạt 1.28:1. */
+.nq-warn-chip,
+[data-tone="warn"] {
+  color: var(--nq-st-warn-ink-strong);
+  border-color: color-mix(in srgb, var(--nq-st-warn) 40%, transparent);
+  background-color: var(--nq-st-warn-soft);
 }
 
 /* Cảnh báo / thông báo — chữ cream trên nền pha, không tô chữ đỏ trên nền tối. */
@@ -3517,14 +3547,11 @@ a:focus-visible {
 }
 
 /* ── Forms & alerts ── */
-.nq-empty {
-  color: var(--nq-ink-muted);
-  border: 1px dashed var(--nq-line);
-  padding: var(--nq-s5);
-  border-radius: var(--nq-radius-bubble);
-  background: color-mix(in srgb, var(--nq-bg-elevated) 45%, transparent);
-  margin: 0;
-}
+/* `.nq-empty` ĐÃ CHUYỂN vào `@layer components` (xem khối primitive ở cuối file).
+   Rule cũ ở đây dùng `border: 1px dashed` + nền `color-mix` bán trong suốt, và
+   vì nằm NGOÀI layer nên nó đè mọi utility Tailwind — kể cả khi trang truyền
+   class riêng cho khối rỗng. Để lại là hai định nghĩa tranh nhau, và bản thắng
+   lại là bản không ai muốn. */
 
 .nq-alert {
   border: 1px solid;
@@ -4680,6 +4707,329 @@ a:focus-visible {
   .nq-surface-tile:hover {
     border-color: var(--nq-line-strong);
     box-shadow: var(--nq-elev-2-hover);
+  }
+
+  /* ── Trạng thái RỖNG ──
+     Nền ĐẶC theo token surface (không kính) — người dùng cần đọc câu giải thích
+     trên đó. Không dùng viền đứt: nét đứt đọc ra "hỏng", mà rỗng chỉ là "chưa
+     có dữ liệu". Không bóng cứng offset — đó là ngôn ngữ brutalist cũ. */
+  .nq-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: var(--nq-s3);
+    padding: var(--nq-s6) var(--nq-s5);
+    border: 1px solid var(--nq-line);
+    border-radius: var(--nq-radius-bubble);
+    background-color: var(--nq-surface);
+    color: var(--nq-ink-muted);
+  }
+
+  .nq-empty__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--nq-radius-bubble);
+    background-color: var(--nq-accent-soft);
+    color: var(--nq-accent);
+  }
+
+  .nq-empty__title {
+    margin: 0;
+    font-family: var(--nq-font-display);
+    font-size: var(--nq-t-h3);
+    font-weight: 600;
+    color: var(--nq-ink);
+  }
+
+  .nq-empty__body {
+    margin: 0;
+    max-width: 48ch;
+    font-size: var(--nq-t-small);
+    line-height: 1.55;
+    color: var(--nq-ink-muted);
+  }
+
+  .nq-empty__action {
+    margin-top: var(--nq-s2);
+  }
+
+  /* ── Bảng dữ liệu ──
+     Nền đặc, không kính: bảng là nơi đọc số. Hàng có hover để mắt bám được dòng
+     đang xem khi bảng dài; chữ số dùng font mono (tabular) nên cột không nhảy
+     khi giá trị đổi từ 9 sang 10. */
+  .nq-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--nq-line);
+    border-radius: var(--nq-radius-bubble);
+    background-color: var(--nq-surface);
+  }
+
+  .nq-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: var(--nq-t-small);
+  }
+
+  .nq-table thead tr {
+    background-color: var(--nq-surface-2);
+    border-bottom: 1px solid var(--nq-line-strong);
+  }
+
+  .nq-table th {
+    padding: var(--nq-s3) var(--nq-s4);
+    font-family: var(--nq-font-mono);
+    font-size: var(--nq-t-micro);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--nq-ink-muted);
+    white-space: nowrap;
+  }
+
+  .nq-table td {
+    padding: var(--nq-s3) var(--nq-s4);
+    border-bottom: 1px solid var(--nq-line);
+    color: var(--nq-ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .nq-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .nq-table tbody tr {
+    transition: background-color var(--nq-beat-settle) var(--nq-ease-out);
+  }
+
+  .nq-table tbody tr:hover {
+    background-color: var(--nq-accent-soft);
+  }
+
+  .nq-table .is-center {
+    text-align: center;
+  }
+
+  .nq-table .is-right {
+    text-align: right;
+  }
+
+  /* ── Nhãn trạng thái ──
+     Nền nhạt + CHỮ dùng bản `-ink` của cùng họ màu. Nhờ vậy nhãn đọc được ở mọi
+     họ mà không phải chọn chữ đen hay trắng tuỳ nền — cách làm cũ (`border-2` +
+     nền màu đặc) từng cho ra tương phản 1.01:1. */
+  .nq-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    border-radius: var(--nq-radius-pill);
+    border: 1px solid transparent;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .nq-badge--xs {
+    padding: 1px 6px;
+    font-size: var(--nq-t-micro);
+  }
+
+  .nq-badge--sm {
+    padding: 2px 8px;
+    font-size: var(--nq-t-caption);
+  }
+
+  .nq-badge--md {
+    padding: 3px 10px;
+    font-size: var(--nq-t-small);
+  }
+
+  .nq-badge--lg {
+    padding: 5px 12px;
+    font-size: var(--nq-t-body);
+  }
+
+  .nq-badge--primary {
+    background-color: var(--nq-accent-soft);
+    border-color: var(--nq-line-strong);
+    color: var(--nq-accent-ink-text);
+  }
+
+  .nq-badge--success {
+    background-color: var(--nq-st-ok-soft);
+    border-color: color-mix(in srgb, var(--nq-st-ok) 40%, transparent);
+    color: var(--nq-st-ok-ink);
+  }
+
+  .nq-badge--warning {
+    background-color: var(--nq-st-warn-soft);
+    border-color: color-mix(in srgb, var(--nq-st-warn) 40%, transparent);
+    color: var(--nq-st-warn-ink);
+  }
+
+  .nq-badge--danger {
+    background-color: var(--nq-st-danger-soft);
+    border-color: color-mix(in srgb, var(--nq-st-danger) 40%, transparent);
+    color: var(--nq-st-danger-ink);
+  }
+
+  .nq-badge--outline {
+    background-color: transparent;
+    border-color: var(--nq-line);
+    color: var(--nq-ink-muted);
+  }
+
+  /* ── Tab trong cùng một trang ──
+     Mục đang chọn đọc ra bằng NỀN accent nhạt, không bằng vạch dày chiếm chỗ. */
+  .nq-tabbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--nq-s1);
+    padding: var(--nq-s1);
+    margin-bottom: var(--nq-s5);
+    border: 1px solid var(--nq-line);
+    border-radius: var(--nq-radius-pill);
+    background-color: var(--nq-surface);
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .nq-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--nq-s2);
+    min-height: 36px;
+    padding: 0 var(--nq-s4);
+    border: none;
+    border-radius: var(--nq-radius-pill);
+    background: transparent;
+    color: var(--nq-ink-muted);
+    font-family: inherit;
+    font-size: var(--nq-t-small);
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color var(--nq-beat-settle) var(--nq-ease-out),
+      color var(--nq-beat-settle) var(--nq-ease-out);
+  }
+
+  .nq-tab:hover:not(:disabled) {
+    background-color: var(--nq-accent-soft);
+    color: var(--nq-ink);
+  }
+
+  .nq-tab[data-on="1"] {
+    background-color: var(--nq-accent);
+    color: var(--nq-accent-ink);
+  }
+
+  .nq-tab:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .nq-tab__count {
+    font-family: var(--nq-font-mono);
+    font-size: var(--nq-t-micro);
+    padding: 0 6px;
+    border-radius: var(--nq-radius-pill);
+    background-color: color-mix(in srgb, var(--nq-ink) 14%, transparent);
+  }
+
+  .nq-tab[data-on="1"] .nq-tab__count {
+    background-color: color-mix(in srgb, var(--nq-accent-ink) 18%, transparent);
+  }
+
+  /* ── Chú thích khi trỏ chuột / tiêu điểm ──
+     Kính bậc 1 (trong nhất) vì lớp này sát nội dung nhất và không che gì. */
+  .nq-tip-wrap {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .nq-tip {
+    position: absolute;
+    z-index: 60;
+    max-width: 22ch;
+    padding: var(--nq-s2) var(--nq-s3);
+    border: 1px solid var(--nq-line-strong);
+    border-radius: var(--nq-radius);
+    background: var(--nq-glass-1);
+    backdrop-filter: var(--nq-blur-1);
+    -webkit-backdrop-filter: var(--nq-blur-1);
+    color: var(--nq-ink);
+    font-size: var(--nq-t-caption);
+    line-height: 1.4;
+    box-shadow: var(--nq-elev-4);
+  }
+
+  .nq-tip--top {
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: var(--nq-s2);
+  }
+
+  .nq-tip--bottom {
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: var(--nq-s2);
+  }
+
+  .nq-tip--left {
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: var(--nq-s2);
+  }
+
+  .nq-tip--right {
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: var(--nq-s2);
+  }
+
+  /* ── Lớp phủ chờ ──
+     Kính bậc 3 (đục nhất) vì đây là lớp chắn hẳn nội dung phía sau. */
+  .nq-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--nq-glass-3);
+    backdrop-filter: var(--nq-blur-2);
+    -webkit-backdrop-filter: var(--nq-blur-2);
+  }
+
+  .nq-loading-overlay__panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--nq-s4);
+    padding: var(--nq-s6) var(--nq-s7);
+    border: 1px solid var(--nq-line);
+    border-radius: var(--nq-radius-sheet);
+    background-color: var(--nq-surface);
+    box-shadow: var(--nq-elev-4);
+  }
+
+  .nq-loading-overlay__text {
+    margin: 0;
+    font-family: var(--nq-font-mono);
+    font-size: var(--nq-t-caption);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--nq-accent-ink-text);
   }
 }
 

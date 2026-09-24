@@ -6,8 +6,36 @@
   "/dang-ky": [],
   "/huong-dan": [],
   "/hom-nay": [],
-  "/lich-tuan": [],
-  "/roster": [],
+  "/lich-tuan": [
+   {
+    "text": "▼ Xem tất cả (19)",
+    "cls": "py-1.5 px-3 rounded border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-wa",
+    "tag": "button",
+    "color": "rgb(251, 191, 92)",
+    "bg": "#f59e0b",
+    "fgHex": "#fbbf5c",
+    "ratio": 1.3,
+    "need": 4.5,
+    "px": 13.5,
+    "bold": false,
+    "large": false
+   }
+  ],
+  "/roster": [
+   {
+    "text": "▼ Xem tất cả (19)",
+    "cls": "py-1.5 px-3 rounded border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-wa",
+    "tag": "button",
+    "color": "rgb(251, 191, 92)",
+    "bg": "#f59e0b",
+    "fgHex": "#fbbf5c",
+    "ratio": 1.3,
+    "need": 4.5,
+    "px": 13.5,
+    "bold": false,
+    "large": false
+   }
+  ],
   "/phieu": [],
   "/treo": [],
   "/toi": [],
@@ -15,7 +43,21 @@
   "/inbox": [],
   "/chat": [],
   "/cuoc-hop": [],
-  "/cam-nang": [],
+  "/cam-nang": [
+   {
+    "text": "Chờ chốt",
+    "cls": "nq-summary-k text-xs font-mono uppercase tracking-widest opacity-80",
+    "tag": "span",
+    "color": "rgb(74, 44, 2)",
+    "bg": "#282111",
+    "fgHex": "#432a05",
+    "ratio": 1.19,
+    "need": 4.5,
+    "px": 13.5,
+    "bold": false,
+    "large": false
+   }
+  ],
   "/sop": [],
   "/handover": [],
   "/qr": [],

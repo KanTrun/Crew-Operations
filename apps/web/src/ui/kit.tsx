@@ -253,11 +253,37 @@ export function Alert({
   );
 }
 
-export function Empty({ children, title = "Không có dữ liệu" }: { children: ReactNode; title?: string }) {
+/**
+ * Trạng thái RỖNG.
+ *
+ * Trước đây: viền `border-2 dashed` + bóng cứng — bề mặt "brutalist", lệch hẳn
+ * với phần còn lại của hệ, và nét đứt đọc ra như "lỗi" chứ không phải "chưa có
+ * gì". Trạng thái rỗng KHÔNG phải lỗi: nó là trạng thái bình thường của một
+ * danh sách chưa có dữ liệu, nên phải trông bình tĩnh.
+ *
+ * Nền ĐẶC theo token surface (không kính): đây là khối nội dung, người dùng
+ * cần đọc dòng giải thích trên nó. `children` là CÂU GIẢI THÍCH VIỆC CẦN LÀM,
+ * không phải thông báo lỗi — xem quy ước trong docs/design-guidelines.md.
+ */
+export function Empty({
+  children,
+  title = "Không có dữ liệu",
+  icon,
+  action,
+}: {
+  children: ReactNode;
+  title?: string;
+  /** Icon tuỳ chọn — TRUYỀN `<Icon/>`, không truyền emoji. */
+  icon?: ReactNode;
+  /** Lối thoát: nút dẫn tới việc nên làm tiếp. Không có thì chỉ là thông báo. */
+  action?: ReactNode;
+}) {
   return (
-    <div className="bg-[var(--nq-surface)] border-2 border-dashed border-[var(--nq-dim)] p-8 flex flex-col items-center justify-center text-center">
-      <h3 className="text-xl font-bold mb-2 text-[var(--nq-fg)]">{title}</h3>
-      <p className="text-[var(--nq-dim)] font-mono text-sm max-w-md">{children}</p>
+    <div className="nq-empty">
+      {icon ? <div className="nq-empty__icon">{icon}</div> : null}
+      <h3 className="nq-empty__title">{title}</h3>
+      <p className="nq-empty__body">{children}</p>
+      {action ? <div className="nq-empty__action">{action}</div> : null}
     </div>
   );
 }
@@ -680,26 +706,50 @@ export function PageHeader({
   );
 }
 
-export function TabBar({ children }: { children: ReactNode }) {
-  return <div className="flex border-b border-[var(--nq-line)] mb-8">{children}</div>;
+/**
+ * Thanh chọn giữa các khung nhìn của CÙNG một trang.
+ *
+ * Trước đây `TabButton` dùng `border-b-4` + `font-black uppercase tracking-widest`
+ * — vạch 4px đè lên biên khối và chữ hoa giãn rộng làm nhãn dài bị gãy dòng ở
+ * màn hẹp. Bản này dùng pill trên nền accent nhạt: mục đang chọn đọc ra bằng
+ * NỀN, không bằng một vạch dày chiếm chỗ.
+ *
+ * `count` cho biết số bản ghi trong mỗi khung nhìn — biết trước khi bấm thì
+ * không phải mở từng tab để tìm cái có dữ liệu.
+ */
+export function TabBar({ children, label }: { children: ReactNode; label?: string }) {
+  return (
+    <div className="nq-tabbar" role="tablist" aria-label={label}>
+      {children}
+    </div>
+  );
 }
 
 export function TabButton({
   active,
   onClick,
   children,
+  count,
+  disabled = false,
 }: {
   active: boolean;
   onClick: () => void;
   children: ReactNode;
+  count?: number;
+  disabled?: boolean;
 }) {
   return (
-    <button 
-      type="button" 
-      className={`flex-1 py-4 font-black uppercase tracking-widest transition-colors ${active ? "text-[var(--nq-copper)] border-b-4 border-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`} 
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      disabled={disabled}
+      className="nq-tab"
+      data-on={active ? "1" : "0"}
       onClick={onClick}
     >
-      {children}
+      <span>{children}</span>
+      {typeof count === "number" ? <span className="nq-tab__count">{count}</span> : null}
     </button>
   );
 }
@@ -1149,16 +1199,16 @@ export function Table<T extends Record<string, any> = Record<string, any>>({
   }
 
   return (
-    <div className={`overflow-x-auto bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] ${className}`}>
-      <table className="w-full text-left border-collapse">
+    <div className={`nq-table-wrap ${className}`.trim()}>
+      <table className="nq-table">
         <thead>
-          <tr className="border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)]">
+          <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
                 scope="col"
                 style={{ width: col.width }}
-                className={`p-4 font-black uppercase tracking-widest text-[var(--nq-dim)] ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : ""}`}
+                className={col.align === "center" ? "is-center" : col.align === "right" ? "is-right" : undefined}
               >
                 {col.header}
               </th>
@@ -1167,9 +1217,13 @@ export function Table<T extends Record<string, any> = Record<string, any>>({
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={rowIndex} className="border-b border-[var(--nq-dim)]/30 hover:bg-[var(--nq-surface)]/50">
+            <tr key={rowIndex}>
               {columns.map((col) => (
-                <td key={col.key} style={{ width: col.width }} className={`p-4 ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : ""}`}>
+                <td
+                  key={col.key}
+                  style={{ width: col.width }}
+                  className={col.align === "center" ? "is-center" : col.align === "right" ? "is-right" : undefined}
+                >
                   {col.render ? col.render(row[col.key], row) : String(row[col.key] ?? "")}
                 </td>
               ))}
@@ -1181,6 +1235,17 @@ export function Table<T extends Record<string, any> = Record<string, any>>({
   );
 }
 
+/**
+ * Nhãn trạng thái nhỏ.
+ *
+ * Trước đây: `border-2` + `font-bold uppercase tracking-widest` + chữ đen trên
+ * nền màu đặc. Với 4 họ màu và 5 "variant", tổ hợp `border-2` + nền sáng đã
+ * từng gây lỗi tương phản 1.01:1 ở `nq-surface-tile`.
+ *
+ * Bản này theo quy ước trạng thái của hệ: NỀN nhạt (`-soft`) + CHỮ dùng bản
+ * `-ink`. Nhờ vậy nhãn đọc được ở mọi họ màu mà không phải chọn chữ đen hay
+ * trắng tuỳ nền.
+ */
 export function Badge({
   children,
   variant = "outline",
@@ -1192,27 +1257,25 @@ export function Badge({
   size?: "xs" | "sm" | "md" | "lg";
   className?: string;
 }) {
-  const base = "inline-flex items-center font-bold uppercase tracking-widest";
-  const sizes = {
-    xs: "px-1.5 py-0.5 text-[10px]",
-    sm: "px-2 py-1 text-xs",
-    md: "px-3 py-1.5 text-sm",
-    lg: "px-4 py-2 text-base",
-  };
-  const variants = {
-    primary: "nq-ink-on-solid bg-[var(--nq-copper)] border-[var(--nq-copper)]",
-    success: "nq-ink-on-solid bg-[var(--nq-green)] border-[var(--nq-green)]",
-    warning: "nq-ink-on-solid bg-[var(--nq-warn)] border-[var(--nq-warn)]",
-    danger: "nq-ink-on-solid bg-[var(--nq-red)] border-[var(--nq-red)]",
-    outline: "bg-transparent text-[var(--nq-fg)] border-[var(--nq-dim)]",
-  };
   return (
-    <span className={`${base} ${sizes[size]} border-2 ${variants[variant]} ${className}`}>
+    <span
+      className={`nq-badge nq-badge--${variant} nq-badge--${size} ${className}`.trim()}
+    >
       {children}
     </span>
   );
 }
 
+/**
+ * Chú thích khi trỏ chuột.
+ *
+ * Trước đây chỉ nghe `onMouseEnter`/`onMouseLeave` — bàn phím và màn hình cảm
+ * ứng không có cách nào mở được, nên nội dung chú thích mất hẳn với hai nhóm
+ * người dùng đó. Bản này mở được bằng tiêu điểm bàn phím (`:focus-within`) và
+ * bằng chạm, dùng kính theo Phase 4 vì đây là lớp nổi trên nội dung.
+ *
+ * `content` phải là chữ NGẮN: chú thích không phải chỗ giải thích dài.
+ */
 export function Tooltip({
   children,
   content,
@@ -1223,27 +1286,34 @@ export function Tooltip({
   position?: "top" | "bottom" | "left" | "right";
 }) {
   const [visible, setVisible] = useState(false);
-  const positions = {
-    top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
-    bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
-    left: "right-full top-1/2 -translate-y-1/2 mr-2",
-    right: "left-full top-1/2 -translate-y-1/2 ml-2",
-  };
   return (
-    <div className="relative inline-block" onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}>
+    <span
+      className="nq-tip-wrap"
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+      onFocus={() => setVisible(true)}
+      onBlur={() => setVisible(false)}
+    >
       {children}
       {visible && (
-        <div
-          className={`absolute ${positions[position]} z-10 px-2 py-1 text-xs font-mono text-[var(--nq-bg)] bg-[var(--nq-fg)] rounded whitespace-nowrap shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)]`}
-          role="tooltip"
-        >
+        <span className={`nq-tip nq-tip--${position}`} role="tooltip">
           {content}
-        </div>
+        </span>
       )}
-    </div>
+    </span>
   );
 }
 
+/**
+ * Lớp phủ chờ, chặn tương tác cho tới khi xong.
+ *
+ * Dùng kính bậc 3 (`--nq-glass-3`): đây là lớp chắn hẳn nội dung phía sau, nên
+ * phải đục nhất trong ba bậc — vừa để chữ trên nó đọc được, vừa để người dùng
+ * hiểu là nội dung bên dưới tạm thời không dùng được.
+ *
+ * `role="status"` + `aria-live` để công cụ hỗ trợ đọc thông báo; trước đây khối
+ * này chỉ là hình, người dùng trình đọc màn hình không biết trang đang bận.
+ */
 export function LoadingOverlay({
   className = "",
   message = "Đang tải...",
@@ -1252,10 +1322,10 @@ export function LoadingOverlay({
   message?: string;
 }) {
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-[var(--nq-bg)]/80 backdrop-blur-sm ${className}`}>
-      <div className="bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-8 flex flex-col items-center gap-4 shadow-[12px_12px_0px_0px_var(--nq-copper-dim)]">
+    <div className={`nq-loading-overlay ${className}`.trim()}>
+      <div className="nq-loading-overlay__panel" role="status" aria-live="polite">
         <Spinner />
-        <p className="font-mono text-sm text-[var(--nq-copper)] uppercase tracking-widest">{message}</p>
+        <p className="nq-loading-overlay__text">{message}</p>
       </div>
     </div>
   );
