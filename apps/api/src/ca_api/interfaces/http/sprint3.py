@@ -53,7 +53,30 @@ from ca_api.persist import session as auth_session
 router = APIRouter()
 ROOT = Path(__file__).resolve().parents[6]
 SEED = ROOT / "data" / "seed" / "sample.json"
-LICH = ROOT / "data" / "out" / "lich_tuan.json"
+
+
+def _lich_out() -> Path:
+    """Output solver — đọc MỖI LẦN GỌI, không phải lúc import module.
+
+    Đồng bộ `main._lich_tuan_out()` và `sprint45._lich_out()`, hai nơi đã làm đúng
+    từ trước và ghi rõ lý do.
+
+    Vì sao BẮT BUỘC đọc mỗi lần: conftest set `NHIPQUAN_LICH_TUAN_OUT` theo từng
+    bài test, SAU khi module đã import. Nếu chốt đường dẫn ở cấp module thì biến
+    đó không bao giờ được thấy, và test đọc/ghi thẳng vào `data/out/lich_tuan.json`
+    THẬT của quán.
+
+    Hậu quả thật đã xảy ra: `_phan_cong()` ưu tiên file lịch tuần hơn seed, nên một
+    file sót lại từ lần chạy demo trước đã che seed vĩnh viễn. `data/out/lich_tuan.json`
+    có `w1_c01 = ['nv_03', 'nv_38']` trong khi seed nói `['nv_07', 'nv_19']` — nên
+    `test_ghi_nhan_after_nha` nhận `nv_03` đã ở trong ca và trả **409 `da_trong_ca`**,
+    đỏ trên mọi máy có file đó, kể cả máy sạch vì nó đã bị theo dõi nhầm.
+    """
+    env = os.environ.get("NHIPQUAN_LICH_TUAN_OUT")
+    if env:
+        return Path(env)
+    return ROOT / "data" / "out" / "lich_tuan.json"
+
 
 _clock: Clock = Clock()
 _sm_by_phieu: dict[str, StateMachine] = {}
@@ -135,8 +158,9 @@ def _phan_cong() -> dict[str, list[str]]:
     if stored:
         return cast(dict[str, list[str]], stored)
     phan: dict[str, list[str]] = {}
-    if LICH.exists():
-        phan = json.loads(LICH.read_text(encoding="utf-8")).get("phan_cong", {})
+    lich_out = _lich_out()
+    if lich_out.exists():
+        phan = json.loads(lich_out.read_text(encoding="utf-8")).get("phan_cong", {})
     elif SEED.exists():
         seed = json.loads(SEED.read_text(encoding="utf-8"))
         hist = (seed.get("lich_su_8_tuan") or [{}])[0].get("phan_cong", {})
