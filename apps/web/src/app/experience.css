@@ -354,9 +354,19 @@
 }
 
 /* ── Spatial map (HỒN QUÁN) ─────────────────────────────────────────────── */
-.nq-spatial__layout { display: grid; gap: 1rem; grid-template-columns: 1fr 420px; }
+/* `align-items: start` để mỗi cột tự cao theo nội dung của nó, không kéo nhau.
+   Vì sao cần: `.nq-map2d__svg` đặt `width:100%; height:auto`, nên chiều cao bản đồ
+   là HÀM CỦA CHIỀU RỘNG. Khi cột phải cao lên (chi tiết neo hiện ra sau khi dữ liệu
+   về), hàng lưới cao theo, và mặc định `align-items: stretch` kéo bản đồ giãn ra
+   theo — nhưng tỉ lệ viewBox không đổi, nên các neo được vẽ LẠI ở vị trí khác sau
+   khi bản đồ đã hiển thị. Đó là layout shift thật, người dùng thấy bản đồ nhảy.
+   Đo được (`e2e/_diag-blocks.spec.ts`): cột phải 574 -> 980px, bản đồ 540 -> 743px
+   trong khoảng 97ms -> 190ms. Cũng chính vì thế bài `spatial-memory.spec.ts` đo
+   `svgBox` rồi đo từng neo, hai phép đo rơi vào hai bố cục khác nhau nên toạ độ
+   lệch (neo chạm 912 trong khi `svgBox` kết thúc ở 771). */
+.nq-spatial__layout { display: grid; gap: 1rem; grid-template-columns: 1fr 420px; align-items: start; }
 @media (max-width: 980px) { .nq-spatial__layout { grid-template-columns: 1fr; } }
-.nq-map2d { border: 2px solid var(--nq-line); border-radius: var(--nq-radius-bubble, 18px); background: var(--nq-bg-elevated); overflow: hidden; }
+.nq-map2d { align-self: start; border: 2px solid var(--nq-line); border-radius: var(--nq-radius-bubble, 18px); background: var(--nq-bg-elevated); overflow: hidden; }
 .nq-map2d__svg { display: block; width: 100%; height: auto; color: var(--nq-fg); }
 .nq-map2d__anchor { cursor: pointer; outline: none; }
 .nq-map2d__anchor:focus-visible circle { stroke: var(--nq-fg); stroke-width: 3; }

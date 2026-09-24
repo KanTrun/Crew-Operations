@@ -41,6 +41,27 @@ export default function SpatialMemoryPage() {
     setReady(true);
   }, []);
 
+  /**
+   * Đã đọc xong danh sách neo hay chưa — KHÁC với `ready` (đã biết token hay chưa).
+   *
+   * Vì sao cần cờ riêng: trước đây trang chỉ có `ready`, và `setReady(true)` chạy
+   * trong effect ĐẦU TIÊN, tức TRƯỚC khi biết token. Nên tồn tại một khoảng mà
+   * `ready === true`, `token === ""`, `anchors === []` — và nhánh
+   * `anchors.length === 0` vẽ ra thông báo **"Chưa có neo nào trên bản đồ"**.
+   * Người dùng thấy một câu báo KHÔNG CÓ DỮ LIỆU trong lúc dữ liệu đang về.
+   *
+   * Đo được bằng `e2e/_diag-height.spec.ts`: chiều cao trang nhảy
+   * **720 → 882 → 1288px** trong 200ms đầu, và đáy khung vẽ dịch **203px**
+   * (769 → 972) SAU khi khung đã hiện. Đó là layout shift thật, và cũng là lý do
+   * bài `spatial-memory.spec.ts` "anchor select shows details" đỏ khi chạy cả bộ:
+   * bài đó đo `svgBox` rồi đo từng neo, hai phép đo rơi vào hai trạng thái bố cục
+   * khác nhau nên toạ độ không còn khớp (912 > 771).
+   *
+   * Nay: chỉ khi ĐÃ THỬ đọc xong mà vẫn không có neo thì mới là "chưa có dữ liệu";
+   * trong lúc chờ thì giữ skeleton, nên bố cục không nhảy và không có câu báo sai.
+   */
+  const [anchorsLoaded, setAnchorsLoaded] = useState(false);
+
   const loadAnchors = useCallback(async () => {
     try {
       const res = await fetch(`${base}/api/v1/experience/map`, {
@@ -57,6 +78,10 @@ export default function SpatialMemoryPage() {
       setError(null);
     } catch (e) {
       setError(e);
+    } finally {
+      // Đặt trong `finally`: đọc lỗi cũng là "đã thử xong", và khi đó nhánh lỗi
+      // mới là thứ nên hiện — không phải skeleton treo mãi.
+      setAnchorsLoaded(true);
     }
   }, [base, token]);
 
@@ -93,6 +118,10 @@ export default function SpatialMemoryPage() {
 
   if (!ready) return <ExpSkeleton rows={6} />;
   if (!token) return <AuthGate />;
+  // Chờ đọc xong danh sách neo trước khi vẽ. Nếu không, nhánh `anchors.length === 0`
+  // bên dưới sẽ hiện "Chưa có neo nào trên bản đồ" trong lúc dữ liệu đang về —
+  // vừa báo sai, vừa làm bố cục nhảy (xem ghi chú ở `anchorsLoaded`).
+  if (!anchorsLoaded && !error) return <ExpSkeleton rows={6} />;
 
   return (
     <div className="nq-spatial">
