@@ -11,11 +11,6 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-  # URL API public cho build web (NEXT_PUBLIC_API_URL). Khai báo ở cấp workflow
-  # để tham chiếu env.WEB_API_URL luôn resolve được, không phụ thuộc GITHUB_ENV
-  # ghi lúc chạy (trước đây chỉ echo vào $GITHUB_ENV nên bị cảnh báo
-  # "Context access might be invalid: WEB_API_URL").
-  WEB_API_URL: https://nhipquan.duckdns.org
 
 jobs:
   build-push:
@@ -55,6 +50,15 @@ jobs:
 
       - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v6
+        # URL API public cho build web (NEXT_PUBLIC_API_URL). Khai báo `env` ở
+        # CẤP STEP — nơi thực sự dùng — để biểu thức `env.WEB_API_URL` bên dưới
+        # chắc chắn hợp lệ. Khai ở cấp workflow KHÔNG đủ: extension GitHub
+        # Actions chỉ validate `env` theo job/step nên vẫn cảnh báo
+        # "Context access might be invalid: WEB_API_URL" (false positive).
+        # Trước đây giá trị này còn bị echo động vào $GITHUB_ENV lúc chạy — khó
+        # kiểm, nay cố định trong workflow.
+        env:
+          WEB_API_URL: https://nhipquan.duckdns.org
         with:
           context: .
           file: ${{ matrix.dockerfile }}
