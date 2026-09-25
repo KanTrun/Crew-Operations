@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CSSProperties, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes, useCallback, useEffect, useRef, useState } from "react";
 import { API } from "../lib/api";
+import { fieldLabel, formatFieldValue } from "../lib/labels";
 import { Icon, type IconName } from "./icons";
 
 export const btnPrimary: CSSProperties = {};
@@ -14,7 +15,8 @@ export const inputClassName = "nq-input";
 export const selectClassName = "nq-select";
 export const textareaClassName = "nq-input nq-textarea";
 
-type BtnVariant = "primary" | "ghost" | "danger";
+type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "icon";
+type BtnSize = "sm" | "md";
 
 /**
  * Lớp nút dùng chung — toàn bộ nút trong app đi qua đây.
@@ -31,21 +33,15 @@ type BtnVariant = "primary" | "ghost" | "danger";
  * chuyển động đã khai trong `globals.css`. Chữ giữ nguyên chữ hoa + giãn chữ vì
  * đó là nét nhận diện của quán, không phải lỗi.
  */
-function btnClass(variant: BtnVariant, block?: boolean) {
+function btnClass(variant: BtnVariant, block?: boolean, size: BtnSize = "md") {
   const base = "nq-btn";
   const w = block ? " nq-btn-block" : "";
-  // `nq-ink-on-solid` phải có mặt trên mọi nút nền đặc, KHÔNG chỉ nằm trong
-  // `.nq-btn-primary` ở CSS. Hai lý do:
-  //   1. Nó là HỢP ĐỒNG được kiểm bằng test thật
-  //      (`e2e/flows.spec.ts` → `a.nq-ink-on-solid` phải có độ sáng < 0.35, tức
-  //      chữ tối trên nền sáng, không được là chữ đen trên nền tối). Class này
-  //      từng bị bỏ khi nút chuyển sang `.nq-btn-primary`, làm hợp đồng đó mất
-  //      vật mang và test đỏ.
-  //   2. Nó là móc ổn định cho công cụ đo: `scripts/contrast.mjs` và các spec
-  //      dùng nó để nhận diện "nút nền đặc" mà không phải bám vào tên biến thể.
-  if (variant === "primary") return `${base} nq-btn-primary nq-ink-on-solid${w}`;
-  if (variant === "danger") return `${base} nq-btn-danger nq-ink-on-solid${w}`;
-  return `${base} nq-btn-ghost${w}`;
+  const s = size === "sm" ? " nq-btn-sm" : "";
+  if (variant === "primary") return `${base} nq-btn-primary nq-ink-on-solid${w}${s}`;
+  if (variant === "secondary") return `${base} nq-btn-secondary${w}${s}`;
+  if (variant === "danger") return `${base} nq-btn-danger nq-ink-on-solid${w}${s}`;
+  if (variant === "icon") return `${base} nq-btn-ghost nq-btn-icon${w}${s}`;
+  return `${base} nq-btn-ghost${w}${s}`;
 }
 
 export function BtnLink({
@@ -53,16 +49,18 @@ export function BtnLink({
   variant = "primary",
   children,
   block,
+  size = "md",
   className = "",
 }: {
   href: string;
   variant?: BtnVariant;
   children: ReactNode;
   block?: boolean;
+  size?: BtnSize;
   className?: string;
 }) {
   return (
-    <Link href={href} className={className || btnClass(variant, block)}>
+    <Link href={href} className={className || btnClass(variant, block, size)}>
       {children}
     </Link>
   );
@@ -519,6 +517,7 @@ export function Btn({
   onClick,
   children,
   title,
+  size = "md",
   className = "",
 }: {
   variant?: BtnVariant;
@@ -530,6 +529,7 @@ export function Btn({
   onClick?: () => void;
   children: ReactNode;
   title?: string;
+  size?: BtnSize;
   className?: string;
 }) {
   return (
@@ -539,7 +539,7 @@ export function Btn({
       aria-busy={busy ? true : undefined}
       onClick={onClick}
       title={title}
-      className={className || btnClass(variant, block)}
+      className={className || btnClass(variant, block, size)}
     >
       {busy ? <Spinner /> : null}
       {busy ? busyLabel ?? "Đang lưu…" : children}
@@ -1027,27 +1027,29 @@ export function PickCard({
   );
 }
 
-/** Bảng số liệu: cột số căn phải, đơn vị thành cột riêng. */
+/** Bảng số liệu — dùng `.nq-table` (đồng bộ kit Table). */
 export function DataTable({
   caption,
   head,
   children,
   note,
+  compact,
 }: {
   caption: string;
   head: Array<{ label: string; num?: boolean }>;
   children: ReactNode;
   note?: string;
+  compact?: boolean;
 }) {
   return (
-    <div className="mb-8">
-      <div className="nq-surface-frame overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+    <div className="mb-6">
+      <div className="nq-table-wrap">
+        <table className={`nq-table${compact ? " nq-table--compact" : ""}`}>
           <caption className="sr-only">{caption}</caption>
           <thead>
-            <tr className="border-b border-[var(--nq-line)] bg-[var(--nq-surface)]">
+            <tr>
               {head.map((h) => (
-                <th key={h.label} scope="col" className={`p-4 font-black uppercase tracking-widest text-[var(--nq-dim)] ${h.num ? "text-right" : ""}`}>
+                <th key={h.label} scope="col" data-num={h.num ? "1" : undefined} className={h.num ? "is-right" : undefined}>
                   {h.label}
                 </th>
               ))}
@@ -1056,7 +1058,7 @@ export function DataTable({
           <tbody>{children}</tbody>
         </table>
       </div>
-      {note ? <p className="text-sm font-mono text-[var(--nq-dim)] mt-4">{note}</p> : null}
+      {note ? <p className="nq-table-note">{note}</p> : null}
     </div>
   );
 }
@@ -1405,4 +1407,159 @@ export function TabPanel({
   className?: string;
 }) {
   return <div className={`mt-6 ${className}`}>{children}</div>;
+}
+
+/** Skeleton công khai — shimmer khi chờ dữ liệu. */
+export function Skeleton({ rows = 3, className = "" }: { rows?: number; className?: string }) {
+  return (
+    <div className={`nq-skeleton-wrap ${className}`.trim()} aria-busy="true" aria-label="Đang tải">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className={`nq-skeleton nq-skeleton-line${i === 0 ? "" : i % 2 ? " nq-skeleton-line-sm" : ""}`} />
+      ))}
+    </div>
+  );
+}
+
+export type DataListItem = { label: string; value: ReactNode };
+
+/** Cặp nhãn/giá trị doanh nghiệp — thay JSON.stringify trên UI. */
+export function DataList({
+  items,
+  data,
+  keys,
+  className = "",
+  nested,
+}: {
+  items?: DataListItem[];
+  data?: Record<string, unknown>;
+  keys?: string[];
+  className?: string;
+  nested?: boolean;
+}) {
+  let rows: DataListItem[] = items ?? [];
+  if (!items && data) {
+    const ks = keys ?? Object.keys(data);
+    rows = ks.map((k) => {
+      const v = data[k];
+      if (nested && v && typeof v === "object" && !Array.isArray(v)) {
+        return {
+          label: fieldLabel(k),
+          value: <DataList data={v as Record<string, unknown>} nested />,
+        };
+      }
+      return { label: fieldLabel(k), value: formatFieldValue(v) };
+    });
+  }
+
+  if (rows.length === 0) {
+    return <Empty title="Không có chi tiết">Chưa có trường nào để hiển thị.</Empty>;
+  }
+
+  return (
+    <dl className={`nq-datalist ${className}`.trim()}>
+      {rows.map((row, i) => (
+        <div key={`${row.label}-${i}`} className="nq-datalist__row">
+          <dt className="nq-datalist__label">{row.label}</dt>
+          <dd className="nq-datalist__value">{row.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** Dialog chung — portal overlay, Escape đóng, z-index token. */
+export function Dialog({
+  open,
+  title,
+  children,
+  onClose,
+  footer,
+  busy,
+}: {
+  open: boolean;
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+  footer?: ReactNode;
+  busy?: boolean;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !busy) onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, busy, onClose]);
+
+  if (!open || typeof document === "undefined") return null;
+
+  return (
+    <div className="nq-dialog-overlay" onClick={busy ? undefined : onClose} role="presentation">
+      <div
+        className="nq-dialog-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="nq-dialog-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="nq-dialog-head">
+          <h2 id="nq-dialog-title" className="nq-dialog-title">
+            {title}
+          </h2>
+          <button type="button" className="nq-btn nq-btn-ghost nq-btn-icon nq-btn-sm" onClick={onClose} disabled={busy} aria-label="Đóng">
+            ×
+          </button>
+        </header>
+        <div className="nq-dialog-body">{children}</div>
+        {footer ? <div className="nq-dialog-footer">{footer}</div> : null}
+      </div>
+    </div>
+  );
+}
+
+/** Drawer phải — chi tiết kỹ thuật / panel phụ. */
+export function Drawer({
+  open,
+  title,
+  children,
+  onClose,
+}: {
+  open: boolean;
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="nq-drawer-overlay" onClick={onClose} role="presentation">
+      <aside
+        className="nq-drawer-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="nq-drawer-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="nq-drawer-head">
+          <h2 id="nq-drawer-title" className="nq-drawer-title">
+            {title}
+          </h2>
+          <button type="button" className="nq-btn nq-btn-ghost nq-btn-icon nq-btn-sm" onClick={onClose} aria-label="Đóng">
+            ×
+          </button>
+        </header>
+        <div className="nq-drawer-body">{children}</div>
+      </aside>
+    </div>
+  );
 }

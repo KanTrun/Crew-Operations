@@ -1346,7 +1346,7 @@ a:focus-visible {
 .nq-confirm-overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: var(--nq-z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8903,6 +8903,153 @@ a.nq-bento-surface:active {
 /* ══════════════════════════════════════════════════════════════════════════
    HẾT SIDEBAR.
    ══════════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Dialog / Drawer / DataList / Btn variants (enterprise kit v4)
+   ══════════════════════════════════════════════════════════════════════════ */
+.nq-btn-secondary {
+  background: transparent;
+  color: var(--nq-accent-ink-text);
+  border: 1px solid var(--nq-line-strong);
+}
+.nq-btn-secondary:hover:not(:disabled) {
+  background: var(--nq-accent-soft);
+  border-color: var(--nq-accent);
+  color: var(--nq-accent-hover);
+}
+.nq-btn-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+.nq-btn-sm {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.9rem;
+  font-size: var(--nq-t-caption);
+  letter-spacing: 0.06em;
+}
+.nq-btn-icon.nq-btn-sm {
+  width: 2.25rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+}
+
+.nq-dialog-overlay,
+.nq-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nq-z-modal);
+  background: rgba(2, 6, 10, 0.62);
+  backdrop-filter: var(--nq-blur-2);
+  -webkit-backdrop-filter: var(--nq-blur-2);
+  animation: nq-fade-in var(--nq-beat-settle) var(--nq-ease-out) both;
+}
+.nq-dialog-overlay {
+  display: grid;
+  place-items: center;
+  padding: var(--nq-s5);
+}
+.nq-drawer-overlay {
+  z-index: var(--nq-z-drawer);
+  display: flex;
+  justify-content: flex-end;
+}
+.nq-dialog-panel {
+  width: min(100%, 32rem);
+  max-height: min(88vh, 40rem);
+  display: flex;
+  flex-direction: column;
+  background: var(--nq-surface);
+  border: 1px solid var(--nq-line-strong);
+  border-radius: var(--nq-radius-sheet);
+  box-shadow: var(--nq-elev-4), var(--nq-inner-hi);
+  animation: nq-rise var(--nq-beat-focus) var(--nq-ease-out) both;
+}
+.nq-drawer-panel {
+  width: min(100%, 26rem);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--nq-surface);
+  border-left: 1px solid var(--nq-line-strong);
+  box-shadow: var(--nq-elev-4);
+  animation: nq-slide-in-right var(--nq-beat-focus) var(--nq-ease-out) both;
+}
+.nq-dialog-head,
+.nq-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nq-s3);
+  padding: var(--nq-s4) var(--nq-s5);
+  border-bottom: 1px solid var(--nq-line);
+}
+.nq-dialog-title,
+.nq-drawer-title {
+  margin: 0;
+  font-family: var(--nq-font-display);
+  font-size: var(--nq-t-h3);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--nq-ink);
+}
+.nq-dialog-body,
+.nq-drawer-body {
+  padding: var(--nq-s5);
+  overflow: auto;
+  flex: 1;
+}
+.nq-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--nq-s3);
+  padding: var(--nq-s4) var(--nq-s5);
+  border-top: 1px solid var(--nq-line);
+}
+
+.nq-datalist {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+.nq-datalist__row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 34%) 1fr;
+  gap: var(--nq-s3);
+  padding: var(--nq-s3) 0;
+  border-bottom: 1px solid var(--nq-line);
+}
+.nq-datalist__row:last-child {
+  border-bottom: none;
+}
+.nq-datalist__label {
+  margin: 0;
+  color: var(--nq-ink-muted);
+  font-size: var(--nq-t-caption);
+  font-family: var(--nq-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.nq-datalist__value {
+  margin: 0;
+  color: var(--nq-ink);
+  font-size: var(--nq-t-body);
+  word-break: break-word;
+}
+.nq-datalist .nq-datalist {
+  margin-top: var(--nq-s2);
+  padding-left: var(--nq-s3);
+  border-left: 2px solid var(--nq-line-strong);
+}
+
+@keyframes nq-slide-in-right {
+  from { transform: translateX(12px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    prefers-reduced-motion — PHẢI là khối cuối file.
