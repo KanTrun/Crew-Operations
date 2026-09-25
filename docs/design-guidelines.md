@@ -76,21 +76,29 @@ T0 160ms · T1 220ms · T2 480ms · `prefers-reduced-motion` tắt animation
 
 ## Typography — self-host, không CDN
 
-Font nạp qua `next/font` trong `apps/web/src/ui/fonts.ts`, **không** dùng
-`<link>` tới `fonts.googleapis.com`.
+Font nạp qua **`next/font/local`** trong `apps/web/src/ui/fonts.ts`, với file
+`.woff2` **commit trong repo** tại `apps/web/src/fonts/`
+(xem `apps/web/src/fonts/README.md`).
 
-| Vai trò | Font | Subset |
-|---|---|---|
-| Display | Fraunces 400/600 | latin, latin-ext, **vietnamese** |
-| Body | Source Sans 3 400/600 | latin, latin-ext, **vietnamese** |
-| Mono | IBM Plex Mono 400/500 | latin, latin-ext |
+**Không** dùng `<link>` tới `fonts.googleapis.com` — và cũng **không** dùng
+`next/font/google`, vì nó tải font **lúc build** qua mạng:
 
-Hai lý do, cả hai đều là ràng buộc cứng:
+| Vai trò | Font | Weight | Subset |
+|---|---|---|---|
+| Display | Space Grotesk | 400/500/600/700 | latin, latin-ext, **vietnamese** |
+| Body | IBM Plex Sans | 400/500/600 | latin, latin-ext, **vietnamese** |
+| Mono | IBM Plex Mono | 400/500 | latin, latin-ext, **vietnamese** |
+
+Ba lý do, cả ba đều là ràng buộc cứng:
 
 1. **Cổng ra Sprint 8 (§14.9)** yêu cầu demo chạy trọn 10 phút khi đã rút mạng.
    Font CDN làm chữ rơi về Georgia/system-ui ngay giữa buổi bảo vệ.
 2. **Phải có subset `vietnamese`.** Thiếu nó thì chữ có dấu render bằng font
    fallback, và cả trang trông chắp vá dù token màu/khoảng cách vẫn đúng.
+3. **Build phải TẤT ĐỊNH.** `next/font/google` hỏng trong Docker build của CI
+   (`TypeError: Cannot read properties of null` ở `@next/font/dist/google/loader.js`)
+   trong khi `next build` ở máy local vẫn xanh — lỗi ẩn tới tận bước deploy.
+   Phụ thuộc mạng ở bước build nghĩa là hôm nay xanh, mai Google trả khác là đỏ.
 
 Kiểm lại sau mỗi lần đổi font:
 
@@ -99,6 +107,10 @@ cd apps/web ; npx next build
 # .next/static/media phải có file .woff2
 # HTML đã render phải có 0 tham chiếu fonts.googleapis / fonts.gstatic
 ```
+
+Lưu ý kỹ thuật: `next/font/local` đòi mọi giá trị trong `src` phải là **chuỗi
+viết thẳng** (không vòng lặp, không hàm sinh mảng), nếu không build báo
+`Font loader values must be explicitly written literals`.
 
 ## Icon
 

@@ -21,6 +21,18 @@
 | google-api-python-client | Apache-2.0 | Gmail API free tier: 1 tỷ quota units/ngày/project; 250 quota units/user/giây | 2026-09-19 | Quản lý Gmail (`ag_gmail`): đọc/gửi/labels/filters; cần OAuth client `NHIPQUAN_GMAIL_CLIENT_ID` |
 | google-auth / google-auth-oauthlib | Apache-2.0 | n/a | 2026-09-19 | OAuth 2.0 flow cho Gmail; refresh token tự động |
 | cryptography (Fernet) | Apache-2.0 / BSD-3-Clause | n/a | 2026-09-19 | Mã hoá OAuth token trong DB; key qua `NHIPQUAN_ENCRYPTION_KEY` |
+| Space Grotesk (font) | SIL OFL 1.1 | n/a — file **commit trong repo** | 2026-09-25 | Tiêu đề. `apps/web/src/fonts/`; xem `README.md` cùng thư mục |
+| IBM Plex Sans (font) | SIL OFL 1.1 | n/a — file **commit trong repo** | 2026-09-25 | Chữ đọc chính |
+| IBM Plex Mono (font) | SIL OFL 1.1 | n/a — file **commit trong repo** | 2026-09-25 | Số liệu / mã / mono |
+
+**Vì sao font được commit vào repo (khác các mục trên):** ba họ này tải từ Google
+Fonts một lần rồi commit dưới dạng `.woff2`. Lý do: `next/font/google` tải font
+**lúc build**, và trong Docker build của CI lời gọi đó vỡ
+(`TypeError: Cannot read properties of null` ở `loader.js`) trong khi build ở máy
+local vẫn xanh — lỗi ẩn tới tận bước deploy. Guideline
+(`docs/design-guidelines.md` §Typography) cũng đã yêu cầu self-host để cổng §14.9
+(demo chạy khi rút mạng) không vỡ. OFL 1.1 cho phép phân phối kèm sản phẩm, chỉ
+cấm bán font riêng lẻ. Kích thước: 27 file, ~324 KB.
 
 ## Kết luận vận hành (không phải lời hứa marketing)
 
