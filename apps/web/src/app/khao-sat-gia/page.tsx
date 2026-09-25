@@ -748,7 +748,7 @@ function MangNhap({
                 className="nq-filter-clear"
                 aria-pressed={dangChon}
                 title={p.moTa}
-                style={dangChon ? { borderColor: "var(--nq-copper)", color: "var(--nq-copper)" } : undefined}
+                style={dangChon ? { borderColor: "var(--nq-accent)", color: "var(--nq-accent)" } : undefined}
               >
                 {p.nhan} · {p.dineIn}/{p.delivery} km
               </button>

@@ -21,6 +21,7 @@ import {
   Toasts,
   useToasts,
 } from "../../ui/kit";
+import { Icon } from "../../ui/icons";
 
 type Status = {
   connected: boolean;
@@ -640,7 +641,7 @@ export default function PageQuanPage() {
           onClick={() => setTab("threads")}
           className={
             tab === "threads"
-              ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-bold shadow-md"
+              ? "bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] font-bold shadow-md"
               : threads.filter((t) => t.needs_action || t.pending_approval).length > 0
               ? "text-amber-300 hover:bg-amber-500/10 border border-amber-500/30"
               : undefined
@@ -648,7 +649,7 @@ export default function PageQuanPage() {
         >
           Hội thoại Messenger ({threads.length})
           {threads.filter((t) => t.needs_action || t.pending_approval).length > 0 ? (
-            <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-black text-black">
+            <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-black">
               {threads.filter((t) => t.needs_action || t.pending_approval).length}
             </span>
           ) : null}
@@ -685,7 +686,7 @@ export default function PageQuanPage() {
             {/* Chọn phương thức — việc chính, đặt trước; hạn mức là ngữ cảnh đi kèm */}
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-black uppercase tracking-widest text-[var(--nq-fg)]">
+                <h3 className="text-sm nq-block-title text-[var(--nq-fg)]">
                   Phương thức cào dữ liệu
                 </h3>
                 <p className="mt-1 text-xs text-[var(--nq-dim)]">
@@ -717,7 +718,7 @@ export default function PageQuanPage() {
                 }}
                 busy={usageRefreshing}
                 busyLabel="Đang kiểm tra…"
-                className="rounded-full border-2 border-[var(--nq-dim)] bg-transparent px-4 py-2 text-xs font-bold uppercase tracking-widest text-[var(--nq-fg)] transition-all hover:border-[var(--nq-copper)] hover:text-[var(--nq-copper)] disabled:opacity-50"
+                className="rounded-full border-2 border-[var(--nq-dim)] bg-transparent px-4 py-2 text-xs font-bold uppercase tracking-widest text-[var(--nq-fg)] transition-all hover:border-[var(--nq-accent)] hover:text-[var(--nq-accent)] disabled:opacity-50"
                 title="Đọc lại hạn mức & mức sử dụng mới nhất từ Apify"
               >
                 Kiểm tra số dư
@@ -767,12 +768,12 @@ export default function PageQuanPage() {
                       aria-pressed={active}
                       className={`h-full w-full rounded-[var(--nq-radius-bubble)] border-2 p-3 text-left transition-all ${
                         active
-                          ? "border-[var(--nq-copper)] bg-[var(--nq-accent-soft)]"
-                          : "border-[var(--nq-dim)] bg-[var(--nq-surface)] hover:border-[var(--nq-copper)]"
+                          ? "border-[var(--nq-accent)] bg-[var(--nq-accent-soft)]"
+                          : "border-[var(--nq-dim)] bg-[var(--nq-surface)] hover:border-[var(--nq-accent)]"
                       }`}
                     >
                       <span className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-black uppercase tracking-widest text-[var(--nq-fg)]">
+                        <span className="text-xs nq-block-title text-[var(--nq-fg)]">
                           {m.title}
                         </span>
                         <span className="text-[10px] font-mono text-[var(--nq-dim)]">{m.tag}</span>
@@ -860,7 +861,7 @@ export default function PageQuanPage() {
                           href="https://console.apify.com/billing/historical-usage"
                           target="_blank"
                           rel="noreferrer"
-                          className="underline decoration-dotted hover:text-[var(--nq-copper)]"
+                          className="underline decoration-dotted hover:text-[var(--nq-accent)]"
                         >
                           Apify Console → Billing
                         </a>
@@ -921,7 +922,7 @@ export default function PageQuanPage() {
                   }}
                   className={`rounded px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
                     scanIntervalMinutes === mins
-                      ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] shadow-sm"
+                      ? "bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] shadow-sm"
                       : "bg-[var(--nq-surface)] text-[var(--nq-muted)] hover:bg-[var(--nq-dim)]"
                   }`}
                 >
@@ -1024,7 +1025,7 @@ export default function PageQuanPage() {
           {/* KHỐI 3: BỘ LỌC NGUỒN CÀO ĐỘC QUYỀN (Targeted Scraping) & BOOKMARK */}
           <div className="space-y-3 rounded-lg nq-surface-block p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--nq-dim)] pb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-[var(--nq-copper)]">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--nq-accent)]">
                 Nền Tảng Cào Dữ Liệu (Chọn Độc Quyền Theo Nhu Cầu):
               </span>
 
@@ -1103,7 +1104,7 @@ export default function PageQuanPage() {
                     onClick={() => handleCategoryChange(c.id)}
                     className={`rounded px-2.5 py-1 transition-all cursor-pointer ${
                       categoryFilter === c.id
-                        ? "bg-[var(--nq-copper)] font-bold text-[var(--nq-accent-ink)] shadow-sm"
+                        ? "bg-[var(--nq-accent)] font-bold text-[var(--nq-accent-ink)] shadow-sm"
                         : "bg-[var(--nq-surface)] text-[var(--nq-muted)] hover:bg-[var(--nq-dim)]"
                     }`}
                   >
@@ -1119,7 +1120,7 @@ export default function PageQuanPage() {
             {/* Cột Trái: Danh sách Trend */}
             <div className="space-y-3 lg:col-span-5 max-h-[820px] overflow-y-auto pr-1">
               <div className="flex items-center justify-between sticky top-0 bg-[var(--nq-bg)] py-1 z-10">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--nq-copper)]">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--nq-accent)]">
                   {showSavedOnly
                     ? `Danh Sách Đã Lưu (${savedTrends.length})`
                     : `Tín Hiệu Cào Thật (${displayedTrends.length})`}
@@ -1181,7 +1182,7 @@ export default function PageQuanPage() {
                       </div>
 
                       {/* Tag Từ khóa cửa miệng */}
-                      <div className="mt-2 inline-flex items-center gap-1 rounded bg-[var(--nq-dim)] px-2 py-0.5 text-xs font-mono font-bold text-[var(--nq-copper)]">
+                      <div className="mt-2 inline-flex items-center gap-1 rounded bg-[var(--nq-dim)] px-2 py-0.5 text-xs font-mono font-bold text-[var(--nq-accent)]">
                         &quot;{t.cum_tu_khoa_viral}&quot;
                       </div>
 
@@ -1220,9 +1221,9 @@ export default function PageQuanPage() {
               {selectedTrend ? (
                 <>
                   {/* Header: Cụm từ khóa cửa miệng cốt lõi & Nút Bookmark */}
-                  <div className="rounded nq-surface-block border-[var(--nq-copper)] p-4 shadow-sm">
+                  <div className="rounded nq-surface-block border-[var(--nq-accent)] p-4 shadow-sm">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--nq-copper)]">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--nq-accent)]">
                         Cụm Từ Khóa Cửa Miệng Viral (Bắt Sóng Ngay)
                       </span>
                       <div className="flex items-center gap-2">
@@ -1249,7 +1250,7 @@ export default function PageQuanPage() {
                         </span>
                       </div>
                     </div>
-                    <div className="mt-2 text-2xl font-black text-[var(--nq-copper)]">
+                    <div className="mt-2 text-2xl font-semibold text-[var(--nq-accent)]">
                       &quot;{selectedTrend.cum_tu_khoa_viral}&quot;
                     </div>
                     <p className="mt-1 text-xs text-[var(--nq-muted)]">
@@ -1511,8 +1512,8 @@ export default function PageQuanPage() {
                       onClick={() => setSelectedTrend(t)}
                       className={`nq-surface-tile relative p-4 transition-all cursor-pointer ${
                         isSelected
-                          ? "border-[var(--nq-copper)] bg-[var(--nq-surface-hi)] shadow-[var(--nq-elev-2-hover)]"
-                          : "bg-[var(--nq-surface)] hover:border-[var(--nq-copper)] hover:bg-[var(--nq-surface-hi)]"
+                          ? "border-[var(--nq-accent)] bg-[var(--nq-surface-hi)] shadow-[var(--nq-elev-2-hover)]"
+                          : "bg-[var(--nq-surface)] hover:border-[var(--nq-accent)] hover:bg-[var(--nq-surface-hi)]"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -1675,7 +1676,7 @@ export default function PageQuanPage() {
                     onClick={() => setThreadFilter(f.id)}
                     className={`px-3 py-1.5 font-bold transition cursor-pointer ${
                       threadFilter === f.id
-                        ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)]"
+                        ? "bg-[var(--nq-accent)] text-[var(--nq-accent-ink)]"
                         : "text-[var(--nq-muted)] hover:bg-[var(--nq-dim)] hover:text-white"
                     }`}
                   >
@@ -1704,7 +1705,7 @@ export default function PageQuanPage() {
                 } lg:col-span-4 flex-col rounded-lg border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] overflow-hidden max-h-[70vh]`}
               >
                 <div className="flex items-center justify-between border-b border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 py-3">
-                  <span className="text-xs font-bold uppercase tracking-widest text-[var(--nq-copper)]">
+                  <span className="text-xs font-bold uppercase tracking-widest text-[var(--nq-accent)]">
                     Hội thoại ({filteredThreads.length})
                   </span>
                   <span className="text-[11px] font-mono text-[var(--nq-muted)]">
@@ -1724,7 +1725,7 @@ export default function PageQuanPage() {
                         onClick={() => setActiveThreadId(th.id)}
                         className={`w-full flex items-start gap-3 px-4 py-3 text-left transition cursor-pointer ${
                           isActive
-                            ? "bg-[var(--nq-accent-soft)] border-l-4 border-[var(--nq-copper)]"
+                            ? "bg-[var(--nq-accent-soft)] border-l-4 border-[var(--nq-accent)]"
                             : "hover:bg-[var(--nq-bg)] border-l-4 border-transparent"
                         }`}
                       >
@@ -1739,13 +1740,13 @@ export default function PageQuanPage() {
                               loading="lazy"
                             />
                           ) : (
-                            <span className="w-11 h-11 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-black flex items-center justify-center text-base border border-[var(--nq-copper-dim)]">
+                            <span className="w-11 h-11 rounded-full bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] font-semibold flex items-center justify-center text-base border border-[var(--nq-accent-dim)]">
                               {fallback}
                             </span>
                           )}
                           {(th.needs_action || th.pending_approval) && (
                             <span
-                              className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--nq-copper)] border-2 border-[var(--nq-surface)]"
+                              className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--nq-accent)] border-2 border-[var(--nq-surface)]"
                               title="Cần xử lý"
                               aria-label="Cần xử lý"
                             />
@@ -1814,7 +1815,7 @@ export default function PageQuanPage() {
                           className="w-10 h-10 rounded-full object-cover border border-[var(--nq-dim)]"
                         />
                       ) : (
-                        <span className="w-10 h-10 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-black flex items-center justify-center text-sm">
+                        <span className="w-10 h-10 rounded-full bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] font-semibold flex items-center justify-center text-sm">
                           {fallback}
                         </span>
                       );
@@ -1839,7 +1840,7 @@ export default function PageQuanPage() {
                       {activeThread.is_within_24h ? "Trong 24h" : "Hết 24h · tag"}
                     </span>
                     {(activeThread.needs_action || activeThread.pending_approval) && (
-                      <span className="shrink-0 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] px-2.5 py-1 text-[10px] font-bold">
+                      <span className="shrink-0 rounded-full bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] px-2.5 py-1 text-[10px] font-bold">
                         Cần xử lý
                       </span>
                     )}
@@ -1851,7 +1852,7 @@ export default function PageQuanPage() {
                       (activeThread.customer_profile.favorite_drinks || []).length > 0 ||
                       (activeThread.customer_profile.special_notes || []).length > 0) && (
                       <div className="flex flex-wrap items-center gap-2 border-b border-[var(--nq-dim)] bg-[var(--nq-surface)] px-4 py-2">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--nq-copper)]">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--nq-accent)]">
                           Hồ sơ khách
                         </span>
                         {activeThread.customer_profile.is_vip_or_regular && (
@@ -1860,18 +1861,18 @@ export default function PageQuanPage() {
                           </span>
                         )}
                         {(activeThread.customer_profile.favorite_drinks || []).map((d) => (
-                          <span
-                            key={d}
-                            className="rounded border border-cyan-800/40 bg-cyan-950/60 px-1.5 py-0.5 text-[10px] text-cyan-300"
-                          >
-                            ☕ {d}
-                          </span>
-                        ))}
+                          /* "Món ruột" là THÔNG TIN (không phải cảnh báo, không phải lỗi)
+                             → dùng hệ token info (accent-2) qua .nq-badge, không màu rời.
+                             Icon SVG thay emoji ☕: emoji do hệ điều hành vẽ nên hình
+                             khác nhau trên từng máy và không ăn màu trạng thái. */
+                          <span key={d} className="nq-badge nq-badge--info nq-badge--sm">
+                            <Icon name="coffee" size={12} />
+                            {d}
+                          </span>                        ))}
                         {(activeThread.customer_profile.special_notes || []).map((n) => (
-                          <span
-                            key={n}
-                            className="rounded border border-purple-800/40 bg-purple-950/60 px-1.5 py-0.5 text-[10px] text-purple-300"
-                          >
+                          /* "Lưu ý đặc biệt" cần phân biệt được với "món ruột" → dùng
+                             hệ accent (thương hiệu) thay vì xanh dương. */
+                          <span key={n} className="nq-badge nq-badge--primary nq-badge--sm">
                             {n}
                           </span>
                         ))}
@@ -1898,7 +1899,7 @@ export default function PageQuanPage() {
                                   className="w-7 h-7 rounded-full object-cover border border-[var(--nq-dim)] shrink-0"
                                 />
                               ) : (
-                                <span className="w-7 h-7 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-bold text-[10px] flex items-center justify-center shrink-0">
+                                <span className="w-7 h-7 rounded-full bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] font-bold text-[10px] flex items-center justify-center shrink-0">
                                   {fallback}
                                 </span>
                               );
@@ -1908,13 +1909,13 @@ export default function PageQuanPage() {
                             className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed shadow-sm ${
                               fromCustomer
                                 ? "bg-[var(--nq-surface)] border border-[var(--nq-dim)] text-[var(--nq-fg)] rounded-bl-sm"
-                                : "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] rounded-br-sm font-medium"
+                                : "bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] rounded-br-sm font-medium"
                             }`}
                           >
                             <div className="flex items-center justify-between gap-3 mb-0.5">
                               <span
                                 className={`text-[9px] font-bold uppercase tracking-wider ${
-                                  fromCustomer ? "text-[var(--nq-copper)]" : "text-[var(--nq-accent-ink)]/70"
+                                  fromCustomer ? "text-[var(--nq-accent)]" : "text-[var(--nq-accent-ink)]/70"
                                 }`}
                               >
                                 {fromCustomer ? activeThread.sender_name : m.by || "Quán"}
@@ -1949,7 +1950,10 @@ export default function PageQuanPage() {
                   {activeThread.suggested_reply ? (
                     <div className="border-t border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] px-4 py-3">
                       <div className="flex items-start gap-2.5">
-                        <span className="mt-0.5 shrink-0 rounded bg-indigo-500/20 border border-indigo-500/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-indigo-300">
+                        {/* Nhãn "AI" đánh dấu nội dung do máy soạn — phải KHÁC hệ màu
+                            với nội dung người gửi (accent = thương hiệu/người gửi),
+                            nên dùng hệ info (accent-2). */}
+                        <span className="mt-0.5 shrink-0 nq-badge nq-badge--info nq-badge--xs">
                           AI
                         </span>
                         <div className="flex-1 min-w-0">
@@ -2225,7 +2229,7 @@ export default function PageQuanPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="rounded-xl border border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 text-center">
                   <span className="text-xs text-[var(--nq-muted)] block mb-1">Điểm Hài Lòng (CSAT Dự Đoán)</span>
-                  <div className="text-3xl font-black text-[var(--nq-st-warn-ink)] flex items-center justify-center gap-1">
+                  <div className="text-3xl font-semibold text-[var(--nq-st-warn-ink)] flex items-center justify-center gap-1">
                     <span>{reflectionReport.csat_score}</span>
                     <span className="text-base text-[var(--nq-st-warn-ink)]">/ 10.0</span>
                   </div>
@@ -2233,7 +2237,7 @@ export default function PageQuanPage() {
 
                 <div className="rounded-xl border border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 text-center">
                   <span className="text-xs text-[var(--nq-muted)] block mb-1">Tuân Thủ Chuẩn H.E.A.R</span>
-                  <div className="text-3xl font-black text-[var(--nq-st-ok-ink)]">
+                  <div className="text-3xl font-semibold text-[var(--nq-st-ok-ink)]">
                     {reflectionReport.hear_compliance_rate}%
                   </div>
                   <span className="text-2xs text-[var(--nq-muted)] block mt-1">Xin lỗi - Lấy SĐT - Quản lý gọi lại</span>
@@ -2241,7 +2245,7 @@ export default function PageQuanPage() {
 
                 <div className="rounded-xl border border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 text-center">
                   <span className="text-xs text-[var(--nq-muted)] block mb-1">Tổng Cuộc Hội Thoại</span>
-                  <div className="text-3xl font-black text-[var(--nq-st-info-ink)]">
+                  <div className="text-3xl font-semibold text-[var(--nq-st-info-ink)]">
                     {reflectionReport.total_conversations}
                   </div>
                   <span className="text-2xs text-[var(--nq-muted)] block mt-1">

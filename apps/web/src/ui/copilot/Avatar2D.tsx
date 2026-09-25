@@ -35,14 +35,14 @@ export function Avatar2D({
       <div
         className={`absolute inset-0 rounded-full transition-colors ${
           speaking
-            ? "bg-[var(--nq-copper)]/20"
+            ? "bg-[var(--nq-accent)]/20"
             : listening
             ? "bg-emerald-500/15"
             : "bg-[var(--nq-dim)]/10"
         }`}
       />
       {speaking && (
-        <div className="absolute inset-0 animate-ping rounded-full bg-[var(--nq-copper)]/10" />
+        <div className="absolute inset-0 animate-ping rounded-full bg-[var(--nq-accent)]/10" />
       )}
 
       {/* Khuôn mặt SVG */}
@@ -89,7 +89,7 @@ export function Avatar2D({
       <div
         className={`absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
           speaking
-            ? "border-[var(--nq-copper)] bg-[var(--nq-bg)] text-[var(--nq-copper)]"
+            ? "border-[var(--nq-accent)] bg-[var(--nq-bg)] text-[var(--nq-accent)]"
             : listening
             ? "border-emerald-500/50 bg-[var(--nq-bg)] text-emerald-400"
             : "border-[var(--nq-dim)] bg-[var(--nq-bg)] text-[var(--nq-dim)]"

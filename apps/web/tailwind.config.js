@@ -23,166 +23,390 @@
  * Thang chữ — ghi đè mặc định của Tailwind để mọi cỡ chữ trong app thuộc MỘT
  * thang, thay vì mỗi file tự chọn.
  *
- * Số đo trước khi đổi (đếm trong src): 13 cỡ chữ khác nhau đang chạy —
- * text-xs 343 lần, text-sm 190, text-[10px] 76, text-[11px] 61, text-lg 23,
- * text-base 17, text-3xl 11, text-[9px] 10, text-2xl 10, text-xl 9, text-4xl 9,
- * text-5xl 5, text-6xl 2, text-[8px] 1. Bốn cỡ nhỏ nhất (8/9/10/11px) đều nằm
- * dưới 12px — dưới ngưỡng đọc được, và tiếng Việt có dấu ở cỡ đó thì dấu chồng
- * lên nhau. Đó là "năm cỡ chữ ở chỗ ba cỡ là đủ" trong danh mục lỗi.
+ * SÁU bậc, mỗi bậc một vai (khớp `--nq-t-*` trong globals.css). Trước đây có
+ * mười hai lớp và bảy trong số đó nằm sát nhau tới mức mắt không phân biệt được
+ * — nên mỗi trang tự chọn một lớp cho "tiêu đề khối" và không trang nào khớp
+ * trang nào. Đo trên mã: `text-xs` 342 lần, `text-sm` 181, `text-2xs` 130 —
+ * ba lớp nhỏ nhất chiếm 92% tổng số, tức phần lớn nội dung nằm ở vùng mà mắt
+ * không tách được bậc.
  *
- * Bảng dưới đây ánh xạ từng lớp cũ về bậc của hệ (khớp `--nq-t-*` trong
- * globals.css). Vì là ghi đè `fontSize` nên mọi lớp sẵn có tự đổi — không phải
- * sửa 780 chỗ trong markup. `lineHeight` đi kèm từng bậc vì chữ có dấu tiếng
- * Việt cần nhiều dòng hơn chữ Latin thuần.
+ * Các lớp CŨ vẫn được ánh xạ (không xoá khoá) để ~700 chỗ đang dùng không vỡ,
+ * nhưng chúng trỏ về BẬC CỦA HỆ — nên markup cũ tự động nằm trong thang mới:
+ *   text-[8/9/10/11px], text-xs, text-2xs  -> xs      (nhãn nhỏ nhất)
+ *   text-sm                                -> sm      (phụ chú)
+ *   text-base                              -> base    (chữ đọc chính)
+ *   text-lg                                -> lg      (tiêu đề mục)
+ *   text-xl, text-2xl                      -> xl      (tiêu đề khối)
+ *   text-3xl, text-4xl                     -> 3xl     (tiêu đề trang)
+ *   text-5xl, text-6xl                     -> 4xl     (mặt tiền)
+ * `lineHeight` đi kèm từng bậc vì chữ có dấu tiếng Việt cần nhiều dòng hơn chữ
+ * Latin thuần.
  */
 
 /** @type {[string, { lineHeight: string; letterSpacing?: string }]} */
 const TYPE_SCALE = {
-  // Bậc thấp nhất còn đọc được — chỉ dùng cho nhãn số trên badge/huy hiệu.
-  "3xs": ["0.625rem", { lineHeight: "1.5" }],   // 10px
-  "2xs": ["0.6875rem", { lineHeight: "1.5" }],  // 11px — text-[9px] cũ
-  xs: ["0.75rem", { lineHeight: "1.55" }],      // 12px — text-[10px]/[11px]/xs cũ
-  sm: ["0.84rem", { lineHeight: "1.55" }],      // 13.4px — text-sm cũ
-  base: ["0.9375rem", { lineHeight: "1.65" }],  // 15px — text-base cũ
-  lg: ["1.0625rem", { lineHeight: "1.5" }],     // 17px — text-lg cũ
-  // text-xl/2xl/3xl/4xl cũ đều là tiêu đề khối trở lên → gom về thang tiêu đề.
-  xl: ["1.2rem", { lineHeight: "1.3" }],        // --nq-t-h2
-  "2xl": ["1.375rem", { lineHeight: "1.25" }],
-  "3xl": ["1.6rem", { lineHeight: "1.15" }],    // --nq-t-h1
-  "4xl": ["1.9rem", { lineHeight: "1.1" }],     // --nq-t-display
-  "5xl": ["2.2rem", { lineHeight: "1.05", letterSpacing: "-0.02em" }],
-  "6xl": ["2.6rem", { lineHeight: "1.02", letterSpacing: "-0.02em" }],
+  // ── SÁU BẬC CỦA HỆ ──
+  xs: ["0.75rem", { lineHeight: "1.5" }],       // 12px  — nhãn, meta, đơn vị
+  sm: ["0.84rem", { lineHeight: "1.55" }],      // 13.4px — phụ chú, dòng hai
+  base: ["0.9375rem", { lineHeight: "1.65" }],  // 15px  — chữ đọc chính (--nq-t-body)
+  lg: ["1.0625rem", { lineHeight: "1.45" }],    // 17px  — tiêu đề mục (--nq-t-h3)
+  xl: ["1.25rem", { lineHeight: "1.3" }],       // 20px  — tiêu đề khối (--nq-t-h2)
+  "3xl": ["clamp(1.5rem, 2.2vw, 1.85rem)", { lineHeight: "1.2" }],  // --nq-t-h1
+  "4xl": ["clamp(1.9rem, 3.4vw, 2.6rem)", { lineHeight: "1.1" }],   // --nq-t-display
+
+  // ── Ánh xạ lớp CŨ (giữ khoá để markup cũ không vỡ) ──
+  "3xs": ["0.75rem", { lineHeight: "1.5" }],
+  "2xs": ["0.75rem", { lineHeight: "1.5" }],
+  "2xl": ["1.25rem", { lineHeight: "1.3" }],
+  "5xl": ["clamp(1.9rem, 3.4vw, 2.6rem)", { lineHeight: "1.05", letterSpacing: "-0.02em" }],
+  "6xl": ["clamp(1.9rem, 3.4vw, 2.6rem)", { lineHeight: "1.02", letterSpacing: "-0.02em" }],
 };
 
 /** @type {Record<string, Record<string, string>>} */
 const NHIP_QUAN_COLORS = {
-  // Vàng đèn quầy — cảnh báo (thiếu người, sắp hạn, chờ xử lý).
+  // Vàng cam — cảnh báo (thiếu người, sắp hạn, chờ xử lý).
   amber: {
-    50: "#fbeecb", 100: "#f7e3ac", 200: "#ead188", 300: "#deb444", 400: "#d6a82d",
-    500: "#cd9b16", 600: "#be8e14", 700: "#6d520d", 800: "#5b420c", 900: "#4a320b",
-    950: "#38220a",
+      50: '#fef5e0',
+      100: '#fde6af',
+      200: '#fcd87f',
+      300: '#fbc94e',
+      400: '#f8b42c',
+      500: '#f59e0b',
+      600: '#c07c08',
+      700: '#8a5a06',
+      800: '#704907',
+      900: '#573709',
+      950: '#3d260a',
   },
+
+  // = amber
   yellow: {
-    50: "#fbeecb", 100: "#f7e3ac", 200: "#ead188", 300: "#deb444", 400: "#d6a82d",
-    500: "#cd9b16", 600: "#be8e14", 700: "#6d520d", 800: "#5b420c", 900: "#4a320b",
-    950: "#38220a",
+      50: '#fef5e0',
+      100: '#fde6af',
+      200: '#fcd87f',
+      300: '#fbc94e',
+      400: '#f8b42c',
+      500: '#f59e0b',
+      600: '#c07c08',
+      700: '#8a5a06',
+      800: '#704907',
+      900: '#573709',
+      950: '#3d260a',
   },
+
+  // = amber
   orange: {
-    50: "#fbeecb", 100: "#f7e3ac", 200: "#ead188", 300: "#deb444", 400: "#d6a82d",
-    500: "#cd9b16", 600: "#be8e14", 700: "#6d520d", 800: "#5b420c", 900: "#4a320b",
-    950: "#38220a",
+      50: '#fef5e0',
+      100: '#fde6af',
+      200: '#fcd87f',
+      300: '#fbc94e',
+      400: '#f8b42c',
+      500: '#f59e0b',
+      600: '#c07c08',
+      700: '#8a5a06',
+      800: '#704907',
+      900: '#573709',
+      950: '#3d260a',
   },
 
-  // Xanh lá trà — tốt (đủ người, đúng hạn, đã xong).
+  // Xanh lá — tốt (đủ người, đã duyệt, hoàn tất).
   emerald: {
-    50: "#dcebe1", 100: "#c4dbc9", 200: "#accbab", 300: "#8aaf94", 400: "#7aa384",
-    500: "#639170", 600: "#567f63", 700: "#3d5c47", 800: "#2b4533", 900: "#1d3225",
-    950: "#0e2b1d",
+      50: '#dcfce7',
+      100: '#b7f5cd',
+      200: '#93eeb4',
+      300: '#6ee79a',
+      400: '#48d67c',
+      500: '#22c55e',
+      600: '#1ca24e',
+      700: '#15803d',
+      800: '#106530',
+      900: '#0a4923',
+      950: '#052e16',
   },
+
+  // = emerald
   green: {
-    50: "#dcebe1", 100: "#c4dbc9", 200: "#accbab", 300: "#8aaf94", 400: "#7aa384",
-    500: "#639170", 600: "#567f63", 700: "#3d5c47", 800: "#2b4533", 900: "#1d3225",
-    950: "#0e2b1d",
+      50: '#dcfce7',
+      100: '#b7f5cd',
+      200: '#93eeb4',
+      300: '#6ee79a',
+      400: '#48d67c',
+      500: '#22c55e',
+      600: '#1ca24e',
+      700: '#15803d',
+      800: '#106530',
+      900: '#0a4923',
+      950: '#052e16',
   },
+
+  // = emerald
   lime: {
-    50: "#dcebe1", 100: "#c4dbc9", 200: "#accbab", 300: "#8aaf94", 400: "#7aa384",
-    500: "#639170", 600: "#567f63", 700: "#3d5c47", 800: "#2b4533", 900: "#1d3225",
-    950: "#0e2b1d",
+      50: '#dcfce7',
+      100: '#b7f5cd',
+      200: '#93eeb4',
+      300: '#6ee79a',
+      400: '#48d67c',
+      500: '#22c55e',
+      600: '#1ca24e',
+      700: '#15803d',
+      800: '#106530',
+      900: '#0a4923',
+      950: '#052e16',
   },
 
-  // Đỏ gạch nung — lỗi (quá hạn, trống ca, gửi thất bại).
+  // Đỏ — lỗi (quá tải, vi phạm, thất bại).
   rose: {
-    50: "#f7dcd7", 100: "#efbdb2", 200: "#e6a294", 300: "#dd7d6d", 400: "#d66f5e",
-    500: "#cf6150", 600: "#bd5949", 700: "#8a3f34", 800: "#6b2f28", 900: "#55201e",
-    950: "#3a1013",
+      50: '#fee2e2',
+      100: '#fcc7c7',
+      200: '#f9adad',
+      300: '#f79292',
+      400: '#f36b6b',
+      500: '#ef4444',
+      600: '#ca3232',
+      700: '#a52020',
+      800: '#8e1c1c',
+      900: '#771818',
+      950: '#601414',
   },
+
+  // = rose
   red: {
-    50: "#f7dcd7", 100: "#efbdb2", 200: "#e6a294", 300: "#dd7d6d", 400: "#d66f5e",
-    500: "#cf6150", 600: "#bd5949", 700: "#8a3f34", 800: "#6b2f28", 900: "#55201e",
-    950: "#3a1013",
+      50: '#fee2e2',
+      100: '#fcc7c7',
+      200: '#f9adad',
+      300: '#f79292',
+      400: '#f36b6b',
+      500: '#ef4444',
+      600: '#ca3232',
+      700: '#a52020',
+      800: '#8e1c1c',
+      900: '#771818',
+      950: '#601414',
   },
 
-  // Xanh khói — trạng thái đang xử lý, chờ xác nhận (chưa xấu).
-  // Họ này thay toàn bộ purple/indigo/violet/cyan/teal/fuchsia/pink: các họ đó
-  // trong mã đều là màu trang trí, không mang nghĩa nghiệp vụ nào.
+  // Xanh dương sáng — thông tin / đang xử lý / liên kết.
   sky: {
-    50: "#dbe8f2", 100: "#c0d2e0", 200: "#a4bcd0", 300: "#88a5bf", 400: "#7797b3",
-    500: "#6b8aa8", 600: "#5c7893", 700: "#40566a", 800: "#2b3c4c", 900: "#20303f",
-    950: "#16283a",
-  },
-  blue: {
-    50: "#dbe8f2", 100: "#c0d2e0", 200: "#a4bcd0", 300: "#88a5bf", 400: "#7797b3",
-    500: "#6b8aa8", 600: "#5c7893", 700: "#40566a", 800: "#2b3c4c", 900: "#20303f",
-    950: "#16283a",
-  },
-  indigo: {
-    50: "#dbe8f2", 100: "#c0d2e0", 200: "#a4bcd0", 300: "#88a5bf", 400: "#7797b3",
-    500: "#6b8aa8", 600: "#5c7893", 700: "#40566a", 800: "#2b3c4c", 900: "#20303f",
-    950: "#16283a",
-  },
-  purple: {
-    50: "#dbe8f2", 100: "#c0d2e0", 200: "#a4bcd0", 300: "#88a5bf", 400: "#7797b3",
-    500: "#6b8aa8", 600: "#5c7893", 700: "#40566a", 800: "#2b3c4c", 900: "#20303f",
-    950: "#16283a",
-  },
-  violet: {
-    50: "#dbe8f2", 100: "#c0d2e0", 200: "#a4bcd0", 300: "#88a5bf", 400: "#7797b3",
-    500: "#6b8aa8", 600: "#5c7893", 700: "#40566a", 800: "#2b3c4c", 900: "#20303f",
-    950: "#16283a",
-  },
-  cyan: {
-    50: "#dbe8f2", 100: "#c0d2e0", 200: "#a4bcd0", 300: "#88a5bf", 400: "#7797b3",
-    500: "#6b8aa8", 600: "#5c7893", 700: "#40566a", 800: "#2b3c4c", 900: "#20303f",
-    950: "#16283a",
-  },
-  teal: {
-    50: "#dbe8f2", 100: "#c0d2e0", 200: "#a4bcd0", 300: "#88a5bf", 400: "#7797b3",
-    500: "#6b8aa8", 600: "#5c7893", 700: "#40566a", 800: "#2b3c4c", 900: "#20303f",
-    950: "#16283a",
-  },
-  fuchsia: {
-    50: "#dbe8f2", 100: "#c0d2e0", 200: "#a4bcd0", 300: "#88a5bf", 400: "#7797b3",
-    500: "#6b8aa8", 600: "#5c7893", 700: "#40566a", 800: "#2b3c4c", 900: "#20303f",
-    950: "#16283a",
-  },
-  pink: {
-    50: "#dbe8f2", 100: "#c0d2e0", 200: "#a4bcd0", 300: "#88a5bf", 400: "#7797b3",
-    500: "#6b8aa8", 600: "#5c7893", 700: "#40566a", 800: "#2b3c4c", 900: "#20303f",
-    950: "#16283a",
+      50: '#e0f2fe',
+      100: '#bfe8fd',
+      200: '#9eddfd',
+      300: '#7dd3fc',
+      400: '#5ac8fa',
+      500: '#38bdf8',
+      600: '#1e93cc',
+      700: '#0369a1',
+      800: '#055684',
+      900: '#064266',
+      950: '#082f49',
   },
 
-  // Than và gỗ — chữ phụ, nền tối, vạch kẻ. Bậc 300–400 giữ đúng độ sáng của
-  // `--nq-ink-muted` để chỗ nào đang dùng `text-zinc-400` cho chữ phụ vẫn đọc
-  // được (đo: 7.20:1 trên nền trang, hơn cả bảng mặc định 7.02:1).
+  // = sky
+  blue: {
+      50: '#e0f2fe',
+      100: '#bfe8fd',
+      200: '#9eddfd',
+      300: '#7dd3fc',
+      400: '#5ac8fa',
+      500: '#38bdf8',
+      600: '#1e93cc',
+      700: '#0369a1',
+      800: '#055684',
+      900: '#064266',
+      950: '#082f49',
+  },
+
+  // = sky
+  indigo: {
+      50: '#e0f2fe',
+      100: '#bfe8fd',
+      200: '#9eddfd',
+      300: '#7dd3fc',
+      400: '#5ac8fa',
+      500: '#38bdf8',
+      600: '#1e93cc',
+      700: '#0369a1',
+      800: '#055684',
+      900: '#064266',
+      950: '#082f49',
+  },
+
+  // = sky
+  purple: {
+      50: '#e0f2fe',
+      100: '#bfe8fd',
+      200: '#9eddfd',
+      300: '#7dd3fc',
+      400: '#5ac8fa',
+      500: '#38bdf8',
+      600: '#1e93cc',
+      700: '#0369a1',
+      800: '#055684',
+      900: '#064266',
+      950: '#082f49',
+  },
+
+  // = sky
+  violet: {
+      50: '#e0f2fe',
+      100: '#bfe8fd',
+      200: '#9eddfd',
+      300: '#7dd3fc',
+      400: '#5ac8fa',
+      500: '#38bdf8',
+      600: '#1e93cc',
+      700: '#0369a1',
+      800: '#055684',
+      900: '#064266',
+      950: '#082f49',
+  },
+
+  // = sky
+  cyan: {
+      50: '#e0f2fe',
+      100: '#bfe8fd',
+      200: '#9eddfd',
+      300: '#7dd3fc',
+      400: '#5ac8fa',
+      500: '#38bdf8',
+      600: '#1e93cc',
+      700: '#0369a1',
+      800: '#055684',
+      900: '#064266',
+      950: '#082f49',
+  },
+
+  // = sky
+  teal: {
+      50: '#e0f2fe',
+      100: '#bfe8fd',
+      200: '#9eddfd',
+      300: '#7dd3fc',
+      400: '#5ac8fa',
+      500: '#38bdf8',
+      600: '#1e93cc',
+      700: '#0369a1',
+      800: '#055684',
+      900: '#064266',
+      950: '#082f49',
+  },
+
+  // = sky
+  fuchsia: {
+      50: '#e0f2fe',
+      100: '#bfe8fd',
+      200: '#9eddfd',
+      300: '#7dd3fc',
+      400: '#5ac8fa',
+      500: '#38bdf8',
+      600: '#1e93cc',
+      700: '#0369a1',
+      800: '#055684',
+      900: '#064266',
+      950: '#082f49',
+  },
+
+  // = sky
+  pink: {
+      50: '#e0f2fe',
+      100: '#bfe8fd',
+      200: '#9eddfd',
+      300: '#7dd3fc',
+      400: '#5ac8fa',
+      500: '#38bdf8',
+      600: '#1e93cc',
+      700: '#0369a1',
+      800: '#055684',
+      900: '#064266',
+      950: '#082f49',
+  },
+
+  // Xanh xám lạnh — chữ phụ và nền tối.
   zinc: {
-    50: "#f5ead8", 100: "#dfd5c4", 200: "#cec5b5", 300: "#beb5a6", 400: "#aba396",
-    500: "#6f675e", 600: "#544d46", 700: "#38332e", 800: "#292521", 900: "#1d1a18",
-    950: "#131110",
+      50: '#e6edf3',
+      100: '#d6dfe7',
+      200: '#c6d2db',
+      300: '#b6c4cf',
+      400: '#93a3b0',
+      500: '#5f7180',
+      600: '#455462',
+      700: '#2b3843',
+      800: '#212c36',
+      900: '#172128',
+      950: '#0d151b',
   },
+
+  // = zinc
   neutral: {
-    50: "#f5ead8", 100: "#dfd5c4", 200: "#cec5b5", 300: "#beb5a6", 400: "#aba396",
-    500: "#6f675e", 600: "#544d46", 700: "#38332e", 800: "#292521", 900: "#1d1a18",
-    950: "#131110",
+      50: '#e6edf3',
+      100: '#d6dfe7',
+      200: '#c6d2db',
+      300: '#b6c4cf',
+      400: '#93a3b0',
+      500: '#5f7180',
+      600: '#455462',
+      700: '#2b3843',
+      800: '#212c36',
+      900: '#172128',
+      950: '#0d151b',
   },
-  stone: {
-    50: "#f5ead8", 100: "#dfd5c4", 200: "#cec5b5", 300: "#beb5a6", 400: "#aba396",
-    500: "#6f675e", 600: "#544d46", 700: "#38332e", 800: "#292521", 900: "#1d1a18",
-    950: "#131110",
-  },
+
+  // = zinc
   slate: {
-    50: "#f5ead8", 100: "#dfd5c4", 200: "#cec5b5", 300: "#beb5a6", 400: "#aba396",
-    500: "#6f675e", 600: "#544d46", 700: "#38332e", 800: "#292521", 900: "#1d1a18",
-    950: "#131110",
+      50: '#e6edf3',
+      100: '#d6dfe7',
+      200: '#c6d2db',
+      300: '#b6c4cf',
+      400: '#93a3b0',
+      500: '#5f7180',
+      600: '#455462',
+      700: '#2b3843',
+      800: '#212c36',
+      900: '#172128',
+      950: '#0d151b',
   },
+
+  // = zinc
   gray: {
-    50: "#f5ead8", 100: "#dfd5c4", 200: "#cec5b5", 300: "#beb5a6", 400: "#aba396",
-    500: "#6f675e", 600: "#544d46", 700: "#38332e", 800: "#292521", 900: "#1d1a18",
-    950: "#131110",
+      50: '#e6edf3',
+      100: '#d6dfe7',
+      200: '#c6d2db',
+      300: '#b6c4cf',
+      400: '#93a3b0',
+      500: '#5f7180',
+      600: '#455462',
+      700: '#2b3843',
+      800: '#212c36',
+      900: '#172128',
+      950: '#0d151b',
   },
+
+  // = zinc
   grey: {
-    50: "#f5ead8", 100: "#dfd5c4", 200: "#cec5b5", 300: "#beb5a6", 400: "#aba396",
-    500: "#6f675e", 600: "#544d46", 700: "#38332e", 800: "#292521", 900: "#1d1a18",
-    950: "#131110",
+      50: '#e6edf3',
+      100: '#d6dfe7',
+      200: '#c6d2db',
+      300: '#b6c4cf',
+      400: '#93a3b0',
+      500: '#5f7180',
+      600: '#455462',
+      700: '#2b3843',
+      800: '#212c36',
+      900: '#172128',
+      950: '#0d151b',
+  },
+
+  // = zinc
+  stone: {
+      50: '#e6edf3',
+      100: '#d6dfe7',
+      200: '#c6d2db',
+      300: '#b6c4cf',
+      400: '#93a3b0',
+      500: '#5f7180',
+      600: '#455462',
+      700: '#2b3843',
+      800: '#212c36',
+      900: '#172128',
+      950: '#0d151b',
   },
 };
 

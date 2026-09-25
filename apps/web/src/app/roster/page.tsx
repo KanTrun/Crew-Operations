@@ -670,7 +670,7 @@ export default function RosterPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
           <div>
             <p className="nq-kicker">Vận hành tuần</p>
-            <h1 className="nq-page-title text-[var(--nq-copper)]">
+            <h1 className="nq-page-title text-[var(--nq-accent)]">
               {viewMode === "my_shifts" ? "Lịch đi làm của tôi" : "Lịch toàn quán"}
             </h1>
             <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
@@ -718,7 +718,7 @@ export default function RosterPage() {
           >
             ← Trước
           </button>
-          <span className="text-base font-bold text-[var(--nq-copper)] min-w-[150px] text-center">
+          <span className="text-base font-bold text-[var(--nq-accent)] min-w-[150px] text-center">
             {dayDate(monday, 0)} — {dayDate(monday, 6)}
           </span>
           <button
@@ -749,14 +749,14 @@ export default function RosterPage() {
       {scheduleNotifications.length > 0 && (
         <section className="nq-item mb-5" aria-label="Thông báo cập nhật lịch">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--nq-copper)]">Thông báo cập nhật lịch</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--nq-accent)]">Thông báo cập nhật lịch</h2>
             <span className="text-xs text-[var(--nq-dim)]">
               {scheduleNotifications.filter((item) => !item.da_xem).length} chưa xem
             </span>
           </div>
           <div className="space-y-2">
             {scheduleNotifications.slice(0, 3).map((notification) => (
-              <div key={notification.id} className={`flex flex-wrap items-center justify-between gap-3 border-l-2 pl-3 ${notification.da_xem ? "border-[var(--nq-dim)] opacity-70" : "border-[var(--nq-copper)]"}`}>
+              <div key={notification.id} className={`flex flex-wrap items-center justify-between gap-3 border-l-2 pl-3 ${notification.da_xem ? "border-[var(--nq-dim)] opacity-70" : "border-[var(--nq-accent)]"}`}>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">{notification.tieu_de}</p>
                   <p className="text-xs text-[var(--nq-dim)]">{notification.noi_dung}</p>
@@ -882,7 +882,10 @@ export default function RosterPage() {
                 <button
                   type="button"
                   onClick={() => setShowAllUnconfirmed(!showAllUnconfirmed)}
-                  className="py-1.5 px-3 rounded border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-warn-soft)] hover:bg-[var(--nq-st-warn)] text-[var(--nq-st-warn-ink)] text-xs font-semibold transition-all cursor-pointer"
+                  /* Hover đổi NỀN sang vàng đặc (sáng) nên phải đổi LUÔN màu chữ
+                     sang bản đậm — nếu giữ chữ vàng nhạt trên nền vàng thì chỉ
+                     còn 1.28:1. Cặp nền/chữ phải đổi cùng nhau ở mọi trạng thái. */
+                  className="py-1.5 px-3 rounded border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-warn-soft)] hover:bg-[var(--nq-st-warn)] text-[var(--nq-st-warn-ink)] hover:text-[var(--nq-st-warn-ink-strong)] text-xs font-semibold transition-all cursor-pointer"
                 >
                   {showAllUnconfirmed ? "▲ Thu gọn bớt" : `▼ Xem tất cả (${data?.chua_xac_nhan?.length})`}
                 </button>
@@ -935,7 +938,12 @@ export default function RosterPage() {
                     type="button"
                     disabled={nvStatusBusy}
                     onClick={() => void handleNvStatus(nv.id, "bo_ca")}
-                    className="flex-1 py-1 px-2 rounded bg-[var(--nq-surface)] hover:bg-[var(--nq-st-danger)] text-[var(--nq-accent-ink)] hover:text-[var(--nq-st-danger-ink)] text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1"
+                    /* Nền nghỉ là `--nq-surface` (TỐI) nên chữ phải SÁNG — dùng
+                       `--nq-ink`. Trước đây chữ là `--nq-accent-ink` (gần đen)
+                       nên trên nền tối chỉ đạt 1.03:1, tức là không đọc được.
+                       Khi hover, nền chuyển sang đỏ và chữ đổi sang bản sáng
+                       của đỏ; cả hai trạng thái đều đạt ngưỡng. */
+                    className="flex-1 py-1 px-2 rounded bg-[var(--nq-surface)] hover:bg-[var(--nq-st-danger)] text-[var(--nq-ink)] hover:text-[var(--nq-ink-on-danger)] text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1"
                     title="Không xếp ca cho nhân viên này tuần này"
                   >
                     <Icon name="x-mark" size={12} /> Bỏ ca

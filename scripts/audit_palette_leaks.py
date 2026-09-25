@@ -1,12 +1,23 @@
 """Kiem tra mau PALETTE TAILWIND con sot ngoai he mau cua quan.
 
-VI SAO: quan co he mau rieng (charcoal am + copper) va he trang thai rieng
-(`--nq-st-*`). Mau Tailwind mac dinh (indigo, purple, amber, zinc, slate...) nam
-ngoai ca hai he, nen:
-  - khong doi theo theme, khong co ban sao cho che do sang,
-  - lech tong so voi charcoal am (indigo/purple la mau LANH, khong thuoc bang mau),
-  - va thuong truot nguong tuong phan vi chung duoc chon cho nen sang.
-Script liet ke moi cho con dung de sua theo token tuong ung.
+⚠ ĐỌC PHẦN NÀY TRƯỚC KHI TIN CON SO — script này đã ĐỔI VAI.
+
+Bản đầu, script liệt kê mọi lớp Tailwind mặc định vì chúng nằm NGOÀI hệ màu và
+lệch tông so với charcoal ấm. Từ 2026-09, chiến lược đã đổi: KHÔNG viết lại
+~1.100 chỗ trong markup, mà GHI ĐÈ chính các tên họ Tailwind trong
+`apps/web/tailwind.config.js` (sinh bởi `scripts/gen_tailwind_palette.py`) để mọi
+lớp sẵn có tự trỏ về bảng màu của quán.
+
+Hệ quả: `text-amber-300`, `bg-emerald-500`, `border-rose-500/40` KHÔNG còn là
+"màu ngoài hệ" — chúng là tên gọi của chính bảng màu quán. Vì vậy con số script
+in ra KHÔNG phải số lỗi cần sửa; nó là số chỗ đang dựa vào tên họ Tailwind.
+
+Dùng script để:
+  - biết họ/bậc nào mã đang phụ thuộc (đầu vào cho `gen_tailwind_palette.py`),
+  - phát hiện TÊN HỌ LẠ chưa được khai trong `RAMPS` (đó mới là lỗi thật: tên
+    không có trong bảng ghi đè sẽ rơi về màu mặc định của Tailwind).
+
+Trạng thái đúng là: mọi họ xuất hiện ở đây đều có mặt trong `RAMPS`.
 
 Chay:  .venv\\Scripts\\python.exe scripts/audit_palette_leaks.py
 """

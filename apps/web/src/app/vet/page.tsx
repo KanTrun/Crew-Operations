@@ -7,6 +7,7 @@ import { matchExact, matchSearch, matchTime, TIME_FILTER_OPTIONS, uniqueSorted, 
 import { getToken } from "../../lib/session";
 import { subscribeRealtime } from "../../lib/realtime";
 import { Alert, AuthGate, Empty, Loading, OpsCard, PageHeader } from "../../ui/kit";
+import { Icon } from "../../ui/icons";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 
 type Row = {
@@ -303,28 +304,35 @@ function formatAuditTime(value?: string | null): string {
 }
 
 // ── Icon hành vi ─────────────────────────────────────────────────────────────
+//
+// Trả về TÊN ICON SVG, không trả ký tự. Bản trước trả ký tự (`✓`, `✕`, `📅`),
+// trong đó `📅` là emoji — mà docs/design-guidelines.md cấm emoji làm icon, vì
+// emoji do hệ điều hành vẽ nên hình dạng và màu khác nhau trên từng máy, không
+// đổi màu theo `currentColor`, và trông không cùng một hệ với phần còn lại.
+// Tên icon đi qua <Icon/> nên mọi dấu đều cùng nét, cùng cỡ, cùng ăn màu trạng thái.
+type VetIcon = "x-mark" | "arrow-right" | "refresh" | "calendar" | "check" | "warn" | "zap" | "info";
 
-function hanhIcon(hanh?: string | null): string {
-  if (!hanh) return "●";
-  if (hanh.startsWith("user.login_failed")) return "✕";
-  if (hanh.startsWith("user.login")) return "↗";
-  if (hanh.startsWith("role.promote") || hanh.startsWith("role.demote")) return "⬆";
-  if (hanh.startsWith("schedule.lifecycle_reopen")) return "↩";
-  if (hanh.startsWith("schedule.")) return "📅";
-  if (hanh.startsWith("shift_swap.")) return "⇄";
-  if (hanh.startsWith("attendance.")) return "✓";
-  if (hanh.startsWith("meeting.approve")) return "✓";
-  if (hanh.startsWith("meeting.reject") || hanh.startsWith("meeting.rollback")) return "✕";
-  if (hanh.startsWith("meeting.")) return "◆";
-  return "●";
+function hanhIcon(hanh?: string | null): VetIcon {
+  if (!hanh) return "info";
+  if (hanh.startsWith("user.login_failed")) return "x-mark";
+  if (hanh.startsWith("user.login")) return "arrow-right";
+  if (hanh.startsWith("role.promote") || hanh.startsWith("role.demote")) return "warn";
+  if (hanh.startsWith("schedule.lifecycle_reopen")) return "refresh";
+  if (hanh.startsWith("schedule.")) return "calendar";
+  if (hanh.startsWith("shift_swap.")) return "refresh";
+  if (hanh.startsWith("attendance.")) return "check";
+  if (hanh.startsWith("meeting.approve")) return "check";
+  if (hanh.startsWith("meeting.reject") || hanh.startsWith("meeting.rollback")) return "x-mark";
+  if (hanh.startsWith("meeting.")) return "zap";
+  return "info";
 }
 
 function hanhColor(hanh?: string | null): string {
-  if (!hanh) return "var(--nq-copper)";
+  if (!hanh) return "var(--nq-accent)";
   if (hanh.includes("failed") || hanh.includes("reject") || hanh.includes("demote")) return "var(--nq-danger)";
   if (hanh.includes("approve") || hanh.includes("login") || hanh.includes("promote")) return "var(--nq-ok)";
   if (hanh.includes("reopen") || hanh.includes("rollback")) return "var(--nq-warn)";
-  return "var(--nq-copper)";
+  return "var(--nq-accent)";
 }
 
 // ── Component chính ───────────────────────────────────────────────────────────
@@ -439,12 +447,15 @@ export default function VetPage() {
                 {/* Header */}
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.75rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
-                    <span style={{
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: "1.75rem", height: "1.75rem", borderRadius: "50%", flexShrink: 0,
-                      background: `color-mix(in srgb, ${color} 18%, transparent)`,
-                      color, fontSize: "0.75rem", fontWeight: 700,
-                    }}>{icon}</span>
+                    {/* Vòng tròn mang màu của HÀNH VI, icon bên trong cùng màu đó.
+                        Dùng <Icon/> nên nét vẽ đồng nhất với phần còn lại của hệ. */}
+                    <span
+                      className="nq-vet-mark"
+                      style={{ background: `color-mix(in srgb, ${color} 18%, transparent)`, color }}
+                      aria-hidden="true"
+                    >
+                      <Icon name={icon} size={14} />
+                    </span>
                     <div style={{ minWidth: 0 }}>
                       <p className="nq-item-title" style={{ margin: 0, fontSize: "0.9rem" }}>
                         {auditTitle(it)}
@@ -456,8 +467,8 @@ export default function VetPage() {
                             display: "inline-flex", alignItems: "center", gap: "0.25rem",
                             marginLeft: "0.4rem", padding: "0.05rem 0.4rem", borderRadius: "999px",
                             fontSize: "0.62rem", fontWeight: 600, letterSpacing: "0.03em",
-                            background: "color-mix(in srgb, var(--nq-copper) 16%, transparent)",
-                            color: "var(--nq-copper)",
+                            background: "color-mix(in srgb, var(--nq-accent) 16%, transparent)",
+                            color: "var(--nq-accent)",
                           }}>
                             AGENT
                           </span>
@@ -476,7 +487,7 @@ export default function VetPage() {
                     </div>
                   </div>
                   {it.id ? (
-                    <span className="font-mono" style={{ fontSize: "0.65rem", color: "var(--nq-copper-ink)", flexShrink: 0 }}>
+                    <span className="font-mono" style={{ fontSize: "0.65rem", color: "var(--nq-accent-ink-text)", flexShrink: 0 }}>
                       #{it.id}
                     </span>
                   ) : null}

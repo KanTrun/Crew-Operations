@@ -5,6 +5,7 @@ import { apiGet, apiSend } from "../../lib/api";
 import { viError } from "../../lib/present";
 import { getToken, isManager } from "../../lib/session";
 import { Alert, AuthGate, Btn, Empty, Field, Loading, OpsCard, PageHeader } from "../../ui/kit";
+import { Icon } from "../../ui/icons";
 
 interface TwinScenario {
   scenario_id: string;
@@ -165,7 +166,10 @@ export default function ThuNghiemAnToanPage() {
                   {JSON.stringify(s.ket_qua, null, 2)}
                 </pre>
                 {s.rui_ro && (
-                  <p className="text-xs text-[var(--nq-st-warn-ink)] mt-2">⚠️ {s.rui_ro}</p>
+                  <p className="text-xs text-[var(--nq-st-warn-ink)] mt-2 flex items-start gap-1.5">
+                <Icon name="warn" size={13} />
+                <span>{s.rui_ro}</span>
+              </p>
                 )}
               </div>
             ))}

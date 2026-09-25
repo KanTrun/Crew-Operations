@@ -166,21 +166,21 @@ export default function HomNayPage() {
             </p>
           ) : null}
           {data.viec_cho_toi && data.viec_cho_toi.length > 0 ? (
-            <section className="mb-6 nq-surface-block border-[var(--nq-copper)] p-4 md:p-5">
-              <p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-copper)]">Hàng đợi hôm nay</p>
-              <h2 className="mt-1 text-lg font-black text-[var(--nq-fg)]">Việc của bạn</h2>
-              <ul className="mt-3 space-y-2">
+            /* Khối "việc của bạn" được NHẤN bằng viền accent: đây là việc người
+               dùng phải làm, khác hẳn các khối chỉ để đọc. Không tô nền accent —
+               nền màu sau chữ là cách chắc chắn nhất để hạ tương phản. */
+            <section className="mb-6 nq-surface-block nq-block--accent p-4 md:p-5">
+              <p className="nq-eyebrow">Hàng đợi hôm nay</p>
+              <h2 className="nq-block-title">Việc của bạn</h2>
+              <ul className="mt-3 flex flex-col gap-2">
                 {data.viec_cho_toi.map((v) => (
                   <li key={v.id}>
-                    <a
-                      href={v.link}
-                      className="flex items-center justify-between gap-3 nq-surface-row bg-[var(--nq-bg)] px-4 py-3 transition-colors hover:border-[var(--nq-copper)]"
-                    >
-                      <span>
-                        <span className="block text-sm font-bold text-[var(--nq-fg)]">{v.tieu_de}</span>
-                        <span className="block text-xs text-[var(--nq-dim)]">{v.chi_tiet}</span>
+                    <a href={v.link} className="nq-action-row">
+                      <span className="min-w-0">
+                        <span className="nq-action-row__title">{v.tieu_de}</span>
+                        <span className="nq-action-row__sub">{v.chi_tiet}</span>
                       </span>
-                      <span className="font-mono text-xs text-[var(--nq-copper)]">→</span>
+                      <span className="nq-action-row__go" aria-hidden="true">→</span>
                     </a>
                   </li>
                 ))}
@@ -188,7 +188,7 @@ export default function HomNayPage() {
             </section>
           ) : null}
           {data.brief_hom_nay ? (
-            <p className="mb-4 font-mono text-xs text-[var(--nq-dim)]">
+            <p className="nq-meta-line">
               Brief sáng {data.brief_hom_nay.ngay}: {data.brief_hom_nay.so_ca} ca · {data.brief_hom_nay.so_treo_mo} việc treo đang mở
               {data.brief_hom_nay.ton_canh_bao && data.brief_hom_nay.ton_canh_bao.length > 0
                 ? ` · tồn cảnh báo: ${data.brief_hom_nay.ton_canh_bao.join(", ")}`

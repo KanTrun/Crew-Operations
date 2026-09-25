@@ -38,9 +38,9 @@ function placement(zone: ZoneUI, index: number) {
 }
 
 function loadColor(load: number): string {
-  if (load >= 0.7) return "#e0885f";
-  if (load >= 0.4) return "#c4a574";
-  return "#8fa8a0";
+  if (load >= 0.7) return "#f59e0b";
+  if (load >= 0.4) return "#14b8a6";
+  return "#7c8a99";
 }
 
 function ZoneBlock({
@@ -86,17 +86,17 @@ function ZoneBlock({
           roughness={0.45}
         />
       </mesh>
-      {/* Khung dây đồng = khu vực đang chọn (không dùng màu chữ để báo trạng thái) */}
+      {/* Khung dây ngọc = khu vực đang chọn (không dùng màu chữ để báo trạng thái) */}
       {selected ? (
         <mesh position={[0, 0, 0]}>
           <boxGeometry args={[place.w * 1.06, height * 1.08, place.d * 1.08]} />
-          <meshBasicMaterial color="#e8d5b5" wireframe transparent opacity={0.9} />
+          <meshBasicMaterial color="#5eead4" wireframe transparent opacity={0.9} />
         </mesh>
       ) : null}
       {/* Vạch tải ở mặt trước khối — đọc được mức tải từ xa */}
       <mesh position={[0, -height / 2 + 0.03, place.d / 2 + 0.01]}>
         <planeGeometry args={[place.w * 0.86 * zone.load_signal, 0.05]} />
-        <meshBasicMaterial color="#f5ead8" transparent opacity={0.85} />
+        <meshBasicMaterial color="#e6edf3" transparent opacity={0.85} />
       </mesh>
     </group>
   );
@@ -155,7 +155,7 @@ function Steam({ zones, tier }: { zones: ZoneUI[]; tier: Tier3d }) {
         </bufferGeometry>
         <pointsMaterial
           size={0.055}
-          color="#d4b888"
+          color="#2dd4bf"
           transparent
           opacity={0.7}
           sizeAttenuation
@@ -166,7 +166,7 @@ function Steam({ zones, tier }: { zones: ZoneUI[]; tier: Tier3d }) {
   );
 }
 
-/** Lõi đồng giữa quán — nhịp sáng theo tổng tải. */
+/** Lõi ngọc giữa quán — nhịp sáng theo tổng tải. */
 function Core({ load }: { load: number }) {
   const ref = useRef<Mesh>(null);
   useFrame((state, delta) => {
@@ -185,8 +185,8 @@ function Core({ load }: { load: number }) {
     <mesh ref={ref} position={[0, 1.15, -0.1]} scale={scale}>
       <icosahedronGeometry args={[0.42, 1]} />
       <meshStandardMaterial
-        color="#c4a574"
-        emissive="#c4a574"
+        color="#14b8a6"
+        emissive="#14b8a6"
         emissiveIntensity={0.35 + load * 0.55}
         metalness={0.5}
         roughness={0.35}
@@ -224,21 +224,21 @@ export default function LivingMap3d({ zones, selectedId = null, onSelect, tier }
         {/* Ba lớp sáng: nền khuếch tán + bầu trời/nền đất + hai nguồn điểm ấm/lạnh.
             Bản trước chỉ có ambient 0.4 + hai point yếu nên khối chìm vào nền đen. */}
         <ambientLight intensity={0.55} />
-        <hemisphereLight args={["#e8d5b5", "#171310", 0.55]} />
-        <pointLight position={[3, 4, 2]} intensity={1.5} distance={18} decay={1.3} color="#d4b888" />
-        <pointLight position={[-3, 2, -2]} intensity={0.7} distance={16} decay={1.3} color="#8fa8a0" />
+        <hemisphereLight args={["#7dd3fc", "#0b141b", 0.55]} />
+        <pointLight position={[3, 4, 2]} intensity={1.5} distance={18} decay={1.3} color="#2dd4bf" />
+        <pointLight position={[-3, 2, -2]} intensity={0.7} distance={16} decay={1.3} color="#38bdf8" />
 
         {/* Sàn quán — sáng hơn nền để khối có chỗ đứng, không trôi trong hư không. */}
         <mesh position={[0, -0.07, 0]} receiveShadow={tier === "full"}>
           <boxGeometry args={[6.2, 0.14, 4.6]} />
-          <meshStandardMaterial color="#241d17" metalness={0.25} roughness={0.8} />
+          <meshStandardMaterial color="#0e1b22" metalness={0.25} roughness={0.8} />
         </mesh>
         {/* Lưới sàn mờ: mắt đọc được chiều sâu mà không cần bóng đổ. */}
-        <gridHelper args={[6.2, 12, "#3a3128", "#2a231c"]} position={[0, 0.005, 0]} />
-        {/* Viền sàn đồng */}
+        <gridHelper args={[6.2, 12, "#1d3d3d", "#12262c"]} position={[0, 0.005, 0]} />
+        {/* Viền sàn ngọc */}
         <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[3.02, 3.16, 64]} />
-          <meshBasicMaterial color="#c4a574" transparent opacity={0.5} />
+          <meshBasicMaterial color="#14b8a6" transparent opacity={0.5} />
         </mesh>
 
         <Core load={avgLoad} />

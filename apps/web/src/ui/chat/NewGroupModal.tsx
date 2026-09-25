@@ -85,7 +85,7 @@ export function NewGroupModal({ isOpen, onClose, onCreated }: NewGroupModalProps
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Vd: Tổ Barista, Team Ca Sáng…"
-              className="w-full px-3 py-2 rounded-xl bg-[var(--nq-bg)] border border-[var(--nq-dim)] focus:border-[var(--nq-copper)] outline-none text-sm text-[var(--nq-fg)]"
+              className="w-full px-3 py-2 rounded-xl bg-[var(--nq-bg)] border border-[var(--nq-dim)] focus:border-[var(--nq-accent)] outline-none text-sm text-[var(--nq-fg)]"
               autoFocus
             />
           </div>
@@ -105,7 +105,7 @@ export function NewGroupModal({ isOpen, onClose, onCreated }: NewGroupModalProps
                       key={staff.id}
                       className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition border ${
                         isChecked
-                          ? "bg-[var(--nq-copper-dim)]/20 border-[var(--nq-copper)]"
+                          ? "bg-[var(--nq-accent-dim)]/20 border-[var(--nq-accent)]"
                           : "bg-[var(--nq-bg)] border-transparent hover:border-[var(--nq-dim)]"
                       }`}
                     >
@@ -113,9 +113,9 @@ export function NewGroupModal({ isOpen, onClose, onCreated }: NewGroupModalProps
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => toggleSelect(staff.id)}
-                        className="rounded accent-[var(--nq-copper)] w-4 h-4"
+                        className="rounded accent-[var(--nq-accent)] w-4 h-4"
                       />
-                      <div className="w-7 h-7 rounded-full bg-[var(--nq-dim)] text-xs flex items-center justify-center font-bold text-[var(--nq-copper)]">
+                      <div className="w-7 h-7 rounded-full bg-[var(--nq-dim)] text-xs flex items-center justify-center font-bold text-[var(--nq-accent)]">
                         {staff.ten.charAt(0).toUpperCase()}
                       </div>
                       <span className="text-sm font-medium text-[var(--nq-fg)] flex-1">{staff.ten}</span>
@@ -137,7 +137,7 @@ export function NewGroupModal({ isOpen, onClose, onCreated }: NewGroupModalProps
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 text-xs font-bold uppercase tracking-wider bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] rounded-xl shadow-md hover:opacity-90 disabled:opacity-50 transition"
+              className="px-5 py-2 text-xs font-bold uppercase tracking-wider bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] rounded-xl shadow-md hover:opacity-90 disabled:opacity-50 transition"
             >
               {loading ? "Đang tạo…" : "Tạo nhóm"}
             </button>

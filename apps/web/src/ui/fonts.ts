@@ -9,26 +9,47 @@
  *
  * next/font tải font lúc build rồi tự host trong `_next/static`, nên runtime
  * không gọi mạng ra ngoài.
+ *
+ * Ba font, ba vai — không hơn (xem docs/design-guidelines.md):
+ *   fontDisplay  Space Grotesk   tiêu đề trang và tiêu đề khối
+ *   fontBody     IBM Plex Sans   chữ đọc chính, nhãn, nút
+ *   fontMono     IBM Plex Mono   số trong bảng, mã, thời lượng
+ * Không dùng font hệ thống làm font chính: máy nào cũng có, nên không mã hoá
+ * được gì và trông giống mọi dashboard khác.
  */
-import { Fraunces, IBM_Plex_Mono, Source_Sans_3 } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 
-export const fontDisplay = Fraunces({
+/**
+ * Tiêu đề. Hình học, hơi nén, có cá tính ở chữ số và dấu câu — đủ khác để tiêu
+ * đề trang không lẫn với chữ nội dung, nhưng không trang trí tới mức át số liệu
+ * đặt cạnh nó.
+ */
+export const fontDisplay = Space_Grotesk({
   subsets: ["latin", "latin-ext", "vietnamese"],
-  weight: ["400", "600"],
+  weight: ["400", "500", "600", "700"],
   style: ["normal"],
   variable: "--nq-font-display-var",
   display: "swap",
-  fallback: ["Source Serif 4", "Georgia", "serif"],
+  fallback: ["Avenir Next", "Segoe UI", "sans-serif"],
 });
 
-export const fontBody = Source_Sans_3({
+/**
+ * Chữ đọc chính. Cùng họ với font số liệu nên bảng và văn bản quanh nó có chung
+ * tỉ lệ chữ; dấu tiếng Việt ở cỡ nhỏ rõ hơn phần lớn font sans hình học.
+ */
+export const fontBody = IBM_Plex_Sans({
   subsets: ["latin", "latin-ext", "vietnamese"],
-  weight: ["400", "600"],
+  weight: ["400", "500", "600"],
+  style: ["normal"],
   variable: "--nq-font-body-var",
   display: "swap",
-  fallback: ["IBM Plex Sans", "system-ui", "sans-serif"],
+  fallback: ["system-ui", "sans-serif"],
 });
 
+/**
+ * Số liệu. Bề rộng chữ số bằng nhau (tabular) nên cột số trong bảng không nhảy
+ * khi giá trị đổi từ 9 sang 10.
+ */
 export const fontMono = IBM_Plex_Mono({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500"],

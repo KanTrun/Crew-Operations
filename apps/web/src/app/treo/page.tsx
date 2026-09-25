@@ -224,7 +224,7 @@ export default function TreoPage() {
                             <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
                             {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
                             {v.phieu_id ? (
-                              <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                              <Link href="/phieu" className="underline text-[var(--nq-accent)]">
                                 Mở phiếu
                               </Link>
                             ) : null}
@@ -263,7 +263,7 @@ export default function TreoPage() {
                             <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
                             {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
                             {v.phieu_id ? (
-                              <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                              <Link href="/phieu" className="underline text-[var(--nq-accent)]">
                                 Mở phiếu
                               </Link>
                             ) : null}
@@ -300,7 +300,7 @@ export default function TreoPage() {
                             <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
                             {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
                             {v.phieu_id ? (
-                              <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                              <Link href="/phieu" className="underline text-[var(--nq-accent)]">
                                 Mở phiếu
                               </Link>
                             ) : null}
@@ -337,7 +337,7 @@ export default function TreoPage() {
                             <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
                             {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
                             {v.phieu_id ? (
-                              <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                              <Link href="/phieu" className="underline text-[var(--nq-accent)]">
                                 Mở phiếu
                               </Link>
                             ) : null}

@@ -254,7 +254,7 @@ export default function ChatPage() {
           <div className="p-4 border-b border-[var(--nq-dim)] flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="relative">
-                <div className="w-9 h-9 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] font-bold flex items-center justify-center text-sm shadow">
+                <div className="w-9 h-9 rounded-full bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] font-bold flex items-center justify-center text-sm shadow">
                   {(currentName || "NV").charAt(0).toUpperCase()}
                 </div>
                 <span
@@ -275,7 +275,7 @@ export default function ChatPage() {
             <button
               type="button"
               onClick={() => setIsNewGroupOpen(true)}
-              className="p-2 rounded-xl bg-[var(--nq-bg)] border border-[var(--nq-dim)] hover:border-[var(--nq-copper)] text-[var(--nq-fg)] hover:text-[var(--nq-copper)] transition shadow-sm"
+              className="p-2 rounded-xl bg-[var(--nq-bg)] border border-[var(--nq-dim)] hover:border-[var(--nq-accent)] text-[var(--nq-fg)] hover:text-[var(--nq-accent)] transition shadow-sm"
               title="Tạo nhóm chat mới"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -292,7 +292,7 @@ export default function ChatPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Tìm người hoặc tin nhắn…"
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[var(--nq-bg)] border border-[var(--nq-dim)] focus:border-[var(--nq-copper)] outline-none text-xs text-[var(--nq-fg)] placeholder-[var(--nq-muted)]"
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[var(--nq-bg)] border border-[var(--nq-dim)] focus:border-[var(--nq-accent)] outline-none text-xs text-[var(--nq-fg)] placeholder-[var(--nq-muted)]"
               />
               <svg
                 className="w-4 h-4 absolute left-2.5 top-2 text-[var(--nq-muted)]"
@@ -309,7 +309,7 @@ export default function ChatPage() {
                 type="button"
                 onClick={() => setFilterTab("all")}
                 className={`flex-1 py-1 text-2xs font-bold rounded-lg transition ${
-                  filterTab === "all" ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)]" : "text-[var(--nq-muted)] hover:bg-[var(--nq-bg)]"
+                  filterTab === "all" ? "bg-[var(--nq-accent)] text-[var(--nq-accent-ink)]" : "text-[var(--nq-muted)] hover:bg-[var(--nq-bg)]"
                 }`}
               >
                 Tất cả
@@ -318,7 +318,7 @@ export default function ChatPage() {
                 type="button"
                 onClick={() => setFilterTab("unread")}
                 className={`flex-1 py-1 text-2xs font-bold rounded-lg transition ${
-                  filterTab === "unread" ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)]" : "text-[var(--nq-muted)] hover:bg-[var(--nq-bg)]"
+                  filterTab === "unread" ? "bg-[var(--nq-accent)] text-[var(--nq-accent-ink)]" : "text-[var(--nq-muted)] hover:bg-[var(--nq-bg)]"
                 }`}
               >
                 Chưa đọc
@@ -327,7 +327,7 @@ export default function ChatPage() {
                 type="button"
                 onClick={() => setFilterTab("groups")}
                 className={`flex-1 py-1 text-2xs font-bold rounded-lg transition ${
-                  filterTab === "groups" ? "bg-[var(--nq-copper)] text-[var(--nq-accent-ink)]" : "text-[var(--nq-muted)] hover:bg-[var(--nq-bg)]"
+                  filterTab === "groups" ? "bg-[var(--nq-accent)] text-[var(--nq-accent-ink)]" : "text-[var(--nq-muted)] hover:bg-[var(--nq-bg)]"
                 }`}
               >
                 Nhóm
@@ -353,7 +353,7 @@ export default function ChatPage() {
                     key={conv.id}
                     onClick={() => setActiveConvId(conv.id)}
                     className={`p-3 cursor-pointer flex items-center gap-3 transition ${
-                      isActive ? "bg-[var(--nq-copper-dim)]/20 border-l-4 border-[var(--nq-copper)]" : "hover:bg-[var(--nq-bg)]"
+                      isActive ? "bg-[var(--nq-accent-dim)]/20 border-l-4 border-[var(--nq-accent)]" : "hover:bg-[var(--nq-bg)]"
                     }`}
                   >
                     {/* Avatar */}
@@ -363,7 +363,7 @@ export default function ChatPage() {
                           <Icon name="coffee" size={20} />
                         </div>
                       ) : conv.type === "group" ? (
-                        <div className="w-11 h-11 rounded-2xl bg-[var(--nq-dim)] text-[var(--nq-copper)] font-bold flex items-center justify-center text-base">
+                        <div className="w-11 h-11 rounded-2xl bg-[var(--nq-dim)] text-[var(--nq-accent)] font-bold flex items-center justify-center text-base">
                           <Icon name="users" size={20} />
                         </div>
                       ) : (
@@ -414,7 +414,7 @@ export default function ChatPage() {
                           )}
                         </p>
                         {(conv.unread_count || 0) > 0 && (
-                          <span className="w-5 h-5 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] text-2xs font-bold flex items-center justify-center shrink-0">
+                          <span className="w-5 h-5 rounded-full bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] text-2xs font-bold flex items-center justify-center shrink-0">
                             {conv.unread_count}
                           </span>
                         )}
@@ -444,7 +444,7 @@ export default function ChatPage() {
                 >
                   <Icon name="arrow-left" size={18} />
                 </button>
-                <div className="w-9 h-9 rounded-full bg-[var(--nq-dim)] flex items-center justify-center font-bold text-sm text-[var(--nq-copper)]">
+                <div className="w-9 h-9 rounded-full bg-[var(--nq-dim)] flex items-center justify-center font-bold text-sm text-[var(--nq-accent)]">
                   {activeConv.type === "general" ? <Icon name="coffee" size={18} /> : activeConv.type === "group" ? <Icon name="users" size={18} /> : activeConv.display_name.charAt(0)}
                 </div>
                 <div>
@@ -495,9 +495,9 @@ export default function ChatPage() {
 
             {/* Banner tin nhắn đã ghim (Pinned Banner) */}
             {pinnedMessages.length > 0 && (
-              <div className="bg-[var(--nq-copper)]/10 border-b border-[var(--nq-copper)]/30 px-4 py-2 flex items-center justify-between text-xs text-[var(--nq-copper)] shrink-0">
+              <div className="bg-[var(--nq-accent)]/10 border-b border-[var(--nq-accent)]/30 px-4 py-2 flex items-center justify-between text-xs text-[var(--nq-accent)] shrink-0">
                 <div className="flex items-center gap-2 truncate">
-                  <span>📌</span>
+                  <Icon name="pin" size={14} />
                   <span className="font-bold">Đã ghim:</span>
                   <span className="truncate">{pinnedMessages[pinnedMessages.length - 1].content}</span>
                 </div>
@@ -585,7 +585,7 @@ export default function ChatPage() {
                                   href={msg.metadata.url}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="flex items-center gap-2 rounded-lg bg-black/10 px-2.5 py-2 text-[var(--nq-copper)] transition hover:bg-black/20"
+                                  className="flex items-center gap-2 rounded-lg bg-black/10 px-2.5 py-2 text-[var(--nq-accent)] transition hover:bg-black/20"
                                 >
                                   <Icon name="attachment" size={18} />
                                   <span className="min-w-0 max-w-56 truncate font-medium">{msg.metadata.filename || msg.content || "Mở tệp"}</span>
@@ -703,10 +703,11 @@ export default function ChatPage() {
                           <button
                             type="button"
                             onClick={() => pinMessage(msg.id, !msg.metadata?.pinned)}
-                            className="text-[var(--nq-muted)] hover:text-[var(--nq-copper)] p-1 text-xs"
+                            className="text-[var(--nq-muted)] hover:text-[var(--nq-accent)] p-1 text-xs"
                             title={msg.metadata?.pinned ? "Bỏ ghim" : "Ghim tin nhắn"}
+                            aria-label={msg.metadata?.pinned ? "Bỏ ghim" : "Ghim tin nhắn"}
                           >
-                            📌
+                            <Icon name="pin" size={14} />
                           </button>
                           <button
                             type="button"
@@ -727,16 +728,18 @@ export default function ChatPage() {
                                 }}
                                 className="text-[var(--nq-muted)] hover:text-[var(--nq-fg)] p-1 text-xs"
                                 title="Sửa tin nhắn"
+                                aria-label="Sửa tin nhắn"
                               >
-                                ✎
+                                <Icon name="edit" size={14} />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => deleteMessage(msg.id, activeConv.id)}
                                 className="text-[var(--nq-muted)] hover:text-[var(--nq-st-danger-ink)] p-1 text-xs"
                                 title="Thu hồi"
+                                aria-label="Thu hồi"
                               >
-                                ✕
+                                <Icon name="trash" size={14} />
                               </button>
                             </>
                           )}
@@ -760,7 +763,7 @@ export default function ChatPage() {
                             <div
                               key={r.nv_id}
                               title={`Đã xem bởi ${r.display_name}`}
-                              className="w-4 h-4 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] text-2xs font-bold flex items-center justify-center border border-[var(--nq-card)]"
+                              className="w-4 h-4 rounded-full bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] text-2xs font-bold flex items-center justify-center border border-[var(--nq-card)]"
                             >
                               {r.display_name.charAt(0)}
                             </div>
@@ -775,9 +778,9 @@ export default function ChatPage() {
               {typing && typing.is_typing && typing.nv_id !== currentNvId && (
                 <div className="flex items-center gap-2 text-xs text-[var(--nq-muted)] italic">
                   <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nq-copper)] animate-bounce" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nq-copper)] animate-bounce delay-100" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nq-copper)] animate-bounce delay-200" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nq-accent)] animate-bounce" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nq-accent)] animate-bounce delay-100" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nq-accent)] animate-bounce delay-200" />
                   </div>
                   <span>Đồng nghiệp đang soạn tin…</span>
                 </div>
@@ -791,10 +794,10 @@ export default function ChatPage() {
               <div className="px-4 py-2 bg-[var(--nq-card)] border-t border-[var(--nq-dim)] flex items-center justify-between text-xs">
                 <div className="truncate">
                   {editingMsg ? (
-                    <span className="text-[var(--nq-copper)] font-bold">Đang sửa tin nhắn…</span>
+                    <span className="text-[var(--nq-accent)] font-bold">Đang sửa tin nhắn…</span>
                   ) : (
                     <span>
-                      Đang trả lời <strong className="text-[var(--nq-copper)]">{replyingTo?.sender_name}</strong>:{" "}
+                      Đang trả lời <strong className="text-[var(--nq-accent)]">{replyingTo?.sender_name}</strong>:{" "}
                       <span className="text-[var(--nq-muted)] truncate">{replyingTo?.content}</span>
                     </span>
                   )}
@@ -842,9 +845,9 @@ export default function ChatPage() {
                     key={p.nv_id}
                     type="button"
                     onClick={() => insertMention(`@${p.display_name || p.nv_id}`)}
-                    className="flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-[var(--nq-dim)] bg-[var(--nq-bg)] px-2.5 text-left transition hover:-translate-y-px hover:border-[var(--nq-copper)] hover:bg-[var(--nq-copper)]/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nq-focus)]"
+                    className="flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-[var(--nq-dim)] bg-[var(--nq-bg)] px-2.5 text-left transition hover:-translate-y-px hover:border-[var(--nq-accent)] hover:bg-[var(--nq-accent)]/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nq-focus)]"
                   >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--nq-copper)] text-2xs font-bold text-[var(--nq-accent-ink)]">{(p.display_name || p.nv_id).charAt(0).toUpperCase()}</span>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--nq-accent)] text-2xs font-bold text-[var(--nq-accent-ink)]">{(p.display_name || p.nv_id).charAt(0).toUpperCase()}</span>
                     <span><strong className="block max-w-28 truncate text-2xs text-[var(--nq-fg)]">{p.display_name || p.nv_id}</strong><small className="block text-2xs text-[var(--nq-muted)]">{p.role === "admin" ? "Quản trị viên" : "Thành viên"}</small></span>
                   </button>
                 ))}
@@ -865,7 +868,7 @@ export default function ChatPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 text-[var(--nq-muted)] hover:text-[var(--nq-copper)] rounded-full transition shrink-0"
+                className="p-2 text-[var(--nq-muted)] hover:text-[var(--nq-accent)] rounded-full transition shrink-0"
                 title="Đính kèm ảnh hoặc tài liệu"
                 disabled={mediaBusy}
               >
@@ -874,7 +877,7 @@ export default function ChatPage() {
 
               <VoiceRecorder onSendVoice={handleVoiceSend} disabled={mediaBusy} />
 
-              <div className="flex-1 bg-[var(--nq-bg)] border border-[var(--nq-dim)] focus-within:border-[var(--nq-copper)] rounded-2xl px-3 py-1.5 flex items-center">
+              <div className="flex-1 bg-[var(--nq-bg)] border border-[var(--nq-dim)] focus-within:border-[var(--nq-accent)] rounded-2xl px-3 py-1.5 flex items-center">
                 <textarea
                   ref={textareaRef}
                   value={inputText}
@@ -890,7 +893,7 @@ export default function ChatPage() {
                 type="button"
                 onClick={() => handleSend()}
                 disabled={!inputText.trim()}
-                className="p-2.5 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] hover:opacity-90 disabled:opacity-40 transition shrink-0 shadow-md"
+                className="p-2.5 rounded-full bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] hover:opacity-90 disabled:opacity-40 transition shrink-0 shadow-md"
                 title="Gửi tin nhắn"
               >
                 <Icon name="send" size={16} />
@@ -913,7 +916,7 @@ export default function ChatPage() {
             <div className="flex-1 overflow-y-auto space-y-2">
               {activeConv.participants.map((p) => (
                 <div key={p.nv_id} className="flex items-center gap-2.5 p-2 rounded-xl bg-[var(--nq-bg)]">
-                  <div className="w-7 h-7 rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] text-xs font-bold flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-full bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] text-xs font-bold flex items-center justify-center">
                     {p.display_name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">

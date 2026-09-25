@@ -32,7 +32,7 @@ function PosThumb({ mon }: { mon: Mon }) {
           onError={() => setErr(true)}
         />
       ) : (
-        <div className="flex h-full items-center justify-center text-lg font-black text-[var(--nq-copper)]">
+        <div className="flex h-full items-center justify-center text-lg font-semibold text-[var(--nq-accent)]">
           {mon.ten.slice(0, 1)}
         </div>
       )}
@@ -228,8 +228,8 @@ export default function QuayPage() {
                 </li>
               ))}
             </ul>
-            <p className="text-lg font-black">
-              Tổng: <span className="text-[var(--nq-copper)]">{MONEY.format(total)}</span>
+            <p className="text-lg font-semibold">
+              Tổng: <span className="text-[var(--nq-accent)]">{MONEY.format(total)}</span>
             </p>
             <label className="block text-sm">
               <span className="mb-1 block font-mono text-xs uppercase tracking-widest text-[var(--nq-dim)]">Thanh toán</span>
