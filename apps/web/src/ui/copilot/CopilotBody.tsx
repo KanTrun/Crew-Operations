@@ -374,9 +374,9 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
         </div>
       )}
 
-      {/* Header — pane giữ header đầy đủ; trang /copilot đã có head ngoài nên thu gọn */}
+      {/* Header — pane giữ header đầy đủ; trang /copilot thu gọn */}
       {mode === "page" ? (
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--nq-line)] bg-[var(--nq-surface)] px-3 py-2">
+        <div className="nq-copilot-body__head flex items-center justify-between gap-2 border-b border-[var(--nq-line)] bg-[var(--nq-surface)] px-3 py-2">
           <p className="m-0 flex items-center gap-1.5 text-2xs text-[var(--nq-dim)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--nq-st-ok)]" />
             Đang trực tuyến
@@ -392,7 +392,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
           ) : null}
         </div>
       ) : (
-      <div className="flex shrink-0 items-center justify-between border-b border-[var(--nq-line)] bg-[var(--nq-surface)] p-4">
+      <div className="nq-copilot-body__head flex shrink-0 items-center justify-between border-b border-[var(--nq-line)] bg-[var(--nq-surface)] p-4">
         <div className="flex items-center gap-2.5">
           <div
             className="flex h-8 w-8 items-center justify-center border-2"
@@ -463,8 +463,8 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
         </div>
       ) : (
         <>
-          {/* Messages */}
-          <div ref={messagesScrollRef} className="nq-copilot-messages space-y-4 text-xs">
+          {/* Messages — chỉ khối này được cuộn */}
+          <div ref={messagesScrollRef} className="nq-copilot-messages text-xs">
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -614,9 +614,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Prompts — bọc dòng (không cuộn ngang) để không lộ thanh
-              cuộn ngay dưới khung chat, tối đa 2 dòng rồi cuộn dọc nếu cần. */}
-          <div className="flex shrink-0 flex-wrap gap-1.5 border-t border-[var(--nq-dim)] bg-[var(--nq-surface)] px-4 py-2 max-h-[4.5rem] overflow-y-auto">
+          <div className="nq-copilot-prompts">
             {profile.quickPrompts.map((qp, idx) => (
               <button
                 key={idx}
@@ -629,8 +627,8 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             ))}
           </div>
 
-          {/* Input */}
-          <div className="shrink-0 border-t border-[var(--nq-line)] bg-[var(--nq-surface)] p-3">
+          {/* Input — luôn neo dưới khung */}
+          <div className="nq-copilot-composer p-3">
             {/* Thanh xem trước đính kèm trước khi gửi */}
             {attachedFile && (
               <div className="mb-2 flex items-center justify-between rounded border border-[var(--nq-dim)] bg-[var(--nq-bg)] p-2 text-xs">
@@ -668,7 +666,6 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             )}
             {voiceEnabled && (
               <div className="mb-2 space-y-1.5">
-                {/* Audio controls: Mode switcher & Mic dropdown */}
                 <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-2xs">
                   <div className="inline-flex max-w-full flex-wrap rounded border border-[var(--nq-dim)] bg-[var(--nq-bg)] p-0.5">
                     <button
@@ -714,9 +711,8 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                   )}
                 </div>
 
-                {/* Banner avatar — hiện khi voice đang hoạt động (kết nối/nghe/xử lý/nói).
-                    Avatar nhép miệng theo giọng nói trợ lý. */}
-                {isVoiceActive && (
+                {/* Avatar lớn chỉ ở pane nổi — trang full tránh chiếm chỗ tin nhắn */}
+                {mode !== "page" && isVoiceActive && (
                   <div
                     className="flex items-center gap-3 rounded border border-[var(--nq-dim)]/40 bg-[var(--nq-bg)] px-3 py-2"
                     role="status"
@@ -726,7 +722,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                       mouthOpen={mouthOpen}
                       speaking={isSpeaking}
                       listening={isListening}
-                      size={mode === "page" ? 44 : 72}
+                      size={72}
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--nq-accent)]">
@@ -760,8 +756,15 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                     </button>
                   </div>
                 )}
+                {mode === "page" && isVoiceActive && (
+                  <p className="px-1 text-[11px] text-[var(--nq-accent)]" role="status">
+                    {voice.state === "listening" && "Đang nghe…"}
+                    {voice.state === "processing" && "Đang xử lý…"}
+                    {voice.state === "speaking" && "Trợ lý đang nói…"}
+                    {voice.state === "connecting" && "Đang kết nối…"}
+                  </p>
+                )}
 
-                {/* Banner lỗi — chỉ hiện khi có lỗi, tách khỏi banner avatar */}
                 {isVoiceError && (
                   <div
                     className="flex items-center justify-between gap-2 rounded border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5 text-[11px] text-rose-300"

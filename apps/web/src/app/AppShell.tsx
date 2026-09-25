@@ -347,8 +347,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <span className="nq-side__user-role">[{roleLabel(role)}]</span>
                 </span>
               </div>
-              <button type="button" onClick={logout} className="nq-cta nq-cta--ghost nq-cta--sm">
-                Thoát
+              <button
+                type="button"
+                onClick={logout}
+                className="nq-cta nq-cta--ghost nq-cta--sm nq-side__logout"
+                title="Thoát"
+                aria-label="Thoát"
+              >
+                <Icon name="door" size={16} />
+                <span className="nq-side__label">Thoát</span>
               </button>
               <button
                 type="button"

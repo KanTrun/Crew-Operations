@@ -9150,8 +9150,19 @@ a.nq-bento-surface:active {
   padding: 0;
 }
 
-.nq-side[data-collapsed="1"] .nq-side__user-name {
+.nq-side[data-collapsed="1"] .nq-side__logout {
+  justify-content: center;
+  padding-inline: 0.5rem;
+  min-width: 36px;
+}
+.nq-side[data-collapsed="1"] .nq-side__logout .nq-side__label {
   display: none;
+}
+.nq-side__logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
 }
 
 /* ── Vùng nội dung ──
@@ -9302,48 +9313,22 @@ a.nq-bento-surface:active {
    HẾT SIDEBAR.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Trợ lý full-page: khóa viewport + CSS grid — vùng tin cuộn độc lập ── */
-.nq-app:has(.nq-copilot-page) {
-  height: 100dvh;
-  max-height: 100dvh;
-  min-height: 0;
-  overflow: hidden;
-}
+/* ── Trợ lý full-page: flex đơn giản — tin cuộn, composer luôn thấy ── */
 .nq-app:has(.nq-copilot-page) .nq-main {
-  display: flex;
-  flex-direction: column;
-  height: 100dvh;
-  max-height: 100dvh;
-  min-height: 0;
-  padding-top: var(--nq-s3);
-  padding-bottom: var(--nq-s3);
-  overflow: hidden;
-  box-sizing: border-box;
-}
-.nq-app:has(.nq-copilot-page) .nq-main__inner {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: 100%;
-  display: flex;
-  flex-direction: column;
-  max-width: none;
-  overflow: hidden;
+  /* Chỉ bỏ padding thừa; KHÔNG khóa height/overflow ở đây (đó là nguyên nhân cắt khung). */
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
 }
 .nq-copilot-page {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: var(--nq-s2);
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  max-width: none;
+  height: calc(100dvh - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  min-height: 0;
   margin: 0;
   padding: 0;
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: 100%;
-  height: 100%;
-  position: relative;
-  z-index: 1;
-  isolation: isolate;
+  gap: 0.5rem;
   overflow: hidden;
 }
 .nq-copilot-page--loading {
@@ -9358,8 +9343,8 @@ a.nq-bento-surface:active {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--nq-s2) var(--nq-s3);
-  min-height: 0;
+  gap: 0.5rem 1rem;
+  flex: 0 0 auto;
 }
 .nq-copilot-page__kicker {
   margin: 0;
@@ -9372,24 +9357,17 @@ a.nq-bento-surface:active {
 .nq-copilot-page__title {
   margin: 0.1rem 0 0;
   font-family: var(--nq-font-display);
-  font-size: var(--nq-t-h3, 1.15rem);
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--nq-ink);
   line-height: 1.25;
 }
 .nq-copilot-page__meta {
-  margin: 0.2rem 0 0;
-  font-size: var(--nq-t-caption);
-  color: var(--nq-ink-muted);
-  max-width: 52ch;
-}
-.nq-copilot-page__meta strong {
-  color: var(--nq-ink);
-  font-weight: 600;
+  display: none;
 }
 .nq-copilot-page__frame {
+  flex: 1 1 0;
   min-height: 0;
-  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -9397,34 +9375,53 @@ a.nq-bento-surface:active {
   border-radius: var(--nq-radius-bubble);
   background: var(--nq-surface);
   box-shadow: var(--nq-elev-2), var(--nq-inner-hi);
-  position: relative;
-  z-index: 2;
 }
-.nq-copilot-page__frame > * {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: 100%;
-  height: 100%;
-}
-/* Thân chat: header | tin (1fr cuộn) | gợi ý | ô nhập */
+/* Thân chat = cột flex: header | messages(cuộn) | composer */
 .nq-copilot-body {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
   height: 100%;
   min-height: 0;
-  max-height: 100%;
   overflow: hidden;
   background: var(--nq-bg);
   color: var(--nq-fg);
 }
+.nq-copilot-body__head {
+  flex: 0 0 auto;
+}
 .nq-copilot-messages {
+  flex: 1 1 0;
   min-height: 0;
   overflow-x: hidden;
-  overflow-y: auto !important;
+  overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  scrollbar-gutter: stable;
-  padding: var(--nq-s4);
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-content: flex-start;
+  gap: 0.75rem;
+}
+.nq-copilot-messages > * {
+  flex: 0 0 auto;
+}
+.nq-copilot-composer {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--nq-line);
+  background: var(--nq-surface);
+}
+.nq-copilot-prompts {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-height: 3.25rem;
+  overflow-y: auto;
+  padding: 0.45rem 0.85rem;
+  border-top: 1px solid var(--nq-line);
+  background: var(--nq-surface);
 }
 
 .nq-page--ai-learning {

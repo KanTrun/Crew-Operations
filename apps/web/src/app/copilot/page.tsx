@@ -30,8 +30,8 @@ export default function CopilotPage() {
   return (
     <div className="nq-copilot-page" style={{ ["--accent" as string]: chat.profile.accent }}>
       <header className="nq-copilot-page__head">
-        <div className="nq-copilot-page__titles">
-          <p className="nq-copilot-page__kicker">Trợ lý điều hành · {roleLabel(role)}</p>
+        <div>
+          <p className="nq-copilot-page__kicker">Trợ lý · {roleLabel(role)}</p>
           <h1 className="nq-copilot-page__title">{chat.profile.label}</h1>
         </div>
         <Link href="/hom-nay" className="nq-btn nq-btn-ghost nq-btn-sm">
