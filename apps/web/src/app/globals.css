@@ -141,7 +141,6 @@
   --nq-accent-dim: rgba(20, 184, 166, 0.42);
   --nq-accent-ink: #071014;        /* chữ tối đặt trên nền accent sáng */
   --nq-accent-2: #38bdf8;          /* accent phụ — thông tin / liên kết */
-  --nq-accent-2-hover: #7dd3fc;
   --nq-accent-2-soft: rgba(56, 189, 248, 0.14);
   --nq-danger: #ef4444;
   --nq-ok: #22c55e;
@@ -167,7 +166,6 @@
   --nq-green: var(--nq-ok);
   --nq-green-dim: rgba(34, 197, 94, 0.35);
   --nq-blue: var(--nq-accent-2);
-  --nq-blue-dim: rgba(56, 189, 248, 0.35);
   --nq-banner-from: #0f2029;
   --nq-banner-mid: #0b141b;
   --nq-banner-to: #070d12;
@@ -307,10 +305,6 @@
   --nq-font-body: var(--nq-font-body-var), "IBM Plex Sans", system-ui, -apple-system,
     "Segoe UI", Roboto, sans-serif, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji";
   --nq-font-mono: var(--nq-font-mono-var), ui-monospace, monospace;
-  /* Chữ số cho bảng dữ liệu dày: mọi số cùng bề rộng nên cột không nhảy khi
-     giá trị đổi từ 9 sang 10. Bật ở bảng/hàng số liệu, KHÔNG bật toàn trang
-     (chữ có dấu tiếng Việt bị giãn khe khó đọc). */
-  --nq-font-num: var(--nq-font-mono-var), ui-monospace, "SF Mono", Consolas, monospace;
   /* ── Ngôn ngữ chuyển động ──
      Nhịp của quán là nhịp giữa hai lượt khách: mọi thứ phải xong trước khi
      người vận hành kịp rời mắt sang bàn bên cạnh. Vì vậy chuyển động ở đây
@@ -372,7 +366,6 @@
   --nq-blur-glass: blur(20px) saturate(1.3);
   --nq-blur-1: blur(12px) saturate(1.25);
   --nq-blur-2: blur(20px) saturate(1.3);
-  --nq-blur-3: blur(28px) saturate(1.4);
   /* Vệt sáng phản chiếu (specular) — một vạch 1px ở mép trên của khối kính,
      mô phỏng ánh sáng bắt vào cạnh vật liệu. Đây là thứ làm bề mặt đọc ra
      "có cạnh" thay vì chỉ là một mảng mờ; dùng CHUNG với --nq-inner-hi, không
@@ -460,18 +453,12 @@ a.nq-btn-danger {
   color: var(--nq-ink-on-danger);
 }
 
-/* Chip cảnh báo: chữ vàng đặt trên NỀN VÀNG NHẠT nên phải dùng bản `-ink-strong`
-   (nếu dùng bản sáng `#fbbf5c` trên `#f59e0b` thì chỉ đạt 1.28:1).
-   Bộ chọn phải GẮN VỚI LỚP CHIP (`.nq-warn-chip`), KHÔNG dùng trần
-   `[data-tone="warn"]`: thuộc tính đó còn nằm trên ô Summary có tone và trên
-   nhiều khối khác, nên bộ chọn trần đã đè nền VÀNG ĐẶC của ô Summary bằng nền
-   VÀNG NHẠT 14% — đo được chữ tối trên nền tối 1.9:1. Đây là lần thứ hai trong
-   dự án một bộ chọn quá rộng gây lỗi tương phản; xem thêm ghi chú ở `.nq-empty`. */
-.nq-warn-chip {
-  color: var(--nq-st-warn-ink-strong);
-  border-color: color-mix(in srgb, var(--nq-st-warn) 40%, transparent);
-  background-color: var(--nq-st-warn-soft);
-}
+/* GHI CHÚ (bộ chọn quá rộng — đã vấp hai lần trong dự án):
+   Một rule trần kiểu `[data-tone="warn"]` khớp MỌI phần tử mang thuộc tính đó,
+   kể cả ô `Summary` có tone — và nó đã đè nền VÀNG ĐẶC của ô bằng nền VÀNG NHẠT
+   14%, cho ra chữ tối trên nền tối 1.9:1. Khi thêm rule theo attribute/state,
+   PHẢI gắn với một LỚP cụ thể. Chip cảnh báo có rule riêng `.nq-chip--warn`
+   ở dưới (dùng `--nq-st-warn-ink`), không cần thêm gì ở đây. */
 
 /* Cảnh báo / thông báo — chữ cream trên nền pha, không tô chữ đỏ trên nền tối. */
 .nq-alert {
