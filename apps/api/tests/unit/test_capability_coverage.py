@@ -48,6 +48,11 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/vf/conflict": "chẩn đoán VF nội bộ",
     "/api/v1/vf/conflict-demo": "demo VF nội bộ",
     "/api/v1/ai/retention/dry-run": "chẩn đoán retention nội bộ",
+    # AI phân tích trang (aside panel) — lớp tường thuật đọc lại dữ liệu của các
+    # route tất định đã có capability riêng (predict/explain/twin/cam-nang/...);
+    # không phải một hành động điều phối mới của copilot.
+    "/api/v1/ai/insight": "narration phụ trợ, không phải hành động điều phối",
+    "/api/v1/ai/insight/ask": "narration phụ trợ, không phải hành động điều phối",
     "/api/v1/reservations-metrics": "metrics nội bộ",
     "/catchment-survey": "khảo sát giá thị trường bán kính catchment (pricing radar)",
     "/catchment-survey/{job_id}": "tiến trình job khảo sát giá — poll qua UI /khao-sat-gia",

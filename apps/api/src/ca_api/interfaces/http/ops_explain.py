@@ -68,10 +68,24 @@ def explain_endpoint(
 def list_chains(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    """Lấy danh sách chuỗi nhân quả đã tạo."""
+    """Lấy danh sách chuỗi nhân quả đã tạo.
+
+    Lọc trùng theo câu hỏi (đã chuẩn hoá) trước khi trả — an toàn cho các bản
+    ghi cũ được tạo trước khi `chain_id` đổi sang băm ổn định (`sha1`); mỗi
+    lần gọi `explain` mới vẫn tiếp tục ghi đè đúng theo `chain_id`."""
     _require_role(authorization)
     chains = kv_get("ops_explain_chains", [])
-    return {"items": chains}
+    seen: set[str] = set()
+    deduped: list[dict[str, Any]] = []
+    for c in chains:
+        if not isinstance(c, dict):
+            continue
+        key = str(c.get("cau_hoi") or "").strip().lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(c)
+    return {"items": deduped}
 
 
 class EpisodeBody(BaseModel):

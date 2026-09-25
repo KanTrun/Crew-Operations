@@ -16,12 +16,16 @@ import {
   Input,
   Loading,
   Notice,
+  PageActions,
+  PageGrid,
   PageHeader,
   StatusChip,
   Summary,
   TechnicalDrawer,
 } from "../../ui/kit";
 import { CopilotPane } from "../../ui/copilot/CopilotPane";
+import { AiInsightPanel } from "../../ui/ai/AiInsightPanel";
+import { AskAiBox } from "../../ui/ai/AskAiBox";
 
 type Luat = {
   id: string;
@@ -207,7 +211,7 @@ export default function CamNangPage() {
         </div>
       ) : null}
 
-      <div className="mb-6 flex flex-wrap items-center gap-3">
+      <PageActions>
         {manager ? (
           <Btn variant="primary" disabled={busy || !canChay} onClick={chay} title={!canChay ? insight?.message : undefined}>
             {busy ? "Đang chạy…" : "Chạy 8 bước xét luật"}
@@ -221,7 +225,7 @@ export default function CamNangPage() {
         <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
           Hỏi trợ lý vận hành
         </Btn>
-      </div>
+      </PageActions>
 
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="flex-1 min-w-[200px]">
@@ -247,6 +251,8 @@ export default function CamNangPage() {
       {!loading && !error && filtered.length === 0 ? (
         <Empty>Chưa có luật phù hợp bộ lọc. Luật sinh ra từ lần sửa có bằng chứng trong ca.</Empty>
       ) : null}
+      <PageGrid
+        main={
       <div className="nq-lawbook">
         {/* Mục lục cuốn luật — đếm theo nhóm trạng thái để người đọc nắm nhanh */}
         <div className="nq-lawbook__toc">
@@ -331,6 +337,14 @@ export default function CamNangPage() {
           })}
         </ol>
       </div>
+        }
+        aside={
+          <>
+            <AiInsightPanel page="cam-nang" />
+            <AskAiBox page="cam-nang" />
+          </>
+        }
+      />
 
       <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>

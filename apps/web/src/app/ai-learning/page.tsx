@@ -14,9 +14,12 @@ import {
   Loading,
   Notice,
   OpsCard,
+  PageGrid,
   PageHeader,
   StatusChip,
 } from "../../ui/kit";
+import { AiInsightPanel } from "../../ui/ai/AiInsightPanel";
+import { AskAiBox } from "../../ui/ai/AskAiBox";
 
 type Generation = {
   id: string;
@@ -234,7 +237,9 @@ export default function AiLearningPage() {
       {loading ? <Loading skeleton="stats">Đang tải dữ liệu học AI…</Loading> : null}
 
       {!loading ? (
-        <>
+        <PageGrid
+          main={
+            <>
           <section className="nq-ai-metrics" aria-label="Chỉ số vòng học">
             <Metric label="Lần đánh giá" value={String(summary?.evaluation_count ?? 0)} />
             <Metric label="Điểm trung bình" value={`${Math.round((summary?.average_score ?? 0) * 100)}%`} />
@@ -399,7 +404,15 @@ export default function AiLearningPage() {
               )}
             </OpsCard>
           </section>
-        </>
+            </>
+          }
+          aside={
+            <>
+              <AiInsightPanel page="ai-learning" />
+              <AskAiBox page="ai-learning" />
+            </>
+          }
+        />
       ) : null}
     </div>
   );
