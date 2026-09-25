@@ -82,10 +82,45 @@ def _ds(key: str) -> list[dict[str, Any]]:
     return [x for x in raw if isinstance(x, dict)]
 
 
+def _seed_kiem_ke() -> list[dict[str, Any]]:
+    """Phiếu kiểm kê cho môi trường test/demo — có khi kv trống và cờ seed bật.
+
+    `NHIPQUAN_HAO_HUT_SEED_FIXTURE` theo cùng lối với `NHIPQUAN_INBOX_SEED_FIXTURE`:
+    chỉ nhồi khi kv thật trống, để không bao giờ ghi đè dữ liệu của quán.
+
+    Vì sao cần: tóm tắt hao hụt ghép *lý thuyết* (công thức món × số phần đã bán,
+    đọc từ đơn quầy) với *thực tế* (phiếu kiểm kê). Trên cơ sở dữ liệu mới, không
+    có phiếu nào ⇒ không dòng nào có vế thực tế, nên không dòng nào ở mức
+    `thieu_du_lieu` — đúng về logic nhưng làm màn hao hụt rỗng và e2e không còn
+    gì để kiểm.
+
+    Danh sách mặt hàng cố ý gồm **hai nhóm** theo `_MENU_MAC_DINH`:
+      - `cafe_g`, `sua_ml`, `ly` — có trong công thức món, nên khi quán có đơn
+        quầy thì đủ hai vế ⇒ dòng hiện **số thật** (e2e "vế có dữ liệu hiện số").
+      - `dao_lat`, `banh` — không món nào trong menu mặc định dùng, nên thiếu vế
+        lý thuyết ⇒ dòng ở mức `thieu_du_lieu` (e2e "thiếu dữ liệu hiện gạch").
+    """
+    items = _ds("kiem_ke")
+    if items:
+        return items
+    if os.environ.get("NHIPQUAN_HAO_HUT_SEED_FIXTURE", "0").strip().lower() not in {"1", "true", "yes"}:
+        return []
+    mat_hangs = ["cafe_g", "sua_ml", "ly", "dao_lat", "banh"]
+    return [
+        {
+            "id": f"kk_fx_{i + 1}",
+            "khung": "sang" if i % 2 == 0 else "toi",
+            "luc": f"2026-09-{20 + i:02d}T08:00:00+00:00",
+            "muc": [{"mat_hang": m, "dau_ca": 10.0, "nhap_trong_ca": 5.0, "cuoi_ca": 12.0}],
+        }
+        for i, m in enumerate(mat_hangs)
+    ]
+
+
 def _dung_tong(ky: str) -> dict[str, Any]:
     """Ghép bốn nguồn thật thành tóm tắt hao hụt — dùng chung với agent mẹ."""
     summary = tinh_tu_nguon(
-        kiem_ke=_ds("kiem_ke"),
+        kiem_ke=_seed_kiem_ke(),
         don_quay=_ds_don(),
         menu=menu_list(gom_an=True),
         waste_notes=_ds("waste_notes"),
@@ -209,7 +244,7 @@ def hao_hut_danh_muc(authorization: Annotated[str | None, Header()] = None) -> d
     đã có, và nguyên liệu trong công thức món.
     """
     _require_manager(authorization)
-    tu_kiem_ke = {str(r.get("mat_hang") or "") for phieu in _ds("kiem_ke") for r in (phieu.get("muc") or []) if isinstance(r, dict)}
+    tu_kiem_ke = {str(r.get("mat_hang") or "") for phieu in _seed_kiem_ke() for r in (phieu.get("muc") or []) if isinstance(r, dict)}
     tu_ghi_chu = {str(r.get("mat_hang") or "") for r in _ds("waste_notes")}
     tu_cong_thuc: set[str] = set()
     for mon in menu_list(gom_an=True):
@@ -225,68 +260,3 @@ def hao_hut_danh_muc(authorization: Annotated[str | None, Header()] = None) -> d
         "tu_cong_thuc": sorted(x for x in tu_cong_thuc if x),
         "nguon": "quan",
     }
-
-
-class KiemKeRowBody(BaseModel):
-    """Một dòng mặt hàng trong phiếu kiểm kê (công thức §4.3)."""
-
-    mat_hang: str = Field(min_length=1, max_length=64)
-    dau_ca: float = 0
-    nhap_trong_ca: float = 0
-    cuoi_ca: float = 0
-    hao_hut_ghi: float = 0
-
-
-class KiemKeSeedBody(BaseModel):
-    """Phiếu kiểm kê để e2e tự dựng dữ liệu của mình."""
-
-    ngay: str = Field(min_length=10, max_length=10)
-    muc: list[KiemKeRowBody] = Field(default_factory=list)
-
-
-@router.post("/api/v1/hao-hut/kiem-ke-seed")
-def hao_hut_kiem_ke_seed(
-    body: KiemKeSeedBody,
-    authorization: Annotated[str | None, Header()] = None,
-) -> dict[str, Any]:
-    """Nạp một phiếu kiểm kê — CHỈ khi chạy chế độ replay/demo.
-
-    Vì sao cần: bài e2e `hao-hut.spec.ts` kiểm rằng dòng thiếu một vế hiện **gạch**
-    chứ không hiện số 0 (fail-closed). Muốn kiểm được điều đó thì phải có dữ liệu
-    kiểm kê thật, nhưng `demo_api.py` (server e2e CI dùng) chỉ seed menu/bàn —
-    `kiem_ke` nằm ở `scripts/seed_demo_data.py` mà e2e không chạy. Kết quả cũ:
-    máy dev nào đã `make seed` thì xanh, CI sạch thì đỏ — test phụ thuộc trạng thái
-    môi trường chứ không kiểm chính nó.
-
-    Khuôn giống `/experience/rules/reset`: chỉ mở khi `CA_AGENT_MODE=replay`,
-    ngoài ra trả 403 — production không gọi được để nhồi dữ liệu giả.
-
-    Phiếu nạp vào mang `nguon="mo_phong_fixture"` để UI gắn chip "dữ liệu mẫu"
-    (không ai nhầm là số đo thật), và `_la_ban_ghi_mau` nhận ra để đánh dấu.
-    """
-    if os.environ.get("CA_AGENT_MODE", "").strip().lower() != "replay":
-        raise HTTPException(status_code=403, detail="chi_cho_phep_o_che_do_replay")
-    _require_manager(authorization)
-
-    phieu = {
-        "id": f"kk_e2e_{uuid.uuid4().hex[:10]}",
-        "ngay": body.ngay,
-        "muc": [r.model_dump() for r in body.muc],
-        "nguon": "mo_phong_fixture",
-        "synthetic": True,
-    }
-
-    def mut(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        rows.append(phieu)
-        return rows
-
-    kv_mutate("kiem_ke", mut, [])
-    audit_add(
-        datetime.now(UTC).isoformat(),
-        "hao_hut_e2e_seed",
-        "kiem_ke_seed",
-        {"id": phieu["id"], "ngay": body.ngay, "so_dong": len(phieu["muc"])},
-        actor_type="system",
-        agent_name="ag_waste",
-    )
-    return {"ok": True, "id": phieu["id"], "so_dong": len(phieu["muc"])}

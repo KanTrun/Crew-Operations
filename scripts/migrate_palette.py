@@ -132,7 +132,7 @@ def main() -> int:
 
             def _nt(m: re.Match[str]) -> str:
                 nonlocal changed
-                util, shade = m.group(1), m.group(3)
+                util, _fam, shade = m.group(1), m.group(2), m.group(3)
                 table = NEUTRAL_TOKENS.get(util)
                 if not table:
                     return m.group(0)

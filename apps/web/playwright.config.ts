@@ -33,6 +33,7 @@ export default defineConfig({
         NHIPQUAN_DISABLE_RATE_LIMIT: "true",
         NHIPQUAN_SEED_DEMO: "true",
         NHIPQUAN_INBOX_SEED_FIXTURE: "1",
+        NHIPQUAN_HAO_HUT_SEED_FIXTURE: "1",
       },
     },
     {

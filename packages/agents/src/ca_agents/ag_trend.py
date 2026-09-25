@@ -19,8 +19,27 @@ from datetime import datetime
 from typing import Any, cast
 
 from ca_agents.clients.apify_client import ApifyError  # noqa: F401  (re-exported)
+from ca_agents.text_util import match_any_keyword
 
 logger = logging.getLogger(__name__)
+
+# Từ khoá nhận diện nội dung F&B trong TIÊU ĐỀ video TikTok.
+# So khớp theo TỪ (xem `match_any_keyword`) — so khớp substring khiến "xăng"
+# khớp "ăn" và gán nhãn sai am_thuc_fnb.
+_FNB_TITLE_KEYWORDS = (
+    "cà phê",
+    "cafe",
+    "trà",
+    "matcha",
+    "ăn",
+    "uống",
+    "quán",
+    "món",
+    "bánh",
+    "kem",
+    "đồ uống",
+    "ẩm thực",
+)
 
 # SSL mặc định verify hostname + chain (create_default_context). KHÔNG tắt
 # verify_mode: scraper chạy trên máy thật, chấp nhận MITM để đổi "kết nối được"
@@ -234,6 +253,15 @@ def _scrape_tiktok_smart(
     return _static_tiktok_topics(keyword=keyword, count=count)
 
 
+def _is_fnb_title(title: str) -> bool:
+    """True nếu tiêu đề video TikTok thuộc nhóm đồ ăn/uống.
+
+    Dùng helper so khớp THEO TỪ (`ca_agents.text_util`): so khớp substring làm
+    `"xăng"` khớp từ khoá `"ăn"` → video về giá xăng bị gán nhãn `am_thuc_fnb`.
+    """
+    return match_any_keyword(title.lower(), _FNB_TITLE_KEYWORDS)
+
+
 _TIKTOKWM_CACHE: list[dict[str, Any]] = []
 _TIKTOKWM_CACHE_TIME: float = 0.0
 
@@ -288,10 +316,7 @@ def _static_tiktok_topics(keyword: str = "", count: int = 12) -> list[TrendItem]
                 kw_clean,
                 f"🔥 [TIKTOK TOPIC] Xu Hướng Thịnh Hành: #{kw_clean}",
                 "am_thuc_fnb"
-                if any(
-                    w in kw_clean.lower()
-                    for w in ["cà phê", "trà", "matcha", "ăn", "uống", "quán"]
-                )
+                if (kw_clean and _is_fnb_title(kw_clean))
                 else "trao_luu_pop_culture",
                 "Hàng triệu views",
             )
@@ -338,6 +363,119 @@ def _static_tiktok_topics(keyword: str = "", count: int = 12) -> list[TrendItem]
     return items_out
 
 
+def parse_tikwm_feed(payload: Any) -> list[dict[str, Any]]:
+    """Hàm THUẦN: payload `/api/feed/list` của TikWM → list video dict.
+
+    Đã xác minh live 2026-09-24: `data` là **LIST PHẲNG** (một số biến thể cũ
+    bọc trong `{"videos": [...]}` — vẫn hỗ trợ cả hai).
+
+    `code != 0` = lỗi thật (rate limit "Free Api Limit: 1 request/second",
+    v.v.) → trả [] thay vì dùng dữ liệu rác (ADR-008).
+    """
+    if not isinstance(payload, dict) or payload.get("code") != 0:
+        return []
+    raw = payload.get("data")
+    if isinstance(raw, dict):
+        raw = raw.get("videos") or []
+    if not isinstance(raw, list):
+        return []
+    return [v for v in raw if isinstance(v, dict)]
+
+
+# TikWM đo thật 2026-09-24: 0.4s – 9.3s cho 1 request feed, hay timeout/HTTP 531
+# tạm thời. Timeout cũ 6s → phần lớn request bị cắt ngang dù nguồn đang sống.
+_TIKTOKWM_TIMEOUT_S = 20
+_TIKTOKWM_FEED_HOSTS = ("https://tikwm.com", "https://www.tikwm.com")
+# TikWM giới hạn 1 request/giây → phải chờ đủ nhịp giữa 2 lần cào comment.
+_TIKTOKWM_COMMENT_MIN_INTERVAL_S = 1.1
+_TIKTOKWM_COMMENT_TIMEOUT_S = 15
+_TIKTOKWM_COMMENT_VIDEO_LIMIT = 2
+_last_comment_fetch_ts: float = 0.0
+
+
+def _fetch_tikwm_feed() -> list[dict[str, Any]]:
+    """Gọi TikWM feed, thử lần lượt các host (cả www lẫn non-www đều sống nhưng
+    hay lỗi tạm thời) → raise lỗi cuối cùng để caller ghi nhận circuit breaker."""
+    last_err: Exception | None = None
+    for host in _TIKTOKWM_FEED_HOSTS:
+        url = f"{host}/api/feed/list?region=VN&count=20"
+        try:
+            req = urllib.request.Request(url, headers=_HEADERS)
+            with urllib.request.urlopen(
+                req, timeout=_TIKTOKWM_TIMEOUT_S, context=_SSL_CTX
+            ) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+            videos = parse_tikwm_feed(payload)
+            if videos:
+                return videos
+            last_err = RuntimeError(
+                f"code={payload.get('code')} msg={payload.get('msg')!r}"
+                if isinstance(payload, dict)
+                else "payload không phải JSON object"
+            )
+        except Exception as e:  # noqa: BLE001 — thử host kế tiếp
+            last_err = e
+            logger.info("tikwm_host_failed host=%s error=%s", host, e)
+    if last_err is not None:
+        raise last_err
+    return []
+
+
+def _fetch_tikwm_comments(video_url: str, limit: int = 3) -> list[str]:
+    """Cào comment thật của 1 video TikWM.
+
+    TikWM giới hạn **1 request/giây** (đo thật: request thứ 2 liên tiếp bị trả
+    `code=-1 "Free Api Limit: 1 request/second."`) → chờ đủ nhịp trước khi gọi.
+    Lỗi → trả [] (KHÔNG bịa comment, ADR-008).
+    """
+    global _last_comment_fetch_ts
+    wait = _TIKTOKWM_COMMENT_MIN_INTERVAL_S - (time.time() - _last_comment_fetch_ts)
+    if wait > 0:
+        time.sleep(wait)
+    _last_comment_fetch_ts = time.time()
+
+    comments: list[str] = []
+    try:
+        qs = urllib.parse.urlencode({"url": video_url, "count": limit})
+        cmt_url = f"https://tikwm.com/api/comment/list?{qs}"
+        cmt_req = urllib.request.Request(cmt_url, headers=_HEADERS)
+        with urllib.request.urlopen(
+            cmt_req, timeout=_TIKTOKWM_COMMENT_TIMEOUT_S, context=_SSL_CTX
+        ) as cresp:
+            cdata = json.loads(cresp.read().decode("utf-8"))
+    except Exception as e:  # noqa: BLE001 — comment là tuỳ chọn, không phá luồng
+        logger.info("tikwm_comment_fetch_failed error=%s", e)
+        return []
+
+    if not isinstance(cdata, dict) or cdata.get("code") != 0:
+        return comments
+    data = cdata.get("data")
+    raw_cmts = data.get("comments") if isinstance(data, dict) else None
+    for rc in raw_cmts or []:
+        if not isinstance(rc, dict):
+            continue
+        c_text = rc.get("text", "")
+        if not c_text:
+            continue
+        u_name = (rc.get("user") or {}).get("unique_id", "user")
+        c_likes = rc.get("digg_count", 0)
+        comments.append(f'@{u_name}: "{c_text}" (❤️ {c_likes} tim)')
+    return comments
+
+
+def _prioritize_vn_videos(videos: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Đẩy video `region == "VN"` lên đầu, giữ nguyên thứ tự tương đối.
+
+    Đo live 2026-09-24: dù gọi `/api/feed/list?region=VN`, TikWM vẫn trả lẫn
+    video từ MM/US/PK/TH/TW — đó là hạn chế của nguồn, KHÔNG lọc bỏ (sẽ mất
+    dữ liệu khi feed toàn region khác), chỉ ưu tiên VN lên trước để item F&B
+    Việt Nam không bị video nước ngoài chiếm hết slot hiển thị.
+    """
+    vn = [v for v in videos if str(v.get("region") or "").upper() == "VN"]
+    other = [v for v in videos if str(v.get("region") or "").upper() != "VN"]
+    return vn + other
+
+
 def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendItem]:
     """PRIMARY TikTok source — TikWM Direct Free API (không tốn quota Apify).
 
@@ -357,17 +495,15 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
         videos = _TIKTOKWM_CACHE
     elif _CB_TIKWM.allow():
         try:
-            url = "https://www.tikwm.com/api/feed/list?region=VN&count=20"
-            req = urllib.request.Request(url, headers=_HEADERS)
-            with urllib.request.urlopen(req, timeout=6, context=_SSL_CTX) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                raw_data = data.get("data", [])
-                vids = raw_data.get("videos", []) if isinstance(raw_data, dict) else raw_data
-                if vids:
-                    videos = vids
-                    _TIKTOKWM_CACHE = vids
-                    _TIKTOKWM_CACHE_TIME = now_ts
-                    _CB_TIKWM.record_success()
+            videos = _fetch_tikwm_feed()
+            if videos:
+                _TIKTOKWM_CACHE = videos
+                _TIKTOKWM_CACHE_TIME = now_ts
+                _CB_TIKWM.record_success()
+            else:
+                _CB_TIKWM.record_failure()
+                if _TIKTOKWM_CACHE:
+                    videos = _TIKTOKWM_CACHE
         except Exception as e:
             logger.warning(f"Lỗi fetch TikWM feed: {e}")
             _CB_TIKWM.record_failure()
@@ -383,6 +519,9 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
         filtered = [v for v in videos if kw_clean.lower() in (v.get("title") or "").lower()]
         if filtered:
             videos = filtered
+
+    # Ưu tiên video Việt Nam lên đầu (feed hay trả lẫn region khác).
+    videos = _prioritize_vn_videos(videos)
 
     # ADR-008 anti-fake-signals: KHÔNG sinh dữ liệu giả khi TikWM fail.
     # Trả [] để _scrape_tiktok_smart kích hoạt Apify backup (nếu có),
@@ -408,23 +547,11 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
         comment_count = v.get("comment_count", 0)
         video_url = f"https://www.tiktok.com/@{author}/video/{video_id}"
 
-        # Chỉ cào comment cho 2 video đầu để đảm bảo tốc độ cực nhanh (<1s)
+        # Chỉ cào comment cho 2 video đầu để đảm bảo tốc độ cực nhanh
+        # (`_fetch_tikwm_comments` tự chờ đủ nhịp 1 req/s của TikWM).
         comments_list: list[str] = []
-        if idx < 2 and video_id:
-            try:
-                cmt_url = f"https://www.tikwm.com/api/comment/list?url={video_url}&count=3"
-                cmt_req = urllib.request.Request(cmt_url, headers=_HEADERS)
-                with urllib.request.urlopen(cmt_req, timeout=2, context=_SSL_CTX) as cresp:
-                    cdata = json.loads(cresp.read().decode("utf-8"))
-                    raw_cmts = cdata.get("data", {}).get("comments", [])
-                    for rc in raw_cmts:
-                        u_name = rc.get("user", {}).get("unique_id", "user")
-                        c_text = rc.get("text", "")
-                        c_likes = rc.get("digg_count", 0)
-                        if c_text:
-                            comments_list.append(f'@{u_name}: "{c_text}" (❤️ {c_likes} tim)')
-            except Exception:
-                pass
+        if idx < _TIKTOKWM_COMMENT_VIDEO_LIMIT and video_id:
+            comments_list = _fetch_tikwm_comments(video_url)
 
         short_kw = extract_core_tiktok_keyword(title) if not kw_clean else kw_clean
         clean_tag = re.sub(r"[^a-zA-Z0-9]", "", short_kw.lower())
@@ -438,7 +565,7 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
                 nguon_goc="tiktok_vn",
                 loai_xu_huong="breaking_vn_24h",
                 danh_muc="trao_luu_pop_culture"
-                if not any(w in title.lower() for w in ["cà phê", "trà", "ăn", "món"])
+                if not _is_fnb_title(title)
                 else "am_thuc_fnb",
                 vong_doi="dang_dinh",
                 diem_nhan_dac_biet=f"Kênh sáng tạo: @{author} ({nickname}). Thống kê thật: {play_count:,} lượt xem | {digg_count:,} lượt thả tim | {comment_count:,} bình luận.",
@@ -464,8 +591,28 @@ def _scrape_tiktokwm_fallback(keyword: str = "", count: int = 12) -> list[TrendI
 
 
 def _scrape_google_trends_vn(keyword: str = "") -> list[TrendItem]:
-    """Lấy dữ liệu Google Trends Việt Nam (Ưu tiên SerpApi, fallback RSS)."""
-    # 1. PRIMARY: SerpApi Google Trends
+    """Lấy dữ liệu Google Trends Việt Nam.
+
+    Chuỗi: Trending Now (bảng xếp hạng quốc gia) → SerpApi theo từ khóa → RSS.
+
+    "Trending Now" đứng ĐẦU vì đây là bảng xếp hạng xu hướng bùng nổ thật tại
+    VN, phát hiện được trend MỚI mà quán chưa nhập từ khóa (plan 260914 §1.2).
+    """
+    # 0. PRIMARY: Bảng xếp hạng Trending Now cấp quốc gia (không cần keyword)
+    try:
+        from ca_agents.sources.gtrends_trending_now_source import fetch_trending_now_serpapi
+
+        tn_items = fetch_trending_now_serpapi(geo="VN", hl="vi", count=12)
+        if keyword.strip() and tn_items:
+            kw_low = keyword.strip().lower()
+            tn_items = [it for it in tn_items if kw_low in it.cum_tu_khoa_viral.lower()]
+        if tn_items:
+            logger.info("google_trends_source_trending_now items_count=%d", len(tn_items))
+            return tn_items
+    except Exception as exc:  # noqa: BLE001 — rớt tầng
+        logger.info("Trending Now không khả dụng, thử SerpApi theo từ khóa: %s", exc)
+
+    # 1. SerpApi Google Trends (theo từ khóa cụ thể)
     try:
         from ca_agents.sources.gtrends_serpapi_source import fetch_fnb_trends_serpapi
 
@@ -477,7 +624,12 @@ def _scrape_google_trends_vn(keyword: str = "") -> list[TrendItem]:
     except Exception as exc:
         logger.info("SerpApi Trends fallback sang RSS: %s", exc)
 
-    # 2. FALLBACK: Google Trends RSS Việt Nam
+    # 2. FALLBACK: Google Trends RSS Việt Nam (miễn phí, không cần key)
+    return _scrape_google_trends_vn_rss(keyword=keyword)
+
+
+def _scrape_google_trends_vn_rss(keyword: str = "") -> list[TrendItem]:
+    """Fallback: Google Trends RSS Việt Nam (miễn phí, không cần key)."""
     items_out: list[TrendItem] = []
     now_str = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
     try:
@@ -603,7 +755,7 @@ def _scrape_genz_media_vn(keyword: str = "") -> list[TrendItem]:
                         nguon_goc="threads_vn",
                         loai_xu_huong="breaking_vn_24h",
                         danh_muc="tam_ly_lifestyle"
-                        if not any(w in title.lower() for w in ["cà phê", "trà", "ăn", "món"])
+                        if not _is_fnb_title(title)
                         else "am_thuc_fnb",
                         vong_doi="dang_dinh",
                         diem_nhan_dac_biet=f"Trích đoạn nội dung bài viết thật: {desc_clean}",

@@ -115,9 +115,16 @@ def _assess_lifecycle(title: str, snippet: str, pub_date: str) -> tuple[str, flo
 
 
 def parse_google_rss_xml(xml_content: str) -> list[dict[str, Any]]:
-    """Parse RSS XML content into raw thread items."""
+    """Parse RSS XML content into raw thread items.
+
+    ADR-008: Google News RSS KHÔNG index `site:threads.net` (đo live
+    2026-09-24: query `site:threads.net ...` trả **0 item**). Khi đó RSS trả
+    kết quả báo chí chung — **không phải bài Threads** → KHÔNG được dựng link
+    giả kiểu `threads.net/@threads_creator`; để `link=""` và caller đánh dấu
+    `is_live_scraped=False` để downstream phân biệt được.
+    """
     items: list[dict[str, Any]] = []
-    
+
     # Bóc tách từng thẻ <item>...</item>
     raw_items = re.findall(r"<item>(.*?)</item>", xml_content, re.DOTALL)
     for raw in raw_items:
@@ -125,26 +132,27 @@ def parse_google_rss_xml(xml_content: str) -> list[dict[str, Any]]:
         link_m = re.search(r"<link>(.*?)</link>", raw, re.DOTALL)
         date_m = re.search(r"<pubDate>(.*?)</pubDate>", raw, re.DOTALL)
         desc_m = re.search(r"<description>(.*?)</description>", raw, re.DOTALL)
-        
+
         raw_title = html.unescape(title_m.group(1).strip()) if title_m else ""
-        raw_link = link_m.group(1).strip() if link_m else ""
+        raw_link = html.unescape(link_m.group(1).strip()) if link_m else ""
         raw_date = date_m.group(1).strip() if date_m else ""
         raw_desc = html.unescape(desc_m.group(1).strip()) if desc_m else ""
-        
+
         # Xóa thẻ HTML trong description để lấy snippet sạch
         clean_snippet = re.sub(r"<[^>]+>", "", raw_desc).strip()
-        
+
         # Trích xuất author từ tiêu đề hoặc link nếu có
         # Format thường: "Tên tác giả (@username) on Threads: 'Nội dung...'"
-        author_m = re.search(r"@([a-zA-Z0-9_\.]+)", raw_title) or re.search(r"@([a-zA-Z0-9_\.]+)", clean_snippet)
-        author = author_m.group(1) if author_m else "threads_creator"
-        
-        # Chuẩn hóa link bài viết
-        final_url = raw_link
-        if "threads.net" not in final_url:
-            clean_kw = re.sub(r"[^a-zA-Z0-9_]", "", author.lower())
-            final_url = f"https://www.threads.net/@{clean_kw}"
-            
+        author_m = re.search(r"@([a-zA-Z0-9_\.]+)", raw_title) or re.search(
+            r"@([a-zA-Z0-9_\.]+)", clean_snippet
+        )
+        # Author chỉ có ý nghĩa khi thật sự trích được từ RSS — không bịa tên.
+        author = author_m.group(1) if author_m else ""
+
+        # ADR-008: chỉ giữ link khi RSS TRẢ link threads.net thật. Link bịa
+        # ("@threads_creator") làm UI trỏ tới hồ sơ không tồn tại.
+        final_url = raw_link if "threads.net" in raw_link else ""
+
         if raw_title and len(raw_title) > 10:
             items.append({
                 "title": raw_title,
@@ -152,8 +160,9 @@ def parse_google_rss_xml(xml_content: str) -> list[dict[str, Any]]:
                 "date": raw_date,
                 "snippet": clean_snippet or raw_title,
                 "author": author,
+                "is_threads_source": bool(final_url),
             })
-            
+
     return items
 
 
@@ -251,6 +260,13 @@ def scrape_threads_google_bridge(
         # id ổn định giữa các lần chạy (hashlib thay vì hash() randomized).
         stable_id = hashlib.sha1(clean_title.encode("utf-8")).hexdigest()[:12]
 
+        # ADR-008: chỉ nhận là nguồn Threads khi link thật trỏ threads.net.
+        # Ngược lại (kết quả báo chí từ query fallback) giữ source thật để
+        # không gán nhãn sai cho dữ liệu.
+        is_threads_source = bool(p.get("is_threads_source"))
+        source_label = "Meta Threads" if is_threads_source else "Báo chí (Google News)"
+        author_label = f"@{author}" if author else "không xác định (nguồn báo chí)"
+
         items_out.append(
             TrendItem(
                 id=f"threads_google_bridge_{idx}_{stable_id}",
@@ -260,8 +276,12 @@ def scrape_threads_google_bridge(
                 loai_xu_huong="breaking_vn_24h",
                 danh_muc=category,
                 vong_doi=vong_doi,
-                diem_nhan_dac_biet=f"Tài khoản: @{author}. Trạng thái: {forecast}. Xuất bản: {pub_date}",
-                nguon_goc_chi_tiet=f"Cào dữ liệu từ Meta Threads qua Google Index Realtime Bridge lúc {now_str}.",
+                diem_nhan_dac_biet=f"Tài khoản: {author_label}. Trạng thái: {forecast}. Xuất bản: {pub_date}",
+                nguon_goc_chi_tiet=(
+                    f"Cào từ Meta Threads qua Google Index Bridge lúc {now_str}."
+                    if is_threads_source
+                    else f"Tín hiệu Threads gián tiếp từ Google News (chưa index trực tiếp) lúc {now_str}."
+                ),
                 ngu_canh_su_dung=f"Ý tưởng đổi mới menu, nâng cao dịch vụ quán hoặc tạo nội dung bắt trend #{short_kw}.",
                 tam_ly_gioi_tre="Tâm lý tiêu dùng, gu thưởng thức đồ uống và lối sống văn phòng của Gen Z.",
                 toc_do_tang_truong_24h=growth,
@@ -274,7 +294,7 @@ def scrape_threads_google_bridge(
                 luot_tiep_can=reach_str,
                 trich_doan_noi_dung_that=snippet,
                 binh_luan_that_tiktok=cmts,
-                nen_tang_lan_toa=["Meta Threads"],
+                nen_tang_lan_toa=[source_label],
                 tu_khoa_hashtag=[f"#{clean_tag}", "#threads", "#fnbvietnam", "#trend"],
                 is_live_scraped=False,
             )

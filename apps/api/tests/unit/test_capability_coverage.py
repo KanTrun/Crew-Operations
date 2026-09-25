@@ -113,9 +113,6 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/hao-hut": "GET_LOSS_SUMMARY + PROPOSE_LOSS_RECORD — đọc/ghi qua UI /hao-phi",
     "/api/v1/hao-hut/nguong": "GET_LOSS_THRESHOLD — ngưỡng hiển thị qua UI /hao-phi",
     "/api/v1/hao-hut/danh-muc": "chẩn đoán nội bộ — gợi ý mã mặt hàng cho ô nhập hao hụt",
-    # Chỉ mở khi CA_AGENT_MODE=replay (ngoài ra 403): bài e2e tự dựng dữ liệu
-    # kiểm kê của mình thay vì phụ thuộc `make seed` của máy dev.
-    "/api/v1/hao-hut/kiem-ke-seed": "hạ tầng test — nạp fixture kiểm kê, chỉ mở ở chế độ replay",
     # ── Cuộc họp — deep-link /cuoc-hop ──
     "/api/v1/meetings": "meeting — deep-link /cuoc-hop",
     "/api/v1/meetings/{meeting_id}": "meeting — deep-link /cuoc-hop",

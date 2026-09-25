@@ -20,11 +20,19 @@ Hệ thống cào TikTok có **3 nguồn thật + 1 tầng tĩnh last-resort**, 
    │  Return  │                              │  (browser thật, 0đ,          │
    │  items   │                              │   khó bị chặn, ~3-10s)       │
    └──────────┘                              └───────────────┬──────────────┘
-                                                            │ OK / fail
-                                                            ▼
-                                                   ┌─────────────┐
-                                                   │  Return []  │
-                                                   └─────────────┘
+                                                             │ fail (hoặc chưa cài)
+                                                             ▼
+                                                   ┌─────────────────────────────┐
+                                                   │  TIER 3: Apify backup       │
+                                                   │  (tốn CU — clockworks/      │
+                                                   │   tiktok-scraper)           │
+                                                   └──────────────┬──────────────┘
+                                                                  │ fail
+                                                                  ▼
+                                                   ┌─────────────────────────────┐
+                                                   │  LAST RESORT: static topics │
+                                                   │  (is_live_scraped=False)    │
+                                                   └─────────────────────────────┘
 ```
 
 **Nguyên tắc:**
@@ -35,6 +43,28 @@ Hệ thống cào TikTok có **3 nguồn thật + 1 tầng tĩnh last-resort**, 
 - Mode `apify_force` trên UI: đảo chiều — Apify trước, TikWM backup
 - Mode `direct_only`: chỉ TikWM, không bao giờ tốn CU Apify
 - Mode `browser`: Camoufox first (plan §3.5)
+
+### Đặc tính TikWM đã đo thật (2026-09-24)
+
+| Đặc tính | Giá trị | Ảnh hưởng code |
+|---|---|---|
+| Thời gian phản hồi | 0.4s – 9.3s (biến động mạnh) | Timeout đặt **20s** (`_TIKTOKWM_TIMEOUT_S`); timeout 6s cũ cắt ngang phần lớn request |
+| Host | `tikwm.com` và `www.tikwm.com` **đều sống** nhưng hay lỗi tạm (timeout / HTTP 531) | `_fetch_tikwm_feed()` thử **lần lượt 2 host** trước khi bỏ |
+| Rate limit | **1 request/giây** (`code=-1 "Free Api Limit: 1 request/second."`) | `_fetch_tikwm_comments()` tự chờ đủ nhịp 1.1s; chỉ cào comment cho **2 video đầu** |
+| Shape response | **`data` là LIST PHẲNG** (không bọc `{"videos": [...]}`) | `parse_tikwm_feed()` hỗ trợ cả 2 dạng, từ chối `code != 0` (ADR-008) |
+
+### ⚠️ Apify: payload rỗng làm actor FAILED ngay nhưng VẪN tốn CU
+
+Đo thật 2026-09-24: `clockworks/tiktok-scraper` FAILED **7/8 run** gần nhất, mỗi run
+vẫn tiêu ~**$0.0037** Compute Units. Một nguyên nhân là payload **không có
+`searchQueries`/`hashtags`/`profiles`** khi keyword rỗng.
+
+→ `_build_input()` nay luôn điền truy vấn mặc định (`xuhuong`, `tiktok vietnam`…)
+cho cả 3 mode. **Không bao giờ** để actor nhận payload rỗng.
+
+→ Poll status của Apify nay chịu được lỗi mạng tạm thời (`_MAX_POLL_ERRORS=3`):
+trước đây **1 lần poll timeout 5s** là bỏ luôn cả actor run dù run vẫn đang chạy
+phía Apify (vừa mất data thật, vừa vẫn bị tính CU).
 
 ## Setup ban đầu
 
@@ -53,6 +83,11 @@ APIFY_TOKEN=apify_api_xxxxxxxxxxxxxxxx
 APIFY_TIKTOK_ACTOR_ID=clockworks/tiktok-scraper
 TIKTOK_APIFY_TIMEOUT_S=90
 ```
+
+> **Actor Threads cũng cần ID tồn tại thật**: `APIFY_THREADS_ACTOR_ID`. Giá trị
+> `apify/threads-scraper` **KHÔNG tồn tại** (HTTP 404 khi gọi API) — dùng
+> `curious_coder/threads-scraper` (đã xác minh tồn tại). Kiểm tra nhanh:
+> `https://api.apify.com/v2/acts/<owner~name>?token=<token>`
 
 ### 3. Verify
 

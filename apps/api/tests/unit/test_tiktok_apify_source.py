@@ -70,8 +70,20 @@ def test_build_input_profile_strips_at():
 
 
 def test_build_input_empty_keyword_search():
+    """Keyword rỗng vẫn phải có truy vấn mặc định.
+
+    Payload KHÔNG có `searchQueries`/`hashtags`/`profiles` khiến actor FAILED
+    ngay nhưng vẫn tốn Compute Units — đo live 2026-09-24: 7/8 run gần nhất
+    FAILED, mỗi run ~$0.0037. Vì vậy keyword rỗng phải rớt về truy vấn mặc định.
+    """
     p = _build_input("", 10, "search")
-    assert "searchQueries" not in p
+    assert p["searchQueries"], "phải có truy vấn mặc định để actor không fail"
+
+    p_tag = _build_input("", 10, "hashtag")
+    assert p_tag["hashtags"], "mode hashtag cũng phải có hashtag mặc định"
+
+    p_profile = _build_input("", 10, "profile")
+    assert p_profile["profiles"], "mode profile cũng phải có profile mặc định"
 
 
 def test_format_count():
