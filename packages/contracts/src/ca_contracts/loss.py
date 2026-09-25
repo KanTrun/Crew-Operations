@@ -24,14 +24,9 @@ và `LossLine` bắt buộc nêu `thieu_ve` để UI nói được đang thiếu
 
 from __future__ import annotations
 
-try:
-    from enum import StrEnum
-except ImportError:  # pragma: no cover - Python < 3.11
-    from enum import Enum
-
-    class StrEnum(str, Enum):
-        pass
-
+# Python floor của repo là 3.12 (pyproject requires-python>=3.12) — StrEnum
+# luôn có sẵn; không cần guard fallback (<3.11) khiến ruff UP036 + mypy no-redef.
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 

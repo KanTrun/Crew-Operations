@@ -1259,6 +1259,10 @@ __all__ = [
     "LossLevel",
     "LossBasis",
     "LossCauseSource",
+    "LossCauseRank",
+    "LossLine",
+    "LossSummary",
+    "LossThreshold",
     # ── Gmail Management ──
     "GmailAccount",
     "GmailOAuthTokens",

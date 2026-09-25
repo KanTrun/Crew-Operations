@@ -38,6 +38,7 @@ from ca_contracts import (
 )
 from ca_contracts.grand_experience import (
     ExperienceMode,
+    ExperienceProposalStatus,
     ExperienceRole,
 )
 from fastapi import APIRouter, Header, HTTPException, Query
@@ -185,12 +186,12 @@ def _project_role(role: ExperienceRole) -> dict[str, Any]:
             )
             # `confirmed` trong khi chưa active là vô nghĩa (mâu thuẫn trạng thái),
             # và UI đọc nó thành "chờ duyệt" nên sẽ hiện nút Duyệt sai. Bỏ đi.
-            proposal_status = None if raw == "confirmed" else raw
+            proposal_status = None if raw == "confirmed" else str(raw) if raw else None
         modes[i] = ModeProjection(
             mode=m.mode,
             active=active,
             proposed_by=str(state.get("confirmed_by") or state.get("proposed_by") or m.proposed_by),
-            proposal_status=proposal_status,
+            proposal_status=cast(ExperienceProposalStatus | None, proposal_status),
         )
 
     horizon = [
@@ -299,8 +300,10 @@ def quanverse_modes(
         else:
             # Đề xuất đã ghi vào kv phải đọc lại được — nếu không, UI hiện
             # "Đang tắt" cho một chế độ đang chờ duyệt.
-            proposal_status = state.get("proposal_status") or (
-                m.proposal_status.value if m.proposal_status else None
+            proposal_status = str(
+                state.get("proposal_status")
+                or (m.proposal_status.value if m.proposal_status else "")
+                or ""
             )
         with_state.append(
             {

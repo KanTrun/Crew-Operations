@@ -55,9 +55,21 @@ jobs:
         run: pip install ruff mypy
       - name: Ruff
         run: ruff check apps/api/src packages scripts
-      - name: Mypy (packages when present)
+      # Mypy theo config gốc pyproject.toml: strict = true.
+      # Trước đây `|| true` nuốt MỌI lỗi type — gate type check là GIẢ: 65 lỗi
+      # strict đang tồn tại (hầu hết file test/contracts cũ trên main) không
+      # ai thấy. Chia 2 tầng, theo hướng fail-closed từng bước:
+      #   1) MÃ NGUỒN (apps/api/src + packages/*/src): strict, ĐỎ khi có lỗi —
+      #      code chạy production không được phép lệch type.
+      #   2) TESTS: hiện tạm pass vì nợ cũ của main (đếm in ra để theo dõi);
+      #      khi hết nợ sẽ siết ĐỎ tương tự. KHÔNG nuốt im lặng như trước.
+      - name: Mypy strict — mã nguồn (gate ĐỎ)
+        run: mypy apps/api/src packages/*/src
+      - name: Mypy tests — hiện trạng (chưa gate, in số nợ)
         run: |
-          if [ -f pyproject.toml ]; then mypy packages apps/api/src --ignore-missing-imports || true; fi
+          errs=$(mypy packages apps/api/src apps/api/tests --ignore-missing-imports 2>&1 | grep -c "error:" || true)
+          echo "mypy tests: $errs lỗi (nợ cũ từ main — mục tiêu siết về 0 rồi gate)"
+          if [ "$errs" -gt 0 ]; then echo "::warning::mypy tests còn $errs lỗi"; fi
       - name: ESLint / tsc (web)
         working-directory: apps/web
         run: |

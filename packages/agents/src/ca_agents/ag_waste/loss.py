@@ -155,7 +155,7 @@ def gom_theo_mat_hang(rows: Iterable[Mapping[str, Any]], truong_so: str) -> dict
         if not ma:
             continue
         try:
-            so = float(row.get(truong_so))
+            so = float(row.get(truong_so) or 0)
         except (TypeError, ValueError):
             continue
         if so <= 0:
@@ -423,7 +423,7 @@ def doc_ban_theo_mon(don_rows: Iterable[Mapping[str, Any]]) -> dict[str, float]:
                 continue
             ma = str(dong.get("mon_id") or "").strip()
             try:
-                n = float(dong.get("so_luong"))
+                n = float(dong.get("so_luong") or 0)
             except (TypeError, ValueError):
                 continue
             if ma and n > 0:
