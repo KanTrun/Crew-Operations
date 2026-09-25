@@ -89,3 +89,13 @@ data/cache/
 
 .env*
 !.env.example
+
+# Dump log CI / debug roi rac tai repo root (su co 17/09 da xu ly; chan lai
+# de dump tuong tu khong lo roi ra nua)
+/build_out.txt
+/ci_log.txt
+/docker_log.txt
+/pytest_full.txt
+/unit_log.txt
+/run_data.json
+/check_jobs.py
