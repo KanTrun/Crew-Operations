@@ -718,9 +718,17 @@ export function PageHeader({
  * `count` cho biết số bản ghi trong mỗi khung nhìn — biết trước khi bấm thì
  * không phải mở từng tab để tìm cái có dữ liệu.
  */
+/**
+ * Nhóm nút chọn chế độ / khung nhìn trong cùng một trang.
+ *
+ * KHÔNG dùng `role="tablist"` — xem lý do đầy đủ ở `TabButton`: các nút này
+ * không điều khiển `tabpanel` nào, nên `role="group"` mô tả đúng hơn (một nhóm
+ * nút có quan hệ với nhau). Gán `tablist` mà không có `tab`/`tabpanel` khớp
+ * cặp sẽ khiến công cụ hỗ trợ đọc sai cấu trúc trang.
+ */
 export function TabBar({ children, label }: { children: ReactNode; label?: string }) {
   return (
-    <div className="nq-tabbar" role="tablist" aria-label={label}>
+    <div className="nq-tabbar" role="group" aria-label={label}>
       {children}
     </div>
   );
@@ -740,16 +748,25 @@ export function TabButton({
   disabled?: boolean;
 }) {
   return (
+    /* GIỮ `role` mặc định là BUTTON — KHÔNG đặt `role="tab"`.
+       Bản trước của tôi thêm `role="tab"` để "chuẩn ARIA", nhưng đó là SAI và
+       gây hồi quy thật: `role="tab"` GHI ĐÈ role button, nên mọi truy vấn
+       `getByRole("button", …)` không còn khớp — hai bài e2e đỏ vì lý do này.
+       Hơn nữa `role="tab"` chỉ hợp lệ khi có `role="tablist"` bọc ngoài và
+       `role="tabpanel"` liên kết bằng `aria-controls`; ở đây các nút chỉ ĐỔI
+       CHẾ ĐỘ NHẬP (mic/meet/audio/text) chứ không mở panel tương ứng, nên gán
+       role tab là mô tả sai hành vi, tệ hơn là để mặc định.
+       Trạng thái đang chọn đã được truyền đạt bằng `aria-selected` + `data-on`
+       và bằng NỀN accent, không cần role tab. */
     <button
       type="button"
-      role="tab"
       aria-selected={active}
       disabled={disabled}
       className="nq-tab"
       data-on={active ? "1" : "0"}
       onClick={onClick}
     >
-      <span>{children}</span>
+      {children}
       {typeof count === "number" ? <span className="nq-tab__count">{count}</span> : null}
     </button>
   );
@@ -1356,13 +1373,17 @@ export function Tabs({
   className?: string;
 }) {
   return (
-    <div className={`nq-tabbar ${className}`.trim()} role="tablist">
+    /* Không dùng `role="tablist"`/`role="tab"` — xem lý do ở `TabButton`:
+       role tab GHI ĐÈ role button và làm hỏng truy vấn `getByRole("button")`.
+       Ở đây cũng không có `aria-controls` trỏ tới panel nào, nên gán role tab
+       là mô tả sai. `aria-pressed` mới đúng: đây là các nút BẬT/TẮT một lựa
+       chọn, không phải tab điều khiển panel. */
+    <div className={`nq-tabbar ${className}`.trim()}>
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          role="tab"
-          aria-selected={value === tab.id}
+          aria-pressed={value === tab.id}
           disabled={tab.disabled}
           className="nq-tab"
           data-on={value === tab.id ? "1" : "0"}

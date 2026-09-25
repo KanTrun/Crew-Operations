@@ -67,8 +67,11 @@ test.describe("3 vỏ theo vai trò & Phân quyền RoleGate", () => {
   }) => {
     await loginAs(page, "minh");
 
-    // Vỏ nhân viên hiển thị nav Quầy và Pha chế
-    await expect(page.getByRole("link", { name: "Quầy", exact: true })).toBeVisible();
+    /* Nav nhân viên phải có lối vào quầy và pha chế.
+       Nhãn quầy đã đổi "Quầy" -> "Ghi đơn quầy" khi chuyển sang sidebar: trong
+       thanh ngang chữ phải cực ngắn, còn sidebar dọc đủ chỗ nên nhãn nói rõ
+       VIỆC làm ở đó. Đây là đổi nhãn có chủ đích, không phải đổi hành vi. */
+    await expect(page.getByRole("link", { name: "Ghi đơn quầy", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Pha chế", exact: true })).toBeVisible();
 
     // Vào /quay

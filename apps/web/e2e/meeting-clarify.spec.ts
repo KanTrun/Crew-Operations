@@ -46,10 +46,15 @@ test.describe("AI Meeting OS — Rà soát Ngữ cảnh & Lịch ca Phân công"
     // 5. Mở tab Việc giao
     await page.getByRole("button", { name: /Việc giao/i }).click();
 
-    // Kiểm tra các nút chuyển đổi bản chất công việc có mặt
-    await expect(page.locator("button", { hasText: "⚡ 1 ca" }).first()).toBeVisible();
-    await expect(page.locator("button", { hasText: "🔄 Nhiều ca" }).first()).toBeVisible();
-    await expect(page.locator("button", { hasText: "💬 Góp ý" }).first()).toBeVisible();
+    /* Kiểm tra các nút chuyển đổi bản chất công việc có mặt.
+       KHÔNG assert theo emoji (⚡/🔄/💬): các nút này đã đổi sang icon SVG
+       (`<Icon name="zap|refresh|chat"/>` + chữ) vì guideline cấm emoji làm icon
+       — emoji do hệ điều hành vẽ nên hình/màu khác nhau trên từng máy và không
+       ăn `currentColor`. Assert theo CHỮ, đúng thứ người dùng đọc và không phụ
+       thuộc font hệ thống. */
+    await expect(page.locator("button", { hasText: "1 ca" }).first()).toBeVisible();
+    await expect(page.locator("button", { hasText: "Nhiều ca" }).first()).toBeVisible();
+    await expect(page.locator("button", { hasText: "Góp ý" }).first()).toBeVisible();
 
     // Kiểm tra nút AI Rà soát ngữ cảnh & Lịch ca
     await expect(page.getByRole("button", { name: /AI Rà soát ngữ cảnh & Lịch ca/i })).toBeVisible();
