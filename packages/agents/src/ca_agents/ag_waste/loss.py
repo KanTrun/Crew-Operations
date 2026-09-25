@@ -522,6 +522,16 @@ def _loc_theo_ky(
 
 def _ngay_hom_nay() -> str:
     """Ngày hôm nay theo giờ Việt Nam — quán đóng/mở theo giờ địa phương."""
+    return ngay_hom_nay()
+
+
+def ngay_hom_nay() -> str:
+    """Ngày hôm nay theo giờ Việt Nam (UTC+7) — hàm công khai cho test và worker.
+
+    Dùng hàm này thay vì `date.today()` / `datetime.now().date()` khi cần so khớp
+    với kỳ "hom_nay" trong `tinh_tu_nguon` / `_loc_theo_ky`. Dùng sai múi giờ
+    (UTC thay vì +7) là nguyên nhân CI chạy sau 17:00 UTC rồi lọc hết dữ liệu.
+    """
     try:
         from zoneinfo import ZoneInfo
 

@@ -11,13 +11,12 @@ Trọng tâm khẳng định:
 
 from __future__ import annotations
 
-from datetime import date
-
 from ca_agents.ag_waste import (
     chuan_hoa_mat_hang,
     doc_ban_theo_mon,
     doc_bom_theo_mon,
     gom_theo_mat_hang,
+    ngay_hom_nay,
     so_hao_hut,
     tinh_ly_thuyet,
     tinh_tu_kiem_ke,
@@ -446,7 +445,7 @@ def _phieu_kiem_ke(ngay: str, muc: list[dict]) -> dict:
 
 def test_tinh_tu_nguon_ghep_du_bon_nguon() -> None:
     """Đường vào duy nhất: menu + đơn + kiểm kê + ghi chú ⇒ một LossSummary."""
-    hom_nay = date.today().isoformat()
+    hom_nay = ngay_hom_nay()
     s = tinh_tu_nguon(
         menu=[{"id": "latte", "bom": {"cafe_g": 18}}],
         don_quay=[{"trang_thai": "xong", "luc": f"{hom_nay}T08:00:00", "dong": [{"mon_id": "latte", "so_luong": 10}]}],
@@ -472,7 +471,7 @@ def test_tinh_tu_nguon_dung_chung_mot_diem_vao() -> None:
     Khẳng định hai lần gọi với cùng dữ liệu ra cùng kết quả (tất định), để hai bề
     mặt không có cơ hội tính khác nhau.
     """
-    hom_nay = date.today().isoformat()
+    hom_nay = ngay_hom_nay()
     kwargs = {
         "menu": [{"id": "latte", "bom": {"cafe_g": 18}}],
         "don_quay": [{"trang_thai": "xong", "luc": f"{hom_nay}T08:00:00", "dong": [{"mon_id": "latte", "so_luong": 10}]}],
@@ -494,7 +493,7 @@ def test_tinh_tu_nguon_rong_khong_bia() -> None:
 
 def test_tinh_tu_nguon_chi_kiem_ke_ra_thieu_ly_thuyet() -> None:
     """Chỉ có phiếu kiểm kê, chưa có đơn ⇒ chưa kết luận được, không nói 'đạt'."""
-    hom_nay = date.today().isoformat()
+    hom_nay = ngay_hom_nay()
     s = tinh_tu_nguon(
         kiem_ke=[_phieu_kiem_ke(hom_nay, [{"mat_hang": "sua_tuoi", "dau_ca": 25, "nhap_trong_ca": 8, "cuoi_ca": 26, "hao_hut_ghi": 0}])],
         ky="hom_nay",
@@ -506,7 +505,7 @@ def test_tinh_tu_nguon_chi_kiem_ke_ra_thieu_ly_thuyet() -> None:
 
 def test_tinh_tu_nguon_loc_theo_ky() -> None:
     """Kỳ hôm nay không được tính phiếu của ngày khác."""
-    hom_nay = date.today().isoformat()
+    hom_nay = ngay_hom_nay()
     s = tinh_tu_nguon(
         kiem_ke=[
             _phieu_kiem_ke(hom_nay, [{"mat_hang": "da", "dau_ca": 10, "nhap_trong_ca": 0, "cuoi_ca": 5, "hao_hut_ghi": 0}]),
@@ -540,7 +539,7 @@ def test_tinh_tu_nguon_giu_ban_ghi_khong_co_ngay() -> None:
 
 def test_tinh_tu_nguon_danh_dau_du_lieu_mau() -> None:
     """Nhãn dữ liệu mẫu phải theo lên summary để người đọc không nhầm số mẫu."""
-    hom_nay = date.today().isoformat()
+    hom_nay = ngay_hom_nay()
     s = tinh_tu_nguon(
         kiem_ke=[_phieu_kiem_ke(hom_nay, [{
             "id": "fx_kk_01", "nguon": "mo_phong_fixture",
@@ -552,7 +551,7 @@ def test_tinh_tu_nguon_danh_dau_du_lieu_mau() -> None:
 
 
 def test_tinh_tu_nguon_khong_danh_dau_du_lieu_that() -> None:
-    hom_nay = date.today().isoformat()
+    hom_nay = ngay_hom_nay()
     s = tinh_tu_nguon(
         kiem_ke=[_phieu_kiem_ke(hom_nay, [{"id": "kk_01", "mat_hang": "da", "dau_ca": 10, "nhap_trong_ca": 0, "cuoi_ca": 4, "hao_hut_ghi": 0}])],
         ky="hom_nay",
@@ -566,7 +565,7 @@ def test_tinh_tu_nguon_doc_ngay_tu_nhieu_truong() -> None:
     Đọc sai trường là bỏ sót nguyên một nguồn. Bản tổng kết ngày của worker từng
     luôn ra 0 vì lý do này.
     """
-    hom_nay = date.today().isoformat()
+    hom_nay = ngay_hom_nay()
     s = tinh_tu_nguon(
         waste_notes=[
             {"nguyen_nhan": "het_han", "luc": f"{hom_nay}T10:00:00"},

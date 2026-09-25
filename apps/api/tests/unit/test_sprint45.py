@@ -500,11 +500,10 @@ def test_hom_nay_hao_hut_khop_voi_trang_hao_phi() -> None:
     Cả hai gọi `ag_waste.tinh_tu_nguon`; test này chốt rằng không ai lỡ tay tính
     riêng ở một trong hai chỗ. Hai đường tự tính là hai cơ hội để lệch số.
     """
-    from datetime import datetime
-
+    from ca_agents.ag_waste import ngay_hom_nay
     from ca_api.persist import kv_mutate
 
-    hom_nay = datetime.now().date().isoformat()
+    hom_nay = ngay_hom_nay()
 
     def nap_kk(rows: list[dict]) -> list[dict]:
         rows.append(
