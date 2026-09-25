@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
@@ -27,9 +27,9 @@ interface PositiveRule {
 }
 
 const RULE_STATUS_LABEL: Record<string, string> = {
-  de_xuat: "Äá» xuáº¥t",
-  hieu_luc: "Äang hiá»‡u lá»±c",
-  tu_choi: "ÄÃ£ tá»« chá»‘i",
+  de_xuat: "Đề xuất",
+  hieu_luc: "Đang hiệu lực",
+  tu_choi: "Đã từ chối",
 };
 
 export default function DeXuatThongMinhPage() {
@@ -55,7 +55,7 @@ export default function DeXuatThongMinhPage() {
       setRules(res.suggestions || []);
       setPatterns(res.patterns || []);
     } catch (e) {
-      setError(viError(e, { doing: "táº£i Ä‘á» xuáº¥t thÃ´ng minh" }));
+      setError(viError(e, { doing: "tải đề xuất thông minh" }));
     }
   }
 
@@ -78,10 +78,10 @@ export default function DeXuatThongMinhPage() {
       if (res.ok) {
         setPatterns(res.patterns || []);
         setRules(res.suggestions || []);
-        setSuccess(`ÄÃ£ phÃ¡t hiá»‡n ${res.patterns.length} máº«u thÃ nh cÃ´ng, Ä‘á» xuáº¥t ${res.suggestions.length} luáº­t tÃ­ch cá»±c.`);
+        setSuccess(`Đã phát hiện ${res.patterns.length} mẫu thành công, đề xuất ${res.suggestions.length} luật tích cực.`);
       }
     } catch (e) {
-      setError(viError(e, { doing: "cháº¡y phÃ¡t hiá»‡n máº«u thÃ nh cÃ´ng" }));
+      setError(viError(e, { doing: "chạy phát hiện mẫu thành công" }));
     } finally {
       setBusy(false);
     }
@@ -92,10 +92,10 @@ export default function DeXuatThongMinhPage() {
     setError(null);
     try {
       await apiSend(`/api/v1/ops/predict/${encodeURIComponent(id)}/approve`, null, "POST");
-      setSuccess("ÄÃ£ duyá»‡t luáº­t tÃ­ch cá»±c!");
+      setSuccess("Đã duyệt luật tích cực!");
       loadSuggestions();
     } catch (e) {
-      setError(viError(e, { doing: "duyá»‡t luáº­t tÃ­ch cá»±c" }));
+      setError(viError(e, { doing: "duyệt luật tích cực" }));
     } finally {
       setBusy(false);
     }
@@ -110,8 +110,8 @@ export default function DeXuatThongMinhPage() {
     <div className="nq-page">
       <PageHeader
         kicker="Predictive Playbook"
-        title="Äá» xuáº¥t thÃ´ng minh"
-        meta="Há»‡ thá»‘ng tá»± phÃ¡t hiá»‡n máº«u thÃ nh cÃ´ng vÃ  Ä‘á» xuáº¥t luáº­t tÃ­ch cá»±c â€” luÃ´n cáº§n ngÆ°á»i duyá»‡t."
+        title="Đề xuất thông minh"
+        meta="Hệ thống tự phát hiện mẫu thành công và đề xuất luật tích cực — luôn cần người duyệt."
       />
 
       {error && <Alert kind="err">{error}</Alert>}
@@ -120,18 +120,18 @@ export default function DeXuatThongMinhPage() {
       <PageGrid
         main={
           <>
-            <OpsCard title="PhÃ¡t hiá»‡n máº«u thÃ nh cÃ´ng" density="compact">
+            <OpsCard title="Phát hiện mẫu thành công" density="compact">
               <p className="nq-muted text-sm mb-4">
-                Cháº¡y phÃ¢n tÃ­ch dá»¯ liá»‡u lá»‹ch sá»­ Ä‘á»ƒ tÃ¬m ca doanh thu cao, mÃ³n bÃ¡n cháº¡y, giá» cao Ä‘iá»ƒm.
+                Chạy phân tích dữ liệu lịch sử để tìm ca doanh thu cao, món bán chạy, giờ cao điểm.
               </p>
               <Btn variant="primary" onClick={runPredict} disabled={busy}>
-                {busy ? "Äang phÃ¢n tÃ­ch..." : "Cháº¡y phÃ¡t hiá»‡n máº«u thÃ nh cÃ´ng"}
+                {busy ? "Đang phân tích..." : "Chạy phát hiện mẫu thành công"}
               </Btn>
             </OpsCard>
 
-            <OpsCard title="Máº«u thÃ nh cÃ´ng" count={patterns.length} countLabel="máº«u">
+            <OpsCard title="Mẫu thành công" count={patterns.length} countLabel="mẫu">
               {patterns.length === 0 ? (
-                <Empty>ChÆ°a cÃ³ máº«u thÃ nh cÃ´ng. Báº¥m &quot;Cháº¡y phÃ¡t hiá»‡n&quot; Ä‘á»ƒ báº¯t Ä‘áº§u.</Empty>
+                <Empty>Chưa có mẫu thành công. Bấm &quot;Chạy phát hiện&quot; để bắt đầu.</Empty>
               ) : (
                 <>
                   <div className="nq-columns" data-cols="2">
@@ -144,7 +144,7 @@ export default function DeXuatThongMinhPage() {
                           </span>
                         </div>
                         <p className="text-xs text-[var(--nq-ink-muted)] mt-1">
-                          Loáº¡i: {codeLabel(p.loai)} Â· Nguá»“n: {codeLabel(p.nguon)}
+                          Loại: {codeLabel(p.loai)} · Nguồn: {codeLabel(p.nguon)}
                         </p>
                       </div>
                     ))}
@@ -161,9 +161,9 @@ export default function DeXuatThongMinhPage() {
               )}
             </OpsCard>
 
-            <OpsCard title="Luáº­t tÃ­ch cá»±c Ä‘á» xuáº¥t" count={rules.length} countLabel="luáº­t">
+            <OpsCard title="Luật tích cực đề xuất" count={rules.length} countLabel="luật">
               {rules.length === 0 ? (
-                <Empty>ChÆ°a cÃ³ luáº­t tÃ­ch cá»±c.</Empty>
+                <Empty>Chưa có luật tích cực.</Empty>
               ) : (
                 <>
                   <div className="space-y-3">
@@ -176,12 +176,12 @@ export default function DeXuatThongMinhPage() {
                           </span>
                         </div>
                         <p className="text-xs text-[var(--nq-ink-muted)] mt-1">
-                          Äá»™ tin cáº­y: {Math.round(r.do_tin_cay * 100)}% Â· Báº±ng chá»©ng: {r.bang_chung.join(", ")}
+                          Độ tin cậy: {Math.round(r.do_tin_cay * 100)}% · Bằng chứng: {r.bang_chung.join(", ")}
                         </p>
                         {manager && r.trang_thai === "de_xuat" && (
                           <div className="mt-3">
                             <Btn variant="primary" onClick={() => approveRule(r.id)} disabled={busy}>
-                              Duyá»‡t luáº­t
+                              Duyệt luật
                             </Btn>
                           </div>
                         )}

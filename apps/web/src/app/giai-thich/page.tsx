@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
@@ -31,23 +31,23 @@ interface CausalChain {
 }
 
 const NODE_TYPE_LABEL: Record<string, string> = {
-  su_kien: "Sá»± kiá»‡n",
-  quyet_dinh: "Quyáº¿t Ä‘á»‹nh",
-  luat: "Luáº­t",
-  ket_qua: "Káº¿t quáº£",
+  su_kien: "Sự kiện",
+  quyet_dinh: "Quyết định",
+  luat: "Luật",
+  ket_qua: "Kết quả",
 };
 
 const NODE_SOURCE_LABEL: Record<string, string> = {
-  playbook: "Cáº©m nang quÃ¡n",
-  audit: "Váº¿t há»‡ thá»‘ng",
-  solver: "MÃ¡y xáº¿p lá»‹ch",
+  playbook: "Cẩm nang quán",
+  audit: "Vết hệ thống",
+  solver: "Máy xếp lịch",
 };
 
 export default function GiaiThichPage() {
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cauHoi, setCauHoi] = useState("Táº¡i sao ca tá»‘i T6 cÃ³ 2 pha cháº¿?");
+  const [cauHoi, setCauHoi] = useState("Tại sao ca tối T6 có 2 pha chế?");
   const [chain, setChain] = useState<CausalChain | null>(null);
   const [chains, setChains] = useState<CausalChain[]>([]);
 
@@ -61,7 +61,7 @@ export default function GiaiThichPage() {
       const res = await apiGet<{ items: CausalChain[] }>("/api/v1/ops/explain/chains");
       setChains(res.items || []);
     } catch (e) {
-      setError(viError(e, { doing: "táº£i lá»‹ch sá»­ giáº£i thÃ­ch" }));
+      setError(viError(e, { doing: "tải lịch sử giải thích" }));
     }
   }
 
@@ -79,7 +79,7 @@ export default function GiaiThichPage() {
         loadChains();
       }
     } catch (e) {
-      setError(viError(e, { doing: "truy váº¿t nhÃ¢n quáº£" }));
+      setError(viError(e, { doing: "truy vết nhân quả" }));
     } finally {
       setBusy(false);
     }
@@ -93,8 +93,8 @@ export default function GiaiThichPage() {
     <div className="nq-page">
       <PageHeader
         kicker="Self-Explaining System"
-        title="Há»‡ thá»‘ng tá»± giáº£i thÃ­ch"
-        meta="Há»i 'táº¡i sao' báº±ng ngÃ´n ngá»¯ tá»± nhiÃªn â€” nháº­n cÃ¢u tráº£ lá»i táº¥t Ä‘á»‹nh, cÃ³ báº±ng chá»©ng truy váº¿t."
+        title="Hệ thống tự giải thích"
+        meta="Hỏi 'tại sao' bằng ngôn ngữ tự nhiên — nhận câu trả lời tất định, có bằng chứng truy vết."
       />
 
       {error && <Alert kind="err">{error}</Alert>}
@@ -102,25 +102,25 @@ export default function GiaiThichPage() {
       <PageGrid
         main={
           <>
-            <OpsCard title="Truy váº¿t nhÃ¢n quáº£" density="compact">
+            <OpsCard title="Truy vết nhân quả" density="compact">
               <div className="space-y-4">
-                <Field label="CÃ¢u há»i 'táº¡i sao'">
+                <Field label="Câu hỏi 'tại sao'">
                   <input
                     type="text"
                     value={cauHoi}
                     onChange={(e) => setCauHoi(e.target.value)}
                     className="nq-input"
-                    placeholder="Táº¡i sao ca tá»‘i T6 cÃ³ 2 pha cháº¿?"
+                    placeholder="Tại sao ca tối T6 có 2 pha chế?"
                   />
                 </Field>
                 <Btn variant="primary" onClick={explain} disabled={busy}>
-                  {busy ? "Äang truy váº¿t..." : "Truy váº¿t nhÃ¢n quáº£"}
+                  {busy ? "Đang truy vết..." : "Truy vết nhân quả"}
                 </Btn>
               </div>
             </OpsCard>
 
             {chain && (
-              <OpsCard title={`Káº¿t luáº­n: ${chain.cau_hoi}`}>
+              <OpsCard title={`Kết luận: ${chain.cau_hoi}`}>
                 <div className="nq-card p-4 mb-4 bg-[var(--nq-st-ok-soft)] border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))]">
                   <p className="font-bold text-[var(--nq-st-ok-ink)]">{chain.ket_luan}</p>
                 </div>
@@ -140,9 +140,9 @@ export default function GiaiThichPage() {
               </OpsCard>
             )}
 
-            <OpsCard title="Lá»‹ch sá»­ truy váº¿t" count={chains.length} countLabel="cÃ¢u há»i">
+            <OpsCard title="Lịch sử truy vết" count={chains.length} countLabel="câu hỏi">
               {chains.length === 0 ? (
-                <Empty>ChÆ°a cÃ³ truy váº¿t nÃ o.</Empty>
+                <Empty>Chưa có truy vết nào.</Empty>
               ) : (
                 <>
                   <div className="space-y-3">

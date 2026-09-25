@@ -66,8 +66,8 @@ test.describe("Vết hệ thống (sổ vết) — truy vết người ↔ agent
     // Tên agent hiển thị (actorLabelEx → "AG-COPILOT") — nhắm vào <strong> badge,
     // tránh match trúng <option> hidden trong <select> filter.
     await expect(page.locator("strong", { hasText: "AG-COPILOT" }).first()).toBeVisible({ timeout: 15_000 });
-    // Badge agent hiển thị nhãn "AGENT"
-    await expect(page.getByText("AGENT").first()).toBeVisible();
+    // Badge agent hiển thị nhãn "AI TỰ ĐỘNG" (redesign enterprise-ui-v3)
+    await expect(page.getByText("AI TỰ ĐỘNG").first()).toBeVisible();
     // Người điều khiển hiển thị ("· do ...")
     await expect(page.getByText(/· do /)).toBeVisible();
   });
