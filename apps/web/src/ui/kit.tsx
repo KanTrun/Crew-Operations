@@ -935,7 +935,13 @@ export function Summary({
             className={`nq-summary-cell nq-surface-tile flex min-w-[140px] flex-1 flex-col p-4 ${bg}`}
           >
             <span className="nq-summary-n mb-1 text-3xl font-black tabular-nums">{c.n}</span>
-            <span className="nq-summary-k text-xs font-mono uppercase tracking-widest opacity-80">{c.k}</span>
+            {/* Nhãn KHÔNG dùng `opacity-80`: ô có tone là ô NỀN ĐẶC (vàng/ngọc/đỏ),
+                và giảm opacity trên nền đặc làm chữ tối mờ đi — đo được 1.9:1 trên
+                ô vàng. Trước đây nhãn còn kế thừa màu từ ô, nên trên ô tone nó ra
+                chữ tối trên nền tối (4.3:1, và 3.0:1 khi đã giảm opacity).
+                Nhãn giờ khai màu theo CÙNG họ với nền ô: ô màu nào thì nhãn lấy
+                bản `-ink` của họ đó, đủ tương phản ở mọi tone. */}
+            <span className="nq-summary-k text-xs font-mono uppercase tracking-widest">{c.k}</span>
           </div>
         );
       })}

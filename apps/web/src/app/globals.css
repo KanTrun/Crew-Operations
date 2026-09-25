@@ -460,11 +460,14 @@ a.nq-btn-danger {
   color: var(--nq-ink-on-danger);
 }
 
-/* Nền vàng cảnh báo ĐẶC (#f59e0b) là nền SÁNG → giữ chữ tối, đã đúng mặc định.
-   Nhưng chữ vàng cảnh báo đặt trên CHÍNH nó (nền warn nhạt) thì phải dùng bản
-   `-ink`; nếu không thì `#fbbf5c` trên `#f59e0b` chỉ đạt 1.28:1. */
-.nq-warn-chip,
-[data-tone="warn"] {
+/* Chip cảnh báo: chữ vàng đặt trên NỀN VÀNG NHẠT nên phải dùng bản `-ink-strong`
+   (nếu dùng bản sáng `#fbbf5c` trên `#f59e0b` thì chỉ đạt 1.28:1).
+   Bộ chọn phải GẮN VỚI LỚP CHIP (`.nq-warn-chip`), KHÔNG dùng trần
+   `[data-tone="warn"]`: thuộc tính đó còn nằm trên ô Summary có tone và trên
+   nhiều khối khác, nên bộ chọn trần đã đè nền VÀNG ĐẶC của ô Summary bằng nền
+   VÀNG NHẠT 14% — đo được chữ tối trên nền tối 1.9:1. Đây là lần thứ hai trong
+   dự án một bộ chọn quá rộng gây lỗi tương phản; xem thêm ghi chú ở `.nq-empty`. */
+.nq-warn-chip {
   color: var(--nq-st-warn-ink-strong);
   border-color: color-mix(in srgb, var(--nq-st-warn) 40%, transparent);
   background-color: var(--nq-st-warn-soft);
@@ -7547,7 +7550,23 @@ a.nq-bento-surface:active {
 /* Hook e2e. Ô Summary là thẻ solid — không chấm giữa ô, không nhuộm số theo tone
    (tone cũ đè ink trên nền warn/ok/red). */
 .nq-summary-k {
-  /* size/weight from Summary Tailwind; color inherits from tile */
+  /* Nhãn trên ô có TONE phải ăn theo nền ô, không kế thừa màu chữ của ô: ô tone
+     là nền ĐẶC màu, nên chữ kế thừa từ ô sẽ ra chữ tối trên nền tối. Mỗi tone
+     khai bản `-ink` của chính họ nó (xem quy ước VIỀN/CHẤM vs CHỮ trong :root). */
+  opacity: 1;
+  color: var(--nq-ink-muted);
+}
+
+.nq-summary-cell[data-tone="warn"] .nq-summary-k {
+  color: var(--nq-st-warn-ink-strong);
+}
+
+.nq-summary-cell[data-tone="ok"] .nq-summary-k {
+  color: #06301a;
+}
+
+.nq-summary-cell[data-tone="danger"] .nq-summary-k {
+  color: #4a0d0d;
 }
 
 /* ── Bảng số liệu ──

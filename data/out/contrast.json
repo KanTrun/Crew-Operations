@@ -43,21 +43,7 @@
   "/inbox": [],
   "/chat": [],
   "/cuoc-hop": [],
-  "/cam-nang": [
-   {
-    "text": "Chờ chốt",
-    "cls": "nq-summary-k text-xs font-mono uppercase tracking-widest opacity-80",
-    "tag": "span",
-    "color": "rgb(74, 44, 2)",
-    "bg": "#282111",
-    "fgHex": "#432a05",
-    "ratio": 1.19,
-    "need": 4.5,
-    "px": 13.5,
-    "bold": false,
-    "large": false
-   }
-  ],
+  "/cam-nang": [],
   "/sop": [],
   "/handover": [],
   "/qr": [],
