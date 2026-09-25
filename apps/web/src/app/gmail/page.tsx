@@ -27,6 +27,7 @@ import {
   Tooltip,
 } from "../../ui/kit";
 import { fieldLabel, formatFieldValue } from "../../lib/labels";
+import { useStaffNameMap } from "../../ui/ops-pickers";
 
 function objectChips(value: unknown): ReactNode {
   if (value == null || value === "") return "—";
@@ -125,6 +126,7 @@ export default function GmailPage() {
   const searchParams = useSearchParams();
   const activeTab = (searchParams.get("tab") as TabId) || "accounts";
   const accountId = searchParams.get("account_id") || "";
+  const staffName = useStaffNameMap();
 
   const [token, setToken] = useState("");
   const [accounts, setAccounts] = useState<GmailAccount[]>([]);
@@ -485,7 +487,11 @@ export default function GmailPage() {
                     ),
                   },
                   { key: "display_name", header: "Tên hiển thị" },
-                  { key: "nv_id", header: "Nhân viên" },
+                  {
+                    key: "nv_id",
+                    header: "Nhân viên",
+                    render: (value) => (value ? staffName(String(value)) : "—"),
+                  },
                   {
                     key: "sync_state",
                     header: "Email chưa đọc",

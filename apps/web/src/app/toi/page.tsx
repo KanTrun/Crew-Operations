@@ -28,6 +28,23 @@ type Ca = {
   co_the_nhan?: boolean;
 };
 
+const THU: Record<number, string> = {
+  0: "CN",
+  1: "T2",
+  2: "T3",
+  3: "T4",
+  4: "T5",
+  5: "T6",
+  6: "T7",
+};
+
+function dayLabel(isoDate: string): string {
+  const d = new Date(`${isoDate}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return isoDate;
+  const thu = THU[d.getDay()] ?? "";
+  return `${thu} · ${isoDate}`;
+}
+
 export default function ToiPage() {
   const [token, setToken] = useState("");
   const [ca, setCa] = useState<Ca[]>([]);
@@ -46,33 +63,35 @@ export default function ToiPage() {
   useEffect(() => {
     setToken(getToken());
     if (!getToken()) setLoading(false);
-    const requestedWeek = typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("tuan") ?? ""
-      : "";
+    const requestedWeek =
+      typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tuan") ?? "" : "";
     if (/^\d{4}-W\d{2}$/.test(requestedWeek)) setWeek(requestedWeek);
   }, []);
 
-  const load = useCallback((targetWeek?: string) => {
-    if (!getToken()) return;
-    const w = targetWeek !== undefined ? targetWeek : week;
-    const url = w ? `/api/v1/toi/lich?tuan=${encodeURIComponent(w)}` : "/api/v1/toi/lich";
-    apiGet<{ ca?: Ca[]; tuan_iso?: string; trang_thai?: string } | Ca[]>(url)
-      .then((d) => {
-        const list = Array.isArray(d) ? d : d.ca ?? [];
-        setCa(list);
-        if (!Array.isArray(d) && d.tuan_iso) setWeek(d.tuan_iso);
-      })
-      .catch(() => setError("Không tải được lịch của bạn."))
-      .finally(() => setLoading(false));
+  const load = useCallback(
+    (targetWeek?: string) => {
+      if (!getToken()) return;
+      const w = targetWeek !== undefined ? targetWeek : week;
+      const url = w ? `/api/v1/toi/lich?tuan=${encodeURIComponent(w)}` : "/api/v1/toi/lich";
+      apiGet<{ ca?: Ca[]; tuan_iso?: string; trang_thai?: string } | Ca[]>(url)
+        .then((d) => {
+          const list = Array.isArray(d) ? d : d.ca ?? [];
+          setCa(list);
+          if (!Array.isArray(d) && d.tuan_iso) setWeek(d.tuan_iso);
+        })
+        .catch(() => setError("Không tải được lịch của bạn."))
+        .finally(() => setLoading(false));
 
-    apiGet<{ email?: string; username?: string }>("/api/v1/me/profile")
-      .then((p) => {
-        const em = p.email || "";
-        setProfileEmail(em);
-        setEmailInput(em);
-      })
-      .catch(() => {});
-  }, [week]);
+      apiGet<{ email?: string; username?: string }>("/api/v1/me/profile")
+        .then((p) => {
+          const em = p.email || "";
+          setProfileEmail(em);
+          setEmailInput(em);
+        })
+        .catch(() => {});
+    },
+    [week],
+  );
 
   async function saveEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -115,6 +134,8 @@ export default function ToiPage() {
     return g;
   }, [ca]);
 
+  const days = useMemo(() => Object.keys(grouped).sort(), [grouped]);
+
   if (!token) return <AuthGate />;
 
   return (
@@ -127,14 +148,14 @@ export default function ToiPage() {
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
 
-      <OpsCard eyebrow="Hồ sơ cá nhân" title="Email nhận thông báo ca">
+      <OpsCard density="compact" eyebrow="Hồ sơ" title="Email nhận thông báo ca">
         <form onSubmit={saveEmail} className="nq-list">
           <p className="text-sm text-[var(--nq-ink-muted)]">
-            Cập nhật địa chỉ Gmail để nhận thông báo phân ca, đổi ca và nhắc việc từ quán qua email.
+            Gmail để nhận thông báo phân ca, đổi ca và nhắc việc từ quán.
           </p>
           {emailMsg ? <Alert kind="ok">{emailMsg}</Alert> : null}
           {emailError ? <Alert>{emailError}</Alert> : null}
-          <div className="flex flex-col sm:flex-row gap-2 mt-2">
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <Input
               type="email"
               placeholder="nhan_vien@gmail.com"
@@ -159,44 +180,64 @@ export default function ToiPage() {
         <Empty title="Chưa có ca">Chưa có ca trong tuần này, hoặc lịch chưa công bố.</Empty>
       ) : null}
 
-      {Object.keys(grouped)
-        .sort()
-        .map((ngay) => (
-          <OpsCard key={ngay} eyebrow="Ngày" title={ngay} count={(grouped[ngay] ?? []).length} countLabel="ca">
-            <div className="nq-list">
-              {(grouped[ngay] ?? []).map((c) => {
-                const mine = c.trang_thai === "cua_toi";
-                return (
-                  <article key={c.id} className="nq-item">
-                    <p className="nq-item-title">{viTriLabel(c.vi_tri)}</p>
-                    <p className="nq-item-sub font-mono">
-                      {c.bat_dau} – {c.ket_thuc}
-                      {c.khung ? ` · ${khungLabel(c.khung)}` : ""}
-                      {mine ? (
-                        <>
-                          {" "}
-                          · <StatusChip tone="ok">Ca của bạn</StatusChip>
-                        </>
-                      ) : null}
-                    </p>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {(mine || c.co_the_nha) && (
-                        <Btn variant="danger" disabled={busy === c.id} onClick={() => act("nha", c.id)}>
-                          Nhả
-                        </Btn>
-                      )}
-                      {(!mine || c.co_the_nhan) && (
-                        <Btn variant="primary" disabled={busy === c.id} onClick={() => act("nhan", c.id)}>
-                          Nhận
-                        </Btn>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </OpsCard>
-        ))}
+      {!loading && days.length > 0 ? (
+        <OpsCard density="compact" eyebrow="Tuần này" title="Ca của bạn" count={ca.length} countLabel="ca">
+          <div className="space-y-4">
+            {days.map((ngay) => (
+              <section key={ngay} className="min-w-0">
+                <header className="mb-2 flex items-baseline justify-between gap-2 border-b border-[var(--nq-line)] pb-1.5">
+                  <h3 className="text-sm font-semibold text-[var(--nq-fg)]">{dayLabel(ngay)}</h3>
+                  <span className="font-mono text-2xs text-[var(--nq-dim)]">
+                    {(grouped[ngay] ?? []).length} ca
+                  </span>
+                </header>
+                <ul className="space-y-2">
+                  {(grouped[ngay] ?? []).map((c) => {
+                    const mine = c.trang_thai === "cua_toi";
+                    return (
+                      <li
+                        key={c.id}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--nq-line)] bg-[var(--nq-surface)] px-3 py-2.5"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-semibold text-[var(--nq-fg)]">{viTriLabel(c.vi_tri)}</p>
+                          <p className="font-mono text-xs text-[var(--nq-dim)]">
+                            {c.bat_dau} – {c.ket_thuc}
+                            {c.khung ? ` · ${khungLabel(c.khung)}` : ""}
+                            {mine ? (
+                              <>
+                                {" "}
+                                · <StatusChip tone="ok">Ca của bạn</StatusChip>
+                              </>
+                            ) : null}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          {(mine || c.co_the_nha) && (
+                            <Btn size="sm" variant="danger" disabled={busy === c.id} onClick={() => act("nha", c.id)}>
+                              Nhả
+                            </Btn>
+                          )}
+                          {(!mine || c.co_the_nhan) && (
+                            <Btn
+                              size="sm"
+                              variant="primary"
+                              disabled={busy === c.id}
+                              onClick={() => act("nhan", c.id)}
+                            >
+                              Nhận
+                            </Btn>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </OpsCard>
+      ) : null}
     </div>
   );
 }
