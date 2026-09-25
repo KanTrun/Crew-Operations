@@ -38,8 +38,8 @@ export function FloatingChatHead() {
     };
   }, []);
 
-  // Không hiển thị widget nếu chưa đăng nhập hoặc đang ở chính trang /chat
-  if (!token || pathname === "/chat" || pathname === "/login") {
+  // Không hiển thị widget nếu chưa đăng nhập hoặc đang ở trang chat / trợ lý full-page
+  if (!token || pathname === "/chat" || pathname === "/copilot" || pathname === "/login") {
     return null;
   }
 
@@ -161,12 +161,13 @@ export function FloatingChatHead() {
         onClick={() => setIsOpen(!isOpen)}
         className="w-13 h-13 rounded-full bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center relative p-3.5 border-2 border-white/20"
         title="Chat nội bộ nhân viên"
+        aria-label={unreadTotal > 0 ? `Chat nội bộ — ${unreadTotal} tin chưa đọc` : "Chat nội bộ nhân viên"}
       >
-        <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.909 1.455 5.512 3.736 7.172v3.57c0 .545.6.89 1.05.584l3.96-2.64c.405.07.82.114 1.254.114 5.523 0 10-4.145 10-9.258C22 6.145 17.523 2 12 2zm1 13h-2v-2h2v2zm0-4h-2V7h2v4z" />
         </svg>
         {unreadTotal > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-[var(--nq-st-danger)] text-[var(--nq-accent-ink)] text-2xs font-extrabold flex items-center justify-center shadow">
+          <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-[var(--nq-st-danger)] text-[var(--nq-accent-ink)] text-2xs font-extrabold flex items-center justify-center shadow" aria-hidden="true">
             {unreadTotal > 9 ? "9+" : unreadTotal}
           </span>
         )}

@@ -317,7 +317,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
 
   return (
     <div
-      className="relative flex h-full flex-col bg-[var(--nq-bg)] text-[var(--nq-fg)]"
+      className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[var(--nq-bg)] text-[var(--nq-fg)]"
       style={{ ["--accent" as any]: profile.accent }}
     >
       {/* Consent Modal for Decree 13/2023/ND-CP */}
@@ -441,7 +441,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
       ) : (
         <>
           {/* Messages */}
-          <div className="flex-1 space-y-4 overflow-y-auto p-4 text-xs">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 text-xs">
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -638,8 +638,8 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
             {voiceEnabled && (
               <div className="mb-2 space-y-1.5">
                 {/* Audio controls: Mode switcher & Mic dropdown */}
-                <div className="flex items-center justify-between gap-2 px-1 text-2xs">
-                  <div className="inline-flex rounded border border-[var(--nq-dim)] bg-[var(--nq-bg)] p-0.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-2xs">
+                  <div className="inline-flex max-w-full flex-wrap rounded border border-[var(--nq-dim)] bg-[var(--nq-bg)] p-0.5">
                     <button
                       type="button"
                       onClick={() => handleModeChange("open_mic")}
@@ -662,7 +662,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                       }`}
                       title="Giữ nút khi nói, chống nhiễu quán ăn"
                     >
-                      Giữ để nói (PTT)
+                      Giữ để nói
                     </button>
                   </div>
 
@@ -751,7 +751,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
 
             <form
               onSubmit={handleFormSubmit}
-              className="flex items-center gap-2"
+              className="flex min-w-0 flex-wrap items-center gap-2"
             >
               <input
                 type="file"
@@ -764,8 +764,9 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={loading || Boolean(streamingId) || uploading}
-                className="nq-surface-row bg-[var(--nq-bg)] p-2 text-[var(--nq-dim)] transition hover:border-[var(--nq-accent)] hover:text-[var(--nq-accent)] disabled:opacity-40"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded border border-[var(--nq-line-control)] bg-[var(--nq-bg)] text-[var(--nq-dim)] transition hover:border-[var(--nq-accent)] hover:text-[var(--nq-accent)] disabled:opacity-40"
                 title="Đính kèm ảnh hoặc tài liệu"
+                aria-label="Đính kèm ảnh hoặc tài liệu"
               >
                 <Icon name="attachment" size={16} />
               </button>
@@ -776,7 +777,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={attachedFile ? "Thêm ghi chú cho tệp đính kèm..." : "Nhập lệnh hoặc hỏi quy trình..."}
                 disabled={loading || Boolean(streamingId) || uploading}
-                className="flex-1 border border-[var(--nq-line-control)] rounded bg-[var(--nq-bg)] px-3.5 py-2 text-xs text-[var(--nq-fg)] placeholder:text-[var(--nq-dim)] focus:outline-none focus:border-[var(--nq-accent)] disabled:opacity-50"
+                className="min-w-0 flex-1 border border-[var(--nq-line-control)] rounded bg-[var(--nq-bg)] px-3.5 py-2 text-xs text-[var(--nq-fg)] placeholder:text-[var(--nq-dim)] focus:outline-none focus:border-[var(--nq-accent)] disabled:opacity-50"
               />
               {voiceEnabled && (
                 <button
@@ -813,7 +814,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                       : undefined
                   }
                   disabled={loading || Boolean(streamingId) || uploading || voice.state === "connecting"}
-                  className={`flex items-center gap-1.5 border-2 px-2.5 py-2 text-[11px] font-bold uppercase transition select-none disabled:opacity-40 ${
+                  className={`inline-flex shrink-0 items-center gap-1.5 border-2 px-2.5 py-2 text-[11px] font-bold uppercase transition select-none disabled:opacity-40 ${
                     voiceMode === "push_to_talk" && isVoiceActive
                       ? voice.isPttSpeaking
                         ? "border-[var(--nq-st-danger)] bg-[var(--nq-st-danger)] text-[var(--nq-accent-ink)] animate-pulse scale-105"
@@ -839,7 +840,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                     {voiceMode === "push_to_talk" && isVoiceActive
                       ? voice.isPttSpeaking
                         ? "Đang nói…"
-                        : "Giữ để nói"
+                        : "Giữ"
                       : isVoiceActive
                       ? "Dừng"
                       : "Nói"}
@@ -849,7 +850,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
               <button
                 type="submit"
                 disabled={loading || Boolean(streamingId) || uploading || (!input.trim() && !attachedFile)}
-                className="rounded border border-[var(--nq-accent)] bg-[var(--nq-accent)] px-3.5 py-2 text-xs font-bold uppercase text-[var(--nq-accent-ink)] transition disabled:cursor-not-allowed disabled:opacity-40"
+                className="shrink-0 rounded border border-[var(--nq-accent)] bg-[var(--nq-accent)] px-3.5 py-2 text-xs font-bold uppercase text-[var(--nq-accent-ink)] transition disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {uploading ? "Đang tải…" : "Gửi"}
               </button>

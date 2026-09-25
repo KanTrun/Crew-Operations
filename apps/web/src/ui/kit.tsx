@@ -789,6 +789,7 @@ export function OpsCard({
   count,
   countLabel = "bản ghi",
   tourId,
+  action,
   children,
 }: {
   eyebrow?: string;
@@ -796,16 +797,18 @@ export function OpsCard({
   count?: number;
   countLabel?: string;
   tourId?: string;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   const head = title ? (
-    <div className="flex items-center gap-4 mb-6">
+    <div className="mb-6 flex flex-wrap items-center gap-4">
       <h2 className="text-2xl font-black uppercase text-[var(--nq-fg)]">{title}</h2>
       {typeof count === "number" ? (
-        <span className="nq-ink-on-solid text-sm bg-[var(--nq-accent)] px-3 py-1 rounded-full">
+        <span className="nq-ink-on-solid rounded-full bg-[var(--nq-accent)] px-3 py-1 text-sm">
           {count} {countLabel}
         </span>
       ) : null}
+      {action ? <div className="ml-auto">{action}</div> : null}
     </div>
   ) : null;
   return (

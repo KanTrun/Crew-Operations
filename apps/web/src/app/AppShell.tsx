@@ -241,7 +241,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     path === "/cuoc-hop" ||
     path === "/inbox" ||
     path === "/quay" ||
-    path === "/chat";
+    path === "/chat" ||
+    path === "/copilot" ||
+    path === "/ai-learning";
+
+  const hideFloatingCopilot =
+    path === "/copilot" ||
+    path === "/chat" ||
+    COPILOT_LAUNCHER_ROUTES.has(path);
 
   function logout() {
     clearSession();
@@ -402,7 +409,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {token ? (
         <>
-          {!COPILOT_LAUNCHER_ROUTES.has(path) ? <CopilotPane /> : null}
+          {!hideFloatingCopilot ? <CopilotPane /> : null}
           <FloatingChatHead />
         </>
       ) : null}
