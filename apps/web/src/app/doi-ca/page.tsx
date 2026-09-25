@@ -14,7 +14,9 @@ import {
   Empty,
   Loading,
   OpsCard,
+  PageActions,
   PageHeader,
+  PagedList,
   StatusChip,
 } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
@@ -89,8 +91,8 @@ function currentISOWeek(): string {
   return `${date.getFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
-function swapHaystack(it: Swap): string {
-  return [it.id, it.a, it.b, it.ca_id, swapLabel(it.trang_thai), nvLabel(it.a), nvLabel(it.b)].join(" ");
+function swapHaystack(it: Swap, personLabel: (id: string) => string): string {
+  return [it.id, it.a, it.b, it.ca_id, swapLabel(it.trang_thai), personLabel(it.a), personLabel(it.b)].join(" ");
 }
 
 export default function DoiCaPage() {
@@ -158,8 +160,14 @@ export default function DoiCaPage() {
 
   const personOptions = useMemo(() => {
     const people = uniqueSorted(items.flatMap((i) => [i.a, i.b]));
-    return [{ value: "all", label: "Mọi người" }, ...people.map((p) => ({ value: p, label: nvLabel(p) }))];
-  }, [items]);
+    return [
+      { value: "all", label: "Mọi người" },
+      ...people.map((p) => {
+        const hit = pickers?.nhan_vien.find((x) => x.id === p);
+        return { value: p, label: hit ? nvTenHienThi(hit.ten, p) : nvLabel(p) };
+      }),
+    ];
+  }, [items, pickers]);
 
   const available = useMemo(() => {
     if (!meNv) return [];
@@ -168,12 +176,12 @@ export default function DoiCaPage() {
 
   const filtered = useMemo(() => {
     return available.filter((it) => {
-      if (!matchSearch(swapHaystack(it), search)) return false;
+      if (!matchSearch(swapHaystack(it, personLabel), search)) return false;
       if (!matchExact(it.trang_thai, statusF)) return false;
       if (personF !== "all" && ![it.a, it.b].includes(personF)) return false;
       return true;
     });
-  }, [available, search, statusF, personF]);
+  }, [available, search, statusF, personF, pickers]);
 
   const filterActive = search.length > 0 || statusF !== "all" || personF !== "all";
 
@@ -281,9 +289,11 @@ export default function DoiCaPage() {
         title="Ca mở & đổi ca"
         meta="Ca thiếu do hệ thống mở và phiếu đổi giữa nhân viên là hai quy trình riêng."
       />
-      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-        Hỏi trợ lý vận hành
-      </Btn>
+      <PageActions>
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          Hỏi trợ lý vận hành
+        </Btn>
+      </PageActions>
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
 
@@ -423,43 +433,53 @@ export default function DoiCaPage() {
         ) : null}
         {!loading && available.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
         <div className="nq-list">
-          {filtered.map((it) => {
-            const agreed = new Set(it.dong_y ?? []);
-            const recipient = it.b === "all" || it.b === meNv;
-            const canAgree = meNv && recipient && it.a !== meNv && !agreed.has(meNv);
-            return (
-              <article key={it.id} className="nq-item">
-                <p className="nq-item-title">
-                  {personLabel(it.a)} nhả · {it.b === "all" ? "Mọi người" : `${personLabel(it.b)} nhận`}
-                </p>
-                <p className="nq-item-sub">
-                  <StatusChip tone={it.trang_thai === "dong_y" ? "ok" : "warn"}>
-                    {swapLabel(it.trang_thai)}
-                  </StatusChip>
-                  {it.ca_id ? ` · ${caLabel(it.ca_id)}` : ""}
-                </p>
-                <p className="nq-item-sub text-xs mt-2">
-                  {agreed.size > 0 ? `Đã có người nhận: ${[...agreed].map(personLabel).join(", ")}` : "Chưa có ai nhận ca"}
-                </p>
-                {canAgree ? (
-                  <div className="flex gap-2 mt-2">
-                    <Btn variant="primary" busy={busy} onClick={() => {
-                      if (window.confirm(`Bạn nhận ca do ${personLabel(it.a)} nhả ra không?`)) void dongY(it.id);
-                    }}>
-                      Tôi nhận ca
-                    </Btn>
-                    <Btn variant="danger" disabled={busy} onClick={() => void tuChoi(it.id)}>
-                      Từ chối
-                    </Btn>
-                  </div>
-                ) : null}
-              </article>
-            );
-          })}
+          <PagedList
+            items={filtered}
+            pageSize={10}
+            renderItem={(it) => {
+              const agreed = new Set(it.dong_y ?? []);
+              const recipient = it.b === "all" || it.b === meNv;
+              const canAgree = meNv && recipient && it.a !== meNv && !agreed.has(meNv);
+              return (
+                <article key={it.id} className="nq-item">
+                  <p className="nq-item-title">
+                    {personLabel(it.a)} nhả · {it.b === "all" ? "Mọi người" : `${personLabel(it.b)} nhận`}
+                  </p>
+                  <p className="nq-item-sub">
+                    <StatusChip tone={it.trang_thai === "dong_y" ? "ok" : "warn"}>
+                      {swapLabel(it.trang_thai)}
+                    </StatusChip>
+                    {it.ca_id ? ` · ${caLabel(it.ca_id)}` : ""}
+                  </p>
+                  <p className="nq-item-sub text-xs mt-2">
+                    {agreed.size > 0
+                      ? `Đã có người nhận: ${[...agreed].map(personLabel).join(", ")}`
+                      : "Chưa có ai nhận ca"}
+                  </p>
+                  {canAgree ? (
+                    <div className="flex gap-2 mt-2">
+                      <Btn
+                        variant="primary"
+                        busy={busy}
+                        onClick={() => {
+                          if (window.confirm(`Bạn nhận ca do ${personLabel(it.a)} nhả ra không?`)) void dongY(it.id);
+                        }}
+                      >
+                        Tôi nhận ca
+                      </Btn>
+                      <Btn variant="danger" disabled={busy} onClick={() => void tuChoi(it.id)}>
+                        Từ chối
+                      </Btn>
+                    </div>
+                  ) : null}
+                </article>
+              );
+            }}
+          />
         </div>
       </OpsCard>
 
-      <OpsCard eyebrow="Đổi ca giữa hai người" title="Phiếu được chốt thế nào?">
+      <OpsCard density="compact" eyebrow="Đổi ca giữa hai người" title="Phiếu được chốt thế nào?">
         <p className="mb-3 text-sm text-[var(--nq-dim)]">
           Người <strong>nhả</strong> mở phiếu cho một người nhận hoặc mọi người. Người nhận xem tên người
           nhả ca trước khi nhận. Phiếu đã có người nhận sẽ không còn hiện trong chợ.

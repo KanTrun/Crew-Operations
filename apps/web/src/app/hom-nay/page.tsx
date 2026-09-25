@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet } from "../../lib/api";
 import { computeOpsPulse } from "../../lib/ops-pulse";
 import {
-  actorLabel,
   formatLuc,
   ghiNhanLabel,
   matHangLabel,
@@ -18,6 +17,7 @@ import {
 import { getRole, getToken, isChuQuan, isManager } from "../../lib/session";
 import { todayHeroLine, todayTechnicalDetail } from "../../lib/status";
 import { SuaTimeline, TonBarChart, TreoDonutChart } from "../../ui/hom-nay/dashboard-charts";
+import { useActorName } from "../../ui/ops-pickers";
 import { KpiCard, StatusStrip } from "../../ui/hom-nay/kpi-card";
 import { OpsPulseLite } from "../../ui/hom-nay/ops-pulse-lite";
 import { Alert, AuthGate, Btn, BtnLink, FixtureChip, Loading, PageActions, StatusChip, TechnicalDrawer } from "../../ui/kit";
@@ -85,6 +85,7 @@ export default function HomNayPage() {
   const [manager, setManager] = useState(false);
   const [chuQuan, setChuQuan] = useState(false);
   const use3d = usePulse3d();
+  const actorName = useActorName();
 
   useEffect(() => {
     setToken(getToken());
@@ -291,7 +292,7 @@ export default function HomNayPage() {
                 </Link>
               )}
 
-              <SuaTimeline items={sua} formatLuc={formatLuc} ghiNhanLabel={ghiNhanLabel} actorLabel={actorLabel} />
+              <SuaTimeline items={sua} formatLuc={formatLuc} ghiNhanLabel={ghiNhanLabel} actorLabel={actorName} />
 
               {sua.length > 0 ? (
                 <Link href="/treo" className="nq-dash-aside-link">
