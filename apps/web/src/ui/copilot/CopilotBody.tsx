@@ -500,12 +500,25 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                       })}
                     </div>
                   )}
-                  <p className="whitespace-pre-wrap leading-relaxed">
-                    <ChatText text={msg.text} />
-                    {streamingId === msg.id && (
-                      <span className="ml-0.5 inline-block w-1.5 h-3 align-middle bg-[var(--nq-st-warn)] animate-pulse" />
-                    )}
-                  </p>
+                  {msg.sender === "copilot" && !msg.text && msg.id !== "welcome" ? (
+                    /* Chưa có chữ nào về (đang chờ phản hồi hoặc mới bắt đầu
+                       stream) — ba chấm nhấp nháy NGAY TRONG bong bóng này,
+                       không mở thêm một khung "Đang xử lý yêu cầu…" riêng
+                       bên dưới (trước đây hai khung xuất hiện cùng lúc, nhìn
+                       như giao diện bị tràn/lặp). */
+                    <p className="flex items-center gap-1 py-0.5" aria-live="polite" aria-label="Trợ lý đang soạn trả lời">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--nq-accent)]" />
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--nq-accent)] [animation-delay:150ms]" />
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--nq-accent)] [animation-delay:300ms]" />
+                    </p>
+                  ) : (
+                    <p className="whitespace-pre-wrap leading-relaxed break-words [overflow-wrap:anywhere]">
+                      <ChatText text={msg.text} />
+                      {streamingId === msg.id && (
+                        <span className="ml-0.5 inline-block w-1.5 h-3 align-middle bg-[var(--nq-st-warn)] animate-pulse" />
+                      )}
+                    </p>
+                  )}
 
                   {msg.sender === "copilot" &&
                     msg.id === "welcome" &&
@@ -575,17 +588,12 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                 <span className="mt-1 px-1 text-2xs text-[var(--nq-dim)]">{msg.timestamp}</span>
               </div>
             ))}
-            {loading && (
-              <div className="flex w-fit items-center gap-2 border border-[var(--nq-dim)] bg-[var(--nq-surface)] p-2 text-xs italic text-[var(--nq-dim)]">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--nq-accent)]" />
-                Đang xử lý yêu cầu…
-              </div>
-            )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Prompts */}
-          <div className="flex shrink-0 gap-1.5 overflow-x-auto border-t border-[var(--nq-dim)] bg-[var(--nq-surface)] px-4 py-2">
+          {/* Quick Prompts — bọc dòng (không cuộn ngang) để không lộ thanh
+              cuộn ngay dưới khung chat, tối đa 2 dòng rồi cuộn dọc nếu cần. */}
+          <div className="flex shrink-0 flex-wrap gap-1.5 border-t border-[var(--nq-dim)] bg-[var(--nq-surface)] px-4 py-2 max-h-[4.5rem] overflow-y-auto">
             {profile.quickPrompts.map((qp, idx) => (
               <button
                 key={idx}

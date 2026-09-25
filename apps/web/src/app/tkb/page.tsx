@@ -18,8 +18,10 @@ import {
   Loading,
   Notice,
   OpsCard,
+  PageActions,
   PageHeader,
   StatusChip,
+  TimeField,
   Toasts,
   useToasts,
 } from "../../ui/kit";
@@ -286,9 +288,11 @@ export default function TkbPage() {
         title="Tải ảnh lịch bận"
         meta="Chụp hoặc chọn ảnh lịch học, kiểm tra các khung giờ được đọc rồi xác nhận. Lần xếp ca tiếp theo sẽ tránh các giờ này."
       />
-      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-        Hỏi trợ lý vận hành
-      </Btn>
+      <PageActions>
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          Hỏi trợ lý vận hành
+        </Btn>
+      </PageActions>
       <Toasts toasts={toasts} onDismiss={dismiss} />
       {error ? <Alert kind="err">{error}</Alert> : null}
       {loading ? <Loading skeleton="list">Đang tải…</Loading> : null}
@@ -309,7 +313,7 @@ export default function TkbPage() {
           <p className="mb-3 text-sm text-[var(--nq-fg)]">
             Các khung bên dưới sẽ được AvoidConflict khi xếp lịch lần tới — bấm «Xóa khung» để bỏ.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="nq-tkb-day-grid">
             {THU.map((t) => {
               const khungTrongNgay = saved.filter((k) => k.thu === t);
               if (khungTrongNgay.length === 0) {
@@ -459,8 +463,10 @@ export default function TkbPage() {
             </div>
           ))}
 
-          {/* Lưới chi tiết theo ngày — mỗi khung hiện đầy đủ thứ, giờ, nút xóa */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Lưới chi tiết theo ngày — mỗi khung hiện đầy đủ thứ, giờ, nút xóa.
+              `auto-fill minmax(260px,1fr)` tự co số cột theo bề ngang thật của
+              trang (không còn cố định 4 cột rồi ép ô giờ tràn ra ngoài thẻ). */}
+          <div className="nq-tkb-day-grid">
             {THU.map((t) => {
               const khungTrongNgay = rows.map((r, i) => ({ ...r, _i: i })).filter((r) => r.thu === t);
               return (
@@ -492,35 +498,32 @@ export default function TkbPage() {
                     <p className="text-xs text-[var(--nq-ink-muted)]">Không có khung bận</p>
                   ) : (
                     khungTrongNgay.map((r) => (
-                      <div key={r._i}>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            className="nq-input w-full text-xs"
-                            type="time"
+                      <div key={r._i} className="nq-tkb-row">
+                        <div className="nq-tkb-row__times">
+                          <TimeField
                             value={r.start}
-                            aria-invalid={rowErrors[r._i].length > 0}
-                            onChange={(e) => updateRow(r._i, { start: e.target.value })}
-                            aria-label={`Giờ bắt đầu bận ${THU_TEN[t]} ${datesByDay[t]}`}
+                            onChange={(v) => updateRow(r._i, { start: v })}
+                            invalid={rowErrors[r._i].length > 0}
+                            ariaLabel={`Giờ bắt đầu bận ${THU_TEN[t]} ${datesByDay[t]}`}
                           />
                           <span className="text-[var(--nq-fg)] text-xs">đến</span>
-                          <input
-                            className="nq-input w-full text-xs"
-                            type="time"
+                          <TimeField
                             value={r.end}
-                            aria-invalid={rowErrors[r._i].length > 0}
-                            onChange={(e) => updateRow(r._i, { end: e.target.value })}
-                            aria-label={`Giờ kết thúc bận ${THU_TEN[t]} ${datesByDay[t]}`}
+                            onChange={(v) => updateRow(r._i, { end: v })}
+                            invalid={rowErrors[r._i].length > 0}
+                            ariaLabel={`Giờ kết thúc bận ${THU_TEN[t]} ${datesByDay[t]}`}
                           />
-                          <Btn
-                            variant="ghost"
-                            title={`Xóa khung bận ${THU_TEN[t]} ${r.start}–${r.end}`}
-                            onClick={() => setRows((prev) => prev.filter((_, j) => j !== r._i))}
-                          >
-                            Xóa
-                          </Btn>
                         </div>
+                        <Btn
+                          variant="ghost"
+                          size="sm"
+                          title={`Xóa khung bận ${THU_TEN[t]} ${r.start}–${r.end}`}
+                          onClick={() => setRows((prev) => prev.filter((_, j) => j !== r._i))}
+                        >
+                          Xóa
+                        </Btn>
                         {rowErrors[r._i].map((message) => (
-                          <p key={message} className="mt-1 text-xs text-[var(--nq-st-danger-ink)]" role="alert">
+                          <p key={message} className="mt-1 w-full text-xs text-[var(--nq-st-danger-ink)]" role="alert">
                             {message}
                           </p>
                         ))}
