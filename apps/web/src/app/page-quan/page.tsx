@@ -2249,7 +2249,8 @@ export default function PageQuanPage() {
                     {reflectionReport.total_conversations}
                   </div>
                   <span className="text-2xs text-[var(--nq-muted)] block mt-1">
-                    Tích cực: {reflectionReport.sentiment_breakdown?.positive || 0} | Phản ánh: {reflectionReport.sentiment_breakdown?.negative || 0}
+                    Tích cực: {reflectionReport.sentiment_breakdown?.positive || 0} · Cần cải thiện:{" "}
+                    {reflectionReport.sentiment_breakdown?.negative || 0}
                   </span>
                 </div>
               </div>
