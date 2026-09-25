@@ -7,6 +7,7 @@ import { getToken } from "../../lib/session";
 import {
   Alert,
   AuthGate,
+  DataList,
   Empty,
   Loading,
   OpsCard,
@@ -73,7 +74,11 @@ export default function ContractsPage() {
           {/* JSON là chi tiết kỹ thuật: nằm trong ngăn, không phơi mặc định
               (docs/design-guidelines.md — Progressive disclosure). */}
           <TechnicalDrawer summary="Xem khuôn dữ liệu">
-            <pre>{JSON.stringify(payload?.[key], null, 2)}</pre>
+            {payload?.[key] && typeof payload[key] === "object" ? (
+              <DataList data={payload[key] as Record<string, unknown>} nested />
+            ) : (
+              <Empty title="Chưa có khuôn">Máy chủ chưa trả chi tiết cho hợp đồng này.</Empty>
+            )}
           </TechnicalDrawer>
         </OpsCard>
       ))}

@@ -41,7 +41,22 @@ export function RosterGrid({
   const visibleKhungs = filterKhung === "all" ? KHUNGS : KHUNGS.filter((k) => k === filterKhung);
 
   return (
-    <div className="nq-roster-wrap">
+    <>
+      <ul className="nq-roster-legend" aria-label="Chú giải lịch tuần">
+        <li>
+          <span className="nq-roster-legend__swatch nq-roster-legend__swatch--ok" aria-hidden="true" />
+          Đủ người
+        </li>
+        <li>
+          <span className="nq-roster-legend__swatch nq-roster-legend__swatch--warn" aria-hidden="true" />
+          Thiếu người
+        </li>
+        <li>
+          <span className="nq-roster-legend__swatch nq-roster-legend__swatch--danger" aria-hidden="true" />
+          Trống ca
+        </li>
+      </ul>
+      <div className="nq-roster-wrap">
       <table className="nq-roster-table nq-roster-table--compact">
         <caption className="nq-roster-caption">
           Lưới tuần — bấm ô hoặc tiêu đề ngày để mở chi tiết và chỉnh nhân sự
@@ -179,6 +194,7 @@ export function RosterGrid({
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 

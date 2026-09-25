@@ -243,11 +243,16 @@ function payloadValue(value: unknown): string {
   if (typeof value === "boolean") return value ? "Có" : "Không";
   if (typeof value === "string") return PAYLOAD_VALUES[value] ?? value;
   if (typeof value === "number") return Number.isFinite(value) ? String(value) : "—";
-  try {
-    return JSON.stringify(value) ?? "—";
-  } catch {
-    return "Không đọc được chi tiết";
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "—";
+    if (value.every((v) => v == null || typeof v !== "object")) return value.map(String).join(", ");
+    return `${value.length} mục`;
   }
+  if (typeof value === "object") {
+    const keys = Object.keys(value as object);
+    return keys.length ? keys.map((k) => `${PAYLOAD_KEYS[k] ?? k.replace(/_/g, " ")}: ${payloadValue((value as Record<string, unknown>)[k])}`).join(" · ") : "—";
+  }
+  return String(value);
 }
 
 function payloadEntries(row: Row): Array<{ key: string; label: string; value: string; highlight?: boolean }> {

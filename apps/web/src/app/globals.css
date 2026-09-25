@@ -6083,6 +6083,62 @@ a.nq-bento-surface:active {
   border-radius: var(--nq-radius);
   background: color-mix(in srgb, var(--nq-bg-elevated) 55%, transparent);
   animation: nq-rise var(--nq-dur-t0) var(--nq-ease-out) both;
+  max-height: min(70vh, 52rem);
+  overflow: auto;
+}
+
+.nq-roster-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nq-s3);
+  margin: 0 0 var(--nq-s3);
+  padding: 0;
+  list-style: none;
+  font-size: var(--nq-t-caption);
+  color: var(--nq-ink-muted);
+}
+.nq-roster-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nq-s2);
+}
+.nq-roster-legend__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  border: 1px solid var(--nq-line);
+}
+.nq-roster-legend__swatch--ok { background: var(--nq-st-ok-soft); border-color: var(--nq-st-ok); }
+.nq-roster-legend__swatch--warn { background: var(--nq-st-warn-soft); border-color: var(--nq-st-warn); }
+.nq-roster-legend__swatch--danger { background: var(--nq-st-danger-soft); border-color: var(--nq-st-danger); }
+
+.nq-side__cmd {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s2);
+  width: 100%;
+  margin-top: var(--nq-s2);
+  padding: var(--nq-s2) var(--nq-s3);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-pill);
+  background: transparent;
+  color: var(--nq-ink-muted);
+  cursor: pointer;
+  font-size: var(--nq-t-caption);
+}
+.nq-side__cmd:hover {
+  border-color: var(--nq-line-strong);
+  color: var(--nq-accent-ink-text);
+}
+.nq-side__kbd {
+  margin-left: auto;
+  font-family: var(--nq-font-mono);
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+.nq-app[data-collapsed="1"] .nq-side__kbd,
+.nq-app[data-collapsed="1"] .nq-side__cmd .nq-side__label {
+  display: none;
 }
 
 .nq-roster-table {
@@ -6109,6 +6165,9 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--nq-z-sticky);
   background: color-mix(in srgb, var(--nq-bg-elevated) 92%, var(--nq-accent) 8%);
   font-family: var(--nq-font-display, var(--nq-font-sans));
   font-size: 0.82rem;
@@ -6116,6 +6175,14 @@ a.nq-bento-surface:active {
   font-weight: 700;
   text-align: left;
   letter-spacing: 0.01em;
+}
+
+.nq-roster-row-label,
+.nq-roster-corner {
+  position: sticky;
+  left: 0;
+  z-index: calc(var(--nq-z-sticky) + 1);
+  background: var(--nq-surface-2);
 }
 
 .nq-roster-day-full {
@@ -9044,6 +9111,86 @@ a.nq-bento-surface:active {
   margin-top: var(--nq-s2);
   padding-left: var(--nq-s3);
   border-left: 2px solid var(--nq-line-strong);
+}
+
+.nq-prose-block {
+  margin: 0;
+  padding: var(--nq-s4);
+  max-height: 20rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
+  line-height: 1.55;
+  color: var(--nq-ink);
+  background: var(--nq-bg);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius);
+}
+.nq-prose-block--muted {
+  color: var(--nq-ink-muted);
+}
+
+.nq-cmdk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nq-z-modal);
+  display: grid;
+  place-items: start center;
+  padding: 12vh var(--nq-s4) var(--nq-s4);
+  background: rgba(2, 6, 10, 0.55);
+  backdrop-filter: var(--nq-blur-1);
+}
+.nq-cmdk {
+  width: min(100%, 32rem);
+  background: var(--nq-surface);
+  border: 1px solid var(--nq-line-strong);
+  border-radius: var(--nq-radius-sheet);
+  box-shadow: var(--nq-elev-4);
+  overflow: hidden;
+}
+.nq-cmdk__input {
+  width: 100%;
+  padding: var(--nq-s4) var(--nq-s5);
+  border: 0;
+  border-bottom: 1px solid var(--nq-line);
+  background: transparent;
+  color: var(--nq-ink);
+  font-size: var(--nq-t-body);
+  outline: none;
+}
+.nq-cmdk__list {
+  max-height: 20rem;
+  overflow: auto;
+  padding: var(--nq-s2);
+  margin: 0;
+  list-style: none;
+}
+.nq-cmdk__item {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s3);
+  width: 100%;
+  padding: var(--nq-s3) var(--nq-s4);
+  border: 0;
+  border-radius: var(--nq-radius);
+  background: transparent;
+  color: var(--nq-ink);
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--nq-t-small);
+}
+.nq-cmdk__item[data-active="1"],
+.nq-cmdk__item:hover {
+  background: var(--nq-accent-soft);
+  color: var(--nq-accent-ink-text);
+}
+.nq-cmdk__hint {
+  margin-left: auto;
+  color: var(--nq-ink-muted);
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
 }
 
 @keyframes nq-slide-in-right {

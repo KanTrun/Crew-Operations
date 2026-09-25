@@ -10,6 +10,7 @@ import { Tour } from "../ui/tour";
 import { Logo } from "../ui/Logo";
 import { CopilotPane } from "../ui/copilot/CopilotPane";
 import { FloatingChatHead } from "../ui/chat/FloatingChatHead";
+import { CommandPalette, flattenNavGroups } from "../ui/CommandPalette";
 
 const COLLAPSE_KEY = "nq_side_collapsed";
 
@@ -132,6 +133,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   /** Sidebar trượt ra ở màn hẹp. Tách khỏi `collapsed` vì hai trạng thái này
    *  độc lập: màn rộng thu gọn còn icon, màn hẹp đóng hẳn. */
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
   const burgerRef = useRef<HTMLButtonElement>(null);
   const sideRef = useRef<HTMLElement>(null);
 
@@ -210,6 +212,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, [drawerOpen]);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   const toggleCollapsed = useCallback(() => {
     setCollapsed((v) => {
       const next = !v;
@@ -240,6 +253,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       className="nq-app min-h-screen font-sans"
       data-collapsed={collapsed ? "1" : "0"}
     >
+      <CommandPalette
+        open={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        items={flattenNavGroups(GROUPS)}
+        role={role || null}
+      />
       {/* Nút mở sidebar — chỉ hiện ở màn hẹp (điều khiển bằng CSS). */}
       <button
         ref={burgerRef}
@@ -334,6 +353,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
               <button type="button" onClick={logout} className="nq-cta nq-cta--ghost nq-cta--sm">
                 Thoát
+              </button>
+              <button
+                type="button"
+                className="nq-side__cmd"
+                onClick={() => setCmdOpen(true)}
+                title="Tìm trang nhanh (Ctrl+K)"
+              >
+                <Icon name="filter" size={14} />
+                <span className="nq-side__label">Tìm nhanh</span>
+                <kbd className="nq-side__kbd">Ctrl+K</kbd>
               </button>
             </>
           ) : (

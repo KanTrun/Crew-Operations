@@ -4,8 +4,16 @@ import { useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { viError } from "../../lib/present";
 import { getToken, isManager } from "../../lib/session";
-import { Alert, AuthGate, Btn, Empty, Field, Loading, OpsCard, PageHeader } from "../../ui/kit";
+import { Alert, AuthGate, Btn, DataList, Empty, Field, Loading, OpsCard, PageHeader, StatusChip } from "../../ui/kit";
 import { Icon } from "../../ui/icons";
+import { fieldLabel } from "../../lib/labels";
+
+const LOAI_LABEL: Record<string, string> = {
+  tang_gia: "Tăng giá",
+  giam_gia: "Giảm giá",
+  them_nhan_su: "Thêm nhân sự",
+  bot_nhan_su: "Bớt nhân sự",
+};
 
 interface TwinScenario {
   scenario_id: string;
@@ -156,21 +164,17 @@ export default function ThuNghiemAnToanPage() {
           <div className="space-y-3">
             {scenarios.map((s) => (
               <div key={s.scenario_id} className="nq-card p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <h4 className="font-bold">{s.loai}</h4>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--nq-surface)] text-[var(--nq-ink)] border border-[var(--nq-line)]">
-                    {s.scenario_id}
-                  </span>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h4 className="font-bold">{LOAI_LABEL[s.loai] ?? fieldLabel(s.loai)}</h4>
+                  <StatusChip tone="info">{s.scenario_id}</StatusChip>
                 </div>
-                <pre className="text-xs font-mono text-[var(--nq-ink-muted)] mt-2 whitespace-pre-wrap">
-                  {JSON.stringify(s.ket_qua, null, 2)}
-                </pre>
-                {s.rui_ro && (
-                  <p className="text-xs text-[var(--nq-st-warn-ink)] mt-2 flex items-start gap-1.5">
-                <Icon name="warn" size={13} />
-                <span>{s.rui_ro}</span>
-              </p>
-                )}
+                <DataList data={(s.ket_qua ?? {}) as Record<string, unknown>} nested />
+                {s.rui_ro ? (
+                  <p className="text-xs text-[var(--nq-st-warn-ink)] mt-3 flex items-start gap-1.5">
+                    <Icon name="warn" size={13} />
+                    <span>{s.rui_ro}</span>
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>
