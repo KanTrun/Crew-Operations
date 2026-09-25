@@ -53,20 +53,94 @@
   justify-content: space-between;
   gap: var(--nq-s1);
   width: 100%;
+  flex: none;
 }
 
-/* Dãy avatar trong ô lịch.
-   Ô lịch rộng ~110px; một ca bar thường có 3–6 người. Bản cũ in tên đầy đủ rồi
-   cắt bằng `-webkit-line-clamp: 3`, nên từ người thứ ba trở đi biến mất sau dấu
-   "…" — người xếp lịch mất thông tin đúng lúc cần nhất. Viết tắt 2 ký tự luôn
-   vừa: 6 người vẫn đọc được, tên đầy đủ nằm ở tooltip và bảng chi tiết ngày. */
+/* Một cột tên trong ô — calendar/roster scan, không chip 2 cột cắt giữa ngoặc. */
 .nq-roster-slot-crew {
   display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
   margin-top: var(--nq-s1);
+  min-width: 0;
+  width: 100%;
 }
 
+.nq-roster-crew-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.18rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--nq-bg-elevated) 42%, transparent);
+  color: var(--nq-ink);
+  line-height: 1.3;
+  overflow: hidden;
+}
+
+.nq-roster-crew-name__who {
+  flex: none;
+  max-width: 55%;
+  font-size: var(--nq-t-caption);
+  font-weight: 700;
+  color: var(--nq-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nq-roster-crew-name__role {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--nq-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nq-roster-crew-name[data-pinned="1"] {
+  border-color: color-mix(in srgb, var(--nq-accent) 55%, var(--nq-line));
+}
+
+.nq-roster-crew-name[data-pinned="1"] .nq-roster-crew-name__who {
+  color: var(--nq-accent-ink-text, var(--nq-accent));
+}
+
+.nq-roster-slot-more {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 1px;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--nq-line);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--nq-bg) 50%, transparent);
+  color: var(--nq-ink-muted);
+  font-size: var(--nq-t-caption);
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.nq-roster-slot-none {
+  color: var(--nq-ink-muted);
+  font-size: var(--nq-t-caption);
+  font-style: italic;
+}
+
+.nq-roster-slot-flag {
+  display: inline-flex;
+  align-items: center;
+  color: var(--nq-st-warn);
+  flex: none;
+}
+
+/* Avatar compact vẫn dùng ở chỗ khác nếu còn — giữ token tối thiểu. */
 .nq-avatar {
   display: inline-flex;
   align-items: center;
@@ -75,20 +149,16 @@
   height: 22px;
   padding: 0 4px;
   border-radius: var(--nq-radius-pill);
-  /* Nền trung tính: avatar không phải tình trạng, không được tranh màu với chip
-     "Thiếu người" nằm ngay trên nó. */
   background: color-mix(in srgb, var(--nq-bg-elevated) 40%, var(--nq-ink) 14%);
   border: 1px solid var(--nq-line);
   color: var(--nq-ink);
   font-family: var(--nq-font-mono);
-  font-size: var(--nq-t-micro);
+  font-size: var(--nq-t-caption);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.02em;
 }
 
-/* Ghim ca là quyết định của quản lý, không phải tình trạng — đánh dấu bằng viền
-   copper (nghĩa "thuộc về quán"), không bằng đỏ/vàng. */
 .nq-avatar[data-pinned="1"] {
   border-color: var(--nq-accent);
   color: var(--nq-accent);
@@ -97,18 +167,6 @@
 .nq-avatar--more {
   background: transparent;
   color: var(--nq-ink-muted);
-}
-
-.nq-roster-slot-none {
-  color: var(--nq-ink-muted);
-  font-size: var(--nq-t-micro);
-}
-
-.nq-roster-slot-flag {
-  display: inline-flex;
-  align-items: center;
-  color: var(--nq-st-warn);
-  flex: none;
 }
 /* NHỊP QUÁN v3 Premium Ops — docs/design-guidelines.md */
 @tailwind base;
@@ -6350,21 +6408,23 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-wrap {
-  /* Full bảng trong trang — không khóa chiều cao / cuộn trong ô (mất tinh tế). */
+  /* Full bảng trong trang — không khóa chiều cao / cuộn trong ô.
+     Cuộn ngang chỉ khi viewport hẹp (table-layout auto dưới 860px). */
   overflow-x: auto;
   overflow-y: visible;
-  border: 1px solid var(--nq-line);
+  border: 1px solid var(--nq-line-strong);
   border-radius: var(--nq-radius);
-  background: color-mix(in srgb, var(--nq-bg-elevated) 55%, transparent);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 70%, transparent);
   animation: nq-rise var(--nq-dur-t0) var(--nq-ease-out) both;
   max-height: none;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--nq-ink) 4%, transparent);
 }
 
 .nq-roster-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--nq-s3);
-  margin: 0 0 var(--nq-s3);
+  gap: var(--nq-s2) var(--nq-s4);
+  margin: 0 0 var(--nq-s2);
   padding: 0;
   list-style: none;
   font-size: var(--nq-t-caption);
@@ -6373,13 +6433,14 @@ a.nq-bento-surface:active {
 .nq-roster-legend li {
   display: inline-flex;
   align-items: center;
-  gap: var(--nq-s2);
+  gap: var(--nq-s1);
 }
 .nq-roster-legend__swatch {
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 0.7rem;
+  height: 0.7rem;
   border-radius: 2px;
   border: 1px solid var(--nq-line);
+  flex: none;
 }
 .nq-roster-legend__swatch--ok { background: var(--nq-st-ok-soft); border-color: var(--nq-st-ok); }
 .nq-roster-legend__swatch--warn { background: var(--nq-st-warn-soft); border-color: var(--nq-st-warn); }
@@ -6422,22 +6483,23 @@ a.nq-bento-surface:active {
      thay vì mỗi cột giữ `min-width` cố định rồi đẩy bảng tràn ra ngoài và bắt
      cuộn ngang ngay ở màn hình laptop bình thường. */
   table-layout: fixed;
-  font-size: 0.875rem;
+  font-size: var(--nq-t-small);
+  --roster-rows: 3;
 }
 
 .nq-roster-caption {
   caption-side: top;
   text-align: left;
-  padding: 0.75rem 0.85rem 0.55rem;
-  font-size: 0.8rem;
+  padding: 0.65rem 0.85rem 0.45rem;
+  font-size: var(--nq-t-caption);
   color: var(--nq-ink-muted);
   letter-spacing: 0.02em;
 }
 
 .nq-roster-table th,
 .nq-roster-table td {
-  border: 1px solid var(--nq-line);
-  padding: 0.4rem 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--nq-line-strong) 72%, var(--nq-line));
+  padding: 0.35rem 0.4rem;
   vertical-align: top;
   overflow: hidden;
 }
@@ -6450,7 +6512,11 @@ a.nq-bento-surface:active {
   }
   .nq-roster-table th,
   .nq-roster-table td {
-    min-width: 128px;
+    min-width: 140px;
+  }
+  .nq-roster-table .nq-roster-corner,
+  .nq-roster-table .nq-roster-row-label {
+    min-width: 8.5rem;
   }
 }
 
@@ -6458,13 +6524,15 @@ a.nq-bento-surface:active {
   position: sticky;
   top: 0;
   z-index: var(--nq-z-sticky);
-  background: color-mix(in srgb, var(--nq-bg-elevated) 92%, var(--nq-accent) 8%);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 94%, var(--nq-accent) 6%);
   font-family: var(--nq-font-display, var(--nq-font-sans));
-  font-size: 0.82rem;
+  font-size: var(--nq-t-small);
   color: var(--nq-ink);
   font-weight: 700;
   text-align: left;
   letter-spacing: 0.01em;
+  border-bottom: 2px solid var(--nq-line-strong);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--nq-bg) 80%, transparent);
 }
 
 .nq-roster-row-label,
@@ -6472,19 +6540,32 @@ a.nq-bento-surface:active {
   position: sticky;
   left: 0;
   z-index: calc(var(--nq-z-sticky) + 1);
-  background: var(--nq-surface-2);
+  background: var(--nq-surface-2, var(--nq-bg-elevated));
+  border-right: 2px solid var(--nq-line-strong);
+}
+
+.nq-roster-corner {
+  z-index: calc(var(--nq-z-sticky) + 2);
+  vertical-align: bottom;
+  font-size: var(--nq-t-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nq-ink-muted);
 }
 
 .nq-roster-day-full {
   display: inline;
+  font-weight: 800;
+  color: var(--nq-ink);
 }
 
 .nq-roster-day-short {
   display: none;
   font-family: var(--nq-font-mono);
-  font-size: 0.75rem;
-  color: var(--nq-ink-muted);
-  font-weight: 600;
+  font-size: var(--nq-t-caption);
+  color: var(--nq-ink);
+  font-weight: 700;
 }
 
 @media (max-width: 900px) {
@@ -6498,11 +6579,30 @@ a.nq-bento-surface:active {
 
 .nq-roster-row-label {
   font-family: var(--nq-font-display, var(--nq-font-sans));
-  font-size: 0.84rem;
+  font-size: var(--nq-t-small);
   font-weight: 700;
   color: var(--nq-ink);
   white-space: nowrap;
-  background: color-mix(in srgb, var(--nq-bg-elevated) 90%, transparent);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 92%, transparent);
+  vertical-align: middle;
+  padding: 0.55rem 0.65rem;
+}
+
+.nq-roster-row-label__title {
+  display: block;
+  font-weight: 800;
+  color: var(--nq-ink);
+  line-height: 1.25;
+}
+
+.nq-roster-row-label__time {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
+  font-weight: 500;
+  color: var(--nq-ink-muted);
+  letter-spacing: 0.01em;
 }
 
 .nq-roster-cell {
@@ -6619,9 +6719,14 @@ a.nq-bento-surface:active {
   opacity: 0.35;
 }
 
-/* ── Roster compact grid (Approach A) ── */
+/* ── Roster compact grid (calendar / When I Work style) ── */
 .nq-roster-table--compact .nq-roster-corner {
   min-width: 8.5rem;
+}
+
+.nq-roster-table--compact tbody tr {
+  /* Ba ca lấp chiều cao viewport còn lại — không cuộn trong ô. */
+  height: max(9.5rem, calc((100dvh - 18rem) / var(--roster-rows, 3)));
 }
 
 .nq-roster-day-head {
@@ -6633,15 +6738,27 @@ a.nq-bento-surface:active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.1rem;
+  gap: 0.2rem;
   width: 100%;
-  padding: 0.4rem 0.3rem;
+  min-height: 3.1rem;
+  padding: 0.45rem 0.35rem 0.5rem;
   border: none;
   background: transparent;
   color: inherit;
   cursor: pointer;
   font: inherit;
-  transition: background-color var(--nq-dur-t0), color var(--nq-dur-t0);
+  transition:
+    background-color var(--nq-dur-t0) var(--nq-ease-out),
+    color var(--nq-dur-t0) var(--nq-ease-out);
+}
+
+.nq-roster-day-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.35rem;
+  line-height: 1.2;
 }
 
 .nq-roster-day-btn:hover,
@@ -6650,24 +6767,36 @@ a.nq-bento-surface:active {
   color: var(--nq-accent);
 }
 
+.nq-roster-day-head--today .nq-roster-day-btn {
+  background: color-mix(in srgb, var(--nq-accent) 10%, transparent);
+  box-shadow: inset 0 -2px 0 var(--nq-accent);
+}
+
+.nq-roster-day-head--today .nq-roster-day-date {
+  color: var(--nq-accent);
+  font-weight: 700;
+}
+
 .nq-roster-day-date {
   font-family: var(--nq-font-mono);
-  font-size: 0.68rem;
+  font-size: var(--nq-t-caption);
   color: var(--nq-ink-muted);
+  font-weight: 600;
 }
 
 .nq-roster-day-meta {
   font-family: var(--nq-font-mono);
-  font-size: 0.62rem;
-  padding: 0.1rem 0.35rem;
+  font-size: 0.68rem;
+  padding: 0.08rem 0.4rem;
   border-radius: var(--nq-radius-pill);
   border: 1px solid var(--nq-line);
-  margin-top: 0.15rem;
+  color: var(--nq-ink-muted);
+  background: color-mix(in srgb, var(--nq-bg) 40%, transparent);
 }
 
 .nq-roster-band--even td,
 .nq-roster-band--even th.nq-roster-row-label {
-  background: color-mix(in srgb, var(--nq-bg-elevated) 94%, var(--nq-accent) 6%);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 96%, var(--nq-accent) 4%);
 }
 
 .nq-roster-band--odd td,
@@ -6677,7 +6806,8 @@ a.nq-bento-surface:active {
 
 .nq-roster-slot {
   padding: 0.2rem;
-  vertical-align: middle;
+  vertical-align: top;
+  height: 100%;
 }
 
 .nq-roster-slot--spot {
@@ -6685,35 +6815,87 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-slot-btn {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 8.5rem;
+  padding: 0;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius);
+  background: color-mix(in srgb, var(--nq-bg) 78%, var(--nq-bg-elevated));
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  transition:
+    border-color var(--nq-dur-t0) var(--nq-ease-out),
+    box-shadow var(--nq-dur-t0) var(--nq-ease-out),
+    transform var(--nq-dur-press) var(--nq-ease-spring),
+    background-color var(--nq-dur-t0) var(--nq-ease-out);
+}
+
+.nq-roster-slot-accent {
+  flex: none;
+  width: 4px;
+  align-self: stretch;
+}
+
+.nq-roster-slot-accent--ok {
+  background: var(--nq-st-ok);
+}
+
+.nq-roster-slot-accent--warn {
+  background: var(--nq-st-warn);
+}
+
+.nq-roster-slot-accent--empty {
+  background: var(--nq-st-danger);
+}
+
+.nq-roster-slot-body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.15rem;
-  width: 100%;
-  min-height: 2.6rem;
-  padding: 0.3rem 0.4rem;
-  border: 1px solid var(--nq-line);
-  border-radius: var(--nq-radius);
-  background: color-mix(in srgb, var(--nq-bg) 70%, var(--nq-bg-elevated));
-  cursor: pointer;
-  text-align: left;
-  transition:
-    border-color var(--nq-dur-t0),
-    transform var(--nq-dur-press) var(--nq-ease-spring);
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.45rem 0.45rem;
 }
 
 .nq-roster-slot-btn:hover {
-  border-color: color-mix(in srgb, var(--nq-accent) 50%, var(--nq-line));
+  border-color: color-mix(in srgb, var(--nq-accent) 55%, var(--nq-line));
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--nq-bg) 55%, transparent);
+  transform: translateY(-1px);
+  z-index: 1;
+}
+
+.nq-roster-slot-btn:focus-visible {
+  outline: 2px solid var(--nq-accent);
+  outline-offset: 2px;
 }
 
 .nq-roster-slot-btn:active {
   transform: scale(var(--nq-press));
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .nq-roster-slot-btn,
+  .nq-roster-day-btn {
+    transition: none;
+  }
+  .nq-roster-slot-btn:hover,
+  .nq-roster-slot-btn:active {
+    transform: none;
+  }
+}
+
 .nq-roster-slot-count {
   font-family: var(--nq-font-mono);
   font-size: var(--nq-t-caption);
   font-weight: 800;
+  letter-spacing: 0.02em;
   color: var(--nq-fg);
 }
 
@@ -6725,15 +6907,17 @@ a.nq-bento-surface:active {
    Bản cũ chỉ có vàng/đỏ và dùng chung một dạng viền, nên "thiếu 1 người" và
    "trống ca" khó phân biệt khi liếc nhanh cả tuần. */
 .nq-roster-slot-btn--ok {
-  border-color: color-mix(in srgb, var(--nq-st-ok) 34%, var(--nq-line));
+  border-color: color-mix(in srgb, var(--nq-st-ok) 40%, var(--nq-line));
+  background: color-mix(in srgb, var(--nq-st-ok-soft) 35%, color-mix(in srgb, var(--nq-bg) 78%, var(--nq-bg-elevated)));
 }
 
 .nq-roster-slot-btn--ok .nq-roster-slot-count {
-  color: var(--nq-st-ok);
+  color: var(--nq-st-ok-ink, var(--nq-st-ok));
 }
 
 .nq-roster-slot-btn--warn {
-  border-color: color-mix(in srgb, var(--nq-st-warn) 44%, var(--nq-line));
+  border-color: color-mix(in srgb, var(--nq-st-warn) 50%, var(--nq-line));
+  background: color-mix(in srgb, var(--nq-st-warn-soft) 40%, color-mix(in srgb, var(--nq-bg) 78%, var(--nq-bg-elevated)));
 }
 
 .nq-roster-slot-btn--warn .nq-roster-slot-count {
@@ -6742,7 +6926,8 @@ a.nq-bento-surface:active {
 
 .nq-roster-slot-btn--empty {
   border-style: dashed;
-  border-color: color-mix(in srgb, var(--nq-st-danger) 40%, var(--nq-line));
+  border-color: color-mix(in srgb, var(--nq-st-danger) 48%, var(--nq-line));
+  background: color-mix(in srgb, var(--nq-st-danger-soft) 30%, color-mix(in srgb, var(--nq-bg) 78%, var(--nq-bg-elevated)));
 }
 
 .nq-roster-slot-btn--empty .nq-roster-slot-count {
@@ -6750,7 +6935,7 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-slot-btn[data-unconfirmed="1"] {
-  border-left-width: 3px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nq-st-warn) 35%, transparent);
 }
 
 .nq-roster-khung-bar {

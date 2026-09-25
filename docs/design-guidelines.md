@@ -88,3 +88,14 @@ No Google Fonts CDN. Vietnamese subsets required.
 ## Performance budgets
 
 LCP < 2.5s · CLS < 0.05 · INP < 200ms · 60fps transitions · LazyMotion + dynamic 3D/Lenis.
+
+## Roster / Lịch tuần grid
+
+Calendar-dense week matrix (Deputy / When I Work / nurse roster), not chip collage.
+
+- **Structure:** sticky day headers + sticky `Khung` column; stronger `--nq-line-strong` borders; 3 shift rows fill viewport (`--roster-rows`).
+- **Cell hierarchy:** left status accent (ok/warn/empty) → count `Đủ · 4/4` → one-column crew names → `+N nữa`.
+- **Names:** `shortNameOf()` — never take `(` as initial; role in parens stays intact (`Nam (pha chế)`); tooltip = full name. No 2-col micro chips.
+- **Motion:** cell hover lift 1px + border; respect `prefers-reduced-motion`.
+- **Narrow:** horizontal scroll under 860px — do not crush names.
+- **E2E:** keep `.nq-roster-slot-btn` (21 cells when 3×7).

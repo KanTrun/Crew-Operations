@@ -184,6 +184,16 @@ function dayDate(monday: Date, offset: number): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function isSameCalendarDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function isTodayOffset(monday: Date, offset: number): boolean {
+  const d = new Date(monday);
+  d.setDate(d.getDate() + offset);
+  return isSameCalendarDay(d, new Date());
+}
+
 function dayTitle(d: string): string {
   const m: Record<string, string> = {
     T2: "Thứ 2",
@@ -612,6 +622,7 @@ export default function RosterPage() {
   const dayLabelRows = days.map((d, i) => ({
     title: dayTitle(d),
     date: dayDate(monday, dayOffsets[i]),
+    isToday: isTodayOffset(monday, dayOffsets[i]),
   }));
 
   const byDay: Record<string, Shift[]> = {};
