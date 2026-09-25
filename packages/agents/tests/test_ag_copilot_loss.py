@@ -10,12 +10,11 @@ Khẳng định:
 
 from __future__ import annotations
 
-from datetime import date
 from typing import Any
 
 import pytest
 from ca_agents.ag_copilot import tool_registry as tr
-from ca_agents.ag_waste import tinh_tu_nguon
+from ca_agents.ag_waste import ngay_hom_nay, tinh_tu_nguon
 
 
 @pytest.fixture
@@ -28,7 +27,9 @@ def giu_nguon() -> Any:
 
 
 def _nguon_that(*, co_du_lieu: bool = True) -> dict[str, Any]:
-    hom_nay = date.today().isoformat()
+    # Phải dùng ngày VN (+7) — cùng khóa với tinh_tu_nguon(ky="hom_nay").
+    # date.today() trên CI (UTC) lệch sau 17:00 UTC → lọc hết dữ liệu.
+    hom_nay = ngay_hom_nay()
     kiem_ke = (
         [{
             "ngay": hom_nay,
@@ -128,7 +129,7 @@ def test_chua_co_du_lieu_thi_noi_that(giu_nguon: None) -> None:
 
 def test_thieu_mot_ve_thi_me_noi_ro(giu_nguon: None) -> None:
     """Có kiểm kê mà chưa có đơn ⇒ mẹ phải nói thiếu vế, không nói 'đạt'."""
-    hom_nay = date.today().isoformat()
+    hom_nay = ngay_hom_nay()
     tr.configure_data_sources(
         kv_get=lambda key, default: {
             "kiem_ke": [{"ngay": hom_nay, "muc": [{"mat_hang": "sua_tuoi", "dau_ca": 25, "nhap_trong_ca": 8, "cuoi_ca": 26, "hao_hut_ghi": 0}]}],
@@ -148,7 +149,7 @@ def test_thieu_mot_ve_thi_me_noi_ro(giu_nguon: None) -> None:
 
 def test_danh_dau_du_lieu_mau_trong_cau_tra_loi(giu_nguon: None) -> None:
     """Số từ bộ mẫu phải được nói rõ, không để nhầm là số thật của quán."""
-    hom_nay = date.today().isoformat()
+    hom_nay = ngay_hom_nay()
     tr.configure_data_sources(
         kv_get=lambda key, default: {
             "kiem_ke": [{
