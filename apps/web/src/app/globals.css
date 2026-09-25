@@ -133,19 +133,19 @@
   --nq-ink: #e6edf3;               /* chữ chính — xám trắng ngà, KHÔNG trắng thuần */
   --nq-ink-muted: rgba(230, 237, 243, 0.62);
   --nq-line: rgba(230, 237, 243, 0.12);
-  --nq-line-strong: rgba(45, 212, 191, 0.32);
-  --nq-accent: #14b8a6;            /* ngọc — điểm nhấn quan trọng */
-  --nq-accent-hover: #2dd4bf;
-  --nq-accent-soft: rgba(20, 184, 166, 0.16);
-  --nq-accent-glow: rgba(45, 212, 191, 0.24);
-  --nq-accent-dim: rgba(20, 184, 166, 0.42);
-  --nq-accent-ink: #071014;        /* chữ tối đặt trên nền accent sáng */
-  --nq-accent-2: #38bdf8;          /* accent phụ — thông tin / liên kết */
-  --nq-accent-2-soft: rgba(56, 189, 248, 0.14);
+  --nq-line-strong: rgba(212, 175, 55, 0.34);
+  --nq-accent: #d4af37;            /* vàng gold — điểm nhấn quan trọng */
+  --nq-accent-hover: #e8d48a;
+  --nq-accent-soft: rgba(212, 175, 55, 0.16);
+  --nq-accent-glow: rgba(212, 175, 55, 0.28);
+  --nq-accent-dim: rgba(212, 175, 55, 0.42);
+  --nq-accent-ink: #1a1408;        /* chữ tối đặt trên nền vàng sáng — ngả ấm cho khớp */
+  --nq-accent-2: #e8d48a;          /* accent phụ — vàng kem nhạt / liên kết */
+  --nq-accent-2-soft: rgba(232, 212, 138, 0.14);
   --nq-danger: #ef4444;
   --nq-ok: #22c55e;
   --nq-warn: #f59e0b;
-  --nq-focus: #5eead4;             /* vòng tiêu điểm — phải thấy rõ trên nền kính */
+  --nq-focus: #e8d48a;             /* vòng tiêu điểm — phải thấy rõ trên nền kính */
   /* Alias dùng bởi redesign Awwwards (class Tailwind arbitrary values) */
   --nq-fg: var(--nq-ink);
   --nq-dim: var(--nq-ink-muted);
@@ -248,7 +248,7 @@
   --nq-st-ok-soft: rgba(34, 197, 94, 0.14);
   --nq-st-warn-soft: rgba(245, 158, 11, 0.14);
   --nq-st-danger-soft: rgba(239, 68, 68, 0.14);
-  --nq-st-info-soft: rgba(56, 189, 248, 0.14);
+  --nq-st-info-soft: rgba(232, 212, 138, 0.14);
 
   /* Bản DÙNG LÀM CHỮ của bốn màu trạng thái.
      `--nq-st-*` được chọn cho nét vẽ/viền trên nền sáng, nên khi làm chữ trên
@@ -259,32 +259,32 @@
   --nq-st-ok-ink: #6ee7a0;
   --nq-st-warn-ink: #fbbf5c;
   --nq-st-danger-ink: #fca5a5;
-  --nq-st-info-ink: #7dd3fc;
+  --nq-st-info-ink: #e8d48a;
   /* Bản chữ ĐẬM hơn của cảnh báo, cho chữ vàng đặt trên NỀN VÀNG (chip cảnh báo).
      `--nq-st-warn-ink` (#fbbf5c) trên `--nq-st-warn` (#f59e0b) chỉ đạt 1.28:1;
      bản này đạt 5.4:1. Cùng một họ, hai nền khác nhau thì cần hai độ sáng. */
   --nq-st-warn-ink-strong: #4a2c02;
 
-  /* Chữ đặt trên NỀN ĐỎ ĐẶC của nút nguy hiểm. `--nq-accent-ink` (gần đen) trên
-     #b02a2a chỉ đạt 1.75:1 — nền tối cần chữ sáng. #fff5f5 trên #b02a2a = 7.9:1. */
+  /* Chữ đặt trên NỀN ĐỎ ĐẶC của nút nguy hiểm. `--nq-accent-ink` (nâu đen ấm)
+     trên #b02a2a chỉ đạt ~1.9:1 — nền tối cần chữ sáng. #fff5f5 trên #b02a2a = 7.9:1. */
   --nq-ink-on-danger: #fff5f5;
 
   /* Bản DÙNG LÀM CHỮ NHỎ của accent.
-     `--nq-accent` (#14b8a6) là màu THƯƠNG HIỆU, đúng khi làm nền/nút/viền. Khi
-     làm chữ cỡ nhỏ trên nền tối thì chỉ đạt 5.2:1 — đủ nhưng sát ngưỡng, và cỡ
-     0.65rem thì không được hưởng ngưỡng "chữ lớn". Bản này đạt trên 8:1 trên cả
-     nền trang lẫn nền thẻ, vẫn đúng sắc ngọc.
+     `--nq-accent` (#d4af37) là màu THƯƠNG HIỆU, đúng khi làm nền/nút/viền. Khi
+     làm chữ cỡ nhỏ trên nền tối thì đạt 9.29:1 — đủ, nhưng sắc gold đậm ở cỡ
+     0.65rem vẫn hơi nặng mắt. Bản này (vàng kem nhạt, đúng sắc trong ảnh tham
+     chiếu) đạt 13.22:1 trên nền trang, vẫn cùng một họ vàng.
      Quy ước: NỀN/NÚT/VIỀN dùng `--nq-accent`; CHỮ NHỎ dùng `--nq-accent-ink-text`. */
-  --nq-accent-ink-text: #5eead4;
+  --nq-accent-ink-text: #e8d48a;
 
   /* Đường biên của thành phần BẤM ĐƯỢC (ô nhập, select, textarea).
      `--nq-line-strong` là vạch kẻ trang trí, không phải biên điều khiển: đo ra
      1.99:1 trên nền trang và 1.65:1 trên chính nền ô nhập — dưới ngưỡng 3:1
      của WCAG 1.4.11. Người vận hành đứng quầy dưới đèn vàng, nhìn máy tính
-     bảng, không thấy được ô nhập bắt đầu từ đâu. Giá trị này vượt 3:1 trên cả
-     nền trang lẫn nền ô nhập — vẫn trong họ ngọc, không phải xám trung tính.
+     bảng, không thấy được ô nhập bắt đầu từ đâu. Giá trị này đạt 5.86:1 trên
+     nền ô nhập (vượt 3:1) — vẫn trong họ vàng, không phải xám trung tính.
      Đừng hạ thấp mà không đo lại (`scripts/check_contrast.py`). */
-  --nq-line-control: #3d6f6a;
+  --nq-line-control: #8a7228;
 
   /* ── Thang khoảng cách ──
      Trước đây mỗi khối tự chọn 0.35 / 0.45 / 0.65 / 0.85 / 1.15rem, nên hai
@@ -431,7 +431,7 @@ button,
   khi hover:bg-transparent, gần như vô hình trên nền trang.
   Specificity a.nq-ink-on-solid thắng `a`; hover:text-* (hai class) thắng lúc hover.
 
-  Không phải nền solid nào cũng cần chữ TỐI. Nền accent ngọc (#14b8a6) sáng nên
+  Không phải nền solid nào cũng cần chữ TỐI. Nền accent vàng gold (#d4af37) sáng nên
   chữ tối là đúng; nhưng nền đỏ nguy hiểm (#b02a2a) TỐI nên chữ tối trên đó chỉ
   đạt 1.75:1. Vì vậy mặc định là chữ tối, và mỗi họ nền TỐI tự khai lại chữ SÁNG
   bằng `--nq-ink-on-*-solid` bên dưới. Đây là lỗi đo được thật, không phải phòng xa.
@@ -499,16 +499,18 @@ body::before {
   pointer-events: none;
   z-index: -2;
   /* Chiều sâu của nền — KHÔNG một màu đặc phủ toàn trang.
-     Hai quầng sáng rất nhẹ (ngọc ở góc trên trái, xanh dương ở góc dưới phải)
+     Hai quầng sáng rất nhẹ (vàng gold ở góc trên trái, kem nhạt ở góc dưới phải)
      cộng một gradient dọc. Tác dụng: mắt đọc ra nền có hướng sáng, nên khối nổi
      ở bất kỳ vị trí nào cũng có chỗ "đứng"; nền phẳng một màu thì mọi bề mặt
      cùng tông đều dính vào nhau. Đặt ở MỘT chỗ cho mọi trang — không lặp lại
      quầng sáng ở từng page, vì hai nguồn sáng lệch nhau đọc ra như vết bẩn.
      Cường độ phải rất thấp (0.06–0.10): cao hơn thì vùng sáng chạy qua chữ và
-     làm giảm tương phản ở đúng những chỗ `scripts/contrast.mjs` đo được. */
+     làm giảm tương phản ở đúng những chỗ `scripts/contrast.mjs` đo được.
+     NỀN VẪN LÀ XANH: chỉ quầng accent đổi sang vàng cho khớp màu thương hiệu,
+     còn `--nq-bg`/`--nq-surface*` và gradient dọc giữ nguyên tông xanh. */
   background:
-    radial-gradient(ellipse 80% 50% at 15% -5%, rgba(20, 184, 166, 0.09) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(56, 189, 248, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 50% at 15% -5%, rgba(212, 175, 55, 0.09) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(232, 212, 138, 0.06) 0%, transparent 50%),
     linear-gradient(180deg, var(--nq-banner-from) 0%, var(--nq-bg) 42%);
 }
 
@@ -2136,13 +2138,13 @@ a:focus-visible {
 
 /* Chat surfaces keep long messages readable without putting the accent color behind text. */
 .nq-chat {
-  /* Bong bóng của mình dùng nền ngọc ĐẶC (không phải accent mờ): tin nhắn là
+  /* Bong bóng của mình dùng nền vàng gold ĐẶC (không phải accent mờ): tin nhắn là
      nội dung cần đọc, không phải trang trí. Chữ trên đó lấy `--nq-accent-ink`
      nên tương phản > 8:1, không phụ thuộc nền trang. */
   --nq-chat-stream: #0a1218;
   --nq-chat-composer: #0e1b22;
   --nq-chat-incoming: #101f27;
-  --nq-chat-outgoing: #14b8a6;
+  --nq-chat-outgoing: var(--nq-accent);
   --nq-chat-reply: #14232b;
   --nq-chat-text: #e6edf3;
   --nq-chat-muted: rgba(230, 237, 243, 0.62);
@@ -2168,7 +2170,7 @@ a:focus-visible {
 
 .nq-chat-bubble--outgoing {
   background: var(--nq-chat-outgoing);
-  border-color: rgba(20, 184, 166, 0.28);
+  border-color: var(--nq-accent-dim);
 }
 
 .nq-chat-message__content {
@@ -2764,8 +2766,8 @@ a:focus-visible {
       105deg,
       transparent,
       transparent 48px,
-      rgba(20, 184, 166, 0.03) 48px,
-      rgba(20, 184, 166, 0.03) 49px
+      color-mix(in srgb, var(--nq-accent) 3%, transparent) 48px,
+      color-mix(in srgb, var(--nq-accent) 3%, transparent) 49px
     );
   pointer-events: none;
   /* KHÔNG còn `animation: nq-glow-pulse ... infinite`. Quầng sáng này là nền tĩnh:
@@ -4218,7 +4220,7 @@ a:focus-visible {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background: radial-gradient(115% 52% at 50% -9%, rgba(20, 184, 166, 0.14) 0%, transparent 61%);
+  background: radial-gradient(115% 52% at 50% -9%, var(--nq-accent-glow) 0%, transparent 61%);
   opacity: 0.9;
 }
 
