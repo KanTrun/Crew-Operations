@@ -839,13 +839,16 @@ a:focus-visible {
   transform: scale(var(--nq-press));
 }
 
-/* ── Page ── */
+/* ── Page ──
+   Không còn `max-width` cứng: container `.nq-main__inner` đã kiểm soát bề
+   rộng đọc được cho các trang dài chữ (`--prose`); mọi trang khác lấp đầy hết
+   phần còn lại sau sidebar. Thu gọn sidebar → trang rộng ra thật, không còn
+   dải trống hai bên cố định bằng 1280px giữa màn 1920px. */
 .nq-page {
   animation: nq-rise var(--nq-dur-t1) var(--nq-ease-out) both;
   padding: clamp(1rem, 3vw, 1.75rem) 0 clamp(2rem, 4vw, 3rem);
   width: 100%;
-  max-width: min(1280px, 100%);
-  margin-inline: auto;
+  max-width: none;
   box-sizing: border-box;
 }
 
@@ -855,6 +858,13 @@ a:focus-visible {
 
 .nq-page--wide.nq-page--run {
   max-width: none;
+}
+
+/* Chỉ nội dung văn bản dài (câu chữ, form một cột đăng ký...) mới cần giới
+   hạn ký tự/dòng để dễ đọc — gắn `nq-prose` vào khối văn bản đó, không gắn
+   vào `.nq-page`. */
+.nq-prose {
+  max-width: 72ch;
 }
 
 .nq-split {
@@ -875,6 +885,176 @@ a:focus-visible {
   .nq-split--pos {
     grid-template-columns: minmax(0, 1.6fr) minmax(260px, 360px);
   }
+}
+
+/* ── Bố cục dùng chung cho mọi trang: chính + cột phụ ──
+   Thay cho việc mỗi trang tự bó vào 720px rồi chừa trắng hai bên. Cột phụ chỉ
+   xuất hiện khi màn đủ rộng; dưới ngưỡng thì xếp dọc (cột phụ lên trước hoặc
+   sau tuỳ `data-aside-first`). */
+.nq-page-grid {
+  display: grid;
+  gap: clamp(1.25rem, 2.5vw, 2rem);
+  align-items: start;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1080px) {
+  .nq-page-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  }
+  .nq-page-grid[data-aside-first="1"] {
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  }
+  .nq-page-grid[data-aside-first="1"] > .nq-page-grid__aside {
+    order: -1;
+  }
+}
+
+.nq-page-grid__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+.nq-page-grid__aside {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+/* Lưới thẻ lấp đầy hết bề ngang, số cột tự co theo màn hình. */
+/* Ô giờ 24h hai số — xem `TimeField` trong ui/kit.tsx để biết vì sao thay
+   `<input type="time">`. */
+.nq-time-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex: none;
+}
+
+.nq-time-field__part {
+  width: 2.6rem;
+  min-width: 0;
+  padding: 0.35rem 0.3rem;
+  text-align: center;
+  border-radius: var(--nq-radius-sm, 8px);
+  border: 1px solid var(--nq-line);
+  background: var(--nq-bg);
+  color: var(--nq-ink);
+  font-size: 0.8rem;
+  font-family: var(--nq-font-mono);
+}
+
+.nq-time-field__part:focus-visible {
+  outline: 2px solid var(--nq-focus);
+  outline-offset: 1px;
+}
+
+.nq-time-field[data-invalid="1"] .nq-time-field__part {
+  border-color: var(--nq-st-danger);
+}
+
+.nq-time-field__sep {
+  color: var(--nq-ink-muted);
+  font-weight: 700;
+}
+
+.nq-columns {
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 720px) {
+  .nq-columns[data-cols="2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1080px) {
+  .nq-columns[data-cols="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Hàng nút hành động: luôn tách khỏi khối phía trên bằng khoảng cách cố định,
+   không bao giờ để nút dính sát cạnh input/khung như trước. */
+.nq-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nq-s3);
+  margin-top: var(--nq-s5);
+}
+
+.nq-action-row[data-align="end"] {
+  justify-content: flex-end;
+}
+
+.nq-action-row[data-align="between"] {
+  justify-content: space-between;
+}
+
+/* ── Phân trang số ── */
+.nq-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--nq-s3);
+  margin-top: var(--nq-s5);
+  padding-top: var(--nq-s4);
+  border-top: 1px solid var(--nq-line);
+}
+
+.nq-pagination__pages {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s1);
+  flex-wrap: wrap;
+}
+
+.nq-pagination__btn {
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.6rem;
+  border-radius: var(--nq-radius-sm, 8px);
+  border: 1px solid var(--nq-line);
+  background: var(--nq-bg-elevated);
+  color: var(--nq-ink);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background var(--nq-dur-t0), color var(--nq-dur-t0);
+}
+
+.nq-pagination__btn:hover:not(:disabled) {
+  background: var(--nq-accent-soft);
+}
+
+.nq-pagination__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nq-pagination__btn[data-on="1"] {
+  background: var(--nq-accent);
+  color: var(--nq-accent-ink, #1a1200);
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.nq-pagination__meta {
+  color: var(--nq-ink-muted);
+  font-size: 0.8rem;
+}
+
+.nq-pagination__size {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s2);
+  color: var(--nq-ink-muted);
+  font-size: 0.8rem;
 }
 
 .nq-card-grid {
@@ -2138,7 +2318,6 @@ a:focus-visible {
 .nq-roster-table th,
 .nq-roster-table td {
   padding: 0.45rem 0.55rem;
-  min-width: 108px;
   font-size: 0.8rem;
 }
 
@@ -2260,6 +2439,44 @@ a:focus-visible {
 /* Hộp thoại INBOX luôn bám viewport thật.
    z-index cao hơn shell/header và widget nổi; 100dvh tránh flex căn giữa theo
    chiều cao trang dài khiến người dùng chỉ thấy backdrop khi đang cuộn. */
+/* Dòng thời gian "Yêu cầu → AI quyết định → Kết quả xếp lịch" trên mỗi mục
+   hộp thư — trang chỉ xem, không còn nút Duyệt/Từ chối. */
+.nq-inbox-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nq-inbox-timeline > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.nq-inbox-timeline__dot {
+  flex: none;
+  margin-top: 0.3rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--nq-accent);
+}
+
+.nq-inbox-timeline__dot[data-tone="ok"] {
+  background: var(--nq-st-ok);
+}
+
+.nq-inbox-timeline__dot[data-tone="warn"] {
+  background: var(--nq-st-warn);
+}
+
+.nq-inbox-timeline__dot[data-tone="danger"] {
+  background: var(--nq-st-danger);
+}
+
 .nq-inbox-dialog-layer {
   position: fixed !important;
   inset: 0 !important;
@@ -4021,7 +4238,10 @@ a:focus-visible {
   display: flex;
   gap: var(--nq-s3);
   flex-wrap: wrap;
-  margin-top: var(--nq-s6);
+  /* Sau PageHeader (mb-12): kéo CTA sát tiêu đề hơn, chừa khoảng rõ với khung dưới. */
+  margin-top: calc(var(--nq-s4) * -1);
+  margin-bottom: var(--nq-s5);
+  align-items: center;
 }
 
 /* ── Skeleton ── */
@@ -5261,6 +5481,19 @@ a:focus-visible {
   }
 }
 
+.nq-vet-day-group + .nq-vet-day-group {
+  margin-top: var(--nq-s6);
+}
+
+.nq-vet-day-heading {
+  margin: 0 0 var(--nq-s3);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--nq-ink-muted);
+}
+
 .nq-surface-tile:active {
 
   transform: scale(var(--nq-press));
@@ -5485,8 +5718,7 @@ a.nq-bento-surface:active {
 
 /* ── Ops register (T0) ── */
 .nq-page--run {
-  max-width: var(--nq-max-narrow);
-  margin: 0 auto;
+  max-width: none;
 }
 
 /* Khung vận hành hẹp dùng bậc h1 của hệ; không tự đặt lại cỡ theo `vw`, vì
@@ -6020,8 +6252,30 @@ a.nq-bento-surface:active {
 }
 
 .nq-page--tkb {
-  max-width: min(64rem, 100%);
-  margin-inline: auto;
+  max-width: none;
+}
+
+/* Thẻ theo ngày tự co số cột theo bề ngang thật của trang — không còn cố
+   định 4 cột rồi ép ô giờ (TimeField) tràn ra ngoài thẻ ở màn hẹp hơn dự
+   kiến, và tận dụng hết chỗ trống ở màn rộng (có thể lên tới 7 cột). */
+.nq-tkb-day-grid {
+  display: grid;
+  gap: var(--nq-s3);
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+}
+
+.nq-tkb-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nq-tkb-row__times {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
 }
 
 .nq-tkb-file {
@@ -6144,6 +6398,11 @@ a.nq-bento-surface:active {
 .nq-roster-table {
   border-collapse: collapse;
   width: 100%;
+  /* `table-layout: fixed` + `<colgroup>` (RosterGrid.tsx) chia đều 7 cột ngày
+     trong phần còn lại sau cột "Khung" — lưới lấp đầy hết bề ngang trang
+     thay vì mỗi cột giữ `min-width` cố định rồi đẩy bảng tràn ra ngoài và bắt
+     cuộn ngang ngay ở màn hình laptop bình thường. */
+  table-layout: fixed;
   font-size: 0.875rem;
 }
 
@@ -6161,7 +6420,19 @@ a.nq-bento-surface:active {
   border: 1px solid var(--nq-line);
   padding: 0.65rem 0.7rem;
   vertical-align: top;
-  min-width: 132px;
+  overflow: hidden;
+}
+
+/* Dưới ngưỡng này, 7 cột chia đều sẽ quá hẹp để đọc — quay lại cột co theo
+   nội dung + cuộn ngang, thay vì ép chữ vỡ dòng liên tục. */
+@media (max-width: 860px) {
+  .nq-roster-table {
+    table-layout: auto;
+  }
+  .nq-roster-table th,
+  .nq-roster-table td {
+    min-width: 128px;
+  }
 }
 
 .nq-roster-table thead th {
@@ -8865,8 +9136,7 @@ a.nq-bento-surface:active {
    Trang rộng (lịch tuần, roster, chat…) bỏ giới hạn qua `.nq-main__wide`. */
 .nq-main__inner {
   width: 100%;
-  max-width: var(--nq-max);
-  margin-inline: auto;
+  max-width: none;
   min-width: 0;
 }
 

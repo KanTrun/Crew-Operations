@@ -1,7 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { CSSProperties, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes, useCallback, useEffect, useRef, useState } from "react";
+import {
+  CSSProperties,
+  Fragment,
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { API } from "../lib/api";
 import { fieldLabel, formatFieldValue } from "../lib/labels";
 import { Icon, type IconName } from "./icons";
@@ -71,9 +82,10 @@ export function BtnLink({
    hàng nhưng không đủ chỗ. `.nq-btn` đặt `white-space: nowrap` (đúng — nhãn nút
    không được ngắt dòng), nên khi hàng không đủ chỗ thì khối flex nở ra và đẩy
    tràn cả trang. Cho phép ngắt hàng thì nút rơi xuống dòng dưới, đúng ý người
-   dùng hơn là cắt cụt hoặc tràn. Đo được: /hom-nay @768px tràn 4px trước khi sửa. */
-export function PageActions({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 mt-8">{children}</div>;
+   dùng hơn là cắt cụt hoặc tràn. Đo được: /hom-nay @768px tràn 4px trước khi sửa.
+   Class `.nq-page-actions` tách CTA (vd. Hỏi trợ lý) khỏi khung nội dung bên dưới. */
+export function PageActions({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`nq-page-actions ${className}`.trim()}>{children}</div>;
 }
 
 export function Kicker({ children }: { children: ReactNode }) {
@@ -790,6 +802,7 @@ export function OpsCard({
   countLabel = "bản ghi",
   tourId,
   action,
+  density = "default",
   children,
 }: {
   eyebrow?: string;
@@ -798,11 +811,22 @@ export function OpsCard({
   countLabel?: string;
   tourId?: string;
   action?: ReactNode;
+  /** compact: list/explainer — padding/margin nhỏ hơn, tránh thẻ rỗng chiếm cả viewport. */
+  density?: "default" | "compact";
   children: ReactNode;
 }) {
+  const compact = density === "compact";
   const head = title ? (
-    <div className="mb-6 flex flex-wrap items-center gap-4">
-      <h2 className="text-2xl font-black uppercase text-[var(--nq-fg)]">{title}</h2>
+    <div className={compact ? "mb-3 flex flex-wrap items-center gap-3" : "mb-6 flex flex-wrap items-center gap-4"}>
+      <h2
+        className={
+          compact
+            ? "text-lg font-semibold text-[var(--nq-fg)]"
+            : "text-2xl font-black uppercase text-[var(--nq-fg)]"
+        }
+      >
+        {title}
+      </h2>
       {typeof count === "number" ? (
         <span className="nq-ink-on-solid rounded-full bg-[var(--nq-accent)] px-3 py-1 text-sm">
           {count} {countLabel}
@@ -812,11 +836,312 @@ export function OpsCard({
     </div>
   ) : null;
   return (
-    <section className="nq-surface-block mb-10 w-full p-6 md:mb-12 md:p-8" data-tour={tourId}>
+    <section
+      className={
+        compact
+          ? "nq-surface-block mb-4 w-full p-4 md:mb-5 md:p-5"
+          : "nq-surface-block mb-10 w-full p-6 md:mb-12 md:p-8"
+      }
+      data-tour={tourId}
+    >
       {eyebrow ? <p className="nq-eyebrow text-[var(--nq-dim)]">{eyebrow}</p> : null}
       {head}
       {children}
     </section>
+  );
+}
+
+/**
+ * Danh sách phân trang client — tránh scroll dài khi API chưa hỗ trợ cursor.
+ * Mặc định 10 mục; «Xem thêm» mở rộng thêm một trang mỗi lần.
+ */
+export function PagedList<T>({
+  items,
+  pageSize = 10,
+  renderItem,
+  empty,
+  className = "",
+}: {
+  items: T[];
+  pageSize?: number;
+  renderItem: (item: T, index: number) => ReactNode;
+  empty?: ReactNode;
+  className?: string;
+}) {
+  const [visible, setVisible] = useState(pageSize);
+  useEffect(() => {
+    setVisible(pageSize);
+  }, [items, pageSize]);
+
+  if (items.length === 0) return <>{empty ?? null}</>;
+
+  const shown = items.slice(0, visible);
+  const remaining = items.length - shown.length;
+
+  return (
+    <div className={className}>
+      {shown.map((item, index) => (
+        <Fragment key={index}>{renderItem(item, index)}</Fragment>
+      ))}
+      {remaining > 0 ? (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Btn
+            variant="ghost"
+            size="sm"
+            onClick={() => setVisible((n) => Math.min(n + pageSize, items.length))}
+          >
+            Xem thêm ({remaining})
+          </Btn>
+          <span className="font-mono text-xs text-[var(--nq-dim)]">
+            {shown.length}/{items.length}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Bố cục chính + cột phụ dùng chung cho hầu hết các trang — thay cho việc mỗi
+ * trang tự bó nội dung vào một cột hẹp rồi chừa trắng hai bên khi màn rộng.
+ * Dưới 1080px, cột phụ tự xếp xuống dưới (hoặc lên trên nếu `asideFirst`).
+ */
+export function PageGrid({
+  main,
+  aside,
+  asideFirst = false,
+  className = "",
+}: {
+  main: ReactNode;
+  aside?: ReactNode;
+  asideFirst?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={`nq-page-grid ${className}`.trim()} data-aside-first={asideFirst ? "1" : "0"}>
+      <div className="nq-page-grid__main">{main}</div>
+      {aside ? <div className="nq-page-grid__aside">{aside}</div> : null}
+    </div>
+  );
+}
+
+/** Lưới 2–3 cột co giãn theo bề rộng màn hình. */
+export function Columns({
+  cols = 2,
+  children,
+  className = "",
+}: {
+  cols?: 2 | 3;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`nq-columns ${className}`.trim()} data-cols={String(cols)}>
+      {children}
+    </div>
+  );
+}
+
+/** Hàng nút hành động — luôn có khoảng cách với khối phía trên, không dính khung. */
+export function ActionRow({
+  children,
+  align,
+  className = "",
+}: {
+  children: ReactNode;
+  align?: "start" | "end" | "between";
+  className?: string;
+}) {
+  return (
+    <div
+      className={`nq-action-row ${className}`.trim()}
+      data-align={align === "start" ? undefined : align}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Trạng thái phân trang số — dùng cùng `Pagination` bên dưới. */
+export function usePaged<T>(items: T[], pageSize = 10) {
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    setPage(1);
+  }, [items.length, pageSize]);
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+  const shown = items.slice(start, start + pageSize);
+  return {
+    page: safePage,
+    setPage,
+    totalPages,
+    shown,
+    total: items.length,
+    from: items.length ? start + 1 : 0,
+    to: Math.min(start + pageSize, items.length),
+  };
+}
+
+/**
+ * Phân trang số (Trước/1 2 3…/Sau) — thay cho scroll dài hoặc "Xem thêm" vô
+ * hạn trên các danh sách trên khoảng 10 mục.
+ */
+export function Pagination({
+  page,
+  totalPages,
+  onChange,
+  from,
+  to,
+  total,
+  className = "",
+}: {
+  page: number;
+  totalPages: number;
+  onChange: (page: number) => void;
+  from?: number;
+  to?: number;
+  total?: number;
+  className?: string;
+}) {
+  if (totalPages <= 1) return null;
+  const windowSize = 5;
+  const half = Math.floor(windowSize / 2);
+  let start = Math.max(1, page - half);
+  const end = Math.min(totalPages, start + windowSize - 1);
+  start = Math.max(1, end - windowSize + 1);
+  const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+
+  return (
+    <nav className={`nq-pagination ${className}`.trim()} aria-label="Phân trang">
+      {typeof total === "number" ? (
+        <span className="nq-pagination__meta">
+          {from}–{to} trong {total}
+        </span>
+      ) : (
+        <span />
+      )}
+      <div className="nq-pagination__pages">
+        <button
+          type="button"
+          className="nq-pagination__btn"
+          onClick={() => onChange(page - 1)}
+          disabled={page <= 1}
+          aria-label="Trang trước"
+        >
+          ‹
+        </button>
+        {start > 1 ? (
+          <>
+            <button type="button" className="nq-pagination__btn" onClick={() => onChange(1)}>
+              1
+            </button>
+            {start > 2 ? <span className="nq-pagination__meta">…</span> : null}
+          </>
+        ) : null}
+        {pages.map((p) => (
+          <button
+            key={p}
+            type="button"
+            className="nq-pagination__btn"
+            data-on={p === page ? "1" : undefined}
+            aria-current={p === page ? "page" : undefined}
+            onClick={() => onChange(p)}
+          >
+            {p}
+          </button>
+        ))}
+        {end < totalPages ? (
+          <>
+            {end < totalPages - 1 ? <span className="nq-pagination__meta">…</span> : null}
+            <button type="button" className="nq-pagination__btn" onClick={() => onChange(totalPages)}>
+              {totalPages}
+            </button>
+          </>
+        ) : null}
+        <button
+          type="button"
+          className="nq-pagination__btn"
+          onClick={() => onChange(page + 1)}
+          disabled={page >= totalPages}
+          aria-label="Trang sau"
+        >
+          ›
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+/**
+ * Ô chọn giờ 24h bằng hai số (giờ/phút) thay cho `<input type="time">`.
+ *
+ * Vì sao: input giờ gốc của trình duyệt vẽ khung AM/PM (Windows/Chrome) có
+ * bề rộng tối thiểu ~120–150px không co được — nhét hai ô như vậy cạnh nhau
+ * trong một thẻ ngày hẹp (lưới 4 cột) làm nó tràn ra ngoài khung thẻ. Hai ô
+ * số nhỏ (giờ 0–23, phút 0–59) không có phần AM/PM nên co được xuống ~2.6rem.
+ */
+export function TimeField({
+  value,
+  onChange,
+  ariaLabel,
+  invalid,
+  className = "",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+  invalid?: boolean;
+  className?: string;
+}) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value ?? "");
+  const hour = match ? match[1] : "";
+  const minute = match ? match[2] : "";
+
+  function commit(nextHour: string, nextMinute: string) {
+    if (nextHour === "" && nextMinute === "") {
+      onChange("");
+      return;
+    }
+    const h = nextHour.padStart(2, "0").slice(-2);
+    const m = nextMinute.padStart(2, "0").slice(-2);
+    onChange(`${h}:${m}`);
+  }
+
+  function clampDigits(raw: string, max: number): string {
+    const digits = raw.replace(/\D/g, "").slice(0, 2);
+    if (digits === "") return "";
+    return String(Math.min(Number(digits), max));
+  }
+
+  return (
+    <div className={`nq-time-field ${className}`.trim()} data-invalid={invalid ? "1" : undefined}>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        maxLength={2}
+        className="nq-time-field__part"
+        value={hour}
+        placeholder="Giờ"
+        aria-label={`${ariaLabel} — giờ`}
+        onChange={(e) => commit(clampDigits(e.target.value, 23), minute)}
+      />
+      <span className="nq-time-field__sep" aria-hidden="true">
+        :
+      </span>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        maxLength={2}
+        className="nq-time-field__part"
+        value={minute}
+        placeholder="Phút"
+        aria-label={`${ariaLabel} — phút`}
+        onChange={(e) => commit(hour, clampDigits(e.target.value, 59))}
+      />
+    </div>
   );
 }
 

@@ -9,7 +9,6 @@ import { Icon, iconForHref } from "../ui/icons";
 import { Tour } from "../ui/tour";
 import { Logo } from "../ui/Logo";
 import { CopilotPane } from "../ui/copilot/CopilotPane";
-import { FloatingChatHead } from "../ui/chat/FloatingChatHead";
 import { CommandPalette, flattenNavGroups } from "../ui/CommandPalette";
 
 const COLLAPSE_KEY = "nq_side_collapsed";
@@ -235,16 +234,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const wide =
-    path === "/lich-tuan" ||
-    path === "/roster" ||
-    path === "/cuoc-hop" ||
-    path === "/inbox" ||
-    path === "/quay" ||
-    path === "/chat" ||
-    path === "/copilot" ||
-    path === "/ai-learning";
-
   const hideFloatingCopilot =
     path === "/copilot" ||
     path === "/chat" ||
@@ -387,7 +376,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           trên khung 1440). Việc canh giữa nội dung do khối bên trong lo, còn
           vùng `main` chỉ cần chừa lề trái cho sidebar. */}
       <main className="nq-main" id="nq-content">
-        <div className={`nq-main__inner${wide ? " nq-main__inner--wide" : ""}`}>
+        <div className="nq-main__inner">
           {!ready ? (
             <div className="nq-page nq-page--center py-16 text-center" role="status">
               <p className="nq-muted" style={{ margin: 0 }}>Đang kiểm tra quyền truy cập…</p>
@@ -407,12 +396,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      {token ? (
-        <>
-          {!hideFloatingCopilot ? <CopilotPane /> : null}
-          <FloatingChatHead />
-        </>
-      ) : null}
+      {token && !hideFloatingCopilot ? <CopilotPane /> : null}
       <Tour active={Boolean(token) && path === "/hom-nay"} />
     </div>
   );
