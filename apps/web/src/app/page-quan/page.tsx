@@ -1648,7 +1648,7 @@ export default function PageQuanPage() {
             <div className="flex items-center gap-3">
               <span
                 className={`inline-block h-2.5 w-2.5 rounded-full ${
-                  connected ? "bg-emerald-500" : "bg-[var(--nq-danger)]"
+                  connected ? "bg-[var(--nq-st-ok)]" : "bg-[var(--nq-danger)]"
                 }`}
                 aria-hidden="true"
               />
@@ -1656,7 +1656,7 @@ export default function PageQuanPage() {
                 {connected ? `Đã nối ${status?.page_name || "Messenger"}` : "Chưa nối Fanpage"}
               </span>
               {connected ? (
-                <span className="hidden sm:inline-block rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-mono text-emerald-400">
+                <span className="hidden sm:inline-block rounded border border-[color-mix(in_srgb,var(--nq-st-ok)_30%,transparent)] bg-[var(--nq-st-ok-soft)] px-2 py-0.5 text-[11px] font-mono text-[var(--nq-st-ok-ink)]">
                   {threads.filter((t) => t.needs_action || t.pending_approval).length} cần xử lý
                 </span>
               ) : null}
@@ -1775,7 +1775,7 @@ export default function PageQuanPage() {
                           </span>
                           <span className="flex items-center gap-1.5 mt-1">
                             {th.is_within_24h ? (
-                              <span className="text-[10px] font-mono text-emerald-500/90">● trong 24h</span>
+                              <span className="text-[10px] font-mono text-[var(--nq-st-ok-ink)]/90">● trong 24h</span>
                             ) : (
                               <span className="text-[10px] font-mono text-[var(--nq-muted)]">hết 24h — cần tag</span>
                             )}
@@ -1833,8 +1833,8 @@ export default function PageQuanPage() {
                     <span
                       className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold border ${
                         activeThread.is_within_24h
-                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                          : "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                          ? "bg-[var(--nq-st-ok-soft)] text-[var(--nq-st-ok-ink)] border-[color-mix(in_srgb,var(--nq-st-ok)_30%,transparent)]"
+                          : "bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] border-[color-mix(in_srgb,var(--nq-st-warn)_30%,transparent)]"
                       }`}
                     >
                       {activeThread.is_within_24h ? "Trong 24h" : "Hết 24h · tag"}

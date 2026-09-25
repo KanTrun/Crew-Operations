@@ -39,7 +39,7 @@ function placement(zone: ZoneUI, index: number) {
 
 function loadColor(load: number): string {
   if (load >= 0.7) return "#f59e0b";
-  if (load >= 0.4) return "#14b8a6";
+  if (load >= 0.4) return "#d4af37";
   return "#7c8a99";
 }
 
@@ -86,11 +86,11 @@ function ZoneBlock({
           roughness={0.45}
         />
       </mesh>
-      {/* Khung dây ngọc = khu vực đang chọn (không dùng màu chữ để báo trạng thái) */}
+      {/* Khung dây vàng = khu vực đang chọn (không dùng màu chữ để báo trạng thái) */}
       {selected ? (
         <mesh position={[0, 0, 0]}>
           <boxGeometry args={[place.w * 1.06, height * 1.08, place.d * 1.08]} />
-          <meshBasicMaterial color="#5eead4" wireframe transparent opacity={0.9} />
+          <meshBasicMaterial color="#e8d48a" wireframe transparent opacity={0.9} />
         </mesh>
       ) : null}
       {/* Vạch tải ở mặt trước khối — đọc được mức tải từ xa */}
@@ -155,7 +155,7 @@ function Steam({ zones, tier }: { zones: ZoneUI[]; tier: Tier3d }) {
         </bufferGeometry>
         <pointsMaterial
           size={0.055}
-          color="#2dd4bf"
+          color="#d4af37"
           transparent
           opacity={0.7}
           sizeAttenuation
@@ -166,7 +166,7 @@ function Steam({ zones, tier }: { zones: ZoneUI[]; tier: Tier3d }) {
   );
 }
 
-/** Lõi ngọc giữa quán — nhịp sáng theo tổng tải. */
+/** Lõi vàng giữa quán — nhịp sáng theo tổng tải. */
 function Core({ load }: { load: number }) {
   const ref = useRef<Mesh>(null);
   useFrame((state, delta) => {
@@ -185,8 +185,8 @@ function Core({ load }: { load: number }) {
     <mesh ref={ref} position={[0, 1.15, -0.1]} scale={scale}>
       <icosahedronGeometry args={[0.42, 1]} />
       <meshStandardMaterial
-        color="#14b8a6"
-        emissive="#14b8a6"
+        color="#d4af37"
+        emissive="#d4af37"
         emissiveIntensity={0.35 + load * 0.55}
         metalness={0.5}
         roughness={0.35}
@@ -224,9 +224,9 @@ export default function LivingMap3d({ zones, selectedId = null, onSelect, tier }
         {/* Ba lớp sáng: nền khuếch tán + bầu trời/nền đất + hai nguồn điểm ấm/lạnh.
             Bản trước chỉ có ambient 0.4 + hai point yếu nên khối chìm vào nền đen. */}
         <ambientLight intensity={0.55} />
-        <hemisphereLight args={["#7dd3fc", "#0b141b", 0.55]} />
-        <pointLight position={[3, 4, 2]} intensity={1.5} distance={18} decay={1.3} color="#2dd4bf" />
-        <pointLight position={[-3, 2, -2]} intensity={0.7} distance={16} decay={1.3} color="#38bdf8" />
+        <hemisphereLight args={["#e8d48a", "#0b141b", 0.55]} />
+        <pointLight position={[3, 4, 2]} intensity={1.5} distance={18} decay={1.3} color="#d4af37" />
+        <pointLight position={[-3, 2, -2]} intensity={0.7} distance={16} decay={1.3} color="#e8d48a" />
 
         {/* Sàn quán — sáng hơn nền để khối có chỗ đứng, không trôi trong hư không. */}
         <mesh position={[0, -0.07, 0]} receiveShadow={tier === "full"}>
@@ -234,11 +234,11 @@ export default function LivingMap3d({ zones, selectedId = null, onSelect, tier }
           <meshStandardMaterial color="#0e1b22" metalness={0.25} roughness={0.8} />
         </mesh>
         {/* Lưới sàn mờ: mắt đọc được chiều sâu mà không cần bóng đổ. */}
-        <gridHelper args={[6.2, 12, "#1d3d3d", "#12262c"]} position={[0, 0.005, 0]} />
-        {/* Viền sàn ngọc */}
+        <gridHelper args={[6.2, 12, "#3d3418", "#26260f"]} position={[0, 0.005, 0]} />
+        {/* Viền sàn vàng */}
         <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[3.02, 3.16, 64]} />
-          <meshBasicMaterial color="#14b8a6" transparent opacity={0.5} />
+          <meshBasicMaterial color="#d4af37" transparent opacity={0.5} />
         </mesh>
 
         <Core load={avgLoad} />

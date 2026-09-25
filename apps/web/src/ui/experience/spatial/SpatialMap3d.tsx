@@ -33,8 +33,8 @@ const KIND_RADIUS: Record<string, number> = {
 
 function kindColor(kind: string): string {
   if (kind === "thiet_bi") return "#7c8a99";
-  if (kind === "ban") return "#14b8a6";
-  return "#7dd3fc";
+  if (kind === "ban") return "#d4af37";
+  return "#e8d48a";
 }
 
 interface Placement {
@@ -136,7 +136,7 @@ function Marker({
           <cylinderGeometry
             args={[radius * 1.5, radius * 1.5, place.height * 1.06, 20]}
           />
-          <meshBasicMaterial color="#5eead4" wireframe transparent opacity={0.85} />
+          <meshBasicMaterial color="#e8d48a" wireframe transparent opacity={0.85} />
         </mesh>
       ) : null}
       {/* Chấm ký ức — mỗi ký ức một điểm sáng trên đỉnh cột. */}
@@ -150,7 +150,7 @@ function Marker({
           ]}
         >
           <sphereGeometry args={[0.035, 10, 10]} />
-          <meshBasicMaterial color="#14b8a6" />
+          <meshBasicMaterial color="#d4af37" />
         </mesh>
       ))}
     </group>
@@ -167,7 +167,7 @@ function Floor({ sizeX, sizeZ }: { sizeX: number; sizeZ: number }) {
       </mesh>
       <mesh position={[0, -0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[Math.min(sizeX, sizeZ) / 2 - 0.06, Math.min(sizeX, sizeZ) / 2, 64]} />
-        <meshBasicMaterial color="#14b8a6" transparent opacity={0.3} />
+        <meshBasicMaterial color="#d4af37" transparent opacity={0.3} />
       </mesh>
     </group>
   );
@@ -234,13 +234,13 @@ export default function SpatialMap3d({
         shadows={full}
       >
         <ambientLight intensity={0.55} />
-        <hemisphereLight args={["#5eead4", "#0b141b", 0.5]} />
+        <hemisphereLight args={["#e8d48a", "#0b141b", 0.5]} />
         <pointLight
           position={[4, 5.5, 3]}
           intensity={1.6}
           distance={20}
           decay={1.2}
-          color="#2dd4bf"
+          color="#d4af37"
           castShadow={full}
         />
         <pointLight

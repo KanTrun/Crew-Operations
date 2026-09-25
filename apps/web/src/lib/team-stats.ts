@@ -27,8 +27,8 @@ export type TeamInsight = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  chu_quan: "#14b8a6",
-  quan_ly: "#38bdf8",
+  chu_quan: "#d4af37",
+  quan_ly: "#e8d48a",
   nhan_vien: "#22c55e",
 };
 
@@ -49,7 +49,7 @@ export function roleBreakdown(counts: RoleCounts): RoleSlice[] {
     role,
     label: roleLabel(role),
     n: counts[role],
-    color: ROLE_COLORS[role] ?? "#3d6f6a",
+    color: ROLE_COLORS[role] ?? "#8a7228",
   }));
 }
 

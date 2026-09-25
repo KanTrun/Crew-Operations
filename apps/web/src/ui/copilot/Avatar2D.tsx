@@ -37,7 +37,7 @@ export function Avatar2D({
           speaking
             ? "bg-[var(--nq-accent)]/20"
             : listening
-            ? "bg-emerald-500/15"
+            ? "bg-[var(--nq-st-ok-soft)]"
             : "bg-[var(--nq-dim)]/10"
         }`}
       />
@@ -91,7 +91,7 @@ export function Avatar2D({
           speaking
             ? "border-[var(--nq-accent)] bg-[var(--nq-bg)] text-[var(--nq-accent)]"
             : listening
-            ? "border-emerald-500/50 bg-[var(--nq-bg)] text-emerald-400"
+            ? "border-[color-mix(in_srgb,var(--nq-st-ok)_50%,transparent)] bg-[var(--nq-bg)] text-[var(--nq-st-ok-ink)]"
             : "border-[var(--nq-dim)] bg-[var(--nq-bg)] text-[var(--nq-dim)]"
         }`}
       >

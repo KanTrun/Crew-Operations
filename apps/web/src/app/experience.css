@@ -160,8 +160,8 @@
 }
 .nq-war-picker__card:hover { border-color: var(--nq-line-strong); transform: translateY(-1px); }
 .nq-war-picker__card.is-active {
-  border-color: var(--nq-accent, #14b8a6);
-  background: var(--nq-accent-dim, rgba(20, 184, 166, 0.16));
+  border-color: var(--nq-accent, #d4af37);
+  background: var(--nq-accent-dim, rgba(212, 175, 55, 0.16));
 }
 .nq-war-picker__title { font-weight: 700; }
 .nq-war-picker__desc { color: var(--nq-dim); font-size: 0.85rem; line-height: 1.5; }
