@@ -36,7 +36,7 @@
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(70% 45% at 20% -8%, rgba(20, 184, 166, 0.16), transparent 62%),
+    radial-gradient(70% 45% at 20% -8%, rgba(184, 148, 47, 0.16), transparent 62%),
     radial-gradient(50% 40% at 92% 4%, rgba(143, 168, 160, 0.10), transparent 60%),
     /* Vệt hơi nước: ba dải mảnh nghiêng, rất nhạt — motif "steam-line" của quán */
     repeating-linear-gradient(
@@ -73,7 +73,7 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   /* Quầng ấm rất nhẹ phía sau chữ — chất liệu "đêm quán" thay vì chữ phẳng. */
-  text-shadow: 0 0 44px rgba(20, 184, 166, 0.18);
+  text-shadow: 0 0 44px rgba(184, 148, 47, 0.18);
   color: var(--nq-fg, #e6edf3);
 }
 .nq-exp-header p {
@@ -585,7 +585,7 @@
   /* Ba lớp: quầng đồng trên đỉnh, vệt sáng dưới sàn, và nền tối dần về đáy —
      để khối 3D có chỗ đứng trong một căn phòng, không trôi giữa khoảng đen. */
   background:
-    radial-gradient(90% 60% at 50% 8%, rgba(20, 184, 166, 0.2), transparent 62%),
+    radial-gradient(90% 60% at 50% 8%, rgba(184, 148, 47, 0.2), transparent 62%),
     radial-gradient(70% 40% at 50% 96%, rgba(143, 168, 160, 0.12), transparent 70%),
     linear-gradient(180deg, #1b1712 0%, #14110e 45%, #0d0b09 100%);
   overflow: hidden;
@@ -599,8 +599,8 @@
   height: 58%;
   pointer-events: none;
   background:
-    repeating-linear-gradient(90deg, transparent 0 38px, rgba(20, 184, 166, 0.055) 38px 39px),
-    repeating-linear-gradient(0deg, transparent 0 26px, rgba(20, 184, 166, 0.045) 26px 27px);
+    repeating-linear-gradient(90deg, transparent 0 38px, rgba(184, 148, 47, 0.055) 38px 39px),
+    repeating-linear-gradient(0deg, transparent 0 26px, rgba(184, 148, 47, 0.045) 26px 27px);
   transform: perspective(340px) rotateX(62deg);
   transform-origin: bottom center;
   mask-image: linear-gradient(180deg, transparent, #000 55%);
@@ -1095,7 +1095,7 @@
   background:
     repeating-linear-gradient(0deg, transparent 0 23px, color-mix(in srgb, var(--nq-accent) 14%, transparent) 23px 24px),
     repeating-linear-gradient(90deg, transparent 0 23px, color-mix(in srgb, var(--nq-accent) 14%, transparent) 23px 24px),
-    radial-gradient(120% 90% at 50% 60%, rgba(20, 184, 166, 0.16), transparent 65%),
+    radial-gradient(120% 90% at 50% 60%, rgba(184, 148, 47, 0.16), transparent 65%),
     linear-gradient(180deg, #14110e, #0b0908);
   overflow: hidden;
 }
@@ -1183,7 +1183,7 @@
   border: 2px solid var(--nq-line);
   border-radius: var(--nq-radius-bubble, 18px);
   background:
-    radial-gradient(120% 90% at 50% 15%, rgba(20, 184, 166, 0.12), transparent 68%),
+    radial-gradient(120% 90% at 50% 15%, rgba(184, 148, 47, 0.12), transparent 68%),
     linear-gradient(180deg, #16120f, #0b0908);
   overflow: hidden;
 }
@@ -1440,7 +1440,7 @@
   font-size: clamp(1.5rem, 4vw, 2.25rem);
   font-weight: 700;
   letter-spacing: -0.02em;
-  text-shadow: 0 0 44px rgba(20, 184, 166, 0.18);
+  text-shadow: 0 0 44px rgba(184, 148, 47, 0.18);
 }
 .nq-war__header p, .nq-rules__header p, .nq-rescue__header p,
 .nq-spatial__header p {
