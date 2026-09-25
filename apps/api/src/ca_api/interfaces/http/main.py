@@ -60,6 +60,7 @@ from ca_api.context_providers import (
     get_mail_style_for_store,
     get_ops_context_for_mail,
 )
+from ca_api.interfaces.http.ai_insight import router as ai_insight_router
 from ca_api.interfaces.http.ai_learning import router as ai_learning_router
 from ca_api.interfaces.http.channels import router as channels_router
 from ca_api.interfaces.http.chat import router as chat_router
@@ -71,7 +72,6 @@ from ca_api.interfaces.http.gmail import router as gmail_router
 from ca_api.interfaces.http.hao_hut import router as hao_hut_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
-from ca_api.interfaces.http.ai_insight import router as ai_insight_router
 from ca_api.interfaces.http.ops_explain import router as ops_explain_router
 from ca_api.interfaces.http.ops_predict import router as ops_predict_router
 from ca_api.interfaces.http.pos import router as pos_router
