@@ -22,20 +22,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Mesh, Points } from "three";
 import type { ZoneUI } from "./quanverse-model";
 import type { Tier3d } from "../useCapability3d";
-
-/** Vị trí trên mặt bằng (mét) — gần đúng layout quán thật. */
-const PLAN: Record<string, { x: number; z: number; w: number; d: number }> = {
-  bar: { x: -1.55, z: -0.7, w: 1.9, d: 1.15 },
-  cashier: { x: 1.85, z: -0.95, w: 1.35, d: 0.95 },
-  window_table: { x: 1.7, z: 1.15, w: 1.55, d: 1.05 },
-  entrance: { x: -1.6, z: 1.35, w: 1.15, d: 0.85 },
-};
+import { livingPlacement } from "./living-plan";
 
 function placement(zone: ZoneUI, index: number) {
-  const known = PLAN[zone.zone_id];
-  if (known) return known;
-  // Khu vực lạ (dữ liệu mới) → xếp thành hàng sau quầy, không vẽ chồng nhau.
-  return { x: -1.6 + (index % 3) * 1.6, z: -1.7 - Math.floor(index / 3) * 1.1, w: 1.2, d: 0.8 };
+  return livingPlacement(zone.zone_id, index);
 }
 
 function loadColor(load: number): string {

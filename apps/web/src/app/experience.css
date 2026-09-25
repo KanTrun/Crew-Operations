@@ -634,6 +634,44 @@
 
 /* ── Living Map 2D: mặt bằng ────────────────────────────────────────────── */
 .nq-living-map { display: grid; gap: var(--nq-s3); }
+.nq-living-map__svg {
+  width: 100%;
+  height: auto;
+  max-height: 420px;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-bg-elevated);
+}
+.nq-living-map__floor { fill: color-mix(in srgb, var(--nq-surface) 88%, transparent); }
+.nq-living-map__zone-rect {
+  fill: color-mix(in srgb, var(--nq-surface-2) 90%, transparent);
+  stroke: var(--nq-line-strong);
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: fill 160ms ease, stroke 160ms ease;
+}
+.nq-living-map__zone-g--low .nq-living-map__zone-rect { stroke: #7c8a99; }
+.nq-living-map__zone-g--mid .nq-living-map__zone-rect { stroke: var(--nq-accent); }
+.nq-living-map__zone-g--high .nq-living-map__zone-rect { stroke: #f59e0b; }
+.nq-living-map__zone-g.is-selected .nq-living-map__zone-rect {
+  fill: var(--nq-accent-soft);
+  stroke: var(--nq-accent);
+  stroke-width: 2.5;
+}
+.nq-living-map__zone-g:focus { outline: none; }
+.nq-living-map__zone-g:focus .nq-living-map__zone-rect {
+  stroke: var(--nq-focus);
+  stroke-width: 2.5;
+}
+.nq-living-map__zone-load { fill: var(--nq-accent); opacity: 0.85; }
+.nq-living-map__zone-g--high .nq-living-map__zone-load { fill: #f59e0b; }
+.nq-living-map__zone-text {
+  fill: var(--nq-ink);
+  font-size: 13px;
+  font-family: var(--nq-font-display);
+  pointer-events: none;
+}
+.nq-living-map__chips { display: flex; flex-wrap: wrap; gap: var(--nq-s2); }
 .nq-living-map__grid { display: grid; grid-template-columns: 1fr; gap: var(--nq-s3); }
 @media (min-width: 560px) { .nq-living-map__grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1100px) { .nq-living-map__grid { grid-template-columns: repeat(2, 1fr); } }
