@@ -13,6 +13,7 @@ import {
   Loading,
   Notice,
   OpsCard,
+  PageActions,
   PageHeader,
   StatusChip,
 } from "../../ui/kit";
@@ -90,9 +91,11 @@ export default function CongBangPage() {
         title="Công bằng"
         meta="Bạn thấy số dư của chính mình so với trung bình nhóm. Quán không xếp hạng tên người."
       />
-      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-        Hỏi trợ lý vận hành
-      </Btn>
+      <PageActions>
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          Hỏi trợ lý vận hành
+        </Btn>
+      </PageActions>
       {error ? <Alert>{error}</Alert> : null}
       {loading ? <Loading skeleton="list">Đang đọc sổ nợ…</Loading> : null}
 
@@ -102,6 +105,7 @@ export default function CongBangPage() {
 
       {!loading && !error && axes.length > 0 ? (
         <OpsCard
+          density="compact"
           eyebrow="Số dư của bạn"
           title={mine ? "Bạn so với trung bình nhóm" : "Trung bình nhóm"}
         >
@@ -140,7 +144,7 @@ export default function CongBangPage() {
         </Notice>
       ) : null}
 
-      <OpsCard eyebrow="Công bằng ảnh hưởng gì" title="Số dư này được dùng ở đâu?">
+      <OpsCard density="compact" eyebrow="Công bằng ảnh hưởng gì" title="Số dư này được dùng ở đâu?">
         <p className="mb-3 text-sm text-[var(--nq-dim)]">
           Bộ xếp lịch (CP-SAT) đọc số dư bốn trục này mỗi lần xếp ca — người gánh nhiều hơn sẽ được ưu
           tiên bù. Chỉnh ca trực tiếp ở Lịch tuần, còn xin nghỉ hoặc đổi ca thì vào Hộp thư.

@@ -17,29 +17,20 @@
  */
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useMemo, useRef, useState } from "react";
+import { ContactShadows, Html, OrbitControls, RoundedBox } from "@react-three/drei";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Mesh, Points } from "three";
 import type { ZoneUI } from "./quanverse-model";
 import type { Tier3d } from "../useCapability3d";
-
-/** Vị trí trên mặt bằng (mét) — gần đúng layout quán thật. */
-const PLAN: Record<string, { x: number; z: number; w: number; d: number }> = {
-  bar: { x: -1.55, z: -0.7, w: 1.9, d: 1.15 },
-  cashier: { x: 1.85, z: -0.95, w: 1.35, d: 0.95 },
-  window_table: { x: 1.7, z: 1.15, w: 1.55, d: 1.05 },
-  entrance: { x: -1.6, z: 1.35, w: 1.15, d: 0.85 },
-};
+import { livingPlacement } from "./living-plan";
 
 function placement(zone: ZoneUI, index: number) {
-  const known = PLAN[zone.zone_id];
-  if (known) return known;
-  // Khu vực lạ (dữ liệu mới) → xếp thành hàng sau quầy, không vẽ chồng nhau.
-  return { x: -1.6 + (index % 3) * 1.6, z: -1.7 - Math.floor(index / 3) * 1.1, w: 1.2, d: 0.8 };
+  return livingPlacement(zone.zone_id, index);
 }
 
 function loadColor(load: number): string {
   if (load >= 0.7) return "#f59e0b";
-  if (load >= 0.4) return "#d4af37";
+  if (load >= 0.4) return "#b8942f";
   return "#7c8a99";
 }
 
@@ -59,9 +50,21 @@ function ZoneBlock({
   const color = loadColor(zone.load_signal);
   const [hovered, setHovered] = useState(false);
 
+  useEffect(() => {
+    return () => {
+      document.body.style.cursor = "";
+    };
+  }, []);
+
   return (
     <group position={[place.x, height / 2, place.z]}>
-      <mesh
+      {/* Bo góc thay khối vuông cứng — cùng một khối nhưng đỡ "thùng carton". */}
+      <RoundedBox
+        args={[place.w, height, place.d]}
+        radius={Math.min(0.06, place.w * 0.08, height * 0.12)}
+        smoothness={4}
+        castShadow
+        receiveShadow
         position={[0, 0, 0]}
         onPointerOver={(e) => {
           e.stopPropagation();
@@ -77,23 +80,40 @@ function ZoneBlock({
           onSelect(zone.zone_id);
         }}
       >
-        <boxGeometry args={[place.w, height, place.d]} />
         <meshStandardMaterial
-          color={zone.active ? color : "#6b6055"}
-          emissive={color}
-          emissiveIntensity={(hovered ? 0.75 : 0.35) + zone.load_signal * 0.5}
+          color={color}
+          emissive={selected || hovered ? color : "#000000"}
+          emissiveIntensity={selected ? 0.45 : hovered ? 0.22 : 0}
           metalness={0.35}
           roughness={0.45}
         />
-      </mesh>
-      {/* Khung dây vàng = khu vực đang chọn (không dùng màu chữ để báo trạng thái) */}
+      </RoundedBox>
+      <Html
+        position={[0, height / 2 + 0.18, 0]}
+        center
+        distanceFactor={8}
+        style={{ pointerEvents: "none", whiteSpace: "nowrap" }}
+      >
+        <span
+          style={{
+            fontSize: "11px",
+            fontFamily: "var(--nq-font-mono)",
+            color: selected ? "#e8d48a" : "#c8d0d8",
+            textShadow: "0 1px 4px rgba(0,0,0,.85)",
+            letterSpacing: "0.04em",
+          }}
+        >
+          {zone.label || zone.zone_id}
+        </span>
+      </Html>
+      {/* Khung dây vàng = khu vực đang chọn */}
       {selected ? (
         <mesh position={[0, 0, 0]}>
           <boxGeometry args={[place.w * 1.06, height * 1.08, place.d * 1.08]} />
           <meshBasicMaterial color="#e8d48a" wireframe transparent opacity={0.9} />
         </mesh>
       ) : null}
-      {/* Vạch tải ở mặt trước khối — đọc được mức tải từ xa */}
+      {/* Vạch tải ở mặt trước khối */}
       <mesh position={[0, -height / 2 + 0.03, place.d / 2 + 0.01]}>
         <planeGeometry args={[place.w * 0.86 * zone.load_signal, 0.05]} />
         <meshBasicMaterial color="#e6edf3" transparent opacity={0.85} />
@@ -217,29 +237,48 @@ export default function LivingMap3d({ zones, selectedId = null, onSelect, tier }
   return (
     <div className="nq-living-map__canvas" aria-hidden="true">
       <Canvas
-        camera={{ position: [0, 3.6, 5.4], fov: 40 }}
+        shadows={tier === "full"}
+        camera={{ position: [0, 4.1, 6.2], fov: 38 }}
         dpr={tier === "full" ? [1, 2] : [1, 1.5]}
         gl={{ antialias: tier === "full", alpha: true, powerPreference: "low-power" }}
+        frameloop="always"
       >
-        {/* Ba lớp sáng: nền khuếch tán + bầu trời/nền đất + hai nguồn điểm ấm/lạnh.
-            Bản trước chỉ có ambient 0.4 + hai point yếu nên khối chìm vào nền đen. */}
+        {/* Kéo để xoay, cuộn để zoom — trước đây góc máy cố định nên cảnh trông
+            như một bức ảnh tĩnh dù có hoạt hình bên trong. Giới hạn góc/khoảng
+            cách để không lật xuống dưới sàn hoặc zoom ra khỏi mô hình. */}
+        <OrbitControls
+          enablePan={false}
+          minDistance={3.2}
+          maxDistance={9}
+          minPolarAngle={Math.PI / 6}
+          maxPolarAngle={Math.PI / 2.25}
+          enableDamping
+          dampingFactor={0.12}
+          target={[0, 0.6, 0]}
+        />
         <ambientLight intensity={0.55} />
         <hemisphereLight args={["#e8d48a", "#0b141b", 0.55]} />
-        <pointLight position={[3, 4, 2]} intensity={1.5} distance={18} decay={1.3} color="#d4af37" />
+        <pointLight
+          position={[3, 4, 2]}
+          intensity={1.5}
+          distance={18}
+          decay={1.3}
+          color="#b8942f"
+          castShadow={tier === "full"}
+        />
         <pointLight position={[-3, 2, -2]} intensity={0.7} distance={16} decay={1.3} color="#e8d48a" />
 
-        {/* Sàn quán — sáng hơn nền để khối có chỗ đứng, không trôi trong hư không. */}
-        <mesh position={[0, -0.07, 0]} receiveShadow={tier === "full"}>
+        <mesh position={[0, -0.07, 0]} receiveShadow>
           <boxGeometry args={[6.2, 0.14, 4.6]} />
           <meshStandardMaterial color="#0e1b22" metalness={0.25} roughness={0.8} />
         </mesh>
-        {/* Lưới sàn mờ: mắt đọc được chiều sâu mà không cần bóng đổ. */}
         <gridHelper args={[6.2, 12, "#3d3418", "#26260f"]} position={[0, 0.005, 0]} />
-        {/* Viền sàn vàng */}
         <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[3.02, 3.16, 64]} />
-          <meshBasicMaterial color="#d4af37" transparent opacity={0.5} />
+          <meshBasicMaterial color="#b8942f" transparent opacity={0.5} />
         </mesh>
+
+        {tier === "full" ? <ContactShadows position={[0, 0.01, 0]} opacity={0.45} scale={8} blur={2.5} far={4} /> : null}
 
         <Core load={avgLoad} />
 

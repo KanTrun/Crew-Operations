@@ -9,7 +9,7 @@ import { Icon, iconForHref } from "../ui/icons";
 import { Tour } from "../ui/tour";
 import { Logo } from "../ui/Logo";
 import { CopilotPane } from "../ui/copilot/CopilotPane";
-import { FloatingChatHead } from "../ui/chat/FloatingChatHead";
+import { CommandPalette, flattenNavGroups } from "../ui/CommandPalette";
 
 const COLLAPSE_KEY = "nq_side_collapsed";
 
@@ -132,6 +132,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   /** Sidebar trượt ra ở màn hẹp. Tách khỏi `collapsed` vì hai trạng thái này
    *  độc lập: màn rộng thu gọn còn icon, màn hẹp đóng hẳn. */
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
   const burgerRef = useRef<HTMLButtonElement>(null);
   const sideRef = useRef<HTMLElement>(null);
 
@@ -210,6 +211,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, [drawerOpen]);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   const toggleCollapsed = useCallback(() => {
     setCollapsed((v) => {
       const next = !v;
@@ -222,13 +234,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const wide =
-    path === "/lich-tuan" ||
-    path === "/roster" ||
-    path === "/cuoc-hop" ||
-    path === "/inbox" ||
-    path === "/quay" ||
-    path === "/chat";
+  const hideFloatingCopilot =
+    path === "/copilot" ||
+    path === "/chat" ||
+    COPILOT_LAUNCHER_ROUTES.has(path);
 
   function logout() {
     clearSession();
@@ -240,6 +249,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       className="nq-app min-h-screen font-sans"
       data-collapsed={collapsed ? "1" : "0"}
     >
+      <CommandPalette
+        open={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        items={flattenNavGroups(GROUPS)}
+        role={role || null}
+      />
       {/* Nút mở sidebar — chỉ hiện ở màn hẹp (điều khiển bằng CSS). */}
       <button
         ref={burgerRef}
@@ -332,8 +347,25 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <span className="nq-side__user-role">[{roleLabel(role)}]</span>
                 </span>
               </div>
-              <button type="button" onClick={logout} className="nq-cta nq-cta--ghost nq-cta--sm">
-                Thoát
+              <button
+                type="button"
+                onClick={logout}
+                className="nq-cta nq-cta--ghost nq-cta--sm nq-side__logout"
+                title="Thoát"
+                aria-label="Thoát"
+              >
+                <Icon name="door" size={16} />
+                <span className="nq-side__label">Thoát</span>
+              </button>
+              <button
+                type="button"
+                className="nq-side__cmd"
+                onClick={() => setCmdOpen(true)}
+                title="Tìm trang nhanh (Ctrl+K)"
+              >
+                <Icon name="filter" size={14} />
+                <span className="nq-side__label">Tìm nhanh</span>
+                <kbd className="nq-side__kbd">Ctrl+K</kbd>
               </button>
             </>
           ) : (
@@ -351,7 +383,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           trên khung 1440). Việc canh giữa nội dung do khối bên trong lo, còn
           vùng `main` chỉ cần chừa lề trái cho sidebar. */}
       <main className="nq-main" id="nq-content">
-        <div className={`nq-main__inner${wide ? " nq-main__inner--wide" : ""}`}>
+        <div className="nq-main__inner">
           {!ready ? (
             <div className="nq-page nq-page--center py-16 text-center" role="status">
               <p className="nq-muted" style={{ margin: 0 }}>Đang kiểm tra quyền truy cập…</p>
@@ -371,12 +403,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      {token ? (
-        <>
-          {!COPILOT_LAUNCHER_ROUTES.has(path) ? <CopilotPane /> : null}
-          <FloatingChatHead />
-        </>
-      ) : null}
+      {token && !hideFloatingCopilot ? <CopilotPane /> : null}
       <Tour active={Boolean(token) && path === "/hom-nay"} />
     </div>
   );

@@ -4,8 +4,18 @@ import { useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { viError } from "../../lib/present";
 import { getToken, isManager } from "../../lib/session";
-import { Alert, AuthGate, Btn, Empty, Field, Loading, OpsCard, PageHeader } from "../../ui/kit";
+import { Alert, AuthGate, Btn, DataList, Empty, Field, OpsCard, PageGrid, PageHeader, Pagination, StatusChip, usePaged } from "../../ui/kit";
 import { Icon } from "../../ui/icons";
+import { fieldLabel } from "../../lib/labels";
+import { AiInsightPanel } from "../../ui/ai/AiInsightPanel";
+import { AskAiBox } from "../../ui/ai/AskAiBox";
+
+const LOAI_LABEL: Record<string, string> = {
+  tang_gia: "Tăng giá",
+  giam_gia: "Giảm giá",
+  them_nhan_su: "Thêm nhân sự",
+  bot_nhan_su: "Bớt nhân sự",
+};
 
 interface TwinScenario {
   scenario_id: string;
@@ -87,10 +97,12 @@ export default function ThuNghiemAnToanPage() {
     }
   }
 
+  const scenariosPaged = usePaged(scenarios, 6);
+
   if (!token) return <AuthGate />;
 
   return (
-    <div className="nq-page space-y-6">
+    <div className="nq-page">
       <PageHeader
         kicker="Digital Twin"
         title="Thử nghiệm an toàn"
@@ -100,7 +112,10 @@ export default function ThuNghiemAnToanPage() {
       {error && <Alert kind="err">{error}</Alert>}
       {success && <Alert kind="ok">{success}</Alert>}
 
-      <OpsCard title="Chạy mô phỏng">
+      <PageGrid
+        main={
+          <>
+      <OpsCard title="Chạy mô phỏng" density="compact">
         <div className="space-y-4">
           <Field label="Loại kịch bản">
             <select
@@ -149,33 +164,48 @@ export default function ThuNghiemAnToanPage() {
         </div>
       </OpsCard>
 
-      <OpsCard title={`Kịch bản đã chạy (${scenarios.length})`}>
+      <OpsCard title="Kịch bản đã chạy" count={scenarios.length} countLabel="kịch bản">
         {scenarios.length === 0 ? (
           <Empty>Chưa có kịch bản nào.</Empty>
         ) : (
-          <div className="space-y-3">
-            {scenarios.map((s) => (
-              <div key={s.scenario_id} className="nq-card p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <h4 className="font-bold">{s.loai}</h4>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--nq-surface)] text-[var(--nq-ink)] border border-[var(--nq-line)]">
-                    {s.scenario_id}
-                  </span>
+          <>
+            <div className="nq-columns" data-cols="2">
+              {scenariosPaged.shown.map((s) => (
+                <div key={s.scenario_id} className="nq-card p-4">
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h4 className="font-bold">{LOAI_LABEL[s.loai] ?? fieldLabel(s.loai)}</h4>
+                    <StatusChip tone="info">{s.scenario_id}</StatusChip>
+                  </div>
+                  <DataList data={(s.ket_qua ?? {}) as Record<string, unknown>} nested />
+                  {s.rui_ro ? (
+                    <p className="text-xs text-[var(--nq-st-warn-ink)] mt-3 flex items-start gap-1.5">
+                      <Icon name="warn" size={13} />
+                      <span>{s.rui_ro}</span>
+                    </p>
+                  ) : null}
                 </div>
-                <pre className="text-xs font-mono text-[var(--nq-ink-muted)] mt-2 whitespace-pre-wrap">
-                  {JSON.stringify(s.ket_qua, null, 2)}
-                </pre>
-                {s.rui_ro && (
-                  <p className="text-xs text-[var(--nq-st-warn-ink)] mt-2 flex items-start gap-1.5">
-                <Icon name="warn" size={13} />
-                <span>{s.rui_ro}</span>
-              </p>
-                )}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            <Pagination
+              page={scenariosPaged.page}
+              totalPages={scenariosPaged.totalPages}
+              onChange={scenariosPaged.setPage}
+              from={scenariosPaged.from}
+              to={scenariosPaged.to}
+              total={scenariosPaged.total}
+            />
+          </>
         )}
       </OpsCard>
+          </>
+        }
+        aside={
+          <>
+            <AiInsightPanel page="thu-nghiem-an-toan" />
+            <AskAiBox page="thu-nghiem-an-toan" />
+          </>
+        }
+      />
     </div>
   );
 }

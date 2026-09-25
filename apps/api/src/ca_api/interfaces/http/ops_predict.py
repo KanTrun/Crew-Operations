@@ -136,11 +136,19 @@ def run_predict(
     pattern_dicts = [p.model_dump() for p in patterns]
     rule_dicts = [r.model_dump() for r in rules]
 
+    # Ghi đè theo `mo_ta`/`cau` (nội dung tất định từ cùng dữ liệu đầu vào)
+    # thay vì luôn chèn thêm — trước đây mỗi lần bấm "Chạy 8 bước" (hoặc worker
+    # chạy đêm với dữ liệu mẫu giống nhau) lại thêm một bản giống hệt, khiến
+    # trang hiện 5-9 dòng trùng lặp "CA T6_TOI DOANH THU 500 VƯỢT TRỘI".
     def mut_patterns(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return pattern_dicts + cur
+        seen = {p.get("mo_ta") for p in pattern_dicts}
+        kept = [p for p in cur if p.get("mo_ta") not in seen]
+        return pattern_dicts + kept
 
     def mut_rules(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return rule_dicts + cur
+        seen = {r.get("cau") for r in rule_dicts}
+        kept = [r for r in cur if r.get("cau") not in seen]
+        return rule_dicts + kept
 
     kv_mutate("ops_predict_patterns", mut_patterns, [])
     kv_mutate("ops_predict_rules", mut_rules, [])

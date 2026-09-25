@@ -1,7 +1,7 @@
 "use client";
 
 import type { KhungGio, RosterShift } from "../../lib/roster";
-import { initialsOf, khungOrder, rosterCellSummary, shiftRowLabel } from "../../lib/roster";
+import { khungOrder, rosterCellSummary, shiftRowLabel, shortNameOf } from "../../lib/roster";
 import { Icon } from "../../ui/icons";
 
 const KHUNGS = ["sang", "chieu", "toi"] as const;
@@ -41,11 +41,35 @@ export function RosterGrid({
   const visibleKhungs = filterKhung === "all" ? KHUNGS : KHUNGS.filter((k) => k === filterKhung);
 
   return (
-    <div className="nq-roster-wrap">
+    <>
+      <ul className="nq-roster-legend" aria-label="Chú giải lịch tuần">
+        <li>
+          <span className="nq-roster-legend__swatch nq-roster-legend__swatch--ok" aria-hidden="true" />
+          Đủ người
+        </li>
+        <li>
+          <span className="nq-roster-legend__swatch nq-roster-legend__swatch--warn" aria-hidden="true" />
+          Thiếu người
+        </li>
+        <li>
+          <span className="nq-roster-legend__swatch nq-roster-legend__swatch--danger" aria-hidden="true" />
+          Trống ca
+        </li>
+      </ul>
+      <div className="nq-roster-wrap">
       <table className="nq-roster-table nq-roster-table--compact">
         <caption className="nq-roster-caption">
           Lưới tuần — bấm ô hoặc tiêu đề ngày để mở chi tiết và chỉnh nhân sự
         </caption>
+        {/* `table-layout: fixed` đọc bề rộng cột từ đây: cột "Khung" cố định,
+            7 cột ngày còn lại chia đều phần còn lại — lấp đầy hết bề ngang
+            trang, không còn phải cuộn ngang ở màn hình laptop bình thường. */}
+        <colgroup>
+          <col style={{ width: "9rem" }} />
+          {DAYS.map((d) => (
+            <col key={d} />
+          ))}
+        </colgroup>
         <thead>
           <tr>
             <th scope="col" className="nq-roster-corner">
@@ -150,7 +174,7 @@ export function RosterGrid({
                                     data-pinned={pinnedIds.has(id) ? "1" : undefined}
                                     title={`${nvName(id)}${pinnedIds.has(id) ? " · ghim ca" : ""}`}
                                   >
-                                    {initialsOf(nvName(id))}
+                                    {shortNameOf(nvName(id))}
                                   </span>
                                 ))}
                                 {assigned.length > 4 && (
@@ -179,6 +203,7 @@ export function RosterGrid({
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 

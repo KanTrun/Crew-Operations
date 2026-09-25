@@ -5,6 +5,7 @@ import { apiGet, apiSend } from "../../../lib/api";
 import { safeText, viError } from "../../../lib/present";
 import { getToken, isChuQuan, isManager } from "../../../lib/session";
 import { Icon } from "../../../ui/icons";
+import { useStaffNameMap } from "../../../ui/ops-pickers";
 import {
   Alert,
   AuthGate,
@@ -14,8 +15,10 @@ import {
   Loading,
   Notice,
   PageHeader,
+  Pagination,
   StatusChip,
   Toasts,
+  usePaged,
   useToasts,
 } from "../../../ui/kit";
 
@@ -82,6 +85,7 @@ export default function DatBanPage() {
   const [token, setToken] = useState("");
   const [manager, setManager] = useState(false);
   const [chuQuan, setChuQuan] = useState(false);
+  const staffName = useStaffNameMap();
 
   const [tables, setTables] = useState<Table[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -238,6 +242,13 @@ export default function DatBanPage() {
     if (filterStatus === "all") return true;
     return r.status === filterStatus;
   });
+
+  const tableNameById: Record<string, string> = {};
+  for (const t of tables) tableNameById[t.id] = t.ten_ban || t.id;
+  const tableNames = (ids?: string[]) =>
+    ids && ids.length ? ids.map((id) => tableNameById[id] || id).join(", ") : "Chưa gán bàn";
+
+  const reservationsPaged = usePaged(filteredReservations, 10);
 
   const unreadNotifs = notifications.filter((n) => !n.da_xem);
 
@@ -454,7 +465,7 @@ export default function DatBanPage() {
               <Empty title="Không có đơn đặt bàn">Không có đơn đặt bàn nào thỏa mãn điều kiện lọc.</Empty>
             ) : (
               <div className="nq-booking-reservations">
-                {filteredReservations.map((reservation) => {
+                {reservationsPaged.shown.map((reservation) => {
                   const statusConfig = STATUS_MAP[reservation.status] || { label: reservation.status, tone: "default" as const };
                   return (
                     <article key={reservation.id} className="nq-booking-reservation">
@@ -470,11 +481,11 @@ export default function DatBanPage() {
                         <div className="nq-booking-reservation-meta">
                           <span><Icon name="clock" size={15} /> <strong>{reservation.booking_time.slice(0, 16).replace("T", " ")}</strong> · {reservation.duration_minutes} phút</span>
                           <span><Icon name="users" size={15} /> <strong>{reservation.party_size}</strong> người</span>
-                          <span><Icon name="coffee" size={15} /> <strong>{reservation.table_ids?.join(", ") || "Chưa gán bàn"}</strong></span>
+                          <span><Icon name="coffee" size={15} /> <strong>{tableNames(reservation.table_ids)}</strong></span>
                         </div>
                         {reservation.notified_nv_id && (
                           <div className="nq-booking-assignee">
-                            <Icon name="users" size={14} /> Ca trực: {reservation.notified_nv_id} · {reservation.notification_acked_at ? "Đã xác nhận" : "Chưa xem"}
+                            <Icon name="users" size={14} /> Ca trực: {staffName(reservation.notified_nv_id)} · {reservation.notification_acked_at ? "Đã xác nhận" : "Chưa xem"}
                           </div>
                         )}
                       </div>
@@ -496,6 +507,14 @@ export default function DatBanPage() {
                 })}
               </div>
             )}
+            <Pagination
+              page={reservationsPaged.page}
+              totalPages={reservationsPaged.totalPages}
+              onChange={reservationsPaged.setPage}
+              from={reservationsPaged.from}
+              to={reservationsPaged.to}
+              total={reservationsPaged.total}
+            />
           </section>
         </>
       )}

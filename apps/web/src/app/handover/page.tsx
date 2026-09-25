@@ -12,7 +12,9 @@ import {
   Field,
   Loading,
   OpsCard,
+  PageActions,
   PageHeader,
+  PagedList,
   Textarea,
 } from "../../ui/kit";
 import { CopilotPane } from "../../ui/copilot/CopilotPane";
@@ -77,9 +79,11 @@ export default function HandoverPage() {
         title="Bàn giao"
         meta="Ghi ca vừa rồi theo mẫu Tình hình · Bối cảnh · Đánh giá · Đề nghị — hệ thống tách và lưu cho ca sau."
       />
-      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-        Hỏi trợ lý vận hành
-      </Btn>
+      <PageActions>
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          Hỏi trợ lý vận hành
+        </Btn>
+      </PageActions>
       <Field label="Nội dung ca">
         <Textarea
           value={text}
@@ -115,17 +119,20 @@ export default function HandoverPage() {
       )}
 
       {history.length > 0 ? (
-        <OpsCard eyebrow="Lịch sử" title="Bàn giao gần đây" count={history.length} countLabel="lần">
-          <div className="nq-list">
-            {history.slice(0, 7).map((h) => (
+        <OpsCard density="compact" eyebrow="Lịch sử" title="Bàn giao gần đây" count={history.length} countLabel="lần">
+          <PagedList
+            items={history}
+            pageSize={10}
+            className="nq-list"
+            renderItem={(h) => (
               <article key={h.id ?? h.luc} className="nq-item">
                 <p className="nq-item-title">{safeText(h.tinh_hinh, "Bàn giao ca")}</p>
                 <p className="nq-item-sub">
                   {formatLuc(h.luc)} · {actorLabel("nhan_vien")}
                 </p>
               </article>
-            ))}
-          </div>
+            )}
+          />
         </OpsCard>
       ) : null}
       <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />

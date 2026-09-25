@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { nvTenHienThi } from "../lib/present";
+import { actorLabelEx, nvTenHienThi } from "../lib/present";
 import { type ShiftOption, type StaffOption, useOpsPickers } from "../lib/ops-context";
 import { Field, Hint, Loading, Select } from "./kit";
 
@@ -114,4 +114,45 @@ export function DayOfWeekSelect({
 export function useMeNvId(): string | null {
   const { data } = useOpsPickers(true);
   return data?.me_nv_id ?? null;
+}
+
+/**
+ * Tên hiển thị cho một nv_id — ưu tiên `ten` từ ops/pickers, không bao giờ in raw `nv_01`.
+ * Truyền map `staff` nếu trang đã có danh sách để tránh fetch trùng.
+ */
+export function useStaffDisplayName(
+  nvId: string | null | undefined,
+  staff?: StaffOption[],
+): string {
+  const { data } = useOpsPickers(!staff);
+  const options = staff ?? data?.nhan_vien ?? [];
+  if (!nvId) return nvTenHienThi("", null);
+  const hit = options.find((n) => n.id === nvId);
+  return nvTenHienThi(hit?.ten, nvId);
+}
+
+/** Map id → tên; dùng khi render nhiều hàng (inbox/gmail/roster). */
+export function useStaffNameMap(staff?: StaffOption[]): (nvId: string | null | undefined) => string {
+  const { data } = useOpsPickers(!staff);
+  const options = staff ?? data?.nhan_vien ?? [];
+  return (nvId) => {
+    if (!nvId) return nvTenHienThi("", null);
+    const hit = options.find((n) => n.id === nvId);
+    return nvTenHienThi(hit?.ten, nvId);
+  };
+}
+
+/**
+ * Nhãn "người thực hiện" cho sổ vết / lịch sử — tên thật khi tra được trong
+ * danh bạ (`nv_01` → "Lan Nguyễn"), lùi về vai trò/agent khi không tra được.
+ * Thay cho `actorLabel` thô luôn hiện "Nhân viên 0N".
+ */
+export function useActorName(staff?: StaffOption[]): (actor: string | null | undefined) => string {
+  const { data } = useOpsPickers(!staff);
+  const options = staff ?? data?.nhan_vien ?? [];
+  const resolve = (nvId: string) => {
+    const hit = options.find((n) => n.id === nvId);
+    return nvTenHienThi(hit?.ten, nvId);
+  };
+  return (actor) => actorLabelEx(actor, resolve);
 }

@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Alert, AuthGate, Btn, Loading, Summary } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Loading, PageActions, Summary } from "../../ui/kit";
 import { canEdit, clearSession, getNvId, getRole, getToken, isManager, lifeLabel } from "../../lib/session";
 import { ApiError, apiGet, apiSend } from "../../lib/api";
 import { matchSearch } from "../../lib/list-filters";
-import { viError } from "../../lib/present";
+import { nvTenHienThi, viError } from "../../lib/present";
 import type { KhungGio } from "../../lib/roster";
 import { shiftRowLabel } from "../../lib/roster";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
@@ -626,7 +626,7 @@ export default function RosterPage() {
 
   function nvName(id: string): string {
     const found = (data?.nhan_vien ?? []).find((x) => x.id === id);
-    return found ? found.ten : id;
+    return nvTenHienThi(found?.ten, id);
   }
 
   // Resolve employee ID from session (e.g. nv_03 for Minh, nv_01 for Lan...)
@@ -673,9 +673,11 @@ export default function RosterPage() {
             <h1 className="nq-page-title text-[var(--nq-accent)]">
               {viewMode === "my_shifts" ? "Lịch đi làm của tôi" : "Lịch toàn quán"}
             </h1>
-            <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-              Hỏi trợ lý vận hành
-            </Btn>
+            <PageActions className="!mt-2 !mb-0">
+              <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+                Hỏi trợ lý vận hành
+              </Btn>
+            </PageActions>
           </div>
 
           {/* Mode Switcher: My Shifts vs Full Roster */}
@@ -1142,6 +1144,11 @@ export default function RosterPage() {
               { n: rosterStats.slots, k: "Ô ca tuần" },
               { n: rosterStats.staffed, k: "Đã có người", tone: "ok" },
               { n: rosterStats.thin, k: "Thiếu định biên", tone: rosterStats.thin > 0 ? "warn" : "default" },
+              {
+                n: data?.chua_xac_nhan?.length ?? 0,
+                k: "Chưa xác nhận",
+                tone: (data?.chua_xac_nhan?.length ?? 0) > 0 ? "warn" : "default",
+              },
               { n: lifeLabel(trangThai), k: "Trạng thái lịch" },
             ]}
           />

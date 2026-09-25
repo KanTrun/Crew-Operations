@@ -227,11 +227,15 @@ export default function ShiftRescuePanel() {
     setError(null);
     setNotice(null);
     try {
-      await api(`/experience/shift-rescue/${caseId}/confirm`, {
+      const res = await api<{ treo_id?: string }>(`/experience/shift-rescue/${caseId}/confirm`, {
         candidate_id: selected,
       });
       await refreshCase(caseId);
-      setNotice("Đã chốt người bù cho ca này. Thao tác có lưu vết kiểm toán.");
+      setNotice(
+        res?.treo_id
+          ? "Đã chốt người bù — đã tạo việc trong Sổ việc treo, mở /treo để ghim vào lịch tuần."
+          : "Đã chốt người bù cho ca này. Thao tác có lưu vết kiểm toán.",
+      );
     } catch (e) {
       setError(viError(e, COPY.confirm));
     } finally {

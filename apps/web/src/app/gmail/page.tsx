@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError, apiGet, apiSend } from "../../lib/api";
 import { formatRelativeTime } from "../../lib/date";
@@ -20,11 +20,30 @@ import {
   OpsCard,
   PageHeader,
   Select,
+  StatusChip,
   TabBar,
   TabButton,
   Table,
   Tooltip,
 } from "../../ui/kit";
+import { fieldLabel, formatFieldValue } from "../../lib/labels";
+import { useStaffNameMap } from "../../ui/ops-pickers";
+
+function objectChips(value: unknown): ReactNode {
+  if (value == null || value === "") return "—";
+  if (typeof value !== "object") return <StatusChip>{String(value)}</StatusChip>;
+  const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => v != null && v !== "");
+  if (entries.length === 0) return "—";
+  return (
+    <span className="flex flex-wrap gap-1.5">
+      {entries.map(([k, v]) => (
+        <StatusChip key={k} tone="info">
+          {fieldLabel(k)}: {formatFieldValue(v)}
+        </StatusChip>
+      ))}
+    </span>
+  );
+}
 
 type GmailAccount = {
   id: string;
@@ -107,6 +126,7 @@ export default function GmailPage() {
   const searchParams = useSearchParams();
   const activeTab = (searchParams.get("tab") as TabId) || "accounts";
   const accountId = searchParams.get("account_id") || "";
+  const staffName = useStaffNameMap();
 
   const [token, setToken] = useState("");
   const [accounts, setAccounts] = useState<GmailAccount[]>([]);
@@ -467,7 +487,11 @@ export default function GmailPage() {
                     ),
                   },
                   { key: "display_name", header: "Tên hiển thị" },
-                  { key: "nv_id", header: "Nhân viên" },
+                  {
+                    key: "nv_id",
+                    header: "Nhân viên",
+                    render: (value) => (value ? staffName(String(value)) : "—"),
+                  },
                   {
                     key: "sync_state",
                     header: "Email chưa đọc",
@@ -751,12 +775,12 @@ export default function GmailPage() {
                   {
                     key: "criteria",
                     header: "Tiêu chí",
-                    render: (value) => <code className="font-mono text-xs">{JSON.stringify(value)}</code>,
+                    render: (value) => objectChips(value),
                   },
                   {
                     key: "action",
                     header: "Hành động",
-                    render: (value) => <code className="font-mono text-xs">{JSON.stringify(value)}</code>,
+                    render: (value) => objectChips(value),
                   },
                   {
                     key: "id",

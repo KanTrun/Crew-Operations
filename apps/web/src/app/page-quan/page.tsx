@@ -632,24 +632,13 @@ export default function PageQuanPage() {
             setTab("saved_trends");
             if (savedTrends.length > 0) setSelectedTrend(savedTrends[0]);
           }}
-          className={tab === "saved_trends" ? "bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] border-2 border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] shadow-md font-bold" : "text-[var(--nq-st-warn-ink)] hover:bg-[var(--nq-st-warn-soft)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))]"}
         >
           Kho Xu Hướng Đã Lưu ({savedTrends.length})
         </Btn>
-        <Btn
-          variant={tab === "threads" ? "primary" : "ghost"}
-          onClick={() => setTab("threads")}
-          className={
-            tab === "threads"
-              ? "bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] font-bold shadow-md"
-              : threads.filter((t) => t.needs_action || t.pending_approval).length > 0
-              ? "text-amber-300 hover:bg-amber-500/10 border border-amber-500/30"
-              : undefined
-          }
-        >
+        <Btn variant={tab === "threads" ? "primary" : "ghost"} onClick={() => setTab("threads")}>
           Hội thoại Messenger ({threads.length})
           {threads.filter((t) => t.needs_action || t.pending_approval).length > 0 ? (
-            <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-black">
+            <span className="ml-1.5 rounded-full bg-[var(--nq-accent)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--nq-accent-ink)]">
               {threads.filter((t) => t.needs_action || t.pending_approval).length}
             </span>
           ) : null}
@@ -668,11 +657,6 @@ export default function PageQuanPage() {
             setTab("reflection");
             loadReflection();
           }}
-          className={
-            tab === "reflection"
-              ? "bg-[var(--nq-st-info)] text-[var(--nq-accent-ink)] font-bold shadow-md"
-              : "text-[var(--nq-st-info-ink)] hover:bg-[var(--nq-st-info-soft)] border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))]"
-          }
         >
           Tự Đánh Giá CSKH {reflectionReport ? `(${reflectionReport.csat_score})` : ""}
         </Btn>
@@ -985,7 +969,7 @@ export default function PageQuanPage() {
               <button
                 onClick={() => handleApplyKeywordSearch(keywordInput)}
                 disabled={isScanning}
-                className="inline-flex items-center gap-1 rounded bg-[var(--nq-warn)] px-4 py-2 text-xs font-bold text-[var(--nq-accent-ink)] hover:brightness-110 transition shadow cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded border border-[var(--nq-accent)] bg-[var(--nq-accent)] px-4 py-2 text-xs font-bold text-[var(--nq-accent-ink)] hover:brightness-110 transition shadow cursor-pointer disabled:opacity-50"
               >
                 Quét Chủ Đề Này
               </button>
@@ -1033,7 +1017,7 @@ export default function PageQuanPage() {
               <button
                 onClick={() => fetchTrendsData(regionFilter, categoryFilter, activeKeyword, scrapeMode, true)}
                 disabled={isScanning}
-                className="inline-flex items-center gap-1.5 rounded bg-[var(--nq-ok)] px-4 py-1.5 text-xs font-bold text-[var(--nq-accent-ink)] shadow-md hover:brightness-110 transition-all cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded border border-[var(--nq-accent)] bg-[var(--nq-accent)] px-4 py-1.5 text-xs font-bold text-[var(--nq-accent-ink)] shadow-md hover:brightness-110 transition-all cursor-pointer disabled:opacity-50"
               >
                 Cào Dữ Liệu {currentSourceLabel}
               </button>
@@ -1060,10 +1044,10 @@ export default function PageQuanPage() {
                 <button
                   key={p.id}
                   onClick={() => handleRegionChange(p.id)}
-                  className={`rounded px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                  className={`rounded border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                     regionFilter === p.id && !showSavedOnly
-                      ? "bg-[var(--nq-primary)] text-black shadow-md"
-                      : "bg-[var(--nq-surface)] text-[var(--nq-muted)] hover:bg-[var(--nq-dim)] hover:text-white"
+                      ? "border-[var(--nq-accent)] bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] shadow-md"
+                      : "border-[var(--nq-line-strong)] bg-[var(--nq-surface)] text-[var(--nq-ink-muted)] hover:border-[var(--nq-accent)] hover:text-[var(--nq-accent)]"
                   }`}
                 >
                   {p.label}
@@ -1078,10 +1062,10 @@ export default function PageQuanPage() {
                     setSelectedTrend(savedTrends[0]);
                   }
                 }}
-                className={`rounded px-3 py-1.5 text-xs font-bold transition-all cursor-pointer border ${
+                className={`rounded border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                   showSavedOnly
-                    ? "bg-[var(--nq-st-warn)] text-black border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] shadow-md"
-                    : "bg-[var(--nq-st-warn-soft)] text-[var(--nq-st-warn-ink)] border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] hover:bg-[var(--nq-st-warn-soft)]"
+                    ? "border-[var(--nq-accent)] bg-[var(--nq-accent-soft)] text-[var(--nq-accent)] shadow-md"
+                    : "border-[var(--nq-line-strong)] bg-[var(--nq-surface)] text-[var(--nq-ink-muted)] hover:border-[var(--nq-accent)] hover:text-[var(--nq-accent)]"
                 }`}
               >
                 Xu Hướng Đã Lưu ({savedTrends.length})
@@ -1102,10 +1086,10 @@ export default function PageQuanPage() {
                   <button
                     key={c.id}
                     onClick={() => handleCategoryChange(c.id)}
-                    className={`rounded px-2.5 py-1 transition-all cursor-pointer ${
+                    className={`rounded border px-2.5 py-1 transition-all cursor-pointer ${
                       categoryFilter === c.id
-                        ? "bg-[var(--nq-accent)] font-bold text-[var(--nq-accent-ink)] shadow-sm"
-                        : "bg-[var(--nq-surface)] text-[var(--nq-muted)] hover:bg-[var(--nq-dim)]"
+                        ? "border-[var(--nq-accent)] bg-[var(--nq-accent)] font-bold text-[var(--nq-accent-ink)] shadow-sm"
+                        : "border-[var(--nq-line)] bg-[var(--nq-surface)] text-[var(--nq-ink-muted)] hover:border-[var(--nq-accent)] hover:text-[var(--nq-accent)]"
                     }`}
                   >
                     {c.label}
@@ -1115,17 +1099,17 @@ export default function PageQuanPage() {
             )}
           </div>
 
-          {/* GRID HIỂN THỊ DANH SÁCH & PHÂN TÍCH CHUYÊN SÂU */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* GRID HIỂN THỊ DANH SÁCH & PHÂN TÍCH CHUYÊN SÂU — không khóa max-height để Tín Hiệu không bị cắt */}
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 items-start">
             {/* Cột Trái: Danh sách Trend */}
-            <div className="space-y-3 lg:col-span-5 max-h-[820px] overflow-y-auto pr-1">
-              <div className="flex items-center justify-between sticky top-0 bg-[var(--nq-bg)] py-1 z-10">
+            <div className="space-y-3 xl:col-span-5">
+              <div className="flex items-center justify-between py-1">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--nq-accent)]">
                   {showSavedOnly
                     ? `Danh Sách Đã Lưu (${savedTrends.length})`
                     : `Tín Hiệu Cào Thật (${displayedTrends.length})`}
                 </h3>
-                <span className="text-xs text-[var(--nq-st-ok-ink)] font-mono">
+                <span className="text-xs text-[var(--nq-accent)] font-mono">
                   {showSavedOnly ? "Kế hoạch quán" : "● Dữ liệu cào độc quyền"}
                 </span>
               </div>
@@ -1165,14 +1149,14 @@ export default function PageQuanPage() {
                       onClick={() => setSelectedTrend(t)}
                       className={`cursor-pointer nq-surface-tile p-4 transition-all relative ${
                         isSelected
-                          ? "border-[var(--nq-primary)] bg-[var(--nq-surface-hi)] shadow-md ring-1 ring-[var(--nq-primary)]"
-                          : "border-[var(--nq-dim)] bg-[var(--nq-surface)] hover:border-[var(--nq-muted)]"
+                          ? "border-[var(--nq-accent)] bg-[var(--nq-surface-hi)] shadow-md ring-1 ring-[var(--nq-accent)]"
+                          : "border-[var(--nq-line)] bg-[var(--nq-surface)] hover:border-[var(--nq-accent)]"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <span className="font-bold text-[var(--nq-primary)] text-sm">{t.tieu_de}</span>
+                        <span className="font-bold text-[var(--nq-ink)] text-sm">{t.tieu_de}</span>
                         <div className="flex flex-col items-end gap-1 shrink-0">
-                          <span className="inline-block rounded px-2 py-0.5 text-xs font-mono font-bold bg-[var(--nq-dim)] text-[var(--nq-primary)]">
+                          <span className="inline-block rounded border border-[var(--nq-line-strong)] bg-[var(--nq-accent-soft)] px-2 py-0.5 text-xs font-mono font-bold text-[var(--nq-accent)]">
                             {platformBadge}
                           </span>
                           <span className={`inline-block rounded border px-1.5 py-0.2 text-2xs font-bold ${lifecycleBadge.cls}`}>
@@ -1182,30 +1166,30 @@ export default function PageQuanPage() {
                       </div>
 
                       {/* Tag Từ khóa cửa miệng */}
-                      <div className="mt-2 inline-flex items-center gap-1 rounded bg-[var(--nq-dim)] px-2 py-0.5 text-xs font-mono font-bold text-[var(--nq-accent)]">
+                      <div className="mt-2 inline-flex items-center gap-1 rounded border border-[var(--nq-line-strong)] bg-[var(--nq-surface-hi)] px-2 py-0.5 text-xs font-mono font-bold text-[var(--nq-accent)]">
                         &quot;{t.cum_tu_khoa_viral}&quot;
                       </div>
 
-                      <p className="mt-2 text-xs text-[var(--nq-muted)] line-clamp-2">{t.diem_nhan_dac_biet}</p>
+                      <p className="mt-2 text-xs text-[var(--nq-ink-muted)] line-clamp-2">{t.diem_nhan_dac_biet}</p>
 
-                      <div className="mt-3 flex items-center justify-between border-t border-[var(--nq-dim)] pt-2 text-xs">
-                        <span className="font-mono text-[var(--nq-st-ok-ink)] font-bold">
+                      <div className="mt-3 flex items-center justify-between border-t border-[var(--nq-line)] pt-2 text-xs">
+                        <span className="font-mono text-[var(--nq-accent)] font-bold">
                           +{t.toc_do_tang_truong_24h}% tăng trưởng
                         </span>
                         
                         <div className="flex items-center gap-2">
                           <button
                             onClick={(e) => toggleSaveTrend(t, e)}
-                            className={`px-2 py-0.5 rounded text-xs font-bold transition cursor-pointer ${
+                            className={`px-2 py-0.5 rounded border text-xs font-bold transition cursor-pointer ${
                               isBookmarked
-                                ? "bg-[var(--nq-st-warn)] text-black"
-                                : "bg-[var(--nq-dim)] text-[var(--nq-muted)] hover:text-[var(--nq-st-warn-ink)]"
+                                ? "border-[var(--nq-accent)] bg-[var(--nq-accent)] text-[var(--nq-accent-ink)]"
+                                : "border-[var(--nq-line-strong)] bg-[var(--nq-surface)] text-[var(--nq-ink-muted)] hover:border-[var(--nq-accent)] hover:text-[var(--nq-accent)]"
                             }`}
                             title={isBookmarked ? "Bỏ lưu" : "Lưu vào kế hoạch quán"}
                           >
                             {isBookmarked ? "Đã lưu" : "Lưu"}
                           </button>
-                          <span className="rounded bg-[var(--nq-surface-hi)] px-2 py-0.5 text-[var(--nq-primary)] font-bold">
+                          <span className="rounded border border-[var(--nq-line-strong)] bg-[var(--nq-surface-hi)] px-2 py-0.5 text-[var(--nq-accent)] font-bold">
                             Viral: {t.diem_tiem_nang_viral}/100
                           </span>
                         </div>
@@ -1217,35 +1201,35 @@ export default function PageQuanPage() {
             </div>
 
             {/* Cột Phải: Bảng Phân Tích Chuyên Sâu Cốt Lõi Trend */}
-            <div className="space-y-4 nq-surface-block p-6 lg:col-span-7">
+            <div className="space-y-4 nq-surface-block p-6 xl:col-span-7">
               {selectedTrend ? (
                 <>
                   {/* Header: Cụm từ khóa cửa miệng cốt lõi & Nút Bookmark */}
                   <div className="rounded nq-surface-block border-[var(--nq-accent)] p-4 shadow-sm">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="text-xs font-bold uppercase tracking-wider text-[var(--nq-accent)]">
                         Cụm Từ Khóa Cửa Miệng Viral (Bắt Sóng Ngay)
                       </span>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <button
                           type="button"
                           onClick={() => useTrendForDraft(selectedTrend)}
-                          className="px-2.5 py-1 rounded text-xs font-bold transition cursor-pointer flex items-center gap-1 bg-[var(--nq-st-info)] hover:bg-[var(--nq-st-info)] text-[var(--nq-accent-ink)] shadow"
+                          className="px-2.5 py-1 rounded border border-[var(--nq-accent)] bg-[var(--nq-accent)] text-xs font-bold transition cursor-pointer flex items-center gap-1 text-[var(--nq-accent-ink)] shadow"
                           title="Tạo bài viết Fanpage ăn theo xu hướng này với AI"
                         >
                           AI Viết Bài
                         </button>
                         <button
                           onClick={() => toggleSaveTrend(selectedTrend)}
-                          className={`px-2.5 py-1 rounded text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                          className={`px-2.5 py-1 rounded border text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
                             savedTrends.some((st) => st.id === selectedTrend.id)
-                              ? "bg-[var(--nq-st-warn)] text-black shadow"
-                              : "bg-[var(--nq-dim)] text-[var(--nq-st-warn-ink)] hover:bg-[var(--nq-st-warn)] hover:text-black"
+                              ? "border-[var(--nq-accent)] bg-[var(--nq-accent-soft)] text-[var(--nq-accent)] shadow"
+                              : "border-[var(--nq-line-strong)] bg-[var(--nq-surface)] text-[var(--nq-ink-muted)] hover:border-[var(--nq-accent)] hover:text-[var(--nq-accent)]"
                           }`}
                         >
                           {savedTrends.some((st) => st.id === selectedTrend.id) ? "Đã Lưu Kế Hoạch" : "Lưu Xu Hướng Này"}
                         </button>
-                        <span className="text-xs font-bold text-[var(--nq-st-warn-ink)] font-mono">
+                        <span className="text-xs font-bold text-[var(--nq-accent)] font-mono">
                           {selectedTrend.du_bao_thoi_gian}
                         </span>
                       </div>
@@ -1344,41 +1328,41 @@ export default function PageQuanPage() {
                     </div>
                   </div>
 
-                  {/* Khối 2: Trích Đoạn Nội Dung Gốc Cào Thật */}
+                  {/* Khối 2–3: Trích đoạn + bình luận — trải ngang khi đủ chỗ */}
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                   {selectedTrend.trich_doan_noi_dung_that && (
-                    <div className="space-y-2 rounded border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] bg-[var(--nq-st-ok-soft)] p-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--nq-st-ok-ink)]">
+                    <div className="space-y-2 rounded border border-[var(--nq-line-strong)] bg-[var(--nq-surface-hi)] p-4">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--nq-accent)]">
                           Nội Dung & Trích Đoạn Gốc Cào Thật Từ Internet
                         </h4>
-                        <span className="text-2xs text-[var(--nq-st-ok-ink)] font-mono">100% Dữ liệu cào thật</span>
+                        <span className="text-2xs text-[var(--nq-accent)] font-mono">100% Dữ liệu cào thật</span>
                       </div>
-                      <p className="text-sm leading-relaxed text-[var(--nq-primary)] italic">
+                      <p className="text-sm leading-relaxed text-[var(--nq-ink)] italic">
                         &quot;{selectedTrend.trich_doan_noi_dung_that}&quot;
                       </p>
                     </div>
                   )}
 
-                  {/* Khối 3: TOP BÌNH LUẬN / THẢO LUẬN THẬT CÀO TỪ NỀN TẢNG */}
                   {selectedTrend.binh_luan_that_tiktok && selectedTrend.binh_luan_that_tiktok.length > 0 && (
-                    <div className="space-y-2 rounded border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))] bg-[var(--nq-st-ok-soft)] p-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--nq-st-ok-ink)]">
+                    <div className="space-y-2 rounded border border-[var(--nq-line-strong)] bg-[var(--nq-surface-hi)] p-4">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--nq-accent)]">
                           {selectedTrend.nguon_goc === "threads_vn"
                             ? "Top Thảo Luận & Phản Hồi Thật Từ Threads"
                             : selectedTrend.nguon_goc === "tiktok_vn"
                             ? "Top Bình Luận Thật Cào Trực Tiếp Từ TikTok"
                             : "Thảo Luận Thật Từ Người Dùng"}
                         </h4>
-                        <span className="text-2xs text-[var(--nq-st-ok-ink)] font-mono bg-[var(--nq-st-ok-soft)] px-2 py-0.5 rounded border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))]">
+                        <span className="text-2xs text-[var(--nq-accent)] font-mono bg-[var(--nq-accent-soft)] px-2 py-0.5 rounded border border-[var(--nq-line-strong)]">
                           100% Cào từ {selectedTrend.nguon_goc === "threads_vn" ? "Threads" : selectedTrend.nguon_goc === "tiktok_vn" ? "TikTok" : "Nền tảng"}
                         </span>
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 max-h-[22rem] overflow-y-auto pr-1">
                         {selectedTrend.binh_luan_that_tiktok.map((cmt, idx) => (
                           <div
                             key={idx}
-                            className="rounded border border-[var(--nq-dim)] bg-[var(--nq-surface)] p-2.5 text-xs text-[var(--nq-primary)] font-mono"
+                            className="rounded border border-[var(--nq-line)] bg-[var(--nq-surface)] p-2.5 text-xs text-[var(--nq-ink)] font-mono"
                           >
                             {cmt}
                           </div>
@@ -1386,25 +1370,27 @@ export default function PageQuanPage() {
                       </div>
                     </div>
                   )}
-
-                  {/* Khối 4: Giải Mã Tâm Lý Giới Trẻ */}
-                  <div className="space-y-1 rounded border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))] bg-[var(--nq-st-info-soft)] p-4">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--nq-st-info-ink)]">
-                      Giải Mã Tâm Lý Khách Hàng / Giới Trẻ
-                    </h4>
-                    <p className="text-sm leading-relaxed text-[var(--nq-primary)]">
-                      {selectedTrend.tam_ly_gioi_tre}
-                    </p>
                   </div>
 
-                  {/* Khối 5: Ngữ Cảnh Sử Dụng & Gợi Ý Cho Quán */}
-                  <div className="space-y-1 rounded border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))] bg-[var(--nq-st-info-soft)] p-4">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--nq-st-info-ink)]">
-                      Ngữ Cảnh Sử Dụng & Gợi Ý Bắt Trend Tại Quán
-                    </h4>
-                    <p className="text-sm leading-relaxed text-[var(--nq-primary)]">
-                      {selectedTrend.ngu_canh_su_dung}
-                    </p>
+                  {/* Khối 4–5: Tâm lý + ngữ cảnh — trải ngang */}
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-1 rounded border border-[var(--nq-line-strong)] bg-[var(--nq-accent-soft)] p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--nq-accent)]">
+                        Giải Mã Tâm Lý Khách Hàng / Giới Trẻ
+                      </h4>
+                      <p className="text-sm leading-relaxed text-[var(--nq-ink)]">
+                        {selectedTrend.tam_ly_gioi_tre}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1 rounded border border-[var(--nq-line-strong)] bg-[var(--nq-surface-hi)] p-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--nq-accent)]">
+                        Ngữ Cảnh Sử Dụng & Gợi Ý Bắt Trend Tại Quán
+                      </h4>
+                      <p className="text-sm leading-relaxed text-[var(--nq-ink)]">
+                        {selectedTrend.ngu_canh_su_dung}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Hashtag & Nền tảng */}
@@ -2249,7 +2235,8 @@ export default function PageQuanPage() {
                     {reflectionReport.total_conversations}
                   </div>
                   <span className="text-2xs text-[var(--nq-muted)] block mt-1">
-                    Tích cực: {reflectionReport.sentiment_breakdown?.positive || 0} | Phản ánh: {reflectionReport.sentiment_breakdown?.negative || 0}
+                    Tích cực: {reflectionReport.sentiment_breakdown?.positive || 0} · Cần cải thiện:{" "}
+                    {reflectionReport.sentiment_breakdown?.negative || 0}
                   </span>
                 </div>
               </div>

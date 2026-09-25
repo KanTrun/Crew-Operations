@@ -64,8 +64,11 @@ export function warRoomPropose(
 
 export function warRoomConfirm(
   simulationId: string,
-): Promise<{ confirmed: boolean; mutation: string }> {
-  return apiSend(`/api/v1/experience/war-room/${simulationId}/confirm`, {});
+  optionId?: string,
+): Promise<{ confirmed: boolean; mutation: string; treo_id?: string; note?: string }> {
+  return apiSend(`/api/v1/experience/war-room/${simulationId}/confirm`, {
+    option_id: optionId ?? null,
+  });
 }
 
 export function formatVnd(value: number | null | undefined): string {

@@ -58,6 +58,17 @@ export function initialsOf(name: string): string {
   return ((first[0] ?? "") + (last[0] ?? "")).toUpperCase();
 }
 
+/** "Lan Nguyễn" → "Lan N." — đọc được ngay trên lưới ca (cột giờ đã rộng đều
+ *  nhau) mà vẫn ngắn hơn tên đầy đủ; thay cho chỉ hai chữ viết tắt "LN". */
+export function shortNameOf(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0];
+  const first = words[0];
+  const lastInitial = (words[words.length - 1]?.[0] ?? "").toUpperCase();
+  return lastInitial ? `${first} ${lastInitial}.` : first;
+}
+
 export function rosterCellSummary(count: number, viTriLabel: string, understaffed?: boolean): {
   countLabel: string;
   roleLabel: string;

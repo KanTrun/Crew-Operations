@@ -71,6 +71,7 @@ from ca_api.interfaces.http.gmail import router as gmail_router
 from ca_api.interfaces.http.hao_hut import router as hao_hut_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
+from ca_api.interfaces.http.ai_insight import router as ai_insight_router
 from ca_api.interfaces.http.ops_explain import router as ops_explain_router
 from ca_api.interfaces.http.ops_predict import router as ops_predict_router
 from ca_api.interfaces.http.pos import router as pos_router
@@ -258,6 +259,7 @@ app.include_router(quanverse_router)
 app.include_router(meeting_router)
 app.include_router(ops_explain_router)
 app.include_router(ops_predict_router)
+app.include_router(ai_insight_router)
 app.include_router(experience_router)
 app.include_router(experience_rules_router)
 app.include_router(war_room_router)

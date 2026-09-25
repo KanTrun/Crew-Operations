@@ -116,32 +116,41 @@
 @tailwind utilities;
 
 :root {
-  /* ── Bảng màu xanh đen + ngọc ──
-     Bảng trước đây là tông ấm (nâu than + vàng đồng #c4a574): mọi bề mặt cùng
-     độ ấm nên mắt không phân được lớp nào nằm trên lớp nào, và màu thương hiệu
-     trùng với màu cảnh báo — một con số quan trọng và một cảnh báo quá hạn đọc
-     ra cùng một giọng. Bảng này tách ba trục: nền lạnh có chiều sâu, accent
-     ngọc cho "thuộc về quán / bấm được", màu trạng thái riêng cho "đang có
-     chuyện gì" — không màu nào làm hai việc.
-     Nền KHÔNG phẳng: `--nq-bg` là mốc đáy, còn chiều sâu dựng bằng gradient
-     rất nhẹ ở `body` (xem rule bên dưới) chứ không bằng một màu đặc phủ trang. */
-  --nq-bg: #070d12;                /* xanh đen trầm — mốc đáy của nền */
-  --nq-bg-elevated: #0b141b;       /* nền nâng — vùng chuyển giữa nền và bề mặt */
-  --nq-surface: #0e1b22;           /* bề mặt panel/card — tối hơn nền 1 bậc */
-  --nq-surface-2: #101f27;         /* bề mặt lớp trên (ô trong panel, hàng hover) */
-  --nq-glass: rgba(14, 27, 34, 0.62);  /* nền kính — xem quy tắc kính ở Phase 4 */
-  --nq-ink: #e6edf3;               /* chữ chính — xám trắng ngà, KHÔNG trắng thuần */
-  --nq-ink-muted: rgba(230, 237, 243, 0.62);
-  --nq-line: rgba(230, 237, 243, 0.12);
-  --nq-line-strong: rgba(212, 175, 55, 0.34);
-  --nq-accent: #d4af37;            /* vàng gold — điểm nhấn quan trọng */
-  --nq-accent-hover: #e8d48a;
-  --nq-accent-soft: rgba(212, 175, 55, 0.16);
-  --nq-accent-glow: rgba(212, 175, 55, 0.28);
-  --nq-accent-dim: rgba(212, 175, 55, 0.42);
-  --nq-accent-ink: #1a1408;        /* chữ tối đặt trên nền vàng sáng — ngả ấm cho khớp */
-  --nq-accent-2: #e8d48a;          /* accent phụ — vàng kem nhạt / liên kết */
-  --nq-accent-2-soft: rgba(232, 212, 138, 0.14);
+  /* ── Bảng màu xanh đen + vàng gold (enterprise / Awwwards) ──
+     Ba trục: nền lạnh có chiều sâu, accent gold tiết chế cho "bấm được /
+     thuộc về quán", màu trạng thái riêng cho "đang có chuyện gì".
+     Nền KHÔNG phẳng: `--nq-bg` là mốc đáy; chiều sâu = gradient body + grain. */
+  --nq-bg: #070d12;                /* xanh đen trầm — mốc đáy */
+  --nq-bg-elevated: #0b141b;       /* vùng chuyển giữa nền và bề mặt */
+  --nq-surface: #0e1b22;           /* panel/card */
+  --nq-surface-2: #101f27;         /* ô trong panel, hàng hover */
+  --nq-surface-3: #142833;         /* overlay nội bộ / toolbar nổi trong panel */
+  --nq-panel: var(--nq-surface);   /* alias — mã cũ dùng --nq-panel */
+  --nq-glass: rgba(14, 27, 34, 0.62);
+  --nq-ink: #e8eef4;               /* chữ chính — nâng nhẹ để AA trên surface */
+  --nq-ink-muted: rgba(232, 238, 244, 0.64);
+  --nq-line: rgba(232, 238, 244, 0.11);
+  --nq-border: var(--nq-line);     /* alias — mã cũ dùng --nq-border */
+  --nq-line-strong: rgba(196, 162, 58, 0.38); /* gold hairline — bớt chói */
+  /* Thang gold 50–900: CTA dùng 500, viền/chữ nhỏ dùng 300–400, hover 400 */
+  --nq-accent-50: #faf6e8;
+  --nq-accent-100: #f3e9c4;
+  --nq-accent-200: #e8d48a;
+  --nq-accent-300: #dcc56a;
+  --nq-accent-400: #c9a84a;
+  --nq-accent-500: #b8942f;        /* gold đậm hơn — CTA bớt chói hơn #d4af37 cũ */
+  --nq-accent-600: #9a7a26;
+  --nq-accent-700: #7a601e;
+  --nq-accent-800: #574416;
+  --nq-accent-900: #3a2e0f;
+  --nq-accent: var(--nq-accent-500);
+  --nq-accent-hover: var(--nq-accent-300);
+  --nq-accent-soft: rgba(184, 148, 47, 0.14);
+  --nq-accent-glow: rgba(184, 148, 47, 0.22);
+  --nq-accent-dim: rgba(184, 148, 47, 0.38);
+  --nq-accent-ink: #1a1408;
+  --nq-accent-2: var(--nq-accent-200);
+  --nq-accent-2-soft: rgba(232, 212, 138, 0.12);
   --nq-danger: #ef4444;
   --nq-ok: #22c55e;
   --nq-warn: #f59e0b;
@@ -305,31 +314,28 @@
   --nq-font-body: var(--nq-font-body-var), "IBM Plex Sans", system-ui, -apple-system,
     "Segoe UI", Roboto, sans-serif, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji";
   --nq-font-mono: var(--nq-font-mono-var), ui-monospace, monospace;
-  /* ── Ngôn ngữ chuyển động ──
-     Nhịp của quán là nhịp giữa hai lượt khách: mọi thứ phải xong trước khi
-     người vận hành kịp rời mắt sang bàn bên cạnh. Vì vậy chuyển động ở đây
-     KHÔNG dùng spring mặc định của thư viện (nảy, trễ, có quán tính) — dùng
-     đường cong giảm tốc dứt khoát, và không hiệu ứng nào được chặn thao tác.
-
-     Bốn nhịp, đặt tên theo việc nó phục vụ — không theo con số:
-       beat-ack     phản hồi cú bấm (lún, đổi màu). Phải xong dưới 200ms, nhanh
-                    hơn cảm nhận "máy chưa nhận".
-       beat-settle  trạng thái đổi tại chỗ (hover, mở chip, gạt tab).
-       beat-focus   đưa mắt tới một khối mới xuất hiện (bảng tải xong, kết quả mới).
-       beat-chapter chuyển "chương" — chỉ dùng ở mặt tiền (landing/login/hub).
-     `--nq-ease-out` là đường cong duy nhất cho chuyển động vào; `--nq-ease-inout`
-     chỉ dùng khi phần tử đi qua lại giữa hai vị trí đều có nghĩa. */
-  --nq-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  /* ── Ngôn ngữ chuyển động (Awwwards / ops) ──
+     Chỉ animate transform + opacity. Ops ≤ 320ms; showcase được dài hơn.
+     Preset JS nằm ở src/ui/motion/presets.ts — phải khớp các beat dưới đây. */
+  --nq-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --nq-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
-  --nq-beat-ack: 140ms;
-  --nq-beat-settle: 220ms;
-  --nq-beat-focus: 420ms;
-  --nq-beat-chapter: 720ms;
-  /* Tương thích: mã cũ còn tham chiếu --nq-dur-t0/t1/t2. Trỏ về cùng thang,
-     đừng thêm giá trị mới. */
+  --nq-beat-ack: 120ms;
+  --nq-beat-settle: 200ms;
+  --nq-beat-focus: 320ms;
+  --nq-beat-chapter: 560ms;
   --nq-dur-t0: var(--nq-beat-settle);
   --nq-dur-t1: var(--nq-beat-focus);
   --nq-dur-t2: var(--nq-beat-chapter);
+
+  /* ── Thang z-index (một nguồn — không z-[...] rời trong TSX) ── */
+  --nq-z-base: 1;
+  --nq-z-sticky: 20;
+  --nq-z-header: 40;
+  --nq-z-dropdown: 50;
+  --nq-z-drawer: 200;
+  --nq-z-modal: 400;
+  --nq-z-toast: 500;
+  --nq-z-tour: 600;
   /* Tên cũ `--nq-ease-spring` giữ lại cho mã đang tham chiếu, nhưng giá trị đã
      bỏ độ nảy: mọi bề mặt đang dùng nó là thẻ/bảng số liệu, nơi độ nảy khiến
      con số rung khi người dùng chỉ đang rê chuột qua. */
@@ -370,7 +376,7 @@
      mô phỏng ánh sáng bắt vào cạnh vật liệu. Đây là thứ làm bề mặt đọc ra
      "có cạnh" thay vì chỉ là một mảng mờ; dùng CHUNG với --nq-inner-hi, không
      thay thế nó. */
-  --nq-specular: rgba(125, 211, 252, 0.22);
+  --nq-specular: rgba(232, 212, 138, 0.18);
   --nq-frontier: inset 0 1px 0 var(--nq-specular);
   /* Quầng sáng có chủ đích cho lớp nổi — rất nhẹ, chỉ để tách khỏi nền tối
      cùng tông, KHÔNG phải hiệu ứng trang trí. */
@@ -833,13 +839,16 @@ a:focus-visible {
   transform: scale(var(--nq-press));
 }
 
-/* ── Page ── */
+/* ── Page ──
+   Không còn `max-width` cứng: container `.nq-main__inner` đã kiểm soát bề
+   rộng đọc được cho các trang dài chữ (`--prose`); mọi trang khác lấp đầy hết
+   phần còn lại sau sidebar. Thu gọn sidebar → trang rộng ra thật, không còn
+   dải trống hai bên cố định bằng 1280px giữa màn 1920px. */
 .nq-page {
   animation: nq-rise var(--nq-dur-t1) var(--nq-ease-out) both;
   padding: clamp(1rem, 3vw, 1.75rem) 0 clamp(2rem, 4vw, 3rem);
   width: 100%;
-  max-width: min(1280px, 100%);
-  margin-inline: auto;
+  max-width: none;
   box-sizing: border-box;
 }
 
@@ -849,6 +858,13 @@ a:focus-visible {
 
 .nq-page--wide.nq-page--run {
   max-width: none;
+}
+
+/* Chỉ nội dung văn bản dài (câu chữ, form một cột đăng ký...) mới cần giới
+   hạn ký tự/dòng để dễ đọc — gắn `nq-prose` vào khối văn bản đó, không gắn
+   vào `.nq-page`. */
+.nq-prose {
+  max-width: 72ch;
 }
 
 .nq-split {
@@ -869,6 +885,176 @@ a:focus-visible {
   .nq-split--pos {
     grid-template-columns: minmax(0, 1.6fr) minmax(260px, 360px);
   }
+}
+
+/* ── Bố cục dùng chung cho mọi trang: chính + cột phụ ──
+   Thay cho việc mỗi trang tự bó vào 720px rồi chừa trắng hai bên. Cột phụ chỉ
+   xuất hiện khi màn đủ rộng; dưới ngưỡng thì xếp dọc (cột phụ lên trước hoặc
+   sau tuỳ `data-aside-first`). */
+.nq-page-grid {
+  display: grid;
+  gap: clamp(1.25rem, 2.5vw, 2rem);
+  align-items: start;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1080px) {
+  .nq-page-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  }
+  .nq-page-grid[data-aside-first="1"] {
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  }
+  .nq-page-grid[data-aside-first="1"] > .nq-page-grid__aside {
+    order: -1;
+  }
+}
+
+.nq-page-grid__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+.nq-page-grid__aside {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+/* Lưới thẻ lấp đầy hết bề ngang, số cột tự co theo màn hình. */
+/* Ô giờ 24h hai số — xem `TimeField` trong ui/kit.tsx để biết vì sao thay
+   `<input type="time">`. */
+.nq-time-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex: none;
+}
+
+.nq-time-field__part {
+  width: 2.6rem;
+  min-width: 0;
+  padding: 0.35rem 0.3rem;
+  text-align: center;
+  border-radius: var(--nq-radius-sm, 8px);
+  border: 1px solid var(--nq-line);
+  background: var(--nq-bg);
+  color: var(--nq-ink);
+  font-size: 0.8rem;
+  font-family: var(--nq-font-mono);
+}
+
+.nq-time-field__part:focus-visible {
+  outline: 2px solid var(--nq-focus);
+  outline-offset: 1px;
+}
+
+.nq-time-field[data-invalid="1"] .nq-time-field__part {
+  border-color: var(--nq-st-danger);
+}
+
+.nq-time-field__sep {
+  color: var(--nq-ink-muted);
+  font-weight: 700;
+}
+
+.nq-columns {
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 720px) {
+  .nq-columns[data-cols="2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1080px) {
+  .nq-columns[data-cols="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Hàng nút hành động: luôn tách khỏi khối phía trên bằng khoảng cách cố định,
+   không bao giờ để nút dính sát cạnh input/khung như trước. */
+.nq-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nq-s3);
+  margin-top: var(--nq-s5);
+}
+
+.nq-action-row[data-align="end"] {
+  justify-content: flex-end;
+}
+
+.nq-action-row[data-align="between"] {
+  justify-content: space-between;
+}
+
+/* ── Phân trang số ── */
+.nq-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--nq-s3);
+  margin-top: var(--nq-s5);
+  padding-top: var(--nq-s4);
+  border-top: 1px solid var(--nq-line);
+}
+
+.nq-pagination__pages {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s1);
+  flex-wrap: wrap;
+}
+
+.nq-pagination__btn {
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.6rem;
+  border-radius: var(--nq-radius-sm, 8px);
+  border: 1px solid var(--nq-line);
+  background: var(--nq-bg-elevated);
+  color: var(--nq-ink);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background var(--nq-dur-t0), color var(--nq-dur-t0);
+}
+
+.nq-pagination__btn:hover:not(:disabled) {
+  background: var(--nq-accent-soft);
+}
+
+.nq-pagination__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nq-pagination__btn[data-on="1"] {
+  background: var(--nq-accent);
+  color: var(--nq-accent-ink, #1a1200);
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.nq-pagination__meta {
+  color: var(--nq-ink-muted);
+  font-size: 0.8rem;
+}
+
+.nq-pagination__size {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s2);
+  color: var(--nq-ink-muted);
+  font-size: 0.8rem;
 }
 
 .nq-card-grid {
@@ -1340,7 +1526,7 @@ a:focus-visible {
 .nq-confirm-overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: var(--nq-z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2132,7 +2318,6 @@ a:focus-visible {
 .nq-roster-table th,
 .nq-roster-table td {
   padding: 0.45rem 0.55rem;
-  min-width: 108px;
   font-size: 0.8rem;
 }
 
@@ -2254,6 +2439,44 @@ a:focus-visible {
 /* Hộp thoại INBOX luôn bám viewport thật.
    z-index cao hơn shell/header và widget nổi; 100dvh tránh flex căn giữa theo
    chiều cao trang dài khiến người dùng chỉ thấy backdrop khi đang cuộn. */
+/* Dòng thời gian "Yêu cầu → AI quyết định → Kết quả xếp lịch" trên mỗi mục
+   hộp thư — trang chỉ xem, không còn nút Duyệt/Từ chối. */
+.nq-inbox-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nq-inbox-timeline > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.nq-inbox-timeline__dot {
+  flex: none;
+  margin-top: 0.3rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--nq-accent);
+}
+
+.nq-inbox-timeline__dot[data-tone="ok"] {
+  background: var(--nq-st-ok);
+}
+
+.nq-inbox-timeline__dot[data-tone="warn"] {
+  background: var(--nq-st-warn);
+}
+
+.nq-inbox-timeline__dot[data-tone="danger"] {
+  background: var(--nq-st-danger);
+}
+
 .nq-inbox-dialog-layer {
   position: fixed !important;
   inset: 0 !important;
@@ -4015,7 +4238,10 @@ a:focus-visible {
   display: flex;
   gap: var(--nq-s3);
   flex-wrap: wrap;
-  margin-top: var(--nq-s6);
+  /* Sau PageHeader (mb-12): kéo CTA sát tiêu đề hơn, chừa khoảng rõ với khung dưới. */
+  margin-top: calc(var(--nq-s4) * -1);
+  margin-bottom: var(--nq-s5);
+  align-items: center;
 }
 
 /* ── Skeleton ── */
@@ -4885,13 +5111,12 @@ a:focus-visible {
   }
 
   /* ── Bảng dữ liệu ──
-     Nền đặc, không kính: bảng là nơi đọc số. Hàng có hover để mắt bám được dòng
-     đang xem khi bảng dài; chữ số dùng font mono (tabular) nên cột không nhảy
-     khi giá trị đổi từ 9 sang 10. */
+     Nền đặc, không kính. Header sticky khi cuộn. Cột số mono + data-num.
+     Animation hàng chỉ lần tải đầu (nq-fade-in). */
   .nq-table-wrap {
     overflow-x: auto;
     border: 1px solid var(--nq-line);
-    border-radius: var(--nq-radius-bubble);
+    border-radius: var(--nq-radius);
     background-color: var(--nq-surface);
   }
 
@@ -4902,20 +5127,20 @@ a:focus-visible {
     font-size: var(--nq-t-small);
   }
 
-  .nq-table thead tr {
-    background-color: var(--nq-surface-2);
-    border-bottom: 1px solid var(--nq-line-strong);
-  }
-
-  .nq-table th {
+  .nq-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: var(--nq-z-sticky);
     padding: var(--nq-s3) var(--nq-s4);
     font-family: var(--nq-font-mono);
-    font-size: var(--nq-t-micro);
+    font-size: var(--nq-t-caption);
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--nq-ink-muted);
     white-space: nowrap;
+    background-color: var(--nq-surface-2);
+    border-bottom: 1px solid var(--nq-line-strong);
   }
 
   .nq-table td {
@@ -4923,6 +5148,7 @@ a:focus-visible {
     border-bottom: 1px solid var(--nq-line);
     color: var(--nq-ink);
     font-variant-numeric: tabular-nums;
+    vertical-align: middle;
   }
 
   .nq-table tbody tr:last-child td {
@@ -4931,7 +5157,16 @@ a:focus-visible {
 
   .nq-table tbody tr {
     transition: background-color var(--nq-beat-settle) var(--nq-ease-out);
+    animation: nq-fade-in var(--nq-beat-focus) var(--nq-ease-out) both;
   }
+
+  .nq-table tbody tr:nth-child(2) { animation-delay: 40ms; }
+  .nq-table tbody tr:nth-child(3) { animation-delay: 80ms; }
+  .nq-table tbody tr:nth-child(4) { animation-delay: 120ms; }
+  .nq-table tbody tr:nth-child(5) { animation-delay: 160ms; }
+  .nq-table tbody tr:nth-child(6) { animation-delay: 200ms; }
+  .nq-table tbody tr:nth-child(7) { animation-delay: 240ms; }
+  .nq-table tbody tr:nth-child(8) { animation-delay: 280ms; }
 
   .nq-table tbody tr:hover {
     background-color: var(--nq-accent-soft);
@@ -4941,8 +5176,28 @@ a:focus-visible {
     text-align: center;
   }
 
-  .nq-table .is-right {
+  .nq-table .is-right,
+  .nq-table th[data-num="1"],
+  .nq-table td[data-num="1"] {
     text-align: right;
+    font-family: var(--nq-font-mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .nq-table tbody tr[data-low="1"] td:first-child {
+    box-shadow: inset 3px 0 0 var(--nq-warn);
+  }
+
+  .nq-table-note {
+    margin: var(--nq-s3) 0 0;
+    font-size: var(--nq-t-small);
+    color: var(--nq-ink-muted);
+  }
+
+  .nq-table--compact th,
+  .nq-table--compact td {
+    padding: var(--nq-s2) var(--nq-s3);
   }
 
   /* ── Nhãn trạng thái ──
@@ -5226,6 +5481,19 @@ a:focus-visible {
   }
 }
 
+.nq-vet-day-group + .nq-vet-day-group {
+  margin-top: var(--nq-s6);
+}
+
+.nq-vet-day-heading {
+  margin: 0 0 var(--nq-s3);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--nq-ink-muted);
+}
+
 .nq-surface-tile:active {
 
   transform: scale(var(--nq-press));
@@ -5450,8 +5718,7 @@ a.nq-bento-surface:active {
 
 /* ── Ops register (T0) ── */
 .nq-page--run {
-  max-width: var(--nq-max-narrow);
-  margin: 0 auto;
+  max-width: none;
 }
 
 /* Khung vận hành hẹp dùng bậc h1 của hệ; không tự đặt lại cỡ theo `vw`, vì
@@ -5819,9 +6086,20 @@ a.nq-bento-surface:active {
 /* ── Việc treo: phân nhóm theo trạng thái ── */
 
 .nq-treo-sections {
-  display: flex;
-  flex-direction: column;
-  gap: var(--nq-s6);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--nq-s5);
+}
+@media (min-width: 1100px) {
+  .nq-treo-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+@media (min-width: 1500px) {
+  .nq-treo-sections {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .nq-treo-section {
@@ -5888,13 +6166,20 @@ a.nq-bento-surface:active {
   opacity: 1;
 }
 
-/* Lưới phân bố việc treo theo chiều ngang trên màn hình rộng */
-@media (min-width: 900px) {
+/* Lưới thẻ việc — class gắn trực tiếp lên wrapper PagedList */
+.nq-treo-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--nq-s3);
+}
+@media (min-width: 720px) {
   .nq-treo-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--nq-s4);
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   }
+}
+/* Nút "Xem thêm" chiếm cả hàng dưới lưới */
+.nq-treo-grid > .nq-treo-grid__more {
+  grid-column: 1 / -1;
 }
 
 .nq-treo-empty-note {
@@ -5985,8 +6270,30 @@ a.nq-bento-surface:active {
 }
 
 .nq-page--tkb {
-  max-width: min(64rem, 100%);
-  margin-inline: auto;
+  max-width: none;
+}
+
+/* Thẻ theo ngày tự co số cột theo bề ngang thật của trang — không còn cố
+   định 4 cột rồi ép ô giờ (TimeField) tràn ra ngoài thẻ ở màn hẹp hơn dự
+   kiến, và tận dụng hết chỗ trống ở màn rộng (có thể lên tới 7 cột). */
+.nq-tkb-day-grid {
+  display: grid;
+  gap: var(--nq-s3);
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+}
+
+.nq-tkb-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nq-tkb-row__times {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
 }
 
 .nq-tkb-file {
@@ -6043,16 +6350,78 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-wrap {
+  /* Full bảng trong trang — không khóa chiều cao / cuộn trong ô (mất tinh tế). */
   overflow-x: auto;
+  overflow-y: visible;
   border: 1px solid var(--nq-line);
   border-radius: var(--nq-radius);
   background: color-mix(in srgb, var(--nq-bg-elevated) 55%, transparent);
   animation: nq-rise var(--nq-dur-t0) var(--nq-ease-out) both;
+  max-height: none;
+}
+
+.nq-roster-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nq-s3);
+  margin: 0 0 var(--nq-s3);
+  padding: 0;
+  list-style: none;
+  font-size: var(--nq-t-caption);
+  color: var(--nq-ink-muted);
+}
+.nq-roster-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nq-s2);
+}
+.nq-roster-legend__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  border: 1px solid var(--nq-line);
+}
+.nq-roster-legend__swatch--ok { background: var(--nq-st-ok-soft); border-color: var(--nq-st-ok); }
+.nq-roster-legend__swatch--warn { background: var(--nq-st-warn-soft); border-color: var(--nq-st-warn); }
+.nq-roster-legend__swatch--danger { background: var(--nq-st-danger-soft); border-color: var(--nq-st-danger); }
+
+.nq-side__cmd {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s2);
+  width: 100%;
+  margin-top: var(--nq-s2);
+  padding: var(--nq-s2) var(--nq-s3);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-pill);
+  background: transparent;
+  color: var(--nq-ink-muted);
+  cursor: pointer;
+  font-size: var(--nq-t-caption);
+}
+.nq-side__cmd:hover {
+  border-color: var(--nq-line-strong);
+  color: var(--nq-accent-ink-text);
+}
+.nq-side__kbd {
+  margin-left: auto;
+  font-family: var(--nq-font-mono);
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+.nq-app[data-collapsed="1"] .nq-side__kbd,
+.nq-app[data-collapsed="1"] .nq-side__cmd .nq-side__label {
+  display: none;
 }
 
 .nq-roster-table {
   border-collapse: collapse;
   width: 100%;
+  /* `table-layout: fixed` + `<colgroup>` (RosterGrid.tsx) chia đều 7 cột ngày
+     trong phần còn lại sau cột "Khung" — lưới lấp đầy hết bề ngang trang
+     thay vì mỗi cột giữ `min-width` cố định rồi đẩy bảng tràn ra ngoài và bắt
+     cuộn ngang ngay ở màn hình laptop bình thường. */
+  table-layout: fixed;
   font-size: 0.875rem;
 }
 
@@ -6068,12 +6437,27 @@ a.nq-bento-surface:active {
 .nq-roster-table th,
 .nq-roster-table td {
   border: 1px solid var(--nq-line);
-  padding: 0.65rem 0.7rem;
+  padding: 0.4rem 0.45rem;
   vertical-align: top;
-  min-width: 132px;
+  overflow: hidden;
+}
+
+/* Dưới ngưỡng này, 7 cột chia đều sẽ quá hẹp để đọc — quay lại cột co theo
+   nội dung + cuộn ngang, thay vì ép chữ vỡ dòng liên tục. */
+@media (max-width: 860px) {
+  .nq-roster-table {
+    table-layout: auto;
+  }
+  .nq-roster-table th,
+  .nq-roster-table td {
+    min-width: 128px;
+  }
 }
 
 .nq-roster-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--nq-z-sticky);
   background: color-mix(in srgb, var(--nq-bg-elevated) 92%, var(--nq-accent) 8%);
   font-family: var(--nq-font-display, var(--nq-font-sans));
   font-size: 0.82rem;
@@ -6081,6 +6465,14 @@ a.nq-bento-surface:active {
   font-weight: 700;
   text-align: left;
   letter-spacing: 0.01em;
+}
+
+.nq-roster-row-label,
+.nq-roster-corner {
+  position: sticky;
+  left: 0;
+  z-index: calc(var(--nq-z-sticky) + 1);
+  background: var(--nq-surface-2);
 }
 
 .nq-roster-day-full {
@@ -6241,9 +6633,9 @@ a.nq-bento-surface:active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
+  gap: 0.1rem;
   width: 100%;
-  padding: 0.55rem 0.35rem;
+  padding: 0.4rem 0.3rem;
   border: none;
   background: transparent;
   color: inherit;
@@ -6284,7 +6676,7 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-slot {
-  padding: 0.35rem;
+  padding: 0.2rem;
   vertical-align: middle;
 }
 
@@ -6296,10 +6688,10 @@ a.nq-bento-surface:active {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.2rem;
+  gap: 0.15rem;
   width: 100%;
-  min-height: 3.25rem;
-  padding: 0.45rem 0.5rem;
+  min-height: 2.6rem;
+  padding: 0.3rem 0.4rem;
   border: 1px solid var(--nq-line);
   border-radius: var(--nq-radius);
   background: color-mix(in srgb, var(--nq-bg) 70%, var(--nq-bg-elevated));
@@ -7569,96 +7961,6 @@ a.nq-bento-surface:active {
   color: #4a0d0d;
 }
 
-/* ── Bảng số liệu ──
-   Cột số và cột đơn vị căn phải; bo góc giữ 6px theo hồ sơ hình dạng (bo lớn ở
-   bảng số làm mắt mất hàng). Cuộn ngang trên máy nhỏ thay vì bóp cột. */
-.nq-table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--nq-line);
-  border-radius: var(--nq-radius);
-  background: color-mix(in srgb, var(--nq-bg-elevated) 70%, transparent);
-}
-
-.nq-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 0.9rem;
-}
-
-.nq-table th,
-.nq-table td {
-  padding: var(--nq-s3) var(--nq-s4);
-  border-bottom: 1px solid var(--nq-line);
-  text-align: left;
-  vertical-align: middle;
-}
-
-.nq-table thead th {
-  font-family: var(--nq-font-mono);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--nq-ink-muted);
-  font-weight: 600;
-  background: color-mix(in srgb, var(--nq-surface) 80%, transparent);
-  border-bottom: 1px solid var(--nq-line-strong);
-  white-space: nowrap;
-}
-
-.nq-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.nq-table tbody tr {
-  animation: nq-fade-in var(--nq-dur-t1) var(--nq-ease-out) both;
-}
-
-.nq-table tbody tr:nth-child(2) {
-  animation-delay: 40ms;
-}
-.nq-table tbody tr:nth-child(3) {
-  animation-delay: 80ms;
-}
-.nq-table tbody tr:nth-child(4) {
-  animation-delay: 120ms;
-}
-.nq-table tbody tr:nth-child(5) {
-  animation-delay: 160ms;
-}
-.nq-table tbody tr:nth-child(6) {
-  animation-delay: 200ms;
-}
-.nq-table tbody tr:nth-child(7) {
-  animation-delay: 240ms;
-}
-.nq-table tbody tr:nth-child(8) {
-  animation-delay: 280ms;
-}
-
-.nq-table tbody tr:hover {
-  background: color-mix(in srgb, var(--nq-accent-soft) 28%, transparent);
-}
-
-/* Cột số: mono, căn phải, cùng chiều rộng chữ số. */
-.nq-table th[data-num="1"],
-.nq-table td[data-num="1"] {
-  text-align: right;
-  font-family: var(--nq-font-mono);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/* Hàng dưới ngưỡng: vạch cảnh báo bên trái, không đổi màu cả hàng (đọc mệt). */
-.nq-table tbody tr[data-low="1"] td:first-child {
-  box-shadow: inset 3px 0 0 var(--nq-warn);
-}
-
-.nq-table-note {
-  margin: var(--nq-s3) 0 0;
-  font-size: 0.82rem;
-  color: var(--nq-ink-muted);
-}
-
 /* ── Thẻ chọn (mẫu phiếu) ──
    Ba mẫu hiện cùng lúc: người mở quán không phải đoán mẫu nào có bao nhiêu bước.
    Là <button> để bàn phím và trình đọc màn hình dùng được như một lựa chọn. */
@@ -8633,9 +8935,12 @@ a.nq-bento-surface:active {
   -webkit-backdrop-filter: var(--nq-blur-2);
   border-right: 1px solid var(--nq-line);
   /* Vệt sáng phản chiếu dọc mép phải: cho bề mặt một "cạnh" thay vì chỉ là
-     mảng mờ. Cùng vai với `--nq-frontier` ở mép trên. */
+     mảng mờ. Cùng vai trò với `--nq-frontier` ở mép trên. */
   box-shadow: inset -1px 0 0 var(--nq-specular);
   transition: width var(--nq-beat-settle) var(--nq-ease-out);
+  /* Cắt paint SVG logo (overflow-visible + motion) khỏi vùng nội dung. */
+  overflow-x: hidden;
+  contain: paint;
 }
 
 .nq-side__head {
@@ -8809,6 +9114,26 @@ a.nq-bento-surface:active {
   display: none;
 }
 
+/* Thu gọn: chỉ còn dấu N tròn — ẩn chữ NHỊP QUÁN / Digital System. */
+.nq-side[data-collapsed="1"] .nq-side__brand-text {
+  display: none !important;
+}
+
+.nq-side[data-collapsed="1"] .nq-side__head {
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--nq-s2);
+  padding: var(--nq-s1) 0;
+}
+
+.nq-side[data-collapsed="1"] .nq-side__head > a {
+  justify-content: center;
+}
+
+.nq-side[data-collapsed="1"] .nq-side__toggle {
+  margin-left: 0;
+}
+
 .nq-side[data-collapsed="1"] .nq-side__group {
   height: 1px;
   margin: var(--nq-s2) var(--nq-s3);
@@ -8825,8 +9150,19 @@ a.nq-bento-surface:active {
   padding: 0;
 }
 
-.nq-side[data-collapsed="1"] .nq-side__user-name {
+.nq-side[data-collapsed="1"] .nq-side__logout {
+  justify-content: center;
+  padding-inline: 0.5rem;
+  min-width: 36px;
+}
+.nq-side[data-collapsed="1"] .nq-side__logout .nq-side__label {
   display: none;
+}
+.nq-side__logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
 }
 
 /* ── Vùng nội dung ──
@@ -8850,8 +9186,7 @@ a.nq-bento-surface:active {
    Trang rộng (lịch tuần, roster, chat…) bỏ giới hạn qua `.nq-main__wide`. */
 .nq-main__inner {
   width: 100%;
-  max-width: var(--nq-max);
-  margin-inline: auto;
+  max-width: none;
   min-width: 0;
 }
 
@@ -8903,12 +9238,20 @@ a.nq-bento-surface:active {
 @media (max-width: 900px) {
   .nq-side {
     transform: translateX(-100%);
-    transition: transform var(--nq-beat-settle) var(--nq-ease-out);
+    transition: transform var(--nq-beat-settle) var(--nq-ease-out),
+      visibility var(--nq-beat-settle) var(--nq-ease-out);
+    /* Đóng hẳn khi trượt ra: chặn paint/focus lệch (SVG logo framer-motion
+       từng lộ bóng ở góc viewport dù layout box đã ngoài màn). */
+    visibility: hidden;
+    pointer-events: none;
+    overflow: hidden;
   }
 
   .nq-side[data-open="1"] {
     transform: translateX(0);
     width: var(--nq-side-w);
+    visibility: visible;
+    pointer-events: auto;
   }
 
   /* Trên màn hẹp, thu gọn vô nghĩa (sidebar vốn đã trượt ra ngoài) — luôn hiện
@@ -8919,8 +9262,19 @@ a.nq-bento-surface:active {
 
   .nq-side[data-collapsed="1"] .nq-side__label,
   .nq-side[data-collapsed="1"] .nq-side__dot,
-  .nq-side[data-collapsed="1"] .nq-side__user-name {
+  .nq-side[data-collapsed="1"] .nq-side__user-name,
+  .nq-side[data-collapsed="1"] .nq-side__brand-text {
     display: revert;
+  }
+
+  .nq-side[data-collapsed="1"] .nq-side__head {
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 0 var(--nq-s1);
+  }
+
+  .nq-side[data-collapsed="1"] .nq-side__toggle {
+    margin-left: auto;
   }
 
   .nq-side[data-collapsed="1"] .nq-side__group {
@@ -8958,6 +9312,538 @@ a.nq-bento-surface:active {
 /* ══════════════════════════════════════════════════════════════════════════
    HẾT SIDEBAR.
    ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Trợ lý full-page: flex đơn giản — tin cuộn, composer luôn thấy ── */
+.nq-app:has(.nq-copilot-page) .nq-main {
+  /* Chỉ bỏ padding thừa; KHÔNG khóa height/overflow ở đây (đó là nguyên nhân cắt khung). */
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+.nq-copilot-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100dvh - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+.nq-copilot-page--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nq-ink-muted);
+  font-size: var(--nq-t-small);
+}
+.nq-copilot-page__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  flex: 0 0 auto;
+}
+.nq-copilot-page__kicker {
+  margin: 0;
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--nq-accent-ink-text);
+}
+.nq-copilot-page__title {
+  margin: 0.1rem 0 0;
+  font-family: var(--nq-font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--nq-ink);
+  line-height: 1.25;
+}
+.nq-copilot-page__meta {
+  display: none;
+}
+.nq-copilot-page__frame {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--nq-line-strong);
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-surface);
+  box-shadow: var(--nq-elev-2), var(--nq-inner-hi);
+}
+/* Thân chat = cột flex: header | messages(cuộn) | composer */
+.nq-copilot-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--nq-bg);
+  color: var(--nq-fg);
+}
+.nq-copilot-body__head {
+  flex: 0 0 auto;
+}
+.nq-copilot-messages {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-content: flex-start;
+  gap: 0.75rem;
+}
+.nq-copilot-messages > * {
+  flex: 0 0 auto;
+}
+.nq-copilot-composer {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--nq-line);
+  background: var(--nq-surface);
+}
+.nq-copilot-prompts {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-height: 3.25rem;
+  overflow-y: auto;
+  padding: 0.45rem 0.85rem;
+  border-top: 1px solid var(--nq-line);
+  background: var(--nq-surface);
+}
+
+.nq-page--ai-learning {
+  /* Chừa chỗ nút chat nổi + mép an toàn — tránh đè thẻ chỉ số / CTA. */
+  padding-bottom: calc(var(--nq-s8) + 6.5rem);
+}
+.nq-page--ai-learning .nq-surface-block {
+  margin-bottom: var(--nq-s5);
+}
+.nq-page--ai-learning .nq-ai-split .nq-surface-block {
+  margin-bottom: 0;
+}
+.nq-ai-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--nq-s4);
+  margin-bottom: var(--nq-s6);
+}
+@media (min-width: 900px) {
+  .nq-ai-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.nq-ai-metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nq-s2);
+  padding: var(--nq-s5);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-surface);
+  box-shadow: var(--nq-elev-1), var(--nq-inner-hi);
+  min-width: 0;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+}
+.nq-ai-metric__label {
+  margin: 0;
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nq-ink-muted);
+}
+.nq-ai-metric__value {
+  margin: 0;
+  font-family: var(--nq-font-mono);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--nq-accent-ink-text);
+  line-height: 1.1;
+}
+.nq-ai-copy {
+  margin: 0;
+  font-size: var(--nq-t-body);
+  color: var(--nq-ink-muted);
+  line-height: 1.55;
+  max-width: 62ch;
+}
+.nq-ai-copy--tight {
+  margin-top: var(--nq-s4);
+}
+.nq-ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nq-s3);
+  margin-top: var(--nq-s4);
+}
+.nq-ai-section {
+  margin-bottom: var(--nq-s6);
+}
+.nq-ai-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--nq-s3);
+  margin-bottom: var(--nq-s4);
+}
+.nq-ai-section__kicker {
+  margin: 0;
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--nq-accent-ink-text);
+}
+.nq-ai-section__title {
+  margin: 0.2rem 0 0;
+  font-size: var(--nq-t-h2);
+  font-weight: 700;
+  color: var(--nq-ink);
+}
+.nq-ai-section__count,
+.nq-ai-meta {
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
+  color: var(--nq-ink-muted);
+}
+.nq-ai-list {
+  display: grid;
+  gap: var(--nq-s3);
+}
+.nq-ai-card,
+.nq-ai-gen {
+  padding: var(--nq-s4);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-surface-2);
+}
+.nq-ai-gen {
+  border-left: 3px solid var(--nq-accent);
+}
+.nq-ai-card__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--nq-s3);
+}
+.nq-ai-card__tags,
+.nq-ai-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nq-s2);
+  align-items: center;
+}
+.nq-ai-card__body,
+.nq-ai-gen__title {
+  margin: var(--nq-s3) 0 var(--nq-s2);
+  font-weight: 600;
+  color: var(--nq-ink);
+}
+.nq-ai-gen__body {
+  margin: 0 0 var(--nq-s2);
+  font-size: var(--nq-t-small);
+  color: var(--nq-ink-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.nq-ai-split {
+  display: grid;
+  gap: var(--nq-s5);
+  margin-bottom: var(--nq-s6);
+}
+@media (min-width: 960px) {
+  .nq-ai-split {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+.nq-ai-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
+.nq-ai-flag {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nq-s3);
+  padding: var(--nq-s3) 0;
+  border-bottom: 1px solid var(--nq-line);
+  font-size: var(--nq-t-small);
+  color: var(--nq-ink);
+  width: 100%;
+  min-width: 0;
+}
+.nq-ai-flag__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* Không break-all: từng ký tự xuống dòng khi thẻ bị ép hẹp (lỗi production). */
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.35;
+}
+.nq-ai-flag .nq-chip {
+  flex: none;
+}
+.nq-ai-flag:last-child {
+  border-bottom: none;
+}
+/* Chặn nhầm dùng nq-surface-row (flex ngang) làm thẻ nội dung trên trang học AI. */
+.nq-page--ai-learning .nq-surface-row {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Dialog / Drawer / DataList / Btn variants (enterprise kit v4)
+   ══════════════════════════════════════════════════════════════════════════ */
+.nq-btn-secondary {
+  background: transparent;
+  color: var(--nq-accent-ink-text);
+  border: 1px solid var(--nq-line-strong);
+}
+.nq-btn-secondary:hover:not(:disabled) {
+  background: var(--nq-accent-soft);
+  border-color: var(--nq-accent);
+  color: var(--nq-accent-hover);
+}
+.nq-btn-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+.nq-btn-sm {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.9rem;
+  font-size: var(--nq-t-caption);
+  letter-spacing: 0.06em;
+}
+.nq-btn-icon.nq-btn-sm {
+  width: 2.25rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+}
+
+.nq-dialog-overlay,
+.nq-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nq-z-modal);
+  background: rgba(2, 6, 10, 0.62);
+  backdrop-filter: var(--nq-blur-2);
+  -webkit-backdrop-filter: var(--nq-blur-2);
+  animation: nq-fade-in var(--nq-beat-settle) var(--nq-ease-out) both;
+}
+.nq-dialog-overlay {
+  display: grid;
+  place-items: center;
+  padding: var(--nq-s5);
+}
+.nq-drawer-overlay {
+  z-index: var(--nq-z-drawer);
+  display: flex;
+  justify-content: flex-end;
+}
+.nq-dialog-panel {
+  width: min(100%, 32rem);
+  max-height: min(88vh, 40rem);
+  display: flex;
+  flex-direction: column;
+  background: var(--nq-surface);
+  border: 1px solid var(--nq-line-strong);
+  border-radius: var(--nq-radius-sheet);
+  box-shadow: var(--nq-elev-4), var(--nq-inner-hi);
+  animation: nq-rise var(--nq-beat-focus) var(--nq-ease-out) both;
+}
+.nq-drawer-panel {
+  width: min(100%, 26rem);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--nq-surface);
+  border-left: 1px solid var(--nq-line-strong);
+  box-shadow: var(--nq-elev-4);
+  animation: nq-slide-in-right var(--nq-beat-focus) var(--nq-ease-out) both;
+}
+.nq-dialog-head,
+.nq-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nq-s3);
+  padding: var(--nq-s4) var(--nq-s5);
+  border-bottom: 1px solid var(--nq-line);
+}
+.nq-dialog-title,
+.nq-drawer-title {
+  margin: 0;
+  font-family: var(--nq-font-display);
+  font-size: var(--nq-t-h3);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--nq-ink);
+}
+.nq-dialog-body,
+.nq-drawer-body {
+  padding: var(--nq-s5);
+  overflow: auto;
+  flex: 1;
+}
+.nq-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--nq-s3);
+  padding: var(--nq-s4) var(--nq-s5);
+  border-top: 1px solid var(--nq-line);
+}
+
+.nq-datalist {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+.nq-datalist__row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 34%) 1fr;
+  gap: var(--nq-s3);
+  padding: var(--nq-s3) 0;
+  border-bottom: 1px solid var(--nq-line);
+}
+.nq-datalist__row:last-child {
+  border-bottom: none;
+}
+.nq-datalist__label {
+  margin: 0;
+  color: var(--nq-ink-muted);
+  font-size: var(--nq-t-caption);
+  font-family: var(--nq-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.nq-datalist__value {
+  margin: 0;
+  color: var(--nq-ink);
+  font-size: var(--nq-t-body);
+  word-break: break-word;
+}
+.nq-datalist .nq-datalist {
+  margin-top: var(--nq-s2);
+  padding-left: var(--nq-s3);
+  border-left: 2px solid var(--nq-line-strong);
+}
+
+.nq-prose-block {
+  margin: 0;
+  padding: var(--nq-s4);
+  max-height: 20rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
+  line-height: 1.55;
+  color: var(--nq-ink);
+  background: var(--nq-bg);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius);
+}
+.nq-prose-block--muted {
+  color: var(--nq-ink-muted);
+}
+
+.nq-cmdk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nq-z-modal);
+  display: grid;
+  place-items: start center;
+  padding: 12vh var(--nq-s4) var(--nq-s4);
+  background: rgba(2, 6, 10, 0.55);
+  backdrop-filter: var(--nq-blur-1);
+}
+.nq-cmdk {
+  width: min(100%, 32rem);
+  background: var(--nq-surface);
+  border: 1px solid var(--nq-line-strong);
+  border-radius: var(--nq-radius-sheet);
+  box-shadow: var(--nq-elev-4);
+  overflow: hidden;
+}
+.nq-cmdk__input {
+  width: 100%;
+  padding: var(--nq-s4) var(--nq-s5);
+  border: 0;
+  border-bottom: 1px solid var(--nq-line);
+  background: transparent;
+  color: var(--nq-ink);
+  font-size: var(--nq-t-body);
+  outline: none;
+}
+.nq-cmdk__list {
+  max-height: 20rem;
+  overflow: auto;
+  padding: var(--nq-s2);
+  margin: 0;
+  list-style: none;
+}
+.nq-cmdk__item {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s3);
+  width: 100%;
+  padding: var(--nq-s3) var(--nq-s4);
+  border: 0;
+  border-radius: var(--nq-radius);
+  background: transparent;
+  color: var(--nq-ink);
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--nq-t-small);
+}
+.nq-cmdk__item[data-active="1"],
+.nq-cmdk__item:hover {
+  background: var(--nq-accent-soft);
+  color: var(--nq-accent-ink-text);
+}
+.nq-cmdk__hint {
+  margin-left: auto;
+  color: var(--nq-ink-muted);
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
+}
+
+@keyframes nq-slide-in-right {
+  from { transform: translateX(12px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    prefers-reduced-motion — PHẢI là khối cuối file.

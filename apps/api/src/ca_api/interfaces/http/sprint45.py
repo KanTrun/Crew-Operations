@@ -905,6 +905,20 @@ def inbox_list(authorization: Annotated[str | None, Header()] = None) -> dict[st
     )
     if not existing and not has_real_channel:
         _seed_inbox()
+
+    # Trang này giờ CHỈ XEM — AI tự động duyệt/từ chối ngay khi yêu cầu được
+    # ghi vào hộp thư (xem `_enqueue_inbox` ở channels.py). Quét lại đây là
+    # lưới an toàn cho các luồng ghi không gọi autopilot trực tiếp, để không
+    # bao giờ còn mục "cho_duyet" đọng lại chờ người bấm nút.
+    session = auth_session(authorization) or {}
+    store_id = str(session.get("store_id") or "quan_01")
+    try:
+        from ca_api.services.inbox_autopilot import auto_process
+
+        auto_process(store_id=store_id)
+    except Exception:
+        pass
+
     items = kv_get("inbox_rang_buoc", [])
     enriched = []
     for it in items:
@@ -924,15 +938,25 @@ def inbox_list(authorization: Annotated[str | None, Header()] = None) -> dict[st
     return {"items": enriched, "nguon": "quan", "co_du_lieu_mau": _co_du_lieu_mau(enriched)}
 
 
-@router.post("/api/v1/inbox/rang-buoc/{item_id}")
-def inbox_decide(
+def _decide_inbox_item(
     item_id: str,
-    body: InboxBody,
-    authorization: Annotated[str | None, Header()] = None,
+    *,
+    quyet_dinh: str,
+    role: str,
+    store_id: str,
+    actor_id: str,
+    ly_do: str | None = None,
+    ca_id: str | None = None,
+    doi_tac_nv_id: str | None = None,
+    ap_dat: bool = False,
+    tu_dong_xep_lich: bool = False,
 ) -> dict[str, Any]:
-    role = _require_manager(authorization)
-    session = auth_session(authorization) or {}
-    store_id = str(session.get("store_id") or "quan_01")
+    """Lõi quyết định một mục hộp thư ràng buộc (duyệt/từ chối + hiệu lực +
+    tự động xếp lịch nếu cần) — dùng chung cho:
+      - `inbox_decide` (endpoint HTTP, người quản lý bấm nút Duyệt/Từ chối)
+      - `services/inbox_autopilot.py` (AI tự động duyệt, không có phiên HTTP)
+    Tách khỏi endpoint để hai nơi gọi cùng MỘT đường ghi kv/swap/solver,
+    không có hai bản logic có thể lệch nhau."""
     tuan_default = _life(store_id=store_id).get("tuan_iso", "2026-W01")
     found: dict[str, Any] | None = None
     pending_swap: dict[str, Any] | None = None
@@ -941,36 +965,36 @@ def inbox_decide(
         nonlocal found, pending_swap
         for it in items:
             if it.get("id") == item_id:
-                if body.quyet_dinh not in {"duyet", "tu_choi"}:
+                if quyet_dinh not in {"duyet", "tu_choi"}:
                     raise HTTPException(status_code=400, detail="quyet_dinh")
-                it["trang_thai"] = body.quyet_dinh
-                if body.ly_do and str(body.ly_do).strip():
-                    it["ly_do_quyet"] = str(body.ly_do).strip()[:500]
-                if body.quyet_dinh == "duyet":
+                it["trang_thai"] = quyet_dinh
+                if ly_do and str(ly_do).strip():
+                    it["ly_do_quyet"] = str(ly_do).strip()[:500]
+                if quyet_dinh == "duyet":
                     y = str(it.get("y_dinh") or "")
                     rb = it.get("rang_buoc") or {}
                     tuan_id = rb.get("tuan_id") or tuan_default
                     if y in {"doi_ca", "nhan_ca"}:
-                        ca_id = (body.ca_id or rb.get("ca_id") or "").strip()
-                        doi_tac_nv_id = (body.doi_tac_nv_id or rb.get("doi_tac") or "").strip()
-                        if it.get("doi_tac_khong_ro") and not body.doi_tac_nv_id:
+                        eff_ca_id = (ca_id or rb.get("ca_id") or "").strip()
+                        eff_doi_tac = (doi_tac_nv_id or rb.get("doi_tac") or "").strip()
+                        if it.get("doi_tac_khong_ro") and not doi_tac_nv_id:
                             raise HTTPException(
                                 status_code=400,
                                 detail="doi_tac_khong_ro_can_chon_nhan_vien",
                             )
-                        if not ca_id or not doi_tac_nv_id:
+                        if not eff_ca_id or not eff_doi_tac:
                             raise HTTPException(
                                 status_code=400,
                                 detail="doi_ca_can_ca_id_va_doi_tac",
                             )
-                        is_ap_dat = bool(body.ap_dat)
+                        is_ap_dat = bool(ap_dat)
                         swap_status = "dong_y" if is_ap_dat else "cho_xac_nhan"
-                        dong_y_list = [it.get("nv_id") or "unknown", doi_tac_nv_id] if is_ap_dat else [it.get("nv_id") or "unknown"]
+                        dong_y_list = [it.get("nv_id") or "unknown", eff_doi_tac] if is_ap_dat else [it.get("nv_id") or "unknown"]
                         pending_swap = {
                             "id": f"sw_inbox_{uuid.uuid4().hex[:6]}",
                             "a": it.get("nv_id") or "unknown",
-                            "b": doi_tac_nv_id,
-                            "ca_id": ca_id,
+                            "b": eff_doi_tac,
+                            "ca_id": eff_ca_id,
                             "trang_thai": swap_status,
                             "dong_y": dong_y_list,
                             "ap_dat": is_ap_dat,
@@ -983,9 +1007,9 @@ def inbox_decide(
                             "loai": "cho_doi_ca",
                             "swap_id": pending_swap["id"],
                             "ghi": (
-                                f"Đã áp đặt đổi ca {ca_id} với {doi_tac_nv_id}"
+                                f"Đã áp đặt đổi ca {eff_ca_id} với {eff_doi_tac}"
                                 if is_ap_dat
-                                else f"Đã mở phiếu đổi ca {ca_id} với {doi_tac_nv_id} — chờ đối tác xác nhận"
+                                else f"Đã mở phiếu đổi ca {eff_ca_id} với {eff_doi_tac} — chờ đối tác xác nhận"
                             ),
                             "tuan_id": tuan_id,
                         }
@@ -1043,13 +1067,13 @@ def inbox_decide(
     if y_dinh == "doi_ca":
         action_name = (
             "shift_swap.approve"
-            if body.quyet_dinh == "duyet"
+            if quyet_dinh == "duyet"
             else "shift_swap.reject"
         )
     else:
         action_name = (
             "constraint.approve"
-            if body.quyet_dinh == "duyet"
+            if quyet_dinh == "duyet"
             else "constraint.reject"
         )
     _audit(
@@ -1058,15 +1082,15 @@ def inbox_decide(
         {
             "entity_type": "inbox_item",
             "entity_id": item_id,
-            "q": body.quyet_dinh,
+            "q": quyet_dinh,
             "y": y_dinh,
         },
     )
 
     response = dict(found)
     if (
-        body.quyet_dinh == "duyet"
-        and body.tu_dong_xep_lich
+        quyet_dinh == "duyet"
+        and tu_dong_xep_lich
         and found.get("hieu_luc", {}).get("loai") == "rang_buoc_cho_solver"
     ):
         life = _life(store_id=store_id)
@@ -1083,13 +1107,11 @@ def inbox_decide(
             # một đường CP-SAT (schedule_run/fingerprint/audit/open_shift).
             rb = found.get("rang_buoc") or {}
             week = str(rb.get("tuan_id") or life.get("tuan_iso") or "2026-W01")
-            session = auth_session(authorization) or {}
-            store_id = str(session.get("store_id") or "quan_01")
             try:
                 authoritative = run_authoritative_schedule(
                     store_id=store_id,
                     tuan_iso=week,
-                    actor_id=str(session.get("nv_id") or role),
+                    actor_id=actor_id,
                     idempotency_key=f"inbox:{item_id}:{week}:solve",
                 )
                 solver_result = authoritative.get("result") or {}
@@ -1123,6 +1145,30 @@ def inbox_decide(
             },
         )
     return response
+
+
+@router.post("/api/v1/inbox/rang-buoc/{item_id}")
+def inbox_decide(
+    item_id: str,
+    body: InboxBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    role = _require_manager(authorization)
+    session = auth_session(authorization) or {}
+    store_id = str(session.get("store_id") or "quan_01")
+    actor_id = str(session.get("nv_id") or role)
+    return _decide_inbox_item(
+        item_id,
+        quyet_dinh=body.quyet_dinh,
+        role=role,
+        store_id=store_id,
+        actor_id=actor_id,
+        ly_do=body.ly_do,
+        ca_id=body.ca_id,
+        doi_tac_nv_id=body.doi_tac_nv_id,
+        ap_dat=body.ap_dat,
+        tu_dong_xep_lich=body.tu_dong_xep_lich,
+    )
 
 
 @router.get("/api/v1/inbox/candidates/{item_id}")
