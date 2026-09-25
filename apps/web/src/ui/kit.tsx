@@ -79,7 +79,7 @@ export function PageActions({ children }: { children: ReactNode }) {
 }
 
 export function Kicker({ children }: { children: ReactNode }) {
-  return <p className="text-sm font-mono text-[var(--nq-copper)] uppercase tracking-widest mb-2">{children}</p>;
+  return <p className="text-sm font-mono text-[var(--nq-accent)] uppercase tracking-widest mb-2">{children}</p>;
 }
 
 export function EditorialBanner({
@@ -165,24 +165,25 @@ export function TechnicalDrawer({
   const [open, setOpen] = useState(false);
   if (lines.length === 0 && !children) return null;
   return (
-    <div className={`mt-8 ${className}`.trim()}>
-      <button 
-        type="button" 
-        className="w-full flex justify-between items-center bg-[var(--nq-surface)] border-2 border-dashed border-[var(--nq-dim)] p-4 text-[var(--nq-dim)] font-mono text-sm hover:border-[var(--nq-fg)] hover:text-[var(--nq-fg)] transition-colors" 
-        onClick={() => setOpen((v) => !v)} 
+    <div className={`nq-tech mt-8 ${className}`.trim()}>
+      <button
+        type="button"
+        className="nq-tech__head"
+        onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
         <span>{summary}</span>
-        <span aria-hidden="true" className="font-bold">{open ? "−" : "+"}</span>
+        <span aria-hidden="true" className="nq-tech__sign">{open ? "−" : "+"}</span>
       </button>
       {open && lines.length > 0 ? (
-        <ul className="bg-[var(--nq-surface-hi)] border-2 border-t-0 border-[var(--nq-dim)] p-4 font-mono text-sm text-[var(--nq-dim)] space-y-2">
+        <ul className="nq-tech__body">
           {lines.map((line, i) => (
+            /* eslint-disable-next-line react/no-array-index-key */
             <li key={`${i}-${line}`}>{line}</li>
           ))}
         </ul>
       ) : null}
-      {open && children ? <div className="bg-[var(--nq-surface-hi)] border-2 border-t-0 border-[var(--nq-dim)] p-4">{children}</div> : null}
+      {open && children ? <div className="nq-tech__body">{children}</div> : null}
     </div>
   );
 }
@@ -390,7 +391,7 @@ export function Loading({
   rows?: number;
   groups?: number;
 }) {
-  const label = children ? <span className="block text-sm font-mono text-[var(--nq-copper)] uppercase tracking-widest mb-4">{children}</span> : null;
+  const label = children ? <span className="block text-sm font-mono text-[var(--nq-accent)] uppercase tracking-widest mb-4">{children}</span> : null;
   let shape: ReactNode;
   if (skeleton === "bento" || skeleton === "page") shape = <SkeletonBento />;
   else if (skeleton === "text")
@@ -489,7 +490,7 @@ export function ProgressBar({ value, max, className = "" }: { value: number; max
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
     <div className={`nq-progress w-full ${className}`.trim()} role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
-      <div className="h-full bg-[var(--nq-copper)] transition-all duration-500 ease-out" style={{ width: `${pct}%` }} />
+      <div className="h-full bg-[var(--nq-accent)] transition-all duration-500 ease-out" style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -623,7 +624,7 @@ export function Group({
       <div className="flex items-center gap-4 mb-4">
         <h3 className="text-xl font-black uppercase text-[var(--nq-fg)]">{title}</h3>
         {typeof count === "number" ? (
-          <span className="nq-ink-on-solid text-sm bg-[var(--nq-copper)] px-3 py-1 rounded-full">
+          <span className="nq-ink-on-solid text-sm bg-[var(--nq-accent)] px-3 py-1 rounded-full">
             {count} {countLabel}
           </span>
         ) : null}
@@ -694,7 +695,7 @@ export function PageHeader({
 }) {
   return (
     <header className="mb-12 ops-animate-in" data-tour={tourId}>
-      <p className="text-sm font-mono text-[var(--nq-copper)] uppercase tracking-widest mb-2">{kicker}</p>
+      <p className="text-sm font-mono text-[var(--nq-accent)] uppercase tracking-widest mb-2">{kicker}</p>
       {/* Tiêu đề trang dùng font display của hệ, KHÔNG dùng `font-black uppercase
           tracking-tighter`. Kiểu cũ là dấu hiệu nhận dạng của giao diện máy dựng,
           và với tiếng Việt thì hại thật: chữ hoa cỡ lớn cộng khoảng chữ bị siết
@@ -784,7 +785,7 @@ export function OpsCard({
     <div className="flex items-center gap-4 mb-6">
       <h2 className="text-2xl font-black uppercase text-[var(--nq-fg)]">{title}</h2>
       {typeof count === "number" ? (
-        <span className="nq-ink-on-solid text-sm bg-[var(--nq-copper)] px-3 py-1 rounded-full">
+        <span className="nq-ink-on-solid text-sm bg-[var(--nq-accent)] px-3 py-1 rounded-full">
           {count} {countLabel}
         </span>
       ) : null}
@@ -873,7 +874,7 @@ export function Toolbar({ children }: { children: ReactNode }) {
 }
 
 export function Notice({ children }: { children: ReactNode }) {
-  return <p className="text-sm font-mono text-[var(--nq-dim)] border-l-4 border-[var(--nq-copper)] pl-4 my-6">{children}</p>;
+  return <p className="text-sm font-mono text-[var(--nq-dim)] border-l-4 border-[var(--nq-accent)] pl-4 my-6">{children}</p>;
 }
 
 export function LinkGrid({ children }: { children: ReactNode }) {
@@ -883,7 +884,7 @@ export function LinkGrid({ children }: { children: ReactNode }) {
 export function LinkTile({ href, children, className = "" }: { href: string; children: ReactNode; className?: string }) {
   return (
     <Link href={href} className={`nq-surface-tile p-6 transition-colors group ${className}`.trim()}>
-      <span className="font-bold uppercase tracking-widest text-sm group-hover:text-[var(--nq-copper)] text-[var(--nq-fg)] transition-colors">{children}</span>
+      <span className="font-bold uppercase tracking-widest text-sm group-hover:text-[var(--nq-accent)] text-[var(--nq-fg)] transition-colors">{children}</span>
     </Link>
   );
 }
@@ -992,7 +993,7 @@ export function PickCard({
       className="nq-surface-tile flex w-full flex-col justify-between p-6 text-left disabled:opacity-50"
     >
       <div className="mb-6">
-        <span className="text-2xl font-black text-[var(--nq-copper)] mb-2 block">
+        <span className="text-2xl font-black text-[var(--nq-accent)] mb-2 block">
           {steps} <span className="text-sm font-mono uppercase tracking-widest">{stepsUnit}</span>
         </span>
         <span className="text-xl font-bold uppercase text-[var(--nq-fg)] block mb-2">{name}</span>
@@ -1331,6 +1332,12 @@ export function LoadingOverlay({
   );
 }
 
+/**
+ * Tab dạng mảng `{id,label}` — cùng hệ với `TabBar` nhưng nhận dữ liệu thay vì
+ * children. Trước đây dùng `border-b-2` + `font-black uppercase tracking-widest`:
+ * vạch 2px đè lên biên khối, và chữ hoa giãn rộng làm nhãn dài gãy dòng ở màn
+ * hẹp. Đưa về cùng `.nq-tab` để hai lối gọi tab trong hệ trông y hệt nhau.
+ */
 export function Tabs({
   value,
   onChange,
@@ -1343,23 +1350,20 @@ export function Tabs({
   className?: string;
 }) {
   return (
-    <div className={`flex gap-2 border-b-2 border-[var(--nq-dim)] ${className}`}>
+    <div className={`nq-tabbar ${className}`.trim()} role="tablist">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={`flex items-center gap-2 px-4 py-3 font-black uppercase tracking-widest text-sm border-b-2 transition-colors ${
-            value === tab.id
-              ? "border-[var(--nq-copper)] text-[var(--nq-copper)]"
-              : tab.disabled
-                ? "text-[var(--nq-dim)]/40 cursor-not-allowed"
-                : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)] hover:border-[var(--nq-copper)]"
-          }`}
-          onClick={() => !tab.disabled && onChange(tab.id)}
+          role="tab"
+          aria-selected={value === tab.id}
           disabled={tab.disabled}
+          className="nq-tab"
+          data-on={value === tab.id ? "1" : "0"}
+          onClick={() => !tab.disabled && onChange(tab.id)}
         >
           {tab.icon ? <Icon name={tab.icon} size={16} /> : null}
-          {tab.label}
+          <span>{tab.label}</span>
         </button>
       ))}
     </div>

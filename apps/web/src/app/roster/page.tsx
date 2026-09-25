@@ -670,7 +670,7 @@ export default function RosterPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
           <div>
             <p className="nq-kicker">Vận hành tuần</p>
-            <h1 className="nq-page-title text-[var(--nq-copper)]">
+            <h1 className="nq-page-title text-[var(--nq-accent)]">
               {viewMode === "my_shifts" ? "Lịch đi làm của tôi" : "Lịch toàn quán"}
             </h1>
             <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
@@ -718,7 +718,7 @@ export default function RosterPage() {
           >
             ← Trước
           </button>
-          <span className="text-base font-bold text-[var(--nq-copper)] min-w-[150px] text-center">
+          <span className="text-base font-bold text-[var(--nq-accent)] min-w-[150px] text-center">
             {dayDate(monday, 0)} — {dayDate(monday, 6)}
           </span>
           <button
@@ -749,14 +749,14 @@ export default function RosterPage() {
       {scheduleNotifications.length > 0 && (
         <section className="nq-item mb-5" aria-label="Thông báo cập nhật lịch">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--nq-copper)]">Thông báo cập nhật lịch</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--nq-accent)]">Thông báo cập nhật lịch</h2>
             <span className="text-xs text-[var(--nq-dim)]">
               {scheduleNotifications.filter((item) => !item.da_xem).length} chưa xem
             </span>
           </div>
           <div className="space-y-2">
             {scheduleNotifications.slice(0, 3).map((notification) => (
-              <div key={notification.id} className={`flex flex-wrap items-center justify-between gap-3 border-l-2 pl-3 ${notification.da_xem ? "border-[var(--nq-dim)] opacity-70" : "border-[var(--nq-copper)]"}`}>
+              <div key={notification.id} className={`flex flex-wrap items-center justify-between gap-3 border-l-2 pl-3 ${notification.da_xem ? "border-[var(--nq-dim)] opacity-70" : "border-[var(--nq-accent)]"}`}>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">{notification.tieu_de}</p>
                   <p className="text-xs text-[var(--nq-dim)]">{notification.noi_dung}</p>

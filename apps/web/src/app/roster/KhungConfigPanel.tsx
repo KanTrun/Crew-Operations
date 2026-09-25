@@ -74,7 +74,7 @@ export function KhungConfigPanel({ template, disabled, onSaved }: Props) {
   return (
     <div className="nq-roster-khung-panel">
       <div className="nq-roster-khung-panel__head">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nq-copper)]">
+        <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nq-accent)]">
           Cài khung giờ quán
         </h2>
         <p className="nq-muted text-xs mt-1">

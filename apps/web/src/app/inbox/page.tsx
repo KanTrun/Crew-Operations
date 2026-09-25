@@ -459,7 +459,7 @@ export default function InboxPage() {
       ) : null}
 
       {life?.trang_thai === "da_dong" ? (
-        <div className="nq-surface-row mb-4 p-4 border-[var(--nq-copper)] bg-[var(--nq-copper-dim,#332211)] text-[var(--nq-fg)] flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div className="nq-surface-row mb-4 p-4 border-[var(--nq-accent)] bg-[var(--nq-accent-dim,#332211)] text-[var(--nq-fg)] flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <div>
             <div className="font-bold uppercase tracking-wider">
               Lịch tuần {life.tuan_iso ?? ""} đã đóng băng
@@ -833,7 +833,7 @@ export default function InboxPage() {
                   type="checkbox"
                   checked={swapApDat}
                   onChange={(e) => setSwapApDat(e.target.checked)}
-                  className="w-4 h-4 text-[var(--nq-copper)]"
+                  className="w-4 h-4 text-[var(--nq-accent)]"
                 />
                 <span>Áp đặt bởi Quản lý (xác nhận ngay, không chờ đối tác đồng ý)</span>
               </label>

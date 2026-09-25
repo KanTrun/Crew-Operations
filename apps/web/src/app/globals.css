@@ -17,9 +17,9 @@
 }
 
 .nq-workflow-step--active {
-  border-color: var(--nq-copper);
-  color: var(--nq-copper);
-  background: color-mix(in srgb, var(--nq-copper) 12%, transparent);
+  border-color: var(--nq-accent);
+  color: var(--nq-accent);
+  background: color-mix(in srgb, var(--nq-accent) 12%, transparent);
 }
 
 .nq-constraint-panel {
@@ -38,7 +38,7 @@
 .nq-constraint-panel h3 {
   margin-bottom: 0.35rem;
   font-size: 0.82rem;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-constraint-panel p {
@@ -138,6 +138,7 @@
   --nq-accent-hover: #2dd4bf;
   --nq-accent-soft: rgba(20, 184, 166, 0.16);
   --nq-accent-glow: rgba(45, 212, 191, 0.24);
+  --nq-accent-dim: rgba(20, 184, 166, 0.42);
   --nq-accent-ink: #071014;        /* chữ tối đặt trên nền accent sáng */
   --nq-accent-2: #38bdf8;          /* accent phụ — thông tin / liên kết */
   --nq-accent-2-hover: #7dd3fc;
@@ -149,12 +150,10 @@
   /* Alias dùng bởi redesign Awwwards (class Tailwind arbitrary values) */
   --nq-fg: var(--nq-ink);
   --nq-dim: var(--nq-ink-muted);
-  /* `--nq-copper` là tên cũ của màu thương hiệu (đồng). Giữ TÊN để ~200 chỗ
-     đang tham chiếu không vỡ, nhưng trỏ về ngọc — tông đồng không còn trong hệ.
-     Đừng dùng tên này cho mã MỚI: viết `--nq-accent`. */
-  --nq-copper: var(--nq-accent);
-  --nq-copper-dim: rgba(20, 184, 166, 0.42);
-  --nq-copper-glow: var(--nq-accent-glow);
+  /* Tên cũ `--nq-copper*` (đồng) ĐÃ XOÁ HOÀN TOÀN. Nó từng được giữ như alias
+     trỏ về ngọc để ~200 chỗ tham chiếu không vỡ trong lúc đổi bảng màu. Giữ lại
+     lâu hơn thì cái TÊN chính là thứ khiến lần sau có người viết `--nq-copper`
+     cho mã mới rồi tưởng hệ vẫn còn tông đồng. Đã đổi hết sang `--nq-accent*`. */
   --nq-surface-hi: var(--nq-bg-elevated);
   /* Alias thiếu khiến `text-[var(--nq-muted)]` và `text-[var(--nq-primary)]`
      rơi về giá trị mặc định của trình duyệt. Phép kiểm tương phản bắt được đúng
@@ -181,22 +180,39 @@
   --nq-side-w-min: 68px;
 
   /* ── Thang chữ ──
-     Trước đây chỉ có h1 (đổi theo từng trang) và h2 cứng 1.2rem, còn tiêu đề
-     thẻ thì mỗi trang tự đặt (0.82 / 0.85 / 0.9rem tuỳ chỗ) — nên mắt không
-     phân được đâu là tiêu đề trang, đâu là tiêu đề khối, đâu là nhãn phụ.
-     Mười bậc dưới đây là hợp đồng duy nhất: mọi cỡ chữ trong apps/web lấy từ
-     đây, không đặt số trực tiếp trong rule. Một bậc chỉ dùng cho đúng một vai —
-     h1 không bao giờ làm cỡ thẻ. */
-  --nq-t-display: clamp(1.9rem, 3.4vw, 2.6rem); /* tên quán, mặt tiền */
-  --nq-t-h1: clamp(1.6rem, 2.4vw, 2rem);         /* tiêu đề trang — 1 lần/trang */
-  --nq-t-h2: 1.2rem;                             /* tiêu đề khối */
-  --nq-t-h3: 1rem;                               /* tiêu đề mục trong khối */
-  --nq-t-body: 0.9375rem;                        /* chữ đọc chính */
-  --nq-t-small: 0.84rem;                         /* phụ chú, dòng thứ hai */
-  --nq-t-caption: 0.75rem;                       /* nhãn, meta, đơn vị */
-  --nq-t-micro: 0.68rem;                         /* eyebrow, chữ hoa nhỏ nhất */
-  --nq-t-num-lg: clamp(1.75rem, 3vw, 2.5rem);    /* số chủ đạo trên thẻ KPI */
-  --nq-t-num: 1.0625rem;                         /* số trong bảng, mã, thời lượng */
+     SÁU bậc, mỗi bậc đúng MỘT vai (tiêu chí Phase 3A). Trước đây có mười bậc,
+     và bảy bậc trong đó nằm sát nhau tới mức mắt không phân biệt được — kết quả
+     là mỗi trang tự chọn một bậc cho "tiêu đề khối" và không trang nào khớp
+     trang nào. Sáu bậc dưới đây buộc phải chọn: cùng một vai thì cùng một bậc.
+
+       display   tên quán ở mặt tiền — 1 lần/trang, chỉ landing
+       h1        tiêu đề trang — 1 lần/trang
+       h2        tiêu đề khối
+       h3        tiêu đề mục trong khối
+       body      chữ đọc chính
+       small     phụ chú, dòng thứ hai
+       caption   nhãn, meta, đơn vị
+
+     Bậc `caption` là bậc nhỏ NHẤT. Trước đây còn `--nq-t-micro` (0.68rem = 10.9px)
+     — dưới ngưỡng đọc được và dấu tiếng Việt chồng lên nhau ở cỡ đó. Nhãn nào
+     cần nhỏ hơn caption thì vấn đề là ở bố cục, không phải ở cỡ chữ.
+
+     `--nq-t-num-lg` KHÔNG phải bậc thứ bảy: nó là alias có `clamp()` của bậc
+     `display` (cùng vai "con số lớn nhất trên màn hình"), giữ tên cũ để mã đang
+     tham chiếu không vỡ. Alias không tính vào sáu bậc. */
+  --nq-t-display: clamp(1.9rem, 3.4vw, 2.6rem); /* mặt tiền — 1 lần/trang */
+  --nq-t-h1: clamp(1.5rem, 2.2vw, 1.85rem);     /* tiêu đề trang — 1 lần/trang */
+  --nq-t-h2: 1.25rem;                           /* tiêu đề khối */
+  --nq-t-h3: 1.0625rem;                         /* tiêu đề mục trong khối */
+  --nq-t-body: 0.9375rem;                       /* chữ đọc chính */
+  --nq-t-small: 0.84rem;                        /* phụ chú, dòng thứ hai */
+  --nq-t-caption: 0.75rem;                      /* nhãn, meta, đơn vị — nhỏ nhất */
+  /* Alias tương thích — CÙNG giá trị với bậc ở trên, không phải bậc mới.
+     `--nq-t-micro` gộp vào `caption` (lý do ở trên). `--nq-t-num-lg` gộp vào
+     `display`; `--nq-t-num` gộp vào `h3` (số trong bảng đọc như tiêu đề mục). */
+  --nq-t-num-lg: var(--nq-t-display);
+  --nq-t-num: var(--nq-t-h3);
+  --nq-t-micro: var(--nq-t-caption);
 
   /* ── Bậc nổi (elevation) ──
      Trước đây mọi khối — thẻ KPI, khối nội dung, thanh nổi, popover — đều mang
@@ -262,8 +278,6 @@
      nền trang lẫn nền thẻ, vẫn đúng sắc ngọc.
      Quy ước: NỀN/NÚT/VIỀN dùng `--nq-accent`; CHỮ NHỎ dùng `--nq-accent-ink-text`. */
   --nq-accent-ink-text: #5eead4;
-  /* Tương thích: tên cũ `--nq-copper-ink` trỏ về bản chữ của ngọc. */
-  --nq-copper-ink: var(--nq-accent-ink-text);
 
   /* Đường biên của thành phần BẤM ĐƯỢC (ô nhập, select, textarea).
      `--nq-line-strong` là vạch kẻ trang trí, không phải biên điều khiển: đo ra
@@ -477,8 +491,8 @@ a.nq-btn-danger {
 }
 
 .nq-alert--info {
-  border-left-color: var(--nq-copper);
-  background: color-mix(in srgb, var(--nq-copper) 16%, var(--nq-surface));
+  border-left-color: var(--nq-accent);
+  background: color-mix(in srgb, var(--nq-accent) 16%, var(--nq-surface));
 }
 
 /* Nền trang: hai quầng sáng ấm + dải chuyển sắc xuống nền.
@@ -591,7 +605,7 @@ textarea {
   color: var(--nq-ink);
   border: 1px solid var(--nq-line-strong);
   border-radius: 4px;
-  caret-color: var(--nq-copper);
+  caret-color: var(--nq-accent);
 }
 
 input::placeholder,
@@ -656,7 +670,7 @@ a:focus-visible {
 
 .nq-top {
   border-bottom: 1px solid var(--nq-line);
-  background: var(--nq-glass);
+  background: var(--nq-glass-1);
   backdrop-filter: var(--nq-blur-glass);
   -webkit-backdrop-filter: var(--nq-blur-glass);
   padding: 0.75rem clamp(1rem, 3vw, 2rem);
@@ -790,7 +804,7 @@ a:focus-visible {
   padding: 0.3rem;
   border: 1px solid var(--nq-line);
   border-radius: var(--nq-radius-pill);
-  background: var(--nq-glass);
+  background: var(--nq-glass-1);
   backdrop-filter: var(--nq-blur-glass);
   -webkit-backdrop-filter: var(--nq-blur-glass);
   z-index: 40;
@@ -905,7 +919,7 @@ a:focus-visible {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--nq-ink-muted);
-  background: color-mix(in srgb, var(--nq-bg-elevated) 92%, var(--nq-copper) 8%);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 92%, var(--nq-accent) 8%);
 }
 
 .nq-data-table tr:last-child td {
@@ -934,8 +948,8 @@ a:focus-visible {
 }
 
 .nq-filter-tab--on {
-  border-color: var(--nq-copper);
-  color: var(--nq-copper);
+  border-color: var(--nq-accent);
+  color: var(--nq-accent);
 }
 
 .nq-filter-tabs--counts .nq-filter-tab {
@@ -953,12 +967,12 @@ a:focus-visible {
   border-radius: var(--nq-radius-pill);
   font-size: 0.62rem;
   font-family: var(--nq-font-mono);
-  background: color-mix(in srgb, var(--nq-copper) 18%, transparent);
-  color: var(--nq-copper);
+  background: color-mix(in srgb, var(--nq-accent) 18%, transparent);
+  color: var(--nq-accent);
 }
 
 .nq-filter-tab--on .nq-filter-tab__count {
-  background: color-mix(in srgb, var(--nq-copper) 35%, transparent);
+  background: color-mix(in srgb, var(--nq-accent) 35%, transparent);
 }
 
 /* ── User management (team cockpit) ── */
@@ -1003,8 +1017,8 @@ a:focus-visible {
 }
 
 .nq-nguoi-insight--info {
-  border-color: color-mix(in srgb, var(--nq-copper) 35%, var(--nq-line));
-  background: color-mix(in srgb, var(--nq-copper) 8%, var(--nq-bg-elevated));
+  border-color: color-mix(in srgb, var(--nq-accent) 35%, var(--nq-line));
+  background: color-mix(in srgb, var(--nq-accent) 8%, var(--nq-bg-elevated));
 }
 
 .nq-nguoi-insight__label {
@@ -1035,7 +1049,7 @@ a:focus-visible {
 .nq-lawbook__toc {
   padding: 1rem 1.25rem;
   border: 1px solid var(--nq-line);
-  border-left: 4px solid var(--nq-copper);
+  border-left: 4px solid var(--nq-accent);
   border-radius: var(--nq-radius-bubble);
   background: var(--nq-bg-elevated);
 }
@@ -1069,7 +1083,7 @@ a:focus-visible {
 .nq-lawbook__toc-count {
   font-family: var(--nq-font-mono);
   font-weight: 700;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-lawbook__list {
@@ -1093,11 +1107,11 @@ a:focus-visible {
 }
 
 .nq-lawbook__dieu:hover {
-  background: color-mix(in srgb, var(--nq-copper) 4%, transparent);
+  background: color-mix(in srgb, var(--nq-accent) 4%, transparent);
 }
 
 .nq-lawbook__dieu--open {
-  background: color-mix(in srgb, var(--nq-copper) 7%, transparent);
+  background: color-mix(in srgb, var(--nq-accent) 7%, transparent);
 }
 
 .nq-lawbook__dieu-so {
@@ -1107,7 +1121,7 @@ a:focus-visible {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
   line-height: 1.5;
 }
 
@@ -1162,7 +1176,7 @@ a:focus-visible {
   font-family: var(--nq-font-mono);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
   text-decoration: underline;
   text-underline-offset: 3px;
   justify-self: start;
@@ -1223,7 +1237,7 @@ a:focus-visible {
 }
 
 .nq-nguoi-card:hover {
-  border-color: color-mix(in srgb, var(--nq-copper) 40%, var(--nq-line));
+  border-color: color-mix(in srgb, var(--nq-accent) 40%, var(--nq-line));
   box-shadow: var(--nq-shadow-bubble-hover);
 }
 
@@ -1295,9 +1309,9 @@ a:focus-visible {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: var(--nq-radius-pill);
-  border: 1px solid color-mix(in srgb, var(--nq-copper) 45%, var(--nq-line));
-  background: color-mix(in srgb, var(--nq-copper) 14%, var(--nq-bg-elevated));
-  color: var(--nq-copper);
+  border: 1px solid color-mix(in srgb, var(--nq-accent) 45%, var(--nq-line));
+  background: color-mix(in srgb, var(--nq-accent) 14%, var(--nq-bg-elevated));
+  color: var(--nq-accent);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -1307,11 +1321,14 @@ a:focus-visible {
   padding: 0.42rem 0.85rem !important;
   font-size: 0.68rem !important;
   letter-spacing: 0.06em !important;
-  box-shadow: 3px 3px 0 0 var(--nq-copper-dim) !important;
+  /* Bóng CỨNG offset (`3px 3px 0`) đã bỏ: đó là ngôn ngữ brutalist, và trên nền
+     xanh đen nó đọc ra như khối bị lệch chứ không phải như chiều sâu. Dùng bậc
+     nổi chung để nút nhỏ vẫn tách khỏi bề mặt. */
+  box-shadow: var(--nq-elev-1) !important;
 }
 
 .nq-btn-compact:hover:not(:disabled) {
-  box-shadow: 4px 4px 0 0 var(--nq-copper-dim) !important;
+  box-shadow: var(--nq-elev-2) !important;
 }
 
 .nq-btn-compact--danger {
@@ -1324,7 +1341,10 @@ a:focus-visible {
   background: color-mix(in srgb, var(--nq-red) 12%, transparent) !important;
 }
 
-/* ── Confirm dialog ── */
+/* ── Confirm dialog ──
+   Lớp chắn hẳn nội dung để hỏi một câu BẮT BUỘC trả lời → dùng kính bậc 3
+   (đục nhất) theo quy tắc Phase 4: lớp càng che nhiều nội dung thì càng phải
+   giữ chữ đọc được trên nó. */
 .nq-confirm-overlay {
   position: fixed;
   inset: 0;
@@ -1333,7 +1353,7 @@ a:focus-visible {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: color-mix(in srgb, var(--nq-bg) 35%, rgba(0, 0, 0, 0.72));
+  background: rgba(2, 6, 10, 0.62);
   backdrop-filter: blur(6px);
   animation: nq-fade-in var(--nq-dur-t0) var(--nq-ease-out) both;
 }
@@ -1341,10 +1361,15 @@ a:focus-visible {
 .nq-confirm-panel {
   width: min(100%, 28rem);
   padding: 1.5rem;
-  border: 2px solid var(--nq-line-strong);
-  border-radius: var(--nq-radius-bubble);
-  background: var(--nq-surface-hi);
-  box-shadow: var(--nq-shadow-bubble), 12px 12px 0 0 var(--nq-copper-dim);
+  border: 1px solid var(--nq-line-strong);
+  border-radius: var(--nq-radius-sheet);
+  /* Kính bậc 3 + vệt sáng mép trên: khối này nổi HẲN trên trang, nên nó phải
+     đọc ra khác hẳn một thẻ dữ liệu — đó là cách người dùng biết mình phải
+     trả lời trước khi làm gì tiếp. Bóng cứng `12px 12px 0` đã bỏ. */
+  background: var(--nq-glass-3);
+  backdrop-filter: var(--nq-blur-2);
+  -webkit-backdrop-filter: var(--nq-blur-2);
+  box-shadow: var(--nq-elev-4), var(--nq-frontier);
   animation: nq-rise var(--nq-dur-t1) var(--nq-ease-out) both;
 }
 
@@ -1416,7 +1441,7 @@ a:focus-visible {
 
 .nq-menu-card:hover,
 .nq-menu-card--on {
-  border-color: var(--nq-copper);
+  border-color: var(--nq-accent);
   box-shadow: var(--nq-shadow-bubble-hover), var(--nq-inner-hi);
 }
 
@@ -1467,7 +1492,7 @@ a:focus-visible {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-bom-card__remove {
@@ -1633,7 +1658,7 @@ a:focus-visible {
 }
 
 .nq-pos-row--on {
-  border-color: var(--nq-copper);
+  border-color: var(--nq-accent);
 }
 
 .nq-pos-row__info {
@@ -1700,8 +1725,8 @@ a:focus-visible {
 }
 
 .nq-stepper__btn:hover:not(:disabled) {
-  border-color: var(--nq-copper);
-  color: var(--nq-copper);
+  border-color: var(--nq-accent);
+  color: var(--nq-accent);
 }
 
 .nq-stepper__btn:active:not(:disabled) {
@@ -1714,14 +1739,14 @@ a:focus-visible {
 }
 
 .nq-stepper__btn--add {
-  border-color: var(--nq-copper);
-  background: var(--nq-copper);
+  border-color: var(--nq-accent);
+  background: var(--nq-accent);
   color: var(--nq-ink-on-solid, #0a0a0a);
 }
 
 .nq-stepper__btn--add:hover:not(:disabled) {
   background: transparent;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-stepper__qty {
@@ -1743,7 +1768,7 @@ a:focus-visible {
 }
 
 .nq-meeting-input--live {
-  border-color: color-mix(in srgb, var(--nq-copper) 55%, var(--nq-line));
+  border-color: color-mix(in srgb, var(--nq-accent) 55%, var(--nq-line));
 }
 
 .nq-meeting-input .nq-textarea {
@@ -1782,7 +1807,7 @@ a:focus-visible {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-meeting-section__hint {
@@ -1891,7 +1916,7 @@ a:focus-visible {
   padding: 0.2rem 0.45rem;
   border-radius: var(--nq-radius-pill);
   border: 1px solid var(--nq-line);
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-meeting-list {
@@ -2050,7 +2075,7 @@ a:focus-visible {
 }
 
 .nq-meeting-ratio__bar-mgr {
-  background: var(--nq-copper);
+  background: var(--nq-accent);
 }
 
 .nq-meeting-ratio__bar-staff {
@@ -2213,10 +2238,15 @@ a:focus-visible {
   max-height: calc(100dvh - var(--nq-s6));
   flex-direction: column;
   overflow: hidden;
+  /* Modal chặn hẳn nội dung để hỏi một câu bắt buộc trả lời → kính bậc 3, bậc
+     đục nhất trong ba bậc (xem `--nq-glass-*`). Không dùng nền đặc: người dùng
+     cần thấy mình đang ở TRÊN trang, không phải đã rời sang trang khác. */
   border: 1px solid var(--nq-line-strong);
-  border-radius: var(--nq-radius-bubble);
-  background: var(--nq-bg-elevated);
-  box-shadow: var(--nq-shadow-float), var(--nq-inner-hi);
+  border-radius: var(--nq-radius-sheet);
+  background: var(--nq-glass-3);
+  backdrop-filter: var(--nq-blur-2);
+  -webkit-backdrop-filter: var(--nq-blur-2);
+  box-shadow: var(--nq-elev-4), var(--nq-frontier);
   animation: nq-rise var(--nq-dur-t1) var(--nq-ease-out) both;
 }
 
@@ -2257,10 +2287,14 @@ a:focus-visible {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: clamp(1rem, 3vw, 1.5rem);
-  border: 2px solid color-mix(in srgb, var(--nq-green) 72%, var(--nq-line-strong));
-  border-radius: var(--nq-radius-bubble);
-  background: var(--nq-bg-elevated);
-  box-shadow: var(--nq-shadow-float), var(--nq-inner-hi);
+  /* Kính bậc 3 như mọi modal khác. Viền mang sắc ok (đây là luồng duyệt nội dung
+     đã đạt) nhưng chỉ 1px — `border: 2px` đè lên biên khối và đọc ra thô. */
+  border: 1px solid color-mix(in srgb, var(--nq-ok) 52%, var(--nq-line-strong));
+  border-radius: var(--nq-radius-sheet);
+  background: var(--nq-glass-3);
+  backdrop-filter: var(--nq-blur-2);
+  -webkit-backdrop-filter: var(--nq-blur-2);
+  box-shadow: var(--nq-elev-4), var(--nq-frontier);
   animation: nq-rise var(--nq-dur-t1) var(--nq-ease-out) both;
 }
 
@@ -2273,7 +2307,7 @@ a:focus-visible {
 }
 
 .nq-inbox-dialog-panel--accent {
-  border-color: color-mix(in srgb, var(--nq-copper) 72%, var(--nq-line-strong));
+  border-color: color-mix(in srgb, var(--nq-accent) 72%, var(--nq-line-strong));
 }
 
 @media (max-width: 639px) {
@@ -2342,7 +2376,7 @@ a:focus-visible {
   gap: var(--nq-s4);
   margin-top: var(--nq-s2);
   padding: var(--nq-s3) var(--nq-s4);
-  border: 1px solid var(--nq-copper-dim);
+  border: 1px solid var(--nq-accent-dim);
   border-radius: var(--nq-radius-bubble);
   background: var(--nq-bg-elevated);
 }
@@ -2371,7 +2405,7 @@ a:focus-visible {
 }
 
 .nq-booking-section-head h2 .nq-icon {
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-booking-section-head h2 span {
@@ -2417,7 +2451,7 @@ a:focus-visible {
 .nq-booking-legend i[data-tone="ready"],
 .nq-booking-table[data-tone="ready"]::before { background: var(--nq-green); }
 .nq-booking-legend i[data-tone="reserved"],
-.nq-booking-table[data-tone="reserved"]::before { background: var(--nq-copper); }
+.nq-booking-table[data-tone="reserved"]::before { background: var(--nq-accent); }
 .nq-booking-legend i[data-tone="seated"],
 .nq-booking-table[data-tone="seated"]::before { background: var(--nq-red); }
 
@@ -2508,7 +2542,7 @@ a:focus-visible {
 .nq-booking-filters button[aria-pressed="true"],
 .nq-booking-filters button:hover {
   background: var(--nq-accent-soft);
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-booking-filters .nq-booking-refresh {
@@ -2572,7 +2606,7 @@ a:focus-visible {
 
 .nq-booking-create-grid input:focus-visible,
 .nq-booking-cancel-reason input:focus-visible {
-  outline: 2px solid var(--nq-copper);
+  outline: 2px solid var(--nq-accent);
   outline-offset: 1px;
 }
 
@@ -2622,7 +2656,7 @@ a:focus-visible {
 
 .nq-booking-reservation-meta .nq-icon,
 .nq-booking-assignee .nq-icon,
-.nq-booking-table-meta .nq-icon { color: var(--nq-copper); }
+.nq-booking-table-meta .nq-icon { color: var(--nq-accent); }
 
 .nq-booking-assignee {
   margin-top: var(--nq-s2);
@@ -2995,7 +3029,7 @@ a:focus-visible {
   line-height: 1;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-dash-strip-status {
@@ -3047,7 +3081,7 @@ a:focus-visible {
   font-size: 0.62rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
   background: color-mix(in srgb, var(--nq-bg) 75%, transparent);
   border-radius: var(--nq-radius-pill);
   pointer-events: none;
@@ -3119,7 +3153,7 @@ a:focus-visible {
 }
 
 .nq-ops-pulse--3d .nq-ops-pulse__viz {
-  box-shadow: 0 0 20px color-mix(in srgb, var(--pulse-color, var(--nq-copper)) 35%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--pulse-color, var(--nq-accent)) 35%, transparent);
 }
 
 .nq-ops-pulse__svg {
@@ -3148,7 +3182,7 @@ a:focus-visible {
   font-size: 0.62rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-ops-pulse__ai {
@@ -3159,7 +3193,7 @@ a:focus-visible {
 }
 
 .nq-ops-pulse__ai--on {
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-ops-pulse__insight {
@@ -3171,12 +3205,12 @@ a:focus-visible {
 .nq-ops-pulse__cta {
   font-family: var(--nq-font-mono);
   font-size: 0.72rem;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
   letter-spacing: 0.04em;
 }
 
 .nq-dash-kpi--pulse-hi {
-  outline: 2px solid color-mix(in srgb, var(--nq-copper) 55%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--nq-accent) 55%, transparent);
   outline-offset: 2px;
   box-shadow: 0 0 16px var(--nq-accent-glow);
 }
@@ -3310,7 +3344,7 @@ a:focus-visible {
   font-size: 0.72rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-dash-chart-empty {
@@ -3335,7 +3369,7 @@ a:focus-visible {
 }
 
 .nq-dash-chart--interactive:hover {
-  border-color: color-mix(in srgb, var(--nq-copper) 40%, var(--nq-line));
+  border-color: color-mix(in srgb, var(--nq-accent) 40%, var(--nq-line));
 }
 
 .nq-dash-bar-row {
@@ -3352,7 +3386,7 @@ a:focus-visible {
 
 .nq-dash-bar-row--active,
 .nq-dash-bar-row:focus-visible {
-  background: color-mix(in srgb, var(--nq-copper) 12%, transparent);
+  background: color-mix(in srgb, var(--nq-accent) 12%, transparent);
 }
 
 .nq-dash-bar-unit {
@@ -3387,7 +3421,7 @@ a:focus-visible {
 
 .nq-dash-legend-btn:hover,
 .nq-dash-legend-btn--active {
-  background: color-mix(in srgb, var(--nq-copper) 14%, transparent);
+  background: color-mix(in srgb, var(--nq-accent) 14%, transparent);
 }
 
 .nq-dash-timeline-item {
@@ -3398,7 +3432,7 @@ a:focus-visible {
 }
 
 .nq-dash-timeline-item:hover {
-  background: color-mix(in srgb, var(--nq-copper) 10%, transparent);
+  background: color-mix(in srgb, var(--nq-accent) 10%, transparent);
 }
 
 .nq-dash-kpi-cell {
@@ -3493,12 +3527,12 @@ a:focus-visible {
   font-size: 0.72rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-dash-section-head a {
   font-size: 0.75rem;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-dash-compact-list .nq-item {
@@ -3518,7 +3552,7 @@ a:focus-visible {
 
 .nq-dash-aside-link {
   font-size: 0.75rem;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-dash-timeline-list {
@@ -3541,8 +3575,8 @@ a:focus-visible {
   height: 0.5rem;
   margin-top: 0.35rem;
   border-radius: 50%;
-  background: var(--nq-copper);
-  box-shadow: 0 0 8px var(--nq-copper-glow);
+  background: var(--nq-accent);
+  box-shadow: 0 0 8px var(--nq-accent-glow);
   flex-shrink: 0;
 }
 
@@ -4062,7 +4096,7 @@ a:focus-visible {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2px;
   padding: var(--nq-s2);
-  background: var(--nq-glass);
+  background: var(--nq-glass-2);
   backdrop-filter: var(--nq-blur-glass);
   -webkit-backdrop-filter: var(--nq-blur-glass);
   border: 1px solid var(--nq-line-strong);
@@ -4963,6 +4997,14 @@ a:focus-visible {
     color: var(--nq-st-warn-ink);
   }
 
+  /* Thông tin — chưa xấu, chỉ là "biết thêm". Dùng accent PHỤ (xanh dương sáng),
+     tách hẳn khỏi accent chính (ngọc) để nhãn info không lẫn với nhãn thương hiệu. */
+  .nq-badge--info {
+    background-color: var(--nq-accent-2-soft);
+    border-color: color-mix(in srgb, var(--nq-accent-2) 40%, transparent);
+    color: var(--nq-st-info-ink);
+  }
+
   .nq-badge--danger {
     background-color: var(--nq-st-danger-soft);
     border-color: color-mix(in srgb, var(--nq-st-danger) 40%, transparent);
@@ -5114,13 +5156,72 @@ a:focus-visible {
     box-shadow: var(--nq-elev-4);
   }
 
-  .nq-loading-overlay__text {
-    margin: 0;
+  /* ── Khối "chi tiết kỹ thuật" gấp/mở được ──
+     Chứa thông tin cho người cần tra cứu (ID, payload, đường dẫn), không phải
+     nội dung chính — nên nó phải trông KHÁC nội dung thường: nền tối hơn một
+     bậc, chữ mono, và mặc định đóng. Trước đây dùng viền `border-2 dashed`; nét
+     đứt ở đây khiến người dùng tưởng khối bị lỗi chứ không phải "gấp lại được". */
+  .nq-tech__head {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--nq-s3);
+    padding: var(--nq-s3) var(--nq-s4);
+    border: 1px solid var(--nq-line);
+    border-radius: var(--nq-radius-bubble);
+    background-color: var(--nq-surface);
+    color: var(--nq-ink-muted);
     font-family: var(--nq-font-mono);
     font-size: var(--nq-t-caption);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--nq-accent-ink-text);
+    text-align: left;
+    cursor: pointer;
+    transition:
+      border-color var(--nq-beat-settle) var(--nq-ease-out),
+      color var(--nq-beat-settle) var(--nq-ease-out);
+  }
+
+  .nq-tech__head:hover {
+    border-color: var(--nq-line-strong);
+    color: var(--nq-ink);
+  }
+
+  .nq-tech__sign {
+    flex: none;
+    font-size: var(--nq-t-body);
+    line-height: 1;
+  }
+
+  .nq-tech__body {
+    margin: 0;
+    padding: var(--nq-s4);
+    border: 1px solid var(--nq-line);
+    border-top: none;
+    border-radius: 0 0 var(--nq-radius-bubble) var(--nq-radius-bubble);
+    background-color: var(--nq-surface-2);
+    color: var(--nq-ink-muted);
+    font-family: var(--nq-font-mono);
+    font-size: var(--nq-t-caption);
+    line-height: 1.7;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--nq-s2);
+    overflow-wrap: anywhere;
+  }
+
+  /* ── Dấu hành vi trên /vet ──
+     Vòng tròn nhỏ mang màu của HÀNH VI (đăng nhập, duyệt, từ chối…), không phải
+     màu thương hiệu. Màu truyền qua inline style vì nó suy từ dữ liệu; phần
+     hình dáng (cỡ, bo, canh giữa) đặt ở đây để mọi dấu giống hệt nhau. */
+  .nq-vet-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--nq-radius-pill);
+    flex: none;
   }
 }
 
@@ -5250,7 +5351,7 @@ a.nq-bento-surface:active {
   border: 1px solid var(--nq-line-strong);
   border-left-width: 4px;
   border-radius: var(--nq-radius-bubble);
-  background: var(--nq-glass);
+  background: var(--nq-glass-3);
   backdrop-filter: var(--nq-blur-glass);
   -webkit-backdrop-filter: var(--nq-blur-glass);
   color: var(--nq-ink);
@@ -5517,7 +5618,7 @@ a.nq-bento-surface:active {
   right: calc(0.6rem + var(--nq-safe-r));
   max-width: calc(var(--nq-max-narrow) + 1.2rem);
   margin: 0 auto;
-  background: var(--nq-glass);
+  background: var(--nq-glass-1);
   backdrop-filter: var(--nq-blur-glass);
   -webkit-backdrop-filter: var(--nq-blur-glass);
   border: 1px solid var(--nq-line-strong);
@@ -5901,7 +6002,7 @@ a.nq-bento-surface:active {
 }
 
 .nq-tkb-file:hover {
-  border-color: var(--nq-copper);
+  border-color: var(--nq-accent);
 }
 
 .nq-tkb-file-btn {
@@ -5912,8 +6013,8 @@ a.nq-bento-surface:active {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--nq-accent-ink);
-  background: var(--nq-copper);
-  border: 1px solid var(--nq-copper);
+  background: var(--nq-accent);
+  border: 1px solid var(--nq-accent);
 }
 
 .nq-tkb-file-name {
@@ -5970,7 +6071,7 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-table thead th {
-  background: color-mix(in srgb, var(--nq-bg-elevated) 92%, var(--nq-copper) 8%);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 92%, var(--nq-accent) 8%);
   font-family: var(--nq-font-display, var(--nq-font-sans));
   font-size: 0.82rem;
   color: var(--nq-ink);
@@ -6021,14 +6122,14 @@ a.nq-bento-surface:active {
   display: inline-flex;
   align-self: flex-start;
   padding: 0.15rem 0.45rem;
-  border: 1px solid color-mix(in srgb, var(--nq-copper) 45%, var(--nq-line));
+  border: 1px solid color-mix(in srgb, var(--nq-accent) 45%, var(--nq-line));
   border-radius: 3px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--nq-copper);
-  background: color-mix(in srgb, var(--nq-copper) 12%, transparent);
+  color: var(--nq-accent);
+  background: color-mix(in srgb, var(--nq-accent) 12%, transparent);
 }
 
 .nq-roster-people {
@@ -6150,8 +6251,8 @@ a.nq-bento-surface:active {
 
 .nq-roster-day-btn:hover,
 .nq-roster-day-head--spot .nq-roster-day-btn {
-  background: color-mix(in srgb, var(--nq-copper) 14%, transparent);
-  color: var(--nq-copper);
+  background: color-mix(in srgb, var(--nq-accent) 14%, transparent);
+  color: var(--nq-accent);
 }
 
 .nq-roster-day-date {
@@ -6171,7 +6272,7 @@ a.nq-bento-surface:active {
 
 .nq-roster-band--even td,
 .nq-roster-band--even th.nq-roster-row-label {
-  background: color-mix(in srgb, var(--nq-bg-elevated) 94%, var(--nq-copper) 6%);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 94%, var(--nq-accent) 6%);
 }
 
 .nq-roster-band--odd td,
@@ -6185,7 +6286,7 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-slot--spot {
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--nq-copper) 55%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--nq-accent) 55%, transparent);
 }
 
 .nq-roster-slot-btn {
@@ -6207,7 +6308,7 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-slot-btn:hover {
-  border-color: color-mix(in srgb, var(--nq-copper) 50%, var(--nq-line));
+  border-color: color-mix(in srgb, var(--nq-accent) 50%, var(--nq-line));
 }
 
 .nq-roster-slot-btn:active {
@@ -6296,7 +6397,7 @@ a.nq-bento-surface:active {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
   padding: 0 0.25rem;
 }
 
@@ -6325,7 +6426,7 @@ a.nq-bento-surface:active {
   font-size: 0.7rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-sop-copilot__title {
@@ -6350,7 +6451,7 @@ a.nq-bento-surface:active {
   margin: 0.35rem 0 0;
   font-family: var(--nq-font-mono);
   font-size: 0.72rem;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-sop-copilot__shell {
@@ -6415,7 +6516,7 @@ a.nq-bento-surface:active {
   font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-sop-copilot__suggest-row {
@@ -6447,8 +6548,8 @@ a.nq-bento-surface:active {
 }
 
 .nq-sop-copilot__suggest-chip:hover:not(:disabled) {
-  border-color: var(--nq-copper);
-  background: color-mix(in srgb, var(--nq-copper) 8%, var(--nq-surface-1));
+  border-color: var(--nq-accent);
+  background: color-mix(in srgb, var(--nq-accent) 8%, var(--nq-surface-1));
 }
 
 .nq-sop-copilot__suggest-chip:disabled {
@@ -6500,7 +6601,7 @@ a.nq-bento-surface:active {
 }
 
 .nq-sop-copilot__recent li button:hover:not(:disabled) {
-  text-decoration-color: var(--nq-copper);
+  text-decoration-color: var(--nq-accent);
 }
 
 .nq-sop-copilot__result {
@@ -6543,8 +6644,8 @@ a.nq-bento-surface:active {
 
 .nq-sop-copilot__status--ok {
   color: var(--nq-fg);
-  background: color-mix(in srgb, var(--nq-copper) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--nq-copper) 45%, transparent);
+  background: color-mix(in srgb, var(--nq-accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nq-accent) 45%, transparent);
 }
 
 .nq-sop-copilot__status--warn {
@@ -6582,7 +6683,7 @@ a.nq-bento-surface:active {
   font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-sop-copilot__sources ul {
@@ -6607,7 +6708,7 @@ a.nq-bento-surface:active {
   font-size: 0.62rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-sop-copilot__foot {
@@ -6623,7 +6724,7 @@ a.nq-bento-surface:active {
 }
 
 .nq-sop-copilot__foot a {
-  color: var(--nq-copper);
+  color: var(--nq-accent);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -7948,7 +8049,7 @@ a.nq-bento-surface:active {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: -0.02em;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
   text-decoration: none;
 }
 
@@ -7967,7 +8068,7 @@ a.nq-bento-surface:active {
 }
 
 .nq-map-topnav-links a:hover {
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-map-ambient {
@@ -7991,7 +8092,7 @@ a.nq-bento-surface:active {
   left: -10%;
   width: min(55vw, 420px);
   height: min(55vw, 420px);
-  background: var(--nq-copper-glow);
+  background: var(--nq-accent-glow);
 }
 
 .nq-map-orb--b {
@@ -8315,7 +8416,7 @@ a.nq-bento-surface:active {
   grid-row: 1 / span 2;
   align-self: center;
   font-size: 1.25rem;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-map-empty {
@@ -8353,12 +8454,12 @@ a.nq-bento-surface:active {
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  border: 2px solid var(--nq-copper);
+  border: 2px solid var(--nq-accent);
   background: var(--nq-bg);
   font-family: var(--nq-font-mono);
   font-weight: 700;
   font-size: 0.85rem;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
   z-index: 1;
 }
 
@@ -8367,7 +8468,7 @@ a.nq-bento-surface:active {
   width: 2px;
   min-height: 2rem;
   margin-top: var(--nq-s2);
-  background: linear-gradient(var(--nq-copper), var(--nq-line));
+  background: linear-gradient(var(--nq-accent), var(--nq-line));
 }
 
 .nq-map-flow-body h3 {
@@ -8396,7 +8497,7 @@ a.nq-bento-surface:active {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-map-flow-link {
@@ -8407,7 +8508,7 @@ a.nq-bento-surface:active {
 }
 
 .nq-map-flow-link:hover {
-  color: var(--nq-copper);
+  color: var(--nq-accent);
 }
 
 .nq-map-principle-list {
@@ -8426,7 +8527,7 @@ a.nq-bento-surface:active {
 
 .nq-map-principle-list li {
   padding: var(--nq-s4) var(--nq-s5);
-  border-left: 3px solid var(--nq-copper);
+  border-left: 3px solid var(--nq-accent);
   background: var(--nq-surface);
   font-size: 0.95rem;
   line-height: 1.5;

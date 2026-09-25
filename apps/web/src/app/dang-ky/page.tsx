@@ -109,7 +109,7 @@ export default function DangKyPage() {
 
   return (
     <main className="relative flex min-h-dvh items-center justify-center overflow-hidden p-4 md:p-8">
-      <div className="pointer-events-none absolute top-[-10%] right-[-10%] h-[40vw] w-[40vw] rounded-full bg-[var(--nq-copper-glow)] opacity-40 blur-[100px] mix-blend-screen" />
+      <div className="pointer-events-none absolute top-[-10%] right-[-10%] h-[40vw] w-[40vw] rounded-full bg-[var(--nq-accent-glow)] opacity-40 blur-[100px] mix-blend-screen" />
       <div className="pointer-events-none absolute bottom-[-10%] left-[-10%] h-[35vw] w-[35vw] rounded-full bg-[var(--nq-green-dim)] opacity-25 blur-[120px] mix-blend-screen" />
 
       <form
@@ -120,7 +120,7 @@ export default function DangKyPage() {
         <aside className="flex flex-col justify-between border-b border-[var(--nq-line)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
           <p className="nq-brand-mark">NHỊP QUÁN</p>
           <div className="mt-8 md:mt-0">
-            <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-copper)] uppercase">
+            <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-accent)] uppercase">
               Gia nhập · đội ngũ
             </p>
             <h1 className="nq-page-title">
@@ -187,7 +187,7 @@ export default function DangKyPage() {
                         ? manh.diem <= 1
                           ? "bg-[var(--nq-red)]"
                           : manh.diem === 2
-                            ? "bg-[var(--nq-copper)]"
+                            ? "bg-[var(--nq-accent)]"
                             : "bg-[var(--nq-green)]"
                         : "bg-[var(--nq-surface)]"
                     }`}
@@ -245,7 +245,7 @@ export default function DangKyPage() {
 
           <p className="border-t border-dashed border-[var(--nq-line)] pt-3 text-sm text-[var(--nq-dim)]">
             Đã có tài khoản?{" "}
-            <Link href="/login" className="text-[var(--nq-copper)] underline-offset-4 hover:underline">
+            <Link href="/login" className="text-[var(--nq-accent)] underline-offset-4 hover:underline">
               Vào hệ thống
             </Link>
           </p>

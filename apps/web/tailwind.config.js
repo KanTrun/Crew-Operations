@@ -23,35 +23,43 @@
  * Thang chữ — ghi đè mặc định của Tailwind để mọi cỡ chữ trong app thuộc MỘT
  * thang, thay vì mỗi file tự chọn.
  *
- * Số đo trước khi đổi (đếm trong src): 13 cỡ chữ khác nhau đang chạy —
- * text-xs 343 lần, text-sm 190, text-[10px] 76, text-[11px] 61, text-lg 23,
- * text-base 17, text-3xl 11, text-[9px] 10, text-2xl 10, text-xl 9, text-4xl 9,
- * text-5xl 5, text-6xl 2, text-[8px] 1. Bốn cỡ nhỏ nhất (8/9/10/11px) đều nằm
- * dưới 12px — dưới ngưỡng đọc được, và tiếng Việt có dấu ở cỡ đó thì dấu chồng
- * lên nhau. Đó là "năm cỡ chữ ở chỗ ba cỡ là đủ" trong danh mục lỗi.
+ * SÁU bậc, mỗi bậc một vai (khớp `--nq-t-*` trong globals.css). Trước đây có
+ * mười hai lớp và bảy trong số đó nằm sát nhau tới mức mắt không phân biệt được
+ * — nên mỗi trang tự chọn một lớp cho "tiêu đề khối" và không trang nào khớp
+ * trang nào. Đo trên mã: `text-xs` 342 lần, `text-sm` 181, `text-2xs` 130 —
+ * ba lớp nhỏ nhất chiếm 92% tổng số, tức phần lớn nội dung nằm ở vùng mà mắt
+ * không tách được bậc.
  *
- * Bảng dưới đây ánh xạ từng lớp cũ về bậc của hệ (khớp `--nq-t-*` trong
- * globals.css). Vì là ghi đè `fontSize` nên mọi lớp sẵn có tự đổi — không phải
- * sửa 780 chỗ trong markup. `lineHeight` đi kèm từng bậc vì chữ có dấu tiếng
- * Việt cần nhiều dòng hơn chữ Latin thuần.
+ * Các lớp CŨ vẫn được ánh xạ (không xoá khoá) để ~700 chỗ đang dùng không vỡ,
+ * nhưng chúng trỏ về BẬC CỦA HỆ — nên markup cũ tự động nằm trong thang mới:
+ *   text-[8/9/10/11px], text-xs, text-2xs  -> xs      (nhãn nhỏ nhất)
+ *   text-sm                                -> sm      (phụ chú)
+ *   text-base                              -> base    (chữ đọc chính)
+ *   text-lg                                -> lg      (tiêu đề mục)
+ *   text-xl, text-2xl                      -> xl      (tiêu đề khối)
+ *   text-3xl, text-4xl                     -> 3xl     (tiêu đề trang)
+ *   text-5xl, text-6xl                     -> 4xl     (mặt tiền)
+ * `lineHeight` đi kèm từng bậc vì chữ có dấu tiếng Việt cần nhiều dòng hơn chữ
+ * Latin thuần.
  */
 
 /** @type {[string, { lineHeight: string; letterSpacing?: string }]} */
 const TYPE_SCALE = {
-  // Bậc thấp nhất còn đọc được — chỉ dùng cho nhãn số trên badge/huy hiệu.
-  "3xs": ["0.625rem", { lineHeight: "1.5" }],   // 10px
-  "2xs": ["0.6875rem", { lineHeight: "1.5" }],  // 11px — text-[9px] cũ
-  xs: ["0.75rem", { lineHeight: "1.55" }],      // 12px — text-[10px]/[11px]/xs cũ
-  sm: ["0.84rem", { lineHeight: "1.55" }],      // 13.4px — text-sm cũ
-  base: ["0.9375rem", { lineHeight: "1.65" }],  // 15px — text-base cũ
-  lg: ["1.0625rem", { lineHeight: "1.5" }],     // 17px — text-lg cũ
-  // text-xl/2xl/3xl/4xl cũ đều là tiêu đề khối trở lên → gom về thang tiêu đề.
-  xl: ["1.2rem", { lineHeight: "1.3" }],        // --nq-t-h2
-  "2xl": ["1.375rem", { lineHeight: "1.25" }],
-  "3xl": ["1.6rem", { lineHeight: "1.15" }],    // --nq-t-h1
-  "4xl": ["1.9rem", { lineHeight: "1.1" }],     // --nq-t-display
-  "5xl": ["2.2rem", { lineHeight: "1.05", letterSpacing: "-0.02em" }],
-  "6xl": ["2.6rem", { lineHeight: "1.02", letterSpacing: "-0.02em" }],
+  // ── SÁU BẬC CỦA HỆ ──
+  xs: ["0.75rem", { lineHeight: "1.5" }],       // 12px  — nhãn, meta, đơn vị
+  sm: ["0.84rem", { lineHeight: "1.55" }],      // 13.4px — phụ chú, dòng hai
+  base: ["0.9375rem", { lineHeight: "1.65" }],  // 15px  — chữ đọc chính (--nq-t-body)
+  lg: ["1.0625rem", { lineHeight: "1.45" }],    // 17px  — tiêu đề mục (--nq-t-h3)
+  xl: ["1.25rem", { lineHeight: "1.3" }],       // 20px  — tiêu đề khối (--nq-t-h2)
+  "3xl": ["clamp(1.5rem, 2.2vw, 1.85rem)", { lineHeight: "1.2" }],  // --nq-t-h1
+  "4xl": ["clamp(1.9rem, 3.4vw, 2.6rem)", { lineHeight: "1.1" }],   // --nq-t-display
+
+  // ── Ánh xạ lớp CŨ (giữ khoá để markup cũ không vỡ) ──
+  "3xs": ["0.75rem", { lineHeight: "1.5" }],
+  "2xs": ["0.75rem", { lineHeight: "1.5" }],
+  "2xl": ["1.25rem", { lineHeight: "1.3" }],
+  "5xl": ["clamp(1.9rem, 3.4vw, 2.6rem)", { lineHeight: "1.05", letterSpacing: "-0.02em" }],
+  "6xl": ["clamp(1.9rem, 3.4vw, 2.6rem)", { lineHeight: "1.02", letterSpacing: "-0.02em" }],
 };
 
 /** @type {Record<string, Record<string, string>>} */

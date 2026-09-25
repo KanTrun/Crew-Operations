@@ -389,7 +389,7 @@ export default function FbInboxPage() {
               </p>
 
               {it.proposed_response ? (
-                <div className="mb-4 border-l-4 border-[var(--nq-copper)] pl-4">
+                <div className="mb-4 border-l-4 border-[var(--nq-accent)] pl-4">
                   <p className="text-xs font-mono uppercase tracking-widest text-[var(--nq-dim)] mb-1">
                     Bản nháp của agent
                   </p>
@@ -458,7 +458,7 @@ export default function FbInboxPage() {
                         href={it.attachment_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-[var(--nq-copper)] underline hover:text-[var(--nq-copper)]"
+                        className="text-xs text-[var(--nq-accent)] underline hover:text-[var(--nq-accent)]"
                       >
                         Xem đính kèm
                       </a>
@@ -527,7 +527,7 @@ function StatCell({ label, value, danger = false }: { label: string; value: stri
   return (
     <div className="nq-surface-row bg-[var(--nq-surface)] p-4 block">
       <p className="text-xs font-mono uppercase tracking-widest text-[var(--nq-dim)] mb-1">{label}</p>
-      <p className={`tabular-nums text-3xl font-black ${danger ? "text-[var(--nq-red)]" : "text-[var(--nq-fg)]"}`}>{value}</p>
+      <p className={`tabular-nums text-3xl font-semibold ${danger ? "text-[var(--nq-red)]" : "text-[var(--nq-fg)]"}`}>{value}</p>
     </div>
   );
 }
