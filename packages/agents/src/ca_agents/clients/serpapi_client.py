@@ -50,6 +50,8 @@ _DEFAULT_INFO_THRESHOLD = 150
 _DEFAULT_CACHE_TTL_MAPS_HOURS = 24.0
 _DEFAULT_CACHE_TTL_PHOTOS_DAYS = 7.0
 _DEFAULT_CACHE_TTL_TRENDS_HOURS = 12.0
+# Bảng "Trending Now" là dữ liệu thời gian thực → TTL 1h.
+_DEFAULT_CACHE_TTL_TRENDING_NOW_HOURS = 1.0
 _L1_CACHE_TTL_S = 300.0  # 5 phút
 
 # Cấu hình Resilience & Circuit Breaker
@@ -276,6 +278,18 @@ def get_engine_cache_ttl_hours(engine: str) -> float:
             return float(os.getenv("SERPAPI_CACHE_TTL_TRENDS_HOURS", str(_DEFAULT_CACHE_TTL_TRENDS_HOURS)))
         except ValueError:
             return _DEFAULT_CACHE_TTL_TRENDS_HOURS
+    elif engine == "google_trends_trending_now":
+        # Bảng xếp hạng thời gian thực (đổi vài chục phút/lần) → TTL ngắn riêng,
+        # KHÔNG dùng chung TTL 12h của google_trends (sẽ trả bảng cũ).
+        try:
+            return float(
+                os.getenv(
+                    "SERPAPI_CACHE_TTL_TRENDING_NOW_HOURS",
+                    str(_DEFAULT_CACHE_TTL_TRENDING_NOW_HOURS),
+                )
+            )
+        except ValueError:
+            return _DEFAULT_CACHE_TTL_TRENDING_NOW_HOURS
     else:  # google_maps, google_maps_reviews,...
         try:
             return float(os.getenv("SERPAPI_CACHE_TTL_MAPS_HOURS", str(_DEFAULT_CACHE_TTL_MAPS_HOURS)))

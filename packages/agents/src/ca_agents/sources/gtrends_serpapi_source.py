@@ -200,8 +200,17 @@ def fetch_fnb_trends_serpapi(
     quota_path: Path | None = None,
     circuit_breaker: CircuitBreaker | None = None,
 ) -> list[TrendItem]:
-    """Lấy dữ liệu xu hướng tìm kiếm F&B từ Google Trends qua SerpApi."""
-    params = {
+    """Lấy dữ liệu xu hướng tìm kiếm F&B từ Google Trends qua SerpApi.
+
+    **Bắt buộc `data_type=RELATED_QUERIES`**: SerpApi mặc định trả TIMESERIES
+    (chỉ có `interest_over_time`), payload khi đó **không có `related_queries`**
+    nên `parse_gtrends_to_trend_items()` trả rỗng — đo live 2026-09-24:
+    mặc định rising=0/top=0, `RELATED_QUERIES` rising=20/top=25.
+
+    `include_timeline=True` cần thêm chuỗi thời gian → tốn **thêm 1 request**
+    (2 request/lượt gọi). Mặc định chỉ 1 request để tiết kiệm quota 250/tháng.
+    """
+    base_params: dict[str, str] = {
         "q": keyword,
         "geo": geo,
         "date": date,
@@ -210,12 +219,29 @@ def fetch_fnb_trends_serpapi(
     try:
         payload = search_serpapi(
             "google_trends",
-            params,
+            {**base_params, "data_type": "RELATED_QUERIES"},
             ttl_hours=ttl_hours,
             cache_dir=cache_dir,
             quota_path=quota_path,
             circuit_breaker=circuit_breaker,
         )
+
+        # Chuỗi thời gian nằm ở payload TIMESERIES riêng — gọi thêm 1 request
+        # và chỉ khi caller yêu cầu rõ (không làm mặc định để tiết kiệm quota).
+        if include_timeline and isinstance(payload, dict):
+            timeline_payload = search_serpapi(
+                "google_trends",
+                {**base_params, "data_type": "TIMESERIES"},
+                ttl_hours=ttl_hours,
+                cache_dir=cache_dir,
+                quota_path=quota_path,
+                circuit_breaker=circuit_breaker,
+            )
+            if isinstance(timeline_payload, dict) and timeline_payload.get(
+                "interest_over_time"
+            ):
+                payload = {**payload, "interest_over_time": timeline_payload["interest_over_time"]}
+
         return parse_gtrends_to_trend_items(
             payload, query_keyword=keyword, include_timeline=include_timeline
         )

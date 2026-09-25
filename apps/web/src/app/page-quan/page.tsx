@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { viError } from "../../lib/present";
@@ -73,23 +74,22 @@ type Draft = {
 };
 
 type StoreProfile = {
-  name: string;
-  address: string;
-  phone: string;
-  open_hours: string;
-  wifi_password?: string;
-  signature_drinks?: string[];
-  signature_dishes?: string[];
-  parking_info?: string;
-  special_notes?: string;
+  ten_quan: string;
+  dia_chi: string;
+  hotline: string;
+  gio_mo_cua: string;
+  wifi_ssid?: string;
+  wifi_pass?: string;
+  mo_ta?: string;
+  chinh_sach_dat_ban?: string;
+  huong_dan_agent?: string;
 };
 
 type Promotion = {
-  id: string;
-  title: string;
-  description: string;
-  valid_until: string;
-  active: boolean;
+  id?: string;
+  tieu_de: string;
+  chi_tiet: string;
+  hieu_luc: string;
 };
 
 type ApifyUsage = {
@@ -2145,14 +2145,22 @@ export default function PageQuanPage() {
       {tab === "config" && manager && (
         <div className="nq-surface-block space-y-4 p-4">
           <h3 className="text-sm font-bold">Cấu hình thông tin trả lời khách</h3>
+          <p className="text-xs text-[var(--nq-muted)]">
+            Trường nào trống thì bot trả “chưa cập nhật” — thay vì đoán. Bạn cũng
+            có thể sửa đầy đủ hơn tại trang &nbsp;
+            <Link href="/cau-hinh-quan" className="text-[var(--nq-copper)] underline">
+              Cấu hình quán & AI
+            </Link>
+            .
+          </p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="text-xs text-[var(--nq-muted)]">Tên quán</label>
               <input
                 type="text"
                 className="nq-input w-full text-xs"
-                value={profile?.name ?? ""}
-                onChange={(e) => setProfile((p) => (p ? { ...p, name: e.target.value } : null))}
+                value={profile?.ten_quan ?? ""}
+                onChange={(e) => setProfile((p) => (p ? { ...p, ten_quan: e.target.value } : null))}
               />
             </div>
             <div>
@@ -2160,8 +2168,8 @@ export default function PageQuanPage() {
               <input
                 type="text"
                 className="nq-input w-full text-xs"
-                value={profile?.address ?? ""}
-                onChange={(e) => setProfile((p) => (p ? { ...p, address: e.target.value } : null))}
+                value={profile?.dia_chi ?? ""}
+                onChange={(e) => setProfile((p) => (p ? { ...p, dia_chi: e.target.value } : null))}
               />
             </div>
             <div>
@@ -2169,8 +2177,8 @@ export default function PageQuanPage() {
               <input
                 type="text"
                 className="nq-input w-full text-xs"
-                value={profile?.phone ?? ""}
-                onChange={(e) => setProfile((p) => (p ? { ...p, phone: e.target.value } : null))}
+                value={profile?.hotline ?? ""}
+                onChange={(e) => setProfile((p) => (p ? { ...p, hotline: e.target.value } : null))}
               />
             </div>
             <div>
@@ -2178,8 +2186,8 @@ export default function PageQuanPage() {
               <input
                 type="text"
                 className="nq-input w-full text-xs"
-                value={profile?.open_hours ?? ""}
-                onChange={(e) => setProfile((p) => (p ? { ...p, open_hours: e.target.value } : null))}
+                value={profile?.gio_mo_cua ?? ""}
+                onChange={(e) => setProfile((p) => (p ? { ...p, gio_mo_cua: e.target.value } : null))}
               />
             </div>
           </div>

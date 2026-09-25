@@ -444,7 +444,7 @@ def _kb_has_fact(public_context: dict[str, Any] | None, text: str) -> bool:
     if any(k in low for k in ("ở đâu", "o dau", "địa chỉ", "dia chi", "vị trí", "vi tri")):
         return bool(str(profile.get("dia_chi") or "").strip())
     if "wifi" in low:
-        return bool(str(profile.get("wifi") or "").strip())
+        return bool(str(profile.get("wifi_ssid") or "").strip())
     if any(k in low for k in ("giá", "gia", "tiền", "tien", "menu", "bao nhiêu", "bao nhieu")):
         return bool(menu)
     return bool(menu) or bool(profile)
@@ -556,6 +556,9 @@ def moderate_fb_message(
         reservation_auto_eligible=res_eligible,
         booking_system_down=False,
         compensation_above_limit=_compensation_above_cap(guard.sanitized_text),
+        # ADR-008: promo do chủ quán nhập mới được thông báo; danh sách rỗng
+        # nghĩa là quán chưa cấu hình → câu hỏi khuyến mãi phải QL duyệt.
+        promotions_available=bool((public_context or {}).get("promotions")),
         jev_ok=jctx.jev_ok,
         jev_failed=jctx.jev_failed,
         jev_health_risk=jctx.jev_health_risk,

@@ -118,6 +118,13 @@ class PolicyContext:
     # tiếp tục xử lý bình thường. Chỉ fail-closed khi jev_failed=True AND
     # jev_fallback_used=False (cả hai cảm biến đều thất bại — cực hiếm).
     jev_fallback_used: bool = False
+    # KB có chương trình khuyến mãi đang chạy do chủ quán cấu hình (ADR-008:
+    # dữ liệu thật mới được phép thông báo; rỗng = quán chưa nhập). Ưu đãi là
+    # cam kết marketing — bot TỰ TRẢ LỜI khi có dữ liệu, KHÔNG có → QL duyệt
+    # (golden queue_01/05/06: "KM phải QL duyệt"). Default True để layer gọi
+    # bằng PolicyContext cũ không đổi hành vi; chỉ nào caller set False mới
+    # hạ xuống queue — fail-closed nhưng không phá compat ngược.
+    promotions_available: bool = True
 
 
 def _has_any(text: str, keywords: tuple[str, ...]) -> bool:
@@ -237,6 +244,15 @@ def decide(
     # Vượt ngưỡng giá menu cấu hình -> queue duyệt giá
     if intent == "hoi_menu_gia" and ctx.price_above_limit:
         return _queue("fact_not_in_kb_or_price_limit", intent, confidence)
+
+    # Hỏi khuyến mãi: ưu đãi là cam kết marketing. Chỉ auto khi quán CÓ dữ
+    # liệu promo do chủ quán nhập; chưa nhập ⇒ KHÔNG tự bịa chương trình
+    # (ADR-008), đưa QL duyệt (golden queue_01/05/06).
+    if intent == "hoi_khuyen_mai" and not ctx.promotions_available:
+        return _queue(
+            "promo_requires_approval", intent, confidence,
+            flagged=("promo_not_configured",),
+        )
 
     # Ngoài phạm vi xã hội — trả lịch sự, không bịa quan điểm
     if intent == INTENT_OTHER and _has_any(low, OUT_OF_SCOPE_KEYWORDS):

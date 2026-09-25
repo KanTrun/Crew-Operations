@@ -803,9 +803,17 @@ def send_reservation_confirmation_email(
         time_display = booking_time
 
     profile = store_profile or {}
-    store_name = profile.get("ten_quan") or "Nhịp Quán"
-    store_address = profile.get("dia_chi") or "Hồ Chí Minh, Việt Nam"
-    store_hotline = profile.get("hotline") or "0901 234 567"
+    # ADR-008: không fallback dữ liệu bịa — profile rỗng thì bỏ dòng tương ứng.
+    store_name = str(profile.get("ten_quan") or "").strip() or "Quán cà phê"
+    _addr = str(profile.get("dia_chi") or "").strip()
+    _phone = str(profile.get("hotline") or "").strip()
+    store_address = _addr or ""
+    store_hotline = _phone or ""
+    footer_lines = [ln for ln in (
+        f"{store_name}",
+        f"Địa chỉ: {store_address}" if store_address else "",
+        f"Hotline: {store_hotline}" if store_hotline else "",
+    ) if ln]
 
     subject = f"[{store_name}] PHIẾU XÁC NHẬN ĐẶT BÀN - {customer_name} ({time_display})"
 
@@ -827,9 +835,8 @@ def send_reservation_confirmation_email(
         f"Nếu Quý khách có bất kỳ thay đổi nào, vui lòng liên hệ hotline hoặc phản hồi tin nhắn Messenger.\n\n"
         f"Trân trọng cảm ơn và rất hân hạnh được đón tiếp Quý khách!\n"
         f"---\n"
-        f"{store_name}\n"
-        f"Địa chỉ: {store_address}\n"
-        f"Hotline: {store_hotline}\n"
+        + "\n".join(footer_lines)
+        + "\n"
     )
 
     # Rich HTML version — table-based layout for maximum Gmail/Outlook compatibility.
@@ -958,15 +965,8 @@ def send_reservation_confirmation_email(
               <tr>
                 <td style="padding:24px 40px 32px 40px; border-top:1px solid #f0e9dd; margin-top:8px;">
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px; color:#8a7a66;">
-                    <tr>
-                      <td style="padding:4px 0;">Địa chỉ: <strong style="color:#3f2d1d;">{store_address}</strong></td>
-                    </tr>
-                    <tr>
-                      <td style="padding:4px 0;">Hotline: <strong style="color:#3f2d1d;">{store_hotline}</strong></td>
-                    </tr>
-                    <tr>
-                      <td style="padding:4px 0;">Giờ mở cửa: <strong style="color:#3f2d1d;">07:00 – 22:00</strong></td>
-                    </tr>
+                    {f'<tr><td style="padding:4px 0;">Địa chỉ: <strong style="color:#3f2d1d;">{store_address}</strong></td></tr>' if store_address else ''}
+                    {f'<tr><td style="padding:4px 0;">Hotline: <strong style="color:#3f2d1d;">{store_hotline}</strong></td></tr>' if store_hotline else ''}
                   </table>
                   <p style="margin:18px 0 0 0; font-size:12px; color:#b0a28e; text-align:center; line-height:1.6;">
                     Email tự động từ hệ thống {store_name}. Vui lòng không trả lời trực tiếp.
