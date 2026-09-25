@@ -86,6 +86,7 @@ const GROUPS: { title: string; items: LinkItem[] }[] = [
       { href: "/page-quan/fb-inbox", label: "Duyệt bài Fanpage" },
       { href: "/page-quan/dat-ban", label: "Sơ đồ & đặt bàn" },
       { href: "/gmail", label: "Quản lý Gmail" },
+      { href: "/cau-hinh-quan", label: "Cấu hình quán & AI" },
     ],
   },
   {

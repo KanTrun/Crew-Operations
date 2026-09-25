@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ca_agents.llm import complete, parse_json_object
+
+if TYPE_CHECKING:
+    from ca_agents.sensors.sensor_chain import SensorChain
 
 INTENTS = (
     "doi_ca",
@@ -245,7 +248,7 @@ def classify(
 
 def classify_nang_cao(
     text: str,
-    sensor_chain: object | None = None,
+    sensor_chain: SensorChain | None = None,
     *,
     mode: str = "replay",
     staff: list[dict[str, str]] | None = None,

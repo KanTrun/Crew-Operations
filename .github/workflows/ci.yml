@@ -86,38 +86,16 @@ jobs:
       - name: Export contracts
         run: python scripts/export_contracts.py
 
-  integration:
-    name: "03 integration"
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_PASSWORD: nhipquan
-          POSTGRES_USER: nhipquan
-          POSTGRES_DB: nhipquan
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U nhipquan"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports: ["6379:6379"]
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install pytest httpx
-      - run: pytest -q apps/api/tests/integration || true
-
+  # Job "03 integration" đã XOÁ (2026-09-25): nó chạy `pytest -q
+  # apps/api/tests/integration || true` nhưng thư mục đó CHƯA BAO GIỜ tồn tại
+  # trong repo (kể từ fdf0a34 16/09 tái cấu trúc job). `|| true` khiến job
+  # vẫn "success" dù chẳng test gì — một cổng GIẢ: tốn runner mỗi push và che
+  # mắt người đọc về độ phủ test (vi phạm fail-closed ADR-008). Khi nào có
+  # test integration thật: tạo `apps/api/tests/integration/`, khôi phục khối
+  # job này kèm Postgres/Redis services và BỎ `|| true` (nếu thư mục rỗng
+  # phải ĐỎ để lộ ngay, không được im lặng xanh).
+  # Các test Postgres/Redis thật hiện diện trong job 02 unit (pytest -n auto
+  # từ root, testpaths apps+packages) — đổi DB qua env của fixture riêng.
 
   solver-bench:
     name: "05 solver bench"

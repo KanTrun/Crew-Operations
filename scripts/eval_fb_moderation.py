@@ -27,7 +27,28 @@ os.environ.setdefault("NHIPQUAN_FB_PAGE_ID", "page_1")
 os.environ.setdefault("NHIPQUAN_FB_APP_SECRET", "")
 os.environ.setdefault("NHIPQUAN_FB_AUTO_SEND", "0")
 
+# Hermetic: ghi review/audit vào DB tạm, không đụng var/quan.db của dev.
+os.environ["NHIPQUAN_DB"] = str(
+    pathlib.Path(os.environ.get("RUNNER_TEMP", str(ROOT / "data" / "cache"))).absolute()
+    / "eval_fb_moderation.db"
+)
+
 from ca_api.services.fb_moderation import moderate_fb_message  # noqa: E402
+
+# Eval đo core policy TẤT ĐỊNH (ADR-002) và phải cho cùng kết quả trên mọi máy.
+# `ensure_dotenv()` lúc import nạp `.env` THẬT (ví dụ JEV_ENABLED=1) bằng
+# override=True, đè lên mọi setdefault ở trên — nên phải set CƯƠNG CHẾ sau
+# import. JEV là cảm biến xác suất bên thứ ba: bật nó trong eval khiến kết quả
+# đổi theo key/từng lần gọi → fixture không còn là hợp đồng.
+os.environ["JEV_ENABLED"] = "0"
+os.environ["NHIPQUAN_FB_AUTO_SEND"] = "0"
+
+# Eval phải deterministic theo core policy (ADR-002): bảng quyết định tất định,
+# không phụ thuộc máy CI có key JEV hay không. `ensure_dotenv()` lúc import đã
+# nạp `.env` THẬT (JEV_ENABLED=1) với override=True, nên `setdefault` ở trên bị
+# ghi đè. Set CƯƠNG CHẾ sau import để mọi máy cho cùng kết quả.
+os.environ["JEV_ENABLED"] = "0"
+os.environ["NHIPQUAN_FB_AUTO_SEND"] = "0"
 
 GOLDEN = ROOT / "data" / "fixtures" / "fb_moderation_golden.jsonl"
 MIN_CASES = 60
@@ -43,6 +64,9 @@ PUBLIC_CTX = {
         {"ten": "Cà phê muối", "gia": 28000},
         {"ten": "Bạc xỉu", "gia": 32000},
         {"ten": "Cà phê đen", "gia": 25000},
+        # Món vượt trần auto giá (mặc định 100k) — để price_01 test đúng nhánh
+        # "fact_not_in_kb_or_price_limit" thay vì bị classify lạc sang đặt bàn.
+        {"ten": "trà sen thượng hạng", "gia": 250000},
     ],
     "promotions": [],
 }
@@ -76,6 +100,7 @@ def main() -> int:
                 text=c["message"],
                 message_id=f"mid_{c['id']}",
                 timestamp=0.0,
+                source=c.get("source", "messenger"),
                 public_context=PUBLIC_CTX,
                 repeat_ask_count=3 if c.get("id") == "loop_01" else 0,
             )

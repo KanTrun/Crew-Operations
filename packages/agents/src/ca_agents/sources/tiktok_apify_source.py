@@ -83,15 +83,15 @@ def _build_input(keyword: str, count: int, mode: str) -> dict[str, Any]:
         "proxyCountryCode": "VN",
     }
     kw = keyword.strip() if keyword else ""
+    # Payload KHÔNG có searchQueries/hashtags/profiles → actor FAILED ngay
+    # (đo live 2026-09-24: 7/8 run fail, mỗi run vẫn tốn ~$0.0037 CU).
+    # Keyword rỗng vẫn phải có truy vấn hợp lệ theo mode.
     if mode == "search":
-        if kw:
-            base["searchQueries"] = [kw]
+        base["searchQueries"] = [kw] if kw else ["xuhuong", "tiktok vietnam"]
     elif mode == "hashtag":
-        if kw:
-            base["hashtags"] = [kw.lstrip("#")]
+        base["hashtags"] = [kw.lstrip("#")] if kw else ["xuhuong", "fyp"]
     elif mode == "profile":
-        if kw:
-            base["profiles"] = [kw.lstrip("@")]
+        base["profiles"] = [kw.lstrip("@")] if kw else ["tiktok"]
     return base
 
 

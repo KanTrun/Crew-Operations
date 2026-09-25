@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 APIFY_BASE = "https://api.apify.com/v2"
 _DEFAULT_TIMEOUT_S = int(os.getenv("TIKTOK_APIFY_TIMEOUT_S", "90"))
 _POLL_INTERVAL_S = 2.0
+# Poll lỗi mạng đơn lẻ KHÔNG có nghĩa actor run đã chết → retry vài lần trước
+# khi bỏ (xem `run_actor_sync`). 3 lần × 2s = 6s chịu lỗi tạm thời.
+_MAX_POLL_ERRORS = 3
 _HTTP_TIMEOUT_START_S = 10
 _HTTP_TIMEOUT_POLL_S = 5
 _HTTP_TIMEOUT_DATASET_S = 10
@@ -112,22 +115,44 @@ def run_actor_sync(
     status_url = f"{APIFY_BASE}/actor-runs/{run_id}?token={token}"
     deadline = time.monotonic() + timeout_s
     dataset_id: str | None = None
+    poll_errors = 0
     while True:
         if time.monotonic() >= deadline:
             raise ApifyError(f"Apify run {run_id} timeout sau {timeout_s}s")
         try:
             poll = _http_json(status_url, timeout=_HTTP_TIMEOUT_POLL_S)
         except Exception as e:  # noqa: BLE001
-            raise ApifyError(f"Lỗi poll status: {type(e).__name__}: {e}") from e
+            # Poll là read-only, lỗi mạng/timeout đơn lẻ KHÔNG có nghĩa run đã
+            # chết (actor vẫn tiếp tục chạy phía Apify). Bỏ luôn cả actor run vì
+            # 1 lần timeout 5s làm mất data thật + vẫn bị tính CU — retry tối đa
+            # 3 lần liên tiếp rồi mới bỏ (đo live 2026-09-24: run SUCCEEDED sau
+            # 3 phút, nhưng lần poll đầu bị `TimeoutError: read operation timed out`).
+            poll_errors += 1
+            if poll_errors >= _MAX_POLL_ERRORS:
+                raise ApifyError(
+                    f"Lỗi poll status {poll_errors} lần liên tiếp: {type(e).__name__}: {e}"
+                ) from e
+            logger.warning(
+                "apify_poll_retry run_id=%s attempt=%d error=%s",
+                run_id,
+                poll_errors,
+                type(e).__name__,
+            )
+            time.sleep(_POLL_INTERVAL_S)
+            continue
         if not poll or "data" not in poll:
             raise ApifyError(f"Apify poll response lỗi: {poll!r}")
+        poll_errors = 0  # poll thành công → reset chuỗi lỗi liên tiếp
         run = poll["data"]
         status = run.get("status")
         if status == "SUCCEEDED":
             dataset_id = run.get("defaultDatasetId")
             break
         if status in ("FAILED", "ABORTED", "TIMED-OUT"):
-            raise ApifyError(f"Apify run {run_id} status={status}")
+            raise ApifyError(
+                f"Apify run {run_id} status={status}"
+                + (f" ({run.get('statusMessage')})" if run.get("statusMessage") else "")
+            )
         time.sleep(_POLL_INTERVAL_S)
 
     if not dataset_id:
