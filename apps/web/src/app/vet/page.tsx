@@ -383,7 +383,7 @@ function hanhColor(hanh?: string | null): string {
 
 // ── Component chính ───────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 12;
 
 export default function VetPage() {
   const [token, setToken] = useState("");
@@ -476,18 +476,18 @@ export default function VetPage() {
       }));
   }, [items, actorName]);
 
+  const { page, setPage, totalPages, shown: pageRows, total, from, to } = usePaged(filtered, PAGE_SIZE);
+
   const grouped = useMemo(() => {
     const groups = new Map<string, { heading: string; rows: Row[] }>();
-    for (const it of filtered) {
+    for (const it of pageRows) {
       const key = dayKey(it.at);
       const g = groups.get(key) ?? { heading: formatDayHeading(it.at), rows: [] };
       g.rows.push(it);
       groups.set(key, g);
     }
     return Array.from(groups.values());
-  }, [filtered]);
-
-  const { page, setPage, totalPages, shown, total, from, to } = usePaged(grouped, PAGE_SIZE);
+  }, [pageRows]);
 
   if (!token) return <AuthGate />;
 
@@ -525,7 +525,7 @@ export default function VetPage() {
             ) : null}
             {!loading && items.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
 
-            {shown.map((group) => (
+            {grouped.map((group) => (
               <div key={group.heading + group.rows[0]?.id} className="nq-vet-day-group">
                 <h3 className="nq-vet-day-heading">{group.heading}</h3>
                 <div className="nq-list">

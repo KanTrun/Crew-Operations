@@ -58,6 +58,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
   } = chat;
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeVoiceTurnRef = useRef<{ id: string; role: "user" | "copilot" } | null>(null);
@@ -259,9 +260,11 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
     }
   };
 
-  // Auto-scroll
+  // Auto-scroll trong khung tin — không để scrollIntoView kéo cả trang / cắt đầu hội thoại
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const box = messagesScrollRef.current;
+    if (!box) return;
+    box.scrollTop = box.scrollHeight;
   }, [messages]);
 
   // Focus input khi mở
@@ -369,7 +372,24 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
         </div>
       )}
 
-      {/* Header */}
+      {/* Header — pane giữ header đầy đủ; trang /copilot đã có head ngoài nên thu gọn */}
+      {mode === "page" ? (
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--nq-line)] bg-[var(--nq-surface)] px-3 py-2">
+          <p className="m-0 flex items-center gap-1.5 text-2xs text-[var(--nq-dim)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--nq-st-ok)]" />
+            Đang trực tuyến
+          </p>
+          {onClearHistory ? (
+            <button
+              type="button"
+              onClick={() => (onClearHistory ? onClearHistory() : clearHistory())}
+              className="border border-transparent px-2 py-1 text-2xs font-bold uppercase text-[var(--nq-dim)] transition hover:border-[var(--nq-red)] hover:text-[var(--nq-red)]"
+            >
+              Xóa lịch sử
+            </button>
+          ) : null}
+        </div>
+      ) : (
       <div className="flex shrink-0 items-center justify-between border-b border-[var(--nq-line)] bg-[var(--nq-surface)] p-4">
         <div className="flex items-center gap-2.5">
           <div
@@ -432,6 +452,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
           ) : null}
         </div>
       </div>
+      )}
 
       {/* Empty role */}
       {profile.quickPrompts.length === 0 ? (
@@ -441,7 +462,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
       ) : (
         <>
           {/* Messages */}
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 text-xs">
+          <div ref={messagesScrollRef} className="nq-copilot-messages space-y-4 p-4 text-xs">
             {messages.map((msg) => (
               <div
                 key={msg.id}

@@ -6086,9 +6086,20 @@ a.nq-bento-surface:active {
 /* ── Việc treo: phân nhóm theo trạng thái ── */
 
 .nq-treo-sections {
-  display: flex;
-  flex-direction: column;
-  gap: var(--nq-s6);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--nq-s5);
+}
+@media (min-width: 1100px) {
+  .nq-treo-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+@media (min-width: 1500px) {
+  .nq-treo-sections {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .nq-treo-section {
@@ -6155,13 +6166,20 @@ a.nq-bento-surface:active {
   opacity: 1;
 }
 
-/* Lưới phân bố việc treo theo chiều ngang trên màn hình rộng */
-@media (min-width: 900px) {
+/* Lưới thẻ việc — class gắn trực tiếp lên wrapper PagedList */
+.nq-treo-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--nq-s3);
+}
+@media (min-width: 720px) {
   .nq-treo-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--nq-s4);
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   }
+}
+/* Nút "Xem thêm" chiếm cả hàng dưới lưới */
+.nq-treo-grid > .nq-treo-grid__more {
+  grid-column: 1 / -1;
 }
 
 .nq-treo-empty-note {
@@ -6332,13 +6350,14 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-wrap {
+  /* Full bảng trong trang — không khóa chiều cao / cuộn trong ô (mất tinh tế). */
   overflow-x: auto;
+  overflow-y: visible;
   border: 1px solid var(--nq-line);
   border-radius: var(--nq-radius);
   background: color-mix(in srgb, var(--nq-bg-elevated) 55%, transparent);
   animation: nq-rise var(--nq-dur-t0) var(--nq-ease-out) both;
-  max-height: min(70vh, 52rem);
-  overflow: auto;
+  max-height: none;
 }
 
 .nq-roster-legend {
@@ -6418,7 +6437,7 @@ a.nq-bento-surface:active {
 .nq-roster-table th,
 .nq-roster-table td {
   border: 1px solid var(--nq-line);
-  padding: 0.65rem 0.7rem;
+  padding: 0.4rem 0.45rem;
   vertical-align: top;
   overflow: hidden;
 }
@@ -6614,9 +6633,9 @@ a.nq-bento-surface:active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
+  gap: 0.1rem;
   width: 100%;
-  padding: 0.55rem 0.35rem;
+  padding: 0.4rem 0.3rem;
   border: none;
   background: transparent;
   color: inherit;
@@ -6657,7 +6676,7 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-slot {
-  padding: 0.35rem;
+  padding: 0.2rem;
   vertical-align: middle;
 }
 
@@ -6669,10 +6688,10 @@ a.nq-bento-surface:active {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.2rem;
+  gap: 0.15rem;
   width: 100%;
-  min-height: 3.25rem;
-  padding: 0.45rem 0.5rem;
+  min-height: 2.6rem;
+  padding: 0.3rem 0.4rem;
   border: 1px solid var(--nq-line);
   border-radius: var(--nq-radius);
   background: color-mix(in srgb, var(--nq-bg) 70%, var(--nq-bg-elevated));
@@ -9252,36 +9271,42 @@ a.nq-bento-surface:active {
    HẾT SIDEBAR.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Trợ lý full-page: main/inner co giãn theo viewport, khung chat chiếm phần còn ── */
+/* ── Trợ lý full-page: chuỗi flex bắt buộc min-height:0 để vùng tin nhắn cuộn được ── */
 .nq-app:has(.nq-copilot-page) .nq-main {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
   height: 100dvh;
-  padding-bottom: var(--nq-s4);
+  max-height: 100dvh;
+  min-height: 0;
+  padding-top: var(--nq-s4);
+  padding-bottom: var(--nq-s3);
   overflow: hidden;
 }
 .nq-app:has(.nq-copilot-page) .nq-main__inner {
   flex: 1 1 auto;
   min-height: 0;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   max-width: none;
+  overflow: hidden;
 }
 .nq-copilot-page {
   display: flex;
   flex-direction: column;
-  gap: var(--nq-s3);
+  gap: var(--nq-s2);
   width: 100%;
   max-width: none;
   margin: 0;
   padding: 0;
   flex: 1 1 auto;
   min-height: 0;
+  max-height: 100%;
   height: 100%;
   position: relative;
   z-index: 1;
   isolation: isolate;
+  overflow: hidden;
 }
 .nq-copilot-page--loading {
   align-items: center;
@@ -9292,9 +9317,9 @@ a.nq-bento-surface:active {
 .nq-copilot-page__head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--nq-s3);
+  gap: var(--nq-s2) var(--nq-s3);
   flex-shrink: 0;
 }
 .nq-copilot-page__kicker {
@@ -9306,15 +9331,16 @@ a.nq-bento-surface:active {
   color: var(--nq-accent-ink-text);
 }
 .nq-copilot-page__title {
-  margin: 0.15rem 0 0;
+  margin: 0.1rem 0 0;
   font-family: var(--nq-font-display);
-  font-size: var(--nq-t-h2);
+  font-size: var(--nq-t-h3, 1.15rem);
   font-weight: 700;
   color: var(--nq-ink);
+  line-height: 1.25;
 }
 .nq-copilot-page__meta {
-  margin: 0.35rem 0 0;
-  font-size: var(--nq-t-small);
+  margin: 0.2rem 0 0;
+  font-size: var(--nq-t-caption);
   color: var(--nq-ink-muted);
   max-width: 52ch;
 }
@@ -9338,6 +9364,18 @@ a.nq-bento-surface:active {
 .nq-copilot-page__frame > * {
   flex: 1 1 auto;
   min-height: 0;
+  max-height: 100%;
+  height: 100%;
+}
+/* Vùng tin nhắn là nơi duy nhất cuộn — không để khung ngoài cắt đầu hội thoại. */
+.nq-copilot-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
 }
 
 .nq-page--ai-learning {

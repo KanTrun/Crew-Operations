@@ -224,11 +224,11 @@ export default function TreoPage() {
                   {treoQuaHan.length === 0 ? (
                     <p className="nq-treo-empty-note">Không có việc quá hạn.</p>
                   ) : (
-                    <div className="nq-list nq-treo-grid">
-                      <PagedList
-                        items={treoQuaHan}
-                        pageSize={10}
-                        renderItem={(v) => (
+                    <PagedList
+                      className="nq-treo-grid"
+                      items={treoQuaHan}
+                      pageSize={12}
+                      renderItem={(v) => (
                         <article key={v.id} className="nq-item nq-item--accent-danger">
                           <p className="nq-item-title">{v.noi_dung}</p>
                           <p className="nq-item-sub flex flex-wrap items-center gap-2">
@@ -247,9 +247,8 @@ export default function TreoPage() {
                             </Btn>
                           ) : null}
                         </article>
-                        )}
-                      />
-                    </div>
+                      )}
+                    />
                   )}
                 </div>
               </section>
@@ -267,11 +266,11 @@ export default function TreoPage() {
                   {treoDangChoF.length === 0 ? (
                     <p className="nq-treo-empty-note">Không có việc đang chờ.</p>
                   ) : (
-                    <div className="nq-list nq-treo-grid">
-                      <PagedList
-                        items={treoDangChoF}
-                        pageSize={10}
-                        renderItem={(v) => (
+                    <PagedList
+                      className="nq-treo-grid"
+                      items={treoDangChoF}
+                      pageSize={12}
+                      renderItem={(v) => (
                         <article key={v.id} className="nq-item nq-item--accent-warn">
                           <p className="nq-item-title">{v.noi_dung}</p>
                           <p className="nq-item-sub flex flex-wrap items-center gap-2">
@@ -290,9 +289,8 @@ export default function TreoPage() {
                             </Btn>
                           ) : null}
                         </article>
-                        )}
-                      />
-                    </div>
+                      )}
+                    />
                   )}
                 </div>
               </section>
@@ -308,11 +306,11 @@ export default function TreoPage() {
                     <span className="nq-treo-section-count">{treoKhac.length} việc</span>
                   </div>
                   <div className="nq-treo-section-body">
-                    <div className="nq-list nq-treo-grid">
-                      <PagedList
-                        items={treoKhac}
-                        pageSize={10}
-                        renderItem={(v) => (
+                    <PagedList
+                      className="nq-treo-grid"
+                      items={treoKhac}
+                      pageSize={12}
+                      renderItem={(v) => (
                         <article key={v.id} className="nq-item">
                           <p className="nq-item-title">{v.noi_dung}</p>
                           <p className="nq-item-sub flex flex-wrap items-center gap-2">
@@ -331,9 +329,8 @@ export default function TreoPage() {
                             </Btn>
                           ) : null}
                         </article>
-                        )}
-                      />
-                    </div>
+                      )}
+                    />
                   </div>
                 </section>
               ) : null}
@@ -349,11 +346,11 @@ export default function TreoPage() {
                     <span className="nq-treo-section-count">{treoXong.length} việc</span>
                   </div>
                   <div className="nq-treo-section-body">
-                    <div className="nq-list nq-treo-grid">
-                      <PagedList
-                        items={treoXong}
-                        pageSize={10}
-                        renderItem={(v) => (
+                    <PagedList
+                      className="nq-treo-grid"
+                      items={treoXong}
+                      pageSize={12}
+                      renderItem={(v) => (
                         <article key={v.id} className="nq-item">
                           <p className="nq-item-title">{v.noi_dung}</p>
                           <p className="nq-item-sub flex flex-wrap items-center gap-2">
@@ -367,9 +364,8 @@ export default function TreoPage() {
                             {v.created_at ? formatLuc(v.created_at) : ""}
                           </p>
                         </article>
-                        )}
-                      />
-                    </div>
+                      )}
+                    />
                   </div>
                 </section>
               ) : null}

@@ -884,7 +884,7 @@ export function PagedList<T>({
         <Fragment key={index}>{renderItem(item, index)}</Fragment>
       ))}
       {remaining > 0 ? (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="nq-treo-grid__more mt-4 flex flex-wrap items-center gap-3">
           <Btn
             variant="ghost"
             size="sm"
