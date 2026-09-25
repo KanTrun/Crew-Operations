@@ -2706,9 +2706,15 @@ a:focus-visible {
   text-underline-offset: 2px;
 }
 
-.nq-page h1 {
-  font-size: clamp(1.85rem, 4.5vw, 2.75rem);
-}
+/* `.nq-page h1` CŨ ĐÃ XOÁ — nó phá cả thang chữ.
+   Rule cũ khai `font-size: clamp(1.85rem, 4.5vw, 2.75rem)`. Bộ chọn này
+   (0,1,1) THẮNG `.nq-page-title` (0,1,0), nên mọi tiêu đề trang bỏ qua token
+   `--nq-t-h1` và lấy cỡ tính theo `vw`. Hệ quả đo được ở 1440px:
+   `4.5vw = 64.8px` → kẹp về `2.75rem × 18px = 49.5px`, tức gấp 1.5 lần bậc h1
+   thật (31.68px). Vì vậy bảng kiểm của e2e báo "cỡ chữ ngoài thang" ở mọi
+   trang — nó đúng.
+   Đây là loại lỗi im lặng: mắt thấy tiêu đề hơi to chứ không thấy "sai", mà
+   thang chữ coi như không tồn tại. Tiêu đề trang giờ do `.nq-page-title` lo. */
 
 @keyframes nq-rise {
   from {
@@ -4173,8 +4179,11 @@ a:focus-visible {
     padding-top: clamp(2rem, 6vw, 4rem);
   }
 
+  /* Mặt tiền dùng bậc `display` của hệ — vẫn qua token, không tự đặt lại cỡ.
+     Đặt cỡ riêng theo `vw` ở đây là dựng thang chữ thứ hai chạy song song với
+     `--nq-t-*`, và hai thang đó sẽ lệch nhau ngay lần chỉnh sau. */
   .nq-page--home h1 {
-    font-size: clamp(2.5rem, 6vw, 3.5rem);
+    font-size: var(--nq-t-display);
   }
 }
 
@@ -5456,8 +5465,10 @@ a.nq-bento-surface:active {
   margin: 0 auto;
 }
 
+/* Khung vận hành hẹp dùng bậc h1 của hệ; không tự đặt lại cỡ theo `vw`, vì
+   như vậy là thêm một thang chữ thứ hai chạy song song. */
 .nq-page--run .nq-page-head h1 {
-  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-size: var(--nq-t-h1);
 }
 
 /* Đầu trang là một khối riêng: kicker + tiêu đề + một câu nói trang này để làm
