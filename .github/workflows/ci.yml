@@ -53,6 +53,23 @@ jobs:
           node-version: "22"
       - name: Install Python tools
         run: pip install ruff mypy
+      # Cache pip — job chạy mypy cần full dependencies (pydantic, fastapi…). Việc
+      # này KHÔNG mang tính tuỳ tiện: khi thiếu pydantic, `BaseModel` resolve
+      # thành Any và mypy strict bão `Class cannot subclass "BaseModel" (has
+      # type Any)` hàng loạt (đã đỏ run 36100604919) — không phải lỗi code mà
+      # là môi trường gate thiếu deps. Giữ đôi với job 02 unit (cùng cấu trúc key).
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-lint-${{ runner.os }}-${{ hashFiles('apps/api/pyproject.toml', 'packages/*/pyproject.toml') }}
+          restore-keys: pip-lint-${{ runner.os }}-
+      # Cài workspaceEditable: mypy cần nhìn thấy pydantic/FastAPI/ortools thật
+      # của repo (giống môi trường dev) chứ không chỉ stub trần.
+      - name: Install workspace (cho mypy type-đúng)
+        run: |
+          pip install -e ./packages/contracts -e ./packages/solver -e ./packages/agents \
+            -e ./packages/gates -e ./packages/opsengine -e ./packages/playbook -e ./apps/api
       - name: Ruff
         run: ruff check apps/api/src packages scripts
       # Mypy theo config gốc pyproject.toml: strict = true.
