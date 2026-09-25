@@ -9114,6 +9114,26 @@ a.nq-bento-surface:active {
   display: none;
 }
 
+/* Thu gọn: chỉ còn dấu N tròn — ẩn chữ NHỊP QUÁN / Digital System. */
+.nq-side[data-collapsed="1"] .nq-side__brand-text {
+  display: none !important;
+}
+
+.nq-side[data-collapsed="1"] .nq-side__head {
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--nq-s2);
+  padding: var(--nq-s1) 0;
+}
+
+.nq-side[data-collapsed="1"] .nq-side__head > a {
+  justify-content: center;
+}
+
+.nq-side[data-collapsed="1"] .nq-side__toggle {
+  margin-left: 0;
+}
+
 .nq-side[data-collapsed="1"] .nq-side__group {
   height: 1px;
   margin: var(--nq-s2) var(--nq-s3);
@@ -9231,8 +9251,19 @@ a.nq-bento-surface:active {
 
   .nq-side[data-collapsed="1"] .nq-side__label,
   .nq-side[data-collapsed="1"] .nq-side__dot,
-  .nq-side[data-collapsed="1"] .nq-side__user-name {
+  .nq-side[data-collapsed="1"] .nq-side__user-name,
+  .nq-side[data-collapsed="1"] .nq-side__brand-text {
     display: revert;
+  }
+
+  .nq-side[data-collapsed="1"] .nq-side__head {
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 0 var(--nq-s1);
+  }
+
+  .nq-side[data-collapsed="1"] .nq-side__toggle {
+    margin-left: auto;
   }
 
   .nq-side[data-collapsed="1"] .nq-side__group {
@@ -9271,16 +9302,23 @@ a.nq-bento-surface:active {
    HẾT SIDEBAR.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Trợ lý full-page: chuỗi flex bắt buộc min-height:0 để vùng tin nhắn cuộn được ── */
+/* ── Trợ lý full-page: khóa viewport + CSS grid — vùng tin cuộn độc lập ── */
+.nq-app:has(.nq-copilot-page) {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
 .nq-app:has(.nq-copilot-page) .nq-main {
   display: flex;
   flex-direction: column;
   height: 100dvh;
   max-height: 100dvh;
   min-height: 0;
-  padding-top: var(--nq-s4);
+  padding-top: var(--nq-s3);
   padding-bottom: var(--nq-s3);
   overflow: hidden;
+  box-sizing: border-box;
 }
 .nq-app:has(.nq-copilot-page) .nq-main__inner {
   flex: 1 1 auto;
@@ -9292,8 +9330,8 @@ a.nq-bento-surface:active {
   overflow: hidden;
 }
 .nq-copilot-page {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: var(--nq-s2);
   width: 100%;
   max-width: none;
@@ -9309,6 +9347,7 @@ a.nq-bento-surface:active {
   overflow: hidden;
 }
 .nq-copilot-page--loading {
+  display: flex;
   align-items: center;
   justify-content: center;
   color: var(--nq-ink-muted);
@@ -9320,7 +9359,7 @@ a.nq-bento-surface:active {
   align-items: center;
   justify-content: space-between;
   gap: var(--nq-s2) var(--nq-s3);
-  flex-shrink: 0;
+  min-height: 0;
 }
 .nq-copilot-page__kicker {
   margin: 0;
@@ -9349,8 +9388,8 @@ a.nq-bento-surface:active {
   font-weight: 600;
 }
 .nq-copilot-page__frame {
-  flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -9367,15 +9406,25 @@ a.nq-bento-surface:active {
   max-height: 100%;
   height: 100%;
 }
-/* Vùng tin nhắn là nơi duy nhất cuộn — không để khung ngoài cắt đầu hội thoại. */
+/* Thân chat: header | tin (1fr cuộn) | gợi ý | ô nhập */
+.nq-copilot-body {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  background: var(--nq-bg);
+  color: var(--nq-fg);
+}
 .nq-copilot-messages {
-  flex: 1 1 auto;
   min-height: 0;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: auto !important;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
+  padding: var(--nq-s4);
 }
 
 .nq-page--ai-learning {

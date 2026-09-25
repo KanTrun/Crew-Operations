@@ -260,11 +260,13 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
     }
   };
 
-  // Auto-scroll trong khung tin — không để scrollIntoView kéo cả trang / cắt đầu hội thoại
+  // Auto-scroll trong khung tin — không kéo cả trang
   useEffect(() => {
     const box = messagesScrollRef.current;
     if (!box) return;
-    box.scrollTop = box.scrollHeight;
+    requestAnimationFrame(() => {
+      box.scrollTop = box.scrollHeight;
+    });
   }, [messages]);
 
   // Focus input khi mở
@@ -320,7 +322,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
 
   return (
     <div
-      className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[var(--nq-bg)] text-[var(--nq-fg)]"
+      className="nq-copilot-body relative"
       style={{ ["--accent" as any]: profile.accent }}
     >
       {/* Consent Modal for Decree 13/2023/ND-CP */}
@@ -462,7 +464,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
       ) : (
         <>
           {/* Messages */}
-          <div ref={messagesScrollRef} className="nq-copilot-messages space-y-4 p-4 text-xs">
+          <div ref={messagesScrollRef} className="nq-copilot-messages space-y-4 text-xs">
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -724,7 +726,7 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                       mouthOpen={mouthOpen}
                       speaking={isSpeaking}
                       listening={isListening}
-                      size={72}
+                      size={mode === "page" ? 44 : 72}
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--nq-accent)]">

@@ -31,11 +31,8 @@ export default function CopilotPage() {
     <div className="nq-copilot-page" style={{ ["--accent" as string]: chat.profile.accent }}>
       <header className="nq-copilot-page__head">
         <div className="nq-copilot-page__titles">
-          <p className="nq-copilot-page__kicker">Trợ lý điều hành</p>
+          <p className="nq-copilot-page__kicker">Trợ lý điều hành · {roleLabel(role)}</p>
           <h1 className="nq-copilot-page__title">{chat.profile.label}</h1>
-          <p className="nq-copilot-page__meta">
-            Vai trò <strong>{roleLabel(role)}</strong> — khung chat toàn trang, không bị lớp nổi che.
-          </p>
         </div>
         <Link href="/hom-nay" className="nq-btn nq-btn-ghost nq-btn-sm">
           Về Hôm nay
