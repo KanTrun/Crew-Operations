@@ -17,7 +17,7 @@
  */
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { ContactShadows, Html } from "@react-three/drei";
+import { ContactShadows, Html, OrbitControls, RoundedBox } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Mesh, Points } from "three";
 import type { ZoneUI } from "./quanverse-model";
@@ -58,7 +58,11 @@ function ZoneBlock({
 
   return (
     <group position={[place.x, height / 2, place.z]}>
-      <mesh
+      {/* Bo góc thay khối vuông cứng — cùng một khối nhưng đỡ "thùng carton". */}
+      <RoundedBox
+        args={[place.w, height, place.d]}
+        radius={Math.min(0.06, place.w * 0.08, height * 0.12)}
+        smoothness={4}
         castShadow
         receiveShadow
         position={[0, 0, 0]}
@@ -76,7 +80,6 @@ function ZoneBlock({
           onSelect(zone.zone_id);
         }}
       >
-        <boxGeometry args={[place.w, height, place.d]} />
         <meshStandardMaterial
           color={color}
           emissive={selected || hovered ? color : "#000000"}
@@ -84,7 +87,7 @@ function ZoneBlock({
           metalness={0.35}
           roughness={0.45}
         />
-      </mesh>
+      </RoundedBox>
       <Html
         position={[0, height / 2 + 0.18, 0]}
         center
@@ -235,11 +238,24 @@ export default function LivingMap3d({ zones, selectedId = null, onSelect, tier }
     <div className="nq-living-map__canvas" aria-hidden="true">
       <Canvas
         shadows={tier === "full"}
-        camera={{ position: [0, 3.6, 5.4], fov: 40 }}
+        camera={{ position: [0, 4.1, 6.2], fov: 38 }}
         dpr={tier === "full" ? [1, 2] : [1, 1.5]}
         gl={{ antialias: tier === "full", alpha: true, powerPreference: "low-power" }}
         frameloop="always"
       >
+        {/* Kéo để xoay, cuộn để zoom — trước đây góc máy cố định nên cảnh trông
+            như một bức ảnh tĩnh dù có hoạt hình bên trong. Giới hạn góc/khoảng
+            cách để không lật xuống dưới sàn hoặc zoom ra khỏi mô hình. */}
+        <OrbitControls
+          enablePan={false}
+          minDistance={3.2}
+          maxDistance={9}
+          minPolarAngle={Math.PI / 6}
+          maxPolarAngle={Math.PI / 2.25}
+          enableDamping
+          dampingFactor={0.12}
+          target={[0, 0.6, 0]}
+        />
         <ambientLight intensity={0.55} />
         <hemisphereLight args={["#e8d48a", "#0b141b", 0.55]} />
         <pointLight
