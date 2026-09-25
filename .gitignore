@@ -99,3 +99,8 @@ data/cache/
 /unit_log.txt
 /run_data.json
 /check_jobs.py
+
+# data/out/ = output tooling (do_metrics, contrast, screenshot audit, mail log…)
+# Mỗi script tự ghi ra khi chạy — KHÔNG track kết quả شم沉着 cũ. Giữ .gitkeep.
+data/out/*
+!data/out/.gitkeep
