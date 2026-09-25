@@ -28,6 +28,8 @@ export type IconName =
   | "send"
   | "close"
   | "arrow-left"
+  | "arrow-right"
+  | "menu"
   | "bell"
   | "bell-off"
   | "info"
@@ -83,6 +85,9 @@ const PATHS: Record<IconName, ReactNode> = {
   send: <path d="m22 2-7 20-4-9-9-4Z M22 2 11 13" />,
   close: <path d="m6 6 12 12M18 6 6 18" />,
   "arrow-left": <path d="m15 18-6-6 6-6M9 12h10" />,
+  "arrow-right": <path d="m9 18 6-6-6-6M15 12H5" />,
+  // Ba vạch — mở điều hướng ở màn hẹp.
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   bell: <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />,
   "bell-off": <><path d="M13.7 5.1A6 6 0 0 0 6 8c0 7-3 7-3 9h12M18 8c0 3.2.7 5 1.7 6.2M10 21h4M3 3l18 18" /></>,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>,

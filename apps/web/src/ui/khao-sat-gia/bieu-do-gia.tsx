@@ -96,7 +96,7 @@ export function PhanViBars({ rows }: { rows: HangPhanVi[] }) {
                     bottom: 0,
                     borderRadius: "var(--nq-radius-pill)",
                     background: row.laCore
-                      ? "linear-gradient(90deg, color-mix(in srgb, var(--nq-copper) 55%, transparent), var(--nq-copper))"
+                      ? "linear-gradient(90deg, color-mix(in srgb, var(--nq-accent) 55%, transparent), var(--nq-accent))"
                       : "linear-gradient(90deg, color-mix(in srgb, var(--nq-ok) 45%, transparent), color-mix(in srgb, var(--nq-ok) 80%, transparent))",
                   }}
                 />
@@ -162,7 +162,7 @@ export function GiaGauge({ ambi, sweetLow, sweetHigh, minViablePrice, giaQuan, s
   const pct = (v: number) => Math.min(100, Math.max(0, ((v - lo) / span) * 100));
 
   const markers: Array<{ giaTri: number; nhan: string; mau: string; net?: boolean }> = [
-    { giaTri: ambi, nhan: `AMBI ${giaVnd(ambi)}`, mau: "var(--nq-copper)" },
+    { giaTri: ambi, nhan: `AMBI ${giaVnd(ambi)}`, mau: "var(--nq-accent)" },
   ];
   if (minViablePrice != null && Number.isFinite(minViablePrice)) {
     markers.push({ giaTri: minViablePrice, nhan: `Ngưỡng có lời tối thiểu ${giaVnd(minViablePrice)}`, mau: "var(--nq-warn)", net: true });
@@ -221,7 +221,7 @@ export function GiaGauge({ ambi, sweetLow, sweetHigh, minViablePrice, giaQuan, s
             height: "0.9rem",
             borderRadius: "var(--nq-radius-pill)",
             background:
-              "linear-gradient(90deg, color-mix(in srgb, var(--nq-ok) 70%, transparent), var(--nq-copper) 55%, color-mix(in srgb, var(--nq-warn) 80%, transparent))",
+              "linear-gradient(90deg, color-mix(in srgb, var(--nq-ok) 70%, transparent), var(--nq-accent) 55%, color-mix(in srgb, var(--nq-warn) 80%, transparent))",
             overflow: "visible",
           }}
         >

@@ -479,7 +479,7 @@ export default function HaoPhiPage() {
             <article key={c.nguyen_nhan} className="nq-item" data-nguyen-nhan={c.nguyen_nhan}>
               <div className="flex items-start justify-between gap-2">
                 <p className="nq-item-title">{safeText(c.ten, nguyenNhanLabel(c.nguyen_nhan))}</p>
-                <span className="font-mono text-sm text-[var(--nq-copper)]">
+                <span className="font-mono text-sm text-[var(--nq-accent)]">
                   {c.so_lan} lần · {c.ty_le_tong}%
                 </span>
               </div>

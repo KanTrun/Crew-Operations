@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Icon } from "../../ui/icons";
 import {
   Btn,
   Empty,
@@ -511,7 +512,7 @@ export function MeetingResults({
             <div className="text-xs">
               {meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length > 0 ? (
                 <span className="text-[var(--nq-st-warn-ink)] font-medium flex items-center gap-1.5">
-                  <span>⚠️</span> Có{" "}
+                  <Icon name="warn" size={14} /> Có{" "}
                   <strong>{meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length}</strong> việc cần
                   làm rõ ngữ cảnh hoặc lịch ca trước khi giao
                 </span>
@@ -524,7 +525,7 @@ export function MeetingResults({
             <div className="flex items-center gap-2 flex-wrap">
               {onClarifyActions && (
                 <Btn variant="ghost" onClick={onClarifyActions} disabled={busy}>
-                  🤖 AI Rà soát ngữ cảnh & Lịch ca
+                  <Icon name="bot" size={14} /> AI Rà soát ngữ cảnh & Lịch ca
                 </Btn>
               )}
               {manager && onAddActionItem ? (
@@ -551,7 +552,7 @@ export function MeetingResults({
                       type="checkbox"
                       checked={it.da_chon}
                       onChange={() => onToggleAction(it.id)}
-                      className="mt-1.5 h-4 w-4 shrink-0 cursor-pointer accent-[var(--nq-copper)]"
+                      className="mt-1.5 h-4 w-4 shrink-0 cursor-pointer accent-[var(--nq-accent)]"
                       aria-label={`Chọn việc ${it.tieu_de}`}
                     />
                     <div className="min-w-0 flex-1 space-y-2.5">
@@ -583,7 +584,7 @@ export function MeetingResults({
                               }`}
                               title="Làm ngay trong 1 ca (ca hiện tại hoặc ca kế tiếp)"
                             >
-                              ⚡ 1 ca
+                              <Icon name="zap" size={13} /> 1 ca
                             </button>
                             <button
                               type="button"
@@ -595,7 +596,7 @@ export function MeetingResults({
                               }`}
                               title="Kéo dài qua nhiều ca / theo dõi định kỳ"
                             >
-                              🔄 Nhiều ca
+                              <Icon name="refresh" size={13} /> Nhiều ca
                             </button>
                             <button
                               type="button"
@@ -607,7 +608,7 @@ export function MeetingResults({
                               }`}
                               title="Chỉ là góp ý / nhắc nhở làm việc"
                             >
-                              💬 Góp ý
+                              <Icon name="chat" size={14} /> Góp ý
                             </button>
                           </div>
 
@@ -640,7 +641,7 @@ export function MeetingResults({
                       {it.loai_cong_viec === "gop_y" && (
                         <div className="p-2 rounded bg-[var(--nq-st-info-soft)] border border-[color-mix(in_srgb,var(--nq-st-info)_46%,var(--nq-line))] flex items-center justify-between gap-2 flex-wrap text-xs">
                           <span className="text-[var(--nq-st-info-ink)]">
-                            💡 Mục này mang tính chất góp ý/nhắc nhở, sẽ được lưu vào biên bản thay vì tạo việc treo.
+                            <Icon name="info" size={14} /> Mục này mang tính chất góp ý/nhắc nhở, sẽ được lưu vào biên bản thay vì tạo việc treo.
                           </span>
                           {onConvertToFeedback && (
                             <button
@@ -700,13 +701,13 @@ export function MeetingResults({
                             className="text-2xs px-2 py-0.5 rounded bg-[var(--nq-bg-elevated)] text-[var(--nq-ink)] border border-[var(--nq-line)] font-mono"
                             title={it.ca_du_kien.join(" | ")}
                           >
-                            📅 Có {it.ca_du_kien.length} ca trực tuần này
+                            <Icon name="calendar" size={14} /> Có {it.ca_du_kien.length} ca trực tuần này
                           </span>
                         ) : it.ten_nguoi_nhan &&
                           it.ten_nguoi_nhan !== "Chưa rõ" &&
                           it.ten_nguoi_nhan !== "Cả ca" ? (
                           <span className="text-2xs px-2 py-0.5 rounded bg-[var(--nq-st-danger-soft)] text-[var(--nq-st-danger-ink)] border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] font-mono">
-                            ⚠️ Không có ca trực tuần này
+                            <Icon name="warn" size={14} /> Không có ca trực tuần này
                           </span>
                         ) : null}
 
@@ -727,7 +728,7 @@ export function MeetingResults({
                         <div className="p-3 rounded-md bg-[var(--nq-st-warn-soft)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] space-y-2 mt-2">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-sm">🤖</span>
+                              <span className="text-sm"><Icon name="bot" size={14} /></span>
                               <span className="text-xs font-bold font-mono uppercase tracking-wider text-[var(--nq-st-warn-ink)]">
                                 Trợ lý AI làm rõ phân công
                               </span>
@@ -911,7 +912,7 @@ export function MeetingResults({
               </p>
               {meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length > 0 && (
                 <p className="text-xs text-[var(--nq-st-warn-ink)] font-medium m-0">
-                  ⚠️ Còn {meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length} việc chưa hoàn tất làm rõ ngữ cảnh. Bạn có thể chọn nhanh gợi ý của AI ở trên hoặc duyệt nếu đã nắm rõ.
+                  <Icon name="warn" size={14} /> Còn {meeting.action_items.filter((a) => a.da_chon && a.can_lam_ro).length} việc chưa hoàn tất làm rõ ngữ cảnh. Bạn có thể chọn nhanh gợi ý của AI ở trên hoặc duyệt nếu đã nắm rõ.
                 </p>
               )}
             </div>
@@ -923,7 +924,7 @@ export function MeetingResults({
               href="/lich-tuan"
               className="px-3 py-1.5 text-xs rounded font-medium bg-[var(--nq-surface)] hover:bg-[var(--nq-line)] text-[var(--nq-st-warn-ink)] border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] transition-colors inline-flex items-center gap-1.5 no-underline"
             >
-              📅 Sang Lịch tuần xếp ca (Solver)
+              <Icon name="calendar" size={14} /> Sang Lịch tuần xếp ca (Solver)
             </a>
           )}
           <Btn variant="primary" onClick={onApply} disabled={busy || !manager}>

@@ -48,7 +48,7 @@ export default function LoginPage() {
         <aside className="flex flex-col justify-between border-b border-[var(--nq-line)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
           <Logo />
           <div className="mt-8 md:mt-0">
-            <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-copper)] uppercase">
+            <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-accent)] uppercase">
               Vào ca · một việc một lúc
             </p>
             <h1 className="nq-page-title">
@@ -96,12 +96,12 @@ export default function LoginPage() {
           <div className="mt-2 space-y-1 border-t border-dashed border-[var(--nq-line)] pt-4 text-sm text-[var(--nq-dim)]">
             <p>
               Chưa có tài khoản?{" "}
-              <Link href="/dang-ky" className="text-[var(--nq-copper)] underline-offset-4 hover:underline">
+              <Link href="/dang-ky" className="text-[var(--nq-accent)] underline-offset-4 hover:underline">
                 Tạo tài khoản nhân viên
               </Link>
             </p>
             <p>
-              <Link href="/huong-dan" className="text-[var(--nq-copper)] underline-offset-4 hover:underline">
+              <Link href="/huong-dan" className="text-[var(--nq-accent)] underline-offset-4 hover:underline">
                 Đọc bản đồ hướng dẫn từ đầu tới cuối
               </Link>
             </p>

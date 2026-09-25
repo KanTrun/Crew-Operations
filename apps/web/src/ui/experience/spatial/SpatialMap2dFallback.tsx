@@ -153,12 +153,12 @@ export default function SpatialMap2dFallback({
             >
               {selected ? (
                 /* Vòng nhấn ngoài — tách khỏi hình dạng để không đổi kích thước. */
-                <circle r="34" fill="none" stroke="var(--nq-copper)" strokeWidth="2" opacity="0.6" />
+                <circle r="34" fill="none" stroke="var(--nq-accent)" strokeWidth="2" opacity="0.6" />
               ) : null}
               <circle
                 r="26"
-                fill={selected ? "var(--nq-copper)" : "var(--nq-surface-hi)"}
-                stroke="var(--nq-copper)"
+                fill={selected ? "var(--nq-accent)" : "var(--nq-surface-hi)"}
+                stroke="var(--nq-accent)"
                 strokeWidth="2"
               />
               {a.kind === "thiet_bi" ? (

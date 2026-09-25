@@ -1029,12 +1029,12 @@ export default function MeetingPage() {
               {/* Live Speech Recognition Subtitle Box */}
               {isRecording && (
                 <div className="nq-meeting-live space-y-1">
-                  <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-[var(--nq-copper)]">
-                    <span className="h-2 w-2 rounded-full bg-[var(--nq-copper)]" />
+                  <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-[var(--nq-accent)]">
+                    <span className="h-2 w-2 rounded-full bg-[var(--nq-accent)]" />
                     Văn bản đang nói trực tiếp
                   </div>
                   <p className="min-h-[2.5rem] text-sm italic">
-                    {liveTranscript} <span className="text-[var(--nq-copper)] underline">{interimText}</span>
+                    {liveTranscript} <span className="text-[var(--nq-accent)] underline">{interimText}</span>
                     {!liveTranscript && !interimText && "Đang lắng nghe giọng nói qua micro…"}
                   </p>
                 </div>
@@ -1082,12 +1082,12 @@ export default function MeetingPage() {
 
               {isRecording && (
                 <div className="nq-meeting-live space-y-1">
-                  <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-[var(--nq-copper)]">
-                    <span className="h-2 w-2 rounded-full bg-[var(--nq-copper)]" />
+                  <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-[var(--nq-accent)]">
+                    <span className="h-2 w-2 rounded-full bg-[var(--nq-accent)]" />
                     Văn bản thu từ cuộc họp
                   </div>
                   <p className="min-h-[2.5rem] text-sm italic">
-                    {liveTranscript} <span className="text-[var(--nq-copper)] underline">{interimText}</span>
+                    {liveTranscript} <span className="text-[var(--nq-accent)] underline">{interimText}</span>
                     {!liveTranscript && !interimText && "Đang lắng nghe âm thanh từ Google Meet…"}
                   </p>
                 </div>

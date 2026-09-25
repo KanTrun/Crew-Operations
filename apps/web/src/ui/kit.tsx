@@ -79,7 +79,7 @@ export function PageActions({ children }: { children: ReactNode }) {
 }
 
 export function Kicker({ children }: { children: ReactNode }) {
-  return <p className="text-sm font-mono text-[var(--nq-copper)] uppercase tracking-widest mb-2">{children}</p>;
+  return <p className="text-sm font-mono text-[var(--nq-accent)] uppercase tracking-widest mb-2">{children}</p>;
 }
 
 export function EditorialBanner({
@@ -165,24 +165,25 @@ export function TechnicalDrawer({
   const [open, setOpen] = useState(false);
   if (lines.length === 0 && !children) return null;
   return (
-    <div className={`mt-8 ${className}`.trim()}>
-      <button 
-        type="button" 
-        className="w-full flex justify-between items-center bg-[var(--nq-surface)] border-2 border-dashed border-[var(--nq-dim)] p-4 text-[var(--nq-dim)] font-mono text-sm hover:border-[var(--nq-fg)] hover:text-[var(--nq-fg)] transition-colors" 
-        onClick={() => setOpen((v) => !v)} 
+    <div className={`nq-tech mt-8 ${className}`.trim()}>
+      <button
+        type="button"
+        className="nq-tech__head"
+        onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
         <span>{summary}</span>
-        <span aria-hidden="true" className="font-bold">{open ? "−" : "+"}</span>
+        <span aria-hidden="true" className="nq-tech__sign">{open ? "−" : "+"}</span>
       </button>
       {open && lines.length > 0 ? (
-        <ul className="bg-[var(--nq-surface-hi)] border-2 border-t-0 border-[var(--nq-dim)] p-4 font-mono text-sm text-[var(--nq-dim)] space-y-2">
+        <ul className="nq-tech__body">
           {lines.map((line, i) => (
+            /* eslint-disable-next-line react/no-array-index-key */
             <li key={`${i}-${line}`}>{line}</li>
           ))}
         </ul>
       ) : null}
-      {open && children ? <div className="bg-[var(--nq-surface-hi)] border-2 border-t-0 border-[var(--nq-dim)] p-4">{children}</div> : null}
+      {open && children ? <div className="nq-tech__body">{children}</div> : null}
     </div>
   );
 }
@@ -253,11 +254,37 @@ export function Alert({
   );
 }
 
-export function Empty({ children, title = "Không có dữ liệu" }: { children: ReactNode; title?: string }) {
+/**
+ * Trạng thái RỖNG.
+ *
+ * Trước đây: viền `border-2 dashed` + bóng cứng — bề mặt "brutalist", lệch hẳn
+ * với phần còn lại của hệ, và nét đứt đọc ra như "lỗi" chứ không phải "chưa có
+ * gì". Trạng thái rỗng KHÔNG phải lỗi: nó là trạng thái bình thường của một
+ * danh sách chưa có dữ liệu, nên phải trông bình tĩnh.
+ *
+ * Nền ĐẶC theo token surface (không kính): đây là khối nội dung, người dùng
+ * cần đọc dòng giải thích trên nó. `children` là CÂU GIẢI THÍCH VIỆC CẦN LÀM,
+ * không phải thông báo lỗi — xem quy ước trong docs/design-guidelines.md.
+ */
+export function Empty({
+  children,
+  title = "Không có dữ liệu",
+  icon,
+  action,
+}: {
+  children: ReactNode;
+  title?: string;
+  /** Icon tuỳ chọn — TRUYỀN `<Icon/>`, không truyền emoji. */
+  icon?: ReactNode;
+  /** Lối thoát: nút dẫn tới việc nên làm tiếp. Không có thì chỉ là thông báo. */
+  action?: ReactNode;
+}) {
   return (
-    <div className="bg-[var(--nq-surface)] border-2 border-dashed border-[var(--nq-dim)] p-8 flex flex-col items-center justify-center text-center">
-      <h3 className="text-xl font-bold mb-2 text-[var(--nq-fg)]">{title}</h3>
-      <p className="text-[var(--nq-dim)] font-mono text-sm max-w-md">{children}</p>
+    <div className="nq-empty">
+      {icon ? <div className="nq-empty__icon">{icon}</div> : null}
+      <h3 className="nq-empty__title">{title}</h3>
+      <p className="nq-empty__body">{children}</p>
+      {action ? <div className="nq-empty__action">{action}</div> : null}
     </div>
   );
 }
@@ -364,7 +391,7 @@ export function Loading({
   rows?: number;
   groups?: number;
 }) {
-  const label = children ? <span className="block text-sm font-mono text-[var(--nq-copper)] uppercase tracking-widest mb-4">{children}</span> : null;
+  const label = children ? <span className="block text-sm font-mono text-[var(--nq-accent)] uppercase tracking-widest mb-4">{children}</span> : null;
   let shape: ReactNode;
   if (skeleton === "bento" || skeleton === "page") shape = <SkeletonBento />;
   else if (skeleton === "text")
@@ -463,7 +490,7 @@ export function ProgressBar({ value, max, className = "" }: { value: number; max
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
     <div className={`nq-progress w-full ${className}`.trim()} role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
-      <div className="h-full bg-[var(--nq-copper)] transition-all duration-500 ease-out" style={{ width: `${pct}%` }} />
+      <div className="h-full bg-[var(--nq-accent)] transition-all duration-500 ease-out" style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -597,7 +624,7 @@ export function Group({
       <div className="flex items-center gap-4 mb-4">
         <h3 className="text-xl font-black uppercase text-[var(--nq-fg)]">{title}</h3>
         {typeof count === "number" ? (
-          <span className="nq-ink-on-solid text-sm bg-[var(--nq-copper)] px-3 py-1 rounded-full">
+          <span className="nq-ink-on-solid text-sm bg-[var(--nq-accent)] px-3 py-1 rounded-full">
             {count} {countLabel}
           </span>
         ) : null}
@@ -668,7 +695,7 @@ export function PageHeader({
 }) {
   return (
     <header className="mb-12 ops-animate-in" data-tour={tourId}>
-      <p className="text-sm font-mono text-[var(--nq-copper)] uppercase tracking-widest mb-2">{kicker}</p>
+      <p className="text-sm font-mono text-[var(--nq-accent)] uppercase tracking-widest mb-2">{kicker}</p>
       {/* Tiêu đề trang dùng font display của hệ, KHÔNG dùng `font-black uppercase
           tracking-tighter`. Kiểu cũ là dấu hiệu nhận dạng của giao diện máy dựng,
           và với tiếng Việt thì hại thật: chữ hoa cỡ lớn cộng khoảng chữ bị siết
@@ -680,26 +707,50 @@ export function PageHeader({
   );
 }
 
-export function TabBar({ children }: { children: ReactNode }) {
-  return <div className="flex border-b border-[var(--nq-line)] mb-8">{children}</div>;
+/**
+ * Thanh chọn giữa các khung nhìn của CÙNG một trang.
+ *
+ * Trước đây `TabButton` dùng `border-b-4` + `font-black uppercase tracking-widest`
+ * — vạch 4px đè lên biên khối và chữ hoa giãn rộng làm nhãn dài bị gãy dòng ở
+ * màn hẹp. Bản này dùng pill trên nền accent nhạt: mục đang chọn đọc ra bằng
+ * NỀN, không bằng một vạch dày chiếm chỗ.
+ *
+ * `count` cho biết số bản ghi trong mỗi khung nhìn — biết trước khi bấm thì
+ * không phải mở từng tab để tìm cái có dữ liệu.
+ */
+export function TabBar({ children, label }: { children: ReactNode; label?: string }) {
+  return (
+    <div className="nq-tabbar" role="tablist" aria-label={label}>
+      {children}
+    </div>
+  );
 }
 
 export function TabButton({
   active,
   onClick,
   children,
+  count,
+  disabled = false,
 }: {
   active: boolean;
   onClick: () => void;
   children: ReactNode;
+  count?: number;
+  disabled?: boolean;
 }) {
   return (
-    <button 
-      type="button" 
-      className={`flex-1 py-4 font-black uppercase tracking-widest transition-colors ${active ? "text-[var(--nq-copper)] border-b-4 border-[var(--nq-copper)]" : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)]"}`} 
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      disabled={disabled}
+      className="nq-tab"
+      data-on={active ? "1" : "0"}
       onClick={onClick}
     >
-      {children}
+      <span>{children}</span>
+      {typeof count === "number" ? <span className="nq-tab__count">{count}</span> : null}
     </button>
   );
 }
@@ -734,7 +785,7 @@ export function OpsCard({
     <div className="flex items-center gap-4 mb-6">
       <h2 className="text-2xl font-black uppercase text-[var(--nq-fg)]">{title}</h2>
       {typeof count === "number" ? (
-        <span className="nq-ink-on-solid text-sm bg-[var(--nq-copper)] px-3 py-1 rounded-full">
+        <span className="nq-ink-on-solid text-sm bg-[var(--nq-accent)] px-3 py-1 rounded-full">
           {count} {countLabel}
         </span>
       ) : null}
@@ -823,7 +874,7 @@ export function Toolbar({ children }: { children: ReactNode }) {
 }
 
 export function Notice({ children }: { children: ReactNode }) {
-  return <p className="text-sm font-mono text-[var(--nq-dim)] border-l-4 border-[var(--nq-copper)] pl-4 my-6">{children}</p>;
+  return <p className="text-sm font-mono text-[var(--nq-dim)] border-l-4 border-[var(--nq-accent)] pl-4 my-6">{children}</p>;
 }
 
 export function LinkGrid({ children }: { children: ReactNode }) {
@@ -833,7 +884,7 @@ export function LinkGrid({ children }: { children: ReactNode }) {
 export function LinkTile({ href, children, className = "" }: { href: string; children: ReactNode; className?: string }) {
   return (
     <Link href={href} className={`nq-surface-tile p-6 transition-colors group ${className}`.trim()}>
-      <span className="font-bold uppercase tracking-widest text-sm group-hover:text-[var(--nq-copper)] text-[var(--nq-fg)] transition-colors">{children}</span>
+      <span className="font-bold uppercase tracking-widest text-sm group-hover:text-[var(--nq-accent)] text-[var(--nq-fg)] transition-colors">{children}</span>
     </Link>
   );
 }
@@ -884,7 +935,13 @@ export function Summary({
             className={`nq-summary-cell nq-surface-tile flex min-w-[140px] flex-1 flex-col p-4 ${bg}`}
           >
             <span className="nq-summary-n mb-1 text-3xl font-black tabular-nums">{c.n}</span>
-            <span className="nq-summary-k text-xs font-mono uppercase tracking-widest opacity-80">{c.k}</span>
+            {/* Nhãn KHÔNG dùng `opacity-80`: ô có tone là ô NỀN ĐẶC (vàng/ngọc/đỏ),
+                và giảm opacity trên nền đặc làm chữ tối mờ đi — đo được 1.9:1 trên
+                ô vàng. Trước đây nhãn còn kế thừa màu từ ô, nên trên ô tone nó ra
+                chữ tối trên nền tối (4.3:1, và 3.0:1 khi đã giảm opacity).
+                Nhãn giờ khai màu theo CÙNG họ với nền ô: ô màu nào thì nhãn lấy
+                bản `-ink` của họ đó, đủ tương phản ở mọi tone. */}
+            <span className="nq-summary-k text-xs font-mono uppercase tracking-widest">{c.k}</span>
           </div>
         );
       })}
@@ -942,7 +999,7 @@ export function PickCard({
       className="nq-surface-tile flex w-full flex-col justify-between p-6 text-left disabled:opacity-50"
     >
       <div className="mb-6">
-        <span className="text-2xl font-black text-[var(--nq-copper)] mb-2 block">
+        <span className="text-2xl font-black text-[var(--nq-accent)] mb-2 block">
           {steps} <span className="text-sm font-mono uppercase tracking-widest">{stepsUnit}</span>
         </span>
         <span className="text-xl font-bold uppercase text-[var(--nq-fg)] block mb-2">{name}</span>
@@ -1149,16 +1206,16 @@ export function Table<T extends Record<string, any> = Record<string, any>>({
   }
 
   return (
-    <div className={`overflow-x-auto bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-dim)] shadow-[8px_8px_0px_0px_var(--nq-copper-dim)] ${className}`}>
-      <table className="w-full text-left border-collapse">
+    <div className={`nq-table-wrap ${className}`.trim()}>
+      <table className="nq-table">
         <thead>
-          <tr className="border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)]">
+          <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
                 scope="col"
                 style={{ width: col.width }}
-                className={`p-4 font-black uppercase tracking-widest text-[var(--nq-dim)] ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : ""}`}
+                className={col.align === "center" ? "is-center" : col.align === "right" ? "is-right" : undefined}
               >
                 {col.header}
               </th>
@@ -1167,9 +1224,13 @@ export function Table<T extends Record<string, any> = Record<string, any>>({
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={rowIndex} className="border-b border-[var(--nq-dim)]/30 hover:bg-[var(--nq-surface)]/50">
+            <tr key={rowIndex}>
               {columns.map((col) => (
-                <td key={col.key} style={{ width: col.width }} className={`p-4 ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : ""}`}>
+                <td
+                  key={col.key}
+                  style={{ width: col.width }}
+                  className={col.align === "center" ? "is-center" : col.align === "right" ? "is-right" : undefined}
+                >
                   {col.render ? col.render(row[col.key], row) : String(row[col.key] ?? "")}
                 </td>
               ))}
@@ -1181,6 +1242,17 @@ export function Table<T extends Record<string, any> = Record<string, any>>({
   );
 }
 
+/**
+ * Nhãn trạng thái nhỏ.
+ *
+ * Trước đây: `border-2` + `font-bold uppercase tracking-widest` + chữ đen trên
+ * nền màu đặc. Với 4 họ màu và 5 "variant", tổ hợp `border-2` + nền sáng đã
+ * từng gây lỗi tương phản 1.01:1 ở `nq-surface-tile`.
+ *
+ * Bản này theo quy ước trạng thái của hệ: NỀN nhạt (`-soft`) + CHỮ dùng bản
+ * `-ink`. Nhờ vậy nhãn đọc được ở mọi họ màu mà không phải chọn chữ đen hay
+ * trắng tuỳ nền.
+ */
 export function Badge({
   children,
   variant = "outline",
@@ -1192,27 +1264,25 @@ export function Badge({
   size?: "xs" | "sm" | "md" | "lg";
   className?: string;
 }) {
-  const base = "inline-flex items-center font-bold uppercase tracking-widest";
-  const sizes = {
-    xs: "px-1.5 py-0.5 text-[10px]",
-    sm: "px-2 py-1 text-xs",
-    md: "px-3 py-1.5 text-sm",
-    lg: "px-4 py-2 text-base",
-  };
-  const variants = {
-    primary: "nq-ink-on-solid bg-[var(--nq-copper)] border-[var(--nq-copper)]",
-    success: "nq-ink-on-solid bg-[var(--nq-green)] border-[var(--nq-green)]",
-    warning: "nq-ink-on-solid bg-[var(--nq-warn)] border-[var(--nq-warn)]",
-    danger: "nq-ink-on-solid bg-[var(--nq-red)] border-[var(--nq-red)]",
-    outline: "bg-transparent text-[var(--nq-fg)] border-[var(--nq-dim)]",
-  };
   return (
-    <span className={`${base} ${sizes[size]} border-2 ${variants[variant]} ${className}`}>
+    <span
+      className={`nq-badge nq-badge--${variant} nq-badge--${size} ${className}`.trim()}
+    >
       {children}
     </span>
   );
 }
 
+/**
+ * Chú thích khi trỏ chuột.
+ *
+ * Trước đây chỉ nghe `onMouseEnter`/`onMouseLeave` — bàn phím và màn hình cảm
+ * ứng không có cách nào mở được, nên nội dung chú thích mất hẳn với hai nhóm
+ * người dùng đó. Bản này mở được bằng tiêu điểm bàn phím (`:focus-within`) và
+ * bằng chạm, dùng kính theo Phase 4 vì đây là lớp nổi trên nội dung.
+ *
+ * `content` phải là chữ NGẮN: chú thích không phải chỗ giải thích dài.
+ */
 export function Tooltip({
   children,
   content,
@@ -1223,27 +1293,34 @@ export function Tooltip({
   position?: "top" | "bottom" | "left" | "right";
 }) {
   const [visible, setVisible] = useState(false);
-  const positions = {
-    top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
-    bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
-    left: "right-full top-1/2 -translate-y-1/2 mr-2",
-    right: "left-full top-1/2 -translate-y-1/2 ml-2",
-  };
   return (
-    <div className="relative inline-block" onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}>
+    <span
+      className="nq-tip-wrap"
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+      onFocus={() => setVisible(true)}
+      onBlur={() => setVisible(false)}
+    >
       {children}
       {visible && (
-        <div
-          className={`absolute ${positions[position]} z-10 px-2 py-1 text-xs font-mono text-[var(--nq-bg)] bg-[var(--nq-fg)] rounded whitespace-nowrap shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)]`}
-          role="tooltip"
-        >
+        <span className={`nq-tip nq-tip--${position}`} role="tooltip">
           {content}
-        </div>
+        </span>
       )}
-    </div>
+    </span>
   );
 }
 
+/**
+ * Lớp phủ chờ, chặn tương tác cho tới khi xong.
+ *
+ * Dùng kính bậc 3 (`--nq-glass-3`): đây là lớp chắn hẳn nội dung phía sau, nên
+ * phải đục nhất trong ba bậc — vừa để chữ trên nó đọc được, vừa để người dùng
+ * hiểu là nội dung bên dưới tạm thời không dùng được.
+ *
+ * `role="status"` + `aria-live` để công cụ hỗ trợ đọc thông báo; trước đây khối
+ * này chỉ là hình, người dùng trình đọc màn hình không biết trang đang bận.
+ */
 export function LoadingOverlay({
   className = "",
   message = "Đang tải...",
@@ -1252,15 +1329,21 @@ export function LoadingOverlay({
   message?: string;
 }) {
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-[var(--nq-bg)]/80 backdrop-blur-sm ${className}`}>
-      <div className="bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-8 flex flex-col items-center gap-4 shadow-[12px_12px_0px_0px_var(--nq-copper-dim)]">
+    <div className={`nq-loading-overlay ${className}`.trim()}>
+      <div className="nq-loading-overlay__panel" role="status" aria-live="polite">
         <Spinner />
-        <p className="font-mono text-sm text-[var(--nq-copper)] uppercase tracking-widest">{message}</p>
+        <p className="nq-loading-overlay__text">{message}</p>
       </div>
     </div>
   );
 }
 
+/**
+ * Tab dạng mảng `{id,label}` — cùng hệ với `TabBar` nhưng nhận dữ liệu thay vì
+ * children. Trước đây dùng `border-b-2` + `font-black uppercase tracking-widest`:
+ * vạch 2px đè lên biên khối, và chữ hoa giãn rộng làm nhãn dài gãy dòng ở màn
+ * hẹp. Đưa về cùng `.nq-tab` để hai lối gọi tab trong hệ trông y hệt nhau.
+ */
 export function Tabs({
   value,
   onChange,
@@ -1273,23 +1356,20 @@ export function Tabs({
   className?: string;
 }) {
   return (
-    <div className={`flex gap-2 border-b-2 border-[var(--nq-dim)] ${className}`}>
+    <div className={`nq-tabbar ${className}`.trim()} role="tablist">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={`flex items-center gap-2 px-4 py-3 font-black uppercase tracking-widest text-sm border-b-2 transition-colors ${
-            value === tab.id
-              ? "border-[var(--nq-copper)] text-[var(--nq-copper)]"
-              : tab.disabled
-                ? "text-[var(--nq-dim)]/40 cursor-not-allowed"
-                : "text-[var(--nq-dim)] hover:text-[var(--nq-fg)] hover:border-[var(--nq-copper)]"
-          }`}
-          onClick={() => !tab.disabled && onChange(tab.id)}
+          role="tab"
+          aria-selected={value === tab.id}
           disabled={tab.disabled}
+          className="nq-tab"
+          data-on={value === tab.id ? "1" : "0"}
+          onClick={() => !tab.disabled && onChange(tab.id)}
         >
           {tab.icon ? <Icon name={tab.icon} size={16} /> : null}
-          {tab.label}
+          <span>{tab.label}</span>
         </button>
       ))}
     </div>

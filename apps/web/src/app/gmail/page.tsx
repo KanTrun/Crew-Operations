@@ -517,8 +517,8 @@ export default function GmailPage() {
             </div>
 
             {showAddForm ? (
-              <form onSubmit={addAccount} className="mt-6 border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-6">
-                <p className="mb-4 font-mono text-sm text-[var(--nq-dim)]">
+              <form onSubmit={addAccount} className="mt-6 nq-surface-block p-6">
+                <p className="nq-meta-line mb-4">
                   Ghi danh tài khoản trước, sau đó bấm &quot;Kết nối qua Google&quot; để cấp quyền đọc và gửi mail.
                 </p>
                 <Input
@@ -596,7 +596,7 @@ export default function GmailPage() {
                       <Tooltip content={value ? "Bỏ gắn sao" : "Gắn sao"}>
                         <button
                           type="button"
-                          className="min-h-8 min-w-8 text-[var(--nq-copper)]"
+                          className="min-h-8 min-w-8 text-[var(--nq-accent)]"
                           aria-label={value ? `Bỏ gắn sao email ${row.subject}` : `Gắn sao email ${row.subject}`}
                           onClick={() => toggleMessage(row, value ? "unstar" : "star")}
                         >
@@ -784,18 +784,18 @@ export default function GmailPage() {
         <section>
           <OpsCard eyebrow={account?.email ?? "Hộp thư"} title="Đồng bộ hộp thư">
             <dl className="mb-6 grid gap-4 md:grid-cols-3">
-              <div className="border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4">
-                <dt className="font-mono text-xs uppercase tracking-widest text-[var(--nq-dim)]">Lần đồng bộ gần nhất</dt>
+              <div className="nq-surface-block p-4">
+                <dt className="nq-eyebrow">Lần đồng bộ gần nhất</dt>
                 <dd className="mt-2 text-lg font-bold">
                   {account?.sync_state?.last_sync_at ? formatRelativeTime(account.sync_state.last_sync_at) : "Chưa đồng bộ"}
                 </dd>
               </div>
-              <div className="border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4">
-                <dt className="font-mono text-xs uppercase tracking-widest text-[var(--nq-dim)]">Tổng email đã lưu</dt>
+              <div className="nq-surface-block p-4">
+                <dt className="nq-eyebrow">Tổng email đã lưu</dt>
                 <dd className="mt-2 text-lg font-bold">{account?.sync_state?.total_messages ?? 0}</dd>
               </div>
-              <div className="border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4">
-                <dt className="font-mono text-xs uppercase tracking-widest text-[var(--nq-dim)]">Email chưa đọc</dt>
+              <div className="nq-surface-block p-4">
+                <dt className="nq-eyebrow">Email chưa đọc</dt>
                 <dd className="mt-2 text-lg font-bold">{account?.sync_state?.unread_count ?? 0}</dd>
               </div>
             </dl>

@@ -49,7 +49,7 @@ export function Logo({ href = "/", className = "" }: { href?: string; className?
           cx="50"
           cy="50"
           r="45"
-          stroke="var(--nq-copper)"
+          stroke="var(--nq-accent)"
           strokeWidth="2"
           strokeDasharray="4 8"
           variants={{
@@ -84,7 +84,7 @@ export function Logo({ href = "/", className = "" }: { href?: string; className?
               transition: beat("chapter", LOGO_STEP_S),
             },
             hover: {
-              stroke: "var(--nq-copper)",
+              stroke: "var(--nq-accent)",
               scale: 1.1,
               transition: beat("settle"),
             },
@@ -104,7 +104,7 @@ export function Logo({ href = "/", className = "" }: { href?: string; className?
             },
             hover: {
               scale: 2,
-              fill: "var(--nq-copper)",
+              fill: "var(--nq-accent)",
               transition: beat("settle"),
             },
           }}
@@ -115,10 +115,10 @@ export function Logo({ href = "/", className = "" }: { href?: string; className?
             vẫn bỏ `tracking-tighter`: với "NHỊP QUÁN" viết hoa, khoảng chữ bị siết
             làm dấu mũ của Ị và dấu sắc của Á chồng vào ký tự bên cạnh. Giãn nhẹ
             theo mật độ chữ hoa của hệ (xem `--nq-t-micro` / nhãn eyebrow). */}
-        <span className="text-base font-black uppercase leading-none tracking-tight text-[var(--nq-fg)] md:text-lg">
+        <span className="text-base font-semibold uppercase leading-none tracking-tight text-[var(--nq-fg)] md:text-lg">
           NHỊP QUÁN
         </span>
-        <span className="mt-0.5 font-mono text-2xs uppercase leading-none tracking-[0.28em] text-[var(--nq-copper)]">
+        <span className="mt-0.5 font-mono text-2xs uppercase leading-none tracking-[0.28em] text-[var(--nq-accent)]">
           Digital System
         </span>
       </div>

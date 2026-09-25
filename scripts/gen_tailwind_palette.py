@@ -27,8 +27,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "apps" / "web"
 
-BG = "#0e0c0a"        # --nq-bg
-ELEV = "#1a1612"      # --nq-bg-elevated
+BG = "#070d12"        # --nq-bg (xanh đen trầm)
+ELEV = "#0e1b22"      # --nq-bg-elevated / --nq-surface
 
 
 def _srgb(c: float) -> float:
@@ -115,10 +115,18 @@ def ramp_anchored(anchors: dict[str, str]) -> dict[str, str]:
 # ── Bảng màu gốc, dẫn xuất từ token thương hiệu ──
 # Vai của từng họ lấy từ cách mã dùng thật (xem scripts/map_offtoken_colors.py):
 #   vàng  → cảnh báo, nút nền sáng + chữ tối (mã viết `bg-amber-600 text-neutral-950`)
-#   xanh  → tốt,      nút nền sáng + chữ tối (mã viết `bg-emerald-600 text-neutral-950`)
+#   xanh ngọc → tốt,  nút nền sáng + chữ tối (mã viết `bg-emerald-600 text-neutral-950`)
 #   đỏ    → lỗi,      nút nền sáng + chữ tối (mã viết `bg-red-500 text-white` → sửa lại)
-#   xanh khói → đang xử lý
+#   xanh dương → đang xử lý / thông tin
 #   trung tính → chữ phụ và nền tối
+#
+# Bảng màu 2026-09: xanh đen + ngọc (teal) + xanh dương sáng, thay hẳn bảng
+# vàng đồng ấm trước đây. Mốc neo lấy trực tiếp từ bảng token ở Phase 2:
+#   teal  #14B8A6 → #2DD4BF        (accent chính)
+#   sky   #38BDF8 → #7DD3FC        (accent phụ)
+#   green #22C55E                  (success)
+#   amber #F59E0B                  (warning — vàng cam, TÁCH khỏi gold cũ)
+#   red   #EF4444                  (danger)
 #
 # Mốc 500 được chốt SÁNG cho mọi họ vì hai lý do có thật trong mã: (1) nó làm
 # nền nút nên phải đủ sáng cho chữ tối, và (2) mã dùng rất nhiều lớp dạng
@@ -130,29 +138,32 @@ def ramp_anchored(anchors: dict[str, str]) -> dict[str, str]:
 # không còn chút sắc nào của họ màu, và mọi khối đó đọc ra như nhau. Mốc 950
 # giữ đúng độ sáng mà bảng mặc định Tailwind đang cho (đo được), đủ tối để làm
 # nền cho chữ sáng mà vẫn giữ được sắc khi pha loãng.
+#
+# Họ "trung tính" đổi từ nâu/than ấm sang xanh xám lạnh để khớp nền xanh đen.
+# amber ở đây là VÀNG CAM cảnh báo (#F59E0B), không phải vàng đồng #c4a574 —
+# mốc 500 neo đúng #F59E0B để `bg-amber-500` là cảnh báo thật, không lẫn
+# với bảng gold đã gỡ.
 AMBER = ramp_anchored({
-    "50": "#fbeecb", "300": "#deb444", "500": "#cd9b16",
-    "700": "#6d520d", "950": "#38220a",
+    "50": "#fef5e0", "300": "#fbc94e", "500": "#f59e0b",
+    "700": "#8a5a06", "950": "#3d260a",
 })
 EMERALD = ramp_anchored({
-    "50": "#dcebe1", "300": "#8aaf94", "500": "#639170",
-    "700": "#3d5c47", "950": "#0e2b1d",
+    "50": "#dcfce7", "300": "#6ee79a", "500": "#22c55e",
+    "700": "#15803d", "950": "#052e16",
 })
 ROSE = ramp_anchored({
-    "50": "#f7dcd7", "300": "#dd7d6d", "500": "#cf6150",
-    "700": "#8a3f34", "950": "#3a1013",
+    "50": "#fee2e2", "300": "#f79292", "500": "#ef4444",
+    "700": "#a52020", "950": "#601414",
 })
 INFO = ramp_anchored({
-    "50": "#dbe8f2", "300": "#88a5bf", "500": "#6b8aa8",
-    "700": "#40566a", "950": "#16283a",
+    "50": "#e0f2fe", "300": "#7dd3fc", "500": "#38bdf8",
+    "700": "#0369a1", "950": "#082f49",
 })
-# Neutral: 300–400 giữ đúng độ sáng của `--nq-ink-muted` để mọi chỗ đang dùng
-# `text-zinc-400` cho chữ phụ không mất khả năng đọc; 700–950 dốc xuống nhanh vì
-# mã dùng chúng làm NỀN tối cho chữ sáng (bản đầu để quá sáng nên
-# `bg-neutral-800` + `text-neutral-300` chỉ còn 2.17:1).
+# Neutral xanh xám lạnh (không phải nâu gỗ): 300–400 giữ đủ sáng cho chữ phụ,
+# 700–950 dốc xuống nhanh vì mã dùng chúng làm NỀN tối cho chữ sáng.
 NEUTRAL = ramp_anchored({
-    "50": "#f5ead8", "300": "#beb5a6", "400": "#aba396", "500": "#6f675e",
-    "700": "#38332e", "950": "#131110",
+    "50": "#e6edf3", "300": "#b6c4cf", "400": "#93a3b0", "500": "#5f7180",
+    "700": "#2b3843", "950": "#0d151b",
 })
 
 # Bảng mặc định Tailwind — mốc so sánh "không được kém hơn". Cố ý phủ rộng:
@@ -264,11 +275,11 @@ DARK_FILL_STEPS = {"800", "900", "950"}
 # Ngưỡng: chữ cần >= 4.5:1; hình mang thông tin (chấm trạng thái) cần >= 3:1.
 TEXT_MIN = 4.5
 AA_GRAPHIC = 3.0
-INK = "#f5ead8"       # --nq-ink, chữ sáng của hệ
+INK = "#e6edf3"       # --nq-ink, chữ sáng của hệ (xám trắng ngà, KHÔNG #fff)
 WHITE = "#ffffff"     # text-white — mã dùng cho nút nền đặc
-INK_DARK = "#14100c"  # --nq-accent-ink, chữ tối cho nút nền sáng
-AMBER_SOLID = "#d4a017"   # --nq-st-warn, nút sáng điển hình mà mã đặt ink lên
-EMERALD_SOLID = "#6f9b7a"  # --nq-st-ok
+INK_DARK = "#071014"  # --nq-accent-ink, chữ tối cho nút nền sáng
+AMBER_SOLID = "#f59e0b"   # --nq-st-warn, nút sáng điển hình mà mã đặt ink lên
+EMERALD_SOLID = "#22c55e"  # --nq-st-ok
 
 
 def composite(fg: str, alpha: float, bg: str) -> str:

@@ -331,7 +331,7 @@ export default function SkillsPage() {
               return (
                 <div
                   key={skill.skill_id}
-                  className="bg-[var(--nq-surface)] nq-surface-tile hover:border-[var(--nq-copper)] p-5 flex flex-col justify-between transition-all shadow-[var(--nq-elev-2)]"
+                  className="bg-[var(--nq-surface)] nq-surface-tile hover:border-[var(--nq-accent)] p-5 flex flex-col justify-between transition-all shadow-[var(--nq-elev-2)]"
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
@@ -347,20 +347,20 @@ export default function SkillsPage() {
                       )}
                     </div>
 
-                    <h4 className="font-black text-lg text-[var(--nq-fg)] uppercase leading-tight">
+                    <h4 className="font-semibold text-lg text-[var(--nq-fg)] uppercase leading-tight">
                       {skill.name}
                     </h4>
 
                     {/* Scripts & References info */}
                     <div className="space-y-1 text-xs">
                       <div className="flex items-center gap-1 text-[var(--nq-dim)]">
-                        <span className="font-mono font-medium text-[var(--nq-copper)]">Scripts ({skill.scripts.length}):</span>
+                        <span className="font-mono font-medium text-[var(--nq-accent)]">Scripts ({skill.scripts.length}):</span>
                         <span className="truncate">
                           {skill.scripts.length > 0 ? skill.scripts.join(", ") : "Không có"}
                         </span>
                       </div>
                       <div className="flex items-center gap-1 text-[var(--nq-dim)]">
-                        <span className="font-mono font-medium text-[var(--nq-copper)]">Tài liệu ({skill.references.length}):</span>
+                        <span className="font-mono font-medium text-[var(--nq-accent)]">Tài liệu ({skill.references.length}):</span>
                         <span className="truncate">
                           {skill.references.length > 0 ? skill.references.join(", ") : "Không có"}
                         </span>
@@ -393,7 +393,7 @@ export default function SkillsPage() {
                     <button
                       type="button"
                       onClick={() => handleViewDetail(skill.skill_id)}
-                      className="text-xs font-bold uppercase tracking-wider text-[var(--nq-copper)] hover:underline"
+                      className="text-xs font-bold uppercase tracking-wider text-[var(--nq-accent)] hover:underline"
                     >
                       Xem SKILL.md
                     </button>
@@ -419,10 +419,10 @@ export default function SkillsPage() {
       {/* Modal chi tiết SKILL.md */}
       {selectedSkillId && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="nq-surface-block bg-[var(--nq-surface-hi)] border-[var(--nq-copper)] max-w-4xl w-full max-h-[90vh] flex flex-col shadow-[var(--nq-elev-2)] overflow-hidden">
+          <div className="nq-surface-block bg-[var(--nq-surface-hi)] border-[var(--nq-accent)] max-w-4xl w-full max-h-[90vh] flex flex-col shadow-[var(--nq-elev-2)] overflow-hidden">
             <div className="p-4 border-b border-[var(--nq-line)] flex items-center justify-between bg-[var(--nq-surface)]">
               <div>
-                <h3 className="font-black text-lg text-[var(--nq-fg)] uppercase">
+                <h3 className="font-semibold text-lg text-[var(--nq-fg)] uppercase">
                   Chi tiết Kỹ năng: {selectedSkillId}
                 </h3>
                 {detailData && (

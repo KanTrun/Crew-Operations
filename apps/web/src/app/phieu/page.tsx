@@ -384,9 +384,9 @@ export default function PhieuPage() {
                       type="button"
                       disabled={busy}
                       onClick={() => startPhieu(m.ma)}
-                      className="nq-surface-row p-4 text-left transition-colors hover:border-[var(--nq-copper)] disabled:opacity-50"
+                      className="nq-surface-row p-4 text-left transition-colors hover:border-[var(--nq-accent)] disabled:opacity-50"
                     >
-                      <span className="block text-base font-black text-[var(--nq-fg)]">{m.ten || m.ma}</span>
+                      <span className="block text-base font-semibold text-[var(--nq-fg)]">{m.ten || m.ma}</span>
                       <span className="mt-1 block text-xs text-[var(--nq-dim)]">
                         {m.so_buoc ? `${m.so_buoc} bước · ` : ""}
                         {m.mo_khi ? `mở ${MO_KHI_VI[m.mo_khi] ?? m.mo_khi} · ` : ""}
@@ -502,13 +502,13 @@ export default function PhieuPage() {
           {phieu.treo && phieu.treo.length > 0 ? (
             <OpsCard eyebrow="Đã để lại" title="Việc treo lần phiếu này" count={phieu.treo.length} countLabel="việc">
               {phieu.treo.map((t) => (
-                <p key={t.id} className="border-l-2 border-[var(--nq-copper)] pl-3 py-1 text-sm">
+                <p key={t.id} className="border-l-2 border-[var(--nq-accent)] pl-3 py-1 text-sm">
                   {t.noi_dung}
                 </p>
               ))}
               <Hint>
                 Quản lý xem và xử lý những việc này trong mục Việc treo.{" "}
-                <a href="/treo" className="underline text-[var(--nq-copper)]">Mở Việc treo →</a>
+                <a href="/treo" className="underline text-[var(--nq-accent)]">Mở Việc treo →</a>
               </Hint>
             </OpsCard>
           ) : null}

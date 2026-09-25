@@ -37,7 +37,7 @@ export const HUBS: MapHub[] = [
     id: "ca",
     title: "Vòng 1 — Ca làm việc",
     tagline: "Luồng 1 ngày: vào ca → phiếu → trao đổi → bàn giao",
-    color: "#c4a574",
+    color: "#14b8a6",
     angle: 0,
     pages: [
       {
@@ -102,7 +102,7 @@ export const HUBS: MapHub[] = [
     id: "hoc",
     title: "Vòng 2 — Học",
     tagline: "Sửa → ghi nhận → ≥3 lần → đề xuất luật → chủ quán chốt",
-    color: "#d45d4a",
+    color: "#f59e0b",
     angle: 120,
     pages: [
       {
@@ -150,7 +150,7 @@ export const HUBS: MapHub[] = [
     id: "quay",
     title: "Vòng 3 — Quầy & khách hàng",
     tagline: "Sản phẩm phụ: bán hàng, kho, Page quán",
-    color: "#6f9b7a",
+    color: "#38bdf8",
     angle: 240,
     pages: [
       {

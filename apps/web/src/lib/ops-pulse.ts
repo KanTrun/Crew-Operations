@@ -138,7 +138,7 @@ export function computeOpsPulse(input: OpsPulseInput): OpsPulseModel {
 }
 
 export function severityColor(severity: OpsPulseSeverity): string {
-  if (severity === "critical") return "#d45d4a";
-  if (severity === "warn") return "#d4a017";
-  return "#c4a574";
+  if (severity === "critical") return "#ef4444";
+  if (severity === "warn") return "#f59e0b";
+  return "#14b8a6";
 }

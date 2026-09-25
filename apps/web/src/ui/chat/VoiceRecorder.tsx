@@ -118,7 +118,7 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
 
   if (isRecording) {
     return (
-      <div className="flex items-center gap-3 bg-[var(--nq-card)] border border-[var(--nq-copper)] px-3 py-1.5 rounded-full animate-pulse shadow-sm">
+      <div className="flex items-center gap-3 bg-[var(--nq-card)] border border-[var(--nq-accent)] px-3 py-1.5 rounded-full animate-pulse shadow-sm">
         <span className="w-3 h-3 rounded-full bg-[var(--nq-st-danger)] animate-ping" />
         <span className="font-mono text-xs font-bold text-[var(--nq-st-danger-ink)]">{formatTime(duration)}</span>
         <div className="flex items-center gap-1 h-4">
@@ -139,7 +139,7 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
           type="button"
           onClick={stopAndSend}
           disabled={isSending}
-          className="text-xs bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] px-3 py-1 rounded-full font-bold shadow hover:opacity-90 transition"
+          className="text-xs bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] px-3 py-1 rounded-full font-bold shadow hover:opacity-90 transition"
         >
           {isSending ? "Đang gửi…" : <><Icon name="send" size={14} /> Gửi</>}
         </button>
@@ -153,7 +153,7 @@ export function VoiceRecorder({ onSendVoice, onCancel, disabled }: VoiceRecorder
       onClick={startRecording}
       disabled={disabled}
       title="Ghi âm tin nhắn thoại"
-      className="p-2 text-[var(--nq-muted)] hover:text-[var(--nq-copper)] hover:bg-[var(--nq-card)] rounded-full transition"
+      className="p-2 text-[var(--nq-muted)] hover:text-[var(--nq-accent)] hover:bg-[var(--nq-card)] rounded-full transition"
     >
       <Icon name="microphone" size={20} />
     </button>
@@ -199,14 +199,14 @@ export function VoicePlayer({ url, durationSec }: { url: string; durationSec?: n
       <button
         type="button"
         onClick={togglePlay}
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--nq-copper)] text-[var(--nq-accent-ink)] hover:opacity-90 transition shrink-0"
+        className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--nq-accent)] text-[var(--nq-accent-ink)] hover:opacity-90 transition shrink-0"
       >
         <Icon name={isPlaying ? "pause" : "play"} size={16} />
       </button>
       <div className="flex-1 flex flex-col justify-center gap-1">
         <div className="w-full bg-black/20 dark:bg-white/20 h-1.5 rounded-full overflow-hidden">
           <div
-            className="bg-[var(--nq-copper)] h-full transition-all duration-100"
+            className="bg-[var(--nq-accent)] h-full transition-all duration-100"
             style={{ width: `${progress}%` }}
           />
         </div>
