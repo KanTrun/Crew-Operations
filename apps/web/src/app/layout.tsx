@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi" className={fontClass}>
-      <body>
+      <body suppressHydrationWarning>
         <SmoothScroll>
           <a href="#nq-content" className="nq-skip">
             Bỏ qua thanh điều hướng

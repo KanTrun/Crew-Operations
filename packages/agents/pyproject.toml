@@ -15,6 +15,13 @@ dependencies = [
     # imageio-ffmpeg: decode audio (webm/opus, mp3, ogg, wav) sang PCM16 16kHz
     # cho STT Live (gemini-3.5-transcribe-live). Cung cấp ffmpeg binary qua pip.
     "imageio-ffmpeg>=0.5",
+    # pillow + scipy: ca_agents.bg_redesign tách chủ thể ly nước khỏi nền
+    # (flood-fill màu + connected component qua scipy.ndimage) rồi composite
+    # lại bằng Pillow — giữ 100% pixel ly nước gốc, AI chỉ vẽ nền mới.
+    # Module này phục vụ chế độ "Giữ nguyên ly nước" (keep_drink) và
+    # `scripts/_diag_*` của quán để soi chất lượng tách chủ thể.
+    "pillow>=10.0",
+    "scipy>=1.11",
 ]
 
 [project.optional-dependencies]

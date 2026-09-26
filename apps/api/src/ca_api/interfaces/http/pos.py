@@ -17,6 +17,20 @@ except ImportError:
 from pathlib import Path
 from typing import Annotated, Any, Literal, cast
 
+from ca_agents import (
+    MenuImageResult,
+    MenuStyle,
+    default_styles,
+    edit_image,
+    find_style,
+    generate_background_redesign,
+    generate_menu_prompt,
+    image_edit_available,
+    normalize_slug,
+    parse_style,
+    style_options,
+)
+from ca_agents.image_gen import generate_image
 from ca_contracts import DongDon, DonQuay, MonNuoc
 from fastapi import APIRouter, File, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -33,6 +47,8 @@ from ca_api.persist import (
     don_list,
     don_update,
     ha_vai,
+    kv_get,
+    kv_set,
     list_users,
     menu_get,
     menu_list,
@@ -115,6 +131,21 @@ def _detect_image_suffix(raw: bytes) -> str | None:
     if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
         return ".webp"
     return None
+
+
+def _detect_image_mime(raw: bytes) -> str:
+    """MIME của ảnh từ magic bytes — mặc định jpeg khi không nhận diện được.
+
+    Cần khi gửi ảnh gốc lên provider image-to-image: khai sai MIME làm provider
+    từ chối ảnh dù nội dung hợp lệ.
+    """
+    suffix = _detect_image_suffix(raw)
+    return {
+        ".jpg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+    }.get(suffix or "", "image/jpeg")
 
 
 def _menu_image_path(mon_id: str) -> Path | None:
@@ -332,6 +363,397 @@ async def menu_anh_upload(
     url = f"/api/v1/menu/{mid}/anh"
     out = menu_set_hinh(mid, url)
     return {**(out or {}), "hinh_url": url, "nguon": "quan"}
+
+
+# Khoá lưu danh sách phong cách thiết kế của quán (kv store, dùng chung mọi món).
+_STYLE_KV = "menu_anh_phong_cach"
+# Khoá lưu phong cách đang chọn làm mặc định cho ảnh mới.
+_STYLE_DEFAULT_KV = "menu_anh_phong_cach_mac_dinh"
+# Giới hạn số phong cách để dropdown không phình vô hạn.
+_MAX_STYLES = 30
+
+
+def _all_styles() -> list[MenuStyle]:
+    """Phong cách của quán: bản lưu trong kv, hoặc preset mặc định nếu chưa có.
+
+    Preset không được ghi vào store — chỉ hiện ra như lựa chọn ban đầu. Khi chủ
+    quán sửa/lưu, danh sách đã sửa mới được ghi.
+    """
+    raw = kv_get(_STYLE_KV, None)
+    if not isinstance(raw, list):
+        return default_styles()
+    out: list[MenuStyle] = []
+    for item in raw:
+        parsed = parse_style(item)
+        if parsed is not None:
+            out.append(parsed)
+    return out or default_styles()
+
+
+def _style_default_slug() -> str:
+    raw = kv_get(_STYLE_DEFAULT_KV, "")
+    return str(raw) if isinstance(raw, str) else ""
+
+
+def _resolve_style(slug: str | None) -> MenuStyle | None:
+    """Tìm phong cách theo slug; None (→ prompt tự động) nếu slug trống.
+
+    Slug không tồn tại là LỖI 422 ở tầng endpoint, không âm thầm dùng mặc định —
+    nếu không, người dùng chọn "moody" mà nhận ảnh phong cách khác.
+    """
+    if not slug or not slug.strip():
+        return None
+    return find_style(_all_styles(), slug)
+
+
+class MenuStyleBody(BaseModel):
+    """Body lưu một phong cách thiết kế.
+
+    Các trường scene/lighting/palette/lens phải khớp bảng hợp lệ ở
+    ``ca_agents.menu_style`` — kiểm tra và trả 422 nếu không.
+    """
+
+    slug: str = Field(default="", max_length=48)
+    ten: str = Field(min_length=1, max_length=60)
+    mo_ta: str = Field(default="", max_length=200)
+    scene: str = Field(min_length=1, max_length=40)
+    lighting: str = Field(min_length=1, max_length=40)
+    palette: str = Field(min_length=1, max_length=40)
+    lens: str = Field(min_length=1, max_length=40)
+
+
+class MenuImagePromptBody(BaseModel):
+    """Body cho dựng prompt sinh ảnh từ tên món + phong cách.
+
+    Không cần ảnh tải lên: prompt được lắp tất định từ dữ liệu menu
+    (:func:`ca_agents.menu_prompt.build_menu_prompt`), không gọi LLM.
+    """
+    mo_ta: str = Field(default="", max_length=300)
+    aspect_ratio: Literal["1:1", "4:5", "9:16", "16:9"] = "1:1"
+    style_slug: str = Field(default="", max_length=48)
+
+
+class MenuImageGenerateBody(BaseModel):
+    """Body cho sinh ảnh thật từ prompt, tuỳ chọn kèm ẢNH THẬT người dùng tải lên.
+
+    ``mode``:
+      - ``"from_prompt"`` (mặc định): AI vẽ ảnh mới hoàn toàn từ ``prompt_en``.
+      - ``"edit_photo"``: AI **sửa ảnh thật** trong ``original_base64`` theo
+        ``prompt_en`` (image-to-image). Ảnh gốc là nguồn, không chỉ tham khảo —
+        dùng khi quán đã chụp ly nước và muốn AI dàn dựng lại thành ảnh quảng cáo.
+      - ``"keep_drink"``: tách ly nước (100% pixel gốc) rồi AI vẽ nền mới và ghép
+        lại bằng Pillow. Không cần provider image-to-image.
+
+    ``prompt_en`` trống thì server tự dựng từ tên món + ``style_slug``.
+    """
+    prompt_en: str = Field(default="", max_length=2000)
+    aspect_ratio: Literal["1:1", "4:5", "9:16", "16:9"] = "1:1"
+    seed: int | None = Field(default=None, ge=0, le=2_147_483_647)
+    save_as_menu_image: bool = False
+    style_slug: str = Field(default="", max_length=48)
+    mode: Literal["from_prompt", "edit_photo", "keep_drink"] = "from_prompt"
+    original_base64: str | None = Field(default=None, max_length=8_000_000)
+
+
+def _menu_image_result_to_response(result: MenuImageResult, mon_id: str) -> dict[str, Any]:
+    """Chuyển MenuImageResult thành response dict."""
+    base: dict[str, Any] = {
+        "ok": result.ok,
+        "provider": result.provider,
+        "mon_id": mon_id,
+    }
+    if not result.ok:
+        base["error"] = result.error
+        return base
+    base["prompt_en"] = result.prompt_en
+    base["prompt_vi"] = result.prompt_vi
+    return base
+
+
+@router.post("/api/v1/menu/{mon_id}/anh/prompt")
+def menu_anh_prompt(
+    mon_id: str,
+    body: MenuImagePromptBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Dựng prompt sinh ảnh cho một món — tất định, không gọi AI.
+
+    Trả về ngay (không mạng, không chờ) nên UI hiện được prompt để người dùng
+    đọc/sửa trước khi bấm tạo ảnh.
+    """
+    _require_chu_quan(authorization)
+    mid = mon_id.strip().lower()
+    if not _MON_ID.fullmatch(mid):
+        raise HTTPException(status_code=422, detail="ma_mon_khong_hop_le")
+    mon = menu_get(mid)
+    if not mon:
+        raise HTTPException(status_code=404, detail="mon_khong_co")
+
+    # Kiểm tra slug TRƯỚC khi dựng prompt: nếu để sau, người dùng gõ sai slug sẽ
+    # nhận prompt của phong cách mặc định kèm lỗi 422 — khó hiểu và tốn công.
+    style_slug = body.style_slug.strip()
+    if style_slug and _resolve_style(style_slug) is None:
+        raise HTTPException(status_code=422, detail="phong_cach_khong_ton_tai")
+
+    result = generate_menu_prompt(
+        str(mon.get("ten") or ""),
+        mo_ta=body.mo_ta,
+        style=_resolve_style(style_slug or _style_default_slug()),
+        aspect_ratio=body.aspect_ratio,
+    )
+    return _menu_image_result_to_response(result, mid)
+
+
+@router.get("/api/v1/menu/anh/kha-dung")
+def menu_anh_kha_dung(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    """Chế độ tạo ảnh nào đang chạy được — để UI khoá lựa chọn không khả thi.
+
+    Trả về ngay (chỉ đọc biến môi trường, không gọi mạng) nên UI gọi được lúc mở
+    form. Nhờ vậy người dùng không chọn xong mới biết là thiếu khoá.
+    """
+    _require_chu_quan(authorization)
+    sua_duoc, ly_do = image_edit_available()
+    return {
+        "che_do": {
+            "from_prompt": {"kha_dung": True, "ly_do": ""},
+            "keep_drink": {"kha_dung": True, "ly_do": ""},
+            "edit_photo": {"kha_dung": sua_duoc, "ly_do": ly_do},
+        },
+        "nguon": "quan",
+    }
+
+
+@router.get("/api/v1/menu/anh/phong-cach")
+def menu_phong_cach_list(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    """Danh sách phong cách thiết kế + bảng giá trị hợp lệ cho UI.
+
+    Trả kèm ``tuy_chon`` (scene/lighting/palette/lens) để form "tạo phong cách"
+    dựng dropdown từ MỘT nguồn sự thật, không hard-code ở web.
+    """
+    _require_chu_quan(authorization)
+    styles = _all_styles()
+    return {
+        "items": [s.to_dict() for s in styles],
+        "mac_dinh": _style_default_slug() or (styles[0].slug if styles else ""),
+        "tuy_chon": style_options(),
+        "nguon": "quan",
+        "ghi": "Phong cách áp cho toàn bộ ảnh quảng cáo của quán.",
+    }
+
+
+@router.put("/api/v1/menu/anh/phong-cach")
+def menu_phong_cach_luu(
+    body: MenuStyleBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Tạo hoặc cập nhật một phong cách thiết kế (upsert theo slug).
+
+    Kiểm tra giá trị theo bảng hợp lệ trước khi lưu: sai một trường → 422 kèm
+    danh sách trường sai, KHÔNG âm thầm thay bằng mặc định (nếu thay, ảnh sinh ra
+    sẽ khác phong cách người dùng chọn mà không ai biết).
+    """
+    role = _require_chu_quan(authorization)
+    slug = normalize_slug(body.slug or body.ten)
+    if slug is None:
+        raise HTTPException(status_code=422, detail="ten_phong_cach_khong_hop_le")
+    parsed = parse_style({**body.model_dump(), "slug": slug})
+    if parsed is None:
+        allowed = style_options()
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "loi": "gia_tri_khong_hop_le",
+                "scene": sorted(allowed["scene"]),
+                "lighting": sorted(allowed["lighting"]),
+                "palette": sorted(allowed["palette"]),
+                "lens": sorted(allowed["lens"]),
+            },
+        )
+
+    styles = [s for s in _all_styles() if s.slug != parsed.slug]
+    styles.append(parsed)
+    if len(styles) > _MAX_STYLES:
+        raise HTTPException(status_code=409, detail="qua_nhieu_phong_cach")
+    kv_set(_STYLE_KV, [s.to_dict() for s in styles])
+    if not _style_default_slug():
+        kv_set(_STYLE_DEFAULT_KV, parsed.slug)
+    _audit(role, "menu.phong_cach.luu", {"slug": parsed.slug, "ten": parsed.ten})
+    return {"ok": True, "item": parsed.to_dict(), "nguon": "quan"}
+
+
+@router.delete("/api/v1/menu/anh/phong-cach/{slug}")
+def menu_phong_cach_xoa(
+    slug: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Xoá một phong cách. Không cho xoá phong cách cuối cùng."""
+    role = _require_chu_quan(authorization)
+    target = normalize_slug(slug)
+    if target is None:
+        raise HTTPException(status_code=422, detail="ma_phong_cach_khong_hop_le")
+    styles = _all_styles()
+    kept = [s for s in styles if s.slug != target]
+    if len(kept) == len(styles):
+        raise HTTPException(status_code=404, detail="khong_tim_thay_phong_cach")
+    if not kept:
+        raise HTTPException(status_code=409, detail="can_it_nhat_mot_phong_cach")
+    kv_set(_STYLE_KV, [s.to_dict() for s in kept])
+    if _style_default_slug() == target:
+        kv_set(_STYLE_DEFAULT_KV, kept[0].slug)
+    _audit(role, "menu.phong_cach.xoa", {"slug": target})
+    return {"ok": True, "con_lai": len(kept), "nguon": "quan"}
+
+
+@router.post("/api/v1/menu/anh/phong-cach/{slug}/mac-dinh")
+def menu_phong_cach_mac_dinh(
+    slug: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Chọn phong cách mặc định cho ảnh mới — "giữ phong cách này cho các ly khác"."""
+    role = _require_chu_quan(authorization)
+    target = normalize_slug(slug)
+    if target is None:
+        raise HTTPException(status_code=422, detail="ma_phong_cach_khong_hop_le")
+    if find_style(_all_styles(), target) is None:
+        raise HTTPException(status_code=404, detail="khong_tim_thay_phong_cach")
+    kv_set(_STYLE_DEFAULT_KV, target)
+    _audit(role, "menu.phong_cach.mac_dinh", {"slug": target})
+    return {"ok": True, "mac_dinh": target, "nguon": "quan"}
+
+
+@router.post("/api/v1/menu/{mon_id}/anh/generate")
+def menu_anh_generate(
+    mon_id: str,
+    body: MenuImageGenerateBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Sinh ảnh quảng cáo thật từ prompt.
+
+    Trả về ảnh JPEG/PNG base64. Nếu để trống ``prompt_en``, server tự dựng prompt
+    tất định từ tên món + phong cách (không cần gọi AI để viết prompt).
+    Nếu ``save_as_menu_image=true`` thì lưu luôn làm ảnh đại diện món.
+    """
+    import base64
+
+    _require_chu_quan(authorization)
+    mid = mon_id.strip().lower()
+    if not _MON_ID.fullmatch(mid):
+        raise HTTPException(status_code=422, detail="ma_mon_khong_hop_le")
+    mon = menu_get(mid)
+    if not mon:
+        raise HTTPException(status_code=404, detail="mon_khong_co")
+
+    seed = body.seed
+    if seed is None:
+        seed = uuid.uuid4().int % 2_147_483_647
+
+    # Phong cách: slug gửi lên → phong cách mặc định của quán → None (prompt mặc định).
+    style_slug = body.style_slug.strip() or _style_default_slug()
+    style = _resolve_style(style_slug)
+    if body.style_slug.strip() and style is None:
+        raise HTTPException(status_code=422, detail="phong_cach_khong_ton_tai")
+
+    # Prompt: ưu tiên prompt người dùng gửi (đã xem/sửa ở UI); trống thì dựng lại
+    # tất định từ tên món + phong cách — UI chỉ cần gửi style_slug là có ảnh.
+    full_prompt = body.prompt_en.strip()
+    if not full_prompt:
+        built = generate_menu_prompt(
+            str(mon.get("ten") or ""),
+            style=style,
+            aspect_ratio=body.aspect_ratio,
+        )
+        if not built.ok:
+            raise HTTPException(status_code=422, detail=built.error)
+        full_prompt = built.prompt_en
+
+    # Ảnh gốc: chỉ giải mã khi chế độ cần — tránh tốn CPU và tránh nhận ảnh hỏng
+    # ở chế độ không dùng tới.
+    original_bytes: bytes | None = None
+    if body.mode in {"edit_photo", "keep_drink"}:
+        if not body.original_base64:
+            raise HTTPException(status_code=422, detail="can_anh_goc")
+        b64 = body.original_base64
+        if b64.startswith("data:"):
+            # Bỏ tiền tố data-URL: "data:image/jpeg;base64,...."
+            _, _, b64 = b64.partition(",")
+        try:
+            original_bytes = base64.b64decode(b64, validate=True)
+        except Exception:  # noqa: BLE001 — base64 hỏng → 422 rõ ràng
+            raise HTTPException(status_code=422, detail="anh_goc_khong_giai_ma_duoc") from None
+        if not original_bytes:
+            raise HTTPException(status_code=422, detail="anh_goc_trong")
+
+    if body.mode == "edit_photo":
+        # AI sửa chính ảnh thật người dùng gửi (image-to-image).
+        assert original_bytes is not None  # đã chặn ở trên
+        # Chặn TRƯỚC khi gọi provider: nếu chưa có khoá nào thì mọi lượt gọi đều
+        # hỏng, báo ngay kèm cách khắc phục thay vì để người dùng chờ 30 giây rồi
+        # nhận lỗi khó hiểu.
+        kha_dung, ly_do = image_edit_available()
+        if not kha_dung:
+            raise HTTPException(status_code=422, detail=ly_do)
+        result = edit_image(
+            original_bytes,
+            full_prompt,
+            image_mime=_detect_image_mime(original_bytes),
+            timeout_s=180.0,
+            image_filename=f"{mid}{_detect_image_suffix(original_bytes) or '.jpg'}",
+        )
+    elif body.mode == "keep_drink":
+        # Giữ 100% pixel ly nước gốc; AI chỉ vẽ nền mới rồi ghép bằng Pillow.
+        assert original_bytes is not None  # đã chặn ở trên
+        result = generate_background_redesign(
+            original_bytes,
+            full_prompt,
+            original_mime=_detect_image_mime(original_bytes),
+            aspect_ratio=body.aspect_ratio,
+            seed=seed,
+            style=style,
+        )
+    else:
+        result = generate_image(
+            full_prompt,
+            aspect_ratio=body.aspect_ratio,
+            seed=seed,
+        )
+    if not result.ok:
+        return {
+            "ok": False,
+            "error": result.error,
+            "provider": result.provider,
+            "model": result.model,
+            "mon_id": mid,
+            "ghi": result.text or None,
+        }
+
+    payload: dict[str, Any] = {
+        "ok": True,
+        "provider": result.provider,
+        "model": result.model,
+        "mon_id": mid,
+        "seed": seed,
+        "aspect_ratio": body.aspect_ratio,
+        "mode": body.mode,
+        "prompt_en": full_prompt,
+        "image_mime": result.image_mime,
+        "image_base64": base64.b64encode(result.image_bytes).decode("ascii"),
+        "phong_cach": style.slug if style is not None else "",
+        "phong_cach_ten": style.ten if style is not None else "",
+    }
+
+    if body.save_as_menu_image:
+        suffix = _detect_image_suffix(result.image_bytes) or ".jpg"
+        dest = _menu_image_dir() / f"{mid}{suffix}"
+        for old in _menu_image_dir().glob(f"{mid}.*"):
+            if old != dest:
+                old.unlink(missing_ok=True)
+        dest.write_bytes(result.image_bytes)
+        url = f"/api/v1/menu/{mid}/anh"
+        menu_set_hinh(mid, url)
+        payload["hinh_url"] = url
+        payload["saved"] = True
+
+    return payload
 
 
 @router.get("/api/v1/quay/don")
