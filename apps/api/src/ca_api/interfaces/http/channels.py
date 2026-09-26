@@ -295,6 +295,16 @@ def _enqueue_inbox(
         kv_set("inbox_rang_buoc", [item])
     else:
         kv_mutate("inbox_rang_buoc", mut, [])
+
+    # AI tự động duyệt/từ chối ngay — trang Hộp thư ràng buộc chỉ còn để xem.
+    # Lỗi ở đây không được chặn việc ghi nhận tin nhắn từ kênh.
+    try:
+        from ca_api.services.inbox_autopilot import auto_process
+
+        auto_process()
+    except Exception:
+        pass
+
     return item
 
 

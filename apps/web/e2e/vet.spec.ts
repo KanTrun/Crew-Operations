@@ -33,8 +33,9 @@ test.describe("Vết hệ thống (sổ vết) — truy vết người ↔ agent
   });
 
   test("3 — vết do agent hiển thị badge agent + người điều khiển", async ({ page }) => {
-    // Chặn API để trả về một vết agent giả lập, kiểm tra UI render đúng
-    await page.route("**/api/v1/audit", async (route) => {
+    // Match cả `/api/v1/audit?limit=500` — glob `**/api/v1/audit` không khớp query
+    // vì `?` trong Playwright glob là wildcard 1 ký tự, không phải bắt đầu query string.
+    await page.route(/\/api\/v1\/audit(\?|$)/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -63,11 +64,10 @@ test.describe("Vết hệ thống (sổ vết) — truy vết người ↔ agent
       });
     });
     await page.goto("/vet");
-    // Tên agent hiển thị (actorLabelEx → "AG-COPILOT") — nhắm vào <strong> badge,
-    // tránh match trúng <option> hidden trong <select> filter.
-    await expect(page.locator("strong", { hasText: "AG-COPILOT" }).first()).toBeVisible({ timeout: 15_000 });
-    // Badge agent hiển thị nhãn "AGENT"
-    await expect(page.getByText("AGENT").first()).toBeVisible();
+    // Badge agent (redesign) — chờ mock gắn vào trước khi assert tên.
+    await expect(page.getByText("AI TỰ ĐỘNG").first()).toBeVisible({ timeout: 15_000 });
+    // Tên agent (actorLabelEx → "AG-COPILOT") — nhắm <strong>, tránh <option> filter.
+    await expect(page.locator("strong", { hasText: "AG-COPILOT" }).first()).toBeVisible();
     // Người điều khiển hiển thị ("· do ...")
     await expect(page.getByText(/· do /)).toBeVisible();
   });

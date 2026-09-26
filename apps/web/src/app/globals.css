@@ -116,36 +116,45 @@
 @tailwind utilities;
 
 :root {
-  /* ── Bảng màu xanh đen + ngọc ──
-     Bảng trước đây là tông ấm (nâu than + vàng đồng #c4a574): mọi bề mặt cùng
-     độ ấm nên mắt không phân được lớp nào nằm trên lớp nào, và màu thương hiệu
-     trùng với màu cảnh báo — một con số quan trọng và một cảnh báo quá hạn đọc
-     ra cùng một giọng. Bảng này tách ba trục: nền lạnh có chiều sâu, accent
-     ngọc cho "thuộc về quán / bấm được", màu trạng thái riêng cho "đang có
-     chuyện gì" — không màu nào làm hai việc.
-     Nền KHÔNG phẳng: `--nq-bg` là mốc đáy, còn chiều sâu dựng bằng gradient
-     rất nhẹ ở `body` (xem rule bên dưới) chứ không bằng một màu đặc phủ trang. */
-  --nq-bg: #070d12;                /* xanh đen trầm — mốc đáy của nền */
-  --nq-bg-elevated: #0b141b;       /* nền nâng — vùng chuyển giữa nền và bề mặt */
-  --nq-surface: #0e1b22;           /* bề mặt panel/card — tối hơn nền 1 bậc */
-  --nq-surface-2: #101f27;         /* bề mặt lớp trên (ô trong panel, hàng hover) */
-  --nq-glass: rgba(14, 27, 34, 0.62);  /* nền kính — xem quy tắc kính ở Phase 4 */
-  --nq-ink: #e6edf3;               /* chữ chính — xám trắng ngà, KHÔNG trắng thuần */
-  --nq-ink-muted: rgba(230, 237, 243, 0.62);
-  --nq-line: rgba(230, 237, 243, 0.12);
-  --nq-line-strong: rgba(45, 212, 191, 0.32);
-  --nq-accent: #14b8a6;            /* ngọc — điểm nhấn quan trọng */
-  --nq-accent-hover: #2dd4bf;
-  --nq-accent-soft: rgba(20, 184, 166, 0.16);
-  --nq-accent-glow: rgba(45, 212, 191, 0.24);
-  --nq-accent-dim: rgba(20, 184, 166, 0.42);
-  --nq-accent-ink: #071014;        /* chữ tối đặt trên nền accent sáng */
-  --nq-accent-2: #38bdf8;          /* accent phụ — thông tin / liên kết */
-  --nq-accent-2-soft: rgba(56, 189, 248, 0.14);
+  /* ── Bảng màu xanh đen + vàng gold (enterprise / Awwwards) ──
+     Ba trục: nền lạnh có chiều sâu, accent gold tiết chế cho "bấm được /
+     thuộc về quán", màu trạng thái riêng cho "đang có chuyện gì".
+     Nền KHÔNG phẳng: `--nq-bg` là mốc đáy; chiều sâu = gradient body + grain. */
+  --nq-bg: #070d12;                /* xanh đen trầm — mốc đáy */
+  --nq-bg-elevated: #0b141b;       /* vùng chuyển giữa nền và bề mặt */
+  --nq-surface: #0e1b22;           /* panel/card */
+  --nq-surface-2: #101f27;         /* ô trong panel, hàng hover */
+  --nq-surface-3: #142833;         /* overlay nội bộ / toolbar nổi trong panel */
+  --nq-panel: var(--nq-surface);   /* alias — mã cũ dùng --nq-panel */
+  --nq-glass: rgba(14, 27, 34, 0.62);
+  --nq-ink: #e8eef4;               /* chữ chính — nâng nhẹ để AA trên surface */
+  --nq-ink-muted: rgba(232, 238, 244, 0.64);
+  --nq-line: rgba(232, 238, 244, 0.11);
+  --nq-border: var(--nq-line);     /* alias — mã cũ dùng --nq-border */
+  --nq-line-strong: rgba(196, 162, 58, 0.38); /* gold hairline — bớt chói */
+  /* Thang gold 50–900: CTA dùng 500, viền/chữ nhỏ dùng 300–400, hover 400 */
+  --nq-accent-50: #faf6e8;
+  --nq-accent-100: #f3e9c4;
+  --nq-accent-200: #e8d48a;
+  --nq-accent-300: #dcc56a;
+  --nq-accent-400: #c9a84a;
+  --nq-accent-500: #b8942f;        /* gold đậm hơn — CTA bớt chói hơn #d4af37 cũ */
+  --nq-accent-600: #9a7a26;
+  --nq-accent-700: #7a601e;
+  --nq-accent-800: #574416;
+  --nq-accent-900: #3a2e0f;
+  --nq-accent: var(--nq-accent-500);
+  --nq-accent-hover: var(--nq-accent-300);
+  --nq-accent-soft: rgba(184, 148, 47, 0.14);
+  --nq-accent-glow: rgba(184, 148, 47, 0.22);
+  --nq-accent-dim: rgba(184, 148, 47, 0.38);
+  --nq-accent-ink: #1a1408;
+  --nq-accent-2: var(--nq-accent-200);
+  --nq-accent-2-soft: rgba(232, 212, 138, 0.12);
   --nq-danger: #ef4444;
   --nq-ok: #22c55e;
   --nq-warn: #f59e0b;
-  --nq-focus: #5eead4;             /* vòng tiêu điểm — phải thấy rõ trên nền kính */
+  --nq-focus: #e8d48a;             /* vòng tiêu điểm — phải thấy rõ trên nền kính */
   /* Alias dùng bởi redesign Awwwards (class Tailwind arbitrary values) */
   --nq-fg: var(--nq-ink);
   --nq-dim: var(--nq-ink-muted);
@@ -248,7 +257,7 @@
   --nq-st-ok-soft: rgba(34, 197, 94, 0.14);
   --nq-st-warn-soft: rgba(245, 158, 11, 0.14);
   --nq-st-danger-soft: rgba(239, 68, 68, 0.14);
-  --nq-st-info-soft: rgba(56, 189, 248, 0.14);
+  --nq-st-info-soft: rgba(232, 212, 138, 0.14);
 
   /* Bản DÙNG LÀM CHỮ của bốn màu trạng thái.
      `--nq-st-*` được chọn cho nét vẽ/viền trên nền sáng, nên khi làm chữ trên
@@ -259,32 +268,32 @@
   --nq-st-ok-ink: #6ee7a0;
   --nq-st-warn-ink: #fbbf5c;
   --nq-st-danger-ink: #fca5a5;
-  --nq-st-info-ink: #7dd3fc;
+  --nq-st-info-ink: #e8d48a;
   /* Bản chữ ĐẬM hơn của cảnh báo, cho chữ vàng đặt trên NỀN VÀNG (chip cảnh báo).
      `--nq-st-warn-ink` (#fbbf5c) trên `--nq-st-warn` (#f59e0b) chỉ đạt 1.28:1;
      bản này đạt 5.4:1. Cùng một họ, hai nền khác nhau thì cần hai độ sáng. */
   --nq-st-warn-ink-strong: #4a2c02;
 
-  /* Chữ đặt trên NỀN ĐỎ ĐẶC của nút nguy hiểm. `--nq-accent-ink` (gần đen) trên
-     #b02a2a chỉ đạt 1.75:1 — nền tối cần chữ sáng. #fff5f5 trên #b02a2a = 7.9:1. */
+  /* Chữ đặt trên NỀN ĐỎ ĐẶC của nút nguy hiểm. `--nq-accent-ink` (nâu đen ấm)
+     trên #b02a2a chỉ đạt ~1.9:1 — nền tối cần chữ sáng. #fff5f5 trên #b02a2a = 7.9:1. */
   --nq-ink-on-danger: #fff5f5;
 
   /* Bản DÙNG LÀM CHỮ NHỎ của accent.
-     `--nq-accent` (#14b8a6) là màu THƯƠNG HIỆU, đúng khi làm nền/nút/viền. Khi
-     làm chữ cỡ nhỏ trên nền tối thì chỉ đạt 5.2:1 — đủ nhưng sát ngưỡng, và cỡ
-     0.65rem thì không được hưởng ngưỡng "chữ lớn". Bản này đạt trên 8:1 trên cả
-     nền trang lẫn nền thẻ, vẫn đúng sắc ngọc.
+     `--nq-accent` (#d4af37) là màu THƯƠNG HIỆU, đúng khi làm nền/nút/viền. Khi
+     làm chữ cỡ nhỏ trên nền tối thì đạt 9.29:1 — đủ, nhưng sắc gold đậm ở cỡ
+     0.65rem vẫn hơi nặng mắt. Bản này (vàng kem nhạt, đúng sắc trong ảnh tham
+     chiếu) đạt 13.22:1 trên nền trang, vẫn cùng một họ vàng.
      Quy ước: NỀN/NÚT/VIỀN dùng `--nq-accent`; CHỮ NHỎ dùng `--nq-accent-ink-text`. */
-  --nq-accent-ink-text: #5eead4;
+  --nq-accent-ink-text: #e8d48a;
 
   /* Đường biên của thành phần BẤM ĐƯỢC (ô nhập, select, textarea).
      `--nq-line-strong` là vạch kẻ trang trí, không phải biên điều khiển: đo ra
      1.99:1 trên nền trang và 1.65:1 trên chính nền ô nhập — dưới ngưỡng 3:1
      của WCAG 1.4.11. Người vận hành đứng quầy dưới đèn vàng, nhìn máy tính
-     bảng, không thấy được ô nhập bắt đầu từ đâu. Giá trị này vượt 3:1 trên cả
-     nền trang lẫn nền ô nhập — vẫn trong họ ngọc, không phải xám trung tính.
+     bảng, không thấy được ô nhập bắt đầu từ đâu. Giá trị này đạt 5.86:1 trên
+     nền ô nhập (vượt 3:1) — vẫn trong họ vàng, không phải xám trung tính.
      Đừng hạ thấp mà không đo lại (`scripts/check_contrast.py`). */
-  --nq-line-control: #3d6f6a;
+  --nq-line-control: #8a7228;
 
   /* ── Thang khoảng cách ──
      Trước đây mỗi khối tự chọn 0.35 / 0.45 / 0.65 / 0.85 / 1.15rem, nên hai
@@ -305,31 +314,28 @@
   --nq-font-body: var(--nq-font-body-var), "IBM Plex Sans", system-ui, -apple-system,
     "Segoe UI", Roboto, sans-serif, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji";
   --nq-font-mono: var(--nq-font-mono-var), ui-monospace, monospace;
-  /* ── Ngôn ngữ chuyển động ──
-     Nhịp của quán là nhịp giữa hai lượt khách: mọi thứ phải xong trước khi
-     người vận hành kịp rời mắt sang bàn bên cạnh. Vì vậy chuyển động ở đây
-     KHÔNG dùng spring mặc định của thư viện (nảy, trễ, có quán tính) — dùng
-     đường cong giảm tốc dứt khoát, và không hiệu ứng nào được chặn thao tác.
-
-     Bốn nhịp, đặt tên theo việc nó phục vụ — không theo con số:
-       beat-ack     phản hồi cú bấm (lún, đổi màu). Phải xong dưới 200ms, nhanh
-                    hơn cảm nhận "máy chưa nhận".
-       beat-settle  trạng thái đổi tại chỗ (hover, mở chip, gạt tab).
-       beat-focus   đưa mắt tới một khối mới xuất hiện (bảng tải xong, kết quả mới).
-       beat-chapter chuyển "chương" — chỉ dùng ở mặt tiền (landing/login/hub).
-     `--nq-ease-out` là đường cong duy nhất cho chuyển động vào; `--nq-ease-inout`
-     chỉ dùng khi phần tử đi qua lại giữa hai vị trí đều có nghĩa. */
-  --nq-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  /* ── Ngôn ngữ chuyển động (Awwwards / ops) ──
+     Chỉ animate transform + opacity. Ops ≤ 320ms; showcase được dài hơn.
+     Preset JS nằm ở src/ui/motion/presets.ts — phải khớp các beat dưới đây. */
+  --nq-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --nq-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
-  --nq-beat-ack: 140ms;
-  --nq-beat-settle: 220ms;
-  --nq-beat-focus: 420ms;
-  --nq-beat-chapter: 720ms;
-  /* Tương thích: mã cũ còn tham chiếu --nq-dur-t0/t1/t2. Trỏ về cùng thang,
-     đừng thêm giá trị mới. */
+  --nq-beat-ack: 120ms;
+  --nq-beat-settle: 200ms;
+  --nq-beat-focus: 320ms;
+  --nq-beat-chapter: 560ms;
   --nq-dur-t0: var(--nq-beat-settle);
   --nq-dur-t1: var(--nq-beat-focus);
   --nq-dur-t2: var(--nq-beat-chapter);
+
+  /* ── Thang z-index (một nguồn — không z-[...] rời trong TSX) ── */
+  --nq-z-base: 1;
+  --nq-z-sticky: 20;
+  --nq-z-header: 40;
+  --nq-z-dropdown: 50;
+  --nq-z-drawer: 200;
+  --nq-z-modal: 400;
+  --nq-z-toast: 500;
+  --nq-z-tour: 600;
   /* Tên cũ `--nq-ease-spring` giữ lại cho mã đang tham chiếu, nhưng giá trị đã
      bỏ độ nảy: mọi bề mặt đang dùng nó là thẻ/bảng số liệu, nơi độ nảy khiến
      con số rung khi người dùng chỉ đang rê chuột qua. */
@@ -370,7 +376,7 @@
      mô phỏng ánh sáng bắt vào cạnh vật liệu. Đây là thứ làm bề mặt đọc ra
      "có cạnh" thay vì chỉ là một mảng mờ; dùng CHUNG với --nq-inner-hi, không
      thay thế nó. */
-  --nq-specular: rgba(125, 211, 252, 0.22);
+  --nq-specular: rgba(232, 212, 138, 0.18);
   --nq-frontier: inset 0 1px 0 var(--nq-specular);
   /* Quầng sáng có chủ đích cho lớp nổi — rất nhẹ, chỉ để tách khỏi nền tối
      cùng tông, KHÔNG phải hiệu ứng trang trí. */
@@ -431,7 +437,7 @@ button,
   khi hover:bg-transparent, gần như vô hình trên nền trang.
   Specificity a.nq-ink-on-solid thắng `a`; hover:text-* (hai class) thắng lúc hover.
 
-  Không phải nền solid nào cũng cần chữ TỐI. Nền accent ngọc (#14b8a6) sáng nên
+  Không phải nền solid nào cũng cần chữ TỐI. Nền accent vàng gold (#d4af37) sáng nên
   chữ tối là đúng; nhưng nền đỏ nguy hiểm (#b02a2a) TỐI nên chữ tối trên đó chỉ
   đạt 1.75:1. Vì vậy mặc định là chữ tối, và mỗi họ nền TỐI tự khai lại chữ SÁNG
   bằng `--nq-ink-on-*-solid` bên dưới. Đây là lỗi đo được thật, không phải phòng xa.
@@ -499,16 +505,18 @@ body::before {
   pointer-events: none;
   z-index: -2;
   /* Chiều sâu của nền — KHÔNG một màu đặc phủ toàn trang.
-     Hai quầng sáng rất nhẹ (ngọc ở góc trên trái, xanh dương ở góc dưới phải)
+     Hai quầng sáng rất nhẹ (vàng gold ở góc trên trái, kem nhạt ở góc dưới phải)
      cộng một gradient dọc. Tác dụng: mắt đọc ra nền có hướng sáng, nên khối nổi
      ở bất kỳ vị trí nào cũng có chỗ "đứng"; nền phẳng một màu thì mọi bề mặt
      cùng tông đều dính vào nhau. Đặt ở MỘT chỗ cho mọi trang — không lặp lại
      quầng sáng ở từng page, vì hai nguồn sáng lệch nhau đọc ra như vết bẩn.
      Cường độ phải rất thấp (0.06–0.10): cao hơn thì vùng sáng chạy qua chữ và
-     làm giảm tương phản ở đúng những chỗ `scripts/contrast.mjs` đo được. */
+     làm giảm tương phản ở đúng những chỗ `scripts/contrast.mjs` đo được.
+     NỀN VẪN LÀ XANH: chỉ quầng accent đổi sang vàng cho khớp màu thương hiệu,
+     còn `--nq-bg`/`--nq-surface*` và gradient dọc giữ nguyên tông xanh. */
   background:
-    radial-gradient(ellipse 80% 50% at 15% -5%, rgba(20, 184, 166, 0.09) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(56, 189, 248, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 50% at 15% -5%, rgba(212, 175, 55, 0.09) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(232, 212, 138, 0.06) 0%, transparent 50%),
     linear-gradient(180deg, var(--nq-banner-from) 0%, var(--nq-bg) 42%);
 }
 
@@ -1338,7 +1346,7 @@ a:focus-visible {
 .nq-confirm-overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: var(--nq-z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2136,13 +2144,13 @@ a:focus-visible {
 
 /* Chat surfaces keep long messages readable without putting the accent color behind text. */
 .nq-chat {
-  /* Bong bóng của mình dùng nền ngọc ĐẶC (không phải accent mờ): tin nhắn là
+  /* Bong bóng của mình dùng nền vàng gold ĐẶC (không phải accent mờ): tin nhắn là
      nội dung cần đọc, không phải trang trí. Chữ trên đó lấy `--nq-accent-ink`
      nên tương phản > 8:1, không phụ thuộc nền trang. */
   --nq-chat-stream: #0a1218;
   --nq-chat-composer: #0e1b22;
   --nq-chat-incoming: #101f27;
-  --nq-chat-outgoing: #14b8a6;
+  --nq-chat-outgoing: var(--nq-accent);
   --nq-chat-reply: #14232b;
   --nq-chat-text: #e6edf3;
   --nq-chat-muted: rgba(230, 237, 243, 0.62);
@@ -2168,7 +2176,7 @@ a:focus-visible {
 
 .nq-chat-bubble--outgoing {
   background: var(--nq-chat-outgoing);
-  border-color: rgba(20, 184, 166, 0.28);
+  border-color: var(--nq-accent-dim);
 }
 
 .nq-chat-message__content {
@@ -2764,8 +2772,8 @@ a:focus-visible {
       105deg,
       transparent,
       transparent 48px,
-      rgba(20, 184, 166, 0.03) 48px,
-      rgba(20, 184, 166, 0.03) 49px
+      color-mix(in srgb, var(--nq-accent) 3%, transparent) 48px,
+      color-mix(in srgb, var(--nq-accent) 3%, transparent) 49px
     );
   pointer-events: none;
   /* KHÔNG còn `animation: nq-glow-pulse ... infinite`. Quầng sáng này là nền tĩnh:
@@ -4218,7 +4226,7 @@ a:focus-visible {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background: radial-gradient(115% 52% at 50% -9%, rgba(20, 184, 166, 0.14) 0%, transparent 61%);
+  background: radial-gradient(115% 52% at 50% -9%, var(--nq-accent-glow) 0%, transparent 61%);
   opacity: 0.9;
 }
 
@@ -4814,6 +4822,226 @@ a:focus-visible {
     box-shadow: var(--nq-elev-1);
   }
 
+  /* Ô giờ 24h hai số — xem `TimeField` trong ui/kit.tsx để biết vì sao thay
+     `<input type="time">`: ô native của trình duyệt chỉ cho nhập từng phần và
+     tự chuẩn hoá, nên gõ "23" vào giờ bị nuốt thành "02". */
+  .nq-time-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    flex: none;
+  }
+
+  .nq-time-field__part {
+    width: 2.6rem;
+    min-width: 0;
+    padding: 0.35rem 0.3rem;
+    text-align: center;
+    border-radius: var(--nq-radius-sm, 8px);
+    border: 1px solid var(--nq-line);
+    background-color: var(--nq-bg);
+    color: var(--nq-ink);
+    font-size: 0.8rem;
+    font-family: var(--nq-font-mono);
+  }
+
+  .nq-time-field__part:focus-visible {
+    outline: 2px solid var(--nq-focus);
+    outline-offset: 1px;
+  }
+
+  .nq-time-field[data-invalid="1"] .nq-time-field__part {
+    border-color: var(--nq-st-danger);
+  }
+
+  .nq-time-field__sep {
+    color: var(--nq-ink-muted);
+    font-weight: 700;
+  }
+
+  /* ── Nhật ký thay đổi ca ──
+     Bảng chứng "ai đổi ca với ai". Nền ĐẶC (không kính) vì đây là dữ liệu phải
+     đọc kỹ, giống bảng và danh sách ở phần còn lại của app. */
+  .nq-shiftlog {
+    display: flex;
+    flex-direction: column;
+    gap: var(--nq-s4);
+  }
+
+  .nq-shiftlog__entry {
+    display: flex;
+    flex-direction: column;
+    gap: var(--nq-s2);
+    padding: var(--nq-s4);
+    border: 1px solid var(--nq-line);
+    border-radius: var(--nq-radius-bubble);
+    background-color: var(--nq-surface);
+  }
+
+  .nq-shiftlog__head {
+    display: flex;
+    align-items: center;
+    gap: var(--nq-s3);
+    flex-wrap: wrap;
+  }
+
+  .nq-shiftlog__time {
+    font-family: var(--nq-font-mono);
+    font-size: 0.78rem;
+    color: var(--nq-dim);
+  }
+
+  .nq-shiftlog__summary {
+    font-size: 0.92rem;
+    color: var(--nq-fg);
+  }
+
+  .nq-shiftlog__more {
+    font-size: 0.8rem;
+    color: var(--nq-ink-muted);
+  }
+
+  .nq-shiftdiff {
+    display: flex;
+    flex-direction: column;
+    gap: var(--nq-s4);
+    margin-top: var(--nq-s2);
+  }
+
+  .nq-shiftdiff__empty {
+    font-size: 0.88rem;
+    color: var(--nq-ink-muted);
+  }
+
+  .nq-shiftdiff__block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--nq-s2);
+  }
+
+  .nq-shiftdiff__title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--nq-dim);
+  }
+
+  .nq-shiftdiff__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--nq-s2);
+  }
+
+  .nq-shiftdiff__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--nq-s3);
+    padding: var(--nq-s2) var(--nq-s3);
+    border: 1px solid var(--nq-line);
+    border-radius: var(--nq-radius-sm, 8px);
+    background-color: var(--nq-bg-elevated);
+  }
+
+  .nq-shiftdiff__when {
+    font-family: var(--nq-font-mono);
+    font-size: 0.76rem;
+    color: var(--nq-dim);
+    white-space: nowrap;
+  }
+
+  .nq-shiftdiff__who {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--nq-s2);
+    font-size: 0.9rem;
+    color: var(--nq-fg);
+  }
+
+  /* Chữ nêu ai RA / ai VÀO trên nền đặc: dùng `--nq-st-*-ink` — đây đã là bản
+     "đọc được trên nền tối" của bốn màu trạng thái (xem khối token ở đầu tệp).
+     Không dùng `--nq-st-*` trần (bản đó cho viền/chấm). */
+  .nq-shiftdiff__out {
+    color: var(--nq-st-danger-ink);
+    font-weight: 600;
+  }
+
+  .nq-shiftdiff__in {
+    color: var(--nq-st-ok-ink);
+    font-weight: 600;
+  }
+
+  .nq-shiftdiff__arrow {
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--nq-dim);
+  }
+
+  .nq-shiftdiff__tags {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--nq-s2);
+  }
+
+  .nq-shiftdiff__tags li {
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--nq-line);
+    border-radius: 999px;
+    font-size: 0.8rem;
+  }
+
+  .nq-shiftdiff__tags li[data-chieu="ra"] {
+    border-color: color-mix(in srgb, var(--nq-st-danger) 44%, var(--nq-line));
+  }
+
+  .nq-shiftdiff__tags li[data-chieu="vao"] {
+    border-color: color-mix(in srgb, var(--nq-st-ok) 44%, var(--nq-line));
+  }
+
+  .nq-shiftdiff__keep {
+    font-size: 0.78rem;
+    color: var(--nq-dim);
+  }
+
+  /* Trạng thái trợ lý đang xử lý — chấm nhấp nháy + câu mô tả.
+     Có nó thì bong bóng trống không còn đọc ra "trợ lý im lặng". */
+  .nq-copilot-pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--nq-ink-muted);
+  }
+
+  .nq-copilot-pending__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background-color: var(--nq-st-warn);
+    animation: nq-pending-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes nq-pending-pulse {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: scale(0.85);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   /* Ô bấm được: nổi rõ hơn (elev-2) và có phản hồi hover — để mắt phân biệt được
      "khối này bấm được" với "khối này chỉ để đọc". */
   .nq-surface-tile {
@@ -4883,13 +5111,12 @@ a:focus-visible {
   }
 
   /* ── Bảng dữ liệu ──
-     Nền đặc, không kính: bảng là nơi đọc số. Hàng có hover để mắt bám được dòng
-     đang xem khi bảng dài; chữ số dùng font mono (tabular) nên cột không nhảy
-     khi giá trị đổi từ 9 sang 10. */
+     Nền đặc, không kính. Header sticky khi cuộn. Cột số mono + data-num.
+     Animation hàng chỉ lần tải đầu (nq-fade-in). */
   .nq-table-wrap {
     overflow-x: auto;
     border: 1px solid var(--nq-line);
-    border-radius: var(--nq-radius-bubble);
+    border-radius: var(--nq-radius);
     background-color: var(--nq-surface);
   }
 
@@ -4900,20 +5127,20 @@ a:focus-visible {
     font-size: var(--nq-t-small);
   }
 
-  .nq-table thead tr {
-    background-color: var(--nq-surface-2);
-    border-bottom: 1px solid var(--nq-line-strong);
-  }
-
-  .nq-table th {
+  .nq-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: var(--nq-z-sticky);
     padding: var(--nq-s3) var(--nq-s4);
     font-family: var(--nq-font-mono);
-    font-size: var(--nq-t-micro);
+    font-size: var(--nq-t-caption);
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--nq-ink-muted);
     white-space: nowrap;
+    background-color: var(--nq-surface-2);
+    border-bottom: 1px solid var(--nq-line-strong);
   }
 
   .nq-table td {
@@ -4921,6 +5148,7 @@ a:focus-visible {
     border-bottom: 1px solid var(--nq-line);
     color: var(--nq-ink);
     font-variant-numeric: tabular-nums;
+    vertical-align: middle;
   }
 
   .nq-table tbody tr:last-child td {
@@ -4929,7 +5157,16 @@ a:focus-visible {
 
   .nq-table tbody tr {
     transition: background-color var(--nq-beat-settle) var(--nq-ease-out);
+    animation: nq-fade-in var(--nq-beat-focus) var(--nq-ease-out) both;
   }
+
+  .nq-table tbody tr:nth-child(2) { animation-delay: 40ms; }
+  .nq-table tbody tr:nth-child(3) { animation-delay: 80ms; }
+  .nq-table tbody tr:nth-child(4) { animation-delay: 120ms; }
+  .nq-table tbody tr:nth-child(5) { animation-delay: 160ms; }
+  .nq-table tbody tr:nth-child(6) { animation-delay: 200ms; }
+  .nq-table tbody tr:nth-child(7) { animation-delay: 240ms; }
+  .nq-table tbody tr:nth-child(8) { animation-delay: 280ms; }
 
   .nq-table tbody tr:hover {
     background-color: var(--nq-accent-soft);
@@ -4939,8 +5176,28 @@ a:focus-visible {
     text-align: center;
   }
 
-  .nq-table .is-right {
+  .nq-table .is-right,
+  .nq-table th[data-num="1"],
+  .nq-table td[data-num="1"] {
     text-align: right;
+    font-family: var(--nq-font-mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .nq-table tbody tr[data-low="1"] td:first-child {
+    box-shadow: inset 3px 0 0 var(--nq-warn);
+  }
+
+  .nq-table-note {
+    margin: var(--nq-s3) 0 0;
+    font-size: var(--nq-t-small);
+    color: var(--nq-ink-muted);
+  }
+
+  .nq-table--compact th,
+  .nq-table--compact td {
+    padding: var(--nq-s2) var(--nq-s3);
   }
 
   /* ── Nhãn trạng thái ──
@@ -6046,6 +6303,62 @@ a.nq-bento-surface:active {
   border-radius: var(--nq-radius);
   background: color-mix(in srgb, var(--nq-bg-elevated) 55%, transparent);
   animation: nq-rise var(--nq-dur-t0) var(--nq-ease-out) both;
+  max-height: min(70vh, 52rem);
+  overflow: auto;
+}
+
+.nq-roster-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nq-s3);
+  margin: 0 0 var(--nq-s3);
+  padding: 0;
+  list-style: none;
+  font-size: var(--nq-t-caption);
+  color: var(--nq-ink-muted);
+}
+.nq-roster-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nq-s2);
+}
+.nq-roster-legend__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  border: 1px solid var(--nq-line);
+}
+.nq-roster-legend__swatch--ok { background: var(--nq-st-ok-soft); border-color: var(--nq-st-ok); }
+.nq-roster-legend__swatch--warn { background: var(--nq-st-warn-soft); border-color: var(--nq-st-warn); }
+.nq-roster-legend__swatch--danger { background: var(--nq-st-danger-soft); border-color: var(--nq-st-danger); }
+
+.nq-side__cmd {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s2);
+  width: 100%;
+  margin-top: var(--nq-s2);
+  padding: var(--nq-s2) var(--nq-s3);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-pill);
+  background: transparent;
+  color: var(--nq-ink-muted);
+  cursor: pointer;
+  font-size: var(--nq-t-caption);
+}
+.nq-side__cmd:hover {
+  border-color: var(--nq-line-strong);
+  color: var(--nq-accent-ink-text);
+}
+.nq-side__kbd {
+  margin-left: auto;
+  font-family: var(--nq-font-mono);
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+.nq-app[data-collapsed="1"] .nq-side__kbd,
+.nq-app[data-collapsed="1"] .nq-side__cmd .nq-side__label {
+  display: none;
 }
 
 .nq-roster-table {
@@ -6072,6 +6385,9 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--nq-z-sticky);
   background: color-mix(in srgb, var(--nq-bg-elevated) 92%, var(--nq-accent) 8%);
   font-family: var(--nq-font-display, var(--nq-font-sans));
   font-size: 0.82rem;
@@ -6079,6 +6395,14 @@ a.nq-bento-surface:active {
   font-weight: 700;
   text-align: left;
   letter-spacing: 0.01em;
+}
+
+.nq-roster-row-label,
+.nq-roster-corner {
+  position: sticky;
+  left: 0;
+  z-index: calc(var(--nq-z-sticky) + 1);
+  background: var(--nq-surface-2);
 }
 
 .nq-roster-day-full {
@@ -7567,96 +7891,6 @@ a.nq-bento-surface:active {
   color: #4a0d0d;
 }
 
-/* ── Bảng số liệu ──
-   Cột số và cột đơn vị căn phải; bo góc giữ 6px theo hồ sơ hình dạng (bo lớn ở
-   bảng số làm mắt mất hàng). Cuộn ngang trên máy nhỏ thay vì bóp cột. */
-.nq-table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--nq-line);
-  border-radius: var(--nq-radius);
-  background: color-mix(in srgb, var(--nq-bg-elevated) 70%, transparent);
-}
-
-.nq-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 0.9rem;
-}
-
-.nq-table th,
-.nq-table td {
-  padding: var(--nq-s3) var(--nq-s4);
-  border-bottom: 1px solid var(--nq-line);
-  text-align: left;
-  vertical-align: middle;
-}
-
-.nq-table thead th {
-  font-family: var(--nq-font-mono);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--nq-ink-muted);
-  font-weight: 600;
-  background: color-mix(in srgb, var(--nq-surface) 80%, transparent);
-  border-bottom: 1px solid var(--nq-line-strong);
-  white-space: nowrap;
-}
-
-.nq-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.nq-table tbody tr {
-  animation: nq-fade-in var(--nq-dur-t1) var(--nq-ease-out) both;
-}
-
-.nq-table tbody tr:nth-child(2) {
-  animation-delay: 40ms;
-}
-.nq-table tbody tr:nth-child(3) {
-  animation-delay: 80ms;
-}
-.nq-table tbody tr:nth-child(4) {
-  animation-delay: 120ms;
-}
-.nq-table tbody tr:nth-child(5) {
-  animation-delay: 160ms;
-}
-.nq-table tbody tr:nth-child(6) {
-  animation-delay: 200ms;
-}
-.nq-table tbody tr:nth-child(7) {
-  animation-delay: 240ms;
-}
-.nq-table tbody tr:nth-child(8) {
-  animation-delay: 280ms;
-}
-
-.nq-table tbody tr:hover {
-  background: color-mix(in srgb, var(--nq-accent-soft) 28%, transparent);
-}
-
-/* Cột số: mono, căn phải, cùng chiều rộng chữ số. */
-.nq-table th[data-num="1"],
-.nq-table td[data-num="1"] {
-  text-align: right;
-  font-family: var(--nq-font-mono);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/* Hàng dưới ngưỡng: vạch cảnh báo bên trái, không đổi màu cả hàng (đọc mệt). */
-.nq-table tbody tr[data-low="1"] td:first-child {
-  box-shadow: inset 3px 0 0 var(--nq-warn);
-}
-
-.nq-table-note {
-  margin: var(--nq-s3) 0 0;
-  font-size: 0.82rem;
-  color: var(--nq-ink-muted);
-}
-
 /* ── Thẻ chọn (mẫu phiếu) ──
    Ba mẫu hiện cùng lúc: người mở quán không phải đoán mẫu nào có bao nhiêu bước.
    Là <button> để bàn phím và trình đọc màn hình dùng được như một lựa chọn. */
@@ -8956,6 +9190,233 @@ a.nq-bento-surface:active {
 /* ══════════════════════════════════════════════════════════════════════════
    HẾT SIDEBAR.
    ══════════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Dialog / Drawer / DataList / Btn variants (enterprise kit v4)
+   ══════════════════════════════════════════════════════════════════════════ */
+.nq-btn-secondary {
+  background: transparent;
+  color: var(--nq-accent-ink-text);
+  border: 1px solid var(--nq-line-strong);
+}
+.nq-btn-secondary:hover:not(:disabled) {
+  background: var(--nq-accent-soft);
+  border-color: var(--nq-accent);
+  color: var(--nq-accent-hover);
+}
+.nq-btn-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+.nq-btn-sm {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.9rem;
+  font-size: var(--nq-t-caption);
+  letter-spacing: 0.06em;
+}
+.nq-btn-icon.nq-btn-sm {
+  width: 2.25rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+}
+
+.nq-dialog-overlay,
+.nq-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nq-z-modal);
+  background: rgba(2, 6, 10, 0.62);
+  backdrop-filter: var(--nq-blur-2);
+  -webkit-backdrop-filter: var(--nq-blur-2);
+  animation: nq-fade-in var(--nq-beat-settle) var(--nq-ease-out) both;
+}
+.nq-dialog-overlay {
+  display: grid;
+  place-items: center;
+  padding: var(--nq-s5);
+}
+.nq-drawer-overlay {
+  z-index: var(--nq-z-drawer);
+  display: flex;
+  justify-content: flex-end;
+}
+.nq-dialog-panel {
+  width: min(100%, 32rem);
+  max-height: min(88vh, 40rem);
+  display: flex;
+  flex-direction: column;
+  background: var(--nq-surface);
+  border: 1px solid var(--nq-line-strong);
+  border-radius: var(--nq-radius-sheet);
+  box-shadow: var(--nq-elev-4), var(--nq-inner-hi);
+  animation: nq-rise var(--nq-beat-focus) var(--nq-ease-out) both;
+}
+.nq-drawer-panel {
+  width: min(100%, 26rem);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--nq-surface);
+  border-left: 1px solid var(--nq-line-strong);
+  box-shadow: var(--nq-elev-4);
+  animation: nq-slide-in-right var(--nq-beat-focus) var(--nq-ease-out) both;
+}
+.nq-dialog-head,
+.nq-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nq-s3);
+  padding: var(--nq-s4) var(--nq-s5);
+  border-bottom: 1px solid var(--nq-line);
+}
+.nq-dialog-title,
+.nq-drawer-title {
+  margin: 0;
+  font-family: var(--nq-font-display);
+  font-size: var(--nq-t-h3);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--nq-ink);
+}
+.nq-dialog-body,
+.nq-drawer-body {
+  padding: var(--nq-s5);
+  overflow: auto;
+  flex: 1;
+}
+.nq-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--nq-s3);
+  padding: var(--nq-s4) var(--nq-s5);
+  border-top: 1px solid var(--nq-line);
+}
+
+.nq-datalist {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+.nq-datalist__row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 34%) 1fr;
+  gap: var(--nq-s3);
+  padding: var(--nq-s3) 0;
+  border-bottom: 1px solid var(--nq-line);
+}
+.nq-datalist__row:last-child {
+  border-bottom: none;
+}
+.nq-datalist__label {
+  margin: 0;
+  color: var(--nq-ink-muted);
+  font-size: var(--nq-t-caption);
+  font-family: var(--nq-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.nq-datalist__value {
+  margin: 0;
+  color: var(--nq-ink);
+  font-size: var(--nq-t-body);
+  word-break: break-word;
+}
+.nq-datalist .nq-datalist {
+  margin-top: var(--nq-s2);
+  padding-left: var(--nq-s3);
+  border-left: 2px solid var(--nq-line-strong);
+}
+
+.nq-prose-block {
+  margin: 0;
+  padding: var(--nq-s4);
+  max-height: 20rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
+  line-height: 1.55;
+  color: var(--nq-ink);
+  background: var(--nq-bg);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius);
+}
+.nq-prose-block--muted {
+  color: var(--nq-ink-muted);
+}
+
+.nq-cmdk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nq-z-modal);
+  display: grid;
+  place-items: start center;
+  padding: 12vh var(--nq-s4) var(--nq-s4);
+  background: rgba(2, 6, 10, 0.55);
+  backdrop-filter: var(--nq-blur-1);
+}
+.nq-cmdk {
+  width: min(100%, 32rem);
+  background: var(--nq-surface);
+  border: 1px solid var(--nq-line-strong);
+  border-radius: var(--nq-radius-sheet);
+  box-shadow: var(--nq-elev-4);
+  overflow: hidden;
+}
+.nq-cmdk__input {
+  width: 100%;
+  padding: var(--nq-s4) var(--nq-s5);
+  border: 0;
+  border-bottom: 1px solid var(--nq-line);
+  background: transparent;
+  color: var(--nq-ink);
+  font-size: var(--nq-t-body);
+  outline: none;
+}
+.nq-cmdk__list {
+  max-height: 20rem;
+  overflow: auto;
+  padding: var(--nq-s2);
+  margin: 0;
+  list-style: none;
+}
+.nq-cmdk__item {
+  display: flex;
+  align-items: center;
+  gap: var(--nq-s3);
+  width: 100%;
+  padding: var(--nq-s3) var(--nq-s4);
+  border: 0;
+  border-radius: var(--nq-radius);
+  background: transparent;
+  color: var(--nq-ink);
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--nq-t-small);
+}
+.nq-cmdk__item[data-active="1"],
+.nq-cmdk__item:hover {
+  background: var(--nq-accent-soft);
+  color: var(--nq-accent-ink-text);
+}
+.nq-cmdk__hint {
+  margin-left: auto;
+  color: var(--nq-ink-muted);
+  font-family: var(--nq-font-mono);
+  font-size: var(--nq-t-caption);
+}
+
+@keyframes nq-slide-in-right {
+  from { transform: translateX(12px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    prefers-reduced-motion — PHẢI là khối cuối file.

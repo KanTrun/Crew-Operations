@@ -63,12 +63,17 @@ _DON_VI_BOM = {
     "ly": "ly",
 }
 
+# Thứ tự nhóm chuẩn của quán, dùng cho menu quầy. Món chưa khai `nhom` được suy
+# từ BOM để menu cũ vẫn phân mục được thay vì dồn hết vào "khác".
+_NHOM_HOP_LE = ("ca_phe", "tra", "sinh_to", "banh", "nuoc_dong_chai", "nguyen_lieu")
+
 
 class MonBody(BaseModel):
     ten: str = Field(min_length=1, max_length=120)
     gia: int = Field(ge=0, le=10_000_000)
     an: bool = False
     hinh_url: str = Field(default="", max_length=500)
+    nhom: str = Field(default="", max_length=40)
     bom: dict[str, float] = Field(default_factory=dict)
 
 
@@ -211,8 +216,13 @@ def _don_cho_role(
 @router.get("/api/v1/menu")
 def menu(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_role(authorization)
+    items = []
+    for mon in menu_list():
+        nhom = str(mon.get("nhom") or "")
+        items.append({**mon, "nhom": nhom or _nhom_suy_tu_bom(mon.get("bom"))})
     return {
-        "items": menu_list(),
+        "items": items,
+        "nhom": list(_NHOM_HOP_LE),
         "nguon": "quan",
         "ghi": "Menu quầy nội bộ, không phải storefront khách.",
     }
@@ -238,6 +248,8 @@ def menu_luu(
         mon = MonNuoc(id=mid, **body.model_dump()).model_dump()
     except ValueError as exc:
         raise HTTPException(status_code=422, detail="mon_khong_hop_le") from exc
+    if not mon.get("nhom"):
+        mon["nhom"] = _nhom_suy_tu_bom(mon.get("bom"))
     out = menu_upsert(mon)
     _audit(role, "menu_luu", {"id": mid, "an": out["an"], "gia": out["gia"]})
     return {**out, "nguon": "quan"}

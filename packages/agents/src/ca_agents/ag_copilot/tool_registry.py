@@ -202,6 +202,26 @@ def _kv_get(key: str, default: Any) -> Any:
     return default
 
 
+def _kv_get_many(keys: list[str], defaults: dict[str, Any]) -> dict[str, Any]:
+    """Đọc NHIỀU khoá KV trong MỘT lượt, trả dict cùng shape như `_kv_get`.
+
+    Dùng khi một tool cần ≥3 khoá: mỗi `kv_get` là một connection SQLite mới, nên
+    đọc rời làm số connection tăng tuyến tính theo số khoá.
+
+    Có FALLBACK tuần tự khi nguồn không có `kv_get_many` (agent chạy standalone
+    hoặc test inject nguồn cũ) — nhờ vậy không phải sửa mọi nơi gọi tool.
+    """
+    fn = _src("kv_get_many")
+    if fn is not None:
+        try:
+            got = fn(list(keys), defaults)
+            if isinstance(got, dict):
+                return {str(k): got.get(str(k), defaults.get(str(k))) for k in keys}
+        except Exception:
+            pass
+    return {k: _kv_get(k, defaults.get(k)) for k in keys}
+
+
 _ROOT = Path(__file__).resolve().parents[4]
 
 
@@ -1470,8 +1490,32 @@ def tool_get_schedule(
     tuan: str | None = None,
     **kwargs: Any,
 ) -> ToolExecutionResult:
-    """GET_SCHEDULE: lịch tuần hiệu lực — phân công ca + meta ca (R0_READ)."""
-    phan_cong = _kv_get("phan_cong", {}) or {}
+    """GET_SCHEDULE: lịch tuần hiệu lực — phân công ca + meta ca (R0_READ).
+
+    Đọc 6 khoá kv bằng MỘT `kv_get_many`: bản cũ gọi `_kv_get` sáu lần, mà mỗi
+    `kv_get` mở một connection SQLite mới + chạy `init_db()` → 6 connection cho
+    một câu hỏi. Đó là nguồn chậm chính của trợ lý ("trả lời rất chậm").
+    """
+    tuan_iso = tuan or kwargs.get("tuan") or _tuan_hien_tai()
+    kv_many = _kv_get_many(
+        [
+            "phan_cong",
+            "roster_nv_status",
+            "inbox_rang_buoc",
+            "tkb_nv_by_week",
+            "tkb_nv",
+            "lich_tuan_lifecycle",
+        ],
+        {
+            "phan_cong": {},
+            "roster_nv_status": {},
+            "inbox_rang_buoc": [],
+            "tkb_nv_by_week": {},
+            "tkb_nv": {},
+            "lich_tuan_lifecycle": {},
+        },
+    )
+    phan_cong = kv_many["phan_cong"] or {}
     ca_meta_fn = _src("list_ca_meta")
     ca_meta: dict[str, Any] = {}
     if ca_meta_fn is not None:
@@ -1479,7 +1523,6 @@ def tool_get_schedule(
             ca_meta = dict(ca_meta_fn() or {})
         except Exception:
             ca_meta = {}
-    tuan_iso = tuan or kwargs.get("tuan") or _tuan_hien_tai()
     so_ca = len(phan_cong)
     if not phan_cong:
         return _read_result(
@@ -1512,11 +1555,11 @@ def tool_get_schedule(
         else:
             chua_co_ca.append(ten)
 
-    # Đọc trạng thái xác nhận từ KV roster_nv_status
-    roster_status_store = _kv_get("roster_nv_status", {}) or {}
+    # Đọc trạng thái xác nhận từ KV roster_nv_status (đã lấy chung ở trên)
+    roster_status_store = kv_many["roster_nv_status"] or {}
     week_status = roster_status_store.get(tuan_iso, {}) if isinstance(roster_status_store, dict) else {}
 
-    inbox_items = _kv_get("inbox_rang_buoc", []) or []
+    inbox_items = kv_many["inbox_rang_buoc"] or []
     inbox_submitted_nv: set[str] = set()
     if isinstance(inbox_items, list):
         for it in inbox_items:
@@ -1528,12 +1571,12 @@ def tool_get_schedule(
                     if nvid_raw:
                         inbox_submitted_nv.add(str(nvid_raw))
 
-    tkb_by_week = _kv_get("tkb_nv_by_week", {}) or {}
+    tkb_by_week = kv_many["tkb_nv_by_week"] or {}
     tkb_nv = tkb_by_week.get(tuan_iso, {}) if isinstance(tkb_by_week, dict) else {}
     tkb_confirmed_nv: set[str] = set()
     if isinstance(tkb_nv, dict):
         tkb_confirmed_nv.update(str(nvid) for nvid in tkb_nv)
-    legacy_tkb = _kv_get("tkb_nv", {}) or {}
+    legacy_tkb = kv_many["tkb_nv"] or {}
     if isinstance(legacy_tkb, dict):
         for nvid, entry in legacy_tkb.items():
             if isinstance(entry, dict) and entry.get("tuan_iso") == tuan_iso:
@@ -1553,7 +1596,7 @@ def tool_get_schedule(
                 chua_xac_nhan.append(ten)
 
     total_assignments = sum(assigned_counts.values())
-    lifecycle = _kv_get("lich_tuan_lifecycle", {}) or {}
+    lifecycle = kv_many["lich_tuan_lifecycle"] or {}
     trang_thai = lifecycle.get("trang_thai") or _kv_get("lich_tuan_status", "da_duyet" if phan_cong else "nhap")
 
     trang_thai_label = {

@@ -249,6 +249,8 @@ CSS_INFINITE_ALLOWED = {
     "nq-shimmer": "skeleton bao dang tai",
     "nq-pulse-load": "bao dang tai du lieu",
     "nq-spin": "spinner cua nut dang gui (.nq-spin) va khoi cho (.nq-demo__pending) — 700ms, co aria-busy",
+    "nq-pending-pulse":
+        "cham bao tro ly dang tra cuu (.nq-copilot-pending__dot) — bao dang tai, an khi co chu",
     # 2. ma hoa trang thai
     "nq-hz-pulse":
         "chi chay tren .nq-horizon__item.is-urgent — dong hoa tiet diem qua han",

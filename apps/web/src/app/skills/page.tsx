@@ -8,14 +8,15 @@ import {
   Alert,
   AuthGate,
   Btn,
+  Dialog,
   Empty,
-  Kicker,
   Loading,
   Notice,
   OpsCard,
   PageHeader,
   StatusChip,
   Summary,
+  TechnicalDrawer,
   inputClassName,
   textareaClassName,
 } from "../../ui/kit";
@@ -416,71 +417,46 @@ export default function SkillsPage() {
         )}
       </OpsCard>
 
-      {/* Modal chi tiết SKILL.md */}
-      {selectedSkillId && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="nq-surface-block bg-[var(--nq-surface-hi)] border-[var(--nq-accent)] max-w-4xl w-full max-h-[90vh] flex flex-col shadow-[var(--nq-elev-2)] overflow-hidden">
-            <div className="p-4 border-b border-[var(--nq-line)] flex items-center justify-between bg-[var(--nq-surface)]">
-              <div>
-                <h3 className="font-semibold text-lg text-[var(--nq-fg)] uppercase">
-                  Chi tiết Kỹ năng: {selectedSkillId}
-                </h3>
-                {detailData && (
-                  <p className="text-xs font-mono text-[var(--nq-dim)]">
-                    SHA256: {detailData.content_sha256}
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedSkillId(null);
-                  setDetailData(null);
-                }}
-                className="p-1.5 text-[var(--nq-dim)] hover:text-[var(--nq-fg)] text-xl font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto space-y-4">
-              {detailLoading ? (
-                <Loading skeleton="text">Đang đọc nội dung kỹ năng…</Loading>
-              ) : detailData ? (
-                <>
-                  <div>
-                    <Kicker>NỘI DUNG ĐỊNH NGHĨA SKILL.MD</Kicker>
-                    <pre className="p-4 bg-[var(--nq-bg)] border border-[var(--nq-line)] text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-96">
-                      {detailData.content}
-                    </pre>
-                  </div>
-
-                  <div>
-                    <Kicker>NGỮ CẢNH CHÈN VÀO AG-COPILOT (PROMPT CONTEXT)</Kicker>
-                    <pre className="p-4 bg-[var(--nq-bg)] border border-[var(--nq-line)] text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-48 text-[var(--nq-dim)]">
-                      {detailData.prompt_context_sample}
-                    </pre>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-[var(--nq-dim)]">Không tải được thông tin kỹ năng.</p>
-              )}
-            </div>
-
-            <div className="p-4 border-t border-[var(--nq-line)] flex justify-end">
-              <Btn
-                variant="primary"
-                onClick={() => {
-                  setSelectedSkillId(null);
-                  setDetailData(null);
-                }}
-              >
-                Đóng
-              </Btn>
-            </div>
+      <Dialog
+        open={Boolean(selectedSkillId)}
+        title={selectedSkillId ? `Kỹ năng: ${selectedSkillId}` : "Chi tiết kỹ năng"}
+        onClose={() => {
+          setSelectedSkillId(null);
+          setDetailData(null);
+        }}
+        footer={
+          <Btn
+            variant="primary"
+            onClick={() => {
+              setSelectedSkillId(null);
+              setDetailData(null);
+            }}
+          >
+            Đóng
+          </Btn>
+        }
+      >
+        {detailLoading ? (
+          <Loading skeleton="text">Đang đọc nội dung kỹ năng…</Loading>
+        ) : detailData ? (
+          <div className="space-y-4">
+            <p className="text-sm text-[var(--nq-ink-muted)]">
+              Định nghĩa kỹ năng và ngữ cảnh đưa vào trợ lý. Nội dung kỹ thuật nằm trong ngăn bên dưới.
+            </p>
+            {detailData.content_sha256 ? (
+              <StatusChip tone="info">Chữ ký nội dung đã xác minh</StatusChip>
+            ) : null}
+            <TechnicalDrawer summary="Xem định nghĩa kỹ năng (SKILL.md)">
+              <div className="nq-prose-block">{detailData.content}</div>
+            </TechnicalDrawer>
+            <TechnicalDrawer summary="Xem ngữ cảnh đưa vào trợ lý">
+              <div className="nq-prose-block nq-prose-block--muted">{detailData.prompt_context_sample}</div>
+            </TechnicalDrawer>
           </div>
-        </div>
-      )}
+        ) : (
+          <Empty title="Không tải được">Không đọc được thông tin kỹ năng này.</Empty>
+        )}
+      </Dialog>
     </div>
   );
 }

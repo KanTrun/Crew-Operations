@@ -21,11 +21,20 @@ export function khungOrder(khung: string): number {
 
 /** Nhãn hàng: "Ca sáng · 06:00 – 11:00" từ data thật, không hardcode. */
 export function shiftRowLabel(shift: RosterShift | undefined, khung: string, template?: KhungGio): string {
-  const name = khungLabel(khung) || khung;
+  const { title, time } = shiftRowParts(shift, khung, template);
+  return time ? `${title} · ${time}` : title;
+}
+
+/** Tách tiêu đề ca / khung giờ để lưới render hai dòng (đậm + muted). */
+export function shiftRowParts(
+  shift: RosterShift | undefined,
+  khung: string,
+  template?: KhungGio,
+): { title: string; time: string } {
+  const title = khungLabel(khung) || khung;
   const bat = shift?.bat_dau ?? template?.[khung]?.bat_dau;
   const ket = shift?.ket_thuc ?? template?.[khung]?.ket_thuc;
-  if (bat && ket) return `${name} · ${bat} – ${ket}`;
-  return name;
+  return { title, time: bat && ket ? `${bat} – ${ket}` : "" };
 }
 
 export function shiftTimeRange(shift: RosterShift, template?: KhungGio): string {
@@ -36,26 +45,77 @@ export function shiftTimeRange(shift: RosterShift, template?: KhungGio): string 
   return "";
 }
 
+/** Chữ cái đầu có nghĩa (bỏ "(", số thuần, dấu câu). */
+function leadingLetter(word: string): string {
+  const m = word.match(/\p{L}/u);
+  return m?.[0] ?? "";
+}
+
 /**
- * Chữ viết tắt cho avatar ô lịch tuần.
- *
- * Vì sao không in tên đầy đủ: ô lịch chỉ rộng ~110px, mà một ca bar có thể có
- * 4–6 người. In tên đầy đủ thì CSS phải cắt bằng `-webkit-line-clamp`, và tên
- * người thứ ba trở đi biến mất sau dấu "…" — người xếp lịch không biết ca đó
- * còn ai. Viết tắt giữ được ĐỦ SỐ NGƯỜI trong cùng diện tích; tên đầy đủ nằm ở
- * tooltip và ở bảng chi tiết ngày.
- *
- * Tên tiếng Việt 2–4 từ: lấy chữ đầu của từ đầu + chữ đầu của từ cuối
- * ("Nguyễn Thị Lan" → "NL"). Tên một từ ("Hân") → hai ký tự đầu ("HÂ"). Giữ
- * dấu ở chữ cái đầu vì bỏ dấu làm nhiều tên trùng nhau.
+ * Chữ viết tắt 2 ký tự (tooltip / avatar nhỏ).
+ * Tên tiếng Việt 2–4 từ: chữ đầu của từ đầu + chữ đầu của từ cuối chữ cái
+ * ("Nguyễn Thị Lan" → "NL"). Tên một từ ("Hân") → hai ký tự chữ cái đầu.
  */
 export function initialsOf(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
+  const core = name.replace(/\s*[（(][^）)]*[）)]\s*/g, " ").trim();
+  const words = core.split(/\s+/).filter(Boolean);
   if (words.length === 0) return "?";
-  const first = words[0] ?? "";
-  if (words.length === 1) return first.slice(0, 2).toUpperCase();
-  const last = words[words.length - 1] ?? "";
-  return ((first[0] ?? "") + (last[0] ?? "")).toUpperCase();
+  const first = leadingLetter(words[0] ?? "");
+  if (words.length === 1) {
+    const letters = (words[0] ?? "").match(/\p{L}/gu) ?? [];
+    return (letters.slice(0, 2).join("") || first || "?").toUpperCase();
+  }
+  let last = "";
+  for (let i = words.length - 1; i >= 1; i--) {
+    last = leadingLetter(words[i] ?? "");
+    if (last) break;
+  }
+  return ((first + last) || "?").toUpperCase();
+}
+
+export type ShortNameParts = { primary: string; role?: string };
+
+/**
+ * Tách tên ngắn + vai trò cho lưới ca (roster scan).
+ *
+ * Lỗi cũ: "Nam (pha chế)" bị split theo space rồi lấy chữ đầu của "(pha" → "("
+ * → hiện "Nam (." khi CSS ellipsis cắt giữa ngoặc.
+ *
+ * Quy tắc primary:
+ * - Có hậu tố vai trò trong ngoặc → tên gọi (từ cuối), role tách riêng
+ * - Một từ → giữ nguyên
+ * - Nhiều từ → từ đầu + chữ cái đầu từ cuối có nghĩa ("Uyên B.")
+ */
+export function shortNameParts(name: string): ShortNameParts {
+  const trimmed = name.trim();
+  if (!trimmed) return { primary: "?" };
+
+  const roleMatch = trimmed.match(/^(.*?)\s*[（(]([^）)]+)[）)]\s*$/u);
+  const core = (roleMatch?.[1] ?? trimmed).trim();
+  const role = (roleMatch?.[2] ?? "").trim() || undefined;
+  const words = core.split(/\s+/).filter(Boolean);
+
+  if (words.length === 0) return { primary: role ? `(${role})` : "?", role: undefined };
+
+  if (role) {
+    return { primary: words[words.length - 1] ?? words[0], role };
+  }
+
+  if (words.length === 1) return { primary: words[0] };
+
+  const first = words[0];
+  let lastInitial = "";
+  for (let i = words.length - 1; i >= 1; i--) {
+    lastInitial = leadingLetter(words[i] ?? "").toUpperCase();
+    if (lastInitial) break;
+  }
+  return { primary: lastInitial ? `${first} ${lastInitial}.` : first };
+}
+
+/** Tên một dòng (tooltip / nơi không tách role). */
+export function shortNameOf(name: string): string {
+  const { primary, role } = shortNameParts(name);
+  return role ? `${primary} · ${role}` : primary;
 }
 
 export function rosterCellSummary(count: number, viTriLabel: string, understaffed?: boolean): {

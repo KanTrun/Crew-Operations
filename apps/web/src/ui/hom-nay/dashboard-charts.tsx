@@ -14,7 +14,7 @@ const TON_COLORS = { ok: "var(--nq-ok)", warn: "var(--nq-warn)" };
    "chờ đủ điều kiện": đỏ → cam → ngọc → xanh dương → xám. Mỗi lát phải khác
    nhau về cả SẮC lẫn ĐỘ SÁNG vì người dùng phân biệt lát bằng cả hai, và in
    đen trắng vẫn phải tách được. */
-const TREO_COLORS = ["#ef4444", "#f59e0b", "#14b8a6", "#38bdf8", "#7c8a99", "#3d6f6a"];
+const TREO_COLORS = ["#ef4444", "#f59e0b", "#d4af37", "#e8d48a", "#7c8a99", "#8a7228"];
 
 function chartMotion(reduced: boolean) {
   return reduced

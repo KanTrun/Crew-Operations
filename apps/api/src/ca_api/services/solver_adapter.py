@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -265,11 +265,70 @@ def run_solver(
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     if result.ok:
+        # Ghi nhật ký thay đổi TRƯỚC khi ghi đè `phan_cong_by_week`. Đây là điểm
+        # chốt DUY NHẤT mọi lần xếp lịch đi qua (xếp tự động, xếp lại sau TKB,
+        # và các đường gọi solver khác), nên ghi ở đây thì mọi nguồn đều có vết —
+        # không phải nhớ thêm ở từng router. Bọc try để nhật ký hỏng KHÔNG được
+        # làm hỏng việc xếp lịch.
+        try:
+            _ghi_nhat_ky_thay_doi(week, result.phan_cong, input_data.ca_meta)
+        except Exception:
+            pass
         _week_store("phan_cong_by_week", week, result.phan_cong)
         _week_store("lich_tuan_results_by_week", week, payload)
         _week_store("fairness_debt_by_week", week, result.debt_after)
         kv_set("phan_cong", result.phan_cong)
     return {"status": result.status, "ok": result.ok, "best_effort": result.ok, "luat_ap_dung": applied, "violations": len(result.violations), "danh_sach_xung_dot": gaps, "tong_so_o_ca": len(slots), "so_o_ca_da_xep": len(filled & slots), "kiem_tra": payload["kiem_tra"], "phan_cong": result.phan_cong, "ca_meta": input_data.ca_meta}
+
+
+NHAT_KY_TOI_DA = 20
+
+
+def _ghi_nhat_ky_thay_doi(week: str, sau: dict[str, list[str]], ca_meta: Any) -> None:
+    """Lưu diff trước/sau của MỘT lần xếp lịch vào kv `lich_thay_doi_by_week`.
+
+    Giữ tối đa `NHAT_KY_TOI_DA` bản gần nhất mỗi tuần: nhật ký là để ĐỌC LẠI
+    ("ai đổi ca với ai lúc nào"), không phải kho lịch sử vô hạn. Không giới hạn
+    thì mỗi lần bấm xếp lịch lại nối thêm một khối vào một giá trị kv duy nhất —
+    giá trị đó phình theo thời gian và mọi lần đọc đều phải parse toàn bộ.
+    """
+    from ca_api.services.schedule_diff import so_sanh_phan_cong, tom_tat_thay_doi
+
+    truoc_doc = kv_get("phan_cong_by_week", {})
+    truoc = truoc_doc.get(week, {}) if isinstance(truoc_doc, dict) else {}
+    if not isinstance(truoc, dict):
+        truoc = {}
+
+    diff = so_sanh_phan_cong(truoc, sau, ca_meta=ca_meta if isinstance(ca_meta, dict) else {})
+    if (
+        not diff["them"]
+        and not diff["bot"]
+        and not diff["hoan_doi"]
+        and not diff["doi_giua_hai_ca"]
+    ):
+        # Không đổi gì thì không ghi — nhật ký toàn dòng "không đổi" là nhiễu.
+        return
+
+    ban_ghi = {
+        "luc": datetime.now(UTC).isoformat(),
+        "nguon": "xep_tu_dong",
+        "tuan_iso": week,
+        "diff": diff,
+        "tom_tat": tom_tat_thay_doi(diff),
+    }
+
+    def mutate(raw: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(raw, dict):
+            raw = {}
+        items = raw.get(week)
+        if not isinstance(items, list):
+            items = []
+        items = [*items, ban_ghi][-NHAT_KY_TOI_DA:]
+        raw[week] = items
+        return raw
+
+    kv_mutate("lich_thay_doi_by_week", mutate, {})
+
 
 
 def _week_store(key: str, week: str, value: Any) -> None:

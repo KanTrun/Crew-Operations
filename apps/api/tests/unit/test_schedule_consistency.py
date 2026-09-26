@@ -100,7 +100,11 @@ def test_swap_dong_y_updates_phan_cong_assignments() -> None:
 
 
 def test_swap_only_touches_its_own_week() -> None:
-    """Đổi ca ở tuần W10 KHÔNG được đụng vào tuần khác (W11)."""
+    """Đổi ca ở tuần W10 KHÔNG được đụng vào tuần khác (W11).
+
+    `dong-y` của người nhận chỉ GHI NHẬN đồng ý; việc áp vào phân công do quản lý
+    duyệt (`/duyet`) — xem `_guard_swap_cong_bo`.
+    """
     ca_id = "w1_c01"
     kv_set("phan_cong", {ca_id: ["nv_01"]})
     kv_set(
@@ -108,6 +112,10 @@ def test_swap_only_touches_its_own_week() -> None:
         {"2026-W10": {ca_id: ["nv_01"]}, "2026-W11": {ca_id: ["nv_03"]}},
     )
     kv_set("lich_tuan_lifecycle", {"tuan_iso": "2026-W10", "trang_thai": "da_cong_bo"})
+    kv_set(
+        "lich_tuan_lifecycle_by_week",
+        {"2026-W10": {"tuan_iso": "2026-W10", "trang_thai": "da_cong_bo"}},
+    )
 
     opened = client.post(
         "/api/v1/cho-doi-ca",
@@ -116,6 +124,9 @@ def test_swap_only_touches_its_own_week() -> None:
     )
     swap_id = opened.json()["id"]
     client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "hung"))
+    # Quản lý duyệt mới thực sự đổi phân công.
+    duyet = client.post(f"/api/v1/cho-doi-ca/{swap_id}/duyet", headers=headers(client, "lan"))
+    assert duyet.status_code == 200, duyet.text
 
     by_week = kv_get("phan_cong_by_week", {})
     assert by_week["2026-W10"][ca_id] == ["nv_02"]
@@ -196,7 +207,11 @@ def test_inbox_approve_without_ap_dat_does_not_change_assignments() -> None:
 
 
 def test_ca_nha_and_nhan_sync_to_phan_cong_by_week() -> None:
-    """Nhả ca và nhận ca phải cập nhật cả `phan_cong` lẫn `phan_cong_by_week`."""
+    """Nhả ca và nhận ca phải cập nhật cả `phan_cong` lẫn `phan_cong_by_week`.
+
+    Nhận ca ở đây đi qua đường QUẢN LÝ (`ca/nhan-truc-tiep`) vì `/ca/nhan` của
+    nhân viên giờ bắt buộc qua Chợ đổi ca — xem `test_ca_nhan_bat_buoc_qua_cho_doi_ca`.
+    """
     week = "2026-W12"
     ca_id = "w1_c03"
     _seed_week(week, ca_id, ["nv_03"])
@@ -206,10 +221,50 @@ def test_ca_nha_and_nhan_sync_to_phan_cong_by_week() -> None:
     assert "nv_03" not in kv_get("phan_cong_by_week", {})[week][ca_id]
     assert "nv_03" not in kv_get("phan_cong", {})[ca_id]
 
-    r_nhan = client.post("/api/v1/ca/nhan", json={"ca_id": ca_id}, headers=headers(client, "hung"))
+    r_nhan = client.post(
+        "/api/v1/ca/nhan-truc-tiep",
+        json={"ca_id": ca_id, "nv_id": "nv_02"},
+        headers=headers(client, "hung"),
+    )
     assert r_nhan.status_code == 200, r_nhan.text
     assert "nv_02" in kv_get("phan_cong_by_week", {})[week][ca_id]
     assert "nv_02" in kv_get("phan_cong", {})[ca_id]
+
+
+def test_ca_nhan_bat_buoc_qua_cho_doi_ca() -> None:
+    """Nhân viên nhận ca KHÔNG được ghi thẳng: phải qua Chợ đổi ca.
+
+    Trước đây `/ca/nhan` ghi thẳng `phan_cong` cho bất kỳ ai đăng nhập — kể cả
+    tuần chưa công bố, kể cả ca của người khác. Nhận ca ở tuần đã công bố là
+    thay đổi lịch mà người khác đang chạy theo, nên phải có đồng thuận hai bên.
+    """
+    week = "2026-W13"
+    ca_id = "w1_c03"
+    _seed_week(week, ca_id, ["nv_03"])
+
+    res = client.post("/api/v1/ca/nhan", json={"ca_id": ca_id}, headers=headers(client, "minh"))
+    assert res.status_code == 409
+    assert res.json()["detail"] == "nhan_ca_phai_qua_cho_doi_ca"
+    # Bất biến: KHÔNG được ghi gì vào phân công khi bị từ chối.
+    assert "nv_03" in kv_get("phan_cong", {})[ca_id]
+    assert kv_get("phan_cong_by_week", {})[week][ca_id] == ["nv_03"]
+
+
+def test_ca_nha_chan_khi_tuan_chua_cong_bo() -> None:
+    """Tuần còn nháp thì chưa nhả ca được — nhả trên bản nháp là sửa việc đang xếp."""
+    week = "2026-W15"
+    ca_id = "w1_c03"
+    kv_set("phan_cong", {ca_id: ["nv_03"]})
+    kv_set("phan_cong_by_week", {week: {ca_id: ["nv_03"]}})
+    kv_set("lich_tuan_lifecycle", {"tuan_iso": week, "trang_thai": "nhap"})
+    kv_set("lich_tuan_lifecycle_by_week", {week: {"tuan_iso": week, "trang_thai": "nhap"}})
+
+    res = client.post("/api/v1/ca/nha", json={"ca_id": ca_id}, headers=headers(client, "minh"))
+    assert res.status_code == 409
+    # Kèm trạng thái thật để UI nói được đang ở bước nào.
+    assert res.json()["detail"].startswith("lich_chua_cong_bo")
+    assert res.json()["detail"].endswith("nhap")
+    assert kv_get("phan_cong", {})[ca_id] == ["nv_03"]
 
 
 def test_ca_nha_rejects_when_not_in_shift() -> None:

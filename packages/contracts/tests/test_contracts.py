@@ -97,6 +97,11 @@ def test_contracts_registered() -> None:
         "HorizonItem",
         "DataQualityNotice",
         "LivingCafeSnapshot",
+        # Trợ lý Quánverse — lớp tường thuật tất định trên dữ liệu hệ thống
+        "QuanverseMetric",
+        "QuanverseBrief",
+        "QuanverseAskRequest",
+        "QuanverseAskResponse",
         # HỒN QUÁN Spatial Memory (Phase 05)
         "MemoryQuery",
         "MemoryProposal",

@@ -39,7 +39,7 @@ export function Logo({ href = "/", className = "" }: { href?: string; className?
         viewBox="0 0 100 100"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="shrink-0 overflow-visible"
+        className="shrink-0 overflow-hidden"
         initial="hidden"
         animate="visible"
         whileHover="hover"
@@ -110,7 +110,7 @@ export function Logo({ href = "/", className = "" }: { href?: string; className?
           }}
         />
       </motion.svg>
-      <div className="ml-2.5 hidden min-w-0 flex-col justify-center sm:flex">
+      <div className="ml-2.5 hidden min-w-0 flex-col justify-center sm:flex nq-side__brand-text">
         {/* Tên quán ở đây là NHÃN THƯƠNG HIỆU, không phải tiêu đề trang — nhưng
             vẫn bỏ `tracking-tighter`: với "NHỊP QUÁN" viết hoa, khoảng chữ bị siết
             làm dấu mũ của Ị và dấu sắc của Á chồng vào ký tự bên cạnh. Giãn nhẹ

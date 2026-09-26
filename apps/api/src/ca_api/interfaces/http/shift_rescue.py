@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import threading
 import time
+import uuid
+from datetime import UTC, datetime
 from typing import Annotated, Any, cast
 
 from ca_agents.ag_shift_rescue.eligibility import (
@@ -31,6 +33,7 @@ from ca_ops.shift_rescue_policy import RescueCaseState
 from fastapi import APIRouter, Header, HTTPException
 
 from ca_api.interfaces.http.sprint3 import _require_manager, _require_role
+from ca_api.persist import audit_add, kv_mutate
 
 router = APIRouter(tags=["experience_shift_rescue"])
 
@@ -418,10 +421,43 @@ def shift_rescue_confirm(
         raise HTTPException(status_code=409, detail="stale_schedule_recompute")
 
     item["state"].confirm(candidate_id, actor=str(user))
+
+    # Ghi lại quyết định thành một việc thật (Sổ việc treo) + một vết hệ
+    # thống — quản lý mở /treo hoặc /vet sẽ thấy đúng người đã bù ca cho ai,
+    # ca nào. Dữ liệu case/candidate ở router này vẫn là mô phỏng có kịch bản
+    # cố định (không gian mã ca khác lịch tuần thật), nên KHÔNG tự ghi đè
+    # `phan_cong` — ghi một việc rõ ràng để quản lý ghim vào lịch tuần là lựa
+    # chọn an toàn hơn tự đoán đúng ô ca.
+    shift_id = str(item["command"].get("shift_id") or "")
+    absence_nv = str(item["command"].get("absence_nv_id") or "")
+    treo_item = {
+        "id": f"treo_rescue_{uuid.uuid4().hex[:8]}",
+        "noi_dung": f"Cứu ca {shift_id}: {candidate_id} nhận thay {absence_nv} — cần ghim vào lịch tuần.",
+        "trang_thai": "dang_cho",
+        "nguon": "cuu_ca",
+        "case_id": case_id,
+        "shift_id": shift_id,
+        "candidate_id": candidate_id,
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+
+    def _mut_treo(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        items.insert(0, treo_item)
+        return items
+
+    kv_mutate("treo", _mut_treo, [])
+    audit_add(
+        datetime.now(UTC).isoformat(),
+        str(user),
+        "experience.shift_rescue.confirm",
+        {"case_id": case_id, "shift_id": shift_id, "candidate_id": candidate_id, "absence_nv_id": absence_nv},
+    )
+
     return {
         "case_id": case_id,
         "status": item["state"].state.value,
         "confirmed_candidate_id": candidate_id,
-        "mutation": "none_replay",  # Phase 07 nối vào lifecycle thật
+        "mutation": "viec_treo_da_tao",
+        "treo_id": treo_item["id"],
         "replayable": True,
     }

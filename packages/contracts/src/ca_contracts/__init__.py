@@ -39,6 +39,11 @@ from ca_contracts.grand_experience import (
     MemoryVisibility,
     ModeProjection,
     PublicEventProjection,
+    QuanverseAskRequest,
+    QuanverseAskResponse,
+    QuanverseBrief,
+    QuanverseMetric,
+    QuanversePage,
     RescueCandidate,
     RescueCase,
     RescueCaseStatus,
@@ -168,6 +173,10 @@ class MonNuoc(BaseModel):
     gia: int = Field(ge=0, description="Đồng, số nguyên")
     an: bool = False
     hinh_url: str = Field(default="", max_length=500, description="URL ảnh món (hoặc /api/v1/menu/{id}/anh)")
+    nhom: str = Field(
+        default="",
+        description="Nhóm sản phẩm (ca_phe/tra/sinh_to/banh/nuoc_dong_chai/nguyen_lieu), dùng phân mục menu quầy",
+    )
     bom: dict[str, float] = Field(
         default_factory=dict,
         description="Nguyên liệu ước lượng khi hoàn thành đơn, vd cafe_g, sua_ml, ly",
@@ -1152,6 +1161,11 @@ CONTRACTS = {
     "HorizonItem": HorizonItem,
     "DataQualityNotice": DataQualityNotice,
     "LivingCafeSnapshot": LivingCafeSnapshot,
+    # Trợ lý Quánverse — lớp tường thuật tất định trên dữ liệu hệ thống
+    "QuanverseMetric": QuanverseMetric,
+    "QuanverseBrief": QuanverseBrief,
+    "QuanverseAskRequest": QuanverseAskRequest,
+    "QuanverseAskResponse": QuanverseAskResponse,
     # ── Hao hụt tiêu thụ theo nguyên liệu (plan 260923-1736) ──
     # Chỉ BaseModel vào CONTRACTS; LossLevel/LossBasis/LossCauseSource export qua __all__.
     "LossLine": LossLine,
@@ -1243,6 +1257,12 @@ __all__ = [
     "HorizonItem",
     "DataQualityNotice",
     "LivingCafeSnapshot",
+    # Trợ lý Quánverse — enum export qua __all__ (không vào CONTRACTS)
+    "QuanversePage",
+    "QuanverseMetric",
+    "QuanverseBrief",
+    "QuanverseAskRequest",
+    "QuanverseAskResponse",
     "experience_capabilities_for_role",
     "experience_role_can",
     "AnchorQuery",
@@ -1259,9 +1279,13 @@ __all__ = [
     "LossLevel",
     "LossBasis",
     "LossCauseSource",
-    "LossCauseRank",
+    # Bốn kiểu dữ liệu hao hụt dưới đây được import ở đầu file và dùng bởi
+    # `ca_api.interfaces.http.hao_hut`, nhưng trước đây thiếu trong __all__ nên
+    # mypy strict báo `attr-defined` ("không export tường minh"). Bổ sung để
+    # API hao hụt import được qua `from ca_contracts import ...`.
     "LossLine",
     "LossSummary",
+    "LossCauseRank",
     "LossThreshold",
     # ── Gmail Management ──
     "GmailAccount",

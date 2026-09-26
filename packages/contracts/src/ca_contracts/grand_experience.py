@@ -498,3 +498,80 @@ class LivingCafeSnapshot(BaseModel):
     modes: list[ModeProjection] = Field(default_factory=list)
     next_horizon: list[HorizonItem] = Field(default_factory=list)
     data_quality: list[DataQualityNotice] = Field(default_factory=list)
+
+
+# ── Trợ lý Quánverse — lớp tường thuật trên dữ liệu TẤT ĐỊNH ────────────────
+#
+# ADR-002 vẫn nguyên vẹn: mọi CON SỐ ở đây do tầng toán thuần ở `ca_agents`
+# sinh ra (`quanverse_brief.py`), KHÔNG do LLM. LLM chỉ được diễn đạt lại
+# `QuanverseBrief.facts` — nó không được thêm số, không được bịa kết luận.
+# Vì vậy `grounded_refs` là bằng chứng máy kiểm được: rỗng nghĩa là "không có
+# gì để nói", và `grounded=False` khi câu trả lời không bám vào ref nào.
+
+
+class QuanversePage(StrEnum):
+    """Trang Quánverse mà một bản tổng hợp/brief thuộc về."""
+
+    LIVING_MAP = "living_map"
+    WAR_ROOM = "war_room"
+    SHIFT_RESCUE = "shift_rescue"
+    RULES = "rules"
+    SPATIAL_MEMORY = "spatial_memory"
+
+
+class QuanverseMetric(BaseModel):
+    """Một chỉ số đọc thẳng từ hệ thống (không suy diễn).
+
+    `value=None` nghĩa là CHƯA CÓ DỮ LIỆU — khác hẳn 0. UI phải in "—" cho
+    `None`, không được in "0" (quy ước số của dự án, xem plan hao hụt).
+    """
+
+    key: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+    value: float | None = None
+    unit: str = ""
+    tone: Literal["default", "ok", "warn", "danger"] = "default"
+
+
+class QuanverseBrief(BaseModel):
+    """Tóm tắt TẤT ĐỊNH của một trang Quánverse — nguồn duy nhất cho cả UI lẫn LLM.
+
+    Bất biến: mỗi phần tử của `facts` phải truy được về `grounded_refs` (id bản
+    ghi hệ thống: zone_id, event_id, candidate_id, anchor_id…). LLM nhận đúng
+    khối này làm ngữ cảnh, nên không có đường nào để nó sinh số mới.
+    """
+
+    page: QuanversePage
+    headline: str = Field(min_length=1)
+    facts: list[str] = Field(default_factory=list)
+    metrics: list[QuanverseMetric] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    next_actions: list[str] = Field(default_factory=list)
+    grounded_refs: list[str] = Field(default_factory=list)
+    data_quality: list[DataQualityNotice] = Field(default_factory=list)
+
+
+class QuanverseAskRequest(BaseModel):
+    """Câu hỏi cho Trợ lý Quánverse — luôn gắn với MỘT trang cụ thể."""
+
+    page: QuanversePage
+    question: str = Field(min_length=1, max_length=500)
+
+
+class QuanverseAskResponse(BaseModel):
+    """Câu trả lời có căn cứ cho một trang Quánverse.
+
+    `grounded` là bằng chứng máy kiểm: `False` nghĩa là câu trả lời KHÔNG bám
+    vào bản ghi nào của quán → UI phải nói rõ "chưa có dữ liệu", không được
+    trình bày như một kết luận. `provider` cho biết ai diễn đạt (`replay` =
+    tất định tại chỗ, tên provider = LLM thật).
+    """
+
+    page: QuanversePage
+    question: str = Field(min_length=1)
+    answer: str = Field(min_length=1)
+    brief: QuanverseBrief
+    citations: list[str] = Field(default_factory=list)
+    unsupported_claims: list[str] = Field(default_factory=list)
+    grounded: bool = False
+    provider: str = "replay"

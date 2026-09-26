@@ -500,6 +500,13 @@ export function CopilotBody({ chat, mode, onClose, onOpenFullPage, onClearHistor
                       })}
                     </div>
                   )}
+                  {/* Trạng thái đang xử lý: hiện khi bong bóng CHƯA có chữ. */}
+                  {msg.sender === "copilot" && !msg.text && msg.pending_status ? (
+                    <p className="nq-copilot-pending" data-role="copilot-pending">
+                      <span className="nq-copilot-pending__dot" aria-hidden="true" />
+                      {msg.pending_status}
+                    </p>
+                  ) : null}
                   <p className="whitespace-pre-wrap leading-relaxed">
                     <ChatText text={msg.text} />
                     {streamingId === msg.id && (

@@ -2,7 +2,10 @@
 
 import { ReactNode } from "react";
 
-/** Pass-through — giữ hook layout cho sau này (Lenis / scroll-snap). */
+/**
+ * Pass-through — Lenis tạm tắt: sticky chapter trên landing che nút demo khi cuộn.
+ * Bật lại sau khi sửa z-index / pointer-events của chapter.
+ */
 export function SmoothScroll({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }

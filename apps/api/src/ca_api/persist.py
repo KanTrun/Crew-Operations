@@ -10,7 +10,7 @@ import re
 import sqlite3
 import threading
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from contextvars import ContextVar, Token
 
 try:
@@ -330,7 +330,8 @@ def _init_db_locked(p_str: str) -> None:
                 ten TEXT NOT NULL,
                 gia INTEGER NOT NULL,
                 an INTEGER NOT NULL DEFAULT 0,
-                bom TEXT NOT NULL DEFAULT '{}'
+                bom TEXT NOT NULL DEFAULT '{}',
+                nhom TEXT NOT NULL DEFAULT ''
             );
             CREATE TABLE IF NOT EXISTS don_quay (
                 id TEXT PRIMARY KEY,
@@ -1158,6 +1159,11 @@ def _migrate_schema(cx: sqlite3.Connection) -> None:
     cols = {r[1] for r in cx.execute("PRAGMA table_info(menu_mon)")}
     if "hinh_url" not in cols:
         _safe_alter("ALTER TABLE menu_mon ADD COLUMN hinh_url TEXT NOT NULL DEFAULT ''")
+    # Nhóm sản phẩm (ca_phe/tra/...) để màn hình quầy phân mục menu. Trước đây
+    # chỉ suy từ BOM lúc vẽ ảnh nên API không trả về được — UI phải hiện một
+    # danh sách phẳng. Cột rỗng = chưa khai nhóm, đọc lên suy từ BOM cho tương thích.
+    if "nhom" not in cols:
+        _safe_alter("ALTER TABLE menu_mon ADD COLUMN nhom TEXT NOT NULL DEFAULT ''")
     ucols = {r[1] for r in cx.execute("PRAGMA table_info(users)")}
     if "email" not in ucols:
         _safe_alter("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''")
@@ -1283,16 +1289,16 @@ def _migrate_schema(cx: sqlite3.Connection) -> None:
 
 
 _MENU_MAC_DINH = (
-    ("mon_den", "Cà phê đen", 25000, {"cafe_g": 18, "ly": 1}),
-    ("mon_sua", "Cà phê sữa", 30000, {"cafe_g": 16, "sua_ml": 40, "ly": 1}),
-    ("mon_tra", "Trà đào", 35000, {"dao_lat": 3, "ly": 1}),
-    ("mon_da", "Bạc xỉu", 32000, {"cafe_g": 12, "sua_ml": 80, "ly": 1}),
+    ("mon_den", "Cà phê đen", 25000, {"cafe_g": 18, "ly": 1}, "ca_phe"),
+    ("mon_sua", "Cà phê sữa", 30000, {"cafe_g": 16, "sua_ml": 40, "ly": 1}, "ca_phe"),
+    ("mon_tra", "Trà đào", 35000, {"dao_lat": 3, "ly": 1}, "tra"),
+    ("mon_da", "Bạc xỉu", 32000, {"cafe_g": 12, "sua_ml": 80, "ly": 1}, "ca_phe"),
     # Nước đóng chai: bán nguyên chai, không qua pha chế. Thiếu nhóm này thì danh
     # mục mặc định chỉ có đồ pha — quán mới mở không bán được nước suối, và ô
     # chọn nguyên liệu ở menu có `nuoc_dong_chai` mà không món nào dùng.
-    ("mon_nuoc_suoi", "Nước suối", 12000, {"nuoc_dong_chai": 1}),
+    ("mon_nuoc_suoi", "Nước suối", 12000, {"nuoc_dong_chai": 1}, "nuoc_dong_chai"),
     # Bánh kèm: nhóm ăn kèm của quán cà phê, cũng là mặt hàng đếm theo cái.
-    ("mon_banh_quy", "Bánh quy bơ", 20000, {"banh": 1}),
+    ("mon_banh_quy", "Bánh quy bơ", 20000, {"banh": 1}, "banh"),
 )
 
 
@@ -1300,10 +1306,10 @@ def _seed_menu_neu_trong(cx: sqlite3.Connection) -> None:
     n = cx.execute("SELECT COUNT(*) FROM menu_mon").fetchone()[0]
     if int(n) > 0:
         return
-    for mid, ten, gia, bom in _MENU_MAC_DINH:
+    for mid, ten, gia, bom, nhom in _MENU_MAC_DINH:
         cx.execute(
-            "INSERT INTO menu_mon(id, ten, gia, an, bom) VALUES (?,?,?,?,?)",
-            (mid, ten, gia, 0, json.dumps(bom, ensure_ascii=False)),
+            "INSERT INTO menu_mon(id, ten, gia, an, bom, nhom) VALUES (?,?,?,?,?,?)",
+            (mid, ten, gia, 0, json.dumps(bom, ensure_ascii=False), nhom),
         )
 
 
@@ -1630,6 +1636,42 @@ def kv_get(key: str, default: Any) -> Any:
     if not row:
         return default
     return json.loads(row[0])
+
+
+def kv_get_many(keys: Sequence[str], defaults: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Đọc NHIỀU khoá kv trong MỘT connection, trả dict cùng shape như `kv_get`.
+
+    Vì sao cần: `kv_get` mở một connection SQLite MỚI và gọi `init_db()` MỖI lần.
+    Một câu hỏi lịch tuần của trợ lý đọc 6+ khoá (`phan_cong`,
+    `roster_nv_status`, `inbox_rang_buoc`, `tkb_nv_by_week`, `tkb_nv`,
+    `lich_tuan_lifecycle`, ...) → 6+ connection cho MỘT câu hỏi. Cộng với
+    `timeout=30` của SQLite, một câu hỏi nặng có thể chặn câu khác tới 30 giây —
+    đúng triệu chứng "trả lời rất chậm" mà người dùng gặp.
+
+    Hợp đồng: khoá nào không có trong DB thì lấy `defaults[key]`; khoá không khai
+    trong `defaults` thì trả `None` (giống `kv_get(key, None)`).
+    """
+    keys = list(dict.fromkeys(str(k) for k in keys))
+    if not keys:
+        return {}
+    defaults = dict(defaults or {})
+    init_db()
+    out: dict[str, Any] = {k: defaults.get(k) for k in keys}
+    # SQLite giới hạn số biến trong câu lệnh; chia lô để an toàn với danh sách dài.
+    with _conn() as cx:
+        for i in range(0, len(keys), 500):
+            lo = keys[i : i + 500]
+            placeholders = ",".join("?" for _ in lo)
+            rows = cx.execute(
+                f"SELECT k, v FROM kv WHERE k IN ({placeholders})", lo
+            ).fetchall()
+            for k, v in rows:
+                try:
+                    out[str(k)] = json.loads(v)
+                except (TypeError, ValueError):
+                    # Giá trị hỏng: giữ default thay vì làm sập cả câu trả lời.
+                    out[str(k)] = defaults.get(str(k))
+    return out
 
 
 def kv_set(key: str, value: Any) -> None:
@@ -2770,14 +2812,18 @@ def _menu_from_row(row: tuple[Any, ...]) -> dict[str, Any]:
         "an": bool(row[3]),
         "bom": json.loads(row[4]) if row[4] else {},
         "hinh_url": str(row[5]) if len(row) > 5 and row[5] else "",
+        "nhom": str(row[6]) if len(row) > 6 and row[6] else "",
     }
+
+
+_MENU_COLS = "id, ten, gia, an, bom, hinh_url, nhom"
 
 
 def menu_list(*, gom_an: bool = False) -> list[dict[str, Any]]:
     init_db()
     with _conn() as cx:
         rows = cx.execute(
-            "SELECT id, ten, gia, an, bom, hinh_url FROM menu_mon ORDER BY ten"
+            f"SELECT {_MENU_COLS} FROM menu_mon ORDER BY ten"
         ).fetchall()
     out = []
     for row in rows:
@@ -2794,24 +2840,27 @@ def menu_upsert(mon: dict[str, Any]) -> dict[str, Any]:
     gia = int(mon["gia"])
     an = 1 if mon.get("an") else 0
     hinh_url = str(mon.get("hinh_url") or "").strip()
+    nhom = str(mon.get("nhom") or "").strip()
     bom = json.dumps(mon.get("bom") or {}, ensure_ascii=False)
     with _conn() as cx:
         cx.execute(
             """
-            INSERT INTO menu_mon(id, ten, gia, an, bom, hinh_url) VALUES (?,?,?,?,?,?)
+            INSERT INTO menu_mon(id, ten, gia, an, bom, hinh_url, nhom)
+            VALUES (?,?,?,?,?,?,?)
             ON CONFLICT(id) DO UPDATE SET ten=excluded.ten, gia=excluded.gia,
-                an=excluded.an, bom=excluded.bom, hinh_url=excluded.hinh_url
+                an=excluded.an, bom=excluded.bom, hinh_url=excluded.hinh_url,
+                nhom=excluded.nhom
             """,
-            (mid, ten, gia, an, bom, hinh_url),
+            (mid, ten, gia, an, bom, hinh_url, nhom),
         )
-    return _menu_from_row((mid, ten, gia, an, bom, hinh_url))
+    return _menu_from_row((mid, ten, gia, an, bom, hinh_url, nhom))
 
 
 def menu_get(mon_id: str) -> dict[str, Any] | None:
     init_db()
     with _conn() as cx:
         row = cx.execute(
-            "SELECT id, ten, gia, an, bom, hinh_url FROM menu_mon WHERE id=?", (mon_id,)
+            f"SELECT {_MENU_COLS} FROM menu_mon WHERE id=?", (mon_id,)
         ).fetchone()
     if not row:
         return None
@@ -2822,12 +2871,12 @@ def menu_set_hinh(mon_id: str, hinh_url: str) -> dict[str, Any] | None:
     init_db()
     with _conn() as cx:
         row = cx.execute(
-            "SELECT id, ten, gia, an, bom, hinh_url FROM menu_mon WHERE id=?", (mon_id,)
+            f"SELECT {_MENU_COLS} FROM menu_mon WHERE id=?", (mon_id,)
         ).fetchone()
         if not row:
             return None
         cx.execute("UPDATE menu_mon SET hinh_url=? WHERE id=?", (hinh_url, mon_id))
-    return _menu_from_row((*row[:5], hinh_url))
+    return _menu_from_row((*row[:5], hinh_url, row[6]))
 
 
 def don_insert(don: dict[str, Any]) -> dict[str, Any]:

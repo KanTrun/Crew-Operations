@@ -20,7 +20,7 @@ export default function CopilotPage() {
 
   if (!checked) {
     return (
-      <div className="nq-page flex min-h-screen items-center justify-center text-sm text-[var(--nq-dim)]">
+      <div className="nq-copilot-page nq-copilot-page--loading" role="status">
         Đang mở trợ lý vận hành…
       </div>
     );
@@ -28,41 +28,19 @@ export default function CopilotPage() {
   if (!role) return <AuthGate />;
 
   return (
-    <div className="nq-page max-w-5xl mx-auto p-4 md:p-8">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <div className="nq-copilot-page" style={{ ["--accent" as string]: chat.profile.accent }}>
+      <header className="nq-copilot-page__head">
         <div>
-          <p className="text-2xs uppercase tracking-widest text-[var(--nq-accent)]">
-            Trợ lý điều hành
-          </p>
-          <h1 className="text-2xl font-bold text-[var(--nq-fg)]">
-            {chat.profile.label}
-          </h1>
-          <p className="mt-1 text-xs text-[var(--nq-dim)]">
-            Đang đăng nhập với vai trò <b className="text-[var(--nq-fg)]">{roleLabel(role)}</b>.
-            Bạn có thể dùng khung nổi để vừa trao đổi vừa thao tác trang chính.
-          </p>
+          <p className="nq-copilot-page__kicker">Trợ lý · {roleLabel(role)}</p>
+          <h1 className="nq-copilot-page__title">{chat.profile.label}</h1>
         </div>
-        <Link
-          href="/hom-nay"
-          className="nq-surface-row px-3 py-1.5 text-xs text-[var(--nq-fg)] hover:border-[var(--nq-accent)] hover:text-[var(--nq-accent)]"
-        >
+        <Link href="/hom-nay" className="nq-btn nq-btn-ghost nq-btn-sm">
           Về Hôm nay
         </Link>
-      </div>
+      </header>
 
-      <div
-        className="overflow-hidden nq-surface-row bg-[var(--nq-bg)] shadow-[var(--nq-elev-2)]"
-        style={{
-          height: "calc(100vh - 220px)",
-          minHeight: 540,
-          ["--accent" as any]: chat.profile.accent,
-        }}
-      >
-        <CopilotBody
-          chat={chat}
-          mode="page"
-          onClearHistory={() => chat.clearHistory()}
-        />
+      <div className="nq-copilot-page__frame">
+        <CopilotBody chat={chat} mode="page" onClearHistory={() => chat.clearHistory()} />
       </div>
     </div>
   );

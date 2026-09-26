@@ -377,9 +377,9 @@ export function MeetingResults({
                 <BroadcastCard title="Món hết (86)" items={meeting.ban_tin_ca.danh_sach_mon_86} empty="Đủ món" />
               </div>
               {meeting.ban_tin_ca.noi_dung_tin_nhan_gui_nhom ? (
-                <pre className="mt-3 whitespace-pre-wrap rounded border border-[var(--nq-line)] bg-[var(--nq-bg)] p-3 font-mono text-xs leading-relaxed">
+                <div className="nq-prose-block mt-3">
                   {meeting.ban_tin_ca.noi_dung_tin_nhan_gui_nhom}
-                </pre>
+                </div>
               ) : null}
             </MeetingSection>
           ) : (

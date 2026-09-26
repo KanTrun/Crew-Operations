@@ -58,6 +58,9 @@ export default function LivingMap({ zones, selectedId, onSelectZone, renderBadge
       {canRender3d ? (
         <>
           <LivingMap3d zones={zones} selectedId={selectedId} onSelect={onSelectZone} tier={tier} />
+          <p className="nq-living-map__legend-hint" style={{ margin: "0.15rem 0 0" }}>
+            Kéo để xoay · Cuộn để phóng to/nhỏ · Bấm vào khối để chọn khu vực
+          </p>
           {/* Điều khiển bằng bàn phím cho lớp 3D: canvas không Tab được, nên
               chip DOM dưới đây là đường vào thật cho người dùng keyboard. */}
           <div className="nq-living-map__chips" role="group" aria-label="Chọn khu vực trên không gian 3D">

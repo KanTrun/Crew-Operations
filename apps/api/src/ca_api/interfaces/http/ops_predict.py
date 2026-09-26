@@ -138,14 +138,32 @@ def run_predict(
     pattern_dicts = [p.model_dump() for p in patterns]
     rule_dicts = [r.model_dump() for r in rules]
 
+    # Xoá bản ghi trùng khi ghi lại: chạy cùng dữ liệu không được tích luỹ bản
+    # sao (trước đây prepend mù → 21 "mẫu" trong khi chỉ có 3 mẫu khác nhau).
+    #
+    # Khoá khử trùng hợp nhất hai cách để bền với CẢ dữ liệu cũ lẫn mới:
+    #   - `pattern_id` / `id`  — định danh ổn định (cách mới, 2026-09-26)
+    #   - `mo_ta` / `cau`      — nội dung hiển thị (bản ghi cũ có thể thiếu id)
+    # Một bản ghi bị coi là trùng khi khớp BẤT KỲ khoá nào đang có.
+    pattern_ids = {str(p.get("pattern_id")) for p in pattern_dicts}
+    pattern_mo_ta = {p.get("mo_ta") for p in pattern_dicts}
+    rule_ids = {str(r.get("id")) for r in rule_dicts}
+    rule_cau = {r.get("cau") for r in rule_dicts}
+
     def mut_patterns(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        seen = {str(p.get("pattern_id")) for p in pattern_dicts}
-        kept = [p for p in cur if str(p.get("pattern_id")) not in seen]
+        kept = [
+            p
+            for p in cur
+            if str(p.get("pattern_id")) not in pattern_ids and p.get("mo_ta") not in pattern_mo_ta
+        ]
         return pattern_dicts + kept
 
     def mut_rules(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        seen = {str(r.get("id")) for r in rule_dicts}
-        kept = [r for r in cur if str(r.get("id")) not in seen]
+        kept = [
+            r
+            for r in cur
+            if str(r.get("id")) not in rule_ids and r.get("cau") not in rule_cau
+        ]
         return rule_dicts + kept
 
     kv_mutate("ops_predict_patterns", mut_patterns, [])

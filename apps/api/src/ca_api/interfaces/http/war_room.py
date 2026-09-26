@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import threading
 import time
+import uuid
+from datetime import UTC, datetime
 from typing import Annotated, Any, cast
 
 from ca_agents.ag_war_room import run_war_room_comparison
@@ -26,6 +28,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from ca_api.interfaces.http.sprint3 import _require_manager, _require_role
+from ca_api.persist import audit_add, kv_mutate
 
 router = APIRouter(tags=["experience_war_room"])
 
@@ -64,6 +67,10 @@ class WarRoomSimulateBody(BaseModel):
 class WarRoomProposeBody(BaseModel):
     option_id: str = Field(min_length=1)
     expected_snapshot_hash: str = Field(min_length=8)
+
+
+class WarRoomConfirmBody(BaseModel):
+    option_id: str | None = None
 
 
 @router.post("/api/v1/experience/war-room/simulate")
@@ -176,23 +183,53 @@ def war_room_propose(
 @router.post("/api/v1/experience/war-room/{simulation_id}/confirm")
 def war_room_confirm(
     simulation_id: str,
+    body: WarRoomConfirmBody = WarRoomConfirmBody(),
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    """Manager-only confirm. MVP: confirm proposal chứa không mutation hệ thống.
-
-    Phase 07 tích hợp với existing proposal confirmation path nếu có.
-    Không bao giờ trực tiếp ghi lịch/inventory.
-    """
+    """Manager-only confirm. Không trực tiếp ghi lịch/tồn kho/luật/ký ức thật
+    (mô phỏng luôn có thể sai — ghi đè thẳng là rủi ro), nhưng ghi lại quyết
+    định thành MỘT việc thật trong Sổ việc treo (`/treo`) + một vết hệ thống
+    (`/vet`) để quản lý ghim vào vận hành, thay vì `confirm` không để lại dấu
+    vết gì như trước (Phase 07 cũ)."""
     user = _require_manager(authorization)
     with _LOCK:
         item = _SIM_CACHE.get(simulation_id)
     if not item:
         raise HTTPException(status_code=404, detail="simulation_not_found")
-    # Audit event gọn — không log full prompt/khách.
+
+    option_id = body.option_id
+    comparison = item.get("comparison") or {}
+    options = comparison.get("options") or []
+    option = next((o for o in options if o.get("option_id") == option_id), None) if option_id else None
+    label = option.get("label") if isinstance(option, dict) and option.get("label") else (option_id or "phương án đã mô phỏng")
+
+    treo_item = {
+        "id": f"treo_warroom_{uuid.uuid4().hex[:8]}",
+        "noi_dung": f"War Room đã chốt: {label} (mô phỏng {simulation_id}) — cần áp dụng vào vận hành.",
+        "trang_thai": "dang_cho",
+        "nguon": "war_room",
+        "simulation_id": simulation_id,
+        "option_id": option_id,
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+
+    def _mut_treo(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        items.insert(0, treo_item)
+        return items
+
+    kv_mutate("treo", _mut_treo, [])
+    audit_add(
+        datetime.now(UTC).isoformat(),
+        str(user),
+        "experience.war_room.confirm",
+        {"simulation_id": simulation_id, "option_id": option_id},
+    )
+
     return {
         "confirmed": True,
         "simulation_id": simulation_id,
         "confirmed_by": str(user),
         "mutation": "none",
-        "note": "War Room không mutates dữ liệu thật — chỉ proposal",
+        "note": "War Room không ghi đè trực tiếp lịch/tồn kho — đã tạo việc treo để quản lý áp dụng.",
+        "treo_id": treo_item["id"],
     }

@@ -48,6 +48,11 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/vf/conflict": "chẩn đoán VF nội bộ",
     "/api/v1/vf/conflict-demo": "demo VF nội bộ",
     "/api/v1/ai/retention/dry-run": "chẩn đoán retention nội bộ",
+    # Narration phụ trợ cho một trang cụ thể — dùng route tất định đã có
+    # capability riêng (predict/explain/twin/cam-nang/...), không phải một hành
+    # động điều phối mới của copilot.
+    "/api/v1/ai/insight": "narration phụ trợ, không phải hành động điều phối",
+    "/api/v1/ai/insight/ask": "narration phụ trợ, không phải hành động điều phối",
     "/api/v1/reservations-metrics": "metrics nội bộ",
     "/catchment-survey": "khảo sát giá thị trường bán kính catchment (pricing radar)",
     "/catchment-survey/{job_id}": "tiến trình job khảo sát giá — poll qua UI /khao-sat-gia",
@@ -129,8 +134,16 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/channels/bind/issue": "R2: self-service issue code qua UI /toi",
     "/api/v1/channels/status": "R0: trạng thái kênh qua UI",
     # ── Ca cá nhân / TKB / điểm danh — deep-link /toi, /qr ──
-    "/api/v1/ca/nha": "R2: nhả ca qua UI /doi-ca (consent bắt buộc ngoài chat)",
-    "/api/v1/ca/nhan": "R2: nhận ca qua UI /doi-ca (consent bắt buộc ngoài chat)",
+    # `ca/nha` chỉ chạy khi tuần đã công bố (server chặn 409 `lich_chua_cong_bo`
+    # nếu chưa) — nhả ca là quyền tự nguyện của chính nhân viên.
+    "/api/v1/ca/nha": "R2: nhả ca qua UI /toi (chỉ khi tuần đã công bố)",
+    # `ca/nhan` KHÔNG ghi phân công nữa: nhận ca ở tuần đã công bố phải qua đồng
+    # thuận hai bên nên đường duy nhất là Chợ đổi ca — server trả 409 kèm chỉ dẫn.
+    "/api/v1/ca/nhan": "R2: nhận ca bắt buộc qua UI /doi-ca (consent 2 bên)",
+    "/api/v1/ca/nhan-truc-tiep": "R3: quản lý gán ca để lấp ca thiếu người",
+    "/api/v1/lich-tuan/thay-doi": "R1: nhật ký đổi ca qua UI /lich-tuan",
+    "/api/v1/tkb/xep-lai": "R3: xếp lại lịch sau khi đổi TKB là thao tác quản lý",
+    "/api/v1/cho-doi-ca/{swap_id}/duyet": "R3: quản lý duyệt phiếu đổi ca qua UI /doi-ca",
     "/api/v1/toi/lich": "R0: lịch của tôi qua UI /toi",
     "/api/v1/tkb/mine": "R0: TKB của tôi qua UI",
     "/api/v1/tkb/{nv_id}": "R0: TKB theo nhân viên qua UI",
@@ -239,6 +252,13 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/experience/quanverse/preferences/{pref_id}/consent": "R2: đồng thuận sở thích qua UI (quyết định của khách)",
     "/api/v1/experience/quanverse/tour/{tour_id}": "experience — deep-link /quanverse (tour theo mã)",
     "/api/v1/experience/quanverse/ar-session": "experience — AR-lite qua UI /quanverse (không cấp camera qua chat)",
+    # Trợ lý Quánverse: lớp TƯỜNG THUẬT đọc lại dữ liệu của chính các route tất
+    # định ở trên (snapshot/modes/war-room/shift-rescue/rules/memories). Nó không
+    # tính số và không điều phối hành động nào — ADR-002: LLM chỉ diễn đạt lại
+    # brief, số do tầng toán thuần sinh. Vì vậy không phải một capability mới;
+    # đây đúng khuôn "narration phụ trợ" như /api/v1/ai/insight.
+    "/api/v1/experience/quanverse/brief/{page}": "narration phụ trợ — tóm tắt tất định của dữ liệu đã có capability riêng",
+    "/api/v1/experience/quanverse/ask": "narration phụ trợ — LLM chỉ diễn đạt brief, không thêm số/kết luận",
     "/api/v1/experience/war-room/simulate": "R2: mô phỏng qua UI /quanverse/war-room (số do math layer, không qua chat)",
     "/api/v1/experience/war-room/scenarios/{simulation_id}": "experience — deep-link /quanverse/war-room",
     "/api/v1/experience/war-room/{simulation_id}/propose": "R2: đề xuất phương án qua UI /quanverse/war-room",

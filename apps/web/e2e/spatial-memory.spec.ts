@@ -92,7 +92,8 @@ test.describe("Hon Quan Spatial Memory", () => {
       await expect(page.locator(".nq-pref__notice").first()).toBeVisible({ timeout: 10_000 });
     }
     // Không có ký ức chờ thì nhánh empty state phải nói thẳng, không để trống.
-    const emptyOrList = page.locator("[data-testid='pending-memories'], .nq-exp-empty");
+    // ExpEmpty dùng kit Empty → class `.nq-empty`.
+    const emptyOrList = page.locator("[data-testid='pending-memories'], .nq-empty");
     await expect(emptyOrList.first()).toBeVisible();
   });
 

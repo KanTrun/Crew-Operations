@@ -12,6 +12,7 @@ import { shiftRowLabel } from "../../lib/roster";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 import { KhungConfigPanel } from "./KhungConfigPanel";
 import { RosterGrid } from "./RosterGrid";
+import { ShiftChangeLog } from "./ShiftChangeLog";
 import { CopilotPane } from "../../ui/copilot/CopilotPane";
 import { Icon } from "../../ui/icons";
 
@@ -1003,6 +1004,18 @@ export default function RosterPage() {
 
       {error ? <Alert kind="err">{error}</Alert> : null}
       {loading ? <Loading skeleton="table" rows={3}>Đang tải lịch tuần…</Loading> : null}
+
+      {/* Bằng chứng đổi ca: trả lời "ai bị đổi ca với ai" sau mỗi lần xếp lịch.
+          Trước đây solver ghi đè phân công im lặng — người dùng thấy lịch khác đi
+          mà không có gì giải thích. Panel này chỉ hiện khi CÓ thay đổi. */}
+      {!loading ? (
+        <details className="nq-constraint-panel mb-4" data-panel="nhat-ky-doi-ca">
+          <summary>Ai đổi ca với ai — nhật ký thay đổi tuần {currentDisplayWeek}</summary>
+          <div className="mt-3">
+            <ShiftChangeLog tuanIso={currentDisplayWeek} />
+          </div>
+        </details>
+      ) : null}
 
       {!loading && viewMode === "all" && (
         <details className="nq-constraint-panel mb-4">

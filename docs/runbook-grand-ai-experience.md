@@ -36,6 +36,7 @@ Pop-Location
 | 4 | Quản lý | Chọn 2 preset → “Chạy mô phỏng” | `/quanverse/war-room` | Baseline + ≥2 option, “Đề xuất” → draft |
 | 5 | Quản lý | “Tìm quyết định lặp lại” → shadow → xác nhận | `/quanverse/rules` | Candidate → playbook, KHÔNG tự kích hoạt |
 | 6 | Bất kỳ | Hỏi “khách thích gì ở quầy?” | `/quanverse/spatial-memory` | Trả lời grounded kèm citation `mem_*` |
+| 7 | Quản lý | Mở panel “Trợ lý Quánverse” ở CẢ 5 trang, đọc tab *Tóm tắt trang*, rồi hỏi 1 câu | bất kỳ trang `/quanverse*` | Tóm tắt bằng số THẬT của trang; câu trả lời kèm “Dựa trên N bản ghi”; trang trống thì nói rõ “không suy đoán” |
 
 Cách chạy tự động (không UI):
 
@@ -71,6 +72,10 @@ Pop-Location
 - `POST /api/v1/experience/shift-rescue/{intake,candidates,invite,respond,confirm}`
 - `POST /api/v1/experience/rules/{discover,shadow-test,confirm,reject}`
 - `POST /api/v1/experience/voice/turn` — grounded, không mutate
+- `GET /api/v1/experience/quanverse/brief/{page}` — tóm tắt TẤT ĐỊNH của một trang
+  (`living_map|war_room|shift_rescue|rules|spatial_memory`), không gọi LLM
+- `POST /api/v1/experience/quanverse/ask` — hỏi đáp có căn cứ; replay trả lời tất
+  định, live thì LLM chỉ diễn đạt brief và phải qua cổng grounding (ADR-021)
 - `GET  /api/v1/experience/quanverse/snapshot` — bản chiếu theo role
 
 ## Rollback

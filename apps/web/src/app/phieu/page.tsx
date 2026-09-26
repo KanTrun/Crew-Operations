@@ -11,6 +11,7 @@ import {
   Hint,
   inputClassName,
   OpsCard,
+  PageActions,
   PageHeader,
   ProgressBar,
   StepDone,
@@ -346,9 +347,11 @@ export default function PhieuPage() {
             : "Chọn phiếu cho ca hôm nay rồi đi từng bước."
         }
       />
-      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-        Hỏi trợ lý vận hành
-      </Btn>
+      <PageActions>
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          Hỏi trợ lý vận hành
+        </Btn>
+      </PageActions>
 
       {error ? <Alert>{error}</Alert> : null}
       {okMsg ? <Alert kind="ok">{okMsg}</Alert> : null}

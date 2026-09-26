@@ -17,9 +17,9 @@
  * `SpatialMap` vẫn là đường vào thật cho bàn phím.
  */
 
-import { OrbitControls } from "@react-three/drei";
+import { Html, OrbitControls, ContactShadows } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Mesh } from "three";
 import type { Tier3d } from "../useCapability3d";
 import type { Anchor2D } from "./SpatialMap2dFallback";
@@ -33,8 +33,8 @@ const KIND_RADIUS: Record<string, number> = {
 
 function kindColor(kind: string): string {
   if (kind === "thiet_bi") return "#7c8a99";
-  if (kind === "ban") return "#14b8a6";
-  return "#7dd3fc";
+  if (kind === "ban") return "#b8942f";
+  return "#e8d48a";
 }
 
 interface Placement {
@@ -98,10 +98,15 @@ function Marker({
   const color = kindColor(anchor.kind);
   const inactive = anchor.active === false;
 
+  useEffect(() => () => {
+    document.body.style.cursor = "";
+  }, []);
+
   return (
     <group position={[place.px, 0, place.pz]}>
-      {/* Cột mốc: chiều cao = số ký ức đã xác nhận. */}
       <mesh
+        castShadow
+        receiveShadow
         position={[0, place.height / 2, 0]}
         onPointerOver={(e) => {
           e.stopPropagation();
@@ -126,6 +131,23 @@ function Marker({
           roughness={0.48}
         />
       </mesh>
+      <Html
+        position={[0, place.height + 0.22, 0]}
+        center
+        distanceFactor={10}
+        style={{ pointerEvents: "none", whiteSpace: "nowrap" }}
+      >
+        <span
+          style={{
+            fontSize: "10px",
+            fontFamily: "var(--nq-font-mono)",
+            color: selected ? "#e8d48a" : "#c8d0d8",
+            textShadow: "0 1px 4px rgba(0,0,0,.85)",
+          }}
+        >
+          {anchor.label || anchor.anchor_id}
+        </span>
+      </Html>
       {/* Đế neo — đọc được vị trí ngay cả khi cột bị che khuất một phần. */}
       <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[radius * 1.5, radius * 2.1, 24]} />
@@ -136,7 +158,7 @@ function Marker({
           <cylinderGeometry
             args={[radius * 1.5, radius * 1.5, place.height * 1.06, 20]}
           />
-          <meshBasicMaterial color="#5eead4" wireframe transparent opacity={0.85} />
+          <meshBasicMaterial color="#e8d48a" wireframe transparent opacity={0.85} />
         </mesh>
       ) : null}
       {/* Chấm ký ức — mỗi ký ức một điểm sáng trên đỉnh cột. */}
@@ -150,7 +172,7 @@ function Marker({
           ]}
         >
           <sphereGeometry args={[0.035, 10, 10]} />
-          <meshBasicMaterial color="#14b8a6" />
+          <meshBasicMaterial color="#d4af37" />
         </mesh>
       ))}
     </group>
@@ -167,7 +189,7 @@ function Floor({ sizeX, sizeZ }: { sizeX: number; sizeZ: number }) {
       </mesh>
       <mesh position={[0, -0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[Math.min(sizeX, sizeZ) / 2 - 0.06, Math.min(sizeX, sizeZ) / 2, 64]} />
-        <meshBasicMaterial color="#14b8a6" transparent opacity={0.3} />
+        <meshBasicMaterial color="#d4af37" transparent opacity={0.3} />
       </mesh>
     </group>
   );
@@ -234,13 +256,13 @@ export default function SpatialMap3d({
         shadows={full}
       >
         <ambientLight intensity={0.55} />
-        <hemisphereLight args={["#5eead4", "#0b141b", 0.5]} />
+        <hemisphereLight args={["#e8d48a", "#0b141b", 0.5]} />
         <pointLight
           position={[4, 5.5, 3]}
           intensity={1.6}
           distance={20}
           decay={1.2}
-          color="#2dd4bf"
+          color="#b8942f"
           castShadow={full}
         />
         <pointLight
@@ -251,6 +273,7 @@ export default function SpatialMap3d({
           color="#7c8a99"
         />
         <Floor sizeX={6.2} sizeZ={5.2} />
+        {full ? <ContactShadows position={[0, 0.02, 0]} opacity={0.4} scale={9} blur={2.2} far={5} /> : null}
         {anchors.map((a) => {
           const place = placements.get(a.anchor_id);
           if (!place) return null;

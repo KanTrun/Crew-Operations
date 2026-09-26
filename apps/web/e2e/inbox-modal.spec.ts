@@ -8,15 +8,13 @@ async function loginAsManager(page: Page) {
   await expect(page).toHaveURL(/\/hom-nay/, { timeout: 15_000 });
 }
 
-async function expectApprovalDialogAnchoredToViewport(page: Page) {
-  const openButton = page.getByRole("button", { name: "Duyệt ràng buộc", exact: true }).first();
+async function expectReopenDialogAnchoredToViewport(page: Page) {
+  const openButton = page.getByRole("button", { name: "Mở đợt xếp tuần mới", exact: true }).first();
   await expect(openButton).toBeVisible();
   await openButton.scrollIntoViewIfNeeded();
   await openButton.click();
 
-  const dialog = page.getByRole("dialog", {
-    name: /Duyệt ràng buộc — xem chi tiết trước khi chốt/i,
-  });
+  const dialog = page.getByRole("dialog");
   const layer = page.locator(".nq-inbox-dialog-layer");
 
   await expect(dialog).toBeVisible();
@@ -39,14 +37,27 @@ async function expectApprovalDialogAnchoredToViewport(page: Page) {
   await expect.poll(() => page.evaluate(() => document.body.style.overflow)).not.toBe("hidden");
 }
 
-test("khung duyệt ràng buộc luôn cố định trong viewport desktop và mobile", async ({ page }) => {
+test("hộp thư ràng buộc chỉ xem — dialog mở lại tuần neo trong viewport khi lịch đã đóng", async ({ page }) => {
   await loginAsManager(page);
   await page.goto("/inbox");
   await expect(page.getByRole("heading", { name: /Hộp thư ràng buộc/i })).toBeVisible();
+  // Redesign: AI tự duyệt — không còn nút «Duyệt ràng buộc» thủ công.
+  await expect(page.getByRole("button", { name: "Duyệt ràng buộc", exact: true })).toHaveCount(0);
+  await expect(page.getByText(/AI tự động duyệt|chỉ xem/i).first()).toBeVisible();
+
+  const reopen = page.getByRole("button", { name: "Mở đợt xếp tuần mới", exact: true });
+  if ((await reopen.count()) === 0) {
+    // Fixture chưa khoá tuần — vẫn xác nhận trang chỉ-xem ổn định trên desktop/mobile.
+    await page.setViewportSize({ width: 1366, height: 576 });
+    await expect(page.getByRole("heading", { name: /Hộp thư ràng buộc/i })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByRole("heading", { name: /Hộp thư ràng buộc/i })).toBeVisible();
+    return;
+  }
 
   await page.setViewportSize({ width: 1366, height: 576 });
-  await expectApprovalDialogAnchoredToViewport(page);
+  await expectReopenDialogAnchoredToViewport(page);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expectApprovalDialogAnchoredToViewport(page);
+  await expectReopenDialogAnchoredToViewport(page);
 });

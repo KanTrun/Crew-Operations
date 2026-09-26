@@ -36,7 +36,7 @@
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(70% 45% at 20% -8%, rgba(20, 184, 166, 0.16), transparent 62%),
+    radial-gradient(70% 45% at 20% -8%, rgba(184, 148, 47, 0.16), transparent 62%),
     radial-gradient(50% 40% at 92% 4%, rgba(143, 168, 160, 0.10), transparent 60%),
     /* Vệt hơi nước: ba dải mảnh nghiêng, rất nhạt — motif "steam-line" của quán */
     repeating-linear-gradient(
@@ -73,7 +73,7 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   /* Quầng ấm rất nhẹ phía sau chữ — chất liệu "đêm quán" thay vì chữ phẳng. */
-  text-shadow: 0 0 44px rgba(20, 184, 166, 0.18);
+  text-shadow: 0 0 44px rgba(184, 148, 47, 0.18);
   color: var(--nq-fg, #e6edf3);
 }
 .nq-exp-header p {
@@ -160,8 +160,8 @@
 }
 .nq-war-picker__card:hover { border-color: var(--nq-line-strong); transform: translateY(-1px); }
 .nq-war-picker__card.is-active {
-  border-color: var(--nq-accent, #14b8a6);
-  background: var(--nq-accent-dim, rgba(20, 184, 166, 0.16));
+  border-color: var(--nq-accent, #d4af37);
+  background: var(--nq-accent-dim, rgba(212, 175, 55, 0.16));
 }
 .nq-war-picker__title { font-weight: 700; }
 .nq-war-picker__desc { color: var(--nq-dim); font-size: 0.85rem; line-height: 1.5; }
@@ -585,7 +585,7 @@
   /* Ba lớp: quầng đồng trên đỉnh, vệt sáng dưới sàn, và nền tối dần về đáy —
      để khối 3D có chỗ đứng trong một căn phòng, không trôi giữa khoảng đen. */
   background:
-    radial-gradient(90% 60% at 50% 8%, rgba(20, 184, 166, 0.2), transparent 62%),
+    radial-gradient(90% 60% at 50% 8%, rgba(184, 148, 47, 0.2), transparent 62%),
     radial-gradient(70% 40% at 50% 96%, rgba(143, 168, 160, 0.12), transparent 70%),
     linear-gradient(180deg, #1b1712 0%, #14110e 45%, #0d0b09 100%);
   overflow: hidden;
@@ -599,8 +599,8 @@
   height: 58%;
   pointer-events: none;
   background:
-    repeating-linear-gradient(90deg, transparent 0 38px, rgba(20, 184, 166, 0.055) 38px 39px),
-    repeating-linear-gradient(0deg, transparent 0 26px, rgba(20, 184, 166, 0.045) 26px 27px);
+    repeating-linear-gradient(90deg, transparent 0 38px, rgba(184, 148, 47, 0.055) 38px 39px),
+    repeating-linear-gradient(0deg, transparent 0 26px, rgba(184, 148, 47, 0.045) 26px 27px);
   transform: perspective(340px) rotateX(62deg);
   transform-origin: bottom center;
   mask-image: linear-gradient(180deg, transparent, #000 55%);
@@ -634,6 +634,44 @@
 
 /* ── Living Map 2D: mặt bằng ────────────────────────────────────────────── */
 .nq-living-map { display: grid; gap: var(--nq-s3); }
+.nq-living-map__svg {
+  width: 100%;
+  height: auto;
+  max-height: 420px;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-bg-elevated);
+}
+.nq-living-map__floor { fill: color-mix(in srgb, var(--nq-surface) 88%, transparent); }
+.nq-living-map__zone-rect {
+  fill: color-mix(in srgb, var(--nq-surface-2) 90%, transparent);
+  stroke: var(--nq-line-strong);
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: fill 160ms ease, stroke 160ms ease;
+}
+.nq-living-map__zone-g--low .nq-living-map__zone-rect { stroke: #7c8a99; }
+.nq-living-map__zone-g--mid .nq-living-map__zone-rect { stroke: var(--nq-accent); }
+.nq-living-map__zone-g--high .nq-living-map__zone-rect { stroke: #f59e0b; }
+.nq-living-map__zone-g.is-selected .nq-living-map__zone-rect {
+  fill: var(--nq-accent-soft);
+  stroke: var(--nq-accent);
+  stroke-width: 2.5;
+}
+.nq-living-map__zone-g:focus { outline: none; }
+.nq-living-map__zone-g:focus .nq-living-map__zone-rect {
+  stroke: var(--nq-focus);
+  stroke-width: 2.5;
+}
+.nq-living-map__zone-load { fill: var(--nq-accent); opacity: 0.85; }
+.nq-living-map__zone-g--high .nq-living-map__zone-load { fill: #f59e0b; }
+.nq-living-map__zone-text {
+  fill: var(--nq-ink);
+  font-size: 13px;
+  font-family: var(--nq-font-display);
+  pointer-events: none;
+}
+.nq-living-map__chips { display: flex; flex-wrap: wrap; gap: var(--nq-s2); }
 .nq-living-map__grid { display: grid; grid-template-columns: 1fr; gap: var(--nq-s3); }
 @media (min-width: 560px) { .nq-living-map__grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1100px) { .nq-living-map__grid { grid-template-columns: repeat(2, 1fr); } }
@@ -1095,7 +1133,7 @@
   background:
     repeating-linear-gradient(0deg, transparent 0 23px, color-mix(in srgb, var(--nq-accent) 14%, transparent) 23px 24px),
     repeating-linear-gradient(90deg, transparent 0 23px, color-mix(in srgb, var(--nq-accent) 14%, transparent) 23px 24px),
-    radial-gradient(120% 90% at 50% 60%, rgba(20, 184, 166, 0.16), transparent 65%),
+    radial-gradient(120% 90% at 50% 60%, rgba(184, 148, 47, 0.16), transparent 65%),
     linear-gradient(180deg, #14110e, #0b0908);
   overflow: hidden;
 }
@@ -1183,7 +1221,7 @@
   border: 2px solid var(--nq-line);
   border-radius: var(--nq-radius-bubble, 18px);
   background:
-    radial-gradient(120% 90% at 50% 15%, rgba(20, 184, 166, 0.12), transparent 68%),
+    radial-gradient(120% 90% at 50% 15%, rgba(184, 148, 47, 0.12), transparent 68%),
     linear-gradient(180deg, #16120f, #0b0908);
   overflow: hidden;
 }
@@ -1440,7 +1478,7 @@
   font-size: clamp(1.5rem, 4vw, 2.25rem);
   font-weight: 700;
   letter-spacing: -0.02em;
-  text-shadow: 0 0 44px rgba(20, 184, 166, 0.18);
+  text-shadow: 0 0 44px rgba(184, 148, 47, 0.18);
 }
 .nq-war__header p, .nq-rules__header p, .nq-rescue__header p,
 .nq-spatial__header p {
@@ -1453,3 +1491,110 @@
 .nq-drawer__risk::first-letter { text-transform: uppercase; }
 
 
+
+
+/* ── Trợ lý Quánverse — tóm tắt tất định + hỏi đáp có căn cứ (2026-09-26) ──
+   Panel dùng chung cho cả 5 trang. Quy ước: bề mặt ĐẶC cho nội dung dữ liệu
+   (card/bảng không dùng kính theo design-guidelines), chữ theo thang của hệ. */
+.nq-assistant {
+  display: grid; gap: var(--nq-s3);
+  padding: var(--nq-s4);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-r-lg);
+  background: var(--nq-surface);
+}
+.nq-assistant__head { display: flex; align-items: center; gap: var(--nq-s2); flex-wrap: wrap; }
+.nq-assistant__head svg { color: var(--nq-accent); flex: none; }
+.nq-assistant__title {
+  margin: 0; font-family: var(--nq-font-display, serif);
+  font-size: 1.05rem; font-weight: 600; color: var(--nq-fg);
+}
+.nq-assistant__spacer { flex: 1 1 auto; }
+.nq-assistant__tabs { display: flex; gap: 0.35rem; }
+.nq-assistant__tab {
+  padding: 0.35rem 0.8rem; border-radius: 999px;
+  border: 1px solid var(--nq-line-control);
+  background: transparent; color: var(--nq-dim);
+  font-size: 0.85rem; cursor: pointer;
+  transition: background var(--nq-beat-focus, 220ms) ease, color var(--nq-beat-focus, 220ms) ease;
+}
+.nq-assistant__tab:hover { color: var(--nq-fg); }
+.nq-assistant__tab.is-on {
+  background: var(--nq-accent-soft); color: var(--nq-accent-ink-text);
+  border-color: var(--nq-accent);
+}
+.nq-assistant__hint { margin: 0; color: var(--nq-dim); font-size: 0.9rem; }
+.nq-assistant__refs { margin: 0; color: var(--nq-dim); font-size: 0.82rem; }
+.nq-assistant__refs--none { color: var(--nq-st-warn-ink, var(--nq-dim)); }
+
+.nq-brief { display: grid; gap: var(--nq-s3); }
+.nq-brief__headline {
+  margin: 0; font-size: 1rem; line-height: 1.55; color: var(--nq-fg); font-weight: 600;
+}
+.nq-brief__metrics {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: var(--nq-s2);
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+.nq-brief-metric {
+  display: grid; gap: 0.2rem; padding: 0.6rem 0.75rem;
+  border: 1px solid var(--nq-line); border-radius: var(--nq-r-md);
+  background: var(--nq-surface-2, var(--nq-surface));
+}
+.nq-brief-metric__value { font-family: var(--nq-font-mono, monospace); font-size: 1.15rem; color: var(--nq-fg); }
+.nq-brief-metric__label { font-size: 0.8rem; color: var(--nq-dim); line-height: 1.4; }
+.nq-brief-metric--ok .nq-brief-metric__value { color: var(--nq-st-ok-ink, var(--nq-fg)); }
+.nq-brief-metric--warn .nq-brief-metric__value { color: var(--nq-st-warn-ink-strong, var(--nq-warn)); }
+.nq-brief-metric--danger .nq-brief-metric__value { color: var(--nq-st-danger-ink, var(--nq-danger)); }
+.nq-brief__block { display: grid; gap: 0.4rem; }
+.nq-brief__block-title {
+  margin: 0; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--nq-dim);
+}
+.nq-brief__list { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.3rem; }
+.nq-brief__list li { font-size: 0.9rem; line-height: 1.55; color: var(--nq-fg); }
+.nq-brief__list--action li { color: var(--nq-accent-ink-text); }
+.nq-brief__block--risk .nq-brief__list li { color: var(--nq-st-warn-ink, var(--nq-fg)); }
+.nq-brief__ok { margin: 0; font-size: 0.9rem; color: var(--nq-dim); }
+.nq-brief__quality { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; }
+.nq-brief__quality li { font-size: 0.8rem; color: var(--nq-dim); }
+.nq-brief__quality--warning { color: var(--nq-st-warn-ink, var(--nq-dim)); }
+.nq-brief__quality--error { color: var(--nq-st-danger-ink, var(--nq-danger)); }
+
+.nq-assistant__ask { display: grid; gap: var(--nq-s3); }
+.nq-assistant__input { display: flex; gap: var(--nq-s2); flex-wrap: wrap; }
+.nq-assistant__input input {
+  flex: 1 1 16rem; min-width: 0;
+  padding: 0.6rem 0.8rem; border-radius: var(--nq-r-md);
+  border: 1px solid var(--nq-line-control);
+  background: var(--nq-surface-2, var(--nq-bg)); color: var(--nq-fg);
+  font-size: 0.92rem;
+}
+.nq-assistant__input input:focus-visible {
+  outline: 2px solid var(--nq-accent); outline-offset: 1px;
+}
+.nq-assistant__answer { display: grid; gap: 0.5rem; }
+.nq-assistant__answer-text { margin: 0; font-size: 0.95rem; line-height: 1.6; color: var(--nq-fg); }
+.nq-assistant__citations { margin: 0; font-size: 0.82rem; color: var(--nq-accent-ink-text); }
+.nq-assistant__citations--none { color: var(--nq-st-warn-ink, var(--nq-dim)); }
+.nq-assistant__guard { margin: 0; font-size: 0.8rem; color: var(--nq-st-warn-ink, var(--nq-dim)); }
+
+@media (max-width: 560px) {
+  .nq-assistant__head { align-items: flex-start; }
+  .nq-assistant__tabs { width: 100%; }
+  .nq-assistant__tab { flex: 1 1 auto; text-align: center; }
+}
+
+/* Bọc trang con Quánverse: panel chính rồi tới Trợ lý, khoảng cách dọc rõ ràng. */
+.nq-quanverse-sub { display: grid; gap: var(--nq-s4); }
+
+/* Dữ liệu đã có trong bản chiếu nhưng trước đây không hiển thị. */
+.nq-exp-header__ids {
+  margin: 0.35rem 0 0; display: flex; gap: 0.4rem; flex-wrap: wrap;
+  color: var(--nq-dim); font-size: 0.8rem; font-family: var(--nq-font-mono, monospace);
+}
+.nq-quanverse__eventtime {
+  color: var(--nq-dim); font-size: 0.78rem;
+  font-family: var(--nq-font-mono, monospace); white-space: nowrap;
+}
+.nq-quality__msg { color: var(--nq-dim); font-size: 0.82rem; line-height: 1.45; }

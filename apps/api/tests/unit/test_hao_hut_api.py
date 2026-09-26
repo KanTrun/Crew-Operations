@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ca_agents.ag_waste import ngay_hom_nay
 from ca_api.interfaces.http.main import app
 from ca_api.persist import kv_get, kv_mutate
 from fastapi.testclient import TestClient
@@ -53,9 +54,7 @@ def test_hao_hut_doi_token() -> None:
 
 def test_hao_hut_tinh_tu_kiem_ke_va_cong_thuc() -> None:
     """Số thực tế khớp §4.3: đầu ca + nhập − cuối ca − hao hụt đã ghi."""
-    from datetime import datetime
-
-    hom_nay = datetime.now().date().isoformat()
+    hom_nay = ngay_hom_nay()
     _nap_kiem_ke(hom_nay, [
         {"mat_hang": "sua_tuoi", "dau_ca": 25, "nhap_trong_ca": 8, "cuoi_ca": 26, "hao_hut_ghi": 0},
     ])
@@ -70,9 +69,7 @@ def test_hao_hut_tinh_tu_kiem_ke_va_cong_thuc() -> None:
 
 def test_hao_hut_khong_ket_luan_dat_khi_thieu_ve() -> None:
     """Có kiểm kê mà chưa có đơn ⇒ không được nói 'đạt' (fail-closed)."""
-    from datetime import datetime
-
-    hom_nay = datetime.now().date().isoformat()
+    hom_nay = ngay_hom_nay()
     _nap_kiem_ke(hom_nay, [
         {"mat_hang": "tra", "dau_ca": 100, "nhap_trong_ca": 0, "cuoi_ca": 40, "hao_hut_ghi": 0},
     ])
@@ -85,9 +82,7 @@ def test_hao_hut_khong_ket_luan_dat_khi_thieu_ve() -> None:
 
 def test_hao_hut_danh_dau_du_lieu_mau() -> None:
     """Nhãn mẫu theo lên tận cùng để UI gắn chip và người đọc không nhầm số thật."""
-    from datetime import datetime
-
-    hom_nay = datetime.now().date().isoformat()
+    hom_nay = ngay_hom_nay()
     _nap_kiem_ke(
         hom_nay,
         [{"mat_hang": "da", "dau_ca": 10, "nhap_trong_ca": 0, "cuoi_ca": 4, "hao_hut_ghi": 0}],
@@ -99,9 +94,7 @@ def test_hao_hut_danh_dau_du_lieu_mau() -> None:
 
 def test_hao_hut_loc_theo_ky() -> None:
     """Kỳ hôm nay không tính phiếu của ngày khác."""
-    from datetime import datetime
-
-    hom_nay = datetime.now().date().isoformat()
+    hom_nay = ngay_hom_nay()
     _nap_kiem_ke("2020-01-01", [
         {"mat_hang": "banh", "dau_ca": 999, "nhap_trong_ca": 0, "cuoi_ca": 0, "hao_hut_ghi": 0},
     ])

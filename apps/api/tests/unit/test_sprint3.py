@@ -171,14 +171,24 @@ def test_orc_idempotency() -> None:
 
 
 def test_ghi_nhan_after_nha() -> None:
-    from ca_api.interfaces.http.sprint3 import _phan_cong
+    from ca_api.interfaces.http.sprint3 import _current_week, _phan_cong
 
     phan = dict(_phan_cong())
     if "nv_03" in phan.get("w1_c01", []):
         phan["w1_c01"] = [x for x in phan["w1_c01"] if x != "nv_03"]
         kv_set("phan_cong", phan)
+    # Nhả ca chỉ hợp lệ khi lịch đã công bố (cổng `lich_chua_cong_bo`), nên bài
+    # này phải dựng tuần hiện tại ở trạng thái đã công bố trước khi thao tác.
+    week = _current_week()
+    kv_set("lich_tuan_lifecycle_by_week", {week: {"tuan_iso": week, "trang_thai": "da_cong_bo"}})
+    kv_set("lich_tuan_lifecycle", {"tuan_iso": week, "trang_thai": "da_cong_bo"})
+
     auth = headers(client, "minh")
-    nhan = client.post("/api/v1/ca/nhan", json={"ca_id": "w1_c01"}, headers=auth)
+    # Nhận ca trực tiếp là đường của QUẢN LÝ (`ca/nhan` giờ trỏ sang chợ đổi ca).
+    quan_ly = headers(client, "lan")
+    nhan = client.post(
+        "/api/v1/ca/nhan-truc-tiep", json={"ca_id": "w1_c01", "nv_id": "nv_03"}, headers=quan_ly
+    )
     assert nhan.status_code == 200, nhan.text
     assert nhan.json()["truoc"] != nhan.json()["sau"]
     nha = client.post("/api/v1/ca/nha", json={"ca_id": "w1_c01"}, headers=auth)

@@ -10,6 +10,7 @@ ADR-008: causal memory chỉ ĐỌC và giải thích, không thay đổi gì.
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from ca_contracts.causal_memory import (
@@ -64,6 +65,44 @@ def _find_audit_nodes(audit: dict[str, Any]) -> list[CausalNode]:
         )
     )
     return nodes
+
+
+_SCENARIO_LOAI_LABEL: dict[str, str] = {
+    "tang_gia": "Tăng giá",
+    "giam_gia": "Giảm giá",
+    "tang_ns": "Tăng nhân sự",
+    "giam_ns": "Giảm nhân sự",
+}
+
+_SCENARIO_FIELD_LABEL: dict[str, str] = {
+    "gia_cu": "giá cũ",
+    "gia_moi": "giá mới",
+    "luong_ban_cu": "lượng bán cũ",
+    "chi_phi_bien_doi": "chi phí biến đổi",
+    "he_so_co_gian": "hệ số co giãn",
+    "doanh_thu_moi": "doanh thu mới",
+    "doanh_thu_cu": "doanh thu cũ",
+    "chenh_lech": "chênh lệch",
+}
+
+
+def _scenario_mo_ta(kq: dict[str, Any]) -> str:
+    """Câu mô tả tất định cho một kịch bản song sinh (Twin) khi bản ghi
+    không có sẵn `mo_ta` — thay cho việc in nguyên `str(dict)` như
+    `{'scenario_id': 'sc_519770', 'loai': 'tang_gia', ...}` lên giao diện.
+    Chỉ dùng dữ liệu đã có trong `kq`, không suy diễn thêm."""
+    loai = _SCENARIO_LOAI_LABEL.get(str(kq.get("loai") or ""), str(kq.get("loai") or "kịch bản"))
+    ket_qua = kq.get("ket_qua")
+    parts = [f"Kịch bản {loai}"]
+    if isinstance(ket_qua, dict) and ket_qua:
+        detail = ", ".join(
+            f"{_SCENARIO_FIELD_LABEL.get(k, k.replace('_', ' '))} {v}" for k, v in ket_qua.items()
+        )
+        parts.append(f"— {detail}")
+    rui_ro = str(kq.get("rui_ro") or "").strip()
+    if rui_ro:
+        parts.append(f"(rủi ro: {rui_ro})")
+    return " ".join(parts)
 
 
 def build_causal_chain(
@@ -133,7 +172,7 @@ def build_causal_chain(
         kq_node = CausalNode(
             node_id=f"ket_qua_{i}",
             loai=CausalNodeType.KET_QUA,
-            mo_ta=str(kq.get("mo_ta") or str(kq)),
+            mo_ta=str(kq.get("mo_ta") or _scenario_mo_ta(kq)),
             nguon="solver",
         )
         if not _add_node(kq_node):
@@ -153,7 +192,13 @@ def build_causal_chain(
     ket_luan = _build_ket_luan(nodes, links)
 
     return CausalChain(
-        chain_id=f"chain_{abs(hash(cau_hoi)) % 100000}",
+        # `hash()` built-in bị salt ngẫu nhiên mỗi lần khởi động tiến trình
+        # Python (`PYTHONHASHSEED`) — cùng một câu hỏi hỏi lại sau khi máy chủ
+        # khởi động lại sẽ ra `chain_id` khác, nên bước dedupe theo `chain_id`
+        # ở `ops_explain.py` không nhận ra là trùng và "Lịch sử truy vết" cứ
+        # dài thêm một dòng giống hệt mỗi lần. `sha1` tất định theo nội dung
+        # câu hỏi, ổn định qua mọi lần chạy.
+        chain_id=f"chain_{hashlib.sha1(cau_hoi.strip().lower().encode('utf-8')).hexdigest()[:10]}",
         cau_hoi=cau_hoi,
         nodes=nodes,
         links=links,

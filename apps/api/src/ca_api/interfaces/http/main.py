@@ -106,6 +106,7 @@ from ca_api.persist import (
     don_list,
     get_user_emails,
     kv_get,
+    kv_get_many,
     kv_mutate,
     kv_set,
     list_users,
@@ -471,6 +472,10 @@ def _adapted_serpapi_quota() -> dict[str, Any]:
 
 configure_data_sources(
     kv_get=kv_get,
+    # Đọc nhiều khoá trong MỘT connection — dùng cho tool cần ≥3 khoá
+    # (`tool_get_schedule` đọc 6). Thiếu hàm này thì tool tự fallback về
+    # `kv_get` tuần tự và mất hết lợi ích về độ trễ.
+    kv_get_many=kv_get_many,
     list_luat=_list_luat,
     load_template=_load_template,
     list_sua=_list_sua,
@@ -1080,6 +1085,32 @@ async def patch_lifecycle(
 
     await notify_ops_changed("roster:lifecycle", body.tuan_iso)
     return {"ok": True, **new_state, "solver": solver_ket_qua}
+
+
+@app.get("/api/v1/lich-tuan/thay-doi")
+def get_lich_thay_doi(
+    _role: Annotated[str, Depends(_require_write_role)],
+    tuan_iso: str = Query(default="2026-W36"),
+) -> dict[str, Any]:
+    """Nhật ký thay đổi ca của một tuần — bằng chứng "ai đổi ca với ai".
+
+    Vì sao cần endpoint riêng thay vì nhét diff vào `GET /lich-tuan`: lịch tuần
+    được gọi lại RẤT thường xuyên (mỗi lần đổi tuần, mỗi lần có sự kiện realtime).
+    Diff chỉ cần khi người dùng chủ động hỏi "vì sao lịch đổi", nên tách ra để
+    không làm nặng đường đọc chính.
+
+    Trả bản MỚI NHẤT trước. Mỗi bản đã ở dạng đọc được (diff có tên người), UI
+    không phải tự ghép id.
+    """
+    raw = kv_get("lich_thay_doi_by_week", {})
+    items = raw.get(tuan_iso, []) if isinstance(raw, dict) else []
+    if not isinstance(items, list):
+        items = []
+    return {
+        "tuan_iso": tuan_iso,
+        "so_ban_ghi": len(items),
+        "items": list(reversed(items)),
+    }
 
 
 @app.post("/api/v1/lich-tuan/nv-status")

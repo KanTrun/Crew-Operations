@@ -154,10 +154,12 @@ export default function WarRoom() {
     setConfirming(true);
     setNotice(null);
     try {
-      const res = await warRoomConfirm(result.simulation_id);
+      const res = await warRoomConfirm(result.simulation_id, proposal.optionId);
       setProposal((p) => (p ? { ...p, confirmed: res.confirmed } : p));
       setNotice(
-        "Đã chốt đề xuất. Mô phỏng chỉ để so sánh — đổi lịch thật vẫn là bước riêng, có người duyệt.",
+        res.treo_id
+          ? "Đã chốt đề xuất và tạo việc trong Sổ việc treo — mở /treo để ghim vào vận hành."
+          : "Đã chốt đề xuất. Mô phỏng chỉ để so sánh — đổi lịch thật vẫn là bước riêng, có người duyệt.",
       );
     } catch (e) {
       setError(viError(e, COPY.confirm));
