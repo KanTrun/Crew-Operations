@@ -364,8 +364,11 @@
    trong khoảng 97ms -> 190ms. Cũng chính vì thế bài `spatial-memory.spec.ts` đo
    `svgBox` rồi đo từng neo, hai phép đo rơi vào hai bố cục khác nhau nên toạ độ
    lệch (neo chạm 912 trong khi `svgBox` kết thúc ở 771). */
-.nq-spatial__layout { display: grid; gap: 1rem; grid-template-columns: 1fr 420px; align-items: start; }
-@media (max-width: 980px) { .nq-spatial__layout { grid-template-columns: 1fr; } }
+.nq-spatial__layout { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) 420px; align-items: start; }
+/* Dưới 1100px thì về một cột: bản đồ và cột chi tiết cạnh nhau ở bề rộng này
+   làm cả hai bị bó (bản đồ mất chiều ngang, cột phải gãy chữ). */
+@media (max-width: 1100px) { .nq-spatial__layout { grid-template-columns: minmax(0, 1fr); } }
+.nq-spatial__side { display: grid; gap: var(--nq-s4); align-content: start; }
 .nq-map2d { align-self: start; border: 2px solid var(--nq-line); border-radius: var(--nq-radius-bubble, 18px); background: var(--nq-bg-elevated); overflow: hidden; }
 .nq-map2d__svg { display: block; width: 100%; height: auto; color: var(--nq-fg); }
 .nq-map2d__anchor { cursor: pointer; outline: none; }
@@ -422,12 +425,18 @@
 
 /* ── QUANVERSE Living OS ────────────────────────────────────────────────── */
 .nq-quanverse { display: grid; gap: var(--nq-s4); }
-.nq-quanverse__layout { display: grid; gap: var(--nq-s4); grid-template-columns: 1fr 400px; align-items: start; }
-@media (max-width: 1040px) { .nq-quanverse__layout { grid-template-columns: 1fr; } }
+/* Bố cục ba vùng rõ ràng, KHÔNG để vùng nào bị ép:
+   - ≥1200px: mặt bằng + rail phải 360px (đủ chỗ cho trục 15 phút + chế độ).
+   - 900–1200px: về MỘT cột (rail xuống dưới) — trước đây dải 760–1040px tách
+     rail thành HAI cột nằm DƯỚI một mặt bằng full-width, nên mỗi cột chỉ còn
+     ~370px và nội dung trục thời gian bị bó chữ. Một cột rộng đọc dễ hơn hai
+     cột hẹp, và mặt bằng cũng được rộng theo.
+   - <900px: vẫn một cột, chỉ siết khoảng cách. */
+.nq-quanverse__layout { display: grid; gap: var(--nq-s4); grid-template-columns: minmax(0, 1fr) 360px; align-items: start; }
+@media (max-width: 1200px) { .nq-quanverse__layout { grid-template-columns: minmax(0, 1fr); } }
 .nq-quanverse__right { display: grid; gap: var(--nq-s4); }
-.nq-quanverse__guests { display: grid; gap: var(--nq-s4); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: start; }
+.nq-quanverse__guests { display: grid; gap: var(--nq-s4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items: start; }
 .nq-quanverse__guests section { margin-top: 0; }
-@media (min-width: 760px) and (max-width: 1040px) { .nq-quanverse__right { grid-template-columns: 1fr 1fr; } }
 
 .nq-quanverse__hint {
   display: flex; align-items: center; gap: var(--nq-s2);
