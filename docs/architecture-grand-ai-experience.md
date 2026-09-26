@@ -19,6 +19,10 @@ packages/opsengine/.../shift_rescue_policy.py
 data/fixtures/grand_experience/*.json
 ```
 
+`ag_quanverse` có thêm hai module cho trợ lý hỏi đáp (ADR-021):
+`brief.py` (tổng hợp tất định theo trang) và `assistant.py` (diễn đạt + cổng
+grounding).
+
 ## Luồng dữ liệu (một request)
 
 ```mermaid
@@ -32,12 +36,36 @@ flowchart LR
     POL -->|voice| GRD[grounding + citations]
 ```
 
+## Trợ lý Quánverse — hai tầng, LLM không chạm số (ADR-021)
+
+Cùng một request `POST /experience/quanverse/ask`, nhưng dữ liệu đi qua ĐÚNG
+hai chặng, và chặng đầu không có LLM:
+
+```mermaid
+flowchart LR
+    Q[UI: PageAssistant] --> A[POST /ask]
+    A --> B[build_brief — TẤT ĐỊNH]
+    B --> C{agent_mode == live?}
+    C -->|replay| D[câu trả lời dựng thẳng từ brief]
+    C -->|live| E[llm.complete — chỉ thấy brief dạng chữ]
+    E --> F[audit_answer — cổng grounding]
+    F -->|số lạ / từ tuyệt đối| D
+    F -->|sạch| G[dùng lời LLM, ghi provider]
+    D --> H[QuanverseAskResponse]
+    G --> H
+    B -->|cùng khối| I[GET /brief/{page} — panel tóm tắt]
+```
+
+Bất biến: `build_brief` là **điểm vào duy nhất** cho cả panel tóm tắt và ngữ cảnh
+của LLM, nên hai bên không thể lệch số. `grounded = bool(grounded_refs)`; khi
+`False`, câu trả lời bị ghi đè bằng câu nói rõ "không suy đoán nội dung".
+
 ## Ranh giới (bắt buộc)
 
 | Ranh giới | Quy tắc |
 |---|---|
 | Đọc dữ liệu | qua `ExperienceReadAdapter` (protocol) — không import DB internals |
-| AI | LLM chỉ wording/voice; số do math layer deterministic |
+| AI | LLM chỉ wording/voice; số do math layer deterministic (ADR-021) |
 | Memory | owner/consent/visibility/retention/evidence/revocation bắt buộc |
 | Render | 2D canonical; WebGL/3D/AR progressive (ADR-018) |
 | Action | mọi mutation là proposal trước; confirm là người (ADR-008) |
@@ -60,7 +88,8 @@ flowchart LR
 
 ## Docs liên quan
 
-- `docs/adr/ADR-016-*`, `ADR-017-*`, `ADR-018-*`
+- `docs/adr/ADR-016-*` (ranh giới portfolio), `ADR-017-*` (consent ký ức),
+  `ADR-018-*` (3D progressive), `ADR-021-*` (LLM không là nguồn số)
 - `docs/runbook-grand-ai-experience.md`
-- `docs/design-guidelines.md` (experience register dùng Fraunces/Source Sans 3/
-  IBM Plex Mono + copper/charcoal)
+- `docs/design-guidelines.md` (design token của hệ — `--nq-*`, font Space
+  Grotesk / IBM Plex Sans / IBM Plex Mono)

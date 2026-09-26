@@ -5,6 +5,7 @@ import { MotionProvider } from "../ui/motion/MotionProvider";
 import { fontClass } from "../ui/fonts";
 import "./globals.css";
 import "./experience.css";
+import "./pos.css";
 
 export const metadata: Metadata = {
   title: "NHỊP QUÁN",
