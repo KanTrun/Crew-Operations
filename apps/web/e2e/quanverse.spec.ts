@@ -20,8 +20,13 @@ test.describe("QUANVERSE", () => {
     await expect(page.locator(".nq-living-map")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("zone-bar")).toBeVisible();
     await expect(page.locator(".nq-quanverse__events")).toBeVisible();
-    // Mặt bằng có cột tải thật, không chỉ chữ.
-    await expect(page.locator(".nq-loadbar__fill").first()).toBeVisible();
+    // Chú giải mức tải nằm NGAY TRÊN mặt bằng — `nq-loadbar__key` (ô màu Nhẹ/Vừa/
+    // Tải cao) mới là thứ luôn hiện khi mở trang.
+    //
+    // KHÔNG assert `nq-loadbar__fill` ở đây: cột fill nằm trong `ZoneDetail`, chỉ
+    // mount SAU khi người dùng bấm một khu vực. Assert nó ngay sau khi mở trang
+    // là đòi một phần tử chưa tồn tại — và đã làm đỏ CI thật.
+    await expect(page.locator(".nq-loadbar__key").first()).toBeVisible();
   });
 
   test("events link to zones and store-wide events say so", async ({ page }) => {
