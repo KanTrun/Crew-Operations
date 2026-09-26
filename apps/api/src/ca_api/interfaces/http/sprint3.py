@@ -162,10 +162,16 @@ def _known_nv(nv_id: str) -> bool:
 
 
 def _current_week() -> str:
+    """Tuần đang hiệu lực của quán.
+
+    Thứ tự: lifecycle thật → tuần ISO HIỆN TẠI (theo đồng hồ).
+    Trước đây fallback cứng `2026-W01` nên khi KV trống (quán mới/demo sạch)
+    mọi thao tác gắn vào tuần W01 — sai hẳn so với thực tế (bug QA đợt 4).
+    """
     life = kv_get("lich_tuan_lifecycle", {})
     if isinstance(life, dict) and life.get("tuan_iso"):
         return str(life["tuan_iso"])
-    return "2026-W01"
+    return _current_iso_week()
 
 
 def _phan_cong(tuan_iso: str | None = None) -> dict[str, list[str]]:
