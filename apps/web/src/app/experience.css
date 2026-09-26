@@ -1587,3 +1587,14 @@
 
 /* Bọc trang con Quánverse: panel chính rồi tới Trợ lý, khoảng cách dọc rõ ràng. */
 .nq-quanverse-sub { display: grid; gap: var(--nq-s4); }
+
+/* Dữ liệu đã có trong bản chiếu nhưng trước đây không hiển thị. */
+.nq-exp-header__ids {
+  margin: 0.35rem 0 0; display: flex; gap: 0.4rem; flex-wrap: wrap;
+  color: var(--nq-dim); font-size: 0.8rem; font-family: var(--nq-font-mono, monospace);
+}
+.nq-quanverse__eventtime {
+  color: var(--nq-dim); font-size: 0.78rem;
+  font-family: var(--nq-font-mono, monospace); white-space: nowrap;
+}
+.nq-quality__msg { color: var(--nq-dim); font-size: 0.82rem; line-height: 1.45; }

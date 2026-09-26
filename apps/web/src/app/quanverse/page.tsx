@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError } from "../../lib/api";
 import { getRole, getToken } from "../../lib/session";
-import { viError } from "../../lib/present";
+import { formatLuc, viError } from "../../lib/present";
 import { Icon } from "../../ui/icons";
 import { AuthGate } from "../../ui/kit";
 import { ExpSkeleton } from "../../ui/experience/exp-kit";
@@ -176,6 +176,16 @@ export default function QuanversePage() {
           Một trạng thái quán, bốn bản chiếu theo vai trò. Bản chiếu do máy chủ cắt
           theo quyền — đổi vai trò để thấy phần dữ liệu tương ứng được mở ra hoặc che đi.
         </p>
+        {/* Danh tính bản chiếu: có sẵn trong payload nhưng trước đây không hiện,
+            nên khi cần đối chiếu "hai người đang xem cùng một bản không" thì
+            không có gì để so. */}
+        {snap ? (
+          <p className="nq-exp-header__ids">
+            <span>Quán {snap.store_id}</span>
+            <span aria-hidden="true">·</span>
+            <span>Bản chiếu {snap.snapshot_id}</span>
+          </p>
+        ) : null}
       </header>
 
       {error ? (
@@ -247,6 +257,12 @@ export default function QuanversePage() {
                   <Icon name={q.level === "info" ? "info" : "warn"} size={14} />
                   <strong>{dataQualityLevelLabel(q.level)}</strong>
                   <span>{dataQualityLabel(q.code)}</span>
+                  {/* Câu giải thích đầy đủ của máy chủ. Trước đây chỉ hiện nhãn
+                      ngắn của `code`, nên cảnh báo quan trọng ("dữ liệu là fixture,
+                      không phải đo thật") bị rút thành một nhãn khó hiểu. */}
+                  {q.message ? (
+                    <span className="nq-quality__msg">{q.message}</span>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -308,6 +324,15 @@ export default function QuanversePage() {
                     </span>
                     <span className="nq-quanverse__eventsum">{ev.summary}</span>
                     <span className="nq-quanverse__eventmeta">
+                      {/* Mốc thời gian: dữ liệu này vốn đã có trong bản chiếu nhưng
+                          chưa từng hiện ra — không có nó thì người đọc không biết
+                          sự kiện vừa xảy ra hay từ sáng. */}
+                      <time
+                        className="nq-quanverse__eventtime"
+                        dateTime={ev.occurred_at}
+                      >
+                        {formatLuc(ev.occurred_at)}
+                      </time>
                       {/* Vùng gắn kết: bấm để mở chi tiết khu vực đó. */}
                       {zone ? (
                         <button
