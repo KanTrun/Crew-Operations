@@ -144,6 +144,12 @@ jobs:
 
             if sudo IMAGE_TAG="$target_tag" docker compose run --rm --no-deps api sh -c "cd /app/apps/api && alembic -c alembic/alembic.ini upgrade head" &&
                sudo IMAGE_TAG="$target_tag" docker compose up -d --remove-orphans --wait --wait-timeout 180 &&
+               # Caddyfile mount dạng bind `:ro` nên compose KHÔNG thấy config đổi →
+               # không recreate container caddy → nó giữ Caddyfile cũ trong bộ nhớ.
+               # Phải reload tường minh, nếu không các thay đổi proxy (vd thêm
+               # WebSocket /api/v1/copilot/voice, /api/v1/meeting/stream) sẽ không
+               # có tác dụng dù file đã được copy ở bước trên.
+               ( sudo IMAGE_TAG="$target_tag" docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || sudo docker compose restart caddy ) &&
                test -n "$domain" &&
                curl -fsS --retry 12 --retry-delay 5 "https://${domain}/health" &&
                curl -fsS --retry 12 --retry-delay 5 "https://${domain}/"; then
