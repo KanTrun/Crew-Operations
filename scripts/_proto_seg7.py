@@ -134,7 +134,7 @@ def main() -> None:
     assert best is not None
     _s, (pad1, do_refine), vals, dt = best
     print(f"\nTỐT NHẤT: pad1={pad1} refine={do_refine} ({dt * 1000:.0f}ms/ảnh)")
-    for c, v in zip(cases, vals):
+    for c, v in zip(cases, vals, strict=True):
         print(f"  {c[0]:22s} IoU={v[0]:.3f} giữ ly={v[1] * 100:.0f}% thừa nền={v[2] * 100:.0f}%")
 
     worst = int(np.argmin([v[0] for v in vals]))

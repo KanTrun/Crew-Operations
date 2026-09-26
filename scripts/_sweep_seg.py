@@ -13,12 +13,10 @@ Chạy: python scripts/_sweep_seg.py
 
 from __future__ import annotations
 
-import io
 import sys
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
 from scipy import ndimage
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -172,7 +170,7 @@ def main() -> None:
     assert best is not None
     _s, kw, avg, mn, mx, ious = best
     print(f"\nTỐT NHẤT: {kw}\n  IoU TB={avg:.3f} giữ ly min={mn * 100:.1f}% thừa nền max={mx * 100:.1f}%")
-    print("  per-case:", {c[0]: round(v, 3) for c, v in zip(cases, ious)})
+    print("  per-case:", {c[0]: round(v, 3) for c, v in zip(cases, ious, strict=True)})
 
 
 if __name__ == "__main__":

@@ -115,7 +115,7 @@ def segment(arr: np.ndarray, bbox: tuple[float, float, float, float]) -> dict:
 def subject_alpha_v4(
     img: Image.Image, bbox: tuple[float, float, float, float] | None, debug: dict | None = None
 ) -> np.ndarray | None:
-    from ca_agents.bg_redesign import _MASK_MAX_DIM, _MASK_ERODE_PX, _MASK_FEATHER_FLOOR
+    from ca_agents.bg_redesign import _MASK_ERODE_PX, _MASK_FEATHER_FLOOR, _MASK_MAX_DIM
 
     if bbox is None:
         return None

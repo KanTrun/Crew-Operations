@@ -48,7 +48,9 @@ def border_clusters(arr: np.ndarray, seed: np.ndarray) -> np.ndarray:
     uniq, counts = np.unique(keys, return_counts=True)
     centers = []
     min_count = max(1, int(_CLUSTER_MIN_SHARE * cols.shape[0]))
-    for key, cnt in sorted(zip(uniq.tolist(), counts.tolist()), key=lambda kv: -kv[1]):
+    for key, cnt in sorted(
+        zip(uniq.tolist(), counts.tolist(), strict=True), key=lambda kv: -kv[1]
+    ):
         if cnt < min_count and centers:
             break
         qk = np.array([key // 4096, (key // 64) % 64, key % 64], dtype=np.float32)

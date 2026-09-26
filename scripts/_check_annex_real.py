@@ -57,9 +57,8 @@ def main() -> None:
 
         # Zoom vùng có pixel thêm.
         if added.any():
-            ys, xs = np.nonzero(added)
+            ys, _xs = np.nonzero(added)
             pad = 50
-            x0, x1 = max(0, int(xs.min()) - pad), min(small.width, int(xs.max()) + pad)
             y0, y1 = max(0, int(ys.min()) - pad), min(small.height, int(ys.max()) + pad)
             z = sheet.crop((0, y0, sheet.width, y1))
             z = z.resize((z.width * 2, z.height * 2), Image.Resampling.LANCZOS)

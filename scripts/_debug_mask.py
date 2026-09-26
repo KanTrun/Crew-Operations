@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import sys
 from pathlib import Path
 
@@ -14,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packages" / "agent
 from ca_agents.bg_redesign import (  # noqa: E402
     _MASK_MAX_DIM,
     _edge_color,
-    _background_is_usable,
     _subject_alpha,
 )
 
@@ -40,7 +38,7 @@ alpha = _subject_alpha(small, None)
 if alpha is None:
     print(">>> _subject_alpha trả về None (segment_failed)")
 else:
-    print(">>> alpha: min=%.3f max=%.3f mean=%.3f" % (alpha.min(), alpha.max(), alpha.mean()))
+    print(f">>> alpha: min={alpha.min():.3f} max={alpha.max():.3f} mean={alpha.mean():.3f}")
     # Mask nhị phân: chủ thể = trắng
     mask = (alpha * 255).astype(np.uint8)
     Image.fromarray(mask).save(OUT / "mask.png")

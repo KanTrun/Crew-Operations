@@ -8,7 +8,6 @@ Chạy: python scripts/_proto_grabcut.py
 
 from __future__ import annotations
 
-import io
 import sys
 import time
 from pathlib import Path

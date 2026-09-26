@@ -10,7 +10,6 @@ Chạy: python scripts/_diag_real.py [ảnh...]
 
 from __future__ import annotations
 
-import io
 import sys
 import time
 from pathlib import Path
@@ -22,9 +21,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "packages" / "agents" / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from _proto_seg9 import annex, clean, grabcut_rect, rect_from_bbox  # noqa: E402
 from ca_agents import bg_redesign as B  # noqa: E402
 from ca_agents.llm import ensure_dotenv  # noqa: E402
-from _proto_seg9 import annex, clean, grabcut_rect, metrics, rect_from_bbox  # noqa: E402
 
 OUT = Path("data/menu_images/_debug")
 OUT.mkdir(parents=True, exist_ok=True)

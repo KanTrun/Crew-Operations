@@ -26,7 +26,6 @@ from PIL import Image, ImageDraw
 from scipy import ndimage
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from _proto_seg import border_clusters, min_cluster_dist  # noqa: E402
 
 OUT = Path("data/menu_images/_debug")
 OUT.mkdir(parents=True, exist_ok=True)
@@ -53,7 +52,9 @@ def _clusters_from(cols: np.ndarray, min_share: float = _CLUSTER_MIN_SHARE) -> n
     uniq, counts = np.unique(keys, return_counts=True)
     min_count = max(1, int(min_share * cols.shape[0]))
     centers: list[np.ndarray] = []
-    for key, cnt in sorted(zip(uniq.tolist(), counts.tolist()), key=lambda kv: -kv[1]):
+    for key, cnt in sorted(
+        zip(uniq.tolist(), counts.tolist(), strict=True), key=lambda kv: -kv[1]
+    ):
         if cnt < min_count and centers:
             break
         sel = keys == key

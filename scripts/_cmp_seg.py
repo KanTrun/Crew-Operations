@@ -14,8 +14,8 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packages" / "agents" / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from ca_agents import bg_redesign as B  # noqa: E402
 from _proto_seg import subject_alpha_v2  # noqa: E402
+from ca_agents import bg_redesign as B  # noqa: E402
 
 OUT = Path("data/menu_images/_debug")
 OUT.mkdir(parents=True, exist_ok=True)
@@ -60,7 +60,7 @@ def main() -> None:
     W = small.width
     H = small.height
     sheet = Image.new("RGB", (W * 4 + 30, H + 22), (20, 20, 20))
-    for i, (p, _t) in enumerate(zip(panels, labels)):
+    for i, (p, _t) in enumerate(zip(panels, labels, strict=True)):
         sheet.paste(p, (i * (W + 10), 22))
     sheet.save(OUT / f"cmp_{src.stem}.png")
 

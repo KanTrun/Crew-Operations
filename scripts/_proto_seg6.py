@@ -149,7 +149,7 @@ def main() -> None:
     _s, params, vals, dt = best
     print(f"\nTỐT NHẤT: core_shrink={params[0]} near_pad={params[1]} sure_bg={params[2]} "
           f"({dt * 1000:.0f}ms/ảnh)")
-    for c, v in zip(cases, vals):
+    for c, v in zip(cases, vals, strict=True):
         print(f"  {c[0]:22s} IoU={v[0]:.3f} giữ ly={v[1] * 100:.0f}% thừa nền={v[2] * 100:.0f}%")
 
     # Ảnh minh hoạ ca tệ nhất.
