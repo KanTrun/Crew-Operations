@@ -1263,6 +1263,14 @@ __all__ = [
     "LossLevel",
     "LossBasis",
     "LossCauseSource",
+    # Bốn kiểu dữ liệu hao hụt dưới đây được import ở đầu file và dùng bởi
+    # `ca_api.interfaces.http.hao_hut`, nhưng trước đây thiếu trong __all__ nên
+    # mypy strict báo `attr-defined` ("không export tường minh"). Bổ sung để
+    # API hao hụt import được qua `from ca_contracts import ...`.
+    "LossLine",
+    "LossSummary",
+    "LossCauseRank",
+    "LossThreshold",
     # ── Gmail Management ──
     "GmailAccount",
     "GmailOAuthTokens",
