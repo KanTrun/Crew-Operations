@@ -212,10 +212,12 @@
 
 | Việc | Lệnh / ghi chú |
 |------|----------------|
-| Reload Caddy (WS 502) | `infra/oracle/Caddyfile` đã sửa — cần copy lên EC2 và `caddy reload` |
+| **Caddy đọc Caddyfile mới** | ✅ **ĐÃ TỰ ĐỘNG HOÁ** — thêm bước `caddy reload` vào `deploy-aws.yml` (trước đây thiếu, khiến fix WS 502 không có tác dụng) |
 | Bỏ `NHIPQUAN_CORS_ORIGINS` khi test local | Sửa `.env` trên máy dev (giữ trên server là đúng) |
 | Dọn KV mẫu cũ | Chạy lại `POST /ops/predict/run` (code mới tự khử trùng) |
 | Quyết định Swagger | Đặt `NHIPQUAN_PUBLIC_API_DOCS=0` trên server nếu muốn tắt `/docs` |
+
+> **Phát hiện quan trọng (2026-09-26):** `deploy-aws.yml` có `sudo cp repo/infra/oracle/Caddyfile Caddyfile` nhưng **không reload Caddy**. Vì Caddyfile mount dạng bind `:ro`, `docker compose up -d` KHÔNG recreate container caddy → nó giữ Caddyfile cũ trong bộ nhớ → mọi thay đổi proxy (kể cả fix 3 WebSocket) **không có tác dụng**. Đã thêm bước `docker compose exec -T caddy caddy reload` (fallback `restart caddy`).
 
 ### 8.2 Danh sách file thay đổi (12 file code + 5 test + 3 docs)
 
