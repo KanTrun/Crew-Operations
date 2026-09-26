@@ -112,6 +112,12 @@ _ALLOWED = {
     "da_cong_bo": {"da_dong", "nhap"},
     "da_dong": {"nhap"},
 }
+# Tên MÔ TẢ cho cùng ma trận trên — `main.py` import tên này để hai đường vòng đời
+# dùng chung một nguồn. `_ALLOWED` giữ lại vì nhiều chỗ trong tệp này đã tham chiếu.
+#
+# Ô `da_cong_bo` CỐ Ý cho phép `nhap`: mở lại lịch đã công bố là nghiệp vụ thật
+# (quán đổi ca đột xuất). Bản `main.py` từng thiếu `nhap` ở đây — xem ADR-020.
+_SHARED_ALLOWED: dict[str, set[str]] = _ALLOWED
 _REASON = {
     "cuoi_tuan": "R-WKND",
     "dem": "R-NIGHT",

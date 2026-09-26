@@ -86,30 +86,17 @@ function QtyStepper({
   );
 }
 
-/** Thẻ ca còn nhận được kèm nút Nhận/Nhả — cùng dữ liệu trang /toi dùng. */
-function CaStrip({ ca, onNhan, onNha, busy }: { ca: Ca; onNhan: () => void; onNha: () => void; busy: boolean }) {
-  return (
-    <li className="nq-ca-strip__item">
-      <span className="nq-ca-strip__khung">{khungLabel(ca.khung) || "Ca làm"}</span>
-      <p className="nq-ca-strip__gio">
-        {ca.bat_dau} – {ca.ket_thuc}
-      </p>
-      <p className="nq-ca-strip__meta">{ca.ngay}</p>
-      <ActionRow>
-        {ca.co_the_nha ? (
-          <Btn variant="ghost" busy={busy} onClick={onNha}>
-            Nhả ca
-          </Btn>
-        ) : (
-          <Btn busy={busy} onClick={onNhan}>
-            Nhận ca
-          </Btn>
-        )}
-      </ActionRow>
-    </li>
-  );
-}
-
+/**
+ * Ghi chú thiết kế: trang này KHÔNG có nút Nhận/Nhả ca, có chủ đích.
+ *
+ * Trang này là "Ghi đơn tại quầy". Việc nhận/nhả ca thuộc `/toi` (ca của tôi) và
+ * `/doi-ca` (chợ đổi ca — nơi có đồng thuận hai bên và quản lý duyệt). Bản trước
+ * liệt kê MỌI ca trong tuần mà người dùng chưa nằm trong đó kèm nút nhận, nên
+ * trang ghi đơn hiện ra hàng chục thẻ ca không liên quan — và vì `co_the_nhan`
+ * đúng với mọi ca trống, con số đó bằng số ca của cả tuần.
+ *
+ * Khối ca ở đây chỉ để trả lời một câu: "hôm nay mình trực ca nào".
+ */
 export default function QuayPage() {
   const [token, setToken] = useState("");
   const [role, setRole] = useState("");
@@ -120,7 +107,6 @@ export default function QuayPage() {
   const [report, setReport] = useState<BaoCao | null>(null);
   const [checkedIn, setCheckedIn] = useState(false);
   const [caMine, setCaMine] = useState<Ca[]>([]);
-  const [caBusy, setCaBusy] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -216,7 +202,6 @@ export default function QuayPage() {
   }, [menu]);
 
   const caHomNay = caMine.filter((c) => c.co_the_nha ?? false);
-  const caCoTheNhan = caMine.filter((c) => c.co_the_nhan ?? false);
 
   function changeQty(id: string, delta: number) {
     setCart((old) => {
@@ -239,31 +224,6 @@ export default function QuayPage() {
       setError(viError(e, { doing: "điểm danh ca" }));
     } finally {
       setBusy(false);
-    }
-  }
-
-  /** Nhận/nhả ca dùng chung API với trang /toi — không tạo cơ chế ca thứ hai. */
-  async function doiCa(caId: string, hanh: "nhan" | "nha") {
-    setCaBusy(caId);
-    setError(null);
-    try {
-      await apiSend(`/api/v1/ca/${hanh}`, { ca_id: caId });
-      setMsg(hanh === "nhan" ? "Đã nhận ca. Ca sẽ hiện trong lịch của bạn." : "Đã nhả ca khỏi lịch của bạn.");
-      const { list } = await loadCa();
-      setCaMine(list);
-      await load();
-    } catch (e) {
-      setError(
-        viError(e, {
-          doing: hanh === "nhan" ? "nhận ca" : "nhả ca",
-          conflict:
-            hanh === "nhan"
-              ? "Ca này bạn đã nhận rồi, hoặc lịch đã đóng nên không nhận được nữa."
-              : "Bạn không ở trong ca này nên không nhả được.",
-        }),
-      );
-    } finally {
-      setCaBusy("");
     }
   }
 
@@ -305,15 +265,17 @@ export default function QuayPage() {
         </Alert>
       ) : null}
 
+      {/* Đếm theo SỐ CA HIỆN RA, không theo cả tuần: thẻ chỉ vẽ ca hôm nay. */}
       <OpsCard
         eyebrow="Ca làm việc"
         title={checkedIn ? "Ca đang mở" : "Chưa mở ca"}
-        count={caMine.length}
-        countLabel="ca trong tuần"
+        count={caHomNay.length}
+        countLabel="ca hôm nay"
       >
-        {caMine.length === 0 ? (
-          <Empty title="Chưa có ca trong tuần này">
-            Tuần này chưa có ca nào được phân cho bạn. Nhờ quản lý xếp lịch rồi tải lại trang.
+        {caHomNay.length === 0 ? (
+          <Empty title="Hôm nay bạn không có ca">
+            Lịch của bạn cho hôm nay đang trống. Muốn đổi hoặc nhận thêm ca, mở «Ca của tôi»
+            hoặc «Chợ đổi ca».
           </Empty>
         ) : null}
         {caHomNay.length ? (
@@ -328,24 +290,6 @@ export default function QuayPage() {
                   </p>
                   <p className="nq-ca-strip__meta">Hôm nay · bạn đang trong ca này</p>
                 </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
-        {caCoTheNhan.length ? (
-          <>
-            <p className="mb-2 mt-4 font-mono text-xs uppercase tracking-widest text-[var(--nq-dim)]">
-              Ca còn nhận được
-            </p>
-            <ul className="nq-ca-strip" aria-label="Ca còn nhận được">
-              {caCoTheNhan.map((ca) => (
-                <CaStrip
-                  key={ca.id}
-                  ca={ca}
-                  busy={caBusy === ca.id}
-                  onNhan={() => void doiCa(ca.id, "nhan")}
-                  onNha={() => void doiCa(ca.id, "nha")}
-                />
               ))}
             </ul>
           </>
