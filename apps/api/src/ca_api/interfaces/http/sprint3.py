@@ -828,11 +828,6 @@ def tkb_confirm(
         if not any(u.get("id") == nv for u in users):
             raise HTTPException(status_code=403, detail="nhan_vien_khong_thuoc_cua_hang")
 
-    seed = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
-    nv_ids = {n["id"] for n in seed.get("nhan_vien", [])}
-    if nv not in nv_ids and not nv.startswith("nv_"):
-        # Tài khoản đăng ký mới vẫn được lưu theo nv_id phiên.
-        pass
     khoang = _clean_khoang_api(body.khoang_ban)
     if not khoang:
         raise HTTPException(status_code=400, detail="khoang_rong")
