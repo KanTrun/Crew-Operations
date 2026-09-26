@@ -1929,8 +1929,159 @@ async def swap_open(
 
 @router.get("/api/v1/cho-doi-ca")
 def swap_list(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
-    _require_role(authorization)
-    return {"items": kv_get("swap", [])}
+    """Phiếu đổi ca mà NGƯỜI GỌI được thấy, kèm rủi ro kẹt ca của từng người.
+
+    Vì sao phải lọc ở server: bản cũ trả nguyên `kv_get("swap", [])` cho mọi vai
+    đăng nhập — nghĩa là một nhân viên đọc được toàn bộ phiếu đổi ca của quán,
+    kể cả phiếu không liên quan tới mình. Lọc ở client (`doi-ca/page.tsx`) không
+    phải là bảo vệ: chỉ cần gọi thẳng API là thấy hết.
+
+    Kèm `rui_ro` cho từng phiếu để trả lời câu người dùng hỏi: "họ có bị kẹt ở ca
+    nào không, sao mà biết được". Đây là phép ĐO, không phải lời khuyên.
+    """
+    caller = auth_session(authorization)
+    if not caller:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    role = str(caller.get("role") or "")
+    is_manager = role in {"quan_ly", "chu_quan"}
+    caller_ids = {caller.get("nv_id"), caller.get("username")} - {None, ""}
+
+    items = kv_get("swap", [])
+    if not isinstance(items, list):
+        items = []
+
+    ra: list[dict[str, Any]] = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        b = it.get("b")
+        parties = {it.get("a"), b} - {None, "", "all"}
+        cong_khai = b == "all"
+        if not is_manager and not (caller_ids & parties) and not cong_khai:
+            continue
+        ra.append(
+            {
+                **it,
+                "rui_ro": _rui_ro_doi_ca(it),
+                "la_nguoi_tham_gia": bool(caller_ids & parties) or cong_khai,
+            }
+        )
+
+    return {
+        "items": ra,
+        "toi_la_quan_ly": is_manager,
+        "me_nv_id": caller.get("nv_id"),
+    }
+
+
+def _rui_ro_doi_ca(item: dict[str, Any]) -> dict[str, Any]:
+    """Đo rủi ro của một phiếu đổi ca: người nhận có bị kẹt ca không.
+
+    Trả dữ liệu THÔ để UI tự trình bày, không trả câu khuyên. Ba thứ được đo:
+      - `ca_giver`: ca người nhường có thật nằm trong phân công của họ không
+        (nếu không thì phiếu này không thể thực hiện được).
+      - `nguoi_nhan_dang_trung`: người nhận đã có ca khác giao giờ chưa.
+      - `co_the_nhan`: kết luận, kèm `ly_do_chan` nói RÕ vì sao bị chặn.
+    """
+    week = str(item.get("tuan_id") or "")
+    ca_id = str(item.get("ca_id") or "")
+    a = str(item.get("a") or "")
+    b = str(item.get("b") or "")
+
+    phan = _phan_cong_tuan(week)
+    meta = _ca_meta_map()
+    ca_meta = meta.get(ca_id) or {}
+
+    ca_giver = [x for x in phan.get(ca_id, []) if x == a]
+    trung: list[dict[str, Any]] = []
+    if b and b != "all":
+        bat_dau = str(ca_meta.get("bat_dau") or "")
+        ket_thuc = str(ca_meta.get("ket_thuc") or "")
+        thu = str(ca_meta.get("thu") or "")
+        for other_ca, ids in phan.items():
+            if other_ca == ca_id or b not in [str(x) for x in ids]:
+                continue
+            om = meta.get(other_ca)
+            if not isinstance(om, dict) or str(om.get("thu") or "") != thu:
+                continue
+            if _giao_nhau_gio(bat_dau, ket_thuc, str(om.get("bat_dau") or ""), str(om.get("ket_thuc") or "")):
+                trung.append(
+                    {
+                        "ca_id": other_ca,
+                        "thu": thu,
+                        "gio": f"{om.get('bat_dau')}-{om.get('ket_thuc')}",
+                    }
+                )
+
+    ly_do_chan = ""
+    if not ca_giver:
+        ly_do_chan = "ca_khong_trong_phan_cong_cua_nguoi_nhuong"
+    elif trung:
+        ly_do_chan = "nguoi_nhan_dang_co_ca_trung_gio"
+
+    return {
+        "tuan_id": week,
+        "ca_id": ca_id,
+        "ca": {
+            "thu": str(ca_meta.get("thu") or ""),
+            "gio": f"{ca_meta.get('bat_dau')}-{ca_meta.get('ket_thuc')}"
+            if ca_meta.get("bat_dau")
+            else "",
+            "vi_tri": str(ca_meta.get("vi_tri") or ""),
+        },
+        "nguoi_nhuong_dang_trong_ca": bool(ca_giver),
+        "nguoi_nhan": b,
+        "nguoi_nhan_dang_trung": trung,
+        "co_the_nhan": bool(ca_giver) and not trung,
+        "ly_do_chan": ly_do_chan,
+        "can_quan_ly_duyet": True,
+    }
+
+
+def _phan_cong_tuan(week: str) -> dict[str, list[str]]:
+    """Phân công của một tuần, đọc `phan_cong_by_week` trước `phan_cong`."""
+    if week:
+        by_week = kv_get("phan_cong_by_week", {})
+        if isinstance(by_week, dict):
+            week_doc = by_week.get(week)
+            if isinstance(week_doc, dict):
+                return {str(k): [str(x) for x in v] for k, v in week_doc.items() if isinstance(v, list)}
+    flat = kv_get("phan_cong", {})
+    if isinstance(flat, dict):
+        return {str(k): [str(x) for x in v] for k, v in flat.items() if isinstance(v, list)}
+    return {}
+
+
+def _ca_meta_map() -> dict[str, dict[str, Any]]:
+    """ca_id → {thu, bat_dau, ket_thuc, vi_tri}, đọc từ seed `ca_mau_21`."""
+    seed = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
+    out: dict[str, dict[str, Any]] = {}
+    for c in seed.get("ca_mau_21", []):
+        if not isinstance(c, dict) or not c.get("id"):
+            continue
+        out[str(c["id"])] = {
+            "thu": str(c.get("thu") or _THU_MAP.get(int(c.get("ngay_offset", 1)), "T2")),
+            "khung": str(c.get("khung") or ""),
+            "bat_dau": str(c.get("bat_dau") or ""),
+            "ket_thuc": str(c.get("ket_thuc") or ""),
+            "vi_tri": str(c.get("vi_tri") or ""),
+        }
+    return out
+
+
+def _giao_nhau_gio(a_start: str, a_end: str, b_start: str, b_end: str) -> bool:
+    """Hai khung giờ giao nhau? Chạm mép KHÔNG tính (nửa mở)."""
+    def _p(t: str) -> int:
+        try:
+            hh, mm = t.strip()[:5].split(":")
+            return int(hh) * 60 + int(mm)
+        except (ValueError, AttributeError):
+            return -1
+
+    a1, a2, b1, b2 = _p(a_start), _p(a_end), _p(b_start), _p(b_end)
+    if min(a1, a2, b1, b2) < 0:
+        return False
+    return a1 < b2 and b1 < a2
 
 
 @router.post("/api/v1/cho-doi-ca/{swap_id}/dong-y")
@@ -1979,6 +2130,14 @@ async def swap_dong_y(
         taker = str(found.get("b") or "")
         ca_id = str(found.get("ca_id") or "")
         swap_week = str(found.get("tuan_id") or _life().get("tuan_iso") or "2026-W01")
+
+        # ── Cổng công bố ──
+        # Đổi ca ở tuần CHƯA công bố là sửa một bản nháp quản lý còn đang xếp →
+        # chặn. Ở tuần ĐÃ công bố thì phiếu vẫn cần một lượt quản lý duyệt, vì
+        # đây là thay đổi lịch mà người khác đang chạy theo. Trước đây cả hai
+        # trường hợp đều ghi thẳng vào phân công, chỉ cần hai bên bấm đồng ý.
+        _guard_swap_cong_bo(swap_week, caller)
+
         _apply_swap_to_assignments(
             giver=giver,
             taker=taker,
@@ -2046,6 +2205,83 @@ async def swap_tu_choi(
     await notify_ops_changed(
         "audit:shift_swap",
         details={"action": "shift_swap.reject", "swap_id": swap_id},
+    )
+    return found
+
+
+def _guard_swap_cong_bo(week: str, caller: dict[str, Any]) -> None:
+    """Chặn đổi ca ở tuần chưa công bố; tuần đã công bố thì đòi quyền quản lý.
+
+    Vì sao hai mức khác nhau:
+      - Tuần CHƯA công bố: phân công chưa chốt, quản lý còn đang xếp. Cho nhân
+        viên đổi ca ở đây là sửa bản nháp sau lưng người xếp → chặn hẳn.
+      - Tuần ĐÃ công bố: lịch đã chốt và người khác đang chạy theo, nên đổi ca
+        là thay đổi có hậu quả thật → cho phép, nhưng PHẢI có một người có quyền
+        duyệt. Đây đúng là điều `test_capability_coverage` vẫn ghi trong mô tả
+        ("consent bắt buộc") mà mã nguồn chưa hề thực thi.
+    """
+    trang_thai = str(_life(week).get("trang_thai") or "nhap")
+    if trang_thai not in {"da_cong_bo", "da_dong"}:
+        raise HTTPException(status_code=409, detail="lich_chua_cong_bo")
+    if str(caller.get("role") or "") not in {"quan_ly", "chu_quan"}:
+        raise HTTPException(status_code=409, detail="doi_ca_can_quan_ly_duyet")
+
+
+@router.post("/api/v1/cho-doi-ca/{swap_id}/duyet")
+async def swap_duyet(
+    swap_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Quản lý duyệt và áp dụng phiếu đổi ca đã có đủ đồng ý của hai bên.
+
+    Tách khỏi `dong-y` để hai việc khác nhau không lẫn vào nhau: `dong-y` là
+    "tôi đồng ý", `duyet` là "tôi chịu trách nhiệm cho thay đổi này". Gộp lại thì
+    quyền duyệt bị lẫn với quyền đồng ý, và không còn cách nào biết ai đã duyệt.
+    """
+    caller = auth_session(authorization)
+    if not caller:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    if str(caller.get("role") or "") not in {"quan_ly", "chu_quan"}:
+        raise HTTPException(status_code=403, detail="chi_quan_ly_duyet_doi_ca")
+
+    found: dict[str, Any] | None = None
+
+    def mut(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        nonlocal found
+        for it in items:
+            if it.get("id") != swap_id:
+                continue
+            if it.get("trang_thai") == "tu_choi":
+                raise HTTPException(status_code=409, detail="swap_da_tu_choi")
+            if it.get("da_duyet_boi"):
+                raise HTTPException(status_code=409, detail="swap_da_duyet_roi")
+            it["da_duyet_boi"] = str(caller.get("nv_id") or caller.get("username") or "")
+            it["trang_thai"] = "da_duyet"
+            found = dict(it)
+            return items
+        raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
+
+    kv_mutate("swap", mut, [])
+    if not found:
+        raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
+
+    week = str(found.get("tuan_id") or _life().get("tuan_iso") or "2026-W01")
+    _apply_swap_to_assignments(
+        giver=str(found.get("a") or ""),
+        taker=str(found.get("b") or ""),
+        ca_id=str(found.get("ca_id") or ""),
+        week=week,
+        swap_id=swap_id,
+        actor=str(caller.get("nv_id") or caller.get("username") or "quan_ly"),
+    )
+    _audit(
+        "shift_swap.approve",
+        str(caller.get("nv_id") or caller["role"]),
+        {"entity_type": "shift_swap", "entity_id": swap_id, "tuan_id": week},
+    )
+    await notify_ops_changed(
+        "audit:shift_swap",
+        details={"action": "shift_swap.approve", "swap_id": swap_id},
     )
     return found
 

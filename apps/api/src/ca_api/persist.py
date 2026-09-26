@@ -10,7 +10,7 @@ import re
 import sqlite3
 import threading
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from contextvars import ContextVar, Token
 
 try:
@@ -1636,6 +1636,42 @@ def kv_get(key: str, default: Any) -> Any:
     if not row:
         return default
     return json.loads(row[0])
+
+
+def kv_get_many(keys: Sequence[str], defaults: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Đọc NHIỀU khoá kv trong MỘT connection, trả dict cùng shape như `kv_get`.
+
+    Vì sao cần: `kv_get` mở một connection SQLite MỚI và gọi `init_db()` MỖI lần.
+    Một câu hỏi lịch tuần của trợ lý đọc 6+ khoá (`phan_cong`,
+    `roster_nv_status`, `inbox_rang_buoc`, `tkb_nv_by_week`, `tkb_nv`,
+    `lich_tuan_lifecycle`, ...) → 6+ connection cho MỘT câu hỏi. Cộng với
+    `timeout=30` của SQLite, một câu hỏi nặng có thể chặn câu khác tới 30 giây —
+    đúng triệu chứng "trả lời rất chậm" mà người dùng gặp.
+
+    Hợp đồng: khoá nào không có trong DB thì lấy `defaults[key]`; khoá không khai
+    trong `defaults` thì trả `None` (giống `kv_get(key, None)`).
+    """
+    keys = list(dict.fromkeys(str(k) for k in keys))
+    if not keys:
+        return {}
+    defaults = dict(defaults or {})
+    init_db()
+    out: dict[str, Any] = {k: defaults.get(k) for k in keys}
+    # SQLite giới hạn số biến trong câu lệnh; chia lô để an toàn với danh sách dài.
+    with _conn() as cx:
+        for i in range(0, len(keys), 500):
+            lo = keys[i : i + 500]
+            placeholders = ",".join("?" for _ in lo)
+            rows = cx.execute(
+                f"SELECT k, v FROM kv WHERE k IN ({placeholders})", lo
+            ).fetchall()
+            for k, v in rows:
+                try:
+                    out[str(k)] = json.loads(v)
+                except (TypeError, ValueError):
+                    # Giá trị hỏng: giữ default thay vì làm sập cả câu trả lời.
+                    out[str(k)] = defaults.get(str(k))
+    return out
 
 
 def kv_set(key: str, value: Any) -> None:

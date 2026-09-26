@@ -433,6 +433,16 @@ def test_ops_pickers_for_staff() -> None:
 
 
 def test_swap_consent_by_any_recipient() -> None:
+    """Phiếu mở cho MỌI NGƯỜI: ai bấm đồng ý cũng thành người nhận.
+
+    Phải dựng tuần đã công bố trước: đổi ca ở tuần chưa công bố bị chặn
+    (`lich_chua_cong_bo`) vì đó là sửa bản nháp quản lý còn đang xếp.
+    """
+    kv_set("lich_tuan_lifecycle", {"tuan_iso": "2026-W01", "trang_thai": "da_cong_bo"})
+    kv_set(
+        "lich_tuan_lifecycle_by_week",
+        {"2026-W01": {"tuan_iso": "2026-W01", "trang_thai": "da_cong_bo"}},
+    )
     opened = client.post(
         "/api/v1/cho-doi-ca",
         json={"a": "nv_03", "b": "all", "ca_id": "w1_c01"},
@@ -442,6 +452,61 @@ def test_swap_consent_by_any_recipient() -> None:
     done = client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "hung")).json()
     assert done["trang_thai"] == "dong_y"
     assert done["dong_y"] == ["nv_02"]
+
+
+def test_swap_dong_y_doi_quan_ly_duyet_khi_tuan_da_cong_bo() -> None:
+    """Tuần đã công bố: NHÂN VIÊN đồng ý không tự áp phân công — phải qua `/duyet`.
+
+    Lưu ý `hung` là `chu_quan` nên được đi thẳng; muốn kiểm cổng thì phải dùng
+    một tài khoản NHÂN VIÊN làm người nhận.
+    """
+    ca_id = "w1_c01"
+    kv_set("phan_cong", {ca_id: ["nv_01"]})
+    kv_set("phan_cong_by_week", {"2026-W01": {ca_id: ["nv_01"]}})
+    kv_set("lich_tuan_lifecycle", {"tuan_iso": "2026-W01", "trang_thai": "da_cong_bo"})
+    kv_set(
+        "lich_tuan_lifecycle_by_week",
+        {"2026-W01": {"tuan_iso": "2026-W01", "trang_thai": "da_cong_bo"}},
+    )
+
+    # `lan`=nv_01 (quản lý) mở phiếu nhường ca cho `minh`=nv_03 (nhân viên).
+    opened = client.post(
+        "/api/v1/cho-doi-ca",
+        json={"a": "nv_01", "b": "nv_03", "ca_id": ca_id},
+        headers=headers(client, "lan"),
+    ).json()
+    swap_id = opened["id"]
+
+    # Nhân viên là người nhận bấm đồng ý → bị chặn, chưa đụng phân công.
+    blocked = client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "minh"))
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"] == "doi_ca_can_quan_ly_duyet"
+    assert kv_get("phan_cong", {})[ca_id] == ["nv_01"], "chưa duyệt thì không được đổi"
+
+    # Quản lý đồng ý (đủ hai bên) rồi duyệt → lúc đó mới áp phân công.
+    client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "lan"))
+    duyet = client.post(f"/api/v1/cho-doi-ca/{swap_id}/duyet", headers=headers(client, "lan"))
+    assert duyet.status_code == 200, duyet.text
+    assert kv_get("phan_cong", {})[ca_id] == ["nv_03"]
+
+
+def test_swap_chan_khi_tuan_chua_cong_bo() -> None:
+    """Tuần còn nháp thì không đổi ca được, dù hai bên đều đồng ý."""
+    week = "2026-W19"
+    ca_id = "w1_c01"
+    kv_set("phan_cong", {ca_id: ["nv_03"]})
+    kv_set("phan_cong_by_week", {week: {ca_id: ["nv_03"]}})
+    kv_set("lich_tuan_lifecycle", {"tuan_iso": week, "trang_thai": "nhap"})
+    kv_set("lich_tuan_lifecycle_by_week", {week: {"tuan_iso": week, "trang_thai": "nhap"}})
+
+    opened = client.post(
+        "/api/v1/cho-doi-ca",
+        json={"a": "nv_03", "b": "nv_02", "ca_id": ca_id},
+        headers=headers(client, "minh"),
+    ).json()
+    blocked = client.post(f"/api/v1/cho-doi-ca/{opened['id']}/dong-y", headers=headers(client, "hung"))
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"] == "lich_chua_cong_bo"
 
 
 def test_swap_tu_choi_idor_protection() -> None:

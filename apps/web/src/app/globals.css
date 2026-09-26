@@ -4859,6 +4859,189 @@ a:focus-visible {
     font-weight: 700;
   }
 
+  /* ── Nhật ký thay đổi ca ──
+     Bảng chứng "ai đổi ca với ai". Nền ĐẶC (không kính) vì đây là dữ liệu phải
+     đọc kỹ, giống bảng và danh sách ở phần còn lại của app. */
+  .nq-shiftlog {
+    display: flex;
+    flex-direction: column;
+    gap: var(--nq-s4);
+  }
+
+  .nq-shiftlog__entry {
+    display: flex;
+    flex-direction: column;
+    gap: var(--nq-s2);
+    padding: var(--nq-s4);
+    border: 1px solid var(--nq-line);
+    border-radius: var(--nq-radius-bubble);
+    background-color: var(--nq-surface);
+  }
+
+  .nq-shiftlog__head {
+    display: flex;
+    align-items: center;
+    gap: var(--nq-s3);
+    flex-wrap: wrap;
+  }
+
+  .nq-shiftlog__time {
+    font-family: var(--nq-font-mono);
+    font-size: 0.78rem;
+    color: var(--nq-dim);
+  }
+
+  .nq-shiftlog__summary {
+    font-size: 0.92rem;
+    color: var(--nq-fg);
+  }
+
+  .nq-shiftlog__more {
+    font-size: 0.8rem;
+    color: var(--nq-ink-muted);
+  }
+
+  .nq-shiftdiff {
+    display: flex;
+    flex-direction: column;
+    gap: var(--nq-s4);
+    margin-top: var(--nq-s2);
+  }
+
+  .nq-shiftdiff__empty {
+    font-size: 0.88rem;
+    color: var(--nq-ink-muted);
+  }
+
+  .nq-shiftdiff__block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--nq-s2);
+  }
+
+  .nq-shiftdiff__title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--nq-dim);
+  }
+
+  .nq-shiftdiff__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--nq-s2);
+  }
+
+  .nq-shiftdiff__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--nq-s3);
+    padding: var(--nq-s2) var(--nq-s3);
+    border: 1px solid var(--nq-line);
+    border-radius: var(--nq-radius-sm, 8px);
+    background-color: var(--nq-bg-elevated);
+  }
+
+  .nq-shiftdiff__when {
+    font-family: var(--nq-font-mono);
+    font-size: 0.76rem;
+    color: var(--nq-dim);
+    white-space: nowrap;
+  }
+
+  .nq-shiftdiff__who {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--nq-s2);
+    font-size: 0.9rem;
+    color: var(--nq-fg);
+  }
+
+  /* Chữ nêu ai RA / ai VÀO trên nền đặc: dùng `--nq-st-*-ink` — đây đã là bản
+     "đọc được trên nền tối" của bốn màu trạng thái (xem khối token ở đầu tệp).
+     Không dùng `--nq-st-*` trần (bản đó cho viền/chấm). */
+  .nq-shiftdiff__out {
+    color: var(--nq-st-danger-ink);
+    font-weight: 600;
+  }
+
+  .nq-shiftdiff__in {
+    color: var(--nq-st-ok-ink);
+    font-weight: 600;
+  }
+
+  .nq-shiftdiff__arrow {
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--nq-dim);
+  }
+
+  .nq-shiftdiff__tags {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--nq-s2);
+  }
+
+  .nq-shiftdiff__tags li {
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--nq-line);
+    border-radius: 999px;
+    font-size: 0.8rem;
+  }
+
+  .nq-shiftdiff__tags li[data-chieu="ra"] {
+    border-color: color-mix(in srgb, var(--nq-st-danger) 44%, var(--nq-line));
+  }
+
+  .nq-shiftdiff__tags li[data-chieu="vao"] {
+    border-color: color-mix(in srgb, var(--nq-st-ok) 44%, var(--nq-line));
+  }
+
+  .nq-shiftdiff__keep {
+    font-size: 0.78rem;
+    color: var(--nq-dim);
+  }
+
+  /* Trạng thái trợ lý đang xử lý — chấm nhấp nháy + câu mô tả.
+     Có nó thì bong bóng trống không còn đọc ra "trợ lý im lặng". */
+  .nq-copilot-pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--nq-ink-muted);
+  }
+
+  .nq-copilot-pending__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background-color: var(--nq-st-warn);
+    animation: nq-pending-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes nq-pending-pulse {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: scale(0.85);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   /* Ô bấm được: nổi rõ hơn (elev-2) và có phản hồi hover — để mắt phân biệt được
      "khối này bấm được" với "khối này chỉ để đọc". */
   .nq-surface-tile {

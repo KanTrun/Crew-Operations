@@ -1108,10 +1108,21 @@ export function TimeField({
     onChange(`${h}:${m}`);
   }
 
+  /**
+   * Giữ nguyên chuỗi số người dùng gõ, chỉ cắt về 2 ký tự và chặn vượt `max`.
+   *
+   * Bản cũ trả `String(Math.min(Number(digits), max))` — ép qua SỐ rồi về chuỗi
+   * nên ăn mất số 0 đứng đầu: gõ "09" cho ra "9", mà `TIME_PATTERN` của trang
+   * lịch bận đòi `HH:mm` có số 0 đầu (`[01]\d`). Hệ quả thật: không nhập được
+   * `09:00`, và gõ chữ số thứ hai của "00" / "12:00" thì ký tự đầu bị nuốt lại
+   * thành một số — đúng triệu chứng "không thể nhập hai số".
+   *
+   * Cách đúng: so số để biết có vượt trần không, nhưng TRẢ VỀ chuỗi gốc đã cắt.
+   */
   function clampDigits(raw: string, max: number): string {
     const digits = raw.replace(/\D/g, "").slice(0, 2);
     if (digits === "") return "";
-    return String(Math.min(Number(digits), max));
+    return Number(digits) > max ? String(max) : digits;
   }
 
   return (

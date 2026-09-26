@@ -2,16 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Alert, AuthGate, Btn, Loading, PageActions, Summary } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Loading, Summary } from "../../ui/kit";
 import { canEdit, clearSession, getNvId, getRole, getToken, isManager, lifeLabel } from "../../lib/session";
 import { ApiError, apiGet, apiSend } from "../../lib/api";
 import { matchSearch } from "../../lib/list-filters";
-import { nvTenHienThi, viError } from "../../lib/present";
+import { viError } from "../../lib/present";
 import type { KhungGio } from "../../lib/roster";
 import { shiftRowLabel } from "../../lib/roster";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 import { KhungConfigPanel } from "./KhungConfigPanel";
 import { RosterGrid } from "./RosterGrid";
+import { ShiftChangeLog } from "./ShiftChangeLog";
 import { CopilotPane } from "../../ui/copilot/CopilotPane";
 import { Icon } from "../../ui/icons";
 
@@ -182,16 +183,6 @@ function dayDate(monday: Date, offset: number): string {
   const d = new Date(monday);
   d.setDate(d.getDate() + offset);
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function isSameCalendarDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
-function isTodayOffset(monday: Date, offset: number): boolean {
-  const d = new Date(monday);
-  d.setDate(d.getDate() + offset);
-  return isSameCalendarDay(d, new Date());
 }
 
 function dayTitle(d: string): string {
@@ -622,7 +613,6 @@ export default function RosterPage() {
   const dayLabelRows = days.map((d, i) => ({
     title: dayTitle(d),
     date: dayDate(monday, dayOffsets[i]),
-    isToday: isTodayOffset(monday, dayOffsets[i]),
   }));
 
   const byDay: Record<string, Shift[]> = {};
@@ -637,7 +627,7 @@ export default function RosterPage() {
 
   function nvName(id: string): string {
     const found = (data?.nhan_vien ?? []).find((x) => x.id === id);
-    return nvTenHienThi(found?.ten, id);
+    return found ? found.ten : id;
   }
 
   // Resolve employee ID from session (e.g. nv_03 for Minh, nv_01 for Lan...)
@@ -684,11 +674,9 @@ export default function RosterPage() {
             <h1 className="nq-page-title text-[var(--nq-accent)]">
               {viewMode === "my_shifts" ? "Lịch đi làm của tôi" : "Lịch toàn quán"}
             </h1>
-            <PageActions className="!mt-2 !mb-0">
-              <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-                Hỏi trợ lý vận hành
-              </Btn>
-            </PageActions>
+            <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+              Hỏi trợ lý vận hành
+            </Btn>
           </div>
 
           {/* Mode Switcher: My Shifts vs Full Roster */}
@@ -1017,6 +1005,18 @@ export default function RosterPage() {
       {error ? <Alert kind="err">{error}</Alert> : null}
       {loading ? <Loading skeleton="table" rows={3}>Đang tải lịch tuần…</Loading> : null}
 
+      {/* Bằng chứng đổi ca: trả lời "ai bị đổi ca với ai" sau mỗi lần xếp lịch.
+          Trước đây solver ghi đè phân công im lặng — người dùng thấy lịch khác đi
+          mà không có gì giải thích. Panel này chỉ hiện khi CÓ thay đổi. */}
+      {!loading ? (
+        <details className="nq-constraint-panel mb-4" data-panel="nhat-ky-doi-ca">
+          <summary>Ai đổi ca với ai — nhật ký thay đổi tuần {currentDisplayWeek}</summary>
+          <div className="mt-3">
+            <ShiftChangeLog tuanIso={currentDisplayWeek} />
+          </div>
+        </details>
+      ) : null}
+
       {!loading && viewMode === "all" && (
         <details className="nq-constraint-panel mb-4">
           <summary>Ràng buộc & kiểm tra lần xếp này</summary>
@@ -1155,11 +1155,6 @@ export default function RosterPage() {
               { n: rosterStats.slots, k: "Ô ca tuần" },
               { n: rosterStats.staffed, k: "Đã có người", tone: "ok" },
               { n: rosterStats.thin, k: "Thiếu định biên", tone: rosterStats.thin > 0 ? "warn" : "default" },
-              {
-                n: data?.chua_xac_nhan?.length ?? 0,
-                k: "Chưa xác nhận",
-                tone: (data?.chua_xac_nhan?.length ?? 0) > 0 ? "warn" : "default",
-              },
               { n: lifeLabel(trangThai), k: "Trạng thái lịch" },
             ]}
           />
