@@ -170,6 +170,26 @@ def test_gmail_quality_gate_uses_versioned_score_and_all_critical_dimensions() -
     assert result.threshold_version == "gmail-v1"
 
 
+def test_gmail_quality_gate_accepts_formal_greeting_kinh_gui() -> None:
+    # Regression 260925: mail sinh bởi AG-MAILWRITER mở đầu "Kính gửi" (lịch sự,
+    # trang trọng) từng bị flag missing_greeting → queue_review → execute-action
+    # raise RuntimeError → action_execution_failed trên deploy. Lời chào trang
+    # trọng là hợp lệ, phải được công nhận như "thân gửi"/"chào".
+    result = evaluate_gmail(
+        recipients=["minh@example.com"],
+        subject="[Nhịp Quán] Thông báo lịch ca sáng ngày 26/09/2026",
+        body=(
+            "Kính gửi Anh/Chị,\n\n"
+            "Ban Quản Lý Nhịp Quán xin gửi đến Anh/Chị thông tin về lịch trực ca sắp tới.\n\n"
+            "Trân trọng,\n\nBan Quản Lý Nhịp Quán"
+        ),
+    )
+    assert result.passed is True
+    assert result.action == "send"
+    assert result.score == 1.0
+    assert "missing_greeting" not in result.flags
+
+
 def test_gmail_quality_gate_blocks_hard_fail_and_queues_review_flags() -> None:
     blocked = evaluate_gmail(
         recipients=["not-an-email"], subject="[Nhịp Quán] Test", body="Thân gửi Minh,\napi_key=secret\nTrân trọng",
