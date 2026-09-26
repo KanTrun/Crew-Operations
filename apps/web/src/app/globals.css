@@ -53,94 +53,20 @@
   justify-content: space-between;
   gap: var(--nq-s1);
   width: 100%;
-  flex: none;
 }
 
-/* Một cột tên trong ô — calendar/roster scan, không chip 2 cột cắt giữa ngoặc. */
+/* Dãy avatar trong ô lịch.
+   Ô lịch rộng ~110px; một ca bar thường có 3–6 người. Bản cũ in tên đầy đủ rồi
+   cắt bằng `-webkit-line-clamp: 3`, nên từ người thứ ba trở đi biến mất sau dấu
+   "…" — người xếp lịch mất thông tin đúng lúc cần nhất. Viết tắt 2 ký tự luôn
+   vừa: 6 người vẫn đọc được, tên đầy đủ nằm ở tooltip và bảng chi tiết ngày. */
 .nq-roster-slot-crew {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 2px;
+  flex-wrap: wrap;
+  gap: 3px;
   margin-top: var(--nq-s1);
-  min-width: 0;
-  width: 100%;
 }
 
-.nq-roster-crew-name {
-  display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
-  min-width: 0;
-  max-width: 100%;
-  padding: 0.18rem 0.35rem;
-  border-radius: 4px;
-  border: 1px solid transparent;
-  background: color-mix(in srgb, var(--nq-bg-elevated) 42%, transparent);
-  color: var(--nq-ink);
-  line-height: 1.3;
-  overflow: hidden;
-}
-
-.nq-roster-crew-name__who {
-  flex: none;
-  max-width: 55%;
-  font-size: var(--nq-t-caption);
-  font-weight: 700;
-  color: var(--nq-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.nq-roster-crew-name__role {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.68rem;
-  font-weight: 500;
-  color: var(--nq-ink-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.nq-roster-crew-name[data-pinned="1"] {
-  border-color: color-mix(in srgb, var(--nq-accent) 55%, var(--nq-line));
-}
-
-.nq-roster-crew-name[data-pinned="1"] .nq-roster-crew-name__who {
-  color: var(--nq-accent-ink-text, var(--nq-accent));
-}
-
-.nq-roster-slot-more {
-  display: inline-flex;
-  align-self: flex-start;
-  margin-top: 1px;
-  padding: 0.12rem 0.4rem;
-  border: 1px solid var(--nq-line);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--nq-bg) 50%, transparent);
-  color: var(--nq-ink-muted);
-  font-size: var(--nq-t-caption);
-  font-weight: 700;
-  line-height: 1.3;
-  white-space: nowrap;
-}
-
-.nq-roster-slot-none {
-  color: var(--nq-ink-muted);
-  font-size: var(--nq-t-caption);
-  font-style: italic;
-}
-
-.nq-roster-slot-flag {
-  display: inline-flex;
-  align-items: center;
-  color: var(--nq-st-warn);
-  flex: none;
-}
-
-/* Avatar compact vẫn dùng ở chỗ khác nếu còn — giữ token tối thiểu. */
 .nq-avatar {
   display: inline-flex;
   align-items: center;
@@ -149,16 +75,20 @@
   height: 22px;
   padding: 0 4px;
   border-radius: var(--nq-radius-pill);
+  /* Nền trung tính: avatar không phải tình trạng, không được tranh màu với chip
+     "Thiếu người" nằm ngay trên nó. */
   background: color-mix(in srgb, var(--nq-bg-elevated) 40%, var(--nq-ink) 14%);
   border: 1px solid var(--nq-line);
   color: var(--nq-ink);
   font-family: var(--nq-font-mono);
-  font-size: var(--nq-t-caption);
+  font-size: var(--nq-t-micro);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.02em;
 }
 
+/* Ghim ca là quyết định của quản lý, không phải tình trạng — đánh dấu bằng viền
+   copper (nghĩa "thuộc về quán"), không bằng đỏ/vàng. */
 .nq-avatar[data-pinned="1"] {
   border-color: var(--nq-accent);
   color: var(--nq-accent);
@@ -167,6 +97,18 @@
 .nq-avatar--more {
   background: transparent;
   color: var(--nq-ink-muted);
+}
+
+.nq-roster-slot-none {
+  color: var(--nq-ink-muted);
+  font-size: var(--nq-t-micro);
+}
+
+.nq-roster-slot-flag {
+  display: inline-flex;
+  align-items: center;
+  color: var(--nq-st-warn);
+  flex: none;
 }
 /* NHỊP QUÁN v3 Premium Ops — docs/design-guidelines.md */
 @tailwind base;
@@ -897,16 +839,13 @@ a:focus-visible {
   transform: scale(var(--nq-press));
 }
 
-/* ── Page ──
-   Không còn `max-width` cứng: container `.nq-main__inner` đã kiểm soát bề
-   rộng đọc được cho các trang dài chữ (`--prose`); mọi trang khác lấp đầy hết
-   phần còn lại sau sidebar. Thu gọn sidebar → trang rộng ra thật, không còn
-   dải trống hai bên cố định bằng 1280px giữa màn 1920px. */
+/* ── Page ── */
 .nq-page {
   animation: nq-rise var(--nq-dur-t1) var(--nq-ease-out) both;
   padding: clamp(1rem, 3vw, 1.75rem) 0 clamp(2rem, 4vw, 3rem);
   width: 100%;
-  max-width: none;
+  max-width: min(1280px, 100%);
+  margin-inline: auto;
   box-sizing: border-box;
 }
 
@@ -916,13 +855,6 @@ a:focus-visible {
 
 .nq-page--wide.nq-page--run {
   max-width: none;
-}
-
-/* Chỉ nội dung văn bản dài (câu chữ, form một cột đăng ký...) mới cần giới
-   hạn ký tự/dòng để dễ đọc — gắn `nq-prose` vào khối văn bản đó, không gắn
-   vào `.nq-page`. */
-.nq-prose {
-  max-width: 72ch;
 }
 
 .nq-split {
@@ -943,176 +875,6 @@ a:focus-visible {
   .nq-split--pos {
     grid-template-columns: minmax(0, 1.6fr) minmax(260px, 360px);
   }
-}
-
-/* ── Bố cục dùng chung cho mọi trang: chính + cột phụ ──
-   Thay cho việc mỗi trang tự bó vào 720px rồi chừa trắng hai bên. Cột phụ chỉ
-   xuất hiện khi màn đủ rộng; dưới ngưỡng thì xếp dọc (cột phụ lên trước hoặc
-   sau tuỳ `data-aside-first`). */
-.nq-page-grid {
-  display: grid;
-  gap: clamp(1.25rem, 2.5vw, 2rem);
-  align-items: start;
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 1080px) {
-  .nq-page-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
-  }
-  .nq-page-grid[data-aside-first="1"] {
-    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
-  }
-  .nq-page-grid[data-aside-first="1"] > .nq-page-grid__aside {
-    order: -1;
-  }
-}
-
-.nq-page-grid__main {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(1rem, 2vw, 1.5rem);
-}
-
-.nq-page-grid__aside {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(1rem, 2vw, 1.5rem);
-}
-
-/* Lưới thẻ lấp đầy hết bề ngang, số cột tự co theo màn hình. */
-/* Ô giờ 24h hai số — xem `TimeField` trong ui/kit.tsx để biết vì sao thay
-   `<input type="time">`. */
-.nq-time-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  flex: none;
-}
-
-.nq-time-field__part {
-  width: 2.6rem;
-  min-width: 0;
-  padding: 0.35rem 0.3rem;
-  text-align: center;
-  border-radius: var(--nq-radius-sm, 8px);
-  border: 1px solid var(--nq-line);
-  background: var(--nq-bg);
-  color: var(--nq-ink);
-  font-size: 0.8rem;
-  font-family: var(--nq-font-mono);
-}
-
-.nq-time-field__part:focus-visible {
-  outline: 2px solid var(--nq-focus);
-  outline-offset: 1px;
-}
-
-.nq-time-field[data-invalid="1"] .nq-time-field__part {
-  border-color: var(--nq-st-danger);
-}
-
-.nq-time-field__sep {
-  color: var(--nq-ink-muted);
-  font-weight: 700;
-}
-
-.nq-columns {
-  display: grid;
-  gap: clamp(1rem, 2vw, 1.5rem);
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 720px) {
-  .nq-columns[data-cols="2"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1080px) {
-  .nq-columns[data-cols="3"] {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-/* Hàng nút hành động: luôn tách khỏi khối phía trên bằng khoảng cách cố định,
-   không bao giờ để nút dính sát cạnh input/khung như trước. */
-.nq-action-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--nq-s3);
-  margin-top: var(--nq-s5);
-}
-
-.nq-action-row[data-align="end"] {
-  justify-content: flex-end;
-}
-
-.nq-action-row[data-align="between"] {
-  justify-content: space-between;
-}
-
-/* ── Phân trang số ── */
-.nq-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--nq-s3);
-  margin-top: var(--nq-s5);
-  padding-top: var(--nq-s4);
-  border-top: 1px solid var(--nq-line);
-}
-
-.nq-pagination__pages {
-  display: flex;
-  align-items: center;
-  gap: var(--nq-s1);
-  flex-wrap: wrap;
-}
-
-.nq-pagination__btn {
-  min-width: 2.25rem;
-  height: 2.25rem;
-  padding: 0 0.6rem;
-  border-radius: var(--nq-radius-sm, 8px);
-  border: 1px solid var(--nq-line);
-  background: var(--nq-bg-elevated);
-  color: var(--nq-ink);
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background var(--nq-dur-t0), color var(--nq-dur-t0);
-}
-
-.nq-pagination__btn:hover:not(:disabled) {
-  background: var(--nq-accent-soft);
-}
-
-.nq-pagination__btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.nq-pagination__btn[data-on="1"] {
-  background: var(--nq-accent);
-  color: var(--nq-accent-ink, #1a1200);
-  border-color: transparent;
-  font-weight: 700;
-}
-
-.nq-pagination__meta {
-  color: var(--nq-ink-muted);
-  font-size: 0.8rem;
-}
-
-.nq-pagination__size {
-  display: flex;
-  align-items: center;
-  gap: var(--nq-s2);
-  color: var(--nq-ink-muted);
-  font-size: 0.8rem;
 }
 
 .nq-card-grid {
@@ -2376,6 +2138,7 @@ a:focus-visible {
 .nq-roster-table th,
 .nq-roster-table td {
   padding: 0.45rem 0.55rem;
+  min-width: 108px;
   font-size: 0.8rem;
 }
 
@@ -2497,44 +2260,6 @@ a:focus-visible {
 /* Hộp thoại INBOX luôn bám viewport thật.
    z-index cao hơn shell/header và widget nổi; 100dvh tránh flex căn giữa theo
    chiều cao trang dài khiến người dùng chỉ thấy backdrop khi đang cuộn. */
-/* Dòng thời gian "Yêu cầu → AI quyết định → Kết quả xếp lịch" trên mỗi mục
-   hộp thư — trang chỉ xem, không còn nút Duyệt/Từ chối. */
-.nq-inbox-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.nq-inbox-timeline > li {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.55rem;
-}
-
-.nq-inbox-timeline__dot {
-  flex: none;
-  margin-top: 0.3rem;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 999px;
-  background: var(--nq-accent);
-}
-
-.nq-inbox-timeline__dot[data-tone="ok"] {
-  background: var(--nq-st-ok);
-}
-
-.nq-inbox-timeline__dot[data-tone="warn"] {
-  background: var(--nq-st-warn);
-}
-
-.nq-inbox-timeline__dot[data-tone="danger"] {
-  background: var(--nq-st-danger);
-}
-
 .nq-inbox-dialog-layer {
   position: fixed !important;
   inset: 0 !important;
@@ -4296,10 +4021,7 @@ a:focus-visible {
   display: flex;
   gap: var(--nq-s3);
   flex-wrap: wrap;
-  /* Sau PageHeader (mb-12): kéo CTA sát tiêu đề hơn, chừa khoảng rõ với khung dưới. */
-  margin-top: calc(var(--nq-s4) * -1);
-  margin-bottom: var(--nq-s5);
-  align-items: center;
+  margin-top: var(--nq-s6);
 }
 
 /* ── Skeleton ── */
@@ -5100,6 +4822,43 @@ a:focus-visible {
     box-shadow: var(--nq-elev-1);
   }
 
+  /* Ô giờ 24h hai số — xem `TimeField` trong ui/kit.tsx để biết vì sao thay
+     `<input type="time">`: ô native của trình duyệt chỉ cho nhập từng phần và
+     tự chuẩn hoá, nên gõ "23" vào giờ bị nuốt thành "02". */
+  .nq-time-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    flex: none;
+  }
+
+  .nq-time-field__part {
+    width: 2.6rem;
+    min-width: 0;
+    padding: 0.35rem 0.3rem;
+    text-align: center;
+    border-radius: var(--nq-radius-sm, 8px);
+    border: 1px solid var(--nq-line);
+    background-color: var(--nq-bg);
+    color: var(--nq-ink);
+    font-size: 0.8rem;
+    font-family: var(--nq-font-mono);
+  }
+
+  .nq-time-field__part:focus-visible {
+    outline: 2px solid var(--nq-focus);
+    outline-offset: 1px;
+  }
+
+  .nq-time-field[data-invalid="1"] .nq-time-field__part {
+    border-color: var(--nq-st-danger);
+  }
+
+  .nq-time-field__sep {
+    color: var(--nq-ink-muted);
+    font-weight: 700;
+  }
+
   /* Ô bấm được: nổi rõ hơn (elev-2) và có phản hồi hover — để mắt phân biệt được
      "khối này bấm được" với "khối này chỉ để đọc". */
   .nq-surface-tile {
@@ -5539,19 +5298,6 @@ a:focus-visible {
   }
 }
 
-.nq-vet-day-group + .nq-vet-day-group {
-  margin-top: var(--nq-s6);
-}
-
-.nq-vet-day-heading {
-  margin: 0 0 var(--nq-s3);
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--nq-ink-muted);
-}
-
 .nq-surface-tile:active {
 
   transform: scale(var(--nq-press));
@@ -5776,7 +5522,8 @@ a.nq-bento-surface:active {
 
 /* ── Ops register (T0) ── */
 .nq-page--run {
-  max-width: none;
+  max-width: var(--nq-max-narrow);
+  margin: 0 auto;
 }
 
 /* Khung vận hành hẹp dùng bậc h1 của hệ; không tự đặt lại cỡ theo `vw`, vì
@@ -6144,20 +5891,9 @@ a.nq-bento-surface:active {
 /* ── Việc treo: phân nhóm theo trạng thái ── */
 
 .nq-treo-sections {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--nq-s5);
-}
-@media (min-width: 1100px) {
-  .nq-treo-sections {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-  }
-}
-@media (min-width: 1500px) {
-  .nq-treo-sections {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+  display: flex;
+  flex-direction: column;
+  gap: var(--nq-s6);
 }
 
 .nq-treo-section {
@@ -6224,20 +5960,13 @@ a.nq-bento-surface:active {
   opacity: 1;
 }
 
-/* Lưới thẻ việc — class gắn trực tiếp lên wrapper PagedList */
-.nq-treo-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--nq-s3);
-}
-@media (min-width: 720px) {
+/* Lưới phân bố việc treo theo chiều ngang trên màn hình rộng */
+@media (min-width: 900px) {
   .nq-treo-grid {
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--nq-s4);
   }
-}
-/* Nút "Xem thêm" chiếm cả hàng dưới lưới */
-.nq-treo-grid > .nq-treo-grid__more {
-  grid-column: 1 / -1;
 }
 
 .nq-treo-empty-note {
@@ -6328,30 +6057,8 @@ a.nq-bento-surface:active {
 }
 
 .nq-page--tkb {
-  max-width: none;
-}
-
-/* Thẻ theo ngày tự co số cột theo bề ngang thật của trang — không còn cố
-   định 4 cột rồi ép ô giờ (TimeField) tràn ra ngoài thẻ ở màn hẹp hơn dự
-   kiến, và tận dụng hết chỗ trống ở màn rộng (có thể lên tới 7 cột). */
-.nq-tkb-day-grid {
-  display: grid;
-  gap: var(--nq-s3);
-  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
-}
-
-.nq-tkb-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.nq-tkb-row__times {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: nowrap;
+  max-width: min(64rem, 100%);
+  margin-inline: auto;
 }
 
 .nq-tkb-file {
@@ -6408,23 +6115,20 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-wrap {
-  /* Full bảng trong trang — không khóa chiều cao / cuộn trong ô.
-     Cuộn ngang chỉ khi viewport hẹp (table-layout auto dưới 860px). */
   overflow-x: auto;
-  overflow-y: visible;
-  border: 1px solid var(--nq-line-strong);
+  border: 1px solid var(--nq-line);
   border-radius: var(--nq-radius);
-  background: color-mix(in srgb, var(--nq-bg-elevated) 70%, transparent);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 55%, transparent);
   animation: nq-rise var(--nq-dur-t0) var(--nq-ease-out) both;
-  max-height: none;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--nq-ink) 4%, transparent);
+  max-height: min(70vh, 52rem);
+  overflow: auto;
 }
 
 .nq-roster-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--nq-s2) var(--nq-s4);
-  margin: 0 0 var(--nq-s2);
+  gap: var(--nq-s3);
+  margin: 0 0 var(--nq-s3);
   padding: 0;
   list-style: none;
   font-size: var(--nq-t-caption);
@@ -6433,14 +6137,13 @@ a.nq-bento-surface:active {
 .nq-roster-legend li {
   display: inline-flex;
   align-items: center;
-  gap: var(--nq-s1);
+  gap: var(--nq-s2);
 }
 .nq-roster-legend__swatch {
-  width: 0.7rem;
-  height: 0.7rem;
+  width: 0.75rem;
+  height: 0.75rem;
   border-radius: 2px;
   border: 1px solid var(--nq-line);
-  flex: none;
 }
 .nq-roster-legend__swatch--ok { background: var(--nq-st-ok-soft); border-color: var(--nq-st-ok); }
 .nq-roster-legend__swatch--warn { background: var(--nq-st-warn-soft); border-color: var(--nq-st-warn); }
@@ -6478,61 +6181,37 @@ a.nq-bento-surface:active {
 .nq-roster-table {
   border-collapse: collapse;
   width: 100%;
-  /* `table-layout: fixed` + `<colgroup>` (RosterGrid.tsx) chia đều 7 cột ngày
-     trong phần còn lại sau cột "Khung" — lưới lấp đầy hết bề ngang trang
-     thay vì mỗi cột giữ `min-width` cố định rồi đẩy bảng tràn ra ngoài và bắt
-     cuộn ngang ngay ở màn hình laptop bình thường. */
-  table-layout: fixed;
-  font-size: var(--nq-t-small);
-  --roster-rows: 3;
+  font-size: 0.875rem;
 }
 
 .nq-roster-caption {
   caption-side: top;
   text-align: left;
-  padding: 0.65rem 0.85rem 0.45rem;
-  font-size: var(--nq-t-caption);
+  padding: 0.75rem 0.85rem 0.55rem;
+  font-size: 0.8rem;
   color: var(--nq-ink-muted);
   letter-spacing: 0.02em;
 }
 
 .nq-roster-table th,
 .nq-roster-table td {
-  border: 1px solid color-mix(in srgb, var(--nq-line-strong) 72%, var(--nq-line));
-  padding: 0.35rem 0.4rem;
+  border: 1px solid var(--nq-line);
+  padding: 0.65rem 0.7rem;
   vertical-align: top;
-  overflow: hidden;
-}
-
-/* Dưới ngưỡng này, 7 cột chia đều sẽ quá hẹp để đọc — quay lại cột co theo
-   nội dung + cuộn ngang, thay vì ép chữ vỡ dòng liên tục. */
-@media (max-width: 860px) {
-  .nq-roster-table {
-    table-layout: auto;
-  }
-  .nq-roster-table th,
-  .nq-roster-table td {
-    min-width: 140px;
-  }
-  .nq-roster-table .nq-roster-corner,
-  .nq-roster-table .nq-roster-row-label {
-    min-width: 8.5rem;
-  }
+  min-width: 132px;
 }
 
 .nq-roster-table thead th {
   position: sticky;
   top: 0;
   z-index: var(--nq-z-sticky);
-  background: color-mix(in srgb, var(--nq-bg-elevated) 94%, var(--nq-accent) 6%);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 92%, var(--nq-accent) 8%);
   font-family: var(--nq-font-display, var(--nq-font-sans));
-  font-size: var(--nq-t-small);
+  font-size: 0.82rem;
   color: var(--nq-ink);
   font-weight: 700;
   text-align: left;
   letter-spacing: 0.01em;
-  border-bottom: 2px solid var(--nq-line-strong);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--nq-bg) 80%, transparent);
 }
 
 .nq-roster-row-label,
@@ -6540,32 +6219,19 @@ a.nq-bento-surface:active {
   position: sticky;
   left: 0;
   z-index: calc(var(--nq-z-sticky) + 1);
-  background: var(--nq-surface-2, var(--nq-bg-elevated));
-  border-right: 2px solid var(--nq-line-strong);
-}
-
-.nq-roster-corner {
-  z-index: calc(var(--nq-z-sticky) + 2);
-  vertical-align: bottom;
-  font-size: var(--nq-t-caption);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--nq-ink-muted);
+  background: var(--nq-surface-2);
 }
 
 .nq-roster-day-full {
   display: inline;
-  font-weight: 800;
-  color: var(--nq-ink);
 }
 
 .nq-roster-day-short {
   display: none;
   font-family: var(--nq-font-mono);
-  font-size: var(--nq-t-caption);
-  color: var(--nq-ink);
-  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--nq-ink-muted);
+  font-weight: 600;
 }
 
 @media (max-width: 900px) {
@@ -6579,30 +6245,11 @@ a.nq-bento-surface:active {
 
 .nq-roster-row-label {
   font-family: var(--nq-font-display, var(--nq-font-sans));
-  font-size: var(--nq-t-small);
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--nq-ink);
   white-space: nowrap;
-  background: color-mix(in srgb, var(--nq-bg-elevated) 92%, transparent);
-  vertical-align: middle;
-  padding: 0.55rem 0.65rem;
-}
-
-.nq-roster-row-label__title {
-  display: block;
-  font-weight: 800;
-  color: var(--nq-ink);
-  line-height: 1.25;
-}
-
-.nq-roster-row-label__time {
-  display: block;
-  margin-top: 0.15rem;
-  font-family: var(--nq-font-mono);
-  font-size: var(--nq-t-caption);
-  font-weight: 500;
-  color: var(--nq-ink-muted);
-  letter-spacing: 0.01em;
+  background: color-mix(in srgb, var(--nq-bg-elevated) 90%, transparent);
 }
 
 .nq-roster-cell {
@@ -6719,14 +6366,9 @@ a.nq-bento-surface:active {
   opacity: 0.35;
 }
 
-/* ── Roster compact grid (calendar / When I Work style) ── */
+/* ── Roster compact grid (Approach A) ── */
 .nq-roster-table--compact .nq-roster-corner {
   min-width: 8.5rem;
-}
-
-.nq-roster-table--compact tbody tr {
-  /* Ba ca lấp chiều cao viewport còn lại — không cuộn trong ô. */
-  height: max(9.5rem, calc((100dvh - 18rem) / var(--roster-rows, 3)));
 }
 
 .nq-roster-day-head {
@@ -6738,27 +6380,15 @@ a.nq-bento-surface:active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.15rem;
   width: 100%;
-  min-height: 3.1rem;
-  padding: 0.45rem 0.35rem 0.5rem;
+  padding: 0.55rem 0.35rem;
   border: none;
   background: transparent;
   color: inherit;
   cursor: pointer;
   font: inherit;
-  transition:
-    background-color var(--nq-dur-t0) var(--nq-ease-out),
-    color var(--nq-dur-t0) var(--nq-ease-out);
-}
-
-.nq-roster-day-title-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: center;
-  gap: 0.35rem;
-  line-height: 1.2;
+  transition: background-color var(--nq-dur-t0), color var(--nq-dur-t0);
 }
 
 .nq-roster-day-btn:hover,
@@ -6767,36 +6397,24 @@ a.nq-bento-surface:active {
   color: var(--nq-accent);
 }
 
-.nq-roster-day-head--today .nq-roster-day-btn {
-  background: color-mix(in srgb, var(--nq-accent) 10%, transparent);
-  box-shadow: inset 0 -2px 0 var(--nq-accent);
-}
-
-.nq-roster-day-head--today .nq-roster-day-date {
-  color: var(--nq-accent);
-  font-weight: 700;
-}
-
 .nq-roster-day-date {
   font-family: var(--nq-font-mono);
-  font-size: var(--nq-t-caption);
+  font-size: 0.68rem;
   color: var(--nq-ink-muted);
-  font-weight: 600;
 }
 
 .nq-roster-day-meta {
   font-family: var(--nq-font-mono);
-  font-size: 0.68rem;
-  padding: 0.08rem 0.4rem;
+  font-size: 0.62rem;
+  padding: 0.1rem 0.35rem;
   border-radius: var(--nq-radius-pill);
   border: 1px solid var(--nq-line);
-  color: var(--nq-ink-muted);
-  background: color-mix(in srgb, var(--nq-bg) 40%, transparent);
+  margin-top: 0.15rem;
 }
 
 .nq-roster-band--even td,
 .nq-roster-band--even th.nq-roster-row-label {
-  background: color-mix(in srgb, var(--nq-bg-elevated) 96%, var(--nq-accent) 4%);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 94%, var(--nq-accent) 6%);
 }
 
 .nq-roster-band--odd td,
@@ -6805,9 +6423,8 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-slot {
-  padding: 0.2rem;
-  vertical-align: top;
-  height: 100%;
+  padding: 0.35rem;
+  vertical-align: middle;
 }
 
 .nq-roster-slot--spot {
@@ -6815,87 +6432,35 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-slot-btn {
-  position: relative;
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 0;
-  width: 100%;
-  height: 100%;
-  min-height: 8.5rem;
-  padding: 0;
-  border: 1px solid var(--nq-line);
-  border-radius: var(--nq-radius);
-  background: color-mix(in srgb, var(--nq-bg) 78%, var(--nq-bg-elevated));
-  cursor: pointer;
-  text-align: left;
-  overflow: hidden;
-  transition:
-    border-color var(--nq-dur-t0) var(--nq-ease-out),
-    box-shadow var(--nq-dur-t0) var(--nq-ease-out),
-    transform var(--nq-dur-press) var(--nq-ease-spring),
-    background-color var(--nq-dur-t0) var(--nq-ease-out);
-}
-
-.nq-roster-slot-accent {
-  flex: none;
-  width: 4px;
-  align-self: stretch;
-}
-
-.nq-roster-slot-accent--ok {
-  background: var(--nq-st-ok);
-}
-
-.nq-roster-slot-accent--warn {
-  background: var(--nq-st-warn);
-}
-
-.nq-roster-slot-accent--empty {
-  background: var(--nq-st-danger);
-}
-
-.nq-roster-slot-body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  flex: 1;
-  min-width: 0;
-  padding: 0.4rem 0.45rem 0.45rem;
+  gap: 0.2rem;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius);
+  background: color-mix(in srgb, var(--nq-bg) 70%, var(--nq-bg-elevated));
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--nq-dur-t0),
+    transform var(--nq-dur-press) var(--nq-ease-spring);
 }
 
 .nq-roster-slot-btn:hover {
-  border-color: color-mix(in srgb, var(--nq-accent) 55%, var(--nq-line));
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--nq-bg) 55%, transparent);
-  transform: translateY(-1px);
-  z-index: 1;
-}
-
-.nq-roster-slot-btn:focus-visible {
-  outline: 2px solid var(--nq-accent);
-  outline-offset: 2px;
+  border-color: color-mix(in srgb, var(--nq-accent) 50%, var(--nq-line));
 }
 
 .nq-roster-slot-btn:active {
   transform: scale(var(--nq-press));
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .nq-roster-slot-btn,
-  .nq-roster-day-btn {
-    transition: none;
-  }
-  .nq-roster-slot-btn:hover,
-  .nq-roster-slot-btn:active {
-    transform: none;
-  }
-}
-
 .nq-roster-slot-count {
   font-family: var(--nq-font-mono);
   font-size: var(--nq-t-caption);
   font-weight: 800;
-  letter-spacing: 0.02em;
   color: var(--nq-fg);
 }
 
@@ -6907,17 +6472,15 @@ a.nq-bento-surface:active {
    Bản cũ chỉ có vàng/đỏ và dùng chung một dạng viền, nên "thiếu 1 người" và
    "trống ca" khó phân biệt khi liếc nhanh cả tuần. */
 .nq-roster-slot-btn--ok {
-  border-color: color-mix(in srgb, var(--nq-st-ok) 40%, var(--nq-line));
-  background: color-mix(in srgb, var(--nq-st-ok-soft) 35%, color-mix(in srgb, var(--nq-bg) 78%, var(--nq-bg-elevated)));
+  border-color: color-mix(in srgb, var(--nq-st-ok) 34%, var(--nq-line));
 }
 
 .nq-roster-slot-btn--ok .nq-roster-slot-count {
-  color: var(--nq-st-ok-ink, var(--nq-st-ok));
+  color: var(--nq-st-ok);
 }
 
 .nq-roster-slot-btn--warn {
-  border-color: color-mix(in srgb, var(--nq-st-warn) 50%, var(--nq-line));
-  background: color-mix(in srgb, var(--nq-st-warn-soft) 40%, color-mix(in srgb, var(--nq-bg) 78%, var(--nq-bg-elevated)));
+  border-color: color-mix(in srgb, var(--nq-st-warn) 44%, var(--nq-line));
 }
 
 .nq-roster-slot-btn--warn .nq-roster-slot-count {
@@ -6926,8 +6489,7 @@ a.nq-bento-surface:active {
 
 .nq-roster-slot-btn--empty {
   border-style: dashed;
-  border-color: color-mix(in srgb, var(--nq-st-danger) 48%, var(--nq-line));
-  background: color-mix(in srgb, var(--nq-st-danger-soft) 30%, color-mix(in srgb, var(--nq-bg) 78%, var(--nq-bg-elevated)));
+  border-color: color-mix(in srgb, var(--nq-st-danger) 40%, var(--nq-line));
 }
 
 .nq-roster-slot-btn--empty .nq-roster-slot-count {
@@ -6935,7 +6497,7 @@ a.nq-bento-surface:active {
 }
 
 .nq-roster-slot-btn[data-unconfirmed="1"] {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nq-st-warn) 35%, transparent);
+  border-left-width: 3px;
 }
 
 .nq-roster-khung-bar {
@@ -9120,12 +8682,9 @@ a.nq-bento-surface:active {
   -webkit-backdrop-filter: var(--nq-blur-2);
   border-right: 1px solid var(--nq-line);
   /* Vệt sáng phản chiếu dọc mép phải: cho bề mặt một "cạnh" thay vì chỉ là
-     mảng mờ. Cùng vai trò với `--nq-frontier` ở mép trên. */
+     mảng mờ. Cùng vai với `--nq-frontier` ở mép trên. */
   box-shadow: inset -1px 0 0 var(--nq-specular);
   transition: width var(--nq-beat-settle) var(--nq-ease-out);
-  /* Cắt paint SVG logo (overflow-visible + motion) khỏi vùng nội dung. */
-  overflow-x: hidden;
-  contain: paint;
 }
 
 .nq-side__head {
@@ -9299,26 +8858,6 @@ a.nq-bento-surface:active {
   display: none;
 }
 
-/* Thu gọn: chỉ còn dấu N tròn — ẩn chữ NHỊP QUÁN / Digital System. */
-.nq-side[data-collapsed="1"] .nq-side__brand-text {
-  display: none !important;
-}
-
-.nq-side[data-collapsed="1"] .nq-side__head {
-  justify-content: center;
-  flex-direction: column;
-  gap: var(--nq-s2);
-  padding: var(--nq-s1) 0;
-}
-
-.nq-side[data-collapsed="1"] .nq-side__head > a {
-  justify-content: center;
-}
-
-.nq-side[data-collapsed="1"] .nq-side__toggle {
-  margin-left: 0;
-}
-
 .nq-side[data-collapsed="1"] .nq-side__group {
   height: 1px;
   margin: var(--nq-s2) var(--nq-s3);
@@ -9335,19 +8874,8 @@ a.nq-bento-surface:active {
   padding: 0;
 }
 
-.nq-side[data-collapsed="1"] .nq-side__logout {
-  justify-content: center;
-  padding-inline: 0.5rem;
-  min-width: 36px;
-}
-.nq-side[data-collapsed="1"] .nq-side__logout .nq-side__label {
+.nq-side[data-collapsed="1"] .nq-side__user-name {
   display: none;
-}
-.nq-side__logout {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
 }
 
 /* ── Vùng nội dung ──
@@ -9371,7 +8899,8 @@ a.nq-bento-surface:active {
    Trang rộng (lịch tuần, roster, chat…) bỏ giới hạn qua `.nq-main__wide`. */
 .nq-main__inner {
   width: 100%;
-  max-width: none;
+  max-width: var(--nq-max);
+  margin-inline: auto;
   min-width: 0;
 }
 
@@ -9423,20 +8952,12 @@ a.nq-bento-surface:active {
 @media (max-width: 900px) {
   .nq-side {
     transform: translateX(-100%);
-    transition: transform var(--nq-beat-settle) var(--nq-ease-out),
-      visibility var(--nq-beat-settle) var(--nq-ease-out);
-    /* Đóng hẳn khi trượt ra: chặn paint/focus lệch (SVG logo framer-motion
-       từng lộ bóng ở góc viewport dù layout box đã ngoài màn). */
-    visibility: hidden;
-    pointer-events: none;
-    overflow: hidden;
+    transition: transform var(--nq-beat-settle) var(--nq-ease-out);
   }
 
   .nq-side[data-open="1"] {
     transform: translateX(0);
     width: var(--nq-side-w);
-    visibility: visible;
-    pointer-events: auto;
   }
 
   /* Trên màn hẹp, thu gọn vô nghĩa (sidebar vốn đã trượt ra ngoài) — luôn hiện
@@ -9447,19 +8968,8 @@ a.nq-bento-surface:active {
 
   .nq-side[data-collapsed="1"] .nq-side__label,
   .nq-side[data-collapsed="1"] .nq-side__dot,
-  .nq-side[data-collapsed="1"] .nq-side__user-name,
-  .nq-side[data-collapsed="1"] .nq-side__brand-text {
+  .nq-side[data-collapsed="1"] .nq-side__user-name {
     display: revert;
-  }
-
-  .nq-side[data-collapsed="1"] .nq-side__head {
-    flex-direction: row;
-    justify-content: flex-start;
-    padding: 0 var(--nq-s1);
-  }
-
-  .nq-side[data-collapsed="1"] .nq-side__toggle {
-    margin-left: auto;
   }
 
   .nq-side[data-collapsed="1"] .nq-side__group {
@@ -9497,311 +9007,6 @@ a.nq-bento-surface:active {
 /* ══════════════════════════════════════════════════════════════════════════
    HẾT SIDEBAR.
    ══════════════════════════════════════════════════════════════════════════ */
-
-/* ── Trợ lý full-page: flex đơn giản — tin cuộn, composer luôn thấy ── */
-.nq-app:has(.nq-copilot-page) .nq-main {
-  /* Chỉ bỏ padding thừa; KHÔNG khóa height/overflow ở đây (đó là nguyên nhân cắt khung). */
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
-}
-.nq-copilot-page {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: calc(100dvh - 1.5rem);
-  max-height: calc(100dvh - 1.5rem);
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  gap: 0.5rem;
-  overflow: hidden;
-}
-.nq-copilot-page--loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--nq-ink-muted);
-  font-size: var(--nq-t-small);
-}
-.nq-copilot-page__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-  flex: 0 0 auto;
-}
-.nq-copilot-page__kicker {
-  margin: 0;
-  font-family: var(--nq-font-mono);
-  font-size: var(--nq-t-caption);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--nq-accent-ink-text);
-}
-.nq-copilot-page__title {
-  margin: 0.1rem 0 0;
-  font-family: var(--nq-font-display);
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--nq-ink);
-  line-height: 1.25;
-}
-.nq-copilot-page__meta {
-  display: none;
-}
-.nq-copilot-page__frame {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--nq-line-strong);
-  border-radius: var(--nq-radius-bubble);
-  background: var(--nq-surface);
-  box-shadow: var(--nq-elev-2), var(--nq-inner-hi);
-}
-/* Thân chat = cột flex: header | messages(cuộn) | composer */
-.nq-copilot-body {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 0;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  background: var(--nq-bg);
-  color: var(--nq-fg);
-}
-.nq-copilot-body__head {
-  flex: 0 0 auto;
-}
-.nq-copilot-messages {
-  flex: 1 1 0;
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  padding: 0.85rem 1rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-content: flex-start;
-  gap: 0.75rem;
-}
-.nq-copilot-messages > * {
-  flex: 0 0 auto;
-}
-.nq-copilot-composer {
-  flex: 0 0 auto;
-  border-top: 1px solid var(--nq-line);
-  background: var(--nq-surface);
-}
-.nq-copilot-prompts {
-  flex: 0 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  max-height: 3.25rem;
-  overflow-y: auto;
-  padding: 0.45rem 0.85rem;
-  border-top: 1px solid var(--nq-line);
-  background: var(--nq-surface);
-}
-
-.nq-page--ai-learning {
-  /* Chừa chỗ nút chat nổi + mép an toàn — tránh đè thẻ chỉ số / CTA. */
-  padding-bottom: calc(var(--nq-s8) + 6.5rem);
-}
-.nq-page--ai-learning .nq-surface-block {
-  margin-bottom: var(--nq-s5);
-}
-.nq-page--ai-learning .nq-ai-split .nq-surface-block {
-  margin-bottom: 0;
-}
-.nq-ai-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--nq-s4);
-  margin-bottom: var(--nq-s6);
-}
-@media (min-width: 900px) {
-  .nq-ai-metrics {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-.nq-ai-metric {
-  display: flex;
-  flex-direction: column;
-  gap: var(--nq-s2);
-  padding: var(--nq-s5);
-  border: 1px solid var(--nq-line);
-  border-radius: var(--nq-radius-bubble);
-  background: var(--nq-surface);
-  box-shadow: var(--nq-elev-1), var(--nq-inner-hi);
-  min-width: 0;
-  position: relative;
-  z-index: 0;
-  overflow: hidden;
-}
-.nq-ai-metric__label {
-  margin: 0;
-  font-family: var(--nq-font-mono);
-  font-size: var(--nq-t-caption);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--nq-ink-muted);
-}
-.nq-ai-metric__value {
-  margin: 0;
-  font-family: var(--nq-font-mono);
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--nq-accent-ink-text);
-  line-height: 1.1;
-}
-.nq-ai-copy {
-  margin: 0;
-  font-size: var(--nq-t-body);
-  color: var(--nq-ink-muted);
-  line-height: 1.55;
-  max-width: 62ch;
-}
-.nq-ai-copy--tight {
-  margin-top: var(--nq-s4);
-}
-.nq-ai-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--nq-s3);
-  margin-top: var(--nq-s4);
-}
-.nq-ai-section {
-  margin-bottom: var(--nq-s6);
-}
-.nq-ai-section__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--nq-s3);
-  margin-bottom: var(--nq-s4);
-}
-.nq-ai-section__kicker {
-  margin: 0;
-  font-family: var(--nq-font-mono);
-  font-size: var(--nq-t-caption);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--nq-accent-ink-text);
-}
-.nq-ai-section__title {
-  margin: 0.2rem 0 0;
-  font-size: var(--nq-t-h2);
-  font-weight: 700;
-  color: var(--nq-ink);
-}
-.nq-ai-section__count,
-.nq-ai-meta {
-  font-family: var(--nq-font-mono);
-  font-size: var(--nq-t-caption);
-  color: var(--nq-ink-muted);
-}
-.nq-ai-list {
-  display: grid;
-  gap: var(--nq-s3);
-}
-.nq-ai-card,
-.nq-ai-gen {
-  padding: var(--nq-s4);
-  border: 1px solid var(--nq-line);
-  border-radius: var(--nq-radius-bubble);
-  background: var(--nq-surface-2);
-}
-.nq-ai-gen {
-  border-left: 3px solid var(--nq-accent);
-}
-.nq-ai-card__top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--nq-s3);
-}
-.nq-ai-card__tags,
-.nq-ai-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--nq-s2);
-  align-items: center;
-}
-.nq-ai-card__body,
-.nq-ai-gen__title {
-  margin: var(--nq-s3) 0 var(--nq-s2);
-  font-weight: 600;
-  color: var(--nq-ink);
-}
-.nq-ai-gen__body {
-  margin: 0 0 var(--nq-s2);
-  font-size: var(--nq-t-small);
-  color: var(--nq-ink-muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.nq-ai-split {
-  display: grid;
-  gap: var(--nq-s5);
-  margin-bottom: var(--nq-s6);
-}
-@media (min-width: 960px) {
-  .nq-ai-split {
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-    align-items: start;
-  }
-}
-.nq-ai-flags {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  width: 100%;
-  min-width: 0;
-}
-.nq-ai-flag {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--nq-s3);
-  padding: var(--nq-s3) 0;
-  border-bottom: 1px solid var(--nq-line);
-  font-size: var(--nq-t-small);
-  color: var(--nq-ink);
-  width: 100%;
-  min-width: 0;
-}
-.nq-ai-flag__label {
-  flex: 1 1 auto;
-  min-width: 0;
-  /* Không break-all: từng ký tự xuống dòng khi thẻ bị ép hẹp (lỗi production). */
-  overflow-wrap: anywhere;
-  word-break: normal;
-  line-height: 1.35;
-}
-.nq-ai-flag .nq-chip {
-  flex: none;
-}
-.nq-ai-flag:last-child {
-  border-bottom: none;
-}
-/* Chặn nhầm dùng nq-surface-row (flex ngang) làm thẻ nội dung trên trang học AI. */
-.nq-page--ai-learning .nq-surface-row {
-  display: block;
-  width: 100%;
-  min-width: 0;
-}
 
 /* ══════════════════════════════════════════════════════════════════════════
    Dialog / Drawer / DataList / Btn variants (enterprise kit v4)

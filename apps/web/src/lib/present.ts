@@ -908,6 +908,62 @@ export function khungLabel(code: unknown): string {
   return pick(KHUNG, code, "");
 }
 
+/* ── Quầy nội bộ: đơn pha chế và nhóm món ──
+   Trạng thái đơn và cách thu tiền là mã nội bộ (`cho_pha`, `da_ck`), không được
+   in thẳng ra màn hình quầy — nhân viên đọc "cho pha" không hiểu là gì. Nhóm món
+   dùng đúng sáu mã của `data/seed/danh-muc.json` để menu quầy phân mục được. */
+
+const DON_TRANG_THAI: Record<string, string> = {
+  cho_pha: "Chờ pha",
+  dang_pha: "Đang pha",
+  xong: "Đã xong",
+  huy: "Đã hủy",
+};
+
+export function donTrangThaiLabel(code: unknown): string {
+  return pick(DON_TRANG_THAI, code, "Chưa rõ trạng thái");
+}
+
+export function donTrangThaiTone(code: unknown): "warn" | "ok" | "danger" | "default" {
+  if (code === "xong") return "ok";
+  if (code === "huy") return "danger";
+  if (code === "dang_pha") return "warn";
+  return "default";
+}
+
+const DON_THANH_TOAN: Record<string, string> = {
+  chua_thu: "Chưa thu",
+  tien_mat: "Tiền mặt",
+  da_ck: "Đã chuyển khoản",
+};
+
+export function donThanhToanLabel(code: unknown): string {
+  return pick(DON_THANH_TOAN, code, "Chưa rõ thanh toán");
+}
+
+const NHOM_MON: Record<string, string> = {
+  ca_phe: "Cà phê",
+  tra: "Trà & trà sữa",
+  sinh_to: "Sinh tố & đá xay",
+  banh: "Bánh & ăn kèm",
+  nuoc_dong_chai: "Nước đóng chai",
+  nguyen_lieu: "Nguyên liệu pha chế",
+};
+
+export function nhomMonLabel(code: unknown): string {
+  return pick(NHOM_MON, code, "Món khác");
+}
+
+/** Thứ tự đọc menu: đồ uống pha trước, đồ ăn kèm và hàng đóng gói sau cùng. */
+export const NHOM_MON_THU_TU: readonly string[] = [
+  "ca_phe",
+  "tra",
+  "sinh_to",
+  "banh",
+  "nuoc_dong_chai",
+  "nguyen_lieu",
+];
+
 const LOAI_BUOC: Record<string, string> = {
   photo: "Bước cần ảnh minh chứng",
   text: "Bước cần nhập số liệu",

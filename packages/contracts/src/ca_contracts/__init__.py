@@ -168,6 +168,10 @@ class MonNuoc(BaseModel):
     gia: int = Field(ge=0, description="Đồng, số nguyên")
     an: bool = False
     hinh_url: str = Field(default="", max_length=500, description="URL ảnh món (hoặc /api/v1/menu/{id}/anh)")
+    nhom: str = Field(
+        default="",
+        description="Nhóm sản phẩm (ca_phe/tra/sinh_to/banh/nuoc_dong_chai/nguyen_lieu), dùng phân mục menu quầy",
+    )
     bom: dict[str, float] = Field(
         default_factory=dict,
         description="Nguyên liệu ước lượng khi hoàn thành đơn, vd cafe_g, sua_ml, ly",
@@ -1259,10 +1263,6 @@ __all__ = [
     "LossLevel",
     "LossBasis",
     "LossCauseSource",
-    "LossCauseRank",
-    "LossLine",
-    "LossSummary",
-    "LossThreshold",
     # ── Gmail Management ──
     "GmailAccount",
     "GmailOAuthTokens",

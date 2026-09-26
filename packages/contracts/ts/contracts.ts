@@ -57,6 +57,7 @@ export interface MonNuoc {
   gia: number;
   an?: boolean;
   hinh_url?: string;
+  nhom?: string;
   bom?: Record<string, number>;
 }
 
@@ -751,5 +752,170 @@ export interface VoiceTurnResponse {
   audio_ref?: string | null;
   proposal?: MemoryProposal | null;
   grounded?: boolean;
+}
+
+export interface GmailAccount {
+  id: string;
+  store_id?: string;
+  nv_id: string;
+  email: string;
+  display_name?: string;
+  is_primary?: boolean;
+  is_active?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GmailOAuthTokens {
+  account_id: string;
+  access_token: string;
+  refresh_token?: string | null;
+  expires_at: string;
+  scope?: string;
+  token_type?: string;
+  updated_at: string;
+}
+
+export interface GmailSyncState {
+  account_id: string;
+  last_history_id?: string | null;
+  last_sync_at?: string | null;
+  sync_cursor?: string | null;
+  total_messages?: number;
+  unread_count?: number;
+  updated_at: string;
+}
+
+export interface GmailMessage {
+  id: string;
+  account_id: string;
+  thread_id: string;
+  label_ids?: string[];
+  snippet?: string;
+  from_email?: string;
+  to_emails?: string[];
+  cc_emails?: string[];
+  subject?: string;
+  body_text?: string | null;
+  body_html?: string | null;
+  internal_date: string;
+  is_read?: boolean;
+  is_starred?: boolean;
+  has_attachment?: boolean;
+  raw_headers?: string | null;
+  created_at: string;
+}
+
+export interface GmailLabel {
+  id: string;
+  account_id: string;
+  name: string;
+  label_type?: "system" | "user";
+  message_list_visibility?: "show" | "hide";
+  label_list_visibility?: "labelShow" | "labelHide";
+  color_background?: string | null;
+  color_text?: string | null;
+  total_messages?: number;
+  unread_messages?: number;
+  updated_at: string;
+}
+
+export interface GmailFilter {
+  id: string;
+  account_id: string;
+  criteria?: Record<string, JsonValue>;
+  action?: Record<string, JsonValue>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GmailThread {
+  id: string;
+  account_id: string;
+  message_ids?: string[];
+  subject?: string;
+  participants?: string[];
+  last_message_date?: string;
+  is_unread?: boolean;
+  label_ids?: string[];
+}
+
+export interface GmailOAuthAuthorizeRequest {
+  state?: string | null;
+}
+
+export interface GmailOAuthAuthorizeResponse {
+  authorization_url: string;
+  state: string;
+}
+
+export interface GmailOAuthCallbackRequest {
+  code: string;
+  state: string;
+}
+
+export interface GmailOAuthCallbackResponse {
+  ok: boolean;
+  account_id: string;
+  email: string;
+  message: string;
+}
+
+export interface GmailAccountCreateRequest {
+  email: string;
+  display_name?: string;
+  is_primary?: boolean;
+}
+
+export interface GmailAccountUpdateRequest {
+  display_name?: string | null;
+  is_primary?: boolean | null;
+  is_active?: boolean | null;
+}
+
+export interface GmailMessageListParams {
+  label_ids?: string[] | null;
+  query?: string | null;
+  is_read?: boolean | null;
+  limit?: number;
+  offset?: number;
+}
+
+export interface GmailLabelCreateRequest {
+  name: string;
+  label_list_visibility?: "labelShow" | "labelHide";
+  message_list_visibility?: "show" | "hide";
+  color_background?: string | null;
+  color_text?: string | null;
+}
+
+export interface GmailLabelUpdateRequest {
+  name?: string | null;
+  label_list_visibility?: "labelShow" | "labelHide" | null;
+  message_list_visibility?: "show" | "hide" | null;
+  color_background?: string | null;
+  color_text?: string | null;
+}
+
+export interface GmailFilterCreateRequest {
+  criteria?: Record<string, JsonValue>;
+  action?: Record<string, JsonValue>;
+}
+
+export interface GmailSyncRequest {
+  account_id?: string | null;
+  full_sync?: boolean;
+}
+
+export interface GmailSendMessageRequest {
+  to: string[];
+  subject: string;
+  body_text: string;
+  body_html?: string | null;
+  cc?: string[] | null;
+  bcc?: string[] | null;
+  thread_id?: string | null;
+  in_reply_to?: string | null;
+  references?: string | null;
 }
 

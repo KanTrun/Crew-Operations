@@ -26,6 +26,12 @@
       "title": "Hinh Url",
       "type": "string"
     },
+    "nhom": {
+      "default": "",
+      "description": "Nhóm sản phẩm (ca_phe/tra/sinh_to/banh/nuoc_dong_chai/nguyen_lieu), dùng phân mục menu quầy",
+      "title": "Nhom",
+      "type": "string"
+    },
     "bom": {
       "additionalProperties": {
         "type": "number"
