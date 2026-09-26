@@ -20,8 +20,8 @@ test.describe("QUANVERSE", () => {
     await expect(page.locator(".nq-living-map")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("zone-bar")).toBeVisible();
     await expect(page.locator(".nq-quanverse__events")).toBeVisible();
-    // Chú giải mức tải trên living map (cột fill chỉ hiện sau khi mở ZoneDetail).
-    await expect(page.locator(".nq-loadbar__key").first()).toBeVisible();
+    // Mặt bằng có cột tải thật, không chỉ chữ.
+    await expect(page.locator(".nq-loadbar__fill").first()).toBeVisible();
   });
 
   test("events link to zones and store-wide events say so", async ({ page }) => {

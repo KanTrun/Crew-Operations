@@ -268,12 +268,31 @@ export default function QuanversePage() {
             </ul>
           ) : null}
 
+          {/* Bố cục hai vùng: mặt bằng bên trái, cột việc-cần-quyết bên phải.
+              `ZoneDetail` nằm TRONG cột phải (không phải hàng riêng dưới mặt
+              bằng) để cột phải luôn có nội dung thật và hai vùng cao gần nhau —
+              trước đây chi tiết nằm dưới nên cột phải ngắn, để lại một khoảng
+              trống lớn bên dưới nó, đúng cảm giác "ép qua một bên". */}
           <div className="nq-quanverse__layout">
-            <LivingMap
-              zones={snap.zones ?? []}
-              selectedId={selectedZone}
-              onSelectZone={setSelectedZone}
-            />
+            <div className="nq-quanverse__main">
+              <LivingMap
+                zones={snap.zones ?? []}
+                selectedId={selectedZone}
+                onSelectZone={setSelectedZone}
+              />
+              {selected ? (
+                <ZoneDetail
+                  zone={selected}
+                  events={events}
+                  onClose={() => setSelectedZone(null)}
+                />
+              ) : (
+                <p className="nq-quanverse__hint">
+                  <Icon name="location" size={14} />
+                  Chọn một khu vực trên mặt bằng để xem tải, gợi ý hành động và sự kiện tại chỗ.
+                </p>
+              )}
+            </div>
             <div className="nq-quanverse__right">
               <HorizonTimeline items={snap.next_horizon ?? []} />
               <ModeRail
@@ -284,20 +303,6 @@ export default function QuanversePage() {
               />
             </div>
           </div>
-
-          {/* Bấm một khu vực có kết quả thật: bảng chi tiết ngay dưới mặt bằng */}
-          {selected ? (
-            <ZoneDetail
-              zone={selected}
-              events={events}
-              onClose={() => setSelectedZone(null)}
-            />
-          ) : (
-            <p className="nq-quanverse__hint">
-              <Icon name="location" size={14} />
-              Chọn một khu vực trên mặt bằng để xem tải, gợi ý hành động và sự kiện tại chỗ.
-            </p>
-          )}
 
           {/* Không gian khách: Hương vị · Sở thích · AR */}
           <div className="nq-quanverse__guests">
