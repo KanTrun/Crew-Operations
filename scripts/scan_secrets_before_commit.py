@@ -31,6 +31,23 @@ BO_QUA = re.compile(
     r"['\"](?:tok_test|secret_test|change-me|nhipquan|<[^>]*>|KHONG_[A-Z_]+)['\"]", re.I
 )
 
+# Chuỗi base64 CỦA ẢNH (PNG/JPEG/GIF/WebP) trong mã test.
+#
+# Vì sao cần: base64 là chuỗi ngẫu nhiên nên LUÔN có xác suất tình cờ khớp mẫu
+# token — ảnh PNG 1×1 dùng khắp test chứa chuỗi khớp đúng mẫu token Facebook.
+# Đây là báo động GIẢ: chặn nó bằng cách neo theo tiền tố magic-bytes của ảnh
+# (iVBORw0KGgo = PNG, /9j/ = JPEG, R0lGOD = GIF, UklGR = WebP) — token thật
+# không bao giờ bắt đầu bằng những chuỗi này, nên ngoại lệ này KHÔNG che được
+# secret thật.
+ANH_BASE64 = re.compile(r"iVBORw0KGgo|/9j/|R0lGOD|UklGR")
+
+# File mà việc quét chính nó là VÔ NGHĨA: bản thân scanner chứa các mẫu regex
+# (chuỗi như `EAA[A-Za-z0-9]{20}`) để ĐỊNH NGHĨA secret — quét nó luôn ra kết
+# quả dương tính giả. Tài liệu/ghi chú giải thích mẫu cũng vậy.
+BO_QUA_FILE = {
+    "scripts/scan_secrets_before_commit.py",
+}
+
 
 def doc_tolerant(p: Path) -> str:
     """Đọc file kể cả khi bị TRỘN encoding.
@@ -98,6 +115,9 @@ def main() -> int:
     if not muc_tieu:
         print("CANH_BAO khong co file nao duoc quet - ket qua 'sach' la VO NGHIA")
     for p in muc_tieu:
+        # Bỏ qua file định nghĩa mẫu secret (quét chính nó luôn dương tính giả).
+        if duong_dan_hien_thi(p) in BO_QUA_FILE:
+            continue
         try:
             text = doc_tolerant(p)
         except OSError:
@@ -105,6 +125,9 @@ def main() -> int:
         for i, line in enumerate(text.splitlines(), 1):
             for m in MAU.finditer(line):
                 if BO_QUA.search(m.group(0)):
+                    continue
+                # Bỏ qua khi dòng đó là literal base64 của ảnh test (báo động giả).
+                if ANH_BASE64.search(line):
                     continue
                 tong += 1
                 print(f"NGHI_NGO {duong_dan_hien_thi(p)}:{i}")

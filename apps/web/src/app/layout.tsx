@@ -20,7 +20,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi" className={fontClass}>
-      <body>
+      {/* suppressHydrationWarning: tiện ích trình duyệt (dịch trang, chặn quảng
+          cáo) chèn class/thuộc tính vào <body> TRƯỚC khi React hydrate, làm
+          React báo lỗi hydration dù HTML của mình đúng. Chỉ bỏ qua cảnh báo ở
+          riêng <body>; mọi phần khác vẫn được kiểm tra nghiêm. */}
+      <body suppressHydrationWarning>
         <MotionProvider>
           <SmoothScroll>
             <a href="#nq-content" className="nq-skip">

@@ -27,7 +27,20 @@ def _isolated_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # adapter thật, không patch). Không test nào trong apps/api đọc file này.
     monkeypatch.setenv("NHIPQUAN_MAIL_LOG", str(tmp_path / "mail_log.jsonl"))
     monkeypatch.setenv("NHIPQUAN_PBKDF2_VONG", "1000")
-    monkeypatch.setenv("CA_SOLVER_TIME_LIMIT_S", "4.0")
+    # Ngân sách CP-SAT cho test: 20 giây, KHÔNG phải 4.
+    #
+    # Vì sao phải nới: bộ giải chạy `num_search_workers = 8` (8 luồng), còn
+    # pytest chạy `-n auto` = 8 worker trên máy 8 CPU (CI 4 CPU → 4 worker).
+    # Tổng nhu cầu ~64 luồng tranh 8 CPU, nên 4 giây KHÔNG đủ để CP-SAT tìm ra
+    # nghiệm ĐẦU TIÊN; nó trả `UNKNOWN` → `needs_gap_resolution` thay vì
+    # `computed`, làm test assert `status == "computed"` đỏ NGẪU NHIÊN (mỗi lần
+    # chạy fail một tập test khác: test_sprint45, test_copilot_api…). Đây là
+    # flaky do tranh CPU, không phải lỗi logic — nới ngân sách là sửa đúng tầng.
+    #
+    # 20s vẫn nhanh hơn production (60s) nên không che lỗi hiệu năng thật, mà đủ
+    # dư cho máy bị chia CPU. Đã kiểm chứng: 4s → fail 2–3 test; 20s → 2614 test
+    # qua sạch trong nhiều lần chạy.
+    monkeypatch.setenv("CA_SOLVER_TIME_LIMIT_S", "20.0")
     monkeypatch.delenv("NHIPQUAN_LOI_GIAI_SEED", raising=False)
     # Jev (TypeSafe) phải TẮT trong test — không gọi API thật, không phụ thuộc
     # mạng/key. JevSensor sẽ fail-closed (jev_ok=False) → hành vi tương tự khi

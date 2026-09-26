@@ -66,6 +66,16 @@ _BAI_MODELS = (
 )
 _UA = "nhip-quan/0.1 (https://github.com/KanTrun/Crew-Operations)"
 _DOTENV_LOADED = False
+# Theo dõi file .env đã nạp để phát hiện người vận hành dán key MỚI trong lúc
+# tiến trình đang chạy (đổi key Cloudflare khi hết hạn mức là việc xảy ra hằng
+# ngày với free tier). Không theo dõi thì tiến trình giữ key cũ trong bộ nhớ và
+# mọi lượt gọi đều hỏng cho tới khi khởi động lại — lỗi rất khó đoán vì .env
+# trông đã đúng.
+_DOTENV_PATH: Path | None = None
+_DOTENV_MTIME: float = 0.0
+# Biến do CHÍNH .env đặt (khác biến do môi trường tiến trình hoặc CI đặt).
+# Chỉ nhóm này được ghi đè khi nạp lại — biến của CI/shell vẫn thắng như cũ.
+_DOTENV_KEYS: set[str] = set()
 
 
 @dataclass(frozen=True)
@@ -84,7 +94,7 @@ def agent_mode() -> str:
 
 def load_dotenv(path: Path | None = None, *, override: bool = False) -> Path | None:
     """Load KEY=VALUE lines. Existing process env wins unless override=True."""
-    global _DOTENV_LOADED
+    global _DOTENV_LOADED, _DOTENV_PATH, _DOTENV_MTIME
     candidates: list[Path] = []
     if path is not None:
         candidates.append(path)
@@ -108,13 +118,50 @@ def load_dotenv(path: Path | None = None, *, override: bool = False) -> Path | N
             continue
         if override or key not in os.environ:
             os.environ[key] = value
+            # Ghi nhớ biến này là "của .env" để lần nạp lại sau còn biết đường
+            # ghi đè. Biến đã có sẵn trong môi trường (CI, shell export) KHÔNG
+            # bao giờ lọt vào đây, nên chúng giữ nguyên quyền ưu tiên.
+            _DOTENV_KEYS.add(key)
     _DOTENV_LOADED = True
+    _DOTENV_PATH = chosen
+    _DOTENV_MTIME = chosen.stat().st_mtime
     return chosen
 
 
 def ensure_dotenv() -> None:
+    """Nạp .env — và nạp LẠI nếu file đã bị sửa kể từ lần đọc trước.
+
+    Vì sao cần nạp lại: người vận hành dán key mới vào .env trong lúc API đang
+    chạy. Nếu chỉ đọc .env một lần lúc khởi động, tiến trình giữ key CŨ và mọi
+    lượt gọi đều hỏng (thường rơi xuống provider dự phòng) cho tới khi khởi động
+    lại — mà .env thì trông đã đúng, nên rất khó đoán ra nguyên nhân.
+
+    Chỉ ghi đè biến do CHÍNH .env đặt: biến của môi trường tiến trình (CI đặt
+    ``CA_AGENT_MODE=replay``, shell export key) vẫn thắng như trước.
+
+    .env bị XOÁ thì giữ nguyên giá trị đang có — mất credential đột ngột giữa
+    chừng nguy hiểm hơn là tiếp tục dùng giá trị đã nạp.
+    """
     if not _DOTENV_LOADED:
         load_dotenv()
+        return
+    if _DOTENV_PATH is None or not _DOTENV_PATH.is_file():
+        return
+    try:
+        mtime = _DOTENV_PATH.stat().st_mtime
+    except OSError:
+        return
+    if mtime == _DOTENV_MTIME:
+        return
+    # File đã đổi: gỡ các biến do .env đặt lần trước rồi đọc lại. Phải GỠ trước
+    # vì ``load_dotenv`` không ghi đè biến đã có — để nguyên thì giá trị mới
+    # trong .env không bao giờ được nạp.
+    for key in _DOTENV_KEYS:
+        os.environ.pop(key, None)
+    # Nạp lại ĐÚNG file đã nạp lần đầu. Gọi ``load_dotenv()`` trống sẽ dò lại từ
+    # đầu danh sách ứng viên — sai khi file được chỉ định tường minh (test, hoặc
+    # tiến trình chạy với .env ở nơi khác), và có thể đọc nhầm sang file khác.
+    load_dotenv(_DOTENV_PATH)
 
 
 def provider_status() -> dict[str, bool]:
