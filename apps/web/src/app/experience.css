@@ -1785,3 +1785,150 @@
 
 /* Dòng sự kiện trải hết bề ngang nội dung — đây là nhật ký toàn quán. */
 .nq-quanverse__events { width: 100%; }
+
+/* ── War Room: thẻ chọn kịch bản có số liệu + vùng tác động ───────────────── */
+.nq-war-picker {
+  display: grid; gap: var(--nq-s3);
+  padding: var(--nq-s4);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble, 18px);
+  background: var(--nq-surface);
+}
+.nq-war-picker__count {
+  font-family: var(--nq-font-mono, monospace);
+  font-size: 0.74rem; color: var(--nq-dim);
+}
+.nq-war-picker__glyph { display: inline-flex; color: var(--nq-accent); flex: none; }
+.nq-war-picker__hint {
+  margin: 0; font-size: 0.86rem; line-height: 1.6; color: var(--nq-dim);
+}
+.nq-war-picker__hint strong { color: var(--nq-fg); }
+
+/* Lưới thẻ: 3 cột khi đủ chỗ, không để thẻ lẻ loi một mình. */
+.nq-war-picker__grid {
+  display: grid; gap: var(--nq-s3);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+@media (min-width: 1100px) {
+  .nq-war-picker__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.nq-war-picker__card {
+  display: grid; gap: 0.4rem; align-content: start;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--nq-line);
+  border-left: 3px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble, 18px);
+  background: var(--nq-bg-elevated);
+  color: var(--nq-fg);
+  text-align: left; cursor: pointer;
+  transition: border-color var(--nq-dur-t0), background var(--nq-dur-t0);
+}
+.nq-war-picker__card:hover:not(:disabled) { border-color: var(--nq-accent); }
+.nq-war-picker__card.is-active {
+  border-left-color: var(--nq-accent);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--nq-accent) 12%, transparent), var(--nq-bg-elevated));
+}
+.nq-war-picker__card:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.nq-war-picker__head {
+  display: flex; align-items: center; gap: var(--nq-s2);
+}
+.nq-war-picker__title { font-weight: 700; font-size: 0.95rem; }
+.nq-war-picker__check {
+  margin-left: auto;
+  display: grid; place-items: center;
+  width: 20px; height: 20px; border-radius: 999px;
+  border: 1px solid var(--nq-line-strong);
+  font-size: 0.75rem; color: var(--nq-dim);
+}
+.nq-war-picker__card.is-active .nq-war-picker__check {
+  background: var(--nq-accent); border-color: var(--nq-accent);
+  color: var(--nq-accent-ink, #1a1408);
+}
+.nq-war-picker__desc { font-size: 0.82rem; line-height: 1.5; color: var(--nq-dim); }
+
+/* Số liệu giả định — chip mono để tách hẳn khỏi câu mô tả. */
+.nq-war-picker__params { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.nq-war-picker__param {
+  font-family: var(--nq-font-mono, monospace); font-size: 0.7rem;
+  padding: 0.1rem 0.45rem; border-radius: 999px;
+  border: 1px solid var(--nq-line); color: var(--nq-accent-ink-text);
+  background: color-mix(in srgb, var(--nq-accent) 8%, transparent);
+}
+.nq-war-picker__affects {
+  font-size: 0.74rem; line-height: 1.45; color: var(--nq-dim);
+  border-top: 1px dashed var(--nq-line); padding-top: 0.35rem;
+}
+
+/* ── Cứu ca: bảng so sánh ứng viên (trải ngang, không xếp thẻ dọc) ───────── */
+.nq-ctable { display: grid; gap: var(--nq-s3); }
+.nq-ctable table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  /* Bảng rộng: cho phép cuộn ngang trên màn hẹp thay vì bóp chữ. */
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+@media (min-width: 900px) {
+  .nq-ctable table { display: table; overflow-x: visible; white-space: normal; }
+}
+.nq-ctable thead th {
+  text-align: left; font-size: 0.72rem; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--nq-dim); font-weight: 600;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--nq-line-strong);
+}
+.nq-ctable tbody td {
+  padding: 0.6rem;
+  border-bottom: 1px solid var(--nq-line);
+  vertical-align: top;
+  color: var(--nq-fg);
+}
+.nq-ctable tbody tr:hover { background: color-mix(in srgb, var(--nq-accent) 5%, transparent); }
+.nq-ctable tbody tr.is-selected { background: color-mix(in srgb, var(--nq-accent) 12%, transparent); }
+.nq-ctable__rank { width: 3.2rem; }
+.nq-ctable__ranknum {
+  display: grid; place-items: center;
+  width: 22px; height: 22px; border-radius: 999px;
+  background: var(--nq-accent-soft); color: var(--nq-accent);
+  font-family: var(--nq-font-mono, monospace); font-size: 0.72rem; font-weight: 600;
+}
+.nq-ctable__name { font-weight: 600; }
+.nq-ctable__num {
+  text-align: right; font-variant-numeric: tabular-nums;
+  font-family: var(--nq-font-mono, monospace);
+}
+.nq-ctable__act { width: 5.5rem; text-align: right; }
+.nq-ctable__reasons { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; }
+.nq-ctable__reasons li { font-size: 0.8rem; line-height: 1.45; color: var(--nq-dim); }
+.nq-ctable__reasons--block li { color: var(--nq-warn); }
+.nq-ctable__more { font-style: italic; }
+.nq-ctable__dash { color: var(--nq-dim); }
+.nq-ctable__blockedtitle { margin: var(--nq-s3) 0 0; }
+.nq-ctable__blocked tbody tr.is-blocked td { color: var(--nq-warn); }
+
+/* ── Rules: danh sách luật dạng bảng rộng (thay vì box hẹp) ─────────────── */
+.nq-rules__table {
+  width: 100%; border-collapse: collapse; font-size: 0.88rem;
+  display: block; overflow-x: auto; white-space: nowrap;
+}
+@media (min-width: 900px) {
+  .nq-rules__table { display: table; overflow-x: visible; white-space: normal; }
+}
+.nq-rules__table thead th {
+  text-align: left; font-size: 0.72rem; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--nq-dim); font-weight: 600;
+  padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--nq-line-strong);
+}
+.nq-rules__table tbody td {
+  padding: 0.65rem 0.6rem; border-bottom: 1px solid var(--nq-line);
+  vertical-align: top; color: var(--nq-fg);
+}
+.nq-rules__table tbody tr.is-revoked { opacity: 0.6; }
+.nq-rules__table__sentence { min-width: 16rem; }
+.nq-rules__table__conf { text-align: right; font-family: var(--nq-font-mono, monospace); }
+.nq-rules__table__acts { text-align: right; }
+.nq-rules__table__acts .nq-btn-compact { margin-inline-start: 0.3rem; }

@@ -321,88 +321,111 @@ export default function RuleDiscovery() {
           hint="Bấm “Tìm quyết định lặp lại” — hệ thống chỉ đề xuất khi có đủ bằng chứng lặp lại."
         />
       ) : (
-        <ul className="nq-rules__list" data-testid="rules-list">
-          {candidates.map((c) => {
-            const revoked = c.status === "revoked";
-            const published = c.status === "confirmed";
-            return (
-              <li
-                key={c.candidate_id}
-                className={`nq-rules__item${revoked ? " is-revoked" : ""}`}
-                data-candidate={c.candidate_id}
-              >
-                <p className="nq-rules__sentence">{ruleSentenceLabel(c.sentence)}</p>
-                <p className="nq-rules__meta">
-                  {candidateStatusLabel(c)} · độ tin cậy{" "}
-                  {(c.confidence * 100).toFixed(0)}%
-                </p>
-                {c.shadow_result ? <RuleShadowResult result={c.shadow_result} /> : null}
-                <div className="nq-rules__actions-row">
-                  <button
-                    type="button"
-                    className="nq-btn-compact nq-modebtn"
-                    data-testid="evidence-btn"
-                    onClick={() => setEvidenceFor(c.candidate_id)}
-                  >
-                    <Icon name="info" size={13} />
-                    Xem bằng chứng
-                  </button>
-                  <button
-                    type="button"
-                    className="nq-btn-compact nq-modebtn"
-                    data-testid="shadow-btn"
-                    disabled={busy || revoked}
-                    onClick={() => runShadow(c.candidate_id)}
-                  >
-                    <Icon name="play" size={13} />
-                    {c.shadow_result ? "Chạy lại shadow test" : "Chạy shadow test"}
-                  </button>
-                  {!published && !revoked ? (
-                    <>
+        /* BẢNG RỘNG thay vì box hẹp: mỗi luật một hàng, các cột là câu luật ·
+           trạng thái · độ tin cậy · hành động. Xếp dọc từng box thì không so
+           được luật nào với luật nào, và trang trông như "chỉ hiện cái box". */
+        <table className="nq-rules__table" data-testid="rules-list">
+          <thead>
+            <tr>
+              <th scope="col" className="nq-rules__table__sentence">
+                Câu luật
+              </th>
+              <th scope="col">Trạng thái</th>
+              <th scope="col" className="nq-rules__table__conf">
+                Độ tin cậy
+              </th>
+              <th scope="col" className="nq-rules__table__acts">
+                Hành động
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {candidates.map((c) => {
+              const revoked = c.status === "revoked";
+              const published = c.status === "confirmed";
+              return (
+                <tr
+                  key={c.candidate_id}
+                  className={revoked ? "is-revoked" : undefined}
+                  data-candidate={c.candidate_id}
+                >
+                  <td>
+                    <p className="nq-rules__sentence">{ruleSentenceLabel(c.sentence)}</p>
+                    {c.shadow_result ? <RuleShadowResult result={c.shadow_result} /> : null}
+                    {!c.shadow_result && !published && !revoked ? (
+                      <p className="nq-rules__hint">
+                        Cần chạy shadow test trước khi xác nhận — luật chưa thử thì
+                        chưa duyệt được.
+                      </p>
+                    ) : null}
+                  </td>
+                  <td>{candidateStatusLabel(c)}</td>
+                  <td className="nq-rules__table__conf">
+                    {(c.confidence * 100).toFixed(0)}%
+                  </td>
+                  <td className="nq-rules__table__acts">
+                    <div className="nq-rules__actions-row">
                       <button
                         type="button"
-                        className="nq-btn nq-btn-primary"
-                        data-testid="confirm-btn"
-                        disabled={busy || !c.shadow_result}
-                        onClick={() => confirm(c.candidate_id)}
+                        className="nq-btn-compact nq-modebtn"
+                        data-testid="evidence-btn"
+                        onClick={() => setEvidenceFor(c.candidate_id)}
                       >
-                        <Icon name="check" size={15} />
-                        Xác nhận
+                        <Icon name="info" size={13} />
+                        Bằng chứng
                       </button>
                       <button
                         type="button"
-                        className="nq-linkbtn"
-                        data-testid="reject-btn"
-                        disabled={busy}
-                        onClick={() => reject(c.candidate_id)}
+                        className="nq-btn-compact nq-modebtn"
+                        data-testid="shadow-btn"
+                        disabled={busy || revoked}
+                        onClick={() => runShadow(c.candidate_id)}
                       >
-                        Từ chối
+                        <Icon name="play" size={13} />
+                        {c.shadow_result ? "Chạy lại" : "Chạy thử"}
                       </button>
-                    </>
-                  ) : null}
-                  {published ? (
-                    <button
-                      type="button"
-                      className="nq-linkbtn"
-                      data-testid="revoke-btn"
-                      disabled={busy}
-                      onClick={() => revoke(c.candidate_id)}
-                    >
-                      <Icon name="trash" size={14} />
-                      Thu hồi luật
-                    </button>
-                  ) : null}
-                </div>
-                {!c.shadow_result && !published && !revoked ? (
-                  <p className="nq-rules__hint">
-                    Cần chạy shadow test trước khi xác nhận — luật chưa thử thì chưa
-                    duyệt được.
-                  </p>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+                      {!published && !revoked ? (
+                        <>
+                          <button
+                            type="button"
+                            className="nq-btn nq-btn-primary"
+                            data-testid="confirm-btn"
+                            disabled={busy || !c.shadow_result}
+                            onClick={() => confirm(c.candidate_id)}
+                          >
+                            <Icon name="check" size={15} />
+                            Xác nhận
+                          </button>
+                          <button
+                            type="button"
+                            className="nq-linkbtn"
+                            data-testid="reject-btn"
+                            disabled={busy}
+                            onClick={() => reject(c.candidate_id)}
+                          >
+                            Từ chối
+                          </button>
+                        </>
+                      ) : null}
+                      {published ? (
+                        <button
+                          type="button"
+                          className="nq-linkbtn"
+                          data-testid="revoke-btn"
+                          disabled={busy}
+                          onClick={() => revoke(c.candidate_id)}
+                        >
+                          <Icon name="trash" size={14} />
+                          Thu hồi
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
 
       {evidenceFor ? (
