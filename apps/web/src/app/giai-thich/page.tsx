@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { viError } from "../../lib/present";
 import { getToken } from "../../lib/session";
-import { Alert, AuthGate, Btn, Empty, Field, Loading, OpsCard, PageHeader } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Empty, Field, OpsCard, PageGrid, PageHeader, Pagination, usePaged } from "../../ui/kit";
+import { AiInsightPanel } from "../../ui/ai/AiInsightPanel";
+import { AskAiBox } from "../../ui/ai/AskAiBox";
 
 interface CausalNode {
   node_id: string;
@@ -27,6 +29,19 @@ interface CausalChain {
   links: CausalLink[];
   ket_luan: string;
 }
+
+const NODE_TYPE_LABEL: Record<string, string> = {
+  su_kien: "Sự kiện",
+  quyet_dinh: "Quyết định",
+  luat: "Luật",
+  ket_qua: "Kết quả",
+};
+
+const NODE_SOURCE_LABEL: Record<string, string> = {
+  playbook: "Cẩm nang quán",
+  audit: "Vết hệ thống",
+  solver: "Máy xếp lịch",
+};
 
 export default function GiaiThichPage() {
   const [token, setToken] = useState("");
@@ -70,10 +85,12 @@ export default function GiaiThichPage() {
     }
   }
 
+  const chainsPaged = usePaged(chains, 8);
+
   if (!token) return <AuthGate />;
 
   return (
-    <div className="nq-page space-y-6">
+    <div className="nq-page">
       <PageHeader
         kicker="Self-Explaining System"
         title="Hệ thống tự giải thích"
@@ -82,58 +99,80 @@ export default function GiaiThichPage() {
 
       {error && <Alert kind="err">{error}</Alert>}
 
-      <OpsCard title="Truy vết nhân quả">
-        <div className="space-y-4">
-          <Field label="Câu hỏi 'tại sao'">
-            <input
-              type="text"
-              value={cauHoi}
-              onChange={(e) => setCauHoi(e.target.value)}
-              className="bg-neutral-800 text-white text-sm p-2 rounded border border-neutral-700 w-full"
-              placeholder="Tại sao ca tối T6 có 2 pha chế?"
-            />
-          </Field>
-          <Btn variant="primary" onClick={explain} disabled={busy}>
-            {busy ? "Đang truy vết..." : "Truy vết nhân quả"}
-          </Btn>
-        </div>
-      </OpsCard>
+      <PageGrid
+        main={
+          <>
+            <OpsCard title="Truy vết nhân quả" density="compact">
+              <div className="space-y-4">
+                <Field label="Câu hỏi 'tại sao'">
+                  <input
+                    type="text"
+                    value={cauHoi}
+                    onChange={(e) => setCauHoi(e.target.value)}
+                    className="nq-input"
+                    placeholder="Tại sao ca tối T6 có 2 pha chế?"
+                  />
+                </Field>
+                <Btn variant="primary" onClick={explain} disabled={busy}>
+                  {busy ? "Đang truy vết..." : "Truy vết nhân quả"}
+                </Btn>
+              </div>
+            </OpsCard>
 
-      {chain && (
-        <OpsCard title={`Kết luận: ${chain.cau_hoi}`}>
-          <div className="nq-card p-4 mb-4 bg-emerald-950/40 border-emerald-800/60">
-            <p className="font-bold text-emerald-300">{chain.ket_luan}</p>
-          </div>
-          <div className="space-y-2">
-            {chain.nodes.map((n) => (
-              <div key={n.node_id} className="nq-card p-3 flex items-center justify-between gap-2">
-                <div>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700 mr-2">
-                    {n.loai}
-                  </span>
-                  <span className="text-sm">{n.mo_ta}</span>
+            {chain && (
+              <OpsCard title={`Kết luận: ${chain.cau_hoi}`}>
+                <div className="nq-card p-4 mb-4 bg-[var(--nq-st-ok-soft)] border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))]">
+                  <p className="font-bold text-[var(--nq-st-ok-ink)]">{chain.ket_luan}</p>
                 </div>
-                <span className="text-xs font-mono text-[var(--nq-ink-muted)]">{n.nguon}</span>
-              </div>
-            ))}
-          </div>
-        </OpsCard>
-      )}
+                <div className="space-y-2">
+                  {chain.nodes.map((n) => (
+                    <div key={n.node_id} className="nq-card p-3 flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-xs px-2 py-0.5 rounded bg-[var(--nq-surface)] text-[var(--nq-ink)] border border-[var(--nq-line)] mr-2">
+                          {NODE_TYPE_LABEL[n.loai] ?? n.loai}
+                        </span>
+                        <span className="text-sm">{n.mo_ta}</span>
+                      </div>
+                      <span className="text-xs text-[var(--nq-ink-muted)]">{NODE_SOURCE_LABEL[n.nguon] ?? n.nguon}</span>
+                    </div>
+                  ))}
+                </div>
+              </OpsCard>
+            )}
 
-      <OpsCard title={`Lịch sử truy vết (${chains.length})`}>
-        {chains.length === 0 ? (
-          <Empty>Chưa có truy vết nào.</Empty>
-        ) : (
-          <div className="space-y-3">
-            {chains.map((c) => (
-              <div key={c.chain_id} className="nq-card p-4">
-                <h4 className="font-bold">{c.cau_hoi}</h4>
-                <p className="text-sm text-emerald-300 mt-1">{c.ket_luan}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </OpsCard>
+            <OpsCard title="Lịch sử truy vết" count={chains.length} countLabel="câu hỏi">
+              {chains.length === 0 ? (
+                <Empty>Chưa có truy vết nào.</Empty>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {chainsPaged.shown.map((c) => (
+                      <div key={c.chain_id} className="nq-card p-4">
+                        <h4 className="font-bold">{c.cau_hoi}</h4>
+                        <p className="text-sm text-[var(--nq-st-ok-ink)] mt-1">{c.ket_luan}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <Pagination
+                    page={chainsPaged.page}
+                    totalPages={chainsPaged.totalPages}
+                    onChange={chainsPaged.setPage}
+                    from={chainsPaged.from}
+                    to={chainsPaged.to}
+                    total={chainsPaged.total}
+                  />
+                </>
+              )}
+            </OpsCard>
+          </>
+        }
+        aside={
+          <>
+            <AiInsightPanel page="giai-thich" />
+            <AskAiBox page="giai-thich" />
+          </>
+        }
+      />
     </div>
   );
 }

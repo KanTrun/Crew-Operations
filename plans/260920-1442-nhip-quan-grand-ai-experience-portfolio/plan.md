@@ -1,7 +1,7 @@
 ---
 title: "NHIP QUAN Grand AI Experience Portfolio"
 description: "Xay portfolio trai nghiem AI doc lap cho toan quan: mo phong, cuu ca, tu viet luat, ky uc khong gian va Living Cafe OS."
-status: pending
+status: done
 priority: P1
 effort: "8-12 weeks, staged delivery"
 branch: "feat/grand-ai-experience-portfolio"

@@ -22,6 +22,52 @@ from ca_contracts.episodic_memory import (
     Reflection,
     ReflectionResult,
 )
+from ca_contracts.grand_experience import (
+    DataQualityNotice,
+    ExperienceActionProposal,
+    ExperienceCapability,
+    ExperienceEvent,
+    ExperienceEventType,
+    ExperienceMemory,
+    ExperienceMode,
+    ExperienceProposalStatus,
+    ExperienceRole,
+    HorizonItem,
+    LivingCafeSnapshot,
+    MemoryConsentStatus,
+    MemoryStatus,
+    MemoryVisibility,
+    ModeProjection,
+    PublicEventProjection,
+    QuanverseAskRequest,
+    QuanverseAskResponse,
+    QuanverseBrief,
+    QuanverseMetric,
+    QuanversePage,
+    RescueCandidate,
+    RescueCase,
+    RescueCaseStatus,
+    RuleCandidate,
+    ShadowTestResult,
+    SpatialAnchor,
+    VoiceTurn,
+    WarRoomComparison,
+    WarRoomOption,
+    WarRoomScenario,
+    WarRoomScenarioType,
+    ZoneProjection,
+    experience_capabilities_for_role,
+    experience_role_can,
+)
+from ca_contracts.loss import (
+    LossBasis,
+    LossCauseRank,
+    LossCauseSource,
+    LossLevel,
+    LossLine,
+    LossSummary,
+    LossThreshold,
+)
 from ca_contracts.ops_predict import (
     PositiveRule,
     PositiveRuleStatus,
@@ -31,6 +77,18 @@ from ca_contracts.ops_predict import (
     SuccessPatternType,
     TwinScenario,
     TwinScenarioType,
+)
+from ca_contracts.spatial_memory import (
+    AnchorQuery,
+    GroundedAnswer,
+    MemoryAuditEntry,
+    MemoryConsentRequest,
+    MemoryProposal,
+    MemoryQuery,
+    TourPlan,
+    TourStep,
+    VoiceTurnRequest,
+    VoiceTurnResponse,
 )
 from ca_contracts.trend_item import TrendItem
 from ca_contracts.virtual_staff import (
@@ -115,6 +173,10 @@ class MonNuoc(BaseModel):
     gia: int = Field(ge=0, description="Đồng, số nguyên")
     an: bool = False
     hinh_url: str = Field(default="", max_length=500, description="URL ảnh món (hoặc /api/v1/menu/{id}/anh)")
+    nhom: str = Field(
+        default="",
+        description="Nhóm sản phẩm (ca_phe/tra/sinh_to/banh/nuoc_dong_chai/nguyen_lieu), dùng phân mục menu quầy",
+    )
     bom: dict[str, float] = Field(
         default_factory=dict,
         description="Nguyên liệu ước lượng khi hoàn thành đơn, vd cafe_g, sua_ml, ly",
@@ -590,6 +652,10 @@ CAPABILITY_REGISTRY: tuple[CapabilityDefinition, ...] = (
     # ── Hao hụt ──
     _cap("ANALYZE_WASTE", "Phân tích hao hụt", "waste", "R0_READ", "/hao-phi"),
     _cap("PROPOSE_WASTE_RECORD", "Ghi hao hụt", "waste", "R2_CONFIRM", "/hao-phi"),
+    # Hao hụt định lượng (plan 260923-1736): đọc tổng hợp và ghi có nguyên nhân.
+    _cap("GET_LOSS_SUMMARY", "Hao hụt theo nguyên liệu", "waste", "R0_READ", "/hao-phi"),
+    _cap("GET_LOSS_THRESHOLD", "Ngưỡng hao hụt đang áp dụng", "waste", "R0_READ", "/hao-phi"),
+    _cap("PROPOSE_LOSS_RECORD", "Ghi hao hụt kèm nguyên nhân", "waste", "R2_CONFIRM", "/hao-phi"),
     # ── Bàn giao ──
     _cap("GET_HANDOVERS", "Xem bàn giao", "handover", "R0_READ", "/handover"),
     _cap("DRAFT_HANDOVER", "Soạn bàn giao nháp", "handover", "R1_DRAFT"),
@@ -882,6 +948,173 @@ class TableReservation(BaseModel):
     updated_at: str = ""
 
 
+# ── Gmail Management Contracts ──────────────────────────────────────────
+
+class GmailAccount(BaseModel):
+    id: str
+    store_id: str = "quan_01"
+    nv_id: str
+    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    display_name: str = ""
+    is_primary: bool = False
+    is_active: bool = True
+    created_at: str
+    updated_at: str
+
+
+class GmailOAuthTokens(BaseModel):
+    account_id: str
+    access_token: str
+    refresh_token: str | None = None
+    expires_at: str
+    scope: str = ""
+    token_type: str = "Bearer"
+    updated_at: str
+
+
+class GmailSyncState(BaseModel):
+    account_id: str
+    last_history_id: str | None = None
+    last_sync_at: str | None = None
+    sync_cursor: str | None = None
+    total_messages: int = 0
+    unread_count: int = 0
+    updated_at: str
+
+
+class GmailMessage(BaseModel):
+    id: str
+    account_id: str
+    thread_id: str
+    label_ids: list[str] = Field(default_factory=list)
+    snippet: str = ""
+    from_email: str = ""
+    to_emails: list[str] = Field(default_factory=list)
+    cc_emails: list[str] = Field(default_factory=list)
+    subject: str = ""
+    body_text: str | None = None
+    body_html: str | None = None
+    internal_date: str
+    is_read: bool = False
+    is_starred: bool = False
+    has_attachment: bool = False
+    raw_headers: str | None = None
+    created_at: str
+
+
+class GmailLabel(BaseModel):
+    id: str
+    account_id: str
+    name: str
+    label_type: Literal["system", "user"] = "user"
+    message_list_visibility: Literal["show", "hide"] = "show"
+    label_list_visibility: Literal["labelShow", "labelHide"] = "labelShow"
+    color_background: str | None = None
+    color_text: str | None = None
+    total_messages: int = 0
+    unread_messages: int = 0
+    updated_at: str
+
+
+class GmailFilter(BaseModel):
+    id: str
+    account_id: str
+    criteria: dict[str, Any] = Field(default_factory=dict)
+    action: dict[str, Any] = Field(default_factory=dict)
+    created_at: str
+    updated_at: str
+
+
+class GmailThread(BaseModel):
+    id: str
+    account_id: str
+    message_ids: list[str] = Field(default_factory=list)
+    subject: str = ""
+    participants: list[str] = Field(default_factory=list)
+    last_message_date: str = ""
+    is_unread: bool = False
+    label_ids: list[str] = Field(default_factory=list)
+
+
+class GmailOAuthAuthorizeRequest(BaseModel):
+    state: str | None = None
+
+
+class GmailOAuthAuthorizeResponse(BaseModel):
+    authorization_url: str
+    state: str
+
+
+class GmailOAuthCallbackRequest(BaseModel):
+    code: str
+    state: str
+
+
+class GmailOAuthCallbackResponse(BaseModel):
+    ok: bool
+    account_id: str
+    email: str
+    message: str
+
+
+class GmailAccountCreateRequest(BaseModel):
+    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    display_name: str = Field(default="", max_length=100)
+    is_primary: bool = False
+
+
+class GmailAccountUpdateRequest(BaseModel):
+    display_name: str | None = Field(default=None, max_length=100)
+    is_primary: bool | None = None
+    is_active: bool | None = None
+
+
+class GmailMessageListParams(BaseModel):
+    label_ids: list[str] | None = None
+    query: str | None = None
+    is_read: bool | None = None
+    limit: int = Field(default=50, ge=1, le=200)
+    offset: int = Field(default=0, ge=0)
+
+
+class GmailLabelCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    label_list_visibility: Literal["labelShow", "labelHide"] = "labelShow"
+    message_list_visibility: Literal["show", "hide"] = "show"
+    color_background: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    color_text: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+
+
+class GmailLabelUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    label_list_visibility: Literal["labelShow", "labelHide"] | None = None
+    message_list_visibility: Literal["show", "hide"] | None = None
+    color_background: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    color_text: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+
+
+class GmailFilterCreateRequest(BaseModel):
+    criteria: dict[str, Any] = Field(default_factory=dict)
+    action: dict[str, Any] = Field(default_factory=dict)
+
+
+class GmailSyncRequest(BaseModel):
+    account_id: str | None = None
+    full_sync: bool = False
+
+
+class GmailSendMessageRequest(BaseModel):
+    to: list[str] = Field(min_length=1)
+    subject: str = Field(min_length=1, max_length=200)
+    body_text: str = Field(min_length=1, max_length=50000)
+    body_html: str | None = None
+    cc: list[str] | None = None
+    bcc: list[str] | None = None
+    thread_id: str | None = None
+    in_reply_to: str | None = None
+    references: str | None = None
+
+
 CONTRACTS = {
     "NhanVien": NhanVien,
     "Ca": Ca,
@@ -907,6 +1140,68 @@ CONTRACTS = {
     "AIEvaluation": AIEvaluation,
     "AIRuleProposal": AIRuleProposal,
     "TableReservation": TableReservation,
+    # ── Grand AI Experience Portfolio (plan 260920-1442) ──
+    # Lưu ý: chỉ BaseModel mới vào CONTRACTS (để sinh schema/TS). StrEnum
+    # (ExperienceRole, ExperienceProposalStatus...) export qua __all__.
+    "SpatialAnchor": SpatialAnchor,
+    "ExperienceEvent": ExperienceEvent,
+    "VoiceTurn": VoiceTurn,
+    "ExperienceMemory": ExperienceMemory,
+    "ExperienceActionProposal": ExperienceActionProposal,
+    "WarRoomScenario": WarRoomScenario,
+    "WarRoomOption": WarRoomOption,
+    "WarRoomComparison": WarRoomComparison,
+    "RuleCandidate": RuleCandidate,
+    "ShadowTestResult": ShadowTestResult,
+    "RescueCandidate": RescueCandidate,
+    "RescueCase": RescueCase,
+    "ZoneProjection": ZoneProjection,
+    "PublicEventProjection": PublicEventProjection,
+    "ModeProjection": ModeProjection,
+    "HorizonItem": HorizonItem,
+    "DataQualityNotice": DataQualityNotice,
+    "LivingCafeSnapshot": LivingCafeSnapshot,
+    # Trợ lý Quánverse — lớp tường thuật tất định trên dữ liệu hệ thống
+    "QuanverseMetric": QuanverseMetric,
+    "QuanverseBrief": QuanverseBrief,
+    "QuanverseAskRequest": QuanverseAskRequest,
+    "QuanverseAskResponse": QuanverseAskResponse,
+    # ── Hao hụt tiêu thụ theo nguyên liệu (plan 260923-1736) ──
+    # Chỉ BaseModel vào CONTRACTS; LossLevel/LossBasis/LossCauseSource export qua __all__.
+    "LossLine": LossLine,
+    "LossCauseRank": LossCauseRank,
+    "LossSummary": LossSummary,
+    "LossThreshold": LossThreshold,
+    # ── HỒN QUÁN Spatial Memory (Phase 05) ──
+    "MemoryQuery": MemoryQuery,
+    "MemoryProposal": MemoryProposal,
+    "MemoryConsentRequest": MemoryConsentRequest,
+    "MemoryAuditEntry": MemoryAuditEntry,
+    "GroundedAnswer": GroundedAnswer,
+    "TourStep": TourStep,
+    "TourPlan": TourPlan,
+    "VoiceTurnRequest": VoiceTurnRequest,
+    "VoiceTurnResponse": VoiceTurnResponse,
+    # ── Gmail Management ──
+    "GmailAccount": GmailAccount,
+    "GmailOAuthTokens": GmailOAuthTokens,
+    "GmailSyncState": GmailSyncState,
+    "GmailMessage": GmailMessage,
+    "GmailLabel": GmailLabel,
+    "GmailFilter": GmailFilter,
+    "GmailThread": GmailThread,
+    "GmailOAuthAuthorizeRequest": GmailOAuthAuthorizeRequest,
+    "GmailOAuthAuthorizeResponse": GmailOAuthAuthorizeResponse,
+    "GmailOAuthCallbackRequest": GmailOAuthCallbackRequest,
+    "GmailOAuthCallbackResponse": GmailOAuthCallbackResponse,
+    "GmailAccountCreateRequest": GmailAccountCreateRequest,
+    "GmailAccountUpdateRequest": GmailAccountUpdateRequest,
+    "GmailMessageListParams": GmailMessageListParams,
+    "GmailLabelCreateRequest": GmailLabelCreateRequest,
+    "GmailLabelUpdateRequest": GmailLabelUpdateRequest,
+    "GmailFilterCreateRequest": GmailFilterCreateRequest,
+    "GmailSyncRequest": GmailSyncRequest,
+    "GmailSendMessageRequest": GmailSendMessageRequest,
 }
 
 __all__ = [
@@ -934,5 +1229,83 @@ __all__ = [
     "VirtualSimulation",
     "VirtualStaff",
     "VirtualStaffType",
+    "ExperienceRole",
+    "ExperienceProposalStatus",
+    "SpatialAnchor",
+    "ExperienceEvent",
+    "ExperienceEventType",
+    "VoiceTurn",
+    "ExperienceMemory",
+    "MemoryConsentStatus",
+    "MemoryVisibility",
+    "MemoryStatus",
+    "ExperienceActionProposal",
+    "ExperienceCapability",
+    "WarRoomScenarioType",
+    "WarRoomScenario",
+    "WarRoomOption",
+    "WarRoomComparison",
+    "ExperienceMode",
+    "RuleCandidate",
+    "ShadowTestResult",
+    "RescueCaseStatus",
+    "RescueCandidate",
+    "RescueCase",
+    "ZoneProjection",
+    "PublicEventProjection",
+    "ModeProjection",
+    "HorizonItem",
+    "DataQualityNotice",
+    "LivingCafeSnapshot",
+    # Trợ lý Quánverse — enum export qua __all__ (không vào CONTRACTS)
+    "QuanversePage",
+    "QuanverseMetric",
+    "QuanverseBrief",
+    "QuanverseAskRequest",
+    "QuanverseAskResponse",
+    "experience_capabilities_for_role",
+    "experience_role_can",
+    "AnchorQuery",
+    "MemoryQuery",
+    "MemoryProposal",
+    "MemoryConsentRequest",
+    "MemoryAuditEntry",
+    "GroundedAnswer",
+    "TourStep",
+    "TourPlan",
+    "VoiceTurnRequest",
+    "VoiceTurnResponse",
+    # Hao hụt tiêu thụ theo nguyên liệu — enum export qua __all__ (không vào CONTRACTS)
+    "LossLevel",
+    "LossBasis",
+    "LossCauseSource",
+    # Bốn kiểu dữ liệu hao hụt dưới đây được import ở đầu file và dùng bởi
+    # `ca_api.interfaces.http.hao_hut`, nhưng trước đây thiếu trong __all__ nên
+    # mypy strict báo `attr-defined` ("không export tường minh"). Bổ sung để
+    # API hao hụt import được qua `from ca_contracts import ...`.
+    "LossLine",
+    "LossSummary",
+    "LossCauseRank",
+    "LossThreshold",
+    # ── Gmail Management ──
+    "GmailAccount",
+    "GmailOAuthTokens",
+    "GmailSyncState",
+    "GmailMessage",
+    "GmailLabel",
+    "GmailFilter",
+    "GmailThread",
+    "GmailOAuthAuthorizeRequest",
+    "GmailOAuthAuthorizeResponse",
+    "GmailOAuthCallbackRequest",
+    "GmailOAuthCallbackResponse",
+    "GmailAccountCreateRequest",
+    "GmailAccountUpdateRequest",
+    "GmailMessageListParams",
+    "GmailLabelCreateRequest",
+    "GmailLabelUpdateRequest",
+    "GmailFilterCreateRequest",
+    "GmailSyncRequest",
+    "GmailSendMessageRequest",
 ]
 

@@ -34,7 +34,14 @@ class MailResult:
 
 
 def _smtp_configured() -> bool:
-    return bool(os.environ.get("NHIPQUAN_SMTP_HOST") and os.environ.get("NHIPQUAN_SMTP_USER"))
+    # Phải đủ HOST + USER + PASSWORD mới coi là cấu hình SMTP hợp lệ. Nếu thiếu
+    # PASSWORD, nhánh gửi thật sẽ KeyError (os.environ["NHIPQUAN_SMTP_PASSWORD"])
+    # → rơi vào replay/stub an toàn thay vì crash runtime.
+    return bool(
+        os.environ.get("NHIPQUAN_SMTP_HOST")
+        and os.environ.get("NHIPQUAN_SMTP_USER")
+        and os.environ.get("NHIPQUAN_SMTP_PASSWORD")
+    )
 
 
 def _build_mime_message(

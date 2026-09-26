@@ -98,12 +98,25 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
     # Câu hỏi ĐỌC bàn giao đặt TRƯỚC PROPOSE_HANDOVER: "bàn giao ca gần nhất"
     # là câu hỏi đọc, không phải hành động ghi. Các cụm câu hỏi cụ thể phải
     # thắng từ chung "bàn giao ca" của PROPOSE_HANDOVER.
+    #
+    # Danh sách này từng chỉ có các cụm cố định ("bàn giao ca gần nhất", "lịch sử
+    # bàn giao"...). Vì `parse_intent` khớp bằng `kw in lower` (khớp chuỗi con),
+    # cách nói tự nhiên lệch một chữ là trượt hết: "Xem các bàn giao gần đây" —
+    # có "các" và "gần đây" — rơi vào OUT_OF_SCOPE, copilot trả lời "em có thể hỗ
+    # trợ..." thay vì mở danh sách bàn giao. Bổ sung các biến thể đọc rõ nghĩa.
+    # KHÔNG thêm cụm trần "bàn giao" hay "bàn giao ca" vào đây: hai cụm đó là dấu
+    # hiệu GHI bàn giao của PROPOSE_HANDOVER, thêm vào sẽ biến mọi câu ghi thành câu đọc.
     (
         GET_HANDOVERS,
         [
             "bàn giao ca gần nhất", "ban giao ca gan nhat",
             "bàn giao gần nhất", "ban giao gan nhat",
+            "bàn giao gần đây", "ban giao gan day",
+            "các bàn giao", "cac ban giao",
+            "danh sách bàn giao", "danh sach ban giao",
+            "bàn giao nào", "ban giao nao",
             "xem bàn giao ca", "xem ban giao ca",
+            "xem bàn giao", "xem ban giao",
             "bàn giao ca nào", "ban giao ca nao",
             "lịch sử bàn giao", "lich su ban giao",
             "bàn giao ca hôm qua", "ban giao ca hom qua",
@@ -412,7 +425,23 @@ _INTENT_KEYWORDS: list[tuple[str, list[str], float]] = [
     ),
     (
         ANALYZE_WASTE,
-        ["hao hụt", "hao hut", "hàng hủy", "lãng phí", "sữa hỏng", "đổ bọt", "báo cáo hủy"],
+        [
+            # Cụm gốc — giữ nguyên để không đổi hành vi cũ.
+            "hao hụt", "hao hut", "hàng hủy", "lãng phí", "sữa hỏng", "đổ bọt", "báo cáo hủy",
+            # Cụm của câu hỏi định lượng: người quán hỏi "hao bao nhiêu", "nguyên liệu
+            # nào hao", "lệch kiểm kê" chứ không chỉ nói "hao hụt". Không thêm thì
+            # những câu đó rơi vào OUT_OF_SCOPE dù đúng thẩm quyền của intent này.
+            "thất thoát", "that thoat",
+            "hao phí", "hao phi",
+            "lệch kiểm kê", "lech kiem ke",
+            "lệch kho", "lech kho",
+            "chênh lệch nguyên liệu", "chenh lech nguyen lieu",
+            "nguyên liệu nào hao", "nguyen lieu nao hao",
+            "hao bao nhiêu", "hao bao nhieu",
+            "tiêu hao nguyên liệu", "tieu hao nguyen lieu",
+            "tỷ lệ hao", "ty le hao",
+            "mức hao", "muc hao",
+        ],
         0.91,
     ),
     (

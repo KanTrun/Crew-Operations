@@ -24,6 +24,7 @@ const LINKS: Array<[string, string]> = [
   ["/lich-tuan", "Lịch tuần"],
   ["/inbox", "Hộp thư"],
   ["/cam-nang", "Cẩm nang"],
+  ["/gmail", "Quản lý Gmail"],
 ];
 
 export default function ThemPage() {

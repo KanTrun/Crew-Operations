@@ -110,10 +110,23 @@ def test_agent_khong_goi_agent_va_khong_ghi_db() -> None:
     if not ROOT.exists():
         return
     ten_agent = {d.name for d in ROOT.iterdir() if d.is_dir() and d.name.startswith("ag_")}
-    # Ngoại lệ: `ag_twin` dùng `ag_predict.math_layer` — math_layer là module toán
-    # thuần (ADR-002), không phải agent. Cho phép import module con này.
+    # Ngoại lệ: import một MODULE TOÁN THUẦN nằm trong gói agent khác.
+    #
+    # Ranh giới thật của quy tắc này là "agent không được gọi agent khác để ra
+    # quyết định", không phải "không được tái dùng hàm thuần". Cả hai trường hợp
+    # dưới đây đều trỏ tới module không I/O, không LLM, không DB — chúng chỉ là
+    # phép tính, và nhân bản phép tính đó sang gói khác mới là thứ gây lệch số.
+    #
+    #  - `ag_twin` → `ag_predict.math_layer`: ADR-002, math layer dùng chung.
+    #  - `ag_war_room` → `ag_twin.simulator`: plan 260920-1442 thiết kế War Room
+    #    "bao bọc AG-TWIN math" để so sánh đa phương án. `simulator` khai báo rõ
+    #    "Không gọi LLM/network/DB" và chỉ gọi math layer.
+    #
+    # Thêm ngoại lệ mới chỉ khi module đích thoả cả ba: không I/O, không bất
+    # định, không đọc/ghi DB. Ngoại lệ là chỗ để ghi lý do, không phải để lách.
     CHO_PHEP = {
         "ag_twin": {"ag_predict.math_layer"},
+        "ag_war_room": {"ag_twin.simulator"},
     }
     for tep in ROOT.rglob("*.py"):
         hien_tai = next((p for p in tep.parts if p.startswith("ag_")), None)
@@ -128,9 +141,14 @@ def test_agent_khong_goi_agent_va_khong_ghi_db() -> None:
                 ten = node.module or ""
             for x in CAM:
                 assert x not in ten, f"{tep} không được import {x}"
+            # So khớp theo TỪNG ĐOẠN ĐƯỜNG DẪN, không phải substring: `ag_rule`
+            # là tiền tố của `ag_rule_learning`, nên `khac not in ten` báo sai
+            # cho một agent tự import chính nó. Tách theo "." rồi so bằng nhau
+            # để `ca_agents.ag_rule_learning.discover` không khớp `ag_rule`.
+            doan = ten.split(".")
             for khac in ten_agent - {hien_tai}:
                 # Bỏ qua nếu import này là module con được phép (vd ag_predict.math_layer)
                 cho_phep = CHO_PHEP.get(hien_tai, set())
                 if any(cho in ten for cho in cho_phep):
                     continue
-                assert khac not in ten, f"{tep} không được gọi agent khác: {khac}"
+                assert khac not in doan, f"{tep} không được gọi agent khác: {khac}"

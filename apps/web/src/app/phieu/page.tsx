@@ -11,6 +11,7 @@ import {
   Hint,
   inputClassName,
   OpsCard,
+  PageActions,
   PageHeader,
   ProgressBar,
   StepDone,
@@ -346,9 +347,11 @@ export default function PhieuPage() {
             : "Chọn phiếu cho ca hôm nay rồi đi từng bước."
         }
       />
-      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-        Hỏi trợ lý vận hành
-      </Btn>
+      <PageActions>
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          Hỏi trợ lý vận hành
+        </Btn>
+      </PageActions>
 
       {error ? <Alert>{error}</Alert> : null}
       {okMsg ? <Alert kind="ok">{okMsg}</Alert> : null}
@@ -384,9 +387,9 @@ export default function PhieuPage() {
                       type="button"
                       disabled={busy}
                       onClick={() => startPhieu(m.ma)}
-                      className="border-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-4 text-left transition-colors hover:border-[var(--nq-copper)] disabled:opacity-50"
+                      className="nq-surface-row p-4 text-left transition-colors hover:border-[var(--nq-accent)] disabled:opacity-50"
                     >
-                      <span className="block text-base font-black text-[var(--nq-fg)]">{m.ten || m.ma}</span>
+                      <span className="block text-base font-semibold text-[var(--nq-fg)]">{m.ten || m.ma}</span>
                       <span className="mt-1 block text-xs text-[var(--nq-dim)]">
                         {m.so_buoc ? `${m.so_buoc} bước · ` : ""}
                         {m.mo_khi ? `mở ${MO_KHI_VI[m.mo_khi] ?? m.mo_khi} · ` : ""}
@@ -415,7 +418,7 @@ export default function PhieuPage() {
             ))}
             {buocKe.length > 0 ? (
               <div className="mt-4 border-t border-[var(--nq-dim)] pt-3">
-                <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-[var(--nq-dim)]">
+                <p className="mb-2 font-mono text-2xs uppercase tracking-widest text-[var(--nq-dim)]">
                   Tiếp theo
                 </p>
                 {buocKe.map((b) => (
@@ -473,7 +476,7 @@ export default function PhieuPage() {
                       <img
                         src={anhPreview}
                         alt="Xem trước ảnh minh chứng"
-                        className="max-h-64 w-full border-2 border-[var(--nq-dim)] object-contain"
+                        className="max-h-64 w-full border border-[var(--nq-line)] rounded-lg object-contain"
                       />
                       <div className="flex flex-wrap gap-2">
                         <Btn
@@ -502,13 +505,13 @@ export default function PhieuPage() {
           {phieu.treo && phieu.treo.length > 0 ? (
             <OpsCard eyebrow="Đã để lại" title="Việc treo lần phiếu này" count={phieu.treo.length} countLabel="việc">
               {phieu.treo.map((t) => (
-                <p key={t.id} className="border-l-2 border-[var(--nq-copper)] pl-3 py-1 text-sm">
+                <p key={t.id} className="border-l-2 border-[var(--nq-accent)] pl-3 py-1 text-sm">
                   {t.noi_dung}
                 </p>
               ))}
               <Hint>
                 Quản lý xem và xử lý những việc này trong mục Việc treo.{" "}
-                <a href="/treo" className="underline text-[var(--nq-copper)]">Mở Việc treo →</a>
+                <a href="/treo" className="underline text-[var(--nq-accent)]">Mở Việc treo →</a>
               </Hint>
             </OpsCard>
           ) : null}

@@ -22,6 +22,12 @@ export interface ChatMessage {
   action_proposal?: ActionProposalData | null;
   citations?: string[] | null;
   agent_mode?: string | null;
+  /**
+   * Trạng thái đang xử lý ("Đang tra cứu dữ liệu…") — hiện trong bong bóng khi
+   * chưa có chữ nào. Có nó thì người dùng biết trợ lý ĐANG làm việc, thay vì
+   * nhìn bong bóng trống và tưởng nó im lặng không trả lời được.
+   */
+  pending_status?: string | null;
   timestamp: string;
 }
 
@@ -356,15 +362,27 @@ export function useCopilotChat(mode: Mode = "pane") {
         });
 
         // Ưu tiên SSE streaming; nếu thất bại fallback về POST /message (JSON).
-        const streamed = await streamCopilot(payload, token, (delta) => {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === copilotId
-                ? { ...m, text: (m.text || "") + delta }
-                : m
-            )
-          );
-        });
+        const streamed = await streamCopilot(
+          payload,
+          token,
+          (delta) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === copilotId
+                  ? { ...m, text: (m.text || "") + delta, pending_status: null }
+                  : m
+              )
+            );
+          },
+          (status) => {
+            // Trạng thái "đang tra cứu" — hiện trong bong bóng cho tới khi có chữ.
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === copilotId && !m.text ? { ...m, pending_status: status } : m
+              )
+            );
+          }
+        );
 
         if (streamed.ok) {
           setMessages((prev) =>
@@ -483,7 +501,8 @@ interface StreamResult {
 async function streamCopilot(
   payload: string,
   token: string,
-  onDelta: (delta: string) => void
+  onDelta: (delta: string) => void,
+  onStatus?: (status: string) => void
 ): Promise<StreamResult> {
   try {
     const res = await fetch(`${API_BASE}/api/v1/copilot/message/stream`, {
@@ -528,6 +547,9 @@ async function streamCopilot(
                   citations: Array.isArray(data.citations) ? data.citations : null,
                   agent_mode: data.agent_mode ?? null,
                 };
+              } else if (eventName === "status") {
+                // Server báo đang tra cứu TRƯỚC khi có chữ → UI hết khoảng lặng.
+                if (onStatus && typeof data.message === "string") onStatus(data.message);
               } else if (eventName === "delta") {
                 onDelta(data.text || "");
               }

@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
+import { STAGGER_S, beat } from "../../lib/motion";
 import { matHangLabel, treoLabel } from "../../lib/present";
 
 type TonRow = { hang?: string; so_luong?: number; don_vi?: string; duoi_nguong?: boolean };
@@ -9,7 +10,11 @@ type TreoBreakdown = { trang_thai: string; so_luong: number };
 type SuaPreview = { loai?: string; luc?: string; ai?: string };
 
 const TON_COLORS = { ok: "var(--nq-ok)", warn: "var(--nq-warn)" };
-const TREO_COLORS = ["#c4a574", "#d4a017", "#6f9b7a", "#d45d4a", "#8b7355", "#5c7a8a"];
+/* Bảng màu cho các lát của biểu đồ việc treo. Xếp từ "cần xử lý ngay" tới
+   "chờ đủ điều kiện": đỏ → cam → ngọc → xanh dương → xám. Mỗi lát phải khác
+   nhau về cả SẮC lẫn ĐỘ SÁNG vì người dùng phân biệt lát bằng cả hai, và in
+   đen trắng vẫn phải tách được. */
+const TREO_COLORS = ["#ef4444", "#f59e0b", "#d4af37", "#e8d48a", "#7c8a99", "#8a7228"];
 
 function chartMotion(reduced: boolean) {
   return reduced
@@ -17,7 +22,7 @@ function chartMotion(reduced: boolean) {
     : {
         initial: { opacity: 0, y: 8 },
         animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.48, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+        transition: beat("focus"),
       };
 }
 
@@ -65,7 +70,7 @@ export function TonBarChart({ rows }: { rows: TonRow[] }) {
                   style={{ background: warn ? TON_COLORS.warn : TON_COLORS.ok }}
                   initial={reduced ? { width: `${pct}%` } : { width: 0 }}
                   animate={{ width: `${pct}%`, opacity: active ? 1 : 0.85 }}
-                  transition={{ duration: 0.6, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                  transition={beat("focus", i * STAGGER_S)}
                 />
               </div>
               <span className="nq-dash-bar-val" title={`${qty} ${donVi}`}>
@@ -121,7 +126,7 @@ export function TreoDonutChart({ breakdown, total }: { breakdown: TreoBreakdown[
                   opacity={dim ? 0.35 : 1}
                   initial={reduced ? { opacity: dim ? 0.35 : 1 } : { opacity: 0, scale: 0.92 }}
                   animate={{ opacity: dim ? 0.35 : 1, scale: activeStatus === a.status ? 1.04 : 1 }}
-                  transition={{ duration: 0.35 }}
+                  transition={beat("settle")}
                   style={{ transformOrigin: `${cx}px ${cy}px`, cursor: "pointer" }}
                   onMouseEnter={() => setActiveStatus(a.status)}
                   onMouseLeave={() => setActiveStatus(null)}
@@ -181,7 +186,7 @@ export function SuaTimeline({ items, formatLuc, ghiNhanLabel, actorLabel }: {
             className="nq-dash-timeline-item"
             initial={reduced ? {} : { opacity: 0, x: -12 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.06, duration: 0.35 }}
+            transition={beat("settle", i * STAGGER_S)}
             whileHover={reduced ? {} : { x: 4 }}
           >
             <span className="nq-dash-timeline-dot" aria-hidden />

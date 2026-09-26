@@ -13,6 +13,7 @@ import {
   MaskedCode,
   Notice,
   OpsCard,
+  PageActions,
   PageHeader,
 } from "../../ui/kit";
 import { PersonSelect, ShiftSelect } from "../../ui/ops-pickers";
@@ -96,9 +97,11 @@ export default function QrPage() {
         title="Điểm danh QR"
         meta="Quản lý chọn người và ca rồi phát mã; nhân viên dán mã để vào ca."
       />
-      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-        Hỏi trợ lý vận hành
-      </Btn>
+      <PageActions>
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          Hỏi trợ lý vận hành
+        </Btn>
+      </PageActions>
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
 
@@ -135,7 +138,7 @@ export default function QrPage() {
           </Btn>
         </form>
       </OpsCard>
-      <OpsCard eyebrow="Sau khi có mặt" title="Điểm danh xong thì làm gì tiếp?">
+      <OpsCard density="compact" eyebrow="Sau khi có mặt" title="Điểm danh xong thì làm gì tiếp?">
         <p className="mb-3 text-sm text-[var(--nq-dim)]">
           Có mặt rồi thì vào <strong>Phiếu</strong> chạy mở quán — phiếu mới mở được khi bạn đã điểm danh.
         </p>

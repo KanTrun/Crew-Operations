@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "schema": "grand_experience_events_v1",
+    "note": "Fixture replay tất định — KHÔNG chứa dữ liệu khách thật, secret hay bản ghi âm thật.",
+    "labels": ["mo_phong_fixture", "replay"]
+  },
+  "events": [
+    {
+      "event_id": "gx_evt_incident_01",
+      "event_type": "incident",
+      "occurred_at": "2026-09-18T08:10:00+07:00",
+      "actor_id": "nv_quan",
+      "role": "nhan_vien",
+      "anchor_id": "blender-02",
+      "payload": {"loai": "mat_dien_cuc_bo", "thiet_bi": "may_xay"},
+      "evidence_refs": ["gx_ev_1"],
+      "source": "replay"
+    },
+    {
+      "event_id": "gx_evt_incident_02",
+      "event_type": "incident",
+      "occurred_at": "2026-09-18T08:22:00+07:00",
+      "actor_id": "nv_quan",
+      "role": "nhan_vien",
+      "anchor_id": "fridge-01",
+      "payload": {"loai": "nhiet_do_canh_bao", "thiet_bi": "tu_lanh"},
+      "evidence_refs": ["gx_ev_2"],
+      "source": "replay"
+    },
+    {
+      "event_id": "gx_evt_voice_note_01",
+      "event_type": "voice_note",
+      "occurred_at": "2026-09-18T09:00:00+07:00",
+      "actor_id": "nv_lan",
+      "role": "nhan_vien",
+      "anchor_id": "bar",
+      "payload": {"loai": "ghi_chu_thoat", "tom_tat": "khach quen thich it ngot"},
+      "evidence_refs": ["gx_ev_3"],
+      "source": "replay"
+    },
+    {
+      "event_id": "gx_evt_praise_01",
+      "event_type": "praise",
+      "occurred_at": "2026-09-18T10:15:00+07:00",
+      "actor_id": "khach_psid_fixture_01",
+      "role": "khach",
+      "anchor_id": "window_table",
+      "payload": {"loai": "khen_ngoi", "noi_dung": "phuc vu tan tinh"},
+      "evidence_refs": ["gx_ev_4"],
+      "source": "replay"
+    },
+    {
+      "event_id": "gx_evt_decision_01",
+      "event_type": "decision",
+      "occurred_at": "2026-09-18T11:00:00+07:00",
+      "actor_id": "quan_ly_test",
+      "role": "quan_ly",
+      "anchor_id": "cashier",
+      "payload": {"loai": "quyet_dinh_lap_lai", "noi_dung": "them_nguoi_chot_gio_cao_diem"},
+      "evidence_refs": ["gx_ev_5", "gx_ev_6"],
+      "source": "replay"
+    },
+    {
+      "event_id": "gx_evt_mode_change_01",
+      "event_type": "mode_change",
+      "occurred_at": "2026-09-18T11:30:00+07:00",
+      "actor_id": "quan_ly_test",
+      "role": "quan_ly",
+      "anchor_id": null,
+      "payload": {"mode": "gio_cao_diem", "trang_thai": "da_de_xuat"},
+      "evidence_refs": ["gx_ev_5"],
+      "source": "replay"
+    }
+  ]
+}

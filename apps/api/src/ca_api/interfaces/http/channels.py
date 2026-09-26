@@ -111,6 +111,7 @@ from ca_api.services.fb_attachment_processor import (
 from ca_api.services.fb_moderation import (
     analyze_comment_sentiment,
     classify_comment_action,
+    fb_jev_enabled,
     moderate_fb_message,
     queue_fb_non_text,
 )
@@ -294,6 +295,16 @@ def _enqueue_inbox(
         kv_set("inbox_rang_buoc", [item])
     else:
         kv_mutate("inbox_rang_buoc", mut, [])
+
+    # AI tự động duyệt/từ chối ngay — trang Hộp thư ràng buộc chỉ còn để xem.
+    # Lỗi ở đây không được chặn việc ghi nhận tin nhắn từ kênh.
+    try:
+        from ca_api.services.inbox_autopilot import auto_process
+
+        auto_process()
+    except Exception:
+        pass
+
     return item
 
 
@@ -492,7 +503,12 @@ def _page_store(store_id: str = "quan_01") -> dict[str, Any]:
         return cast(dict[str, Any], stored)
     legacy = kv_get("page_quan", None)
     if legacy and isinstance(legacy, dict) and (legacy.get("threads") or legacy.get("drafts")):
-        return cast(dict[str, Any], legacy)
+        # Tương thích ngược: khi store scoped chưa tồn tại mà legacy có dữ liệu,
+        # migrate luôn sang key scoped để MỌI thao tác ghi (reply/approve/draft)
+        # về sau đi chung 1 key — tránh tình trạng ghi vào key legacy nhưng
+        # đọc không thấy (bug mất trả lời).
+        kv_set(key, legacy)
+        return cast(dict[str, Any], kv_get(key, legacy))
     seed = os.environ.get("NHIPQUAN_PAGE_SEED_FIXTURE", "").strip() in {"1", "true", "yes"}
     if seed and PAGE_FIXTURE.exists():
         data = json.loads(PAGE_FIXTURE.read_text(encoding="utf-8"))
@@ -1240,6 +1256,66 @@ async def facebook_webhook(request: Request) -> Any:
     return {"ok": True, "n": n}
 
 
+def _thread_display_name(thread: dict[str, Any]) -> str:
+    """Tên hiển thị ưu tiên cho 1 hội thoại Messenger.
+
+    Thứ tự ưu tiên (fallback liên tục để không bao giờ để trống):
+      1. `sender_name` đã lưu sẵn (nếu có — sync Graph / test), loại bỏ sentinel "Khách".
+      2. `customer_name` — trường tên khách từ fixture/vận hành.
+      3. `from` tên khách Graph trả về khi sync (fetch_conversations).
+      4. `customer_profile.ten_khach` — AI trích xuất từ tin nhắn (customer_memory).
+      5. Mã PSID rút gọn để vẫn phân biệt được ai đang nhắn (tránh "Khách" chung chung).
+    """
+    raw = thread.get("sender_name") or thread.get("customer_name") or thread.get("from") or ""
+    if isinstance(raw, str) and raw.strip() and raw.strip() not in {"Khách", "Khách hàng", "Customer"}:
+        return raw.strip()
+    prof = thread.get("customer_profile")
+    if isinstance(prof, dict):
+        ten = prof.get("ten_khach")
+        if isinstance(ten, str) and ten.strip():
+            return ten.strip()
+    psid = str(thread.get("psid") or thread.get("sender_id") or "")
+    if psid:
+        return f"Khách {psid[-4:]}"
+    return "Khách"
+
+
+def _thread_display_avatar(thread: dict[str, Any]) -> str:
+    """Ảnh đại diện người nhắn: ưu tiên URL đã lưu, fallback về URL ổn định theo PSID.
+
+    Messenger Profile API của Meta (POST /{psid}?fields=profile_pic) chỉ gọi được khi
+    khách đã tương tác trong 24h — nên với khách cũ chúng ta dùng URL trừu tượng ổn định
+    theo PSID để giao diện vẫn có avatar riêng cho từng người.
+    """
+    existing = thread.get("sender_avatar") or (thread.get("customer_profile") or {}).get("avatar_url")
+    if isinstance(existing, str) and existing.strip():
+        return existing.strip()
+    psid = str(thread.get("psid") or thread.get("sender_id") or "")
+    if not psid:
+        return ""
+    import hashlib
+
+    digest = hashlib.sha1(psid.encode("utf-8")).hexdigest()  # noqa: S324 — chỉ để tạo màu nền, không dùng cho bảo mật
+    return f"https://api.dicebear.com/9.x/initials/svg?seed={digest}&backgroundColor=7c5c3e,8d6e63,bcaaa4,5d4037,6d4c41"
+
+
+def _enrich_threads_for_display(threads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Bổ sung trường hiển thị (sender_name, sender_avatar) cho từng hội thoại.
+
+    KHÔNG ghi đè dữ liệu gốc trong store — chỉ làm giàu ở tầng API trả về,
+    giữ nguyên fail-closed (không phụ thuộc Graph thời gian thực).
+    """
+    out: list[dict[str, Any]] = []
+    for t in threads:
+        display = dict(t)
+        display["sender_name"] = _thread_display_name(t)
+        avatar = _thread_display_avatar(t)
+        if avatar:
+            display["sender_avatar"] = avatar
+        out.append(display)
+    return out
+
+
 @router.get("/api/v1/page/threads")
 def page_threads(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
     _require_manager(authorization)
@@ -1250,7 +1326,12 @@ def page_threads(authorization: Annotated[str | None, Header()] = None) -> dict[
     # Update is_within_24h dynamic flag
     for t in threads:
         t["is_within_24h"] = is_within_24h_window(t.get("last_message_ts"))
-    return {"items": threads, "mode": _page_mode(), "nguon": "quan", "store_id": store_id}
+    return {
+        "items": _enrich_threads_for_display(threads),
+        "mode": _page_mode(),
+        "nguon": "quan",
+        "store_id": store_id,
+    }
 
 
 class PageReplyBody(BaseModel):
@@ -1295,7 +1376,9 @@ def page_reply(
                 break
         return doc
 
-    kv_mutate("page_quan", mut, _page_store(store_id))
+    # Ghi vào ĐÚNG key mà _page_store đọc (page_quan:{store_id}) — tránh mất
+    # tin trả lời vì ghi vào key legacy "page_quan" không ai đọc.
+    kv_mutate(f"page_quan:{store_id}", mut, _page_store(store_id))
     if not found:
         raise HTTPException(status_code=404, detail="thread")
     graph_sent = False
@@ -1362,7 +1445,8 @@ def page_thread_approve(
 
     page_id_cfg = os.environ.get("NHIPQUAN_FB_PAGE_ID", "").strip()
     store_id = resolve_store_id_from_page_id(page_id_cfg)
-    kv_mutate("page_quan", mut, _page_store(store_id))
+    # Ghi vào ĐÚNG key _page_store đọc (page_quan:{store_id}) — chống mất trả lời.
+    kv_mutate(f"page_quan:{store_id}", mut, _page_store(store_id))
     if not found:
         raise HTTPException(status_code=404, detail="thread")
 
@@ -1621,6 +1705,7 @@ async def fb_inbox_decide(
 class FbPolicyBody(BaseModel):
     auto_send_enabled: bool | None = None
     auto_price_cap_vnd: int | None = None
+    jev_enabled: bool | None = None
     note: str | None = None
 
 
@@ -1631,6 +1716,7 @@ def _fb_policy_get() -> dict[str, Any]:
         "auto_price_cap_vnd": int(
             os.environ.get("NHIPQUAN_FB_AUTO_PRICE_CAP_VND", "100000")
         ),
+        "jev_enabled": fb_jev_enabled(),
         "page_mode": _page_mode(),
         "intent_thresholds": {
             "chao_hoi": 0.90,
@@ -1677,15 +1763,22 @@ def fb_policy_set(
 
     if body.auto_price_cap_vnd is not None and body.auto_price_cap_vnd < 0:
         raise HTTPException(status_code=400, detail="price_cap_am")
-    if body.auto_send_enabled is not None or body.auto_price_cap_vnd is not None:
+    if (
+        body.auto_send_enabled is not None
+        or body.auto_price_cap_vnd is not None
+        or body.jev_enabled is not None
+    ):
         set_fb_policy_runtime(
             auto_send_enabled=body.auto_send_enabled,
             auto_price_cap_vnd=body.auto_price_cap_vnd,
+            jev_enabled=body.jev_enabled,
         )
     if body.auto_send_enabled is not None:
         changes["auto_send_enabled"] = body.auto_send_enabled
     if body.auto_price_cap_vnd is not None:
         changes["auto_price_cap_vnd"] = int(body.auto_price_cap_vnd)
+    if body.jev_enabled is not None:
+        changes["jev_enabled"] = body.jev_enabled
     _audit(
         s["nv_id"],
         "fb_policy_update",

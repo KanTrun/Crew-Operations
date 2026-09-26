@@ -100,6 +100,16 @@ export function nvTenHienThi(ten: unknown, id?: string | null): string {
   return nvLabel(id);
 }
 
+/** Thay mọi `nv_01` / `nv_07` trong chuỗi tự do bằng tên hiển thị. */
+export function replaceNvIdsInText(
+  text: unknown,
+  resolveName: (nvId: string) => string,
+): string {
+  const raw = safeText(text, "");
+  if (!raw) return raw;
+  return raw.replace(/\bnv_\d+\b/gi, (id) => resolveName(id));
+}
+
 /** Nhãn hiển thị cho tên agent (ag_copilot → "AG-COPILOT"). */
 const AGENT_LABELS: Record<string, string> = {
   ag_copilot: "AG-COPILOT",
@@ -131,8 +141,22 @@ export function agentNameLabel(agentName?: string | null): string | null {
   return AGENT_LABELS[raw] ?? raw;
 }
 
-/** Người thực hiện trong sổ vết: vai trò hoặc nhân viên, không tên riêng. */
+/** Người thực hiện trong sổ vết: vai trò hoặc nhân viên, không tên riêng.
+ *  Giữ lại cho các nơi chưa có danh bạ tải sẵn — ưu tiên dùng `actorLabelEx`. */
 export function actorLabel(ai?: string | null): string {
+  return actorLabelEx(ai);
+}
+
+/**
+ * Người thực hiện — dùng tên thật khi có danh bạ (`GET /api/v1/ops/pickers`)
+ * qua `resolveName`; không có thì lùi về nhãn vai trò/agent, KHÔNG bao giờ in
+ * thẳng `nv_01`. Trang Truy vết, Bàn giao ca, Chợ đổi ca… nên truyền
+ * `useStaffNameMap()` vào đây để hiển thị "Lan Nguyễn" thay vì "Nhân viên 01".
+ */
+export function actorLabelEx(
+  ai?: string | null,
+  resolveName?: (nvId: string) => string,
+): string {
   const raw = safeText(ai, "");
   if (!raw) return "Không rõ người thực hiện";
   if (raw === "quan_ly") return "Quản lý";
@@ -142,7 +166,56 @@ export function actorLabel(ai?: string | null): string {
   if (raw === "guest" || raw === "nv_guest") return "Khách";
   if (raw === "fb_policy_engine") return "Hệ thống chính sách Facebook";
   if (raw === "fb_moderation_block") return "Hệ thống kiểm duyệt Facebook";
-  return agentNameLabel(raw) ?? nvLabel(raw);
+  const agent = AGENT_LABELS[raw];
+  if (agent) return agent;
+  if (/^nv_\d+$/i.test(raw) && resolveName) {
+    const name = resolveName(raw);
+    if (name && name !== nvLabel(raw)) return name;
+  }
+  return nvLabel(raw);
+}
+
+/** Nhãn tiếng Việt cho các mã snake_case xuất hiện trong dữ liệu AI tất định
+ *  (đề xuất thông minh, giải thích, thử nghiệm an toàn) — thay cho việc in
+ *  thẳng `ca_doanh_thu`, `T6_toi`, `tang_gia` ra giao diện. */
+const CODE_LABELS: Record<string, string> = {
+  ca_doanh_thu: "Ca theo doanh thu",
+  lich_su_doanh_thu: "Lịch sử doanh thu",
+  tang_gia: "Tăng giá",
+  giam_gia: "Giảm giá",
+  tang_ns: "Tăng nhân sự",
+  giam_ns: "Giảm nhân sự",
+  T2_sang: "Sáng Thứ 2",
+  T2_chieu: "Chiều Thứ 2",
+  T2_toi: "Tối Thứ 2",
+  T3_sang: "Sáng Thứ 3",
+  T3_chieu: "Chiều Thứ 3",
+  T3_toi: "Tối Thứ 3",
+  T4_sang: "Sáng Thứ 4",
+  T4_chieu: "Chiều Thứ 4",
+  T4_toi: "Tối Thứ 4",
+  T5_sang: "Sáng Thứ 5",
+  T5_chieu: "Chiều Thứ 5",
+  T5_toi: "Tối Thứ 5",
+  T6_sang: "Sáng Thứ 6",
+  T6_chieu: "Chiều Thứ 6",
+  T6_toi: "Tối Thứ 6",
+  T7_sang: "Sáng Thứ 7",
+  T7_chieu: "Chiều Thứ 7",
+  T7_toi: "Tối Thứ 7",
+  CN_sang: "Sáng Chủ nhật",
+  CN_chieu: "Chiều Chủ nhật",
+  CN_toi: "Tối Chủ nhật",
+};
+
+/** `ca_doanh_thu` / `T6_toi` → nhãn tiếng Việt tự nhiên; không nhận diện được
+ *  thì chỉ đổi gạch dưới thành khoảng trắng, không in nguyên mã kỹ thuật. */
+export function codeLabel(code: unknown): string {
+  const raw = safeText(code, "");
+  if (!raw) return DASH;
+  if (CODE_LABELS[raw]) return CODE_LABELS[raw];
+  if (raw.includes("_")) return raw.replace(/_/g, " ");
+  return raw;
 }
 
 /* ── Vị trí / chức vụ ca ── */
@@ -320,6 +393,54 @@ const NGUYEN_NHAN: Record<string, string> = {
 
 export function nguyenNhanLabel(code: unknown): string {
   return pick(NGUYEN_NHAN, code, "Nguyên nhân khác");
+}
+
+/* ── Hao hụt định lượng ──
+   Ba bảng dưới đây phục vụ mặt /hao-phi mới. Mã trạng thái của máy chủ
+   (`thieu_du_lieu`, `ke_hoach_kiem_ke`...) là nội bộ — theo `docs/design-guidelines.md`
+   phải đi qua bảng nhãn, không được in thô lên UI. */
+
+const LOSS_LEVEL: Record<string, string> = {
+  dat: "Trong ngưỡng",
+  canh_bao: "Cần xem lại",
+  nghiem_trong: "Vượt ngưỡng nặng",
+  thieu_du_lieu: "Chưa đủ dữ liệu",
+};
+
+export function lossLevelLabel(code: unknown): string {
+  return pick(LOSS_LEVEL, code, "Chưa rõ mức độ");
+}
+
+export function lossLevelTone(code: unknown): "warn" | "ok" | "danger" | "default" {
+  if (code === "nghiem_trong") return "danger";
+  if (code === "canh_bao") return "warn";
+  if (code === "dat") return "ok";
+  return "default";
+}
+
+const LOSS_BASIS: Record<string, string> = {
+  ke_hoach_kiem_ke: "Từ phiếu kiểm kê",
+  don_quay_thuc_te: "Từ đơn quầy",
+  hon_hop: "Đối chiếu đơn quầy với kiểm kê",
+};
+
+export function lossBasisLabel(code: unknown): string {
+  return pick(LOSS_BASIS, code, "Chưa rõ nguồn số");
+}
+
+/** Đọc phần còn thiếu của một dòng hao hụt thành câu người hiểu. */
+export function lossThieuVeLabel(thieuVe: unknown): string {
+  if (!Array.isArray(thieuVe) || thieuVe.length === 0) return "";
+  const co = (x: string) => thieuVe.includes(x);
+  if (co("ly_thuyet") && co("thuc_te")) return "Chưa có đơn quầy và chưa có phiếu kiểm kê";
+  if (co("ly_thuyet")) return "Chưa có đơn quầy nên chưa biết lượng theo công thức";
+  if (co("thuc_te")) return "Chưa gõ phiếu kiểm kê nên chưa biết lượng đã dùng thật";
+  return "Chưa đủ dữ liệu để đối chiếu";
+}
+
+/** Bốn trường ngày của máy chủ ghi ở bốn đường khác nhau; lấy trường nào có. */
+export function lossNgay(row: { luc?: unknown; created_at?: unknown; ngay?: unknown; at?: unknown }): string {
+  return safeText(row.luc ?? row.created_at ?? row.ngay ?? row.at, "");
 }
 
 const MAT_HANG: Record<string, string> = {
@@ -786,6 +907,62 @@ const KHUNG: Record<string, string> = {
 export function khungLabel(code: unknown): string {
   return pick(KHUNG, code, "");
 }
+
+/* ── Quầy nội bộ: đơn pha chế và nhóm món ──
+   Trạng thái đơn và cách thu tiền là mã nội bộ (`cho_pha`, `da_ck`), không được
+   in thẳng ra màn hình quầy — nhân viên đọc "cho pha" không hiểu là gì. Nhóm món
+   dùng đúng sáu mã của `data/seed/danh-muc.json` để menu quầy phân mục được. */
+
+const DON_TRANG_THAI: Record<string, string> = {
+  cho_pha: "Chờ pha",
+  dang_pha: "Đang pha",
+  xong: "Đã xong",
+  huy: "Đã hủy",
+};
+
+export function donTrangThaiLabel(code: unknown): string {
+  return pick(DON_TRANG_THAI, code, "Chưa rõ trạng thái");
+}
+
+export function donTrangThaiTone(code: unknown): "warn" | "ok" | "danger" | "default" {
+  if (code === "xong") return "ok";
+  if (code === "huy") return "danger";
+  if (code === "dang_pha") return "warn";
+  return "default";
+}
+
+const DON_THANH_TOAN: Record<string, string> = {
+  chua_thu: "Chưa thu",
+  tien_mat: "Tiền mặt",
+  da_ck: "Đã chuyển khoản",
+};
+
+export function donThanhToanLabel(code: unknown): string {
+  return pick(DON_THANH_TOAN, code, "Chưa rõ thanh toán");
+}
+
+const NHOM_MON: Record<string, string> = {
+  ca_phe: "Cà phê",
+  tra: "Trà & trà sữa",
+  sinh_to: "Sinh tố & đá xay",
+  banh: "Bánh & ăn kèm",
+  nuoc_dong_chai: "Nước đóng chai",
+  nguyen_lieu: "Nguyên liệu pha chế",
+};
+
+export function nhomMonLabel(code: unknown): string {
+  return pick(NHOM_MON, code, "Món khác");
+}
+
+/** Thứ tự đọc menu: đồ uống pha trước, đồ ăn kèm và hàng đóng gói sau cùng. */
+export const NHOM_MON_THU_TU: readonly string[] = [
+  "ca_phe",
+  "tra",
+  "sinh_to",
+  "banh",
+  "nuoc_dong_chai",
+  "nguyen_lieu",
+];
 
 const LOAI_BUOC: Record<string, string> = {
   photo: "Bước cần ảnh minh chứng",

@@ -12,12 +12,14 @@ function AiCore({ model }: { model: OpsPulseModel }) {
   const ref = useRef<Mesh>(null);
   const color = severityColor(model.severity);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (!ref.current) return;
     const speed = model.aiActive ? 1.8 : 0.4 + model.pressure * 0.6;
     ref.current.rotation.y += delta * speed;
     ref.current.rotation.x += delta * speed * 0.35;
-    const pulse = 1 + Math.sin(Date.now() * 0.003) * 0.04 * (0.3 + model.pressure);
+    // Nhịp tính theo đồng hồ vòng vẽ, không theo `Date.now()` — mốc tuyệt đối
+    // làm pha nhịp phụ thuộc thời điểm mở trang (xem `LivingMap3d.Core`).
+    const pulse = 1 + Math.sin(state.clock.elapsedTime * 3) * 0.04 * (0.3 + model.pressure);
     ref.current.scale.setScalar(pulse);
   });
 
@@ -73,7 +75,7 @@ function PulseScene({ model }: { model: OpsPulseModel }) {
   return (
     <>
       <ambientLight intensity={0.45} />
-      <pointLight position={[2, 2, 2]} intensity={0.7} color="#d4b888" />
+      <pointLight position={[2, 2, 2]} intensity={0.7} color="#d4af37" />
       <pointLight position={[-2, -1, 1]} intensity={0.35} color={color} />
       <AiCore model={model} />
       <OrbitParticles count={model.particleCount} active={model.aiActive || model.severity !== "ok"} color={color} />

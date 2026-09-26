@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet } from "../../lib/api";
 import { computeOpsPulse } from "../../lib/ops-pulse";
 import {
-  actorLabel,
   formatLuc,
   ghiNhanLabel,
   matHangLabel,
@@ -18,6 +17,7 @@ import {
 import { getRole, getToken, isChuQuan, isManager } from "../../lib/session";
 import { todayHeroLine, todayTechnicalDetail } from "../../lib/status";
 import { SuaTimeline, TonBarChart, TreoDonutChart } from "../../ui/hom-nay/dashboard-charts";
+import { useActorName } from "../../ui/ops-pickers";
 import { KpiCard, StatusStrip } from "../../ui/hom-nay/kpi-card";
 import { OpsPulseLite } from "../../ui/hom-nay/ops-pulse-lite";
 import { Alert, AuthGate, Btn, BtnLink, FixtureChip, Loading, PageActions, StatusChip, TechnicalDrawer } from "../../ui/kit";
@@ -32,6 +32,19 @@ type SuaPreview = { loai?: string; luc?: string; ai?: string };
 type TonRow = { hang?: string; so_luong?: number; don_vi?: string; duoi_nguong?: boolean };
 type TreoBreakdown = { trang_thai: string; so_luong: number };
 
+/** Rút gọn hao hụt hôm nay — máy chủ dùng CÙNG hàm với /hao-phi và agent mẹ. */
+type HaoHut = {
+  co_du_lieu?: boolean;
+  tong_dong?: number;
+  so_nghiem_trong?: number;
+  so_canh_bao?: number;
+  so_thieu_du_lieu?: number;
+  ty_le_trung_binh?: number | null;
+  mat_hang_vuot?: { ten: string; ty_le: number | null; muc_do: string }[];
+  nguyen_nhan_hang_dau?: { ten: string; so_lan: number }[];
+  ly_do?: string;
+};
+
 type Today = {
   ngay: string;
   lich: { trang_thai?: string; nguon?: string; solver?: { status?: string } };
@@ -44,6 +57,7 @@ type Today = {
   treo_theo_trang_thai?: TreoBreakdown[];
   sua_gan_day?: SuaPreview[];
   ton_tom_tat?: TonRow[];
+  hao_hut?: HaoHut;
   co_du_lieu_mau?: boolean;
   viec_cho_toi?: { id: string; tieu_de: string; chi_tiet: string; link: string; muc?: number }[];
   brief_hom_nay?: { ngay: string; so_ca: number; so_treo_mo: number; ton_canh_bao?: string[]; treo_dau?: string[] } | null;
@@ -71,6 +85,7 @@ export default function HomNayPage() {
   const [manager, setManager] = useState(false);
   const [chuQuan, setChuQuan] = useState(false);
   const use3d = usePulse3d();
+  const actorName = useActorName();
 
   useEffect(() => {
     setToken(getToken());
@@ -122,6 +137,7 @@ export default function HomNayPage() {
   const kpi2Label = chuQuan ? "Nhân viên chờ xem xét" : manager ? "Mục chờ duyệt" : "Luật cẩm nang";
   const kpi2Href = chuQuan ? "/nguoi" : manager ? "/inbox" : "/cam-nang";
   const highlight = pulseModel?.highlightKpi;
+  const haoHut = data?.hao_hut;
 
   return (
     <div className="nq-page nq-page--dashboard">
@@ -151,21 +167,21 @@ export default function HomNayPage() {
             </p>
           ) : null}
           {data.viec_cho_toi && data.viec_cho_toi.length > 0 ? (
-            <section className="mb-6 border-2 border-[var(--nq-copper)] bg-[var(--nq-surface)] p-4 md:p-5">
-              <p className="font-mono text-xs uppercase tracking-widest text-[var(--nq-copper)]">Hàng đợi hôm nay</p>
-              <h2 className="mt-1 text-lg font-black text-[var(--nq-fg)]">Việc của bạn</h2>
-              <ul className="mt-3 space-y-2">
+            /* Khối "việc của bạn" được NHẤN bằng viền accent: đây là việc người
+               dùng phải làm, khác hẳn các khối chỉ để đọc. Không tô nền accent —
+               nền màu sau chữ là cách chắc chắn nhất để hạ tương phản. */
+            <section className="mb-6 nq-surface-block nq-block--accent p-4 md:p-5">
+              <p className="nq-eyebrow">Hàng đợi hôm nay</p>
+              <h2 className="nq-block-title">Việc của bạn</h2>
+              <ul className="mt-3 flex flex-col gap-2">
                 {data.viec_cho_toi.map((v) => (
                   <li key={v.id}>
-                    <a
-                      href={v.link}
-                      className="flex items-center justify-between gap-3 border-2 border-[var(--nq-dim)] bg-[var(--nq-bg)] px-4 py-3 transition-colors hover:border-[var(--nq-copper)]"
-                    >
-                      <span>
-                        <span className="block text-sm font-bold text-[var(--nq-fg)]">{v.tieu_de}</span>
-                        <span className="block text-xs text-[var(--nq-dim)]">{v.chi_tiet}</span>
+                    <a href={v.link} className="nq-action-row">
+                      <span className="min-w-0">
+                        <span className="nq-action-row__title">{v.tieu_de}</span>
+                        <span className="nq-action-row__sub">{v.chi_tiet}</span>
                       </span>
-                      <span className="font-mono text-xs text-[var(--nq-copper)]">→</span>
+                      <span className="nq-action-row__go" aria-hidden="true">→</span>
                     </a>
                   </li>
                 ))}
@@ -173,7 +189,7 @@ export default function HomNayPage() {
             </section>
           ) : null}
           {data.brief_hom_nay ? (
-            <p className="mb-4 font-mono text-xs text-[var(--nq-dim)]">
+            <p className="nq-meta-line">
               Brief sáng {data.brief_hom_nay.ngay}: {data.brief_hom_nay.so_ca} ca · {data.brief_hom_nay.so_treo_mo} việc treo đang mở
               {data.brief_hom_nay.ton_canh_bao && data.brief_hom_nay.ton_canh_bao.length > 0
                 ? ` · tồn cảnh báo: ${data.brief_hom_nay.ton_canh_bao.join(", ")}`
@@ -246,7 +262,37 @@ export default function HomNayPage() {
                 <p className="nq-muted nq-dash-aside-note">Chưa có cảnh báo tồn từ sổ tiêu thụ.</p>
               )}
 
-              <SuaTimeline items={sua} formatLuc={formatLuc} ghiNhanLabel={ghiNhanLabel} actorLabel={actorLabel} />
+              {/* Hao hụt: chỉ báo khi có chuyện. Dòng "chưa đủ dữ liệu" nói thẳng
+                  là chưa kết luận được, không im lặng coi như đạt. */}
+              {haoHut && haoHut.co_du_lieu ? (
+                haoHut.so_nghiem_trong || haoHut.so_canh_bao ? (
+                  <Alert kind="info">
+                    Hao hụt cần xem:{" "}
+                    {(haoHut.mat_hang_vuot ?? [])
+                      .map((x) => (x.ty_le === null ? x.ten : `${x.ten} ${x.ty_le}%`))
+                      .join(", ") || `${(haoHut.so_nghiem_trong ?? 0) + (haoHut.so_canh_bao ?? 0)} nguyên liệu`}
+                    .
+                    {haoHut.so_thieu_du_lieu ? (
+                      <span className="block mt-2">
+                        {haoHut.so_thieu_du_lieu} nguyên liệu chưa kết luận được vì thiếu một vế.
+                      </span>
+                    ) : null}
+                    <BtnLink href="/hao-phi" variant="ghost">
+                      Mở bảng hao hụt
+                    </BtnLink>
+                  </Alert>
+                ) : (
+                  <Link href="/hao-phi" className="nq-dash-aside-link">
+                    Hao hụt hôm nay trong ngưỡng — xem bảng →
+                  </Link>
+                )
+              ) : (
+                <Link href="/hao-phi" className="nq-dash-aside-link">
+                  Hao hụt: chưa đủ dữ liệu để đối chiếu — gõ phiếu kiểm kê →
+                </Link>
+              )}
+
+              <SuaTimeline items={sua} formatLuc={formatLuc} ghiNhanLabel={ghiNhanLabel} actorLabel={actorName} />
 
               {sua.length > 0 ? (
                 <Link href="/treo" className="nq-dash-aside-link">

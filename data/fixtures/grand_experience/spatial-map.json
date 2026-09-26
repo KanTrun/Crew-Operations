@@ -1,0 +1,17 @@
+{
+  "meta": {
+    "schema": "grand_experience_spatial_map_v1",
+    "note": "Bản đồ không gian fixture — toạ độ tương đối trong quán, không phải vị trí thật.",
+    "labels": ["mo_phong_fixture", "replay"]
+  },
+  "anchors": [
+    {"anchor_id": "bar", "khu_vuc": "quay_pha_che", "label": "Quầy pha chế", "x": 5.0, "y": 8.0, "z": 0.0, "kind": "khu_vuc", "active": true},
+    {"anchor_id": "cashier", "khu_vuc": "quay_thanh_toan", "label": "Quầy thu ngân", "x": 7.0, "y": 2.0, "z": 0.0, "kind": "khu_vuc", "active": true},
+    {"anchor_id": "stockroom", "khu_vuc": "kho", "label": "Kho", "x": 1.0, "y": 1.0, "z": 0.0, "kind": "khu_vuc", "active": true},
+    {"anchor_id": "entrance", "khu_vuc": "cua_vao", "label": "Cửa vào", "x": 0.0, "y": 5.0, "z": 0.0, "kind": "khu_vuc", "active": true},
+    {"anchor_id": "window_table", "khu_vuc": "phong_khach", "label": "Bàn cửa sổ", "x": 9.0, "y": 6.0, "z": 0.0, "kind": "ban", "active": true},
+    {"anchor_id": "blender-02", "khu_vuc": "quay_pha_che", "label": "Máy xay 02", "x": 5.5, "y": 8.5, "z": 0.0, "kind": "thiet_bi", "active": true},
+    {"anchor_id": "fridge-01", "khu_vuc": "kho", "label": "Tủ lạnh 01", "x": 1.5, "y": 1.5, "z": 0.0, "kind": "thiet_bi", "active": true},
+    {"anchor_id": "espresso-machine-01", "khu_vuc": "quay_pha_che", "label": "Máy pha cà phê 01", "x": 5.8, "y": 8.2, "z": 0.0, "kind": "thiet_bi", "active": true}
+  ]
+}

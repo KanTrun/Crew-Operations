@@ -36,6 +36,7 @@ from ca_playbook import (
     list_luat,
     list_sua,
     pipeline_snapshot,
+    record_sua,
     save_luat,
     sua_rows_for_mau,
     tap_su_tu_sua,
@@ -139,6 +140,45 @@ def _audit(hanh: str, ai: str, payload: dict[str, Any]) -> None:
     audit_add(_clock.now_iso(), ai, hanh, payload)
 
 
+def _hao_hut_hom_nay() -> dict[str, Any]:
+    """Bản rút gọn của hao hụt hôm nay cho bảng Hôm nay.
+
+    Gọi **đúng hàm** mà `/api/v1/hao-hut` và agent mẹ gọi
+    (`ca_agents.ag_waste.tinh_tu_nguon`), nên con số trên trang Hôm nay không thể
+    lệch với trang Hao phí. Chỉ trả phần cần cho một dòng tóm tắt; chi tiết theo
+    nguyên liệu vẫn nằm ở `/hao-phi`.
+    """
+    from ca_agents.ag_waste import tinh_tu_nguon
+
+    from ca_api.interfaces.http.hao_hut import _ds, _ds_don, _nguong
+    from ca_api.persist import menu_list
+
+    tom_tat = tinh_tu_nguon(
+        kiem_ke=_ds("kiem_ke"),
+        don_quay=_ds_don(),
+        menu=menu_list(gom_an=True),
+        waste_notes=_ds("waste_notes"),
+        nguong=_nguong(),
+        ky="hom_nay",
+    )
+    vuot = [d for d in tom_tat.dong if d.muc_do in {"canh_bao", "nghiem_trong"}]
+    return {
+        "co_du_lieu": tom_tat.tong_dong > 0,
+        "tong_dong": tom_tat.tong_dong,
+        "so_nghiem_trong": tom_tat.so_nghiem_trong,
+        "so_canh_bao": tom_tat.so_canh_bao,
+        "so_thieu_du_lieu": tom_tat.so_thieu_du_lieu,
+        "ty_le_trung_binh": tom_tat.ty_le_trung_binh,
+        "mat_hang_vuot": [
+            {"ten": d.ten or d.mat_hang, "ty_le": d.ty_le_phan_tram, "muc_do": d.muc_do}
+            for d in vuot[:5]
+        ],
+        "nguyen_nhan_hang_dau": [
+            {"ten": c.ten, "so_lan": c.so_lan} for c in tom_tat.nguyen_nhan_hang_dau[:3]
+        ],
+    }
+
+
 def _week_value(key: str, tuan_iso: str, default: Any) -> Any:
     """Read week-scoped KV with a one-way compatible fallback to legacy data."""
     raw = kv_get(key, None)
@@ -165,22 +205,38 @@ def _set_week_value(key: str, tuan_iso: str, value: Any) -> None:
 
 def _publish_schedule_notification(week: str, store_id: str = "quan_01") -> int:
     """Persist one exact-week notification for each active real account."""
-    recipients = [
-        str(user.get("nv_id") or "")
+    users = [
+        user
         for user in list_users(store_id=store_id)
         if user.get("role") in {"nhan_vien", "quan_ly", "chu_quan"}
         and str(user.get("status") or "active") == "active"
         and str(user.get("nv_id") or "")
     ]
-    return thong_bao_lich_create_for_week(
-        tuan_iso=week,
-        su_kien="da_cong_bo",
-        tieu_de=f"Lịch tuần {week} đã được công bố",
-        noi_dung="Lịch mới đã sẵn sàng. Mở để xem ca làm và xác nhận lịch của bạn.",
-        url=f"/lich-tuan?tuan={week}",
-        nv_ids=recipients,
-        store_id=store_id,
-    )
+    created = 0
+    manager_ids = [str(u["nv_id"]) for u in users if u.get("role") in {"quan_ly", "chu_quan"}]
+    staff_ids = [str(u["nv_id"]) for u in users if u.get("role") == "nhan_vien"]
+
+    if manager_ids:
+        created += thong_bao_lich_create_for_week(
+            tuan_iso=week,
+            su_kien="da_cong_bo",
+            tieu_de=f"Lịch tuần {week} đã được công bố",
+            noi_dung="Lịch mới đã sẵn sàng. Mở để xem bảng phân công toàn quán.",
+            url=f"/lich-tuan?tuan={week}",
+            nv_ids=manager_ids,
+            store_id=store_id,
+        )
+    if staff_ids:
+        created += thong_bao_lich_create_for_week(
+            tuan_iso=week,
+            su_kien="da_cong_bo",
+            tieu_de=f"Lịch tuần {week} đã được công bố",
+            noi_dung="Lịch mới đã sẵn sàng. Mở để xem ca làm và xác nhận lịch của bạn.",
+            url=f"/toi?tuan={week}",
+            nv_ids=staff_ids,
+            store_id=store_id,
+        )
+    return created
 
 
 @router.get("/api/v1/lich/thong-bao")
@@ -849,6 +905,20 @@ def inbox_list(authorization: Annotated[str | None, Header()] = None) -> dict[st
     )
     if not existing and not has_real_channel:
         _seed_inbox()
+
+    # Trang này giờ CHỈ XEM — AI tự động duyệt/từ chối ngay khi yêu cầu được
+    # ghi vào hộp thư (xem `_enqueue_inbox` ở channels.py). Quét lại đây là
+    # lưới an toàn cho các luồng ghi không gọi autopilot trực tiếp, để không
+    # bao giờ còn mục "cho_duyet" đọng lại chờ người bấm nút.
+    session = auth_session(authorization) or {}
+    store_id = str(session.get("store_id") or "quan_01")
+    try:
+        from ca_api.services.inbox_autopilot import auto_process
+
+        auto_process(store_id=store_id)
+    except Exception:
+        pass
+
     items = kv_get("inbox_rang_buoc", [])
     enriched = []
     for it in items:
@@ -868,15 +938,25 @@ def inbox_list(authorization: Annotated[str | None, Header()] = None) -> dict[st
     return {"items": enriched, "nguon": "quan", "co_du_lieu_mau": _co_du_lieu_mau(enriched)}
 
 
-@router.post("/api/v1/inbox/rang-buoc/{item_id}")
-def inbox_decide(
+def _decide_inbox_item(
     item_id: str,
-    body: InboxBody,
-    authorization: Annotated[str | None, Header()] = None,
+    *,
+    quyet_dinh: str,
+    role: str,
+    store_id: str,
+    actor_id: str,
+    ly_do: str | None = None,
+    ca_id: str | None = None,
+    doi_tac_nv_id: str | None = None,
+    ap_dat: bool = False,
+    tu_dong_xep_lich: bool = False,
 ) -> dict[str, Any]:
-    role = _require_manager(authorization)
-    session = auth_session(authorization) or {}
-    store_id = str(session.get("store_id") or "quan_01")
+    """Lõi quyết định một mục hộp thư ràng buộc (duyệt/từ chối + hiệu lực +
+    tự động xếp lịch nếu cần) — dùng chung cho:
+      - `inbox_decide` (endpoint HTTP, người quản lý bấm nút Duyệt/Từ chối)
+      - `services/inbox_autopilot.py` (AI tự động duyệt, không có phiên HTTP)
+    Tách khỏi endpoint để hai nơi gọi cùng MỘT đường ghi kv/swap/solver,
+    không có hai bản logic có thể lệch nhau."""
     tuan_default = _life(store_id=store_id).get("tuan_iso", "2026-W01")
     found: dict[str, Any] | None = None
     pending_swap: dict[str, Any] | None = None
@@ -885,36 +965,36 @@ def inbox_decide(
         nonlocal found, pending_swap
         for it in items:
             if it.get("id") == item_id:
-                if body.quyet_dinh not in {"duyet", "tu_choi"}:
+                if quyet_dinh not in {"duyet", "tu_choi"}:
                     raise HTTPException(status_code=400, detail="quyet_dinh")
-                it["trang_thai"] = body.quyet_dinh
-                if body.ly_do and str(body.ly_do).strip():
-                    it["ly_do_quyet"] = str(body.ly_do).strip()[:500]
-                if body.quyet_dinh == "duyet":
+                it["trang_thai"] = quyet_dinh
+                if ly_do and str(ly_do).strip():
+                    it["ly_do_quyet"] = str(ly_do).strip()[:500]
+                if quyet_dinh == "duyet":
                     y = str(it.get("y_dinh") or "")
                     rb = it.get("rang_buoc") or {}
                     tuan_id = rb.get("tuan_id") or tuan_default
                     if y in {"doi_ca", "nhan_ca"}:
-                        ca_id = (body.ca_id or rb.get("ca_id") or "").strip()
-                        doi_tac_nv_id = (body.doi_tac_nv_id or rb.get("doi_tac") or "").strip()
-                        if it.get("doi_tac_khong_ro") and not body.doi_tac_nv_id:
+                        eff_ca_id = (ca_id or rb.get("ca_id") or "").strip()
+                        eff_doi_tac = (doi_tac_nv_id or rb.get("doi_tac") or "").strip()
+                        if it.get("doi_tac_khong_ro") and not doi_tac_nv_id:
                             raise HTTPException(
                                 status_code=400,
                                 detail="doi_tac_khong_ro_can_chon_nhan_vien",
                             )
-                        if not ca_id or not doi_tac_nv_id:
+                        if not eff_ca_id or not eff_doi_tac:
                             raise HTTPException(
                                 status_code=400,
                                 detail="doi_ca_can_ca_id_va_doi_tac",
                             )
-                        is_ap_dat = bool(body.ap_dat)
+                        is_ap_dat = bool(ap_dat)
                         swap_status = "dong_y" if is_ap_dat else "cho_xac_nhan"
-                        dong_y_list = [it.get("nv_id") or "unknown", doi_tac_nv_id] if is_ap_dat else [it.get("nv_id") or "unknown"]
+                        dong_y_list = [it.get("nv_id") or "unknown", eff_doi_tac] if is_ap_dat else [it.get("nv_id") or "unknown"]
                         pending_swap = {
                             "id": f"sw_inbox_{uuid.uuid4().hex[:6]}",
                             "a": it.get("nv_id") or "unknown",
-                            "b": doi_tac_nv_id,
-                            "ca_id": ca_id,
+                            "b": eff_doi_tac,
+                            "ca_id": eff_ca_id,
                             "trang_thai": swap_status,
                             "dong_y": dong_y_list,
                             "ap_dat": is_ap_dat,
@@ -927,9 +1007,9 @@ def inbox_decide(
                             "loai": "cho_doi_ca",
                             "swap_id": pending_swap["id"],
                             "ghi": (
-                                f"Đã áp đặt đổi ca {ca_id} với {doi_tac_nv_id}"
+                                f"Đã áp đặt đổi ca {eff_ca_id} với {eff_doi_tac}"
                                 if is_ap_dat
-                                else f"Đã mở phiếu đổi ca {ca_id} với {doi_tac_nv_id} — chờ đối tác xác nhận"
+                                else f"Đã mở phiếu đổi ca {eff_ca_id} với {eff_doi_tac} — chờ đối tác xác nhận"
                             ),
                             "tuan_id": tuan_id,
                         }
@@ -971,6 +1051,15 @@ def inbox_decide(
             return items_sw
 
         kv_mutate("swap", add_swap, [])
+        if pending_swap.get("trang_thai") == "dong_y":
+            _apply_swap_to_assignments(
+                giver=str(pending_swap.get("a") or ""),
+                taker=str(pending_swap.get("b") or ""),
+                ca_id=str(pending_swap.get("ca_id") or ""),
+                week=str(pending_swap.get("tuan_id") or tuan_default),
+                swap_id=str(pending_swap.get("id") or ""),
+                actor=str(role),
+            )
     if not found:
         raise HTTPException(status_code=404, detail="inbox_item")
 
@@ -978,13 +1067,13 @@ def inbox_decide(
     if y_dinh == "doi_ca":
         action_name = (
             "shift_swap.approve"
-            if body.quyet_dinh == "duyet"
+            if quyet_dinh == "duyet"
             else "shift_swap.reject"
         )
     else:
         action_name = (
             "constraint.approve"
-            if body.quyet_dinh == "duyet"
+            if quyet_dinh == "duyet"
             else "constraint.reject"
         )
     _audit(
@@ -993,15 +1082,15 @@ def inbox_decide(
         {
             "entity_type": "inbox_item",
             "entity_id": item_id,
-            "q": body.quyet_dinh,
+            "q": quyet_dinh,
             "y": y_dinh,
         },
     )
 
     response = dict(found)
     if (
-        body.quyet_dinh == "duyet"
-        and body.tu_dong_xep_lich
+        quyet_dinh == "duyet"
+        and tu_dong_xep_lich
         and found.get("hieu_luc", {}).get("loai") == "rang_buoc_cho_solver"
     ):
         life = _life(store_id=store_id)
@@ -1018,13 +1107,11 @@ def inbox_decide(
             # một đường CP-SAT (schedule_run/fingerprint/audit/open_shift).
             rb = found.get("rang_buoc") or {}
             week = str(rb.get("tuan_id") or life.get("tuan_iso") or "2026-W01")
-            session = auth_session(authorization) or {}
-            store_id = str(session.get("store_id") or "quan_01")
             try:
                 authoritative = run_authoritative_schedule(
                     store_id=store_id,
                     tuan_iso=week,
-                    actor_id=str(session.get("nv_id") or role),
+                    actor_id=actor_id,
                     idempotency_key=f"inbox:{item_id}:{week}:solve",
                 )
                 solver_result = authoritative.get("result") or {}
@@ -1058,6 +1145,30 @@ def inbox_decide(
             },
         )
     return response
+
+
+@router.post("/api/v1/inbox/rang-buoc/{item_id}")
+def inbox_decide(
+    item_id: str,
+    body: InboxBody,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    role = _require_manager(authorization)
+    session = auth_session(authorization) or {}
+    store_id = str(session.get("store_id") or "quan_01")
+    actor_id = str(session.get("nv_id") or role)
+    return _decide_inbox_item(
+        item_id,
+        quyet_dinh=body.quyet_dinh,
+        role=role,
+        store_id=store_id,
+        actor_id=actor_id,
+        ly_do=body.ly_do,
+        ca_id=body.ca_id,
+        doi_tac_nv_id=body.doi_tac_nv_id,
+        ap_dat=body.ap_dat,
+        tu_dong_xep_lich=body.tu_dong_xep_lich,
+    )
 
 
 @router.get("/api/v1/inbox/candidates/{item_id}")
@@ -1237,6 +1348,15 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
         st = str(t.get("trang_thai") or "dang_cho")
         treo_counts[st] = treo_counts.get(st, 0) + 1
     treo_theo_trang_thai = [{"trang_thai": k, "so_luong": v} for k, v in sorted(treo_counts.items(), key=lambda x: -x[1])]
+
+    # Hao hụt hôm nay: mặt hàng nào vượt ngưỡng, bao nhiêu mặt hàng chưa kết luận
+    # được vì thiếu vế. Bọc `try` vì đây là trang mở đầu sau đăng nhập — hỏng
+    # phần hao hụt không được phép làm sập cả bảng hôm nay.
+    try:
+        hao_hut = _hao_hut_hom_nay()
+    except Exception:
+        hao_hut = {"co_du_lieu": False, "ly_do": "khong_doc_duoc"}
+
     # Hàng đợi "Việc của bạn hôm nay" — quản lý/chủ quán thấy ngay việc chờ mình.
     # Mỗi mục: việc gì, vì sao, bấm vào đâu. NV chỉ thấy việc ca của mình.
     viec_cho_toi: list[dict[str, Any]] = []
@@ -1319,6 +1439,7 @@ def hom_nay(authorization: Annotated[str | None, Header()] = None) -> dict[str, 
         "treo_theo_trang_thai": treo_theo_trang_thai,
         "sua_gan_day": sua_gan_day,
         "ton_tom_tat": ton_tom_tat,
+        "hao_hut": hao_hut,
         "viec_cho_toi": viec_cho_toi,
         "brief_hom_nay": kv_get("brief_hom_nay", None),
         "de_xuat_lich": de_xuat_lich,
@@ -1395,6 +1516,19 @@ def waste_ghi(
         return rows
 
     kv_mutate("waste_notes", mut, [])
+    # Ghi dữ liệu vận hành phải để lại vết (ADR-008). `tieu_thu_ghi` cùng file đã
+    # gọi `_audit`; đường này thiếu, nên mọi lần ghi hao hụt trước đây vô hình
+    # trong sổ vết.
+    _audit(
+        "hao_hut",
+        role,
+        {
+            "entity_type": "waste_note",
+            "entity_id": note.get("id") or note.get("luc"),
+            "thu": thu,
+            "ghi_chu": ghi_chu[:200],
+        },
+    )
     return {"ok": True, **note}
 
 
@@ -1704,6 +1838,48 @@ def qr_use(
     return {"ok": True, "nv_id": used["nv_id"]}
 
 
+def _apply_swap_to_assignments(
+    *, giver: str, taker: str, ca_id: str, week: str, swap_id: str, actor: str,
+) -> None:
+    """Cập nhật hoán đổi nhân viên ca làm việc thật trên lịch khi lệnh đổi ca được đồng ý."""
+    if not giver or not taker or not ca_id:
+        return
+
+    def mut_pc(cur: dict[str, Any]) -> dict[str, Any]:
+        assigned = list(cur.get(ca_id, []))
+        if giver in assigned:
+            assigned = [x for x in assigned if x != giver]
+        if taker not in assigned:
+            assigned.append(taker)
+        cur[ca_id] = assigned
+        return cur
+
+    kv_mutate("phan_cong", mut_pc, {})
+
+    def mut_pc_by_week(all_weeks: dict[str, Any]) -> dict[str, Any]:
+        week_pc = all_weeks.setdefault(week, {})
+        mut_pc(week_pc)
+        return all_weeks
+
+    kv_mutate("phan_cong_by_week", mut_pc_by_week, {})
+
+    def mut_results_by_week(results: dict[str, Any]) -> dict[str, Any]:
+        if week in results and isinstance(results[week], dict):
+            pc = results[week].setdefault("phan_cong", {})
+            mut_pc(pc)
+        return results
+
+    kv_mutate("lich_tuan_results_by_week", mut_results_by_week, {})
+
+    record_sua(
+        loai="doi_ca",
+        truoc={"ca_id": ca_id, "nv_id": giver},
+        sau={"ca_id": ca_id, "nv_id": taker, "swap_id": swap_id, "tuan_iso": week},
+        ai=actor,
+        now_iso=datetime.now(UTC).isoformat(),
+    )
+
+
 @router.post("/api/v1/cho-doi-ca")
 async def swap_open(
     body: SwapBody,
@@ -1725,6 +1901,7 @@ async def swap_open(
         "ca_id": body.ca_id,
         "trang_thai": "cho_xac_nhan",
         "nguon": "quan",
+        "tuan_id": _life().get("tuan_iso", "2026-W01"),
     }
 
     def mut(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1752,8 +1929,159 @@ async def swap_open(
 
 @router.get("/api/v1/cho-doi-ca")
 def swap_list(authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
-    _require_role(authorization)
-    return {"items": kv_get("swap", [])}
+    """Phiếu đổi ca mà NGƯỜI GỌI được thấy, kèm rủi ro kẹt ca của từng người.
+
+    Vì sao phải lọc ở server: bản cũ trả nguyên `kv_get("swap", [])` cho mọi vai
+    đăng nhập — nghĩa là một nhân viên đọc được toàn bộ phiếu đổi ca của quán,
+    kể cả phiếu không liên quan tới mình. Lọc ở client (`doi-ca/page.tsx`) không
+    phải là bảo vệ: chỉ cần gọi thẳng API là thấy hết.
+
+    Kèm `rui_ro` cho từng phiếu để trả lời câu người dùng hỏi: "họ có bị kẹt ở ca
+    nào không, sao mà biết được". Đây là phép ĐO, không phải lời khuyên.
+    """
+    caller = auth_session(authorization)
+    if not caller:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    role = str(caller.get("role") or "")
+    is_manager = role in {"quan_ly", "chu_quan"}
+    caller_ids = {caller.get("nv_id"), caller.get("username")} - {None, ""}
+
+    items = kv_get("swap", [])
+    if not isinstance(items, list):
+        items = []
+
+    ra: list[dict[str, Any]] = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        b = it.get("b")
+        parties = {it.get("a"), b} - {None, "", "all"}
+        cong_khai = b == "all"
+        if not is_manager and not (caller_ids & parties) and not cong_khai:
+            continue
+        ra.append(
+            {
+                **it,
+                "rui_ro": _rui_ro_doi_ca(it),
+                "la_nguoi_tham_gia": bool(caller_ids & parties) or cong_khai,
+            }
+        )
+
+    return {
+        "items": ra,
+        "toi_la_quan_ly": is_manager,
+        "me_nv_id": caller.get("nv_id"),
+    }
+
+
+def _rui_ro_doi_ca(item: dict[str, Any]) -> dict[str, Any]:
+    """Đo rủi ro của một phiếu đổi ca: người nhận có bị kẹt ca không.
+
+    Trả dữ liệu THÔ để UI tự trình bày, không trả câu khuyên. Ba thứ được đo:
+      - `ca_giver`: ca người nhường có thật nằm trong phân công của họ không
+        (nếu không thì phiếu này không thể thực hiện được).
+      - `nguoi_nhan_dang_trung`: người nhận đã có ca khác giao giờ chưa.
+      - `co_the_nhan`: kết luận, kèm `ly_do_chan` nói RÕ vì sao bị chặn.
+    """
+    week = str(item.get("tuan_id") or "")
+    ca_id = str(item.get("ca_id") or "")
+    a = str(item.get("a") or "")
+    b = str(item.get("b") or "")
+
+    phan = _phan_cong_tuan(week)
+    meta = _ca_meta_map()
+    ca_meta = meta.get(ca_id) or {}
+
+    ca_giver = [x for x in phan.get(ca_id, []) if x == a]
+    trung: list[dict[str, Any]] = []
+    if b and b != "all":
+        bat_dau = str(ca_meta.get("bat_dau") or "")
+        ket_thuc = str(ca_meta.get("ket_thuc") or "")
+        thu = str(ca_meta.get("thu") or "")
+        for other_ca, ids in phan.items():
+            if other_ca == ca_id or b not in [str(x) for x in ids]:
+                continue
+            om = meta.get(other_ca)
+            if not isinstance(om, dict) or str(om.get("thu") or "") != thu:
+                continue
+            if _giao_nhau_gio(bat_dau, ket_thuc, str(om.get("bat_dau") or ""), str(om.get("ket_thuc") or "")):
+                trung.append(
+                    {
+                        "ca_id": other_ca,
+                        "thu": thu,
+                        "gio": f"{om.get('bat_dau')}-{om.get('ket_thuc')}",
+                    }
+                )
+
+    ly_do_chan = ""
+    if not ca_giver:
+        ly_do_chan = "ca_khong_trong_phan_cong_cua_nguoi_nhuong"
+    elif trung:
+        ly_do_chan = "nguoi_nhan_dang_co_ca_trung_gio"
+
+    return {
+        "tuan_id": week,
+        "ca_id": ca_id,
+        "ca": {
+            "thu": str(ca_meta.get("thu") or ""),
+            "gio": f"{ca_meta.get('bat_dau')}-{ca_meta.get('ket_thuc')}"
+            if ca_meta.get("bat_dau")
+            else "",
+            "vi_tri": str(ca_meta.get("vi_tri") or ""),
+        },
+        "nguoi_nhuong_dang_trong_ca": bool(ca_giver),
+        "nguoi_nhan": b,
+        "nguoi_nhan_dang_trung": trung,
+        "co_the_nhan": bool(ca_giver) and not trung,
+        "ly_do_chan": ly_do_chan,
+        "can_quan_ly_duyet": True,
+    }
+
+
+def _phan_cong_tuan(week: str) -> dict[str, list[str]]:
+    """Phân công của một tuần, đọc `phan_cong_by_week` trước `phan_cong`."""
+    if week:
+        by_week = kv_get("phan_cong_by_week", {})
+        if isinstance(by_week, dict):
+            week_doc = by_week.get(week)
+            if isinstance(week_doc, dict):
+                return {str(k): [str(x) for x in v] for k, v in week_doc.items() if isinstance(v, list)}
+    flat = kv_get("phan_cong", {})
+    if isinstance(flat, dict):
+        return {str(k): [str(x) for x in v] for k, v in flat.items() if isinstance(v, list)}
+    return {}
+
+
+def _ca_meta_map() -> dict[str, dict[str, Any]]:
+    """ca_id → {thu, bat_dau, ket_thuc, vi_tri}, đọc từ seed `ca_mau_21`."""
+    seed = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
+    out: dict[str, dict[str, Any]] = {}
+    for c in seed.get("ca_mau_21", []):
+        if not isinstance(c, dict) or not c.get("id"):
+            continue
+        out[str(c["id"])] = {
+            "thu": str(c.get("thu") or _THU_MAP.get(int(c.get("ngay_offset", 1)), "T2")),
+            "khung": str(c.get("khung") or ""),
+            "bat_dau": str(c.get("bat_dau") or ""),
+            "ket_thuc": str(c.get("ket_thuc") or ""),
+            "vi_tri": str(c.get("vi_tri") or ""),
+        }
+    return out
+
+
+def _giao_nhau_gio(a_start: str, a_end: str, b_start: str, b_end: str) -> bool:
+    """Hai khung giờ giao nhau? Chạm mép KHÔNG tính (nửa mở)."""
+    def _p(t: str) -> int:
+        try:
+            hh, mm = t.strip()[:5].split(":")
+            return int(hh) * 60 + int(mm)
+        except (ValueError, AttributeError):
+            return -1
+
+    a1, a2, b1, b2 = _p(a_start), _p(a_end), _p(b_start), _p(b_end)
+    if min(a1, a2, b1, b2) < 0:
+        return False
+    return a1 < b2 and b1 < a2
 
 
 @router.post("/api/v1/cho-doi-ca/{swap_id}/dong-y")
@@ -1787,6 +2115,8 @@ async def swap_dong_y(
             it["dong_y"] = sorted(agreed)
             if (is_open_to_all and nv != it["a"]) or (it["b"] != "all" and nv == it["b"]):
                 it["trang_thai"] = "dong_y"
+                if is_open_to_all and nv:
+                    it["b"] = nv
             found = dict(it)
             return items
         raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
@@ -1794,6 +2124,29 @@ async def swap_dong_y(
     kv_mutate("swap", mut, [])
     if not found:
         raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
+
+    if found.get("trang_thai") == "dong_y":
+        giver = str(found.get("a") or "")
+        taker = str(found.get("b") or "")
+        ca_id = str(found.get("ca_id") or "")
+        swap_week = str(found.get("tuan_id") or _life().get("tuan_iso") or "2026-W01")
+
+        # ── Cổng công bố ──
+        # Đổi ca ở tuần CHƯA công bố là sửa một bản nháp quản lý còn đang xếp →
+        # chặn. Ở tuần ĐÃ công bố thì phiếu vẫn cần một lượt quản lý duyệt, vì
+        # đây là thay đổi lịch mà người khác đang chạy theo. Trước đây cả hai
+        # trường hợp đều ghi thẳng vào phân công, chỉ cần hai bên bấm đồng ý.
+        _guard_swap_cong_bo(swap_week, caller)
+
+        _apply_swap_to_assignments(
+            giver=giver,
+            taker=taker,
+            ca_id=ca_id,
+            week=swap_week,
+            swap_id=swap_id,
+            actor=str(nv or caller.get("username") or caller["role"]),
+        )
+
     _audit(
         "shift_swap.confirm",
         nv or caller["role"],
@@ -1852,6 +2205,83 @@ async def swap_tu_choi(
     await notify_ops_changed(
         "audit:shift_swap",
         details={"action": "shift_swap.reject", "swap_id": swap_id},
+    )
+    return found
+
+
+def _guard_swap_cong_bo(week: str, caller: dict[str, Any]) -> None:
+    """Chặn đổi ca ở tuần chưa công bố; tuần đã công bố thì đòi quyền quản lý.
+
+    Vì sao hai mức khác nhau:
+      - Tuần CHƯA công bố: phân công chưa chốt, quản lý còn đang xếp. Cho nhân
+        viên đổi ca ở đây là sửa bản nháp sau lưng người xếp → chặn hẳn.
+      - Tuần ĐÃ công bố: lịch đã chốt và người khác đang chạy theo, nên đổi ca
+        là thay đổi có hậu quả thật → cho phép, nhưng PHẢI có một người có quyền
+        duyệt. Đây đúng là điều `test_capability_coverage` vẫn ghi trong mô tả
+        ("consent bắt buộc") mà mã nguồn chưa hề thực thi.
+    """
+    trang_thai = str(_life(week).get("trang_thai") or "nhap")
+    if trang_thai not in {"da_cong_bo", "da_dong"}:
+        raise HTTPException(status_code=409, detail="lich_chua_cong_bo")
+    if str(caller.get("role") or "") not in {"quan_ly", "chu_quan"}:
+        raise HTTPException(status_code=409, detail="doi_ca_can_quan_ly_duyet")
+
+
+@router.post("/api/v1/cho-doi-ca/{swap_id}/duyet")
+async def swap_duyet(
+    swap_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Quản lý duyệt và áp dụng phiếu đổi ca đã có đủ đồng ý của hai bên.
+
+    Tách khỏi `dong-y` để hai việc khác nhau không lẫn vào nhau: `dong-y` là
+    "tôi đồng ý", `duyet` là "tôi chịu trách nhiệm cho thay đổi này". Gộp lại thì
+    quyền duyệt bị lẫn với quyền đồng ý, và không còn cách nào biết ai đã duyệt.
+    """
+    caller = auth_session(authorization)
+    if not caller:
+        raise HTTPException(status_code=401, detail="thieu_token")
+    if str(caller.get("role") or "") not in {"quan_ly", "chu_quan"}:
+        raise HTTPException(status_code=403, detail="chi_quan_ly_duyet_doi_ca")
+
+    found: dict[str, Any] | None = None
+
+    def mut(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        nonlocal found
+        for it in items:
+            if it.get("id") != swap_id:
+                continue
+            if it.get("trang_thai") == "tu_choi":
+                raise HTTPException(status_code=409, detail="swap_da_tu_choi")
+            if it.get("da_duyet_boi"):
+                raise HTTPException(status_code=409, detail="swap_da_duyet_roi")
+            it["da_duyet_boi"] = str(caller.get("nv_id") or caller.get("username") or "")
+            it["trang_thai"] = "da_duyet"
+            found = dict(it)
+            return items
+        raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
+
+    kv_mutate("swap", mut, [])
+    if not found:
+        raise HTTPException(status_code=404, detail="swap_khong_tim_thay")
+
+    week = str(found.get("tuan_id") or _life().get("tuan_iso") or "2026-W01")
+    _apply_swap_to_assignments(
+        giver=str(found.get("a") or ""),
+        taker=str(found.get("b") or ""),
+        ca_id=str(found.get("ca_id") or ""),
+        week=week,
+        swap_id=swap_id,
+        actor=str(caller.get("nv_id") or caller.get("username") or "quan_ly"),
+    )
+    _audit(
+        "shift_swap.approve",
+        str(caller.get("nv_id") or caller["role"]),
+        {"entity_type": "shift_swap", "entity_id": swap_id, "tuan_id": week},
+    )
+    await notify_ops_changed(
+        "audit:shift_swap",
+        details={"action": "shift_swap.approve", "swap_id": swap_id},
     )
     return found
 

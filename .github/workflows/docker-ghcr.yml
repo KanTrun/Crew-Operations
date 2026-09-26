@@ -38,10 +38,6 @@ jobs:
         with:
           ref: ${{ env.IMAGE_SHA }}
 
-      - name: Web build arg — API URL public
-        if: matrix.name == 'nhipquan-web'
-        run: echo "WEB_API_URL=https://nhipquan.duckdns.org" >> $GITHUB_ENV
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -54,6 +50,15 @@ jobs:
 
       - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v6
+        # URL API public cho build web (NEXT_PUBLIC_API_URL). Khai báo `env` ở
+        # CẤP STEP — nơi thực sự dùng — để biểu thức `env.WEB_API_URL` bên dưới
+        # chắc chắn hợp lệ. Khai ở cấp workflow KHÔNG đủ: extension GitHub
+        # Actions chỉ validate `env` theo job/step nên vẫn cảnh báo
+        # "Context access might be invalid: WEB_API_URL" (false positive).
+        # Trước đây giá trị này còn bị echo động vào $GITHUB_ENV lúc chạy — khó
+        # kiểm, nay cố định trong workflow.
+        env:
+          WEB_API_URL: https://nhipquan.duckdns.org
         with:
           context: .
           file: ${{ matrix.dockerfile }}

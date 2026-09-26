@@ -1,0 +1,59 @@
+{
+  "description": "Một khu vực hoặc đồ vật trong quán, gắn toạ độ không gian.",
+  "properties": {
+    "anchor_id": {
+      "minLength": 1,
+      "title": "Anchor Id",
+      "type": "string"
+    },
+    "khu_vuc": {
+      "minLength": 1,
+      "title": "Khu Vuc",
+      "type": "string"
+    },
+    "label": {
+      "minLength": 1,
+      "title": "Label",
+      "type": "string"
+    },
+    "x": {
+      "maximum": 1000.0,
+      "minimum": -1000.0,
+      "title": "X",
+      "type": "number"
+    },
+    "y": {
+      "maximum": 1000.0,
+      "minimum": -1000.0,
+      "title": "Y",
+      "type": "number"
+    },
+    "z": {
+      "default": 0.0,
+      "maximum": 1000.0,
+      "minimum": -1000.0,
+      "title": "Z",
+      "type": "number"
+    },
+    "kind": {
+      "minLength": 1,
+      "title": "Kind",
+      "type": "string"
+    },
+    "active": {
+      "default": true,
+      "title": "Active",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "anchor_id",
+    "khu_vuc",
+    "label",
+    "x",
+    "y",
+    "kind"
+  ],
+  "title": "SpatialAnchor",
+  "type": "object"
+}

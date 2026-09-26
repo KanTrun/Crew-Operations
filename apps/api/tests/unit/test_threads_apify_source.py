@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 from unittest.mock import patch
-import pytest
 
+import pytest
+from ca_agents.ag_trend import _scrape_threads_smart
 from ca_agents.clients.apify_client import ApifyError
 from ca_agents.sources.threads_apify_source import (
     _build_input,
@@ -15,7 +16,16 @@ from ca_agents.sources.threads_apify_source import (
     _format_replies,
     scrape_threads_apify,
 )
-from ca_agents.ag_trend import _scrape_threads_smart
+from ca_agents.sources.threads_direct_source import scrape_threads_direct
+
+
+def _reset_cb(cb: object) -> None:
+    """Đóng lại circuit breaker module-level (state process-wide, dễ gây test pollution).
+
+    Xem `test_scrape_threads_direct_primary` để biết chi tiết sự cố.
+    """
+    cb._failures.clear()  # type: ignore[attr-defined]
+    cb._open_until = 0.0  # type: ignore[attr-defined]
 
 
 def _apify_threads_item(
@@ -134,8 +144,15 @@ def test_scrape_threads_direct_primary():
 
     Jina engine hay bị 403 từ CI/máy local; hành vi thật (parse markdown →
     TrendItem) vẫn được kiểm tra đầy đủ qua mock urlopen.
+
+    ⚠️ BẮT BUỘC reset circuit breaker `_CB_JINA` trước test: đây là state
+    module-level process-wide. Khi chạy TRONG full suite, các test khác đã gọi
+    Jina thật và nhận 403 ≥3 lần → mạch Jina OPEN 5 phút → `_CB_JINA.allow()`
+    trả False → hàm trả [] và test FAIL dù chạy riêng thì PASS (test pollution).
     """
-    from ca_agents.sources.threads_direct_source import scrape_threads_direct
+    from ca_agents.sources import threads_direct_source as tds
+
+    _reset_cb(tds._CB_JINA)
 
     mock_md = (
         "## [genz_coffee_lover](https://www.threads.net/@genz_coffee_lover)\n\n"
@@ -152,7 +169,7 @@ def test_scrape_threads_direct_primary():
         def read(self) -> bytes:
             return self._body
 
-        def __enter__(self) -> "_FakeResp":
+        def __enter__(self) -> _FakeResp:
             return self
 
         def __exit__(self, *args: object) -> None:
@@ -171,12 +188,14 @@ def test_scrape_threads_direct_primary():
 
 def test_scrape_threads_direct_jina_fail_returns_empty():
     """Jina fail → trả [] (không fallback giả mạo) để chuỗi smart rớt tầng đúng."""
-    from ca_agents.sources.threads_direct_source import scrape_threads_direct
+    from ca_agents.sources import threads_direct_source as tds
+
+    _reset_cb(tds._CB_JINA)
 
     with patch(
         "urllib.request.urlopen",
         side_effect=Exception("HTTP Error 403: Forbidden"),
     ):
-        items = scrape_threads_direct(keyword="matcha", count=4)
+        items = tds.scrape_threads_direct(keyword="matcha", count=4)
     assert items == []
 

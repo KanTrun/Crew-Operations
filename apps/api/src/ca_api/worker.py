@@ -179,11 +179,29 @@ def _tuan_sau() -> str:
     return f"{iso.year}-W{iso.week:02d}"
 
 
+def _trong_ngay(rows: list[Any], hom_nay: str) -> list[dict[str, Any]]:
+    """Lọc bản ghi thuộc hôm nay, đọc đúng trường ngày của từng nguồn ghi.
+
+    Bốn trường vì bốn đường ghi khác nhau: `luc` (route web), `created_at`
+    (seed/fixture), `ngay` và `at` (đường cũ). Trước đây chỉ đọc `ngay`/`at`, nên
+    mọi bản ghi do route web ghi đều bị đếm là 0 — bản tổng kết ngày luôn rỗng
+    dù trong ngày có ghi thật.
+    """
+    ra: list[dict[str, Any]] = []
+    for x in rows:
+        if not isinstance(x, dict):
+            continue
+        moc = str(x.get("luc") or x.get("created_at") or x.get("ngay") or x.get("at") or "")
+        if moc.startswith(hom_nay):
+            ra.append(x)
+    return ra
+
+
 def _tong_ket_ngay() -> str:
     """Gom số liệu tiêu thụ + hao phí đã ghi trong ngày."""
     hom_nay = datetime.now(_VN_TZ).date().isoformat()
-    ton = [x for x in kv_get("tieu_thu", []) if isinstance(x, dict) and str(x.get("ngay") or x.get("at") or "").startswith(hom_nay)]
-    hp = [x for x in kv_get("waste_notes", []) if isinstance(x, dict) and str(x.get("ngay") or x.get("at") or "").startswith(hom_nay)]
+    ton = _trong_ngay(kv_get("tieu_thu", []), hom_nay)
+    hp = _trong_ngay(kv_get("waste_notes", []), hom_nay)
     tong = {
         "ngay": hom_nay,
         "so_lan_kiem_ke": len(ton),
@@ -230,11 +248,18 @@ def _chay_predict_mau() -> str:
     pattern_dicts = [p.model_dump() for p in patterns]
     rule_dicts = [r.model_dump() for r in rules]
 
+    # Cùng khoá dedupe với `POST /ops/predict/run` (ops_predict.py): canary
+    # chạy mỗi đêm với cùng dữ liệu mẫu sẽ tạo `mo_ta`/`cau` giống hệt nhau —
+    # ghi đè theo nội dung, không chèn thêm bản trùng mỗi đêm.
     def mut_patterns(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return pattern_dicts + cur
+        seen = {p.get("mo_ta") for p in pattern_dicts}
+        kept = [p for p in cur if p.get("mo_ta") not in seen]
+        return pattern_dicts + kept
 
     def mut_rules(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return rule_dicts + cur
+        seen = {r.get("cau") for r in rule_dicts}
+        kept = [r for r in cur if r.get("cau") not in seen]
+        return rule_dicts + kept
 
     kv_mutate("ops_predict_patterns", mut_patterns, [])
     kv_mutate("ops_predict_rules", mut_rules, [])

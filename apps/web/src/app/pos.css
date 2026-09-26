@@ -1,0 +1,191 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   POS quầy nội bộ — nhóm món, khối ca làm việc, thẻ đơn pha chế.
+   ───────────────────────────────────────────────────────────────────────────
+   Vì sao tách file riêng thay vì thêm vào `globals.css`:
+   lớp CSS của quầy (.nq-pos-*, .nq-ca-strip*, .nq-phieu*) bị nuốt mất một lần
+   khi hai phiên cùng sửa `globals.css`. `globals.css` là file dùng chung cho
+   toàn app nên rất dễ ghi đè lẫn nhau; tách ra đây (giống `experience.css`)
+   để phần quầy có vùng riêng, sửa được mà không đụng vào ai.
+   Thứ tự nạp: sau `globals.css` (xem `layout.tsx`) nên rule ở đây thắng khi
+   cùng độ ưu tiên — đúng ý đồ "quầy là vùng riêng của quầy".
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Mục menu theo nhóm món ──
+   Menu phẳng 40 món thì nhân viên phải quét mắt cả danh sách mỗi lần gọi món.
+   Mỗi nhóm là một khối có tiêu đề + số món, ngăn bằng vạch mảnh để mắt bám
+   được mốc. Tiêu đề dùng mono hoa nhỏ, đúng giọng nhãn khu vực của hệ. */
+.nq-pos-nhom + .nq-pos-nhom {
+  margin-top: var(--nq-s5);
+}
+
+.nq-pos-nhom__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--nq-s3);
+  margin: 0 0 var(--nq-s3);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--nq-line);
+}
+
+.nq-pos-nhom__ten {
+  margin: 0;
+  font-family: var(--nq-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--nq-accent);
+}
+
+.nq-pos-nhom__dem {
+  flex-shrink: 0;
+  font-family: var(--nq-font-mono);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--nq-ink-muted);
+}
+
+/* ── Khối ca làm việc ──
+   Nhân viên cần thấy mình đang ở ca nào và còn ca nào nhận được, ngay trên
+   màn hình ghi đơn — trước đây phải mở trang khác mới biết. */
+.nq-ca-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nq-s3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nq-ca-strip__item {
+  flex: 1 1 12rem;
+  min-width: 0;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius);
+  padding: 0.7rem 0.85rem;
+  background: color-mix(in srgb, var(--nq-bg) 62%, var(--nq-surface-hi));
+}
+
+.nq-ca-strip__item--hom-nay {
+  border-color: color-mix(in srgb, var(--nq-accent) 55%, var(--nq-line));
+}
+
+.nq-ca-strip__khung {
+  display: block;
+  font-family: var(--nq-font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--nq-accent);
+}
+
+.nq-ca-strip__gio {
+  margin: 0.25rem 0 0;
+  font-family: var(--nq-font-mono);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--nq-fg);
+}
+
+.nq-ca-strip__meta {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--nq-ink-muted);
+}
+
+/* ── Thẻ đơn trên bảng pha chế (KDS) ──
+   Đơn là việc đang chờ, phải đọc được từ xa: mã đơn + giờ vào ở dòng đầu, món
+   là phần thân, nút thao tác ở chân. Thẻ ĐẶC, không kính — đây là bàn làm việc. */
+.nq-phieu {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: color-mix(in srgb, var(--nq-bg-elevated) 92%, transparent);
+  box-shadow: var(--nq-shadow-bubble), var(--nq-inner-hi);
+  overflow: hidden;
+}
+
+.nq-phieu--dang_pha {
+  border-color: color-mix(in srgb, var(--nq-st-warn) 55%, var(--nq-line));
+}
+
+.nq-phieu__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nq-s3);
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--nq-line);
+  background: color-mix(in srgb, var(--nq-bg) 55%, transparent);
+}
+
+.nq-phieu__ma {
+  font-family: var(--nq-font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--nq-ink-muted);
+}
+
+.nq-phieu__gio {
+  flex-shrink: 0;
+  font-family: var(--nq-font-mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--nq-ink-muted);
+}
+
+.nq-phieu__body {
+  flex: 1 1 auto;
+  padding: 0.8rem 0.9rem;
+}
+
+.nq-phieu__dong {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--nq-s4);
+  padding: 0.3rem 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--nq-line) 70%, transparent);
+}
+
+.nq-phieu__dong:last-child {
+  border-bottom: none;
+}
+
+.nq-phieu__ten {
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.nq-phieu__so {
+  flex-shrink: 0;
+  font-family: var(--nq-font-mono);
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--nq-accent);
+}
+
+.nq-phieu__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nq-s3);
+  padding: 0.7rem 0.9rem;
+  border-top: 1px solid var(--nq-line);
+  background: color-mix(in srgb, var(--nq-bg) 42%, transparent);
+}
+
+.nq-phieu__ly-do {
+  margin-top: var(--nq-s3);
+  padding-top: var(--nq-s3);
+  border-top: 1px solid var(--nq-line);
+}

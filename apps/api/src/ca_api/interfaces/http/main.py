@@ -25,6 +25,7 @@ from ca_agents.ag_pricing.job_manager import get_job_store as _get_job_store
 from ca_agents.ag_sop import answer as _sop_answer
 from ca_agents.ag_tkb.extract import extract_tkb as _extract_tkb
 from ca_agents.ag_waste import cluster as _waste_cluster
+from ca_agents.ag_waste import tinh_tu_nguon as _loss_engine
 from ca_agents.clients.serpapi_client import (
     get_circuit_breaker as _get_circuit_breaker,
 )
@@ -64,11 +65,16 @@ from ca_api.interfaces.http.channels import router as channels_router
 from ca_api.interfaces.http.chat import router as chat_router
 from ca_api.interfaces.http.copilot import router as copilot_router
 from ca_api.interfaces.http.copilot_voice import router as copilot_voice_router
+from ca_api.interfaces.http.experience import router as experience_router
+from ca_api.interfaces.http.experience_rules import router as experience_rules_router
+from ca_api.interfaces.http.gmail import router as gmail_router
+from ca_api.interfaces.http.hao_hut import router as hao_hut_router
 from ca_api.interfaces.http.mail import router as mail_router
 from ca_api.interfaces.http.meeting import router as meeting_router
 from ca_api.interfaces.http.ops_explain import router as ops_explain_router
 from ca_api.interfaces.http.ops_predict import router as ops_predict_router
 from ca_api.interfaces.http.pos import router as pos_router
+from ca_api.interfaces.http.quanverse import router as quanverse_router
 
 try:
     from ca_api.interfaces.http.pricing_radar import (
@@ -81,10 +87,13 @@ except ImportError:
     pricing_radar_router = None  # type: ignore[assignment]
     serpapi_system_router = None  # type: ignore[assignment]
 from ca_api.interfaces.http.reservations import router as reservations_router
+from ca_api.interfaces.http.shift_rescue import router as shift_rescue_router
 from ca_api.interfaces.http.skills import router as skills_router
+from ca_api.interfaces.http.spatial_memory import router as spatial_memory_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
 from ca_api.interfaces.http.trends import router as trends_router
+from ca_api.interfaces.http.war_room import router as war_room_router
 from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import (
     DangKyLoi,
@@ -97,6 +106,7 @@ from ca_api.persist import (
     don_list,
     get_user_emails,
     kv_get,
+    kv_get_many,
     kv_mutate,
     kv_set,
     list_users,
@@ -184,6 +194,8 @@ async def broadcast_successful_mutation(request: Request, call_next: Any) -> Any
     actor_session = (
         auth_session(request.headers.get("authorization"))
         if is_mutation_method
+        and path not in _AUDIT_SKIP_PATHS
+        and request.headers.get("authorization")
         else None
     )
     generic_audit_added = False
@@ -241,22 +253,30 @@ async def broadcast_successful_mutation(request: Request, call_next: Any) -> Any
 
 app.include_router(sprint3_router)
 app.include_router(sprint45_router)
+app.include_router(hao_hut_router)
 app.include_router(channels_router)
 app.include_router(copilot_router)
 app.include_router(copilot_voice_router)
 app.include_router(pos_router)
+app.include_router(quanverse_router)
 app.include_router(meeting_router)
 app.include_router(ops_explain_router)
 app.include_router(ops_predict_router)
+app.include_router(experience_router)
+app.include_router(experience_rules_router)
+app.include_router(war_room_router)
 app.include_router(trends_router)
 if pricing_radar_router:
     app.include_router(pricing_radar_router)
 if serpapi_system_router:
     app.include_router(serpapi_system_router)
 app.include_router(mail_router)
+app.include_router(gmail_router)
 app.include_router(ai_learning_router)
 app.include_router(chat_router)
 app.include_router(reservations_router)
+app.include_router(shift_rescue_router)
+app.include_router(spatial_memory_router)
 app.include_router(skills_router)
 
 
@@ -280,15 +300,8 @@ def _week_value(key: str, week: str, default: Any) -> Any:
     raw = kv_get(key, None)
     if isinstance(raw, dict) and raw:
         return raw.get(week, default)
-    if key.endswith("_by_week"):
-        legacy = kv_get(key.removesuffix("_by_week"), None)
-        if legacy is not None:
-            # Legacy doc có tuan_iso: chỉ fallback khi đúng tuần được hỏi,
-            # tránh tuần mới thừa hưởng trạng thái của tuần cũ.
-            if isinstance(legacy, dict) and "tuan_iso" in legacy:
-                return legacy if legacy.get("tuan_iso") == week else default
-            return legacy
-    return default
+    legacy = kv_get(key.removesuffix("_by_week"), None) if key.endswith("_by_week") else None
+    return legacy if legacy is not None else default
 
 
 def _pin_map(tuan_iso: str) -> dict[tuple[str, str], bool]:
@@ -418,6 +431,10 @@ def _adapted_serpapi_quota() -> dict[str, Any]:
 
 configure_data_sources(
     kv_get=kv_get,
+    # Đọc nhiều khoá trong MỘT connection — dùng cho tool cần ≥3 khoá
+    # (`tool_get_schedule` đọc 6). Thiếu hàm này thì tool tự fallback về
+    # `kv_get` tuần tự và mất hết lợi ích về độ trễ.
+    kv_get_many=kv_get_many,
     list_luat=_list_luat,
     load_template=_load_template,
     list_sua=_list_sua,
@@ -425,6 +442,9 @@ configure_data_sources(
     de_xuat=_de_xuat,
     sop_answer=_sop_answer,
     waste_cluster=_waste_cluster,
+    # Động cơ hao hụt: CÙNG hàm mà GET /api/v1/hao-hut gọi, nên câu trả lời của
+    # agent mẹ và con số trên trang Hao phí không thể lệch nhau.
+    loss_engine=_loss_engine,
     list_ca_meta=_list_ca_meta,
     draft_mail=_draft_mail_with_active_rules,
     get_user_emails=get_user_emails,
@@ -1024,6 +1044,32 @@ async def patch_lifecycle(
 
     await notify_ops_changed("roster:lifecycle", body.tuan_iso)
     return {"ok": True, **new_state, "solver": solver_ket_qua}
+
+
+@app.get("/api/v1/lich-tuan/thay-doi")
+def get_lich_thay_doi(
+    _role: Annotated[str, Depends(_require_write_role)],
+    tuan_iso: str = Query(default="2026-W36"),
+) -> dict[str, Any]:
+    """Nhật ký thay đổi ca của một tuần — bằng chứng "ai đổi ca với ai".
+
+    Vì sao cần endpoint riêng thay vì nhét diff vào `GET /lich-tuan`: lịch tuần
+    được gọi lại RẤT thường xuyên (mỗi lần đổi tuần, mỗi lần có sự kiện realtime).
+    Diff chỉ cần khi người dùng chủ động hỏi "vì sao lịch đổi", nên tách ra để
+    không làm nặng đường đọc chính.
+
+    Trả bản MỚI NHẤT trước. Mỗi bản đã ở dạng đọc được (diff có tên người), UI
+    không phải tự ghép id.
+    """
+    raw = kv_get("lich_thay_doi_by_week", {})
+    items = raw.get(tuan_iso, []) if isinstance(raw, dict) else []
+    if not isinstance(items, list):
+        items = []
+    return {
+        "tuan_iso": tuan_iso,
+        "so_ban_ghi": len(items),
+        "items": list(reversed(items)),
+    }
 
 
 @app.post("/api/v1/lich-tuan/nv-status")

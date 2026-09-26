@@ -560,12 +560,23 @@ async def draft_llm_reply(
         wifi_info = ""
         if profile.get("wifi_ssid"):
             wifi_info = f", Wifi: {profile.get('wifi_ssid')}" + (f" (Pass: {profile.get('wifi_pass')})" if profile.get("wifi_pass") else "")
+        # Trường rỗng → "(chưa cập nhật)" — không nhồi chuỗi rỗng/None vào prompt.
+        def _pf(key: str) -> str:
+            v = str(profile.get(key) or "").strip()
+            return v if v else "(chưa cập nhật)"
+
+        huong_dan = str(profile.get("huong_dan_agent") or "").strip()
         ctx_summary = (
-            f"Quán: {profile.get('ten_quan', 'Nhịp Quán')}, Địa chỉ: {profile.get('dia_chi', '')}, "
-            f"Giờ mở cửa: {profile.get('gio_mo_cua', '')}, Hotline: {profile.get('hotline', '')}{wifi_info}\n"
+            f"Quán: {_pf('ten_quan')}, Địa chỉ: {_pf('dia_chi')}, "
+            f"Giờ mở cửa: {_pf('gio_mo_cua')}, Hotline: {_pf('hotline')}{wifi_info}\n"
             f"Menu & Giá: {menu_str}\n"
-            f"Khuyến mãi: {', '.join([p.get('tieu_de', '') for p in promos])}"
+            f"Khuyến mãi: {', '.join([p.get('tieu_de', '') for p in promos]) or 'Chưa có'}"
         )
+        if huong_dan:
+            ctx_summary += (
+                "\n\nHƯỚNG DẪN RIÊNG CỦA CHỦ QUÁN (bắt buộc tuân thủ, ưu tiên cao nhất "
+                "sau yêu cầu pháp luật/an toàn):\n" + huong_dan
+            )
         sys_prompt = (
             build_fb_comment_system_prompt(ctx_summary)
             if is_comment

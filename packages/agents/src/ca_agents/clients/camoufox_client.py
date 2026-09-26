@@ -124,8 +124,13 @@ def _try_launch() -> None:
             "chưa cài package `camoufox` — cài: pip install -U 'camoufox[geoip]'"
         ) from e
 
+    # Camoufox là optional dep không có type stub — cast để mypy strict khỏi
+    # bac `no-untyped-call`; runtime không đổi.
+    from typing import Any, cast
+
+    CamoufoxT = cast(Any, Camoufox)
     try:
-        cm = Camoufox(headless=True)
+        cm = CamoufoxT(headless=True)
         browser = cm.__enter__()
         browser.new_page()  # verify binary + system deps thật sự chạy
         cm.__exit__(None, None, None)

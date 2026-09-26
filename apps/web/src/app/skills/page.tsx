@@ -8,14 +8,15 @@ import {
   Alert,
   AuthGate,
   Btn,
+  Dialog,
   Empty,
-  Kicker,
   Loading,
   Notice,
   OpsCard,
   PageHeader,
   StatusChip,
   Summary,
+  TechnicalDrawer,
   inputClassName,
   textareaClassName,
 } from "../../ui/kit";
@@ -217,7 +218,7 @@ export default function SkillsPage() {
       />
 
       {/* Action bar: Tìm kiếm + Chưng cất SOP mới */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[var(--nq-surface-hi)] p-4 border-2 border-[var(--nq-dim)] mb-8 shadow-[4px_4px_0px_0px_var(--nq-copper-dim)]">
+      <div className="nq-surface-row flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 mb-8 shadow-[var(--nq-elev-2)]">
         <div className="w-full sm:w-80">
           <input
             type="text"
@@ -331,7 +332,7 @@ export default function SkillsPage() {
               return (
                 <div
                   key={skill.skill_id}
-                  className="bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] hover:border-[var(--nq-copper)] p-5 flex flex-col justify-between transition-all shadow-[4px_4px_0px_0px_var(--nq-copper-dim)]"
+                  className="bg-[var(--nq-surface)] nq-surface-tile hover:border-[var(--nq-accent)] p-5 flex flex-col justify-between transition-all shadow-[var(--nq-elev-2)]"
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
@@ -347,20 +348,20 @@ export default function SkillsPage() {
                       )}
                     </div>
 
-                    <h4 className="font-black text-lg text-[var(--nq-fg)] uppercase leading-tight">
+                    <h4 className="font-semibold text-lg text-[var(--nq-fg)] uppercase leading-tight">
                       {skill.name}
                     </h4>
 
                     {/* Scripts & References info */}
                     <div className="space-y-1 text-xs">
                       <div className="flex items-center gap-1 text-[var(--nq-dim)]">
-                        <span className="font-mono font-medium text-[var(--nq-copper)]">Scripts ({skill.scripts.length}):</span>
+                        <span className="font-mono font-medium text-[var(--nq-accent)]">Scripts ({skill.scripts.length}):</span>
                         <span className="truncate">
                           {skill.scripts.length > 0 ? skill.scripts.join(", ") : "Không có"}
                         </span>
                       </div>
                       <div className="flex items-center gap-1 text-[var(--nq-dim)]">
-                        <span className="font-mono font-medium text-[var(--nq-copper)]">Tài liệu ({skill.references.length}):</span>
+                        <span className="font-mono font-medium text-[var(--nq-accent)]">Tài liệu ({skill.references.length}):</span>
                         <span className="truncate">
                           {skill.references.length > 0 ? skill.references.join(", ") : "Không có"}
                         </span>
@@ -369,7 +370,7 @@ export default function SkillsPage() {
 
                     {/* SHA256 integrity tag */}
                     <div className="pt-1">
-                      <span className="text-[10px] font-mono text-[var(--nq-dim)] bg-[var(--nq-bg)] px-2 py-1 border border-[var(--nq-dim)] block truncate">
+                      <span className="text-2xs font-mono text-[var(--nq-dim)] bg-[var(--nq-bg)] px-2 py-1 border border-[var(--nq-dim)] block truncate">
                         SHA256: {skill.sha256}
                       </span>
                     </div>
@@ -389,11 +390,11 @@ export default function SkillsPage() {
                     )}
                   </div>
 
-                  <div className="pt-4 mt-4 border-t-2 border-[var(--nq-dim)] flex items-center justify-between gap-2">
+                  <div className="pt-4 mt-4 border-t border-[var(--nq-line)] flex items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={() => handleViewDetail(skill.skill_id)}
-                      className="text-xs font-bold uppercase tracking-wider text-[var(--nq-copper)] hover:underline"
+                      className="text-xs font-bold uppercase tracking-wider text-[var(--nq-accent)] hover:underline"
                     >
                       Xem SKILL.md
                     </button>
@@ -416,71 +417,46 @@ export default function SkillsPage() {
         )}
       </OpsCard>
 
-      {/* Modal chi tiết SKILL.md */}
-      {selectedSkillId && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="bg-[var(--nq-surface-hi)] border-2 border-[var(--nq-copper)] max-w-4xl w-full max-h-[90vh] flex flex-col shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] overflow-hidden">
-            <div className="p-4 border-b-2 border-[var(--nq-dim)] flex items-center justify-between bg-[var(--nq-surface)]">
-              <div>
-                <h3 className="font-black text-lg text-[var(--nq-fg)] uppercase">
-                  Chi tiết Kỹ năng: {selectedSkillId}
-                </h3>
-                {detailData && (
-                  <p className="text-xs font-mono text-[var(--nq-dim)]">
-                    SHA256: {detailData.content_sha256}
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedSkillId(null);
-                  setDetailData(null);
-                }}
-                className="p-1.5 text-[var(--nq-dim)] hover:text-[var(--nq-fg)] text-xl font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto space-y-4">
-              {detailLoading ? (
-                <Loading skeleton="text">Đang đọc nội dung kỹ năng…</Loading>
-              ) : detailData ? (
-                <>
-                  <div>
-                    <Kicker>NỘI DUNG ĐỊNH NGHĨA SKILL.MD</Kicker>
-                    <pre className="p-4 bg-[var(--nq-bg)] border-2 border-[var(--nq-dim)] text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-96">
-                      {detailData.content}
-                    </pre>
-                  </div>
-
-                  <div>
-                    <Kicker>NGỮ CẢNH CHÈN VÀO AG-COPILOT (PROMPT CONTEXT)</Kicker>
-                    <pre className="p-4 bg-[var(--nq-bg)] border-2 border-[var(--nq-dim)] text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-48 text-[var(--nq-dim)]">
-                      {detailData.prompt_context_sample}
-                    </pre>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-[var(--nq-dim)]">Không tải được thông tin kỹ năng.</p>
-              )}
-            </div>
-
-            <div className="p-4 border-t-2 border-[var(--nq-dim)] flex justify-end">
-              <Btn
-                variant="primary"
-                onClick={() => {
-                  setSelectedSkillId(null);
-                  setDetailData(null);
-                }}
-              >
-                Đóng
-              </Btn>
-            </div>
+      <Dialog
+        open={Boolean(selectedSkillId)}
+        title={selectedSkillId ? `Kỹ năng: ${selectedSkillId}` : "Chi tiết kỹ năng"}
+        onClose={() => {
+          setSelectedSkillId(null);
+          setDetailData(null);
+        }}
+        footer={
+          <Btn
+            variant="primary"
+            onClick={() => {
+              setSelectedSkillId(null);
+              setDetailData(null);
+            }}
+          >
+            Đóng
+          </Btn>
+        }
+      >
+        {detailLoading ? (
+          <Loading skeleton="text">Đang đọc nội dung kỹ năng…</Loading>
+        ) : detailData ? (
+          <div className="space-y-4">
+            <p className="text-sm text-[var(--nq-ink-muted)]">
+              Định nghĩa kỹ năng và ngữ cảnh đưa vào trợ lý. Nội dung kỹ thuật nằm trong ngăn bên dưới.
+            </p>
+            {detailData.content_sha256 ? (
+              <StatusChip tone="info">Chữ ký nội dung đã xác minh</StatusChip>
+            ) : null}
+            <TechnicalDrawer summary="Xem định nghĩa kỹ năng (SKILL.md)">
+              <div className="nq-prose-block">{detailData.content}</div>
+            </TechnicalDrawer>
+            <TechnicalDrawer summary="Xem ngữ cảnh đưa vào trợ lý">
+              <div className="nq-prose-block nq-prose-block--muted">{detailData.prompt_context_sample}</div>
+            </TechnicalDrawer>
           </div>
-        </div>
-      )}
+        ) : (
+          <Empty title="Không tải được">Không đọc được thông tin kỹ năng này.</Empty>
+        )}
+      </Dialog>
     </div>
   );
 }

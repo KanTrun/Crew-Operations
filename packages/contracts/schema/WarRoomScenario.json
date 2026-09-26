@@ -1,0 +1,54 @@
+{
+  "$defs": {
+    "WarRoomScenarioType": {
+      "description": "Kịch bản War Room — đóng, tham số hoá rõ ràng (không nhận tham số lạ).",
+      "enum": [
+        "demand_surge",
+        "add_staff_to_shift",
+        "remove_staff_from_shift",
+        "equipment_outage",
+        "heavy_rain",
+        "large_group_arrival"
+      ],
+      "title": "WarRoomScenarioType",
+      "type": "string"
+    }
+  },
+  "description": "Một kịch bản \"nếu... thì...\" với tham số đã xác thực.",
+  "properties": {
+    "scenario_id": {
+      "minLength": 1,
+      "title": "Scenario Id",
+      "type": "string"
+    },
+    "loai": {
+      "$ref": "#/$defs/WarRoomScenarioType"
+    },
+    "tham_so": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          }
+        ]
+      },
+      "title": "Tham So",
+      "type": "object"
+    }
+  },
+  "required": [
+    "scenario_id",
+    "loai"
+  ],
+  "title": "WarRoomScenario",
+  "type": "object"
+}

@@ -60,6 +60,50 @@ class SoundEffects {
       // Audio context might be restricted before first user interaction
     }
   }
+
+  /** Tiếng "bíp" nhẹ khi bắt đầu nghe — báo hiệu micro đã mở. */
+  playVoiceStart(): void {
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(660, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } catch {
+      // ignore
+    }
+  }
+
+  /** Tiếng "ting" nhẹ khi trợ lý trả lời xong — báo hiệu đã nghe xong. */
+  playVoiceEnd(): void {
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(660, now + 0.12);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } catch {
+      // ignore
+    }
+  }
 }
 
 export const chatSounds = new SoundEffects();

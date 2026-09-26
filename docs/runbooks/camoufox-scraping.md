@@ -7,9 +7,20 @@ Camoufox là **Firefox custom build chống fingerprint** (spoof ở tầng C++/
 Chuỗi cào mới sau khi có Camoufox (plan §3.5):
 
 ```
-TikTok:   Google Bridge → TikWM → [Camoufox nếu available] → Apify → RSS
-Threads:  [Official API nếu có token] → Google RSS → Jina → [Camoufox nếu available] → Apify → RSS
+TikTok:   TikWM → [Camoufox nếu available] → Apify → static topics (is_live_scraped=False)
+Threads:  [Official API nếu có token] → Google RSS Bridge → Jina → [Camoufox nếu available] → Apify → RSS GenZ
 ```
+
+> **Trạng thái từng tầng (đo live 2026-09-24)** — xem trước khi tin vào sơ đồ:
+>
+> | Tầng | Trạng thái | Ghi chú |
+> |---|---|---|
+> | TikWM | 🟢 sống | Timeout đặt 20s, thử 2 host, rate limit 1 req/s |
+> | Threads Official API | ⚪ chưa cấu hình | Cần `THREADS_ACCESS_TOKEN` (tier 0 đáng tin nhất) |
+> | Google RSS Bridge | 🟡 chạy nhưng KHÔNG phải bài Threads | `site:threads.net` trả **0 item**; RSS trả tin báo chí → `is_live_scraped=False`, `link_goc=""` |
+> | Jina Reader (`r.jina.ai`) | 🔴 **HTTP 403** | Đã ngừng hoạt động cho Threads |
+> | Camoufox | ⚪ chưa cài | `is_available()=False` → tier bị skip |
+> | Apify Threads | ⚠️ phụ thuộc ID | `apify/threads-scraper` **404**; dùng `curious_coder/threads-scraper` |
 
 Mode UI tương ứng:
 
@@ -247,7 +258,7 @@ print('camoufox:', 'OK' if is_available() else 'NOT INSTALLED')
 | Hoạt động | Chi phí | Latency |
 |---|---|---|
 | 1 lần scrape Camoufox | **0đ** | ~3-10s (chậm hơn HTTP client ~10x) |
-| 1 lần scrape Apify | ~0.5-2 CU ($5 free/tháng) | ~10-30s |
+| 1 lần scrape Apify | ~0.5-2 CU (hạn mức gói Free đọc từ `/users/me/limits`) | ~10-30s |
 
 **Đánh đổi:** Camoufox miễn phí + khó chặn, đổi lại nặng RAM (~500MB-1GB/instance) và chậm. Đó là lý do nó là tier **trung gian**, không phải primary.
 

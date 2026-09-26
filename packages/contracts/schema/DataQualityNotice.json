@@ -1,0 +1,31 @@
+{
+  "description": "Cảnh báo chất lượng dữ liệu — fixture, stale, unavailable phải hiển thị.",
+  "properties": {
+    "code": {
+      "minLength": 1,
+      "title": "Code",
+      "type": "string"
+    },
+    "level": {
+      "default": "info",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Level",
+      "type": "string"
+    },
+    "message": {
+      "minLength": 1,
+      "title": "Message",
+      "type": "string"
+    }
+  },
+  "required": [
+    "code",
+    "message"
+  ],
+  "title": "DataQualityNotice",
+  "type": "object"
+}

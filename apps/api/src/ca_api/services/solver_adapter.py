@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -15,6 +15,29 @@ from ca_api.nhan_vien import list_nhan_vien_ops
 from ca_api.persist import kv_get, kv_mutate, kv_set
 
 _ROOT = Path(__file__).resolve().parents[5]
+
+# Ngân sách thời gian cho CP-SAT.
+#
+# Vì sao không để 60s: `solve_cpsat` dùng HẾT ngân sách để chứng minh phương án
+# đã tối ưu (objective = max_debt*1000 + điểm mềm). Đo trên dữ liệu thật của quán
+# (25 nhân viên / 70 ca) bằng `scripts/bench_solver_budget.py`:
+#
+#     ngân sách   thời gian thực   objective   vi phạm
+#        2.0s          1.63s        200014        0
+#        8.0s          7.64s        200006        0
+#       15.0s         14.65s        200002        0
+#       60.0s         59.66s        200002        0
+#
+# Từ 15s trở lên cho ra CÙNG một phương án như 60s (chênh 0, cùng 0 vi phạm).
+# 45 giây còn lại không mua thêm gì — chỉ để solver tự chứng minh tối ưu, việc
+# không ai đọc. Đổi lại, 60s đẩy tổng thời gian một lượt chat vượt ngưỡng chờ
+# của client (60s trong `scripts/e2e_http_copilot.py`), gây `TimeoutError` chập
+# chờn: cùng một câu hỏi, lần chạy 59.9s thì lọt, lần chạy 60.1s thì vỡ.
+# 15s vừa giữ nguyên chất lượng lịch, vừa chừa biên an toàn gấp ~4 lần.
+#
+# Đặt qua `CA_SOLVER_TIME_LIMIT_S` (mặc định `_DEFAULT_TIME_LIMIT_S` trong
+# `ca_solver.cpsat`) để mọi đường gọi — kể cả copilot — dùng cùng một ngân sách.
+
 _DAYS = ("T2", "T3", "T4", "T5", "T6", "T7", "CN")
 _SHIFT_FRAMES = {
     "Sáng": ("06:30", "12:00"),
@@ -30,8 +53,6 @@ def _week_value(key: str, week: str, default: Any) -> Any:
     if key.endswith("_by_week"):
         legacy = kv_get(key.removesuffix("_by_week"), None)
         if legacy is not None:
-            if isinstance(legacy, dict) and "tuan_iso" in legacy:
-                return legacy if legacy.get("tuan_iso") == week else default
             return legacy
     return default
 
@@ -98,8 +119,14 @@ def run_solver(
         input_data.nhan_vien_ids = [nv_id for nv_id in input_data.nhan_vien_ids if nv_id in allowed_ids]
         configured_frames = kv_get("khung_gio", {})
         frames = dict(_SHIFT_FRAMES)
+        _SHIFT_KEY_MAP = {"Sáng": "sang", "Chiều": "chieu", "Tối": "toi"}
         for shift, frame in frames.items():
-            configured = configured_frames.get(shift) if isinstance(configured_frames, dict) else None
+            conf_key = _SHIFT_KEY_MAP.get(shift, shift)
+            configured = (
+                (configured_frames.get(conf_key) or configured_frames.get(shift))
+                if isinstance(configured_frames, dict)
+                else None
+            )
             if isinstance(configured, dict):
                 frames[shift] = (str(configured.get("bat_dau") or frame[0]), str(configured.get("ket_thuc") or frame[1]))
         input_data.tkb = {
@@ -238,11 +265,70 @@ def run_solver(
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     if result.ok:
+        # Ghi nhật ký thay đổi TRƯỚC khi ghi đè `phan_cong_by_week`. Đây là điểm
+        # chốt DUY NHẤT mọi lần xếp lịch đi qua (xếp tự động, xếp lại sau TKB,
+        # và các đường gọi solver khác), nên ghi ở đây thì mọi nguồn đều có vết —
+        # không phải nhớ thêm ở từng router. Bọc try để nhật ký hỏng KHÔNG được
+        # làm hỏng việc xếp lịch.
+        try:
+            _ghi_nhat_ky_thay_doi(week, result.phan_cong, input_data.ca_meta)
+        except Exception:
+            pass
         _week_store("phan_cong_by_week", week, result.phan_cong)
         _week_store("lich_tuan_results_by_week", week, payload)
         _week_store("fairness_debt_by_week", week, result.debt_after)
         kv_set("phan_cong", result.phan_cong)
     return {"status": result.status, "ok": result.ok, "best_effort": result.ok, "luat_ap_dung": applied, "violations": len(result.violations), "danh_sach_xung_dot": gaps, "tong_so_o_ca": len(slots), "so_o_ca_da_xep": len(filled & slots), "kiem_tra": payload["kiem_tra"], "phan_cong": result.phan_cong, "ca_meta": input_data.ca_meta}
+
+
+NHAT_KY_TOI_DA = 20
+
+
+def _ghi_nhat_ky_thay_doi(week: str, sau: dict[str, list[str]], ca_meta: Any) -> None:
+    """Lưu diff trước/sau của MỘT lần xếp lịch vào kv `lich_thay_doi_by_week`.
+
+    Giữ tối đa `NHAT_KY_TOI_DA` bản gần nhất mỗi tuần: nhật ký là để ĐỌC LẠI
+    ("ai đổi ca với ai lúc nào"), không phải kho lịch sử vô hạn. Không giới hạn
+    thì mỗi lần bấm xếp lịch lại nối thêm một khối vào một giá trị kv duy nhất —
+    giá trị đó phình theo thời gian và mọi lần đọc đều phải parse toàn bộ.
+    """
+    from ca_api.services.schedule_diff import so_sanh_phan_cong, tom_tat_thay_doi
+
+    truoc_doc = kv_get("phan_cong_by_week", {})
+    truoc = truoc_doc.get(week, {}) if isinstance(truoc_doc, dict) else {}
+    if not isinstance(truoc, dict):
+        truoc = {}
+
+    diff = so_sanh_phan_cong(truoc, sau, ca_meta=ca_meta if isinstance(ca_meta, dict) else {})
+    if (
+        not diff["them"]
+        and not diff["bot"]
+        and not diff["hoan_doi"]
+        and not diff["doi_giua_hai_ca"]
+    ):
+        # Không đổi gì thì không ghi — nhật ký toàn dòng "không đổi" là nhiễu.
+        return
+
+    ban_ghi = {
+        "luc": datetime.now(UTC).isoformat(),
+        "nguon": "xep_tu_dong",
+        "tuan_iso": week,
+        "diff": diff,
+        "tom_tat": tom_tat_thay_doi(diff),
+    }
+
+    def mutate(raw: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(raw, dict):
+            raw = {}
+        items = raw.get(week)
+        if not isinstance(items, list):
+            items = []
+        items = [*items, ban_ghi][-NHAT_KY_TOI_DA:]
+        raw[week] = items
+        return raw
+
+    kv_mutate("lich_thay_doi_by_week", mutate, {})
+
 
 
 def _week_store(key: str, week: str, value: Any) -> None:

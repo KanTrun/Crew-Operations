@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-
 from ca_agents.clients.apify_client import ApifyError
 from ca_agents.sources.tiktok_apify_source import (
     _build_input,
@@ -14,7 +13,6 @@ from ca_agents.sources.tiktok_apify_source import (
     _format_count,
     scrape_tiktok_apify,
 )
-
 
 # ─── Fixtures ───────────────────────────────────────────────────────
 
@@ -72,8 +70,20 @@ def test_build_input_profile_strips_at():
 
 
 def test_build_input_empty_keyword_search():
+    """Keyword rỗng vẫn phải có truy vấn mặc định.
+
+    Payload KHÔNG có `searchQueries`/`hashtags`/`profiles` khiến actor FAILED
+    ngay nhưng vẫn tốn Compute Units — đo live 2026-09-24: 7/8 run gần nhất
+    FAILED, mỗi run ~$0.0037. Vì vậy keyword rỗng phải rớt về truy vấn mặc định.
+    """
     p = _build_input("", 10, "search")
-    assert "searchQueries" not in p
+    assert p["searchQueries"], "phải có truy vấn mặc định để actor không fail"
+
+    p_tag = _build_input("", 10, "hashtag")
+    assert p_tag["hashtags"], "mode hashtag cũng phải có hashtag mặc định"
+
+    p_profile = _build_input("", 10, "profile")
+    assert p_profile["profiles"], "mode profile cũng phải có profile mặc định"
 
 
 def test_format_count():

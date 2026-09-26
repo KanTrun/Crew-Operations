@@ -25,6 +25,27 @@ logger = logging.getLogger(__name__)
 _DEFAULT_CACHE_TTL_S = 1800  # 30 phút cache cho kết quả khảo sát thị trường
 _cache: dict[str, tuple[float, list[StoreCandidate]]] = {}
 
+# Tọa độ trung tâm các thành phố ShopeeFood phục vụ — dùng để suy slug khu vực
+# trong PATH URL (ShopeeFood không nhận khu vực qua query string). Mở rộng khi
+# cần thêm thành phố: thêm (lat, lng, slug) vào cuối.
+_CITY_COORDS: tuple[tuple[float, float, str], ...] = (
+    (10.7769, 106.7009, "ho-chi-minh"),
+    (21.0285, 105.8542, "ha-noi"),
+    (16.0544, 108.2022, "da-nang"),
+    (10.0452, 105.7469, "can-tho"),
+    (20.8449, 106.6881, "hai-phong"),
+    (12.2388, 109.1967, "nha-trang"),
+    (11.9404, 108.4583, "da-lat"),
+    (10.9804, 106.6519, "binh-duong"),
+    (10.9447, 106.8243, "bien-hoa"),
+)
+
+# Ngưỡng "còn trong vùng phục vụ": bình phương khoảng cách độ (≈ 150 km). Tọa độ
+# xa hơn (nước ngoài, giữa biển...) không được gán bừa cho thành phố gần nhất,
+# mà rơi về TP.HCM — thị trường chính, cũng là mặc định của mọi tài liệu dự án.
+_CITY_FALLBACK_MAX_DEG2 = 2.0
+_CITY_FALLBACK_SLUG = "ho-chi-minh"
+
 _PRICE_RE = re.compile(r"([\d.,]+)\s*(?:đ|k|vnd)?", re.IGNORECASE)
 
 
@@ -114,7 +135,11 @@ def extract_delivery_stores_from_json(payload: dict[str, Any]) -> list[StoreCand
             continue
 
         store_id = str(item.get("id") or item.get("restaurant_id") or "")
-        name = str(item.get("name") or item.get("restaurant_name") or "").strip()
+        # Payload THẬT từ `get_infos` (2026) đặt tên quán trong `brand.name`
+        # (không phải top-level `name`); fixture cũ dùng `name` trực tiếp.
+        brand_raw = item.get("brand")
+        brand_name = brand_raw.get("name") if isinstance(brand_raw, dict) else None
+        name = str(item.get("name") or item.get("restaurant_name") or brand_name or "").strip()
         if not name:
             continue
 
@@ -231,39 +256,124 @@ def extract_delivery_stores_from_json(payload: dict[str, Any]) -> list[StoreCand
     return stores
 
 
+def _city_slug(lat: float, lng: float) -> str:
+    """Suy slug thành phố ShopeeFood từ tọa độ (chọn thành phố gần nhất).
+
+    ShopeeFood nhận diện khu vực qua slug trong PATH (`/ho-chi-minh/...`), không
+    nhận qua query string — nên URL listing bắt buộc phải có slug. Bảng tọa độ
+    dưới đây phủ các thành phố lớn; tọa độ lạ (xa hơn `_CITY_FALLBACK_MAX_DEG2`)
+    rơi về TP.HCM (thị trường chính, cũng là mặc định trong mọi tài liệu dự án).
+    """
+    best_slug = _CITY_FALLBACK_SLUG
+    best_dist = float("inf")
+    for clat, clng, slug in _CITY_COORDS:
+        d = (lat - clat) ** 2 + (lng - clng) ** 2
+        if d < best_dist:
+            best_dist = d
+            best_slug = slug
+    # Ngoài vùng phục vụ → không gán bừa thành phố gần nhất.
+    if best_dist > _CITY_FALLBACK_MAX_DEG2:
+        return _CITY_FALLBACK_SLUG
+    return best_slug
+
+
 def fetch_shopeefood_page(
     page: Any,
     keyword: str,
     lat: float,
     lng: float,
     radius_km: float = 5.0,
+    max_scrolls: int = 24,
 ) -> dict[str, Any]:
-    """Điều hướng trang ShopeeFood với tọa độ chỉ định và bắt response API.
+    """Điều hướng trang LISTING ShopeeFood và bắt danh sách quán theo keyword.
 
-    ShopeeFood đã đổi endpoint (2026): trang search gọi `get_browsing_ids` +
-    `get_browsing_infos` thay vì `get_browse_dishes`/`search` cũ. Hàm bắt cả hai
-    endpoint mới và trả payload chứa `reply.delivery_infos` (danh sách quán).
+    Endpoint thật (xác minh 2026-09-22 bằng `scripts/probe_sf_kw_endpoint.py`):
+
+    1. URL đúng: `https://shopeefood.vn/{slug}/danh-sach-dia-diem-giao-tan-noi?q=<kw>`.
+       `/search?keyword=` chỉ là landing — trả danh sách CHUNG của thành phố,
+       KHÔNG theo keyword (bug cũ: 9 quán bất kỳ cho mọi từ khóa).
+    2. SPA gọi `POST /api/delivery/search_global` {keyword, city_id, sort_type}
+       → `reply.search_result[].restaurant_ids` (toàn bộ id khớp keyword).
+    3. Rồi gọi `POST /api/delivery/get_infos` {restaurant_ids: [25 id/lô]}
+       → `reply.delivery_infos` (chi tiết quán). Cuộn + bấm nút phân trang để
+       SPA tải các lô tiếp theo.
+
+    Hàm gộp MỌI lô `delivery_infos` bắt được (khử trùng theo restaurant_id) và
+    trả `{"reply": {"delivery_infos": [...]}}` — giữ nguyên shape để
+    `extract_delivery_stores_from_json` dùng lại không cần sửa.
+
+    Gọi API trực tiếp (httpx / page.request / fetch) đều bị chặn: 403 hoặc CORS.
+    Cách duy nhất ổn định là để SPA tự gọi rồi bắt response — như hàm này.
     """
-    captured_payloads: list[dict[str, Any]] = []
+    merged: list[dict[str, Any]] = []
+    seen_ids: set[Any] = set()
+    total_ids = 0
 
     def on_response(response: Any) -> None:
-        url = response.url
-        # Endpoint mới của ShopeeFood (2026): danh sách quán.
-        if "api/delivery/get_browsing_infos" in url or "api/delivery/get_browsing_ids" in url:
-            try:
-                data = response.json()
-                if isinstance(data, dict):
-                    captured_payloads.append(data)
-            except Exception:
-                pass
+        nonlocal total_ids
+        try:
+            data = response.json()
+        except Exception:
+            return
+        if not isinstance(data, dict):
+            return
+        reply = data.get("reply")
+        if not isinstance(reply, dict):
+            return
+
+        # search_global: tổng số id khớp keyword (chỉ để log/đối chiếu)
+        search_result = reply.get("search_result")
+        if isinstance(search_result, list):
+            for item in search_result:
+                if isinstance(item, dict) and item.get("restaurant_ids"):
+                    total_ids = len(item["restaurant_ids"])
+
+        # get_infos / get_browsing_infos: chi tiết từng quán (nhiều lô)
+        infos = reply.get("delivery_infos")
+        if isinstance(infos, list):
+            for info in infos:
+                if not isinstance(info, dict):
+                    continue
+                rid = info.get("restaurant_id") or info.get("id")
+                rid_text = str(rid) if rid is not None else ""
+                key: Any = int(rid_text) if rid_text.isdigit() else rid_text
+                if key in seen_ids:
+                    continue
+                seen_ids.add(key)
+                merged.append(info)
+
+    slug = _city_slug(lat, lng)
+    listing_url = (
+        f"https://shopeefood.vn/{slug}/danh-sach-dia-diem-giao-tan-noi"
+        f"?q={quote(keyword)}"
+    )
 
     try:
         page.on("response", on_response)
-        # Giả lập vị trí địa lý Geolocation trên browser context
         page.context.set_geolocation({"latitude": lat, "longitude": lng})
-        search_url = f"https://shopeefood.vn/search?keyword={quote(keyword)}"
-        page.goto(search_url, wait_until="networkidle", timeout=30000)
-        time.sleep(3.0)  # Chờ SPA nạp danh sách quán
+        page.goto(listing_url, wait_until="domcontentloaded", timeout=45000)
+        time.sleep(2.5)  # lô get_infos đầu tiên
+
+        # Tải thêm quán: cuộn đáy + bấm nút phân trang now.vn. Dừng khi 6 vòng
+        # liên tiếp không thêm quán mới (hết kết quả hoặc bị chặn).
+        stable = 0
+        for _ in range(max(1, max_scrolls)):
+            before = len(merged)
+            try:
+                page.mouse.wheel(0, 5000)
+            except Exception:
+                pass
+            time.sleep(1.2)
+            try:
+                page.locator(
+                    "a .icon-paging-next, .icon-paging-next"
+                ).first.click(timeout=800)
+                time.sleep(1.5)
+            except Exception:
+                pass  # trang không có nút phân trang: chỉ cuộn là đủ
+            stable = stable + 1 if len(merged) == before else 0
+            if stable >= 6:
+                break
     except Exception as exc:
         logger.warning("Lỗi trong quá trình fetch_shopeefood_page: %s", exc)
     finally:
@@ -272,13 +382,15 @@ def fetch_shopeefood_page(
         except Exception:
             pass
 
-    if captured_payloads:
-        # Ưu tiên payload `get_browsing_infos` (chứa `delivery_infos` = thông tin quán),
-        # không phải `get_browsing_ids` (chỉ có danh sách id).
-        for p in captured_payloads:
-            if isinstance(p.get("reply"), dict) and "delivery_infos" in p["reply"]:
-                return p
-        return captured_payloads[0]
+    logger.info(
+        "shopeefood_listing slug=%s keyword=%s ids_search_global=%d quan_bat_duoc=%d",
+        slug,
+        keyword,
+        total_ids,
+        len(merged),
+    )
+    if merged:
+        return {"reply": {"delivery_infos": merged}}
     return {}
 
 

@@ -71,7 +71,7 @@ export default function MapGuide() {
         <h1 className="nq-map-title">
           Đi từ đầu
           <br />
-          <span className="text-[var(--nq-copper)]">đến cuối</span>
+          <span className="text-[var(--nq-accent)]">đến cuối</span>
         </h1>
         <p className="nq-map-lead">
           Bốn phòng vận hành, tám bước một ngày quán — chọn vai trò để lọc trang liên quan, bấm

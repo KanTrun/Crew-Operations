@@ -51,7 +51,13 @@ jobs:
             | reviewdog -f=mypy -reporter=github-pr-review -level=warning \
               -filter-mode=diff_context -fail-on-error=false
 
-      # Secret scan — chặn token/key lộ ra PR
-      - name: Secret scan
+      # Secret scan — chặn token/key lộ ra PR.
+      # Trước đây chạy KHÔNG đối số trên runner CI: checkout sạch không có
+      # staged file nên script quét 0 file và luôn in "sạch" — gate vô nghĩa;
+      # `|| echo warning` còn nuốt exit 1 khi thật sự phát hiện secret.
+      # Giờ quét thẳng các thư mục nguồn (runner CI không có node_modules
+      # nên không nhiễu âm; script lọc sẵn theo phần mở rộng an toàn).
+      - name: Secret scan (source dirs — ĐỎ khi phát hiện)
         run: |
-          python scripts/scan_secrets_before_commit.py || echo "::warning::Secret scan phát hiện vấn đề — kiểm tra thủ công"
+          python scripts/scan_secrets_before_commit.py \
+            apps/api/src apps/api/tests apps/web/src packages scripts infra .github

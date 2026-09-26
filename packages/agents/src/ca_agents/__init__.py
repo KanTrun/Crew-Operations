@@ -17,12 +17,23 @@ from ca_agents.menu_style import (
 )
 from ca_agents.router import FreeTierRouter
 from ca_agents.runtime import AgentRuntime, SkillLoader, SkillRef
+from ca_agents.sensors import (
+    FB_QUESTIONS,
+    INJECTION_QUESTIONS,
+    JevSensor,
+    RegexSensor,
+    SensorResult,
+    Signal,
+    SignalSensor,
+    anonymize_state,
+)
 
 __all__ = [
     "AgentRuntime",
     "FreeTierRouter",
     "SkillLoader",
     "SkillRef",
+    # Ảnh quảng cáo menu (nhánh feaature/menu).
     "generate_menu_prompt",
     "build_menu_prompt",
     "translate_mon_ten",
@@ -40,4 +51,13 @@ __all__ = [
     "normalize_slug",
     "parse_style",
     "style_options",
+    # Cảm biến / tín hiệu (nhánh origin).
+    "FB_QUESTIONS",
+    "INJECTION_QUESTIONS",
+    "JevSensor",
+    "RegexSensor",
+    "SensorResult",
+    "Signal",
+    "SignalSensor",
+    "anonymize_state",
 ]

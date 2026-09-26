@@ -109,21 +109,21 @@ export default function DangKyPage() {
 
   return (
     <main className="relative flex min-h-dvh items-center justify-center overflow-hidden p-4 md:p-8">
-      <div className="pointer-events-none absolute top-[-10%] right-[-10%] h-[40vw] w-[40vw] rounded-full bg-[var(--nq-copper-glow)] opacity-40 blur-[100px] mix-blend-screen" />
+      <div className="pointer-events-none absolute top-[-10%] right-[-10%] h-[40vw] w-[40vw] rounded-full bg-[var(--nq-accent-glow)] opacity-40 blur-[100px] mix-blend-screen" />
       <div className="pointer-events-none absolute bottom-[-10%] left-[-10%] h-[35vw] w-[35vw] rounded-full bg-[var(--nq-green-dim)] opacity-25 blur-[120px] mix-blend-screen" />
 
       <form
         onSubmit={onSubmit}
         noValidate
-        className="nq-login-card relative z-10 grid w-full max-w-5xl grid-cols-1 overflow-hidden border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] shadow-[-12px_12px_0px_0px_var(--nq-copper-dim)] md:grid-cols-2"
+        className="nq-login-card relative z-10 grid w-full max-w-5xl grid-cols-1 overflow-hidden nq-surface-block shadow-[var(--nq-elev-2)] md:grid-cols-2"
       >
-        <aside className="flex flex-col justify-between border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
-          <p className="font-black tracking-tighter text-2xl text-[var(--nq-copper)]">NHỊP QUÁN</p>
+        <aside className="flex flex-col justify-between border-b border-[var(--nq-line)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
+          <p className="nq-brand-mark">NHỊP QUÁN</p>
           <div className="mt-8 md:mt-0">
-            <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-copper)] uppercase">
+            <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-accent)] uppercase">
               Gia nhập · đội ngũ
             </p>
-            <h1 className="text-4xl font-black tracking-tighter text-[var(--nq-fg)] uppercase md:text-5xl">
+            <h1 className="nq-page-title">
               Đăng ký
             </h1>
             <p className="mt-4 max-w-sm text-sm text-[var(--nq-dim)]">
@@ -187,7 +187,7 @@ export default function DangKyPage() {
                         ? manh.diem <= 1
                           ? "bg-[var(--nq-red)]"
                           : manh.diem === 2
-                            ? "bg-[var(--nq-copper)]"
+                            ? "bg-[var(--nq-accent)]"
                             : "bg-[var(--nq-green)]"
                         : "bg-[var(--nq-surface)]"
                     }`}
@@ -238,14 +238,14 @@ export default function DangKyPage() {
             busy={busy}
             disabled={!hopLe}
             busyLabel="Đang tạo…"
-            className="nq-ink-on-solid mt-1 w-full border-2 border-[var(--nq-copper)] bg-[var(--nq-copper)] py-3.5 font-black tracking-widest uppercase transition-all hover:bg-transparent hover:text-[var(--nq-copper)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="nq-btn nq-btn-primary mt-1 w-full py-3.5 uppercase"
           >
             Tạo tài khoản
           </Btn>
 
-          <p className="border-t-2 border-dashed border-[var(--nq-dim)] pt-3 text-sm text-[var(--nq-dim)]">
+          <p className="border-t border-dashed border-[var(--nq-line)] pt-3 text-sm text-[var(--nq-dim)]">
             Đã có tài khoản?{" "}
-            <Link href="/login" className="text-[var(--nq-copper)] underline-offset-4 hover:underline">
+            <Link href="/login" className="text-[var(--nq-accent)] underline-offset-4 hover:underline">
               Vào hệ thống
             </Link>
           </p>

@@ -57,11 +57,16 @@ def _serialize_trend(t: TrendItem) -> dict[str, Any]:
 
 @router.get("/apify-usage")
 def get_apify_usage_status(
+    refresh: bool = Query(default=False),
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
-    """Fetch current Apify quota, monthly usage & active actors."""
+    """Hạn mức & mức dùng Apify hiện tại.
+
+    Mặc định đọc từ cache ngắn hạn (``APIFY_USAGE_CACHE_TTL_S``); ``refresh=true``
+    khi người dùng bấm "Kiểm tra số dư" để lấy số mới nhất.
+    """
     _require_auth(authorization)
-    usage = get_apify_usage()
+    usage = get_apify_usage(refresh=refresh)
     return {"ok": True, "usage": usage}
 
 

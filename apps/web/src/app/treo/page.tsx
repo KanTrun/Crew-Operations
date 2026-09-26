@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { apiGet, apiSend } from "../../lib/api";
 import { matchExact, matchSearch, matchTime, TIME_FILTER_OPTIONS, uniqueSorted, type TimeFilter } from "../../lib/list-filters";
-import { actorLabel, formatLuc, ghiNhanLabel, nvLabel, safeText, treoLabel, treoTone, viError } from "../../lib/present";
+import { actorLabel, formatLuc, ghiNhanLabel, safeText, treoLabel, treoTone, viError } from "../../lib/present";
 import { getToken, isManager } from "../../lib/session";
 import {
   Alert,
@@ -13,13 +13,16 @@ import {
   Empty,
   Loading,
   OpsCard,
+  PageActions,
   PageHeader,
+  PagedList,
   StatusChip,
   TabBar,
   TabButton,
 } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 import { CopilotPane } from "../../ui/copilot/CopilotPane";
+import { useStaffNameMap } from "../../ui/ops-pickers";
 
 type ViecTreo = {
   id: string;
@@ -71,6 +74,9 @@ export default function TreoPage() {
   const [timeF, setTimeF] = useState<TimeFilter>("all");
   const [copilotOpen, setCopilotOpen] = useState(false);
   const manager = isManager();
+  const staffName = useStaffNameMap();
+  /** nv_xx → tên thật; vai trò/agent giữ nhãn của actorLabel. */
+  const personName = (id?: string | null) => (id && /^nv_\d+$/i.test(id) ? staffName(id) : actorLabel(id));
 
   useEffect(() => {
     setToken(getToken());
@@ -96,8 +102,8 @@ export default function TreoPage() {
   const activeList = tab === "treo" ? treo : sua;
   const personSource = tab === "treo" ? treo.map((t) => t.nhan_vien) : sua.map((s) => s.ai);
   const personOptions = useMemo(
-    () => [{ value: "all", label: "Mọi người" }, ...uniqueSorted(personSource).map((v) => ({ value: v ?? "", label: nvLabel(v) }))],
-    [personSource, tab],
+    () => [{ value: "all", label: "Mọi người" }, ...uniqueSorted(personSource).map((v) => ({ value: v ?? "", label: personName(v) }))],
+    [personSource, personName],
   );
 
   const filteredTreo = useMemo(() => {
@@ -166,9 +172,11 @@ export default function TreoPage() {
         title="Việc treo"
         meta={`${treoDangCho} việc đang chờ · ghi nhận sửa lịch tách riêng để không lẫn.`}
       />
-      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-        Hỏi trợ lý vận hành
-      </Btn>
+      <PageActions>
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          Hỏi trợ lý vận hành
+        </Btn>
+      </PageActions>
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
 
@@ -216,15 +224,18 @@ export default function TreoPage() {
                   {treoQuaHan.length === 0 ? (
                     <p className="nq-treo-empty-note">Không có việc quá hạn.</p>
                   ) : (
-                    <div className="nq-list nq-treo-grid">
-                      {treoQuaHan.map((v) => (
+                    <PagedList
+                      className="nq-treo-grid"
+                      items={treoQuaHan}
+                      pageSize={12}
+                      renderItem={(v) => (
                         <article key={v.id} className="nq-item nq-item--accent-danger">
                           <p className="nq-item-title">{v.noi_dung}</p>
                           <p className="nq-item-sub flex flex-wrap items-center gap-2">
                             <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
-                            {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
+                            {v.nhan_vien ? personName(v.nhan_vien) : ""}
                             {v.phieu_id ? (
-                              <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                              <Link href="/phieu" className="underline text-[var(--nq-accent)]">
                                 Mở phiếu
                               </Link>
                             ) : null}
@@ -236,8 +247,8 @@ export default function TreoPage() {
                             </Btn>
                           ) : null}
                         </article>
-                      ))}
-                    </div>
+                      )}
+                    />
                   )}
                 </div>
               </section>
@@ -255,15 +266,18 @@ export default function TreoPage() {
                   {treoDangChoF.length === 0 ? (
                     <p className="nq-treo-empty-note">Không có việc đang chờ.</p>
                   ) : (
-                    <div className="nq-list nq-treo-grid">
-                      {treoDangChoF.map((v) => (
+                    <PagedList
+                      className="nq-treo-grid"
+                      items={treoDangChoF}
+                      pageSize={12}
+                      renderItem={(v) => (
                         <article key={v.id} className="nq-item nq-item--accent-warn">
                           <p className="nq-item-title">{v.noi_dung}</p>
                           <p className="nq-item-sub flex flex-wrap items-center gap-2">
                             <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
-                            {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
+                            {v.nhan_vien ? personName(v.nhan_vien) : ""}
                             {v.phieu_id ? (
-                              <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                              <Link href="/phieu" className="underline text-[var(--nq-accent)]">
                                 Mở phiếu
                               </Link>
                             ) : null}
@@ -275,8 +289,8 @@ export default function TreoPage() {
                             </Btn>
                           ) : null}
                         </article>
-                      ))}
-                    </div>
+                      )}
+                    />
                   )}
                 </div>
               </section>
@@ -292,15 +306,18 @@ export default function TreoPage() {
                     <span className="nq-treo-section-count">{treoKhac.length} việc</span>
                   </div>
                   <div className="nq-treo-section-body">
-                    <div className="nq-list nq-treo-grid">
-                      {treoKhac.map((v) => (
+                    <PagedList
+                      className="nq-treo-grid"
+                      items={treoKhac}
+                      pageSize={12}
+                      renderItem={(v) => (
                         <article key={v.id} className="nq-item">
                           <p className="nq-item-title">{v.noi_dung}</p>
                           <p className="nq-item-sub flex flex-wrap items-center gap-2">
                             <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
-                            {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
+                            {v.nhan_vien ? personName(v.nhan_vien) : ""}
                             {v.phieu_id ? (
-                              <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                              <Link href="/phieu" className="underline text-[var(--nq-accent)]">
                                 Mở phiếu
                               </Link>
                             ) : null}
@@ -312,8 +329,8 @@ export default function TreoPage() {
                             </Btn>
                           ) : null}
                         </article>
-                      ))}
-                    </div>
+                      )}
+                    />
                   </div>
                 </section>
               ) : null}
@@ -329,23 +346,26 @@ export default function TreoPage() {
                     <span className="nq-treo-section-count">{treoXong.length} việc</span>
                   </div>
                   <div className="nq-treo-section-body">
-                    <div className="nq-list nq-treo-grid">
-                      {treoXong.map((v) => (
+                    <PagedList
+                      className="nq-treo-grid"
+                      items={treoXong}
+                      pageSize={12}
+                      renderItem={(v) => (
                         <article key={v.id} className="nq-item">
                           <p className="nq-item-title">{v.noi_dung}</p>
                           <p className="nq-item-sub flex flex-wrap items-center gap-2">
                             <StatusChip tone={treoTone(v.trang_thai)}>{treoLabel(v.trang_thai)}</StatusChip>
-                            {v.nhan_vien ? nvLabel(v.nhan_vien) : ""}
+                            {v.nhan_vien ? personName(v.nhan_vien) : ""}
                             {v.phieu_id ? (
-                              <Link href="/phieu" className="underline text-[var(--nq-copper)]">
+                              <Link href="/phieu" className="underline text-[var(--nq-accent)]">
                                 Mở phiếu
                               </Link>
                             ) : null}
                             {v.created_at ? formatLuc(v.created_at) : ""}
                           </p>
                         </article>
-                      ))}
-                    </div>
+                      )}
+                    />
                   </div>
                 </section>
               ) : null}
@@ -374,14 +394,18 @@ export default function TreoPage() {
           ) : null}
           {!loading && sua.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
           <div className="nq-list">
-            {filteredSua.map((g, i) => (
-              <article key={g.id ?? String(i)} className="nq-item">
-                <p className="nq-item-title">{suaTomTat(g)}</p>
-                <p className="nq-item-sub">
-                  {actorLabel(g.ai)} · {formatLuc(g.luc)}
-                </p>
-              </article>
-            ))}
+            <PagedList
+              items={filteredSua}
+              pageSize={10}
+              renderItem={(g, i) => (
+                <article key={g.id ?? String(i)} className="nq-item">
+                  <p className="nq-item-title">{suaTomTat(g)}</p>
+                  <p className="nq-item-sub">
+                    {personName(g.ai)} · {formatLuc(g.luc)}
+                  </p>
+                </article>
+              )}
+            />
           </div>
         </OpsCard>
       )}

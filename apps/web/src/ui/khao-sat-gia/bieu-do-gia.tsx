@@ -11,6 +11,7 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
+import { STAGGER_S, beat } from "../../lib/motion";
 import { danhMucLabel, giaVnd } from "../../lib/present";
 
 export type PhanVi = {
@@ -29,7 +30,7 @@ function chartMotion(reduced: boolean) {
     : {
         initial: { opacity: 0, y: 8 },
         animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.48, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+        transition: beat("focus"),
       };
 }
 
@@ -78,7 +79,7 @@ export function PhanViBars({ rows }: { rows: HangPhanVi[] }) {
               className="nq-dash-bar-row"
               initial={reduced ? {} : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: i * 0.05, duration: 0.4 }}
+              transition={beat("settle", i * STAGGER_S)}
               title={`${danhMucLabel(row.ten)}: P25 ${giaVnd(p25)} · P50 ${giaVnd(p50)} · P75 ${giaVnd(p75)} · ${sample_size} mẫu`}
             >
               <span className="nq-dash-bar-label">
@@ -95,7 +96,7 @@ export function PhanViBars({ rows }: { rows: HangPhanVi[] }) {
                     bottom: 0,
                     borderRadius: "var(--nq-radius-pill)",
                     background: row.laCore
-                      ? "linear-gradient(90deg, color-mix(in srgb, var(--nq-copper) 55%, transparent), var(--nq-copper))"
+                      ? "linear-gradient(90deg, color-mix(in srgb, var(--nq-accent) 55%, transparent), var(--nq-accent))"
                       : "linear-gradient(90deg, color-mix(in srgb, var(--nq-ok) 45%, transparent), color-mix(in srgb, var(--nq-ok) 80%, transparent))",
                   }}
                 />
@@ -161,7 +162,7 @@ export function GiaGauge({ ambi, sweetLow, sweetHigh, minViablePrice, giaQuan, s
   const pct = (v: number) => Math.min(100, Math.max(0, ((v - lo) / span) * 100));
 
   const markers: Array<{ giaTri: number; nhan: string; mau: string; net?: boolean }> = [
-    { giaTri: ambi, nhan: `AMBI ${giaVnd(ambi)}`, mau: "var(--nq-copper)" },
+    { giaTri: ambi, nhan: `AMBI ${giaVnd(ambi)}`, mau: "var(--nq-accent)" },
   ];
   if (minViablePrice != null && Number.isFinite(minViablePrice)) {
     markers.push({ giaTri: minViablePrice, nhan: `Ngưỡng có lời tối thiểu ${giaVnd(minViablePrice)}`, mau: "var(--nq-warn)", net: true });
@@ -220,7 +221,7 @@ export function GiaGauge({ ambi, sweetLow, sweetHigh, minViablePrice, giaQuan, s
             height: "0.9rem",
             borderRadius: "var(--nq-radius-pill)",
             background:
-              "linear-gradient(90deg, color-mix(in srgb, var(--nq-ok) 70%, transparent), var(--nq-copper) 55%, color-mix(in srgb, var(--nq-warn) 80%, transparent))",
+              "linear-gradient(90deg, color-mix(in srgb, var(--nq-ok) 70%, transparent), var(--nq-accent) 55%, color-mix(in srgb, var(--nq-warn) 80%, transparent))",
             overflow: "visible",
           }}
         >

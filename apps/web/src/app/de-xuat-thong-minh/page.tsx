@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
-import { viError } from "../../lib/present";
+import { codeLabel, viError } from "../../lib/present";
 import { getToken, isManager } from "../../lib/session";
-import { Alert, AuthGate, Btn, Empty, Loading, OpsCard, PageHeader } from "../../ui/kit";
+import { Alert, AuthGate, Btn, Empty, OpsCard, PageGrid, PageHeader, Pagination, usePaged } from "../../ui/kit";
+import { AiInsightPanel } from "../../ui/ai/AiInsightPanel";
+import { AskAiBox } from "../../ui/ai/AskAiBox";
 
 interface SuccessPattern {
   pattern_id: string;
@@ -23,6 +25,12 @@ interface PositiveRule {
   do_tin_cay: number;
   trang_thai: string;
 }
+
+const RULE_STATUS_LABEL: Record<string, string> = {
+  de_xuat: "Đề xuất",
+  hieu_luc: "Đang hiệu lực",
+  tu_choi: "Đã từ chối",
+};
 
 export default function DeXuatThongMinhPage() {
   const [token, setToken] = useState("");
@@ -93,10 +101,13 @@ export default function DeXuatThongMinhPage() {
     }
   }
 
+  const patternsPaged = usePaged(patterns, 8);
+  const rulesPaged = usePaged(rules, 8);
+
   if (!token) return <AuthGate />;
 
   return (
-    <div className="nq-page space-y-6">
+    <div className="nq-page">
       <PageHeader
         kicker="Predictive Playbook"
         title="Đề xuất thông minh"
@@ -106,65 +117,97 @@ export default function DeXuatThongMinhPage() {
       {error && <Alert kind="err">{error}</Alert>}
       {success && <Alert kind="ok">{success}</Alert>}
 
-      <OpsCard title="Phát hiện mẫu thành công">
-        <p className="nq-muted text-sm mb-4">
-          Chạy phân tích dữ liệu lịch sử để tìm ca doanh thu cao, món bán chạy, giờ cao điểm.
-        </p>
-        <Btn variant="primary" onClick={runPredict} disabled={busy}>
-          {busy ? "Đang phân tích..." : "Chạy phát hiện mẫu thành công"}
-        </Btn>
-      </OpsCard>
+      <PageGrid
+        main={
+          <>
+            <OpsCard title="Phát hiện mẫu thành công" density="compact">
+              <p className="nq-muted text-sm mb-4">
+                Chạy phân tích dữ liệu lịch sử để tìm ca doanh thu cao, món bán chạy, giờ cao điểm.
+              </p>
+              <Btn variant="primary" onClick={runPredict} disabled={busy}>
+                {busy ? "Đang phân tích..." : "Chạy phát hiện mẫu thành công"}
+              </Btn>
+            </OpsCard>
 
-      <OpsCard title={`Mẫu thành công (${patterns.length})`}>
-        {patterns.length === 0 ? (
-          <Empty>Chưa có mẫu thành công. Bấm "Chạy phát hiện" để bắt đầu.</Empty>
-        ) : (
-          <div className="space-y-3">
-            {patterns.map((p) => (
-              <div key={p.pattern_id} className="nq-card p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <h4 className="font-bold">{p.mo_ta}</h4>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
-                    {Math.round(p.do_tin_cay * 100)}%
-                  </span>
-                </div>
-                <p className="text-xs font-mono text-[var(--nq-ink-muted)] mt-1">
-                  Loại: {p.loai} · Nguồn: {p.nguon}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </OpsCard>
-
-      <OpsCard title={`Luật tích cực đề xuất (${rules.length})`}>
-        {rules.length === 0 ? (
-          <Empty>Chưa có luật tích cực.</Empty>
-        ) : (
-          <div className="space-y-3">
-            {rules.map((r) => (
-              <div key={r.id} className="nq-card p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <h4 className="font-bold">{r.cau}</h4>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700">
-                    {r.trang_thai}
-                  </span>
-                </div>
-                <p className="text-xs font-mono text-[var(--nq-ink-muted)] mt-1">
-                  Độ tin cậy: {Math.round(r.do_tin_cay * 100)}% · Bằng chứng: {r.bang_chung.join(", ")}
-                </p>
-                {manager && r.trang_thai === "de_xuat" && (
-                  <div className="mt-3">
-                    <Btn variant="primary" onClick={() => approveRule(r.id)} disabled={busy}>
-                      Duyệt luật
-                    </Btn>
+            <OpsCard title="Mẫu thành công" count={patterns.length} countLabel="mẫu">
+              {patterns.length === 0 ? (
+                <Empty>Chưa có mẫu thành công. Bấm &quot;Chạy phát hiện&quot; để bắt đầu.</Empty>
+              ) : (
+                <>
+                  <div className="nq-columns" data-cols="2">
+                    {patternsPaged.shown.map((p) => (
+                      <div key={p.pattern_id} className="nq-card p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="font-bold">{p.mo_ta}</h4>
+                          <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--nq-st-ok-soft)] text-[var(--nq-st-ok-ink)] border border-[color-mix(in_srgb,var(--nq-st-ok)_46%,var(--nq-line))]">
+                            {Math.round(p.do_tin_cay * 100)}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--nq-ink-muted)] mt-1">
+                          Loại: {codeLabel(p.loai)} · Nguồn: {codeLabel(p.nguon)}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </OpsCard>
+                  <Pagination
+                    page={patternsPaged.page}
+                    totalPages={patternsPaged.totalPages}
+                    onChange={patternsPaged.setPage}
+                    from={patternsPaged.from}
+                    to={patternsPaged.to}
+                    total={patternsPaged.total}
+                  />
+                </>
+              )}
+            </OpsCard>
+
+            <OpsCard title="Luật tích cực đề xuất" count={rules.length} countLabel="luật">
+              {rules.length === 0 ? (
+                <Empty>Chưa có luật tích cực.</Empty>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {rulesPaged.shown.map((r) => (
+                      <div key={r.id} className="nq-card p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="font-bold">{r.cau}</h4>
+                          <span className="text-xs px-2 py-0.5 rounded bg-[var(--nq-surface)] text-[var(--nq-ink)] border border-[var(--nq-line)]">
+                            {RULE_STATUS_LABEL[r.trang_thai] ?? codeLabel(r.trang_thai)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--nq-ink-muted)] mt-1">
+                          Độ tin cậy: {Math.round(r.do_tin_cay * 100)}% · Bằng chứng: {r.bang_chung.join(", ")}
+                        </p>
+                        {manager && r.trang_thai === "de_xuat" && (
+                          <div className="mt-3">
+                            <Btn variant="primary" onClick={() => approveRule(r.id)} disabled={busy}>
+                              Duyệt luật
+                            </Btn>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <Pagination
+                    page={rulesPaged.page}
+                    totalPages={rulesPaged.totalPages}
+                    onChange={rulesPaged.setPage}
+                    from={rulesPaged.from}
+                    to={rulesPaged.to}
+                    total={rulesPaged.total}
+                  />
+                </>
+              )}
+            </OpsCard>
+          </>
+        }
+        aside={
+          <>
+            <AiInsightPanel page="de-xuat-thong-minh" />
+            <AskAiBox page="de-xuat-thong-minh" />
+          </>
+        }
+      />
     </div>
   );
 }

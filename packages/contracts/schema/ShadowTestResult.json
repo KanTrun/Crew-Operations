@@ -1,0 +1,55 @@
+{
+  "description": "Kết quả shadow test — chỉ đọc, không bao giờ mutation sản xuất.",
+  "properties": {
+    "before": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Before",
+      "type": "object"
+    },
+    "after": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "After",
+      "type": "object"
+    },
+    "diffs": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Diffs",
+      "type": "object"
+    },
+    "hard_constraints_ok": {
+      "default": true,
+      "title": "Hard Constraints Ok",
+      "type": "boolean"
+    },
+    "fairness_delta": {
+      "default": 0.0,
+      "title": "Fairness Delta",
+      "type": "number"
+    },
+    "workload_delta": {
+      "default": 0.0,
+      "title": "Workload Delta",
+      "type": "number"
+    },
+    "operational_delta": {
+      "default": 0.0,
+      "title": "Operational Delta",
+      "type": "number"
+    },
+    "notes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Notes",
+      "type": "array"
+    }
+  },
+  "title": "ShadowTestResult",
+  "type": "object"
+}

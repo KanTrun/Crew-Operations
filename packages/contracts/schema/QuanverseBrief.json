@@ -1,0 +1,155 @@
+{
+  "$defs": {
+    "DataQualityNotice": {
+      "description": "Cảnh báo chất lượng dữ liệu — fixture, stale, unavailable phải hiển thị.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "level": {
+          "default": "info",
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "DataQualityNotice",
+      "type": "object"
+    },
+    "QuanverseMetric": {
+      "description": "Một chỉ số đọc thẳng từ hệ thống (không suy diễn).\n\n`value=None` nghĩa là CHƯA CÓ DỮ LIỆU — khác hẳn 0. UI phải in \"—\" cho\n`None`, không được in \"0\" (quy ước số của dự án, xem plan hao hụt).",
+      "properties": {
+        "key": {
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "unit": {
+          "default": "",
+          "title": "Unit",
+          "type": "string"
+        },
+        "tone": {
+          "default": "default",
+          "enum": [
+            "default",
+            "ok",
+            "warn",
+            "danger"
+          ],
+          "title": "Tone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "label"
+      ],
+      "title": "QuanverseMetric",
+      "type": "object"
+    },
+    "QuanversePage": {
+      "description": "Trang Quánverse mà một bản tổng hợp/brief thuộc về.",
+      "enum": [
+        "living_map",
+        "war_room",
+        "shift_rescue",
+        "rules",
+        "spatial_memory"
+      ],
+      "title": "QuanversePage",
+      "type": "string"
+    }
+  },
+  "description": "Tóm tắt TẤT ĐỊNH của một trang Quánverse — nguồn duy nhất cho cả UI lẫn LLM.\n\nBất biến: mỗi phần tử của `facts` phải truy được về `grounded_refs` (id bản\nghi hệ thống: zone_id, event_id, candidate_id, anchor_id…). LLM nhận đúng\nkhối này làm ngữ cảnh, nên không có đường nào để nó sinh số mới.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/QuanversePage"
+    },
+    "headline": {
+      "minLength": 1,
+      "title": "Headline",
+      "type": "string"
+    },
+    "facts": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Facts",
+      "type": "array"
+    },
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/QuanverseMetric"
+      },
+      "title": "Metrics",
+      "type": "array"
+    },
+    "risks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Risks",
+      "type": "array"
+    },
+    "next_actions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Next Actions",
+      "type": "array"
+    },
+    "grounded_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Grounded Refs",
+      "type": "array"
+    },
+    "data_quality": {
+      "items": {
+        "$ref": "#/$defs/DataQualityNotice"
+      },
+      "title": "Data Quality",
+      "type": "array"
+    }
+  },
+  "required": [
+    "page",
+    "headline"
+  ],
+  "title": "QuanverseBrief",
+  "type": "object"
+}

@@ -19,7 +19,9 @@ client = TestClient(app)
 
 def test_successful_week_resolves_claimed_shifts_without_touching_other_weeks() -> None:
     from ca_api.persist import (
-        open_shift_create, open_shift_list, open_shift_resolve_for_week,
+        open_shift_create,
+        open_shift_list,
+        open_shift_resolve_for_week,
         shift_application_claim_first,
     )
 
@@ -177,7 +179,10 @@ def test_publish_creates_exact_week_notification_and_ack(_du_nhan_vien_xep_lich:
     assert notifications.status_code == 200, notifications.text
     items = [item for item in notifications.json()["notifications"] if item["tuan_iso"] == week]
     assert len(items) == 1
-    assert items[0]["url"] == f"/lich-tuan?tuan={week}"
+    # `minh` là nhân viên (nhan_vien) → nhận link xem lịch CỦA MÌNH (/toi).
+    # Quản lý/chủ quán nhận /lich-tuan (xem toàn quán) — xem
+    # test_publish_notification_role_based_links trong test_schedule_consistency.py.
+    assert items[0]["url"] == f"/toi?tuan={week}"
 
     acked = client.post(f"/api/v1/lich/thong-bao/{items[0]['id']}/ack", headers=headers(client, "minh"))
     assert acked.status_code == 200 and acked.json()["ok"] is True
@@ -428,6 +433,16 @@ def test_ops_pickers_for_staff() -> None:
 
 
 def test_swap_consent_by_any_recipient() -> None:
+    """Phiếu mở cho MỌI NGƯỜI: ai bấm đồng ý cũng thành người nhận.
+
+    Phải dựng tuần đã công bố trước: đổi ca ở tuần chưa công bố bị chặn
+    (`lich_chua_cong_bo`) vì đó là sửa bản nháp quản lý còn đang xếp.
+    """
+    kv_set("lich_tuan_lifecycle", {"tuan_iso": "2026-W01", "trang_thai": "da_cong_bo"})
+    kv_set(
+        "lich_tuan_lifecycle_by_week",
+        {"2026-W01": {"tuan_iso": "2026-W01", "trang_thai": "da_cong_bo"}},
+    )
     opened = client.post(
         "/api/v1/cho-doi-ca",
         json={"a": "nv_03", "b": "all", "ca_id": "w1_c01"},
@@ -437,6 +452,61 @@ def test_swap_consent_by_any_recipient() -> None:
     done = client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "hung")).json()
     assert done["trang_thai"] == "dong_y"
     assert done["dong_y"] == ["nv_02"]
+
+
+def test_swap_dong_y_doi_quan_ly_duyet_khi_tuan_da_cong_bo() -> None:
+    """Tuần đã công bố: NHÂN VIÊN đồng ý không tự áp phân công — phải qua `/duyet`.
+
+    Lưu ý `hung` là `chu_quan` nên được đi thẳng; muốn kiểm cổng thì phải dùng
+    một tài khoản NHÂN VIÊN làm người nhận.
+    """
+    ca_id = "w1_c01"
+    kv_set("phan_cong", {ca_id: ["nv_01"]})
+    kv_set("phan_cong_by_week", {"2026-W01": {ca_id: ["nv_01"]}})
+    kv_set("lich_tuan_lifecycle", {"tuan_iso": "2026-W01", "trang_thai": "da_cong_bo"})
+    kv_set(
+        "lich_tuan_lifecycle_by_week",
+        {"2026-W01": {"tuan_iso": "2026-W01", "trang_thai": "da_cong_bo"}},
+    )
+
+    # `lan`=nv_01 (quản lý) mở phiếu nhường ca cho `minh`=nv_03 (nhân viên).
+    opened = client.post(
+        "/api/v1/cho-doi-ca",
+        json={"a": "nv_01", "b": "nv_03", "ca_id": ca_id},
+        headers=headers(client, "lan"),
+    ).json()
+    swap_id = opened["id"]
+
+    # Nhân viên là người nhận bấm đồng ý → bị chặn, chưa đụng phân công.
+    blocked = client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "minh"))
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"] == "doi_ca_can_quan_ly_duyet"
+    assert kv_get("phan_cong", {})[ca_id] == ["nv_01"], "chưa duyệt thì không được đổi"
+
+    # Quản lý đồng ý (đủ hai bên) rồi duyệt → lúc đó mới áp phân công.
+    client.post(f"/api/v1/cho-doi-ca/{swap_id}/dong-y", headers=headers(client, "lan"))
+    duyet = client.post(f"/api/v1/cho-doi-ca/{swap_id}/duyet", headers=headers(client, "lan"))
+    assert duyet.status_code == 200, duyet.text
+    assert kv_get("phan_cong", {})[ca_id] == ["nv_03"]
+
+
+def test_swap_chan_khi_tuan_chua_cong_bo() -> None:
+    """Tuần còn nháp thì không đổi ca được, dù hai bên đều đồng ý."""
+    week = "2026-W19"
+    ca_id = "w1_c01"
+    kv_set("phan_cong", {ca_id: ["nv_03"]})
+    kv_set("phan_cong_by_week", {week: {ca_id: ["nv_03"]}})
+    kv_set("lich_tuan_lifecycle", {"tuan_iso": week, "trang_thai": "nhap"})
+    kv_set("lich_tuan_lifecycle_by_week", {week: {"tuan_iso": week, "trang_thai": "nhap"}})
+
+    opened = client.post(
+        "/api/v1/cho-doi-ca",
+        json={"a": "nv_03", "b": "nv_02", "ca_id": ca_id},
+        headers=headers(client, "minh"),
+    ).json()
+    blocked = client.post(f"/api/v1/cho-doi-ca/{opened['id']}/dong-y", headers=headers(client, "hung"))
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"] == "lich_chua_cong_bo"
 
 
 def test_swap_tu_choi_idor_protection() -> None:
@@ -486,6 +556,71 @@ def test_hom_nay_preview_fields() -> None:
     assert "treo_theo_trang_thai" in body
     assert "sua_gan_day" in body
     assert "ton_tom_tat" in body
+    assert "hao_hut" in body, "bảng Hôm nay phải nối được sang mặt hao hụt"
+
+
+def test_hom_nay_hao_hut_khop_voi_trang_hao_phi() -> None:
+    """Bảng Hôm nay và trang Hao phí phải ra CÙNG số.
+
+    Cả hai gọi `ag_waste.tinh_tu_nguon`; test này chốt rằng không ai lỡ tay tính
+    riêng ở một trong hai chỗ. Hai đường tự tính là hai cơ hội để lệch số.
+    """
+    from ca_agents.ag_waste import ngay_hom_nay
+    from ca_api.persist import kv_mutate
+
+    hom_nay = ngay_hom_nay()
+
+    def nap_kk(rows: list[dict]) -> list[dict]:
+        rows.append(
+            {
+                "id": "kk_hom_nay_check",
+                "ngay": hom_nay,
+                "muc": [{"mat_hang": "sua_tuoi", "dau_ca": 25, "nhap_trong_ca": 8, "cuoi_ca": 26, "hao_hut_ghi": 0}],
+            }
+        )
+        return rows
+
+    kv_mutate("kiem_ke", nap_kk, [])
+
+    ql = headers(client, "lan")
+    hom_nay_body = client.get("/api/v1/hom-nay", headers=ql).json()
+    hao_phi_body = client.get("/api/v1/hao-hut?ky=hom_nay", headers=ql).json()
+
+    hh = hom_nay_body["hao_hut"]
+    assert hh["co_du_lieu"] is True
+    assert hh["tong_dong"] == hao_phi_body["tong_dong"]
+    assert hh["so_thieu_du_lieu"] == hao_phi_body["so_thieu_du_lieu"]
+    assert hh["so_nghiem_trong"] == hao_phi_body["so_nghiem_trong"]
+    assert hh["so_canh_bao"] == hao_phi_body["so_canh_bao"]
+
+
+def test_hom_nay_hao_hut_khong_bia_so_khi_rong() -> None:
+    """Không có dữ liệu ⇒ `co_du_lieu` false, KHÔNG trả số 0 như thể đã đo."""
+    ql = headers(client, "lan")
+    body = client.get("/api/v1/hom-nay", headers=ql).json()
+    hh = body["hao_hut"]
+    assert hh["co_du_lieu"] is False
+    assert hh.get("tong_dong", 0) == 0
+
+
+def test_hom_nay_khong_sap_khi_hao_hut_loi(monkeypatch) -> None:
+    """Lỗi ở phần hao hụt KHÔNG được làm sập bảng Hôm nay.
+
+    Đây là trang mở đầu sau đăng nhập — hỏng nó là hỏng cả ca làm việc. Phần hao
+    hụt phải tự hạ xuống chứ không kéo cả payload theo.
+    """
+    from ca_api.interfaces.http import sprint45
+
+    def no(*_a, **_k):
+        raise RuntimeError("nguon hao hut hong")
+
+    monkeypatch.setattr(sprint45, "_hao_hut_hom_nay", no)
+    ql = headers(client, "lan")
+    r = client.get("/api/v1/hom-nay", headers=ql)
+    assert r.status_code == 200, r.text
+    hh = r.json()["hao_hut"]
+    assert hh["co_du_lieu"] is False
+    assert hh.get("ly_do") == "khong_doc_duoc"
 
 
 def test_hom_nay_so_treo_chi_tinh_viec_dang_mo() -> None:
@@ -576,7 +711,8 @@ def test_manager_sees_claimed_shifts_employee_does_not(_du_nhan_vien_xep_lich: N
         store_id="quan_01", schedule_run_id="vis-test-1", tuan_iso=week,
         ca_id="w1_c01", deadline_at="2026-11-01T00:00:00Z",
     )
-    shift2 = open_shift_create(
+    # Ca thứ 2 chỉ để tạo dữ liệu cho test đếm (không cần giữ id).
+    open_shift_create(
         store_id="quan_01", schedule_run_id="vis-test-2", tuan_iso=week,
         ca_id="w1_c02", deadline_at="2026-11-01T00:00:00Z",
     )

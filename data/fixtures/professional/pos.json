@@ -1,22 +1,22 @@
 {
   "metadata": {"synthetic": true, "nguon": "mo_phong_fixture"},
   "menu_items": [
-    {"id":"fx_mon_ca_phe_den","ten":"Ca phe den","gia":29000,"an":false,"bom":{"ca_phe_hat":18,"da":120}},
-    {"id":"fx_mon_bac_xiu","ten":"Bac xiu","gia":39000,"an":false,"bom":{"ca_phe_hat":14,"sua_tuoi":120,"da":80}},
-    {"id":"fx_mon_tra_dao","ten":"Tra dao cam sa","gia":45000,"an":false,"bom":{"tra":8,"dao":100,"da":150}},
-    {"id":"fx_mon_matcha","ten":"Matcha sua","gia":49000,"an":false,"bom":{"matcha":5,"sua_tuoi":150,"da":80}},
-    {"id":"fx_mon_croissant","ten":"Croissant bo","gia":35000,"an":false,"bom":{"banh":1}},
-    {"id":"fx_mon_nuoc_loc","ten":"Nuoc loc","gia":12000,"an":false,"bom":{"nuoc_dong_chai":1}},
-    {"id":"fx_mon_coldbrew","ten":"Cold brew","gia":49000,"an":true,"bom":{"ca_phe_hat":22,"da":130}},
-    {"id":"fx_mon_combo","ten":"Combo sang","gia":59000,"an":false,"bom":{"ca_phe_hat":14,"sua_tuoi":100,"banh":1}}
+    {"id":"fx_mon_ca_phe_den","ten":"Cà phê đen","nhom":"ca_phe","gia":29000,"an":false,"bom":{"ca_phe_hat":18,"da":120}},
+    {"id":"fx_mon_bac_xiu","ten":"Bạc xỉu","nhom":"ca_phe","gia":39000,"an":false,"bom":{"ca_phe_hat":14,"sua_tuoi":120,"da":80}},
+    {"id":"fx_mon_tra_dao","ten":"Trà đào cam sả","nhom":"tra","gia":45000,"an":false,"bom":{"tra":8,"dao":100,"da":150}},
+    {"id":"fx_mon_matcha","ten":"Matcha sữa","nhom":"tra","gia":49000,"an":false,"bom":{"matcha":5,"sua_tuoi":150,"da":80}},
+    {"id":"fx_mon_croissant","ten":"Croissant bơ","nhom":"banh","gia":35000,"an":false,"bom":{"banh":1}},
+    {"id":"fx_mon_nuoc_loc","ten":"Nước lọc","nhom":"nuoc_dong_chai","gia":12000,"an":false,"bom":{"nuoc_dong_chai":1}},
+    {"id":"fx_mon_coldbrew","ten":"Cold brew","nhom":"ca_phe","gia":49000,"an":true,"bom":{"ca_phe_hat":22,"da":130}},
+    {"id":"fx_mon_combo","ten":"Combo sáng","nhom":"banh","gia":59000,"an":false,"bom":{"ca_phe_hat":14,"sua_tuoi":100,"banh":1}}
   ],
   "orders": [
-    {"id":"fx_don_001","staff_id":"fx_nv_lan","trang_thai":"cho_pha","thanh_toan":"da_ck","nguon":"pos","luc":"2026-08-29T07:41:00Z","dong":[{"mon_id":"fx_mon_bac_xiu","ten":"Bac xiu","so_luong":2,"gia":39000},{"mon_id":"fx_mon_croissant","ten":"Croissant bo","so_luong":1,"gia":35000}]},
-    {"id":"fx_don_002","staff_id":"fx_nv_minh","trang_thai":"dang_pha","thanh_toan":"tien_mat","nguon":"pos","luc":"2026-08-29T07:44:00Z","dong":[{"mon_id":"fx_mon_tra_dao","ten":"Tra dao cam sa","so_luong":1,"gia":45000}]},
-    {"id":"fx_don_003","staff_id":"fx_nv_an","trang_thai":"xong","thanh_toan":"da_ck","nguon":"pos","luc":"2026-08-29T07:12:00Z","dong":[{"mon_id":"fx_mon_ca_phe_den","ten":"Ca phe den","so_luong":1,"gia":29000}]},
-    {"id":"fx_don_004","staff_id":"fx_nv_chi","trang_thai":"xong","thanh_toan":"tien_mat","nguon":"pos","luc":"2026-08-29T07:18:00Z","dong":[{"mon_id":"fx_mon_matcha","ten":"Matcha sua","so_luong":1,"gia":49000},{"mon_id":"fx_mon_nuoc_loc","ten":"Nuoc loc","so_luong":1,"gia":12000}]},
+    {"id":"fx_don_001","staff_id":"fx_nv_lan","trang_thai":"cho_pha","thanh_toan":"da_ck","nguon":"pos","luc":"2026-08-29T07:41:00Z","dong":[{"mon_id":"fx_mon_bac_xiu","ten":"Bạc xỉu","so_luong":2,"gia":39000},{"mon_id":"fx_mon_croissant","ten":"Croissant bơ","so_luong":1,"gia":35000}]},
+    {"id":"fx_don_002","staff_id":"fx_nv_minh","trang_thai":"dang_pha","thanh_toan":"tien_mat","nguon":"pos","luc":"2026-08-29T07:44:00Z","dong":[{"mon_id":"fx_mon_tra_dao","ten":"Trà đào cam sả","so_luong":1,"gia":45000}]},
+    {"id":"fx_don_003","staff_id":"fx_nv_an","trang_thai":"xong","thanh_toan":"da_ck","nguon":"pos","luc":"2026-08-29T07:12:00Z","dong":[{"mon_id":"fx_mon_ca_phe_den","ten":"Cà phê đen","so_luong":1,"gia":29000}]},
+    {"id":"fx_don_004","staff_id":"fx_nv_chi","trang_thai":"xong","thanh_toan":"tien_mat","nguon":"pos","luc":"2026-08-29T07:18:00Z","dong":[{"mon_id":"fx_mon_matcha","ten":"Matcha sữa","so_luong":1,"gia":49000},{"mon_id":"fx_mon_nuoc_loc","ten":"Nước lọc","so_luong":1,"gia":12000}]},
     {"id":"fx_don_005","staff_id":"fx_nv_lan","trang_thai":"huy","thanh_toan":"chua_thu","ly_do_huy":"khach doi mon sau khi dat","nguon":"pos","luc":"2026-08-29T07:25:00Z","dong":[{"mon_id":"fx_mon_coldbrew","ten":"Cold brew","so_luong":1,"gia":49000}]},
-    {"id":"fx_don_006","staff_id":"fx_nv_quan","trang_thai":"cho_pha","thanh_toan":"chua_thu","nguon":"qr","luc":"2026-08-29T07:49:00Z","dong":[{"mon_id":"fx_mon_combo","ten":"Combo sang","so_luong":2,"gia":59000}]}
+    {"id":"fx_don_006","staff_id":"fx_nv_quan","trang_thai":"cho_pha","thanh_toan":"chua_thu","nguon":"qr","luc":"2026-08-29T07:49:00Z","dong":[{"mon_id":"fx_mon_combo","ten":"Combo sáng","so_luong":2,"gia":59000}]}
   ],
   "attendance": [
     {"id":"fx_dd_01","staff_id":"fx_nv_lan","shift_id":"fx_ca_01","status":"present","at":"2026-08-29T06:54:00Z"},

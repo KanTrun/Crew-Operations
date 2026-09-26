@@ -1,0 +1,39 @@
+{
+  "description": "Một khu vực trên Living Map — bản chiếu theo vai trò.",
+  "properties": {
+    "zone_id": {
+      "minLength": 1,
+      "title": "Zone Id",
+      "type": "string"
+    },
+    "label": {
+      "minLength": 1,
+      "title": "Label",
+      "type": "string"
+    },
+    "kind": {
+      "minLength": 1,
+      "title": "Kind",
+      "type": "string"
+    },
+    "active": {
+      "default": true,
+      "title": "Active",
+      "type": "boolean"
+    },
+    "load_signal": {
+      "default": 0.0,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Load Signal",
+      "type": "number"
+    }
+  },
+  "required": [
+    "zone_id",
+    "label",
+    "kind"
+  ],
+  "title": "ZoneProjection",
+  "type": "object"
+}

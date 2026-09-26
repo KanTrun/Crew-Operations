@@ -51,7 +51,7 @@ export function ChatText({ text }: { text: string }) {
 
   return (
     <span
-      className="[&_strong]:font-semibold [&_strong]:text-zinc-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-zinc-800 [&_code]:text-amber-300 [&_code]:text-[0.9em] [&_em]:italic"
+      className="[&_strong]:font-semibold [&_strong]:text-[var(--nq-ink)] [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-[var(--nq-surface)] [&_code]:text-[var(--nq-st-warn-ink)] [&_code]:text-[0.9em] [&_em]:italic"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

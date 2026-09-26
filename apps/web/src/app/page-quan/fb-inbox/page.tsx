@@ -18,6 +18,7 @@ import {
   Select,
   StatusChip,
   Textarea,
+  Toasts,
   useToasts,
 } from "../../../ui/kit";
 
@@ -59,6 +60,7 @@ type Stats = {
 
 type Policy = {
   auto_send_enabled: boolean;
+  jev_enabled?: boolean;
 };
 
 type StatusFilter = "pending" | "approved" | "rejected" | "all";
@@ -114,7 +116,7 @@ export default function FbInboxPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [policyBusy, setPolicyBusy] = useState(false);
-  const { push } = useToasts();
+  const { toasts, push, dismiss } = useToasts();
 
   useEffect(() => {
     setToken(getToken());
@@ -218,6 +220,7 @@ export default function FbInboxPage() {
 
   return (
     <div className="nq-page">
+      <Toasts toasts={toasts} onDismiss={dismiss} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 16 }}>
         <PageHeader
           kicker="AG-FBPAGE · Kiểm duyệt chỉn chu"
@@ -232,7 +235,10 @@ export default function FbInboxPage() {
             gap: 6,
             padding: "8px 16px",
             borderRadius: 8,
-            background: "#27ae60",
+            /* `--nq-ok` (#22c55e) trên chữ trắng chỉ đạt 2.28:1; nền xanh đậm hơn
+               giữ nguyên sắc nhưng đạt 5.02:1. Đây là lối vào màn hình đặt bàn —
+               nút duy nhất trên khối này, không được để chữ mờ. */
+            background: "#15803d",
             color: "#fff",
             fontWeight: 600,
             textDecoration: "none",
@@ -274,6 +280,39 @@ export default function FbInboxPage() {
                 }}
               >
                 {policy.auto_send_enabled ? "Tắt tự trả lời" : "Bật tự trả lời FAQ"}
+              </Btn>
+            </span>
+          ) : null}
+        </Notice>
+      ) : null}
+      {policy ? (
+        <Notice>
+          {policy.jev_enabled
+            ? "Đang bật cảm biến Jev (TypeSafe) để phát hiện nguy cơ sức khỏe/pháp lý/gay gắt bổ trợ regex."
+            : "Đang tắt cảm biến Jev — chỉ dùng regex làm lưới an toàn. Chủ quán bật để Jev hỗ trợ phát hiện cách diễn đạt khéo mà regex bỏ lọt."}
+          {chuQuan ? (
+            <span style={{ display: "inline-block", marginLeft: 12 }}>
+              <Btn
+                variant={policy.jev_enabled ? "ghost" : undefined}
+                busy={policyBusy}
+                onClick={async () => {
+                  setPolicyBusy(true);
+                  try {
+                    const next = await apiSend<Policy>(
+                      "/api/v1/page/fb-policy",
+                      { jev_enabled: !policy.jev_enabled, note: "inbox_jev_toggle" },
+                      "PUT",
+                    );
+                    setPolicy(next);
+                    push(next.jev_enabled ? "Đã bật cảm biến Jev." : "Đã tắt cảm biến Jev.");
+                  } catch (e) {
+                    setError(viError(e, { doing: "cập nhật trạng thái cảm biến Jev" }));
+                  } finally {
+                    setPolicyBusy(false);
+                  }
+                }}
+              >
+                {policy.jev_enabled ? "Tắt Jev" : "Bật Jev"}
               </Btn>
             </span>
           ) : null}
@@ -322,8 +361,8 @@ export default function FbInboxPage() {
           return (
             <article
               key={it.id}
-              className={`bg-[var(--nq-surface)] border-2 p-6 ${
-                sla?.overdue ? "border-[var(--nq-red)]" : "border-[var(--nq-dim)]"
+              className={`nq-surface-block bg-[var(--nq-surface)] p-6 ${
+                sla?.overdue ? "border-[var(--nq-red)]" : ""
               }`}
             >
               <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -350,7 +389,7 @@ export default function FbInboxPage() {
               </p>
 
               {it.proposed_response ? (
-                <div className="mb-4 border-l-4 border-[var(--nq-copper)] pl-4">
+                <div className="mb-4 border-l-4 border-[var(--nq-accent)] pl-4">
                   <p className="text-xs font-mono uppercase tracking-widest text-[var(--nq-dim)] mb-1">
                     Bản nháp của agent
                   </p>
@@ -419,7 +458,7 @@ export default function FbInboxPage() {
                         href={it.attachment_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-[var(--nq-copper)] underline hover:text-[var(--nq-copper)]"
+                        className="text-xs text-[var(--nq-accent)] underline hover:text-[var(--nq-accent)]"
                       >
                         Xem đính kèm
                       </a>
@@ -486,9 +525,9 @@ export default function FbInboxPage() {
 
 function StatCell({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {
   return (
-    <div className="bg-[var(--nq-surface)] border-2 border-[var(--nq-dim)] p-4">
+    <div className="nq-surface-row bg-[var(--nq-surface)] p-4 block">
       <p className="text-xs font-mono uppercase tracking-widest text-[var(--nq-dim)] mb-1">{label}</p>
-      <p className={`text-3xl font-black ${danger ? "text-[var(--nq-red)]" : "text-[var(--nq-fg)]"}`}>{value}</p>
+      <p className={`tabular-nums text-3xl font-semibold ${danger ? "text-[var(--nq-red)]" : "text-[var(--nq-fg)]"}`}>{value}</p>
     </div>
   );
 }

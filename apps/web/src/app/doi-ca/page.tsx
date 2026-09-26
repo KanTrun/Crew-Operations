@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiSend } from "../../lib/api";
 import { getRole, getToken } from "../../lib/session";
-import { caHumanLabel, nvLabel, nvTenHienThi, safeText, swapLabel, thuLabel, viError } from "../../lib/present";
+import { caHumanLabel, nvLabel, nvTenHienThi, safeText, swapLabel, thuLabel, viError, viTriLabel } from "../../lib/present";
 import { matchExact, matchSearch, uniqueSorted } from "../../lib/list-filters";
 import { useOpsPickers } from "../../lib/ops-context";
 import {
@@ -11,15 +11,19 @@ import {
   AuthGate,
   Btn,
   BtnLink,
+  ConfirmDialog,
   Empty,
   Loading,
   OpsCard,
+  PageActions,
   PageHeader,
+  PagedList,
   StatusChip,
 } from "../../ui/kit";
 import { FilteredEmpty, ListToolbar } from "../../ui/list-filters";
 import { ShiftSelect } from "../../ui/ops-pickers";
 import { CopilotPane } from "../../ui/copilot/CopilotPane";
+import { ShiftChangeLog } from "../roster/ShiftChangeLog";
 
 type Swap = {
   id: string;
@@ -28,6 +32,29 @@ type Swap = {
   ca_id: string;
   trang_thai: string;
   dong_y?: string[];
+  tuan_id?: string;
+  da_duyet_boi?: string;
+  rui_ro?: RuiRo;
+  la_nguoi_tham_gia?: boolean;
+};
+
+/** Phép ĐO rủi ro kẹt ca do server trả — không phải lời khuyên. */
+type RuiRo = {
+  tuan_id: string;
+  ca_id: string;
+  ca: { thu: string; gio: string; vi_tri: string };
+  nguoi_nhuong_dang_trong_ca: boolean;
+  nguoi_nhan: string;
+  nguoi_nhan_dang_trung: Array<{ ca_id: string; thu: string; gio: string }>;
+  co_the_nhan: boolean;
+  ly_do_chan: string;
+  can_quan_ly_duyet: boolean;
+};
+
+const LY_DO_CHAN_LABEL: Record<string, string> = {
+  ca_khong_trong_phan_cong_cua_nguoi_nhuong:
+    "Người nhường không còn trực ca này — phiếu không thực hiện được.",
+  nguoi_nhan_dang_co_ca_trung_gio: "Người nhận đang có ca khác trùng giờ.",
 };
 
 type OpenShift = {
@@ -89,8 +116,8 @@ function currentISOWeek(): string {
   return `${date.getFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
-function swapHaystack(it: Swap): string {
-  return [it.id, it.a, it.b, it.ca_id, swapLabel(it.trang_thai), nvLabel(it.a), nvLabel(it.b)].join(" ");
+function swapHaystack(it: Swap, personLabel: (id: string) => string): string {
+  return [it.id, it.a, it.b, it.ca_id, swapLabel(it.trang_thai), personLabel(it.a), personLabel(it.b)].join(" ");
 }
 
 export default function DoiCaPage() {
@@ -110,6 +137,8 @@ export default function DoiCaPage() {
   const [statusF, setStatusF] = useState("all");
   const [personF, setPersonF] = useState("all");
   const [copilotOpen, setCopilotOpen] = useState(false);
+  const [laQuanLy, setLaQuanLy] = useState(false);
+  const [xacNhanNhan, setXacNhanNhan] = useState<Swap | null>(null);
   const { data: pickers } = useOpsPickers(!!token);
   const meNv = pickers?.me_nv_id ?? null;
   const employeeMode = getRole() === "nhan_vien";
@@ -122,9 +151,10 @@ export default function DoiCaPage() {
   const load = useCallback(() => {
     if (!getToken()) return;
     setLoading(true);
-    apiGet<{ items: Swap[] }>("/api/v1/cho-doi-ca")
+    apiGet<{ items: Swap[]; toi_la_quan_ly?: boolean }>("/api/v1/cho-doi-ca")
       .then((d) => {
         setItems((d.items ?? []).filter((x) => x && typeof x.id === "string"));
+        setLaQuanLy(Boolean(d.toi_la_quan_ly));
         setError(null);
       })
       .catch((e) => setError(viError(e, { doing: "tải được chợ đổi ca" })))
@@ -158,22 +188,29 @@ export default function DoiCaPage() {
 
   const personOptions = useMemo(() => {
     const people = uniqueSorted(items.flatMap((i) => [i.a, i.b]));
-    return [{ value: "all", label: "Mọi người" }, ...people.map((p) => ({ value: p, label: nvLabel(p) }))];
-  }, [items]);
+    return [
+      { value: "all", label: "Mọi người" },
+      ...people.map((p) => {
+        const hit = pickers?.nhan_vien.find((x) => x.id === p);
+        return { value: p, label: hit ? nvTenHienThi(hit.ten, p) : nvLabel(p) };
+      }),
+    ];
+  }, [items, pickers]);
 
+  // Server đã lọc theo người tham gia (nhân viên chỉ thấy phiếu của mình).
+  // Ở đây chỉ loại phiếu đã chốt khỏi danh sách đang mở.
   const available = useMemo(() => {
-    if (!meNv) return [];
-    return items.filter((it) => it.trang_thai !== "dong_y" && (it.b === meNv || it.b === "all"));
-  }, [items, meNv]);
+    return items.filter((it) => it.trang_thai !== "dong_y" && it.trang_thai !== "da_duyet");
+  }, [items]);
 
   const filtered = useMemo(() => {
     return available.filter((it) => {
-      if (!matchSearch(swapHaystack(it), search)) return false;
+      if (!matchSearch(swapHaystack(it, personLabel), search)) return false;
       if (!matchExact(it.trang_thai, statusF)) return false;
       if (personF !== "all" && ![it.a, it.b].includes(personF)) return false;
       return true;
     });
-  }, [available, search, statusF, personF]);
+  }, [available, search, statusF, personF, pickers]);
 
   const filterActive = search.length > 0 || statusF !== "all" || personF !== "all";
 
@@ -239,6 +276,21 @@ export default function DoiCaPage() {
     }
   }
 
+  /** Quản lý duyệt phiếu: đây mới là bước thực sự đổi phân công. */
+  async function duyet(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiSend(`/api/v1/cho-doi-ca/${encodeURIComponent(id)}/duyet`, {});
+      setMsg("Đã duyệt và áp dụng phiếu đổi ca.");
+      load();
+    } catch (e) {
+      setError(viError(e, { doing: "duyệt phiếu đổi ca" }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function claimOpenShift(openShift: OpenShift) {
     setClaimingShift(openShift.id);
     setError(null);
@@ -281,9 +333,11 @@ export default function DoiCaPage() {
         title="Ca mở & đổi ca"
         meta="Ca thiếu do hệ thống mở và phiếu đổi giữa nhân viên là hai quy trình riêng."
       />
-      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-        Hỏi trợ lý vận hành
-      </Btn>
+      <PageActions>
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          Hỏi trợ lý vận hành
+        </Btn>
+      </PageActions>
       {error ? <Alert>{error}</Alert> : null}
       {msg ? <Alert kind="ok">{msg}</Alert> : null}
 
@@ -423,52 +477,151 @@ export default function DoiCaPage() {
         ) : null}
         {!loading && available.length > 0 && filtered.length === 0 ? <FilteredEmpty onClear={clearFilters} /> : null}
         <div className="nq-list">
-          {filtered.map((it) => {
-            const agreed = new Set(it.dong_y ?? []);
-            const recipient = it.b === "all" || it.b === meNv;
-            const canAgree = meNv && recipient && it.a !== meNv && !agreed.has(meNv);
-            return (
-              <article key={it.id} className="nq-item">
-                <p className="nq-item-title">
-                  {personLabel(it.a)} nhả · {it.b === "all" ? "Mọi người" : `${personLabel(it.b)} nhận`}
-                </p>
-                <p className="nq-item-sub">
-                  <StatusChip tone={it.trang_thai === "dong_y" ? "ok" : "warn"}>
-                    {swapLabel(it.trang_thai)}
-                  </StatusChip>
-                  {it.ca_id ? ` · ${caLabel(it.ca_id)}` : ""}
-                </p>
-                <p className="nq-item-sub text-xs mt-2">
-                  {agreed.size > 0 ? `Đã có người nhận: ${[...agreed].map(personLabel).join(", ")}` : "Chưa có ai nhận ca"}
-                </p>
-                {canAgree ? (
-                  <div className="flex gap-2 mt-2">
-                    <Btn variant="primary" busy={busy} onClick={() => {
-                      if (window.confirm(`Bạn nhận ca do ${personLabel(it.a)} nhả ra không?`)) void dongY(it.id);
-                    }}>
-                      Tôi nhận ca
-                    </Btn>
-                    <Btn variant="danger" disabled={busy} onClick={() => void tuChoi(it.id)}>
-                      Từ chối
-                    </Btn>
+          <PagedList
+            items={filtered}
+            pageSize={10}
+            renderItem={(it) => {
+              const agreed = new Set(it.dong_y ?? []);
+              const recipient = it.b === "all" || it.b === meNv;
+              const canAgree = meNv && recipient && it.a !== meNv && !agreed.has(meNv) && it.trang_thai !== "da_duyet";
+              const rr = it.rui_ro;
+              const daDuyet = it.trang_thai === "da_duyet";
+              const du = agreed.size >= 2;
+              return (
+                <article key={it.id} className="nq-item">
+                  <p className="nq-item-title">
+                    {personLabel(it.a)} nhả · {it.b === "all" ? "Mọi người" : `${personLabel(it.b)} nhận`}
+                  </p>
+                  <p className="nq-item-sub">
+                    <StatusChip tone={daDuyet ? "ok" : it.trang_thai === "dong_y" ? "info" : "warn"}>
+                      {swapLabel(it.trang_thai)}
+                    </StatusChip>
+                    {/* Tuần là thứ bản cũ KHÔNG hiện — người dùng không biết phiếu thuộc tuần nào. */}
+                    {it.tuan_id ? ` · Tuần ${it.tuan_id}` : ""}
+                    {it.ca_id ? ` · ${caLabel(it.ca_id)}` : ""}
+                  </p>
+                  {rr?.ca?.gio ? (
+                    <p className="nq-item-sub text-xs mt-1">
+                      Ca nhường: {thuLabel(rr.ca.thu)} · {rr.ca.gio}
+                      {rr.ca.vi_tri ? ` · ${viTriLabel(rr.ca.vi_tri)}` : ""}
+                    </p>
+                  ) : null}
+                  <p className="nq-item-sub text-xs mt-2">
+                    {agreed.size > 0
+                      ? `Đã đồng ý: ${[...agreed].map(personLabel).join(", ")}`
+                      : "Chưa có ai đồng ý"}
+                  </p>
+
+                  {/* Cảnh báo kẹt ca — trả lời "họ có bị kẹt ở ca nào không". */}
+                  {rr && !rr.co_the_nhan ? (
+                    <div className="mt-2" data-rui-ro="chan">
+                      <Alert kind="err">
+                        {LY_DO_CHAN_LABEL[rr.ly_do_chan] ?? "Phiếu này chưa thực hiện được."}
+                        {rr.nguoi_nhan_dang_trung.length > 0 ? (
+                          <span className="block mt-1 font-mono text-xs">
+                            Trùng:{" "}
+                            {rr.nguoi_nhan_dang_trung
+                              .map((c) => `${thuLabel(c.thu)} ${c.gio}`)
+                              .join(", ")}
+                          </span>
+                        ) : null}
+                      </Alert>
+                    </div>
+                  ) : null}
+                  {rr && rr.co_the_nhan && !daDuyet ? (
+                    <p className="nq-item-sub text-xs mt-1" data-rui-ro="ok">
+                      Không vướng ca trùng giờ — có thể nhận.
+                    </p>
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {canAgree ? (
+                      <>
+                        <Btn variant="primary" busy={busy} onClick={() => setXacNhanNhan(it)}>
+                          Tôi nhận ca
+                        </Btn>
+                        <Btn variant="danger" disabled={busy} onClick={() => void tuChoi(it.id)}>
+                          Từ chối
+                        </Btn>
+                      </>
+                    ) : null}
+                    {/* Quản lý duyệt: chỉ hiện khi đã đủ hai bên đồng ý và chưa duyệt. */}
+                    {laQuanLy && !daDuyet && du ? (
+                      <Btn variant="primary" busy={busy} onClick={() => void duyet(it.id)}>
+                        Duyệt &amp; áp dụng
+                      </Btn>
+                    ) : null}
+                    {laQuanLy && !daDuyet && !du ? (
+                      <span className="text-xs text-[var(--nq-dim)] self-center">
+                        Chờ đủ hai bên đồng ý rồi mới duyệt được.
+                      </span>
+                    ) : null}
+                    {daDuyet ? (
+                      <span className="text-xs text-[var(--nq-dim)] self-center">
+                        Đã duyệt{it.da_duyet_boi ? ` bởi ${personLabel(it.da_duyet_boi)}` : ""} — phân công đã
+                        đổi.
+                      </span>
+                    ) : null}
                   </div>
-                ) : null}
-              </article>
-            );
-          })}
+                </article>
+              );
+            }}
+          />
         </div>
       </OpsCard>
 
-      <OpsCard eyebrow="Đổi ca giữa hai người" title="Phiếu được chốt thế nào?">
+      {/* Bằng chứng đổi ca THẬT: sau khi quản lý duyệt, phân công đổi ở đây. */}
+      {!loading ? (
+        <details className="nq-constraint-panel mb-4" data-panel="nhat-ky-doi-ca">
+          <summary>Ai đổi ca với ai — lần thay đổi gần nhất</summary>
+          <div className="mt-3">
+            <ShiftChangeLog tuanIso={openShiftWeek} compact />
+          </div>
+        </details>
+      ) : null}
+
+      <OpsCard density="compact" eyebrow="Đổi ca giữa hai người" title="Phiếu được chốt thế nào?">
+        <p className="mb-2 text-sm text-[var(--nq-dim)]">
+          Người <strong>nhả</strong> mở phiếu cho một người nhận hoặc mọi người. Người nhận xem
+          tên người nhả <em>và rủi ro kẹt ca</em> trước khi nhận.
+        </p>
         <p className="mb-3 text-sm text-[var(--nq-dim)]">
-          Người <strong>nhả</strong> mở phiếu cho một người nhận hoặc mọi người. Người nhận xem tên người
-          nhả ca trước khi nhận. Phiếu đã có người nhận sẽ không còn hiện trong chợ.
+          Lịch còn <strong>nháp</strong> thì chưa đổi ca được. Lịch đã <strong>công bố</strong> thì
+          cần đủ hai bên đồng ý <em>và</em> một lượt <strong>quản lý duyệt</strong> mới thực sự đổi
+          phân công — vì người khác đang chạy theo lịch đó.
         </p>
         <div className="flex flex-wrap gap-3">
           <BtnLink href="/inbox">Hộp thư duyệt →</BtnLink>
           <BtnLink href="/cong-bang" variant="ghost">Xem công bằng</BtnLink>
         </div>
       </OpsCard>
+
+      <ConfirmDialog
+        open={xacNhanNhan !== null}
+        title="Nhận ca này?"
+        confirmLabel="Tôi nhận ca"
+        cancelLabel="Để sau"
+        busy={busy}
+        onCancel={() => setXacNhanNhan(null)}
+        onConfirm={() => {
+          const target = xacNhanNhan;
+          setXacNhanNhan(null);
+          if (target) void dongY(target.id);
+        }}
+        body={
+          <div>
+            <p>
+              Bạn nhận ca do <strong>{xacNhanNhan ? personLabel(xacNhanNhan.a) : ""}</strong> nhả ra
+              {xacNhanNhan?.tuan_id ? ` ở tuần ${xacNhanNhan.tuan_id}` : ""}
+              {xacNhanNhan?.rui_ro?.ca?.gio ? ` (${xacNhanNhan.rui_ro.ca.gio})` : ""}.
+            </p>
+            <p className="mt-2 text-sm text-[var(--nq-dim)]">
+              Đồng ý của bạn được ghi nhận ngay, nhưng phân công chỉ đổi sau khi quản lý duyệt.
+            </p>
+          </div>
+        }
+      />
+
       <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );

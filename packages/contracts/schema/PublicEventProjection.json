@@ -1,0 +1,61 @@
+{
+  "description": "Một sự kiện công khai trên Living Map — không chứa dữ liệu riêng tư.\n\n`zone_id` gắn sự kiện với một khu vực trên mặt bằng. Để trống khi sự kiện\nlà toàn quán: UI phải nói thẳng \"không thuộc khu vực nào\", không suy diễn.",
+  "properties": {
+    "event_id": {
+      "minLength": 1,
+      "title": "Event Id",
+      "type": "string"
+    },
+    "event_type": {
+      "minLength": 1,
+      "title": "Event Type",
+      "type": "string"
+    },
+    "status": {
+      "minLength": 1,
+      "title": "Status",
+      "type": "string"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "replay",
+        "user",
+        "system",
+        "agent"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "summary": {
+      "default": "",
+      "title": "Summary",
+      "type": "string"
+    },
+    "zone_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Zone Id"
+    }
+  },
+  "required": [
+    "event_id",
+    "event_type",
+    "status",
+    "occurred_at",
+    "source"
+  ],
+  "title": "PublicEventProjection",
+  "type": "object"
+}

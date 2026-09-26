@@ -17,12 +17,13 @@ Hồ sơ §11 (`apps/web` constraints-inbox / run-form / today / playbook / sop-
 | swap-market | `/doi-ca` | Ba nhánh |
 | QR | `/qr` | Quản lý phát, NV dùng |
 | tieu_thu | `/tieu-thu` | Số lượng, không kế toán |
-| waste | `/hao-phi` | Ghi chú → cụm |
+| waste | `/hao-phi` | Hao hụt theo nguyên liệu: công thức ↔ kiểm kê, mức độ, xếp hạng nguyên nhân |
 | handover | `/handover` | SBAR |
 | agent-trace | `/vet` | Append-only audit |
 | overflow | `/them` | Nav ≤5 trên điện thoại |
 | channels bind | `/toi` (mục Nối Zalo/Telegram) | NV lấy mã bind; ưu tiên Zalo OA |
 | page-quan | `/page-quan` | Facebook Page quán — trống tới khi nối Meta |
+| gmail | `/gmail` | Quản lý/chủ quán — tài khoản Gmail, hộp thư, nhãn, bộ lọc, đồng bộ |
 
 Trang `/` chỉ đưa vào đăng nhập hoặc chuyển `/hom-nay`. Không dump 10 liên kết.
 

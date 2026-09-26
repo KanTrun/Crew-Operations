@@ -12,14 +12,17 @@ import {
   Alert,
   AuthGate,
   Btn,
+  BtnLink,
   Empty,
   Field,
   inputClassName,
   Loading,
   Notice,
   OpsCard,
+  PageActions,
   PageHeader,
   StatusChip,
+  TimeField,
   Toasts,
   useToasts,
 } from "../../ui/kit";
@@ -42,6 +45,84 @@ type ExtractOut = {
 };
 
 type Nv = { id: string; ten: string };
+
+/**
+ * Tác động của khung bận vừa gắn lên lịch tuần đang có.
+ *
+ * Có mặt để trả lời câu "up TKB xong sao lịch không tự đổi": server không tự
+ * chạy lại xếp lịch (làm vậy sẽ đè lịch đã công bố mà không hỏi ai), mà TRẢ VỀ
+ * đây để người dùng quyết định. `can_chay_lai` là True khi có ca đang giao với
+ * khung bận mới — tức lịch hiện tại đang SAI ràng buộc.
+ */
+type CaBiDung = {
+  ca_id: string;
+  thu: string;
+  khung: string;
+  gio: string;
+  khoang_ban: string;
+};
+
+type TacDong = {
+  nv_id: string;
+  tuan_iso: string;
+  trang_thai: string;
+  ca_bi_dung: CaBiDung[];
+  so_ca_bi_dung: number;
+  can_chay_lai: boolean;
+  da_cong_bo: boolean;
+  ly_do: string;
+};
+
+type ConfirmOut = {
+  ok: boolean;
+  nv_id: string;
+  tuan_iso: string;
+  khoang_ban: Khoang[];
+  n: number;
+  khoang_cu: Khoang[];
+  tac_dong: TacDong;
+};
+
+/** Diff trả về từ `POST /api/v1/tkb/xep-lai` — bằng chứng ai đổi ca với ai. */
+type DongThayDoi = {
+  ca: { ca_id: string; thu: string; khung: string; gio: string; vi_tri: string };
+  nv_id: string;
+  ten: string;
+  chieu: string;
+};
+
+type HoanDoi = {
+  ca: { ca_id: string; thu: string; khung: string; gio: string; vi_tri: string };
+  ra: Array<{ nv_id: string; ten: string }>;
+  vao: Array<{ nv_id: string; ten: string }>;
+};
+
+type ChuyenCa = {
+  nv_id: string;
+  ten: string;
+  tu_ca: Array<{ ca_id: string; thu: string; khung: string; gio: string }>;
+  den_ca: Array<{ ca_id: string; thu: string; khung: string; gio: string }>;
+};
+
+type Diff = {
+  them: DongThayDoi[];
+  bot: DongThayDoi[];
+  hoan_doi: HoanDoi[];
+  doi_giua_hai_ca: ChuyenCa[];
+  giu_nguyen: number;
+  khong_so_sanh_duoc: boolean;
+};
+
+type XepLaiOut = {
+  ok: boolean;
+  tuan_iso: string;
+  trang_thai?: string;
+  diff?: Diff | null;
+  tom_tat?: string;
+  ly_do?: string;
+  danh_sach_xung_dot?: string[];
+};
+
 
 const THU = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] as const;
 const THU_TEN: Record<string, string> = {
@@ -155,6 +236,10 @@ export default function TkbPage() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copilotOpen, setCopilotOpen] = useState(false);
+  const [tacDong, setTacDong] = useState<TacDong | null>(null);
+  const [diff, setDiff] = useState<Diff | null>(null);
+  const [xepLaiMsg, setXepLaiMsg] = useState<string | null>(null);
+  const [xepLaiBusy, setXepLaiBusy] = useState(false);
   const { toasts, push, dismiss } = useToasts();
   const datesByDay = isoWeekDates(tuanIso);
   const rowErrors = validateRows(rows);
@@ -255,7 +340,7 @@ export default function TkbPage() {
     setError(null);
     try {
       const target = manager ? nvId || myNv : myNv;
-      await apiSend("/api/v1/tkb/confirm", {
+      const out = await apiSend<ConfirmOut>("/api/v1/tkb/confirm", {
         nv_id: target,
         tuan_iso: tuanIso,
         khoang_ban: rows,
@@ -264,12 +349,49 @@ export default function TkbPage() {
       });
       setSaved(rows);
       setHint(null);
-      push("Đã gắn thời khoá biểu. Lượt xếp lịch tới sẽ tránh các khung này.");
+      setDiff(null);
+      setXepLaiMsg(null);
+
+      const tacDong = out?.tac_dong;
+      if (tacDong?.can_chay_lai) {
+        // Lịch tuần đang có ca vi phạm khung bận mới — PHẢI nói ra, không im lặng.
+        setTacDong(tacDong);
+        push(`Đã gắn TKB · ${tacDong.so_ca_bi_dung} ca đang trùng khung bận.`);
+      } else {
+        setTacDong(null);
+        push("Đã gắn thời khoá biểu. Lượt xếp lịch tới sẽ tránh các khung này.");
+      }
       loadMine();
     } catch (e) {
       setError(viError(e, { doing: "xác nhận được thời khoá biểu" }));
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** Chạy lại xếp lịch cho tuần này — chỉ quản lý. Trả về diff để CHỨNG MINH. */
+  async function chayXepLai() {
+    setXepLaiBusy(true);
+    setError(null);
+    try {
+      const out = await apiSend<XepLaiOut>("/api/v1/tkb/xep-lai", { tuan_iso: tuanIso }, "POST");
+      if (out.ok) {
+        setDiff(out.diff ?? null);
+        setXepLaiMsg(
+          `Đã xếp lại tuần ${tuanIso} — trạng thái "Chờ duyệt". ${out.tom_tat ?? ""} Mở trang Lịch tuần để xem và công bố.`.trim(),
+        );
+        setTacDong(null);
+      } else {
+        setXepLaiMsg(
+          `Chưa xếp được: ${out.ly_do ?? "không rõ"} — ${
+            (out.danh_sach_xung_dot ?? []).slice(0, 3).join(" ") || "thiếu người khả dụng."
+          }`,
+        );
+      }
+    } catch (e) {
+      setError(viError(e, { doing: "xếp lại lịch tuần" }));
+    } finally {
+      setXepLaiBusy(false);
     }
   }
 
@@ -286,9 +408,11 @@ export default function TkbPage() {
         title="Tải ảnh lịch bận"
         meta="Chụp hoặc chọn ảnh lịch học, kiểm tra các khung giờ được đọc rồi xác nhận. Lần xếp ca tiếp theo sẽ tránh các giờ này."
       />
-      <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
-        Hỏi trợ lý vận hành
-      </Btn>
+      <PageActions>
+        <Btn variant="ghost" onClick={() => setCopilotOpen(true)}>
+          Hỏi trợ lý vận hành
+        </Btn>
+      </PageActions>
       <Toasts toasts={toasts} onDismiss={dismiss} />
       {error ? <Alert kind="err">{error}</Alert> : null}
       {loading ? <Loading skeleton="list">Đang tải…</Loading> : null}
@@ -309,32 +433,32 @@ export default function TkbPage() {
           <p className="mb-3 text-sm text-[var(--nq-fg)]">
             Các khung bên dưới sẽ được AvoidConflict khi xếp lịch lần tới — bấm «Xóa khung» để bỏ.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="nq-tkb-day-grid">
             {THU.map((t) => {
               const khungTrongNgay = saved.filter((k) => k.thu === t);
               if (khungTrongNgay.length === 0) {
                 return (
                   <div
                     key={t}
-                    className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-3 opacity-70"
+                    className="rounded-lg border border-[var(--nq-line)] bg-[var(--nq-bg)] p-3 opacity-70"
                   >
-                    <p className="text-xs font-bold uppercase tracking-wide text-neutral-300">
+                    <p className="text-xs font-bold uppercase tracking-wide text-[var(--nq-ink)]">
                       {THU_TEN[t]}
                     </p>
-                    <p className="mt-1 text-xs text-neutral-500">Rảnh cả ngày</p>
+                    <p className="mt-1 text-xs text-[var(--nq-ink-muted)]">Rảnh cả ngày</p>
                   </div>
                 );
               }
               return (
-                <div key={t} className="rounded-lg border border-amber-700/50 bg-amber-950/20 p-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-amber-300">
+                <div key={t} className="rounded-lg border border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-warn-soft)] p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-[var(--nq-st-warn-ink)]">
                     {THU_TEN[t]}
                   </p>
                   <ul className="mt-1.5 space-y-1">
                     {khungTrongNgay.map((k, i) => (
                       <li
                         key={`${k.thu}-${k.start}-${i}`}
-                        className="rounded bg-neutral-900/80 px-2 py-1 font-mono text-xs text-neutral-200"
+                        className="rounded bg-[var(--nq-bg-elevated)] px-2 py-1 font-mono text-xs text-[var(--nq-ink)]"
                       >
                         {k.start} – {k.end}
                       </li>
@@ -430,9 +554,9 @@ export default function TkbPage() {
           {unrecognizedDayRows.map((row) => (
             <div
               key={row._i}
-              className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-red-800/60 bg-red-950/20 p-3"
+              className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--nq-st-danger)_46%,var(--nq-line))] bg-[var(--nq-st-danger-soft)] p-3"
             >
-              <span className="text-sm text-red-200">
+              <span className="text-sm text-[var(--nq-st-danger-ink)]">
                 Không nhận diện được ngày “{safeText(row.thu, "trống")}” cho khung {safeText(row.start, "—")}–
                 {safeText(row.end, "—")}.
               </span>
@@ -459,8 +583,10 @@ export default function TkbPage() {
             </div>
           ))}
 
-          {/* Lưới chi tiết theo ngày — mỗi khung hiện đầy đủ thứ, giờ, nút xóa */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Lưới chi tiết theo ngày — mỗi khung hiện đầy đủ thứ, giờ, nút xóa.
+              `auto-fill minmax(260px,1fr)` tự co số cột theo bề ngang thật của
+              trang (không còn cố định 4 cột rồi ép ô giờ tràn ra ngoài thẻ). */}
+          <div className="nq-tkb-day-grid">
             {THU.map((t) => {
               const khungTrongNgay = rows.map((r, i) => ({ ...r, _i: i })).filter((r) => r.thu === t);
               return (
@@ -468,8 +594,8 @@ export default function TkbPage() {
                   key={t}
                   className={`rounded-lg border p-3 space-y-2 ${
                     khungTrongNgay.length > 0
-                      ? "border-amber-700/50 bg-amber-950/20"
-                      : "border-neutral-800 bg-neutral-950/50"
+                      ? "border-[color-mix(in_srgb,var(--nq-st-warn)_46%,var(--nq-line))] bg-[var(--nq-st-warn-soft)]"
+                      : "border-[var(--nq-line)] bg-[var(--nq-bg)]"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -481,7 +607,7 @@ export default function TkbPage() {
                     </div>
                     <button
                       type="button"
-                      className="rounded px-1.5 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-950"
+                      className="rounded px-1.5 py-0.5 text-2xs font-bold text-[var(--nq-st-warn-ink)] hover:bg-[var(--nq-st-warn)]"
                       title={`Thêm khung bận cho ${THU_TEN[t]}`}
                       onClick={() => setRows((prev) => [...prev, { thu: t, start: "", end: "" }])}
                     >
@@ -489,38 +615,35 @@ export default function TkbPage() {
                     </button>
                   </div>
                   {khungTrongNgay.length === 0 ? (
-                    <p className="text-xs text-neutral-500">Không có khung bận</p>
+                    <p className="text-xs text-[var(--nq-ink-muted)]">Không có khung bận</p>
                   ) : (
                     khungTrongNgay.map((r) => (
-                      <div key={r._i}>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            className="nq-input w-full text-xs"
-                            type="time"
+                      <div key={r._i} className="nq-tkb-row">
+                        <div className="nq-tkb-row__times">
+                          <TimeField
                             value={r.start}
-                            aria-invalid={rowErrors[r._i].length > 0}
-                            onChange={(e) => updateRow(r._i, { start: e.target.value })}
-                            aria-label={`Giờ bắt đầu bận ${THU_TEN[t]} ${datesByDay[t]}`}
+                            onChange={(v) => updateRow(r._i, { start: v })}
+                            invalid={rowErrors[r._i].length > 0}
+                            ariaLabel={`Giờ bắt đầu bận ${THU_TEN[t]} ${datesByDay[t]}`}
                           />
                           <span className="text-[var(--nq-fg)] text-xs">đến</span>
-                          <input
-                            className="nq-input w-full text-xs"
-                            type="time"
+                          <TimeField
                             value={r.end}
-                            aria-invalid={rowErrors[r._i].length > 0}
-                            onChange={(e) => updateRow(r._i, { end: e.target.value })}
-                            aria-label={`Giờ kết thúc bận ${THU_TEN[t]} ${datesByDay[t]}`}
+                            onChange={(v) => updateRow(r._i, { end: v })}
+                            invalid={rowErrors[r._i].length > 0}
+                            ariaLabel={`Giờ kết thúc bận ${THU_TEN[t]} ${datesByDay[t]}`}
                           />
-                          <Btn
-                            variant="ghost"
-                            title={`Xóa khung bận ${THU_TEN[t]} ${r.start}–${r.end}`}
-                            onClick={() => setRows((prev) => prev.filter((_, j) => j !== r._i))}
-                          >
-                            Xóa
-                          </Btn>
                         </div>
+                        <Btn
+                          variant="ghost"
+                          size="sm"
+                          title={`Xóa khung bận ${THU_TEN[t]} ${r.start}–${r.end}`}
+                          onClick={() => setRows((prev) => prev.filter((_, j) => j !== r._i))}
+                        >
+                          Xóa
+                        </Btn>
                         {rowErrors[r._i].map((message) => (
-                          <p key={message} className="mt-1 text-xs text-red-300" role="alert">
+                          <p key={message} className="mt-1 w-full text-xs text-[var(--nq-st-danger-ink)]" role="alert">
                             {message}
                           </p>
                         ))}
@@ -547,7 +670,168 @@ export default function TkbPage() {
           <Empty>Chưa có kết quả đọc. Chọn ảnh rồi bấm Đọc ảnh, hoặc thử ảnh mẫu.</Empty>
         )
       )}
+
+      {/* Tác động lên lịch tuần — trả lời "up TKB xong sao lịch không tự đổi". */}
+      {tacDong && tacDong.can_chay_lai ? (
+        <OpsCard
+          eyebrow="Lịch tuần bị ảnh hưởng"
+          title="Khung bận mới trùng ca đã xếp"
+          count={tacDong.so_ca_bi_dung}
+          countLabel="ca"
+        >
+          <Alert kind="info">
+            Lịch tuần <strong>{tacDong.tuan_iso}</strong> đang có {tacDong.so_ca_bi_dung} ca
+            giao với khung bận vừa gắn, nên lịch hiện tại <strong>chưa tôn trọng</strong> ràng buộc.
+            {tacDong.da_cong_bo
+              ? " Tuần này đã công bố — xếp lại sẽ đưa về trạng thái Chờ duyệt, cần duyệt lại mới có hiệu lực."
+              : " Xếp lại sẽ đưa tuần về trạng thái Chờ duyệt để bạn rà trước khi công bố."}
+          </Alert>
+          <ul className="nq-tkb-list mt-3">
+            {tacDong.ca_bi_dung.map((c) => (
+              <li key={c.ca_id}>
+                {THU_TEN[c.thu] ?? c.thu} · {c.gio} — trùng khung bận {c.khoang_ban}
+              </li>
+            ))}
+          </ul>
+          {manager ? (
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Btn variant="primary" disabled={xepLaiBusy} onClick={chayXepLai}>
+                {xepLaiBusy ? "Đang xếp lại…" : "Xếp lại lịch tuần này"}
+              </Btn>
+              <Btn variant="ghost" onClick={() => setTacDong(null)}>
+                Chỉ lưu, xếp sau
+              </Btn>
+            </div>
+          ) : (
+            <Notice>
+              Đã báo cho quản lý. Bạn có thể bấm «Hỏi trợ lý vận hành» để hỏi vì sao ca này bị ảnh hưởng.
+            </Notice>
+          )}
+        </OpsCard>
+      ) : null}
+
+      {xepLaiMsg ? (
+        <OpsCard eyebrow="Kết quả xếp lại" title="Lịch tuần đã được xếp lại">
+          <p className="text-sm text-[var(--nq-fg)]">{xepLaiMsg}</p>
+          {diff ? <ShiftChangeDiff diff={diff} /> : null}
+          <div className="mt-4">
+            <BtnLink href={`/lich-tuan?tuan=${encodeURIComponent(tuanIso)}`} variant="primary">
+              Mở Lịch tuần để duyệt
+            </BtnLink>
+          </div>
+        </OpsCard>
+      ) : null}
+
       <CopilotPane open={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }
+
+/**
+ * Bảng chứng minh đổi ca: ai ra, ai vào, ai chuyển ca.
+ *
+ * Vì sao không chỉ hiện con số: người dùng nói thẳng "cần một hệ thống dễ hiểu
+ * chứ không phải tự động ngầm". Con số "3 ca đổi người" không cho biết ai bị
+ * ảnh hưởng; ở đây in TÊN người, không in mã `nv_xx`.
+ */
+function ShiftChangeDiff({ diff }: { diff: Diff }) {
+  if (diff.khong_so_sanh_duoc) {
+    return (
+      <p className="mt-3 text-sm text-[var(--nq-ink-muted)]">
+        Chưa đủ dữ liệu để so sánh hai bản phân công (một bên chưa có lịch).
+      </p>
+    );
+  }
+  const rong =
+    diff.hoan_doi.length === 0 &&
+    diff.doi_giua_hai_ca.length === 0 &&
+    diff.them.length === 0 &&
+    diff.bot.length === 0;
+
+  if (rong) {
+    return (
+      <p className="mt-3 text-sm text-[var(--nq-ink-muted)]">
+        Không có ca nào thay đổi — lịch cũ đã tôn trọng ràng buộc mới.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      {diff.hoan_doi.length > 0 ? (
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--nq-dim)]">
+            Ca đổi người
+          </p>
+          <ul className="space-y-2">
+            {diff.hoan_doi.map((h) => (
+              <li key={h.ca.ca_id} className="nq-surface-row">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span className="font-mono text-xs text-[var(--nq-dim)]">
+                    {h.ca.thu} · {h.ca.gio}
+                  </span>
+                  <span className="text-sm">
+                    <span className="text-[var(--nq-st-danger-ink)]">
+                      {h.ra.map((r) => r.ten).join(", ")}
+                    </span>
+                    <span className="mx-2 text-[var(--nq-dim)]">ra</span>
+                    <span className="text-[var(--nq-st-ok-ink)]">
+                      {h.vao.map((v) => v.ten).join(", ")}
+                    </span>
+                    <span className="ml-2 text-[var(--nq-dim)]">vào</span>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {diff.doi_giua_hai_ca.length > 0 ? (
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--nq-dim)]">
+            Người chuyển sang ca khác (không mất ca)
+          </p>
+          <ul className="space-y-2">
+            {diff.doi_giua_hai_ca.map((c) => (
+              <li key={c.nv_id} className="nq-surface-row">
+                <span className="text-sm">
+                  <strong>{c.ten}</strong>
+                  <span className="mx-2 text-[var(--nq-dim)]">
+                    {c.tu_ca.map((t) => `${t.thu} ${t.gio}`).join(", ")} →{" "}
+                    {c.den_ca.map((d) => `${d.thu} ${d.gio}`).join(", ")}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {(diff.them.length > 0 || diff.bot.length > 0) ? (
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--nq-dim)]">
+            Lượt vào / ra ca
+          </p>
+          <ul className="nq-tkb-list">
+            {diff.bot.map((b) => (
+              <li key={`ra-${b.ca.ca_id}-${b.nv_id}`} data-chieu="ra">
+                {b.ten} ra khỏi {b.ca.thu} {b.ca.gio}
+              </li>
+            ))}
+            {diff.them.map((t) => (
+              <li key={`vao-${t.ca.ca_id}-${t.nv_id}`} data-chieu="vao">
+                {t.ten} vào {t.ca.thu} {t.ca.gio}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <p className="text-xs text-[var(--nq-dim)]">
+        Giữ nguyên {diff.giu_nguyen} lượt phân công không đổi.
+      </p>
+    </div>
+  );
+}
+

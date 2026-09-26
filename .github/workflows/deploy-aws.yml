@@ -58,8 +58,16 @@ jobs:
             release_sha="${{ github.event.workflow_run.head_sha || github.sha }}"
             test -n "$release_sha"
             test -f .env
-            if grep -Eiq '^[[:space:]]*NHIPQUAN_(SEED_DEMO|INBOX_SEED_FIXTURE|PAGE_SEED_FIXTURE|LOI_GIAI_SEED)[[:space:]]*=[[:space:]]*(1|true|yes)([[:space:]]*#.*)?$' .env; then
+            # Fail-closed: bất kỳ cờ fixture/demo nào đang bật đều dừng deploy.
+            # Giá trị bật nhận cả `on` — khớp đúng tập truthy mà code dùng
+            # (ca_api.nhan_vien list_nhan_vien_ops nhận thêm "on"), nếu chỉ chặn
+            # 1|true|yes thì `NHIPQUAN_LOI_GIAI_SEED=on` lọt lưới và production
+            # sẽ trộn nhân viên mẫu ADR-012 vào pool xếp lịch.
+            bad_flags="$(grep -Ei '^[[:space:]]*NHIPQUAN_(SEED_DEMO|INBOX_SEED_FIXTURE|PAGE_SEED_FIXTURE|LOI_GIAI_SEED)[[:space:]]*=[[:space:]]*(1|true|yes|on)([[:space:]]*#.*)?$' .env || true)"
+            if [ -n "$bad_flags" ]; then
               echo "Fixture/demo seed đang bật trong /opt/nhipquan/.env; dừng deploy production."
+              echo "Cờ vi phạm (đặt về 0/false trong /opt/nhipquan/.env rồi chạy lại deploy):"
+              printf '%s\n' "$bad_flags" | sed -E 's/[[:space:]]*=.*/=<đang bật>/'
               exit 1
             fi
 

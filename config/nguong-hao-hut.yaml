@@ -1,0 +1,45 @@
+phien_ban: "1.0.0"
+trang_thai: da_dien_co_nguon
+ngay_kiem: "2026-09-23"
+
+# Ngưỡng hao hụt tiêu thụ — KHÔNG hard-code trong mã nghiệp vụ.
+# Sửa quy định của quán thì sửa file này; engine đọc lúc chạy.
+#
+# Cách đọc: `mac_dinh_phan_tram` áp cho mọi mặt hàng; `theo_mat_hang` ghi đè theo
+# từng mã mặt hàng. Mã mặt hàng trùng với khoá trong `menu_mon.bom` và `mat_hang`
+# của phiếu kiểm kê.
+
+nguon:
+  - id: BENCH-FB-2026
+    mo_ta: Định mức hao hụt pha chế phổ biến của quán cà phê quy mô nhỏ
+    ghi_chu: "5% là mức siết chặt hơn 10% thường gặp — để phát hiện sớm thay vì hợp thức hoá thất thoát."
+  - id: NOI-BO-BARISTA
+    mo_ta: Kinh nghiệm vận hành của quán cho nguyên liệu tươi và bánh
+
+# Ngưỡng mặc định: vượt 5% là có chuyện để xem lại.
+mac_dinh_phan_tram: 5.0
+
+# Vượt 15% là nghiêm trọng — hụt nhiều hơn cả biên độ pha chế, thường là mất mát thật.
+nghiem_trong_phan_tram: 15.0
+
+# Ngưỡng riêng: nguyên liệu càng đắt hoặc càng dễ hỏng thì siết càng chặt.
+theo_mat_hang:
+  sua_tuoi: 3.0        # Sữa tươi mở hộp là tính giờ — siết chặt hơn mức chung
+  sua_dac: 3.0
+  matcha: 3.0          # Giá cao, dễ bay màu khi gặp ẩm
+  ca_phe_hat: 4.0      # Cà phê hạt sai định lượng ở máy xay là mất đều mỗi ly
+  banh: 8.0            # Bánh để quầy bán chậm là hỏng — biên độ rộng hơn
+  da: 10.0             # Đá tan khi đếm, chênh lệch tự nhiên lớn
+  ly: 6.0
+  ong_hut: 6.0
+
+# Mặt hàng không tính hao hụt (bán nguyên chai/lon, vào ra bằng số nguyên).
+mien_tinh:
+  - nuoc_dong_chai
+
+ghi_chu: |
+  Đổi quy định vận hành → sửa file này, không sửa mã.
+
+  Nhắc lại ràng buộc của hợp đồng: thiếu một vế (chưa kiểm kê hoặc chưa có đơn)
+  thì dòng hao hụt mang mức `thieu_du_lieu`, KHÔNG được suy ra "đạt". Ngưỡng ở đây
+  chỉ dùng khi đã có đủ số để so.

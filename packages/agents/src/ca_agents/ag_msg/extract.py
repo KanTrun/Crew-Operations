@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ca_agents.llm import complete, parse_json_object
+
+if TYPE_CHECKING:
+    from ca_agents.sensors.sensor_chain import SensorChain
 
 INTENTS = (
     "doi_ca",
@@ -242,3 +245,76 @@ def classify(
         rang_buoc=rang_buoc,
     )
 
+
+def classify_nang_cao(
+    text: str,
+    sensor_chain: SensorChain | None = None,
+    *,
+    mode: str = "replay",
+    staff: list[dict[str, str]] | None = None,
+    base_iso_week: str | None = None,
+) -> MsgResult:
+    """Phân loại nâng cao: keyword/LLM tier trước, SensorChain bổ sung sau (opt-in).
+
+    Gọi `classify()` để phân loại tất định rồi dùng SensorChain (JEV →
+    RegexSensor fallback) để bổ sung vào `rang_buoc`:
+    - `khan_cap_thuc_su ≥ 0.60` → set `rang_buoc["khan_cap"] = True`
+      ngay cả khi keyword tier-1 chưa bắt được (ngầm hiểu, ngữ cảnh).
+    - `co_gang_ghi_de_chi_dan ≥ 0.50` → set `rang_buoc["injection_attempt"] = True`
+      để tầng gọi ngăn auto-xử lý tin nhắn này.
+
+    Nguyên tắc đơn điệu: SensorChain chỉ *thêm* flag, không bao giờ xóa flag
+    mà tier-1/keyword đã đặt (vd: khan_cap đã True thì vẫn True).
+    Khi cả hai cảm biến thất bại → giữ kết quả classify() gốc, ghi vào rang_buoc.
+
+    Args:
+        text: Nội dung tin nhắn nhân viên.
+        sensor_chain: SensorChain đã khởi tạo. None → tạo mới chỉ Regex.
+        mode / staff / base_iso_week: truyền thẳng cho classify().
+    """
+    base = classify(text, mode=mode, staff=staff, base_iso_week=base_iso_week)
+
+    # Import lazy tránh vòng lặp phụ thuộc.
+    from ca_agents.sensors.msg_questions import MSG_QUESTIONS
+    from ca_agents.sensors.sensor_chain import SensorChain
+
+    chain = sensor_chain
+    if chain is None:
+        chain = SensorChain()  # chỉ Regex (JEV chưa bật)
+
+    result = chain.evaluate(text, "msg_classify", MSG_QUESTIONS)
+
+    # Copy rang_buoc để không mutate dict gốc.
+    rang_buoc = dict(base.rang_buoc)
+
+    # Cả hai cảm biến thất bại → giữ nguyên, ghi chú.
+    if result.both_failed:
+        rang_buoc["sensor_chain_failed"] = True
+        return MsgResult(
+            intent=base.intent,
+            tier=base.tier,
+            do_tin_cay=base.do_tin_cay,
+            rang_buoc=rang_buoc,
+        )
+
+    if result.fallback_used:
+        rang_buoc["sensor_source"] = result.source
+
+    signals = result.signals
+    emergency = signals.get("khan_cap_thuc_su")
+    injection = signals.get("co_gang_ghi_de_chi_dan")
+
+    # Khẩn cấp thật sự: bổ sung nếu chưa có (đơn điệu — không gỡ nếu đã True).
+    if emergency is not None and float(emergency.value) >= 0.60:
+        rang_buoc["khan_cap"] = True  # OR với giá trị cũ nếu đã có
+
+    # Injection: luôn cộng thêm flag (không gỡ nếu đã True).
+    if injection is not None and float(injection.value) >= 0.50:
+        rang_buoc["injection_attempt"] = True
+
+    return MsgResult(
+        intent=base.intent,
+        tier=base.tier,
+        do_tin_cay=base.do_tin_cay,
+        rang_buoc=rang_buoc,
+    )

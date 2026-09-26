@@ -87,3 +87,160 @@ def test_scrape_delivery_stores_camoufox_unavailable() -> None:
     ):
         with pytest.raises(CamoufoxUnavailable):
             scrape_delivery_stores_camoufox(10.78, 106.69, "cà phê", 5.0)
+
+
+# ── Dữ liệu lấy từ probe THẬT (2026-09-22) — chống hồi quy 2 bug đã gặp ──────
+
+
+def test_city_slug_chon_dung_thanh_pho() -> None:
+    """Slug khu vực phải suy từ tọa độ — URL listing không có slug sẽ 404/landing."""
+    from ca_agents.sources.delivery_camoufox_source import _city_slug
+
+    assert _city_slug(10.7769, 106.7009) == "ho-chi-minh"
+    assert _city_slug(21.0285, 105.8542) == "ha-noi"
+    assert _city_slug(16.0544, 108.2022) == "da-nang"
+    # Tọa độ lạ (ngoài bảng) rơi về TP.HCM — không raise, không trả chuỗi rỗng.
+    assert _city_slug(45.0, 90.0) == "ho-chi-minh"
+
+
+def test_extract_ten_quan_tu_brand_name() -> None:
+    """Payload thật từ `get_infos` chứa tên trong `brand.name`, không phải `name`.
+
+    Bug cũ: parser chỉ đọc `name` top-level → 100% quán thật bị bỏ qua (mọi
+    trường name rỗng), dù API trả dữ liệu đầy đủ. Test này khoá hành vi đúng.
+    """
+    payload = {
+        "reply": {
+            "delivery_infos": [
+                {
+                    "id": 118229,
+                    "restaurant_id": 1027696,
+                    "brand": {"name": "Đại Lợi - Bánh Mì Da Beo"},
+                    "address": "115C Trần Quốc Thảo, P. 7, Quận 3",
+                    "rating": {"avg": 5.0, "total_review": 10},
+                    "is_quality_merchant": False,
+                    "location_url": "ho-chi-minh",
+                    "url_rewrite_name": "dai-loi-banh-mi-da-beo",
+                },
+                {
+                    # Quán không có brand.name -> dùng `name` top-level (fixture cũ)
+                    "restaurant_id": 999,
+                    "name": "Quán Không Brand",
+                    "rating": 4.2,
+                },
+            ]
+        }
+    }
+    stores = extract_delivery_stores_from_json(payload)
+
+    assert len(stores) == 2
+    s1 = stores[0]
+    assert s1.name == "Đại Lợi - Bánh Mì Da Beo"
+    assert s1.rating == 5.0
+    assert s1.review_count == 10
+    assert s1.url == "https://shopeefood.vn/ho-chi-minh/dai-loi-banh-mi-da-beo"
+    # Quán #2 vẫn đọc được tên từ `name` (tương thích fixture cũ).
+    assert stores[1].name == "Quán Không Brand"
+
+
+def test_fetch_shopeefood_page_gop_nhieu_lo_va_khu_trung() -> None:
+    """`get_infos` trả 25 quán/lô — hàm phải gộp MỌI lô và khử trùng theo id.
+
+    Bug cũ: chỉ lấy payload đầu tiên → 25/188 quán. Test mô phỏng SPA bắn 3 lô
+    (có 1 id trùng lặp) và kiểm tra hàm gộp đủ 5 quán duy nhất.
+    """
+    from ca_agents.sources.delivery_camoufox_source import fetch_shopeefood_page
+
+    logged: list[str] = []
+
+    class _FakeResponse:
+        def __init__(self, data: dict) -> None:
+            self._data = data
+
+        def json(self) -> dict:
+            return self._data
+
+    class _FakeLocator:
+        def first(self) -> _FakeLocator:
+            return self
+
+        def click(self, timeout: int = 0) -> None:
+            raise RuntimeError("trang không có nút phân trang")
+
+    class _FakeContext:
+        def set_geolocation(self, coords: dict) -> None:
+            logged.append(f"geo:{coords['latitude']}")
+
+    class _FakePage:
+        """Page giả: goto() sẽ bắn 3 lô get_infos như SPA thật."""
+
+        context = _FakeContext()
+
+        def __init__(self) -> None:
+            self._listeners: list = []
+            self.url = ""
+
+        def on(self, event: str, cb) -> None:
+            self._listeners.append(cb)
+
+        def remove_listener(self, event: str, cb) -> None:
+            pass
+
+        def goto(self, url: str, **kwargs) -> None:
+            self.url = url
+            logged.append(f"goto:{url}")
+            # Lô 1: 2 quán; lô 2: 2 quán (1 trùng id); lô 3: 1 quán
+            self._emit({"reply": {"search_result": [{"restaurant_ids": [1, 2, 3, 4, 5]}]}})
+            self._emit({"reply": {"delivery_infos": [{"id": 1}, {"id": 2}]}})
+            self._emit({"reply": {"delivery_infos": [{"id": 2}, {"id": 3}]}})
+            self._emit({"reply": {"delivery_infos": [{"id": 4}]}})
+
+        def _emit(self, data: dict) -> None:
+            for cb in self._listeners:
+                cb(_FakeResponse(data))
+
+        def mouse(self):
+            raise RuntimeError("hết trang")
+
+        def locator(self, sel: str) -> _FakeLocator:
+            return _FakeLocator()
+
+    page = _FakePage()
+    result = fetch_shopeefood_page(page, keyword="pho", lat=10.7769, lng=106.7009)
+
+    infos = result["reply"]["delivery_infos"]
+    assert len(infos) == 4, "phải gộp 4 quán duy nhất (id 2 trùng ở 2 lô)"
+    assert [i["id"] for i in infos] == [1, 2, 3, 4]
+    # URL phải là LISTING khu vực + ?q= (không phải /search?keyword=).
+    assert "/ho-chi-minh/danh-sach-dia-diem-giao-tan-noi?q=pho" in logged[0] or any(
+        "danh-sach-dia-diem" in entry for entry in logged
+    )
+
+
+def test_fetch_shopeefood_page_khong_co_du_lieu_tra_dict_rong() -> None:
+    """Bị chặn/không có response → trả {} (fail-closed), không bịa dữ liệu (ADR-008)."""
+    from ca_agents.sources.delivery_camoufox_source import fetch_shopeefood_page
+
+    class _FakeContext:
+        def set_geolocation(self, coords: dict) -> None:
+            pass
+
+    class _FakePage:
+        context = _FakeContext()
+
+        def on(self, event: str, cb) -> None:
+            pass
+
+        def remove_listener(self, event: str, cb) -> None:
+            pass
+
+        def goto(self, url: str, **kwargs) -> None:
+            pass
+
+        def mouse(self):
+            raise RuntimeError("không cuộn được")
+
+        def locator(self, sel: str):
+            raise RuntimeError("không có nút")
+
+    assert fetch_shopeefood_page(_FakePage(), "pho", 10.7769, 106.7009) == {}

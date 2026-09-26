@@ -38,21 +38,20 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden p-4 md:p-8">
-      <div className="pointer-events-none absolute top-[-10%] left-[-10%] h-[40vw] w-[40vw] rounded-full bg-[var(--nq-copper-glow)] opacity-40 blur-[100px] mix-blend-screen" />
-      <div className="pointer-events-none absolute right-[-10%] bottom-[-10%] h-[35vw] w-[35vw] rounded-full bg-[var(--nq-red-dim)] opacity-25 blur-[120px] mix-blend-screen" />
+    <main className="nq-login">
+      <div className="relative z-10 flex min-h-dvh items-center justify-center p-4 md:p-8">
 
       <form
         onSubmit={onSubmit}
-        className="nq-login-card relative z-10 grid w-full max-w-4xl grid-cols-1 overflow-hidden border-2 border-[var(--nq-dim)] bg-[var(--nq-surface-hi)] shadow-[12px_12px_0px_0px_var(--nq-copper-dim)] md:grid-cols-2"
+        className="nq-login-card relative z-10 grid w-full max-w-4xl grid-cols-1 overflow-hidden nq-surface-block shadow-[var(--nq-elev-2)] md:grid-cols-2"
       >
-        <aside className="flex flex-col justify-between border-b-2 border-[var(--nq-dim)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
+        <aside className="flex flex-col justify-between border-b border-[var(--nq-line)] bg-[var(--nq-surface)] p-6 md:border-r-2 md:border-b-0 md:p-8">
           <Logo />
           <div className="mt-8 md:mt-0">
-            <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-copper)] uppercase">
+            <p className="mb-2 font-mono text-xs tracking-widest text-[var(--nq-accent)] uppercase">
               Vào ca · một việc một lúc
             </p>
-            <h1 className="text-4xl font-black tracking-tighter text-[var(--nq-fg)] uppercase md:text-5xl">
+            <h1 className="nq-page-title">
               Đăng nhập
             </h1>
             <p className="mt-4 max-w-sm text-sm text-[var(--nq-dim)]">
@@ -89,26 +88,27 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             aria-busy={loading ? true : undefined}
-            className="nq-ink-on-solid mt-2 w-full border-2 border-[var(--nq-copper)] bg-[var(--nq-copper)] py-3.5 font-black tracking-widest uppercase transition-all hover:bg-transparent hover:text-[var(--nq-copper)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="nq-btn nq-btn-primary mt-2 w-full py-3.5 uppercase"
           >
             {loading ? "Đang vào…" : "Vào hệ thống"}
           </button>
 
-          <div className="mt-2 space-y-1 border-t-2 border-dashed border-[var(--nq-dim)] pt-4 text-sm text-[var(--nq-dim)]">
+          <div className="mt-2 space-y-1 border-t border-dashed border-[var(--nq-line)] pt-4 text-sm text-[var(--nq-dim)]">
             <p>
               Chưa có tài khoản?{" "}
-              <Link href="/dang-ky" className="text-[var(--nq-copper)] underline-offset-4 hover:underline">
+              <Link href="/dang-ky" className="text-[var(--nq-accent)] underline-offset-4 hover:underline">
                 Tạo tài khoản nhân viên
               </Link>
             </p>
             <p>
-              <Link href="/huong-dan" className="text-[var(--nq-copper)] underline-offset-4 hover:underline">
+              <Link href="/huong-dan" className="text-[var(--nq-accent)] underline-offset-4 hover:underline">
                 Đọc bản đồ hướng dẫn từ đầu tới cuối
               </Link>
             </p>
           </div>
         </div>
       </form>
+      </div>
     </main>
   );
 }

@@ -485,11 +485,17 @@ def copilot_message_stream(
     request: Request,
     authorization: Annotated[str | None, Header()] = None,
 ) -> StreamingResponse:
-    """SSE streaming: gửi event meta (intent/proposal) rồi delta text từng phần.
+    """SSE streaming: `status` ngay → `meta` → `delta` từng phần → `done`.
 
-    Trả về mỗi dòng dạng `event: <name>\\ndata: <json>\\n\\n`. Client dùng
-    fetch + ReadableStream đọc từng chunk. Fallback auto về /message (JSON)
-    nếu LLM stream không khả dụng.
+    Vì sao phải đẩy `status` TRƯỚC `run_copilot`: bản cũ chạy `run_copilot()` xong
+    HẾT rồi mới bắt đầu "stream" (`_chunk_text` 4 ký tự/lần). Nghĩa là byte đầu
+    tiên chỉ ra sau khi đã xong 6 lượt đọc DB + (chế độ live) cả lượt gọi LLM —
+    người dùng ngồi nhìn màn hình trống rồi chữ hiện ra một loạt. Đó không phải
+    streaming, chỉ là văn bản đã hoàn tất được cắt nhỏ.
+
+    Nay: `status` ra ngay trong ~ms đầu, phần text vẫn đi theo `delta`. Không hứa
+    streaming token của LLM (chế độ replay không có LLM để stream) — chỉ bảo đảm
+    phản hồi ĐẦU TIÊN tới ngay, và giữ nguyên hình dạng sự kiện cho client cũ.
     """
     t0 = time.time()
     user = _get_verified_user(authorization)
@@ -511,41 +517,42 @@ def copilot_message_stream(
         "attachments": body.attachments,
     }
 
-    # 1. Chạy copilot bình thường (tất định: intent/tool/proposal) — nhanh vì replay.
-    response = run_copilot(effective_message, verified_context)
-    _record_copilot_response(
-        response,
-        user=user,
-        message=effective_message,
-        channel=body.channel,
-        latency_ms=int((time.time() - t0) * 1000),
-    )
-
-    # 1b. Lưu draft khi có ActionProposal — /message/stream trước đây bỏ sót bước
-    # này nên bấm "Duyệt & Gửi" ở UI bị 404 action_proposal_not_found.
-    if response.action_proposal:
-        copilot_draft_save(response.action_proposal.model_dump())
-        copilot_audit_add(
-            action_id=response.action_proposal.action_id,
-            actor_user_id=user["user_id"],
-            store_id=user["store_id"],
-            intent=response.action_proposal.intent.value,
-            decision="propose",
-            payload_diff=response.action_proposal.payload_diff,
-            channel=body.channel,
-            latency_ms=0,
-            agent_name="ag_copilot",
-            controller_user_id=user["user_id"],
-        )
-
-    # 2. Xây generator SSE
-    def _sse(
-        ev: str, payload: dict[str, Any]
-    ) -> str:
+    def _sse(ev: str, payload: dict[str, Any]) -> str:
         return f"event: {ev}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
     def _gen() -> Iterator[str]:
-        # Meta trước: intent + confidence + action_proposal (client biết trước).
+        # BƯỚC 0 — ra ngay. Client tắt được trạng thái "đang chờ" và biết máy đã nhận.
+        yield _sse("status", {"stage": "dang_tra_cuu", "message": "Đang tra cứu dữ liệu…"})
+
+        # 1. Copilot tất định (intent/tool/proposal). Chậm nhất ở đây, nhưng client
+        #    đã có `status` để hiển thị nên không còn khoảng lặng.
+        response = run_copilot(effective_message, verified_context)
+        _record_copilot_response(
+            response,
+            user=user,
+            message=effective_message,
+            channel=body.channel,
+            latency_ms=int((time.time() - t0) * 1000),
+        )
+
+        # 1b. Lưu draft khi có ActionProposal — /message/stream trước đây bỏ sót bước
+        # này nên bấm "Duyệt & Gửi" ở UI bị 404 action_proposal_not_found.
+        if response.action_proposal:
+            copilot_draft_save(response.action_proposal.model_dump())
+            copilot_audit_add(
+                action_id=response.action_proposal.action_id,
+                actor_user_id=user["user_id"],
+                store_id=user["store_id"],
+                intent=response.action_proposal.intent.value,
+                decision="propose",
+                payload_diff=response.action_proposal.payload_diff,
+                channel=body.channel,
+                latency_ms=0,
+                agent_name="ag_copilot",
+                controller_user_id=user["user_id"],
+            )
+
+        # 2. Meta: intent + confidence + action_proposal (client biết trước khi đọc chữ).
         meta = {
             "intent": response.intent.value if hasattr(response.intent, "value") else str(response.intent),
             "confidence": response.confidence,
@@ -558,11 +565,9 @@ def copilot_message_stream(
         }
         yield _sse("meta", meta)
 
-        # Text: stream từng phần từ reply_text.
+        # 3. Text: stream từng phần, chia theo TỪ để không cắt giữa chữ.
         reply_text = response.reply_text or ""
-        # Chia nhỏ theo từ khoá (giữ khoảng trắng) để mượt.
-        parts = _chunk_text(reply_text)
-        for chunk in parts:
+        for chunk in _chunk_text_worlds(reply_text):
             yield _sse("delta", {"text": chunk})
         yield _sse("done", {"ok": True})
 
@@ -577,6 +582,25 @@ def _chunk_text(text: str, size: int = 4) -> list[str]:
     """Chia chuỗi thành các cụm nhỏ (SSE delta). Giữ nguyên khoảng trắng."""
     chars = list(text)
     return ["".join(chars[i : i + size]) for i in range(0, len(chars), size)]
+
+
+def _chunk_text_worlds(text: str, per_chunk: int = 3) -> list[str]:
+    """Chia theo TỪ (giữ khoảng trắng) — không cắt giữa một từ.
+
+    Vì sao đổi khỏi `_chunk_text` (4 ký tự): cắt theo ký tự làm từ bị vỡ ("nhâ" /
+    "n viên"), và với chữ tiếng Việt có dấu thì vỡ ngay giữa tổ hợp dấu. Cắt theo
+    từ tốn thêm vài byte JSON mỗi sự kiện nhưng đọc được ngay cả khi mạng chậm.
+    """
+    if not text:
+        return []
+    words = text.split(" ")
+    out: list[str] = []
+    for i in range(0, len(words), per_chunk):
+        piece = " ".join(words[i : i + per_chunk])
+        if i + per_chunk < len(words):
+            piece += " "
+        out.append(piece)
+    return out
 
 
 # ── 2. POST /api/v1/copilot/execute-action ───────────────────────────────────

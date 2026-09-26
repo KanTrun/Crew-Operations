@@ -20,7 +20,7 @@ Pipeline kiểm duyệt 5 lớp cổng đã chạy hoàn chỉnh trên `feat/pag
 | API duyệt `/api/v1/page/fb-inbox*` | ✅ Đã ship | RBAC: QL duyệt thường, Chủ duyệt escalate |
 | UI duyệt `/page-quan/fb-inbox` | ✅ Đã ship | tab trong menu "More" |
 | Feature flag auto-send (mặc định OFF) | ✅ Đã ship | `PUT /api/v1/page/fb-policy` (chỉ Chủ quán) |
-| Golden eval 25 case — 100% pass, 0 hard-fail | ✅ Xanh | `scripts/eval_fb_moderation.py` |
+| Golden eval 60 case — 100% pass, 0 hard-fail (all deterministic, JEV off) | ✅ Xanh | `scripts/eval_fb_moderation.py` |
 | Runbook vận hành | ✅ Đã viết | `docs/runbooks/fb-chatbot-moderation.md` |
 | Comment handler (reply bài viết) | ⏳ Chưa nối | cần PR riêng sau khi Messenger ổn |
 | Bật auto-send thật | ⏳ Chờ Chủ quán duyệt ma trận §3.2 | runbook mục 2 |

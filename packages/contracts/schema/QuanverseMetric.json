@@ -1,0 +1,49 @@
+{
+  "description": "Một chỉ số đọc thẳng từ hệ thống (không suy diễn).\n\n`value=None` nghĩa là CHƯA CÓ DỮ LIỆU — khác hẳn 0. UI phải in \"—\" cho\n`None`, không được in \"0\" (quy ước số của dự án, xem plan hao hụt).",
+  "properties": {
+    "key": {
+      "minLength": 1,
+      "title": "Key",
+      "type": "string"
+    },
+    "label": {
+      "minLength": 1,
+      "title": "Label",
+      "type": "string"
+    },
+    "value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Value"
+    },
+    "unit": {
+      "default": "",
+      "title": "Unit",
+      "type": "string"
+    },
+    "tone": {
+      "default": "default",
+      "enum": [
+        "default",
+        "ok",
+        "warn",
+        "danger"
+      ],
+      "title": "Tone",
+      "type": "string"
+    }
+  },
+  "required": [
+    "key",
+    "label"
+  ],
+  "title": "QuanverseMetric",
+  "type": "object"
+}
