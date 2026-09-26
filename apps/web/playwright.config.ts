@@ -34,6 +34,17 @@ export default defineConfig({
         NHIPQUAN_SEED_DEMO: "true",
         NHIPQUAN_INBOX_SEED_FIXTURE: "1",
         NHIPQUAN_HAO_HUT_SEED_FIXTURE: "1",
+        // BẮT BUỘC cho e2e: các endpoint reset trạng thái (`/experience/rules/reset`,
+        // `/experience/quanverse/reset`) trả 403 ngoài chế độ replay (đúng thiết kế
+        // fail-closed — production không được xoá luật thật).
+        //
+        // Trên CI biến này có sẵn vì `.github/workflows/ci.yml` đặt
+        // `CA_AGENT_MODE: replay` ở CẤP WORKFLOW, nên mọi job đều thừa hưởng. Ở máy
+        // dev thì KHÔNG có, khiến reset im lặng thất bại (403) và trạng thái rò từ
+        // bài này sang bài sau — biểu hiện là 3–5 test đỏ NGẪU NHIÊN khi chạy cả bộ
+        // mà chạy riêng từng tệp lại xanh. Đặt tường minh ở đây để hai môi trường
+        // chạy GIỐNG NHAU, không phụ thuộc việc CI tình cờ có sẵn biến.
+        CA_AGENT_MODE: "replay",
       },
     },
     {
