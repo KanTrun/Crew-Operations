@@ -8,6 +8,7 @@ danh sách cho phép; (3) phong cách mặc định đổi được để "áp c
 
 from __future__ import annotations
 
+import pytest
 from ca_api.interfaces.http.main import app
 from ca_api.persist import kv_set
 from fastapi.testclient import TestClient
@@ -349,6 +350,25 @@ class TestGenerateModes:
 class TestModeAvailability:
     """`/anh/kha-dung` — UI biết TRƯỚC chế độ nào chạy được, không chọn xong mới lỗi."""
 
+    @pytest.fixture(autouse=True)
+    def _khong_co_khoa(self, monkeypatch: pytest.MonkeyPatch):
+        """Neo trạng thái "CHƯA có khoá" cho mọi test trong lớp này.
+
+        Không neo thì test phụ thuộc `.env` của máy đang chạy: máy dev có
+        `CLOUDFLARE_ACCOUNT_ID` (key thật của quán) nên `kha_dung=true` và test
+        đi nhánh `else` — PASS ở máy dev nhưng FAIL trên CI (CI không có `.env`,
+        đi nhánh `assert` và so câu thông báo). Đúng loại "test pass riêng, fail
+        trong suite" gây tốn thời gian nhất.
+
+        Chặn ở tầng HÀM (`_cf_ready`) chứ không xoá biến môi trường:
+        `_cf_ready` gọi `ensure_dotenv()` nạp LẠI key từ `.env`, nên xoá biến là
+        không đủ.
+        """
+        from ca_agents import image_gen
+
+        monkeypatch.delenv("POLLINATIONS_API_KEY", raising=False)
+        monkeypatch.setattr(image_gen, "_cf_ready", lambda: None)
+
     def test_requires_chu_quan(self) -> None:
         assert client.get("/api/v1/menu/anh/kha-dung").status_code == 401
         minh = headers(client, "minh")
@@ -366,19 +386,19 @@ class TestModeAvailability:
     def test_edit_photo_reports_reason_when_blocked(self) -> None:
         """Thiếu khoá → `kha_dung=false` kèm lý do có cách khắc phục.
 
-        Điều kiện duy nhất để bật chế độ là `POLLINATIONS_API_KEY`; test chạy ở chế
-        độ replay nên thường KHÔNG có khoá. Nếu máy người chạy có sẵn khoá trong
-        `.env` thì `kha_dung=true` — cả hai đều hợp lệ, nhưng khi bị chặn thì lý do
-        PHẢI chỉ nơi lấy khoá và chế độ thay thế.
+        Khoá có thể bật chế độ: `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`
+        (provider chính) hoặc `POLLINATIONS_API_KEY`. Fixture `_khong_co_khoa`
+        đã neo trạng thái "chưa có khoá" nên test này luôn kiểm nhánh bị chặn.
         """
         hung = headers(client, "hung")
         che_do = client.get("/api/v1/menu/anh/kha-dung", headers=hung).json()["che_do"]
         edit = che_do["edit_photo"]
-        if not edit["kha_dung"]:
-            assert "enter.pollinations.ai/keys" in edit["ly_do"]
-            assert "Giữ nguyên ly nước" in edit["ly_do"] or "AI vẽ mới" in edit["ly_do"]
-        else:
-            assert edit["ly_do"] == ""
+        assert edit["kha_dung"] is False
+        # Lý do phải chỉ ĐÚNG nơi lấy khoá của provider chính (Cloudflare —
+        # miễn phí, không cần thẻ) và gợi ý chế độ chạy được ngay.
+        assert "CLOUDFLARE_ACCOUNT_ID" in edit["ly_do"]
+        assert "dash.cloudflare.com" in edit["ly_do"]
+        assert "Giữ nguyên ly nước" in edit["ly_do"] or "AI vẽ mới" in edit["ly_do"]
 
     def test_edit_photo_blocked_returns_422_with_reason(self) -> None:
         """Chọn chế độ thiếu khoá → 422 kèm lý do, KHÔNG gọi provider rồi mới lỗi."""
@@ -388,7 +408,6 @@ class TestModeAvailability:
             json={"ten": "Cà phê sữa đá", "gia": 25000, "bom": {"ly": 1}},
             headers=hung,
         )
-        kha_dung = client.get("/api/v1/menu/anh/kha-dung", headers=hung).json()["che_do"]
         res = client.post(
             "/api/v1/menu/mon_che_do_kha_dung/anh/generate",
             json={
@@ -398,11 +417,11 @@ class TestModeAvailability:
             },
             headers=hung,
         )
-        if kha_dung["edit_photo"]["kha_dung"]:
-            # Có khoá: đi tiếp tới provider (có thể lỗi mạng) — không phải nhánh này.
-            return
         assert res.status_code == 422
-        assert "enter.pollinations.ai/keys" in str(res.json()["detail"])
+        detail = str(res.json()["detail"])
+        assert "CLOUDFLARE_ACCOUNT_ID" in detail
+        # Không được lộ mã kỹ thuật thô ra cho người vận hành.
+        assert "Traceback" not in detail
 
 
 class TestPromptEndpoint:
