@@ -23,8 +23,11 @@ test.describe("Shift Rescue", () => {
     await page.getByTestId("rescue-intake").click();
     await expect(page.locator(".nq-rescue__case")).toBeVisible({ timeout: 15_000 });
 
-    // Ít nhất 1 candidate an toàn hiển thị.
-    const safe = await page.locator(".nq-candidate:not(.is-blocked)").count();
+    // Ít nhất 1 ứng viên an toàn hiển thị. Bảng mới dùng `tr[data-candidate]`
+    // trong khối "đủ điều kiện"; người bị loại nằm ở bảng riêng có `.is-blocked`.
+    const safe = await page
+      .locator("[data-testid='rescue-candidate-table'] tbody tr[data-candidate]:not(.is-blocked)")
+      .count();
     expect(safe).toBeGreaterThanOrEqual(1);
 
     // Mời ứng viên đầu tiên (data-testid).
@@ -72,7 +75,7 @@ test.describe("Shift Rescue", () => {
 
     // Nút invite chỉ nằm trong candidate an toàn (không blocked).
     const blockedInvites = await page
-      .locator(".nq-candidate.is-blocked [data-testid='invite-btn']")
+      .locator("tr.is-blocked [data-testid='invite-btn']")
       .count();
     expect(blockedInvites).toBe(0);
   });

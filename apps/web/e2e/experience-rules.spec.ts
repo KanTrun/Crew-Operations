@@ -19,7 +19,7 @@ test.describe("Quan tu viet luat", () => {
   test("discover -> evidence -> shadow -> confirm, no auto activation", async ({ page }) => {
     // Tìm quyết định lặp lại.
     await page.getByTestId("rules-discover").click();
-    await expect(page.locator(".nq-rules__item")).toHaveCount(1, { timeout: 15_000 });
+    await expect(page.locator("[data-testid='rules-list'] tbody tr[data-candidate]")).toHaveCount(1, { timeout: 15_000 });
 
     // Bằng chứng.
     await page.getByTestId("evidence-btn").first().click();
@@ -40,17 +40,17 @@ test.describe("Quan tu viet luat", () => {
     // Bản trước khởi tạo danh sách rỗng và không nạp khi mount — mở lại trang
     // là thấy trống dù máy chủ vẫn giữ ứng viên.
     await page.getByTestId("rules-discover").click();
-    await expect(page.locator(".nq-rules__item")).toHaveCount(1, { timeout: 15_000 });
+    await expect(page.locator("[data-testid='rules-list'] tbody tr[data-candidate]")).toHaveCount(1, { timeout: 15_000 });
 
     await page.reload();
-    await expect(page.locator(".nq-rules__item")).toHaveCount(1, { timeout: 15_000 });
+    await expect(page.locator("[data-testid='rules-list'] tbody tr[data-candidate]")).toHaveCount(1, { timeout: 15_000 });
   });
 
   test("published rule can be revoked", async ({ page }) => {
     // Luật đã ban hành mà không thu hồi được nghĩa là quán không sửa được luật
     // của chính mình.
     await page.getByTestId("rules-discover").click();
-    const item = page.locator(".nq-rules__item").first();
+    const item = page.locator("[data-testid='rules-list'] tbody tr[data-candidate]").first();
     await expect(item).toBeVisible({ timeout: 15_000 });
 
     // Đi hết tới ban hành.
@@ -73,10 +73,10 @@ test.describe("Quan tu viet luat", () => {
 
   test("reject candidate without activation", async ({ page }) => {
     await page.getByTestId("rules-discover").click();
-    await expect(page.locator(".nq-rules__item")).toHaveCount(1, { timeout: 15_000 });
+    await expect(page.locator("[data-testid='rules-list'] tbody tr[data-candidate]")).toHaveCount(1, { timeout: 15_000 });
     await page.getByTestId("reject-btn").first().click();
     await expect(page.locator(".nq-alert--info")).toBeVisible({ timeout: 10_000 });
     // Nhãn tiếng Việt (exp-present) — không in mã thô "rejected".
-    await expect(page.locator(".nq-rules__item").first()).toContainText("Bị từ chối");
+    await expect(page.locator("[data-testid='rules-list'] tbody tr[data-candidate]").first()).toContainText("Bị từ chối");
   });
 });

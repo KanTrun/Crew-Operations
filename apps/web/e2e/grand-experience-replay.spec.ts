@@ -64,7 +64,7 @@ test.describe("Grand AI Experience — 5-minute replay story", () => {
     // 6) QUÁN TỰ VIẾT LUẬT: discover -> shadow -> confirm, không tự kích hoạt.
     await page.goto("/quanverse/rules");
     await page.getByTestId("rules-discover").click();
-    await expect(page.locator(".nq-rules__item")).toHaveCount(1, { timeout: 15_000 });
+    await expect(page.locator("[data-testid='rules-list'] tbody tr[data-candidate]")).toHaveCount(1, { timeout: 15_000 });
     await page.getByTestId("shadow-btn").first().click();
     await expect(page.locator(".nq-shadow")).toBeVisible({ timeout: 10_000 });
     await page.getByTestId("confirm-btn").first().click();

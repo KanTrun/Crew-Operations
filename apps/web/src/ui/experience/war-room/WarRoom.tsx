@@ -16,7 +16,6 @@ import { useCallback, useState } from "react";
 import { Icon } from "../../icons";
 import { viError } from "../../../lib/present";
 import { eligibilityReasonLabel, proposalStatusLabel, warOptionTitle } from "../exp-present";
-import CrisisRoom from "./CrisisRoom";
 import NowBrief from "./NowBrief";
 import ScenarioComparison from "./ScenarioComparison";
 import ScenarioPicker from "./ScenarioPicker";
@@ -76,12 +75,6 @@ export default function WarRoom() {
       if (exists) return prev.filter((s) => s.scenario_id !== scenario.scenario_id);
       return [...prev, scenario];
     });
-    setResult(null);
-    setProposal(null);
-  }, []);
-
-  const runPreset = useCallback((scenario: WarRoomScenarioInput) => {
-    setScenarios([scenario]);
     setResult(null);
     setProposal(null);
   }, []);
@@ -274,7 +267,9 @@ export default function WarRoom() {
         </section>
       ) : null}
 
-      <CrisisRoom onRunPreset={runPreset} busy={busy} />
+      {/* KHÔNG còn `CrisisRoom` ở đây: nó render đúng 5 preset mà `ScenarioPicker`
+          phía trên đã render. Hai chỗ chọn cùng một danh sách là lỗi gốc khiến
+          trang trông như "chỉ là bấm vô 2 mục". Một công cụ chọn duy nhất. */}
 
       {evidenceOption ? (
         <div

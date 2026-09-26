@@ -24,7 +24,7 @@ import {
   rescueStatusLabel,
   weekdayLabel,
 } from "../exp-present";
-import CandidateCard from "./CandidateCard";
+import CandidateTable from "./CandidateTable";
 
 interface Candidate {
   candidate_id: string;
@@ -413,49 +413,27 @@ export default function ShiftRescuePanel() {
             </ul>
           </section>
 
-          {/* Bước 2 — danh sách an toàn. */}
+          {/* Bước 2 — bảng so sánh TRẢI NGANG. */}
           <h2 className="nq-rescue__stephead">
             <span className="nq-rescue__stepnum">2</span>
-            Người bù an toàn ({caze.candidates.length})
+            So sánh người bù ({caze.candidates.length} đủ điều kiện
+            {caze.blocked?.length ? `, ${caze.blocked.length} bị loại` : ""})
           </h2>
-          {caze.candidates.length === 0 ? (
+          {caze.candidates.length === 0 && !caze.blocked?.length ? (
             <ExpEmpty
               icon="warn"
               title="Không có ai đủ điều kiện nhận ca này"
               hint="Cần quản lý đứng ca, giảm suất phục vụ, hoặc mở War Room — hệ thống không tự mời người vi phạm ràng buộc."
             />
           ) : (
-            <div className="nq-rescue__cards">
-              {/* Sắp theo HẠNG của AI — thứ tự này là một phần câu trả lời "AI
-                  chọn ai", nên không được để nguyên thứ tự payload trả về. */}
-              {[...caze.candidates]
-                .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))
-                .map((c) => (
-                  <CandidateCard
-                    key={c.candidate_id}
-                    candidate={c}
-                    onSelect={() => proposeAndInvite(c.candidate_id)}
-                    disabled={busy || (caze.invited ?? []).length > 0}
-                    selected={selected === c.candidate_id}
-                  />
-                ))}
-            </div>
+            <CandidateTable
+              candidates={caze.candidates}
+              blocked={caze.blocked ?? []}
+              onSelect={(id) => proposeAndInvite(id)}
+              disabled={busy || (caze.invited ?? []).length > 0}
+              selected={selected}
+            />
           )}
-
-          {caze.blocked?.length ? (
-            <>
-              <h3 className="nq-rescue__subhead">Bị chặn ({caze.blocked.length})</h3>
-              <p className="nq-rescue__note">
-                Những người này không được mời vì vi phạm ràng buộc cứng — lý do
-                ghi ngay trên từng thẻ.
-              </p>
-              <div className="nq-rescue__cards">
-                {caze.blocked.map((c) => (
-                  <CandidateCard key={c.candidate_id} candidate={c} blocked />
-                ))}
-              </div>
-            </>
-          ) : null}
 
           {/* Bước 3 — phản hồi + chốt. */}
           {(caze.invited ?? []).length > 0 ? (
