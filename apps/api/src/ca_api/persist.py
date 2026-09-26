@@ -156,6 +156,27 @@ class _PostgresRow(dict[str, Any]):
         return super().__getitem__(key)
 
 
+class _NullCursor:
+    """Cursor giả cho câu lệnh điều khiển giao dịch (COMMIT/ROLLBACK/BEGIN).
+
+    Khi `_PostgresConnection.execute()` dịch COMMIT/ROLLBACK/BEGIN sang gọi
+    method trên connection, không có cursor thật để trả về. Các caller theo
+    phong cách SQLite (`cx.execute("COMMIT")`) không dùng giá trị trả về, nên
+    một cursor rỗng là đủ — nhưng phải có đủ thuộc tính mà `_PostgresCursor`
+    cần đọc (`rowcount`, `description`, `fetchone`, `fetchall`) để không vỡ
+    nếu caller có kiểm tra.
+    """
+
+    description: Any = None
+    rowcount: int = -1
+
+    def fetchone(self) -> None:
+        return None
+
+    def fetchall(self) -> list[Any]:
+        return []
+
+
 class _PostgresCursor:
     def __init__(self, cursor: Any, *, mapping: bool) -> None:
         self._cursor = cursor
@@ -164,6 +185,10 @@ class _PostgresCursor:
     @property
     def lastrowid(self) -> None:
         return None
+
+    @property
+    def description(self) -> Any:
+        return self._cursor.description
 
     @property
     def rowcount(self) -> int:
@@ -199,14 +224,30 @@ class _PostgresConnection:
 
     def execute(self, query: str, params: Any = None) -> _PostgresCursor:
         sql = query.replace("BEGIN IMMEDIATE", "BEGIN").replace("?", "%s")
+        # psycopg3 CHẶN câu lệnh điều khiển giao dịch qua cursor.execute():
+        # `cursor.execute("COMMIT")` ném lỗi "can't execute COMMIT inside a
+        # transaction block; use commit() instead" (hoặc tương tự). Nhiều hàm
+        # trong persist.py gọi `cx.execute("COMMIT")` / `("ROLLBACK")` theo
+        # phong cách SQLite, nên phải dịch sang method tương ứng — nếu không,
+        # endpoint trả HTTP 500 trên Postgres (bug QA đợt 3: /chat/scheduler).
+        stripped = sql.strip().rstrip(";").upper()
+        if stripped == "COMMIT":
+            self._connection.commit()
+            return _PostgresCursor(_NullCursor(), mapping=False)
+        if stripped == "ROLLBACK":
+            self._connection.rollback()
+            return _PostgresCursor(_NullCursor(), mapping=False)
+        if stripped == "BEGIN":
+            # psycopg tự mở transaction khi câu lệnh đầu tiên chạy → BEGIN là no-op.
+            return _PostgresCursor(_NullCursor(), mapping=False)
         if "INSERT OR IGNORE INTO" in sql:
             sql = sql.replace("INSERT OR IGNORE INTO", "INSERT INTO")
             if "ON CONFLICT" not in sql:
-                stripped = sql.rstrip()
-                if stripped.endswith(";"):
-                    sql = stripped[:-1] + " ON CONFLICT DO NOTHING;"
+                stripped_sql = sql.rstrip()
+                if stripped_sql.endswith(";"):
+                    sql = stripped_sql[:-1] + " ON CONFLICT DO NOTHING;"
                 else:
-                    sql = stripped + " ON CONFLICT DO NOTHING"
+                    sql = stripped_sql + " ON CONFLICT DO NOTHING"
         cursor = self._connection.execute(sql, params)
         return _PostgresCursor(cursor, mapping=self.row_factory is not None)
 

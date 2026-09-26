@@ -4,9 +4,29 @@
 {$DOMAIN} {
 	encode gzip
 
-	# Chat WebSocket
+	# ── WebSocket (phải khai TRƯỚC các handle khác) ────────────────────────
+	# Hệ thống có 3 WebSocket:
+	#   /ws/chat              — chat nội bộ (lib/realtime.ts)
+	#   /api/v1/copilot/voice — Copilot Voice (Gemini Live)
+	#   /api/v1/meeting/stream— AG-MEETING streaming
+	# Caddy tự nâng cấp giao thức (Connection: Upgrade) khi client yêu cầu, NHƯNG
+	# cần `handle` riêng để không bị các matcher khác chặn. QA 2026-09-26 phát
+	# hiện /ws/chat trả 502 khi chỉ khai mỗi path này mà thiếu flush_interval.
 	handle /ws/chat* {
-		reverse_proxy api:8000
+		reverse_proxy api:8000 {
+			# Tắt buffering để frame realtime đi ngay, không bị gộp.
+			flush_interval -1
+		}
+	}
+	handle /api/v1/copilot/voice {
+		reverse_proxy api:8000 {
+			flush_interval -1
+		}
+	}
+	handle /api/v1/meeting/stream {
+		reverse_proxy api:8000 {
+			flush_interval -1
+		}
 	}
 
 	# API — tách path /api/* và /docs, /health, /openapi.json

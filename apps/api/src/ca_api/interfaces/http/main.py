@@ -91,6 +91,7 @@ from ca_api.interfaces.http.shift_rescue import router as shift_rescue_router
 from ca_api.interfaces.http.skills import router as skills_router
 from ca_api.interfaces.http.spatial_memory import router as spatial_memory_router
 from ca_api.interfaces.http.sprint3 import router as sprint3_router
+from ca_api.interfaces.http.sprint45 import _SHARED_ALLOWED
 from ca_api.interfaces.http.sprint45 import router as sprint45_router
 from ca_api.interfaces.http.trends import router as trends_router
 from ca_api.interfaces.http.war_room import router as war_room_router
@@ -133,7 +134,19 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         await aclose()
 
 
-app = FastAPI(title="NHIP QUAN API", version="0.2.0", lifespan=_lifespan)
+app = FastAPI(
+    title="NHIP QUAN API",
+    version="0.2.0",
+    lifespan=_lifespan,
+    # Swagger mặc định BẬT (hội đồng/demo cần xem /docs). Khi vận hành quán thật,
+    # đặt NHIPQUAN_PUBLIC_API_DOCS=0 để tắt /docs, /redoc và /openapi.json —
+    # tránh phơi toàn bộ schema API ra Internet (QA 2026-09-26 finding #10).
+    docs_url="/docs" if os.environ.get("NHIPQUAN_PUBLIC_API_DOCS", "1").strip() != "0" else None,
+    redoc_url="/redoc" if os.environ.get("NHIPQUAN_PUBLIC_API_DOCS", "1").strip() != "0" else None,
+    openapi_url="/openapi.json"
+    if os.environ.get("NHIPQUAN_PUBLIC_API_DOCS", "1").strip() != "0"
+    else None,
+)
 
 # CORS: mặc định 3 origin dev local. Khi deploy (Postgres, domain thật) đặt
 # NHIPQUAN_CORS_ORIGINS — danh sách origin cách nhau bởi dấu phẩy — để thay
@@ -159,6 +172,38 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next: Any) -> Any:
+    """Thêm header bảo mật cho mọi response (QA 2026-09-26 phát hiện thiếu).
+
+    - `X-Content-Type-Options: nosniff` — chặn trình duyệt đoán MIME (chống XSS
+      từ file upload bị phục vụ sai kiểu).
+    - `X-Frame-Options: DENY` + CSP `frame-ancestors 'none'` — chống clickjacking.
+    - `Referrer-Policy` — không rò URL nội bộ (có token/ID) sang bên thứ ba.
+    - `Permissions-Policy` — tắt camera/mic/geolocation cho tài liệu (API không cần).
+    - HSTS: chỉ gửi khi request đã qua HTTPS (qua proxy set `x-forwarded-proto`).
+
+    API trả JSON nên CSP tối giản (`default-src 'none'`) là đủ; trang HTML do
+    Next.js phục vụ có CSP riêng ở tầng web.
+    """
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault(
+        "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+    )
+    response.headers.setdefault(
+        "Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"
+    )
+    proto = request.headers.get("x-forwarded-proto", "")
+    if proto.split(",")[0].strip() == "https":
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
+    return response
 
 _LOG = logging.getLogger(__name__)
 _REALTIME_SKIP_PREFIXES = (
@@ -926,17 +971,18 @@ async def pin_assignment(
 
 _LIFECYCLE_STATES = ("nhap", "dang_giai", "cho_duyet", "da_duyet", "da_cong_bo", "da_dong")
 
-# Ma trận chuyển tiếp dùng chung cho PATCH /lich-tuan/lifecycle và POST /lich/lifecycle.
-# may_sinh là trạng thái đầu (máy/worker sinh lịch) — chỉ được rời sang nháp.
-_LIFECYCLE_ALLOWED: dict[str, set[str]] = {
-    "may_sinh": {"nhap"},
-    "nhap": {"dang_giai"},
-    "dang_giai": {"cho_duyet", "nhap"},
-    "cho_duyet": {"da_duyet", "da_cong_bo", "nhap"},
-    "da_duyet": {"da_cong_bo", "nhap"},
-    "da_cong_bo": {"da_dong"},
-    "da_dong": {"nhap"},
-}
+# Ma trận chuyển tiếp NGUỒN DUY NHẤT — nằm trong `sprint45`, cả hai đường dùng chung.
+#
+# Vì sao phải gom về một chỗ: trước đây `main.py` và `sprint45.py` mỗi bên khai một
+# bản, và chúng ĐÃ LỆCH THẬT ở đúng một ô — `da_cong_bo -> nhap`. Hệ quả: "mở lại
+# lịch đã công bố" chạy được qua `POST /lich/lifecycle` nhưng trả 409
+# `illegal:da_cong_bo->nhap` qua `PATCH /lich-tuan/lifecycle`. UI hiện gọi đúng
+# đường (dùng POST khi cần lý do) nên người dùng chưa thấy, nhưng bất kỳ client
+# API, test hay agent nào chọn nhầm đường đều nhận lỗi cho một thao tác mà đường
+# kia cho phép — đúng loại lỗi "lúc được lúc không" khó truy nhất.
+#
+# Alias `_LIFECYCLE_ALLOWED` giữ nguyên tên cũ để không phá import nào đang dùng.
+_LIFECYCLE_ALLOWED: dict[str, set[str]] = _SHARED_ALLOWED
 
 
 class LifecycleBody(BaseModel):
@@ -953,9 +999,14 @@ async def patch_lifecycle(
     """Quản lý/Chủ quán cập nhật trạng thái và mốc tuần lịch.
 
     Chuyển trạng thái hợp lệ: may_sinh → nhap → dang_giai → cho_duyet → da_duyet
-    → da_cong_bo → da_dong (mở lại từ da_dong về nhap — xem POST /lich/lifecycle).
+    → da_cong_bo → da_dong, kèm mở lại về `nhap` (xem `_LIFECYCLE_ALLOWED`).
     `dang_giai` chạy solver CP-SAT ngay (như POST /lich/lifecycle) — UI một nút.
     Chỉ chu_quan mới có thể cập nhật tuan_iso (chuyển sang tuần khác).
+
+    Cùng state machine với `POST /api/v1/lich/lifecycle` — dùng CHUNG một ma trận
+    (`_LIFECYCLE_ALLOWED is sprint45._ALLOWED`). Khác biệt duy nhất có chủ đích:
+    đường POST nhận `ly_do` trong body và ghi audit, còn PATCH đòi lý do qua cổng
+    `mo_lai_phai_co_ly_do` — cả hai đều KHÔNG cho mở lại lịch đã chốt mà không có lý do.
     """
     if body.trang_thai not in _LIFECYCLE_STATES:
         raise HTTPException(
@@ -973,31 +1024,28 @@ async def patch_lifecycle(
     from ca_api.services.scheduling_service import run_authoritative_schedule
 
     week = body.tuan_iso or "2026-W36"
-    doc = _life(week)
+    session = auth_session(authorization)
+    store_id = str((session or {}).get("store_id") or "quan_01")
+    doc = _life(week, store_id=store_id)
     cur = doc.get("trang_thai", "nhap")
-    if cur == "da_dong" and body.trang_thai == "nhap":
+
+    # Mở lại lịch ĐÃ CHỐT (đã duyệt / công bố / đóng) về nháp là thao tác phá một
+    # quyết định đã ban hành, nên phải có lý do ghi lại. `POST /lich/lifecycle`
+    # đã ép điều này từ trước; PATCH thiếu, và vì ma trận PATCH trước đây không
+    # cho `da_cong_bo -> nhap` nên lỗ hổng bị che. Nay hai ma trận hợp nhất thì
+    # PHẢI bổ sung, không thì mở lại lịch công bố qua PATCH sẽ đi qua im lặng.
+    if cur in {"da_duyet", "da_cong_bo", "da_dong"} and body.trang_thai == "nhap":
         raise HTTPException(status_code=409, detail="mo_lai_phai_co_ly_do")
+
     if body.trang_thai not in _LIFECYCLE_ALLOWED.get(cur, set()):
         raise HTTPException(
             status_code=409,
             detail=f"illegal:{cur}->{body.trang_thai}",
         )
 
-    session = auth_session(authorization)
-    store_id = str((session or {}).get("store_id") or "quan_01")
     effective_state = "da_cong_bo" if body.trang_thai == "da_duyet" else body.trang_thai
     if effective_state == "da_cong_bo":
         _guard_authoritative_lifecycle(week, effective_state, store_id)
-
-    doc = _life(week, store_id=store_id)
-    cur = doc.get("trang_thai", "nhap")
-    if cur == "da_dong" and body.trang_thai == "nhap":
-        raise HTTPException(status_code=409, detail="mo_lai_phai_co_ly_do")
-    if body.trang_thai not in _LIFECYCLE_ALLOWED.get(cur, set()):
-        raise HTTPException(
-            status_code=409,
-            detail=f"illegal:{cur}->{body.trang_thai}",
-        )
 
     def chuyen(trang_thai: str) -> dict[str, Any]:
         doc["trang_thai"] = trang_thai
@@ -1297,9 +1345,29 @@ def me(authorization: Annotated[str | None, Header()] = None) -> dict[str, str]:
 
 @app.get("/api/v1/contracts")
 def five_contracts() -> dict[str, object]:
+    """5 hợp đồng dữ liệu mẫu (ADR-012) — trang tra cứu công khai.
+
+    Bảo mật (QA 2026-09-26): endpoint không cần đăng nhập nên **không trả họ tên
+    đầy đủ** của nhân viên. Tên được rút gọn còn họ + chữ cái đầu ("Lan N.") —
+    vẫn minh hoạ đúng cấu trúc hợp đồng mà không phơi danh tính. Mọi bản ghi
+    đều là dữ liệu mô phỏng (`la_du_lieu_mo_phong: true`), không phải người thật.
+    """
     seed = _seed()
+
+    def _rut_gon_ten(ten: str) -> str:
+        parts = str(ten).split()
+        if len(parts) <= 1:
+            return str(ten)
+        return f"{parts[0]} {parts[-1][0]}."
+
     nv = [
-        NhanVien.model_validate({**x, "ky_nang": x.get("ky_nang", [])})
+        NhanVien.model_validate(
+            {
+                **x,
+                "ten": _rut_gon_ten(x.get("ten", "")),
+                "ky_nang": x.get("ky_nang", []),
+            }
+        )
         for x in seed.get("nhan_vien", [])[:5]
     ]
     ca_rows = []
@@ -1332,6 +1400,8 @@ def five_contracts() -> dict[str, object]:
     return {
         "nguon": "quan",
         "adr": "ADR-012",
+        "la_du_lieu_mo_phong": True,
+        "ghi_chu": "Dữ liệu mẫu để minh hoạ cấu trúc hợp đồng — tên nhân viên đã được rút gọn.",
         "NhanVien": [x.model_dump() for x in nv],
         "Ca": [x.model_dump() for x in ca_rows],
         "LichTuan": lich.model_dump(),

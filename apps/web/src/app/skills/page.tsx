@@ -89,7 +89,7 @@ export default function SkillsPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiGet<SkillSummary[]>("/skills");
+      const data = await apiGet<SkillSummary[]>("/api/v1/skills");
       setSkills(data);
     } catch (err) {
       setError(viError(err, { doing: "tải danh mục kỹ năng vận hành" }));
@@ -106,7 +106,7 @@ export default function SkillsPage() {
     setVerifying((prev) => ({ ...prev, [skillId]: true }));
     setError(null);
     try {
-      const res = await apiSend<VerifyResponse>(`/skills/${skillId}/verify`, {}, "POST");
+      const res = await apiSend<VerifyResponse>(`/api/v1/skills/${skillId}/verify`, {}, "POST");
       setVerifyResults((prev) => ({ ...prev, [skillId]: res }));
       if (res.verified) {
         setNotice(`Kỹ năng "${skillId}" đã vượt qua bài kiểm tra tất định thành công.`);
@@ -124,7 +124,7 @@ export default function SkillsPage() {
     setSelectedSkillId(skillId);
     setDetailLoading(true);
     try {
-      const detail = await apiGet<SkillDetail>(`/skills/${skillId}`);
+      const detail = await apiGet<SkillDetail>(`/api/v1/skills/${skillId}`);
       setDetailData(detail);
     } catch (err) {
       setError(viError(err, { doing: `đọc chi tiết mã nguồn kỹ năng ${skillId}` }));
@@ -142,7 +142,7 @@ export default function SkillsPage() {
     setDistilling(true);
     setError(null);
     try {
-      const res = await apiSend<{ success: boolean; message: string }>("/skills/distill-sop", {
+      const res = await apiSend<{ success: boolean; message: string }>("/api/v1/skills/distill-sop", {
         sop_id: sopId.trim(),
         title: sopTitle.trim(),
         markdown_content: sopMarkdown.trim(),

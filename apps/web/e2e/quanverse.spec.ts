@@ -20,7 +20,15 @@ test.describe("QUANVERSE", () => {
     await expect(page.locator(".nq-living-map")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("zone-bar")).toBeVisible();
     await expect(page.locator(".nq-quanverse__events")).toBeVisible();
-    // Chú giải mức tải trên living map (cột fill chỉ hiện sau khi mở ZoneDetail).
+    // Chú giải mức tải của mặt bằng — nằm trong `LivingMap2d`, render NGAY.
+    //
+    // KHÔNG dùng `.nq-loadbar__fill`: class đó chỉ có trong `ZoneDetail`, mà
+    // `ZoneDetail` chỉ render khi đã BẤM một khu vực (`selectedZone != null`).
+    // Bài này chưa bấm gì nên `.nq-loadbar__fill` không tồn tại → test đỏ.
+    // Bài "chọn khu vực mở bảng chi tiết" mới là chỗ đúng để kiểm cột fill.
+    //
+    // Dòng này từng bị đổi nhầm về `.nq-loadbar__fill` ở commit 0547872 (sửa bố
+    // cục 3D) và làm e2e đỏ trên main; giữ `.nq-loadbar__key` là bản đúng.
     await expect(page.locator(".nq-loadbar__key").first()).toBeVisible();
   });
 

@@ -203,6 +203,9 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/reservations/notifications/me": "R0: thông báo qua UI",
     "/api/v1/reservations/notifications/{thong_bao_id}/ack": "R0: ack qua UI",
     # ── Kỹ năng (skills) — deep-link /cam-nang ──
+    # Lưu ý: `_collect_route_paths` đọc path THÔ trong decorator (chưa gồm
+    # prefix router), nên key ở đây phải khớp path thô, không phải URL đầy đủ.
+    "": "skills — danh mục 13 kỹ năng (deep-link /cam-nang)",
     "/{skill_id}": "skills — deep-link /cam-nang",
     "/{skill_id}/verify": "skills — deep-link /cam-nang",
     "/distill-sop": "skills — deep-link /cam-nang",

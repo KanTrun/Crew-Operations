@@ -228,6 +228,35 @@ def test_handover_sbar() -> None:
     assert "hết đá" in r.json()["tinh_hinh"]
 
 
+def test_handover_phat_hien_lech_so_giua_ca() -> None:
+    """Bug #3 (QA 2026-09-26): hai ca khai két lệch nhau phải được nêu ra.
+
+    Cổng VF-NUM mở rộng: `co_lech_so=true` + liệt kê các mức tiền khác nhau cho
+    cùng chủ đề; KHÔNG tự chọn bên nào (ADR-008).
+    """
+    nv = headers(client, "lan")
+    text = (
+        "Ca sáng: két còn 2.350.000đ, còn 3 bàn chưa dọn.\n"
+        "Ca chiều: két còn 2.300.000đ, máy pha cần vệ sinh."
+    )
+    r = client.post("/api/v1/handover", json={"text": text}, headers=nv)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["co_lech_so"] is True
+    conflicts = body["vf_number_conflict"]
+    assert len(conflicts) == 1
+    assert conflicts[0]["chu_de"] == "ket"
+    assert conflicts[0]["gia_tri"] == [2300000, 2350000]
+
+
+def test_handover_khong_bao_lech_khi_so_giong() -> None:
+    nv = headers(client, "lan")
+    text = "Ca sáng: két còn 2.350.000đ.\nCa chiều: két còn 2.350.000đ."
+    body = client.post("/api/v1/handover", json={"text": text}, headers=nv).json()
+    assert body["co_lech_so"] is False
+    assert body["vf_number_conflict"] == []
+
+
 def test_cam_nang_eight_steps_den_cho_chu_quan() -> None:
     """Chạy 8 bước trên lần sửa thật: luật suy tất định phải qua VF và chờ chủ quán.
 

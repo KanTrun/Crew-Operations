@@ -94,7 +94,7 @@ def evaluate_gmail(
         flags.append("placeholder")
     if _FINANCIAL_PROMISE_RE.search(text):
         flags.append("financial_commitment")
-    if not re.search(r"(?:thân gửi|chào)", body, re.IGNORECASE):
+    if not re.search(r"(?:thân gửi|chào|kính gửi)", body, re.IGNORECASE):
         flags.append("missing_greeting")
     if not re.search(r"(?:trân trọng|thân mến|ban quản lý)", body, re.IGNORECASE):
         flags.append("missing_signature")

@@ -19,6 +19,7 @@ import { Icon } from "../../icons";
 import { ExpEmpty } from "../exp-kit";
 import {
   dayPartLabel,
+  eligibilityReasonLabel,
   positionLabel,
   rescueStatusLabel,
   weekdayLabel,
@@ -68,6 +69,24 @@ const COPY = {
       "Lịch đã đổi ở nơi khác nên chưa chốt được. Tải lại rồi chạy lại từ bước tìm người bù.",
   },
 } as const;
+
+/**
+ * Gộp lý do loại thành câu đọc được: "vì 2 người vượt giới hạn giờ, 1 người
+ * thiếu kỹ năng". Đếm theo MÃ lý do để không lặp lại cùng một câu nhiều lần.
+ */
+function blockReasonSummary(blocked: { reason_blocks?: string[] }[]): string {
+  const counts = new Map<string, number>();
+  for (const b of blocked) {
+    for (const code of b.reason_blocks ?? []) {
+      counts.set(code, (counts.get(code) ?? 0) + 1);
+    }
+  }
+  if (counts.size === 0) return ".";
+  const parts = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([code, n]) => `${n} người ${eligibilityReasonLabel(code).toLowerCase()}`);
+  return ` vì ${parts.join(", ")}.`;
+}
 
 export default function ShiftRescuePanel() {
   const [caseId, setCaseId] = useState("");
@@ -350,6 +369,50 @@ export default function ShiftRescuePanel() {
             Trạng thái ca: <strong>{rescueStatusLabel(caze.status)}</strong>
           </p>
 
+          {/* AI ĐÃ LÀM GÌ — bằng chứng cụ thể, không phải lời hứa.
+              Người dùng hỏi "AI ở đâu, làm được gì": khối này trả lời bằng SỐ
+              của chính lượt tìm người vừa chạy — bao nhiêu người bị loại và vì
+              lý do gì, ai được xếp trên ai theo tiêu chí nào. Mọi con số đều
+              lấy từ payload `/shift-rescue/{id}/candidates`, không suy diễn. */}
+          <section className="nq-rescue__ai" aria-label="AI đã tính gì cho ca này" data-testid="rescue-ai">
+            <div className="nq-rescue__aihead">
+              <Icon name="bot" size={16} />
+              <h3 className="nq-exp-section__title">AI đã tính gì</h3>
+              <span className="nq-exp-section__spacer" />
+              <span className="nq-rolechip">
+                <Icon name="info" size={13} />
+                Luật tất định, không đoán
+              </span>
+            </div>
+            <ul className="nq-rescue__ailist" data-testid="rescue-ai-facts">
+              <li>
+                Đọc {caze.candidates.length + (caze.blocked?.length ?? 0)} người trong
+                danh sách ca, giữ lại <strong>{caze.candidates.length}</strong> người
+                không vi phạm ràng buộc cứng.
+              </li>
+              {caze.blocked?.length ? (
+                <li>
+                  Loại <strong>{caze.blocked.length}</strong> người
+                  {blockReasonSummary(caze.blocked)}
+                </li>
+              ) : null}
+              {caze.candidates.length ? (
+                <li>
+                  Xếp hạng theo công bằng + số giờ thêm + độ phủ kỹ năng; người đứng
+                  đầu là <strong>{caze.candidates[0]?.nv_ten || "—"}</strong>
+                  {typeof caze.candidates[0]?.fairness_delta === "number"
+                    ? ` (lệch công bằng ${caze.candidates[0].fairness_delta.toFixed(2)}, thêm ${caze.candidates[0].added_hours} giờ)`
+                    : ""}
+                  .
+                </li>
+              ) : null}
+              <li>
+                Không tự mời ai. Hệ thống chỉ đề xuất; gửi lời mời và chốt vẫn là
+                bước của quản lý — và người được mời phải tự đồng ý.
+              </li>
+            </ul>
+          </section>
+
           {/* Bước 2 — danh sách an toàn. */}
           <h2 className="nq-rescue__stephead">
             <span className="nq-rescue__stepnum">2</span>
@@ -363,15 +426,19 @@ export default function ShiftRescuePanel() {
             />
           ) : (
             <div className="nq-rescue__cards">
-              {caze.candidates.map((c) => (
-                <CandidateCard
-                  key={c.candidate_id}
-                  candidate={c}
-                  onSelect={() => proposeAndInvite(c.candidate_id)}
-                  disabled={busy || (caze.invited ?? []).length > 0}
-                  selected={selected === c.candidate_id}
-                />
-              ))}
+              {/* Sắp theo HẠNG của AI — thứ tự này là một phần câu trả lời "AI
+                  chọn ai", nên không được để nguyên thứ tự payload trả về. */}
+              {[...caze.candidates]
+                .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))
+                .map((c) => (
+                  <CandidateCard
+                    key={c.candidate_id}
+                    candidate={c}
+                    onSelect={() => proposeAndInvite(c.candidate_id)}
+                    disabled={busy || (caze.invited ?? []).length > 0}
+                    selected={selected === c.candidate_id}
+                  />
+                ))}
             </div>
           )}
 

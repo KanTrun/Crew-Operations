@@ -910,7 +910,8 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 | `NEXT_PUBLIC_API_URL` | Base URL API cho web |
 | `NEXT_PUBLIC_GEMINI_LIVE_VOICE_ENABLED` | Bật Copilot Voice trên web |
 | `DOMAIN` | Domain production (dùng cho reverse proxy / CORS) |
-| `NHIPQUAN_CORS_ORIGINS` | Danh sách origin cách nhau dấu phẩy |
+| `NHIPQUAN_CORS_ORIGINS` | Danh sách origin cách nhau dấu phẩy (điền sẽ **ghi đè** mặc định dev — để trống khi chạy local) |
+| `NHIPQUAN_PUBLIC_API_DOCS` | `0` để tắt `/docs`, `/redoc`, `/openapi.json` khi vận hành thật (mặc định bật cho demo) |
 | `NHIPQUAN_SEED_DEMO` | Seed dữ liệu demo khi khởi động (tắt ở quán thật) |
 | `NHIPQUAN_LOI_GIAI_SEED` | Thêm NV mẫu ADR-012 vào pool xếp lịch (chỉ dev/demo) |
 | `NHIPQUAN_INBOX_SEED_FIXTURE` / `NHIPQUAN_PAGE_SEED_FIXTURE` | Nhồi fixture inbox/Page (chỉ CI) |
@@ -1198,7 +1199,7 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 | POST | `/catchment-survey/{job_id}/review` | 🟡 | Xác nhận giá OCR (`NEEDS_REVIEW`) |
 | GET | `/catchment-survey-metrics` | 🔵 | Chi phí Vision & nguồn dữ liệu |
 | GET | `/catchment-survey-dashboard` | 🔵 | Dashboard tổng hợp |
-| GET | `/serpapi/quota` | 🔵 | Hạn ngạch SerpApi còn lại |
+| GET | `/api/v1/market/serpapi/quota` | 🔵 | Hạn ngạch SerpApi còn lại |
 
 </details>
 
@@ -1409,9 +1410,9 @@ Prefix: `/api/v1/market`. Agent: **AG-PRICING** (SerpApi + Vision). Job chạy b
 | Method | Endpoint | Quyền | Mô tả |
 |:-------|:---------|:-----:|:------|
 | GET | `/skills` | 🟢 | Danh mục 14 kỹ năng + SHA256 |
-| GET | `/skills/{skill_id}` | 🟢 | Nội dung SKILL.md + scripts + references |
-| POST | `/skills/{skill_id}/verify` | 🟢 | Chạy smoke test kỹ năng ngay |
-| POST | `/skills/distill-sop` | 🟡 | Chưng cất SOP → Skill (Hybrid mode) |
+| GET | `/api/v1/skills/{skill_id}` | 🟢 | Nội dung SKILL.md + scripts + references |
+| POST | `/api/v1/skills/{skill_id}/verify` | 🟢 | Chạy smoke test kỹ năng ngay |
+| POST | `/api/v1/skills/distill-sop` | 🟡 | Chưng cất SOP → Skill (Hybrid mode) |
 
 </details>
 
@@ -1655,7 +1656,7 @@ Các agent chuyên trách chính và nơi triển khai:
 | Ngân sách context | ≤ 1.500 tokens (Progressive Disclosure: metadata trước, nội dung đầy đủ khi khớp) |
 | Nạp trong code | `SkillLoader` / `SkillRef` (`ca_agents`) |
 | Chưng cất mới | `POST /skills/distill-sop` (Hybrid mode) · `distill_sop_to_dir` (`ca_playbook`) |
-| Kiểm định | CI `skills-verify.yml` + `POST /skills/{id}/verify` (SHA256 trong `skills_index.jsonl`) |
+| Kiểm định | CI `skills-verify.yml` + `POST /api/v1/skills/{id}/verify` (SHA256 trong `skills_index.jsonl`) |
 
 ---
 

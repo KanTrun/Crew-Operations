@@ -364,8 +364,11 @@
    trong khoảng 97ms -> 190ms. Cũng chính vì thế bài `spatial-memory.spec.ts` đo
    `svgBox` rồi đo từng neo, hai phép đo rơi vào hai bố cục khác nhau nên toạ độ
    lệch (neo chạm 912 trong khi `svgBox` kết thúc ở 771). */
-.nq-spatial__layout { display: grid; gap: 1rem; grid-template-columns: 1fr 420px; align-items: start; }
-@media (max-width: 980px) { .nq-spatial__layout { grid-template-columns: 1fr; } }
+.nq-spatial__layout { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) 420px; align-items: start; }
+/* Dưới 1100px thì về một cột: bản đồ và cột chi tiết cạnh nhau ở bề rộng này
+   làm cả hai bị bó (bản đồ mất chiều ngang, cột phải gãy chữ). */
+@media (max-width: 1100px) { .nq-spatial__layout { grid-template-columns: minmax(0, 1fr); } }
+.nq-spatial__side { display: grid; gap: var(--nq-s4); align-content: start; }
 .nq-map2d { align-self: start; border: 2px solid var(--nq-line); border-radius: var(--nq-radius-bubble, 18px); background: var(--nq-bg-elevated); overflow: hidden; }
 .nq-map2d__svg { display: block; width: 100%; height: auto; color: var(--nq-fg); }
 .nq-map2d__anchor { cursor: pointer; outline: none; }
@@ -422,12 +425,26 @@
 
 /* ── QUANVERSE Living OS ────────────────────────────────────────────────── */
 .nq-quanverse { display: grid; gap: var(--nq-s4); }
-.nq-quanverse__layout { display: grid; gap: var(--nq-s4); grid-template-columns: 1fr 400px; align-items: start; }
-@media (max-width: 1040px) { .nq-quanverse__layout { grid-template-columns: 1fr; } }
+/* Bố cục ba vùng rõ ràng, KHÔNG để vùng nào bị ép:
+   - ≥1400px: mặt bằng + rail phải THEO TỈ LỆ (rail ~30%) — rail cứng 360px ở
+     màn 1920px chỉ chiếm 23%, nội dung dồn trái và rail bị bóp; đây đúng là
+     cảm giác "ép qua bên phải".
+   - 1200–1400px: rail 340–380px là đủ cho trục 15 phút + chế độ.
+   - <1200px: MỘT cột (rail xuống dưới) — dải 760–1040px trước đây tách rail
+     thành hai cột nằm dưới mặt bằng full-width nên mỗi cột chỉ còn ~370px. */
+.nq-quanverse__layout {
+  display: grid; gap: var(--nq-s4);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 32%);
+  align-items: start;
+}
+@media (min-width: 1700px) {
+  /* Màn rất rộng: chặn rail lại để nó không phình thành một cột chữ dài khó đọc. */
+  .nq-quanverse__layout { grid-template-columns: minmax(0, 1fr) minmax(380px, 26%); }
+}
+@media (max-width: 1200px) { .nq-quanverse__layout { grid-template-columns: minmax(0, 1fr); } }
 .nq-quanverse__right { display: grid; gap: var(--nq-s4); }
-.nq-quanverse__guests { display: grid; gap: var(--nq-s4); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: start; }
+.nq-quanverse__guests { display: grid; gap: var(--nq-s4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items: start; }
 .nq-quanverse__guests section { margin-top: 0; }
-@media (min-width: 760px) and (max-width: 1040px) { .nq-quanverse__right { grid-template-columns: 1fr 1fr; } }
 
 .nq-quanverse__hint {
   display: flex; align-items: center; gap: var(--nq-s2);
@@ -559,7 +576,7 @@
 }
 
 /* ── Living Map: vỏ, thanh trên, công tắc 2D/3D ─────────────────────────── */
-.nq-living-map__shell { display: grid; gap: var(--nq-s2); }
+.nq-living-map__shell { display: grid; gap: var(--nq-s2); align-content: start; align-self: start; }
 .nq-living-map__topbar { display: flex; align-items: center; gap: var(--nq-s2); flex-wrap: wrap; }
 .nq-living-map__topbar .nq-rolechip { display: inline-flex; align-items: center; gap: 0.3rem; }
 .nq-viewtoggle {
@@ -616,8 +633,7 @@
 @media (max-width: 640px) { .nq-living-map__canvas { height: 280px; } }
 
 /* Chip chọn khu vực cho lớp 3D (đường vào bằng bàn phím) */
-.nq-living-map__chips { display: flex; flex-wrap: wrap; gap: var(--nq-s2); }
-.nq-zchip {
+.nq-living-map__chips { display: flex; flex-wrap: wrap; gap: var(--nq-s2); }.nq-zchip {
   display: inline-flex; align-items: center; gap: 0.3rem;
   min-height: 36px; padding: 0.3rem 0.7rem;
   border: 1px solid var(--nq-line);
@@ -633,45 +649,7 @@
 .nq-zchip:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ── Living Map 2D: mặt bằng ────────────────────────────────────────────── */
-.nq-living-map { display: grid; gap: var(--nq-s3); }
-.nq-living-map__svg {
-  width: 100%;
-  height: auto;
-  max-height: 420px;
-  border: 1px solid var(--nq-line);
-  border-radius: var(--nq-radius-bubble);
-  background: var(--nq-bg-elevated);
-}
-.nq-living-map__floor { fill: color-mix(in srgb, var(--nq-surface) 88%, transparent); }
-.nq-living-map__zone-rect {
-  fill: color-mix(in srgb, var(--nq-surface-2) 90%, transparent);
-  stroke: var(--nq-line-strong);
-  stroke-width: 1.5;
-  cursor: pointer;
-  transition: fill 160ms ease, stroke 160ms ease;
-}
-.nq-living-map__zone-g--low .nq-living-map__zone-rect { stroke: #7c8a99; }
-.nq-living-map__zone-g--mid .nq-living-map__zone-rect { stroke: var(--nq-accent); }
-.nq-living-map__zone-g--high .nq-living-map__zone-rect { stroke: #f59e0b; }
-.nq-living-map__zone-g.is-selected .nq-living-map__zone-rect {
-  fill: var(--nq-accent-soft);
-  stroke: var(--nq-accent);
-  stroke-width: 2.5;
-}
-.nq-living-map__zone-g:focus { outline: none; }
-.nq-living-map__zone-g:focus .nq-living-map__zone-rect {
-  stroke: var(--nq-focus);
-  stroke-width: 2.5;
-}
-.nq-living-map__zone-load { fill: var(--nq-accent); opacity: 0.85; }
-.nq-living-map__zone-g--high .nq-living-map__zone-load { fill: #f59e0b; }
-.nq-living-map__zone-text {
-  fill: var(--nq-ink);
-  font-size: 13px;
-  font-family: var(--nq-font-display);
-  pointer-events: none;
-}
-.nq-living-map__chips { display: flex; flex-wrap: wrap; gap: var(--nq-s2); }
+.nq-living-map { display: grid; gap: var(--nq-s3); align-content: start; align-self: start; }
 .nq-living-map__grid { display: grid; grid-template-columns: 1fr; gap: var(--nq-s3); }
 @media (min-width: 560px) { .nq-living-map__grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1100px) { .nq-living-map__grid { grid-template-columns: repeat(2, 1fr); } }
@@ -1217,8 +1195,7 @@
 }
 .nq-map3d {
   position: relative;
-  height: 420px;
-  border: 2px solid var(--nq-line);
+  height: 420px;  border: 2px solid var(--nq-line);
   border-radius: var(--nq-radius-bubble, 18px);
   background:
     radial-gradient(120% 90% at 50% 15%, rgba(184, 148, 47, 0.12), transparent 68%),
@@ -1598,3 +1575,213 @@
   font-family: var(--nq-font-mono, monospace); white-space: nowrap;
 }
 .nq-quality__msg { color: var(--nq-dim); font-size: 0.82rem; line-height: 1.45; }
+
+/* ── War Room: tình hình hiện tại (đọc từ hệ thống, không phải thẻ cứng) ──── */
+.nq-war__now {
+  display: grid; gap: var(--nq-s3);
+  padding: var(--nq-s4);
+  border: 1px solid var(--nq-line);
+  border-left: 3px solid var(--nq-accent);
+  border-radius: var(--nq-radius-bubble, 18px);
+  background: linear-gradient(160deg, var(--nq-surface), var(--nq-bg-elevated));
+}
+.nq-now { display: grid; gap: var(--nq-s3); }
+.nq-now__loading { margin: 0; color: var(--nq-dim); font-size: 0.9rem; }
+.nq-now__headline {
+  margin: 0; font-size: 1rem; font-weight: 600; line-height: 1.55; color: var(--nq-fg);
+}
+.nq-now__metrics {
+  list-style: none; margin: 0; padding: 0; display: grid; gap: var(--nq-s2);
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+}
+.nq-now-metric {
+  display: grid; gap: 0.15rem; padding: 0.55rem 0.7rem;
+  border: 1px solid var(--nq-line); border-radius: var(--nq-radius-bubble, 18px);
+  background: var(--nq-bg-elevated);
+}
+.nq-now-metric__value {
+  font-family: var(--nq-font-mono, monospace);
+  font-size: 1.1rem; color: var(--nq-fg); font-variant-numeric: tabular-nums;
+}
+.nq-now-metric__label { font-size: 0.76rem; color: var(--nq-dim); line-height: 1.4; }
+.nq-now-metric--ok .nq-now-metric__value { color: var(--nq-ok); }
+.nq-now-metric--warn .nq-now-metric__value { color: var(--nq-warn); }
+.nq-now-metric--danger .nq-now-metric__value { color: var(--nq-danger); }
+
+/* Hai cột: rủi ro | gợi ý kịch bản. Dưới 760px gộp một cột. */
+.nq-now__cols { display: grid; gap: var(--nq-s4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.nq-now__col { display: grid; gap: 0.4rem; align-content: start; }
+.nq-now__coltitle {
+  margin: 0; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--nq-dim);
+}
+.nq-now__list { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.3rem; }
+.nq-now__list li { font-size: 0.88rem; line-height: 1.55; color: var(--nq-fg); }
+.nq-now__list--risk li { color: var(--nq-warn); }
+.nq-now__ok { margin: 0; font-size: 0.88rem; color: var(--nq-dim); }
+.nq-now__refs { margin: 0; font-size: 0.8rem; color: var(--nq-dim); }
+.nq-now__refs--none { color: var(--nq-warn); }
+
+/* ── Cứu ca: khối "AI đã tính gì" (bằng chứng, không phải lời hứa) ───────── */
+.nq-rescue__ai {
+  display: grid; gap: var(--nq-s3);
+  padding: var(--nq-s4);
+  border: 1px solid var(--nq-line);
+  border-left: 3px solid var(--nq-accent);
+  border-radius: var(--nq-radius-bubble, 18px);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--nq-accent) 8%, transparent), var(--nq-bg-elevated));
+}
+.nq-rescue__aihead { display: flex; align-items: center; gap: var(--nq-s2); flex-wrap: wrap; }
+.nq-rescue__aihead .nq-icon { color: var(--nq-accent); }
+.nq-rescue__ailist { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.35rem; }
+.nq-rescue__ailist li { font-size: 0.9rem; line-height: 1.6; color: var(--nq-fg); }
+.nq-rescue__ailist strong { color: var(--nq-accent-ink-text); }
+
+/* ── Quán tự viết luật: khối giải thích "khác Cẩm nang ở đâu" ───────────── */
+.nq-rules__why {
+  display: grid; gap: var(--nq-s3);
+  padding: var(--nq-s4);
+  border: 1px solid var(--nq-line);
+  border-left: 3px solid var(--nq-accent);
+  border-radius: var(--nq-radius-bubble, 18px);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--nq-accent) 7%, transparent), var(--nq-bg-elevated));
+}
+.nq-rules__whycols { display: grid; gap: var(--nq-s3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.nq-rules__whyhead {
+  margin: 0 0 0.25rem; font-size: 0.78rem; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--nq-accent-ink-text);
+}
+.nq-rules__whybody { margin: 0; font-size: 0.88rem; line-height: 1.6; color: var(--nq-fg); }
+.nq-rules__whysteps {
+  margin: 0; padding-left: 1.1rem; display: grid; gap: 0.3rem;
+  border-top: 1px dashed var(--nq-line); padding-top: var(--nq-s3);
+}
+.nq-rules__whysteps li { font-size: 0.87rem; line-height: 1.55; color: var(--nq-fg); }
+.nq-rules__whysteps strong { color: var(--nq-accent-ink-text); }
+.nq-rules__whynotice {
+  margin: 0; font-size: 0.85rem; color: var(--nq-dim); line-height: 1.55;
+}
+.nq-rules__whynotice strong { color: var(--nq-fg); }
+
+/* ── Chế độ quán: giải thích "là gì" + "khi nào bật" ─────────────────────── */
+.nq-moderail__intro {
+  margin: 0; font-size: 0.85rem; line-height: 1.6; color: var(--nq-dim);
+  padding-bottom: var(--nq-s2);
+  border-bottom: 1px dashed var(--nq-line);
+}
+.nq-moderail__intro strong { color: var(--nq-fg); }
+.nq-moderail__intro em { color: var(--nq-accent-ink-text); font-style: normal; }
+/* Khi nào bật: chữ nhỏ, in nghiêng, khác hẳn câu hệ quả phía trên. */
+.nq-moderail__when {
+  font-size: 0.76rem; font-style: italic; line-height: 1.45;
+  color: var(--nq-dim);
+}
+
+/* ── Living Map 2D: mặt bằng (khôi phục + kẹp chiều cao) ─────────────────── */
+.nq-living-map__svg {
+  display: block;
+  width: 100%;
+  /* Chiều cao KHÔNG được là hàm của bề ngang: `height:auto` ở 1920px cho mặt
+     bằng cao 485px, kéo cả khối lên ~750px và trông như trang bị giãn. Kẹp
+     bằng `aspect-ratio` + `max-height` để SVG giữ đúng tỉ lệ 640x420 nhưng
+     không bao giờ cao hơn vùng cho phép. */
+  aspect-ratio: 640 / 420;
+  max-height: 460px;
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-radius-bubble);
+  background: var(--nq-bg-elevated);
+}
+.nq-living-map__floor {
+  fill: color-mix(in srgb, var(--nq-surface) 88%, transparent);
+}
+.nq-living-map__zone-rect {
+  fill: color-mix(in srgb, var(--nq-surface-2, var(--nq-surface)) 90%, transparent);
+  stroke: var(--nq-line-strong);
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: fill 160ms ease, stroke 160ms ease;
+}
+.nq-living-map__zone-g { cursor: pointer; }
+.nq-living-map__zone-g--low .nq-living-map__zone-rect { stroke: #7c8a99; }
+.nq-living-map__zone-g--mid .nq-living-map__zone-rect { stroke: var(--nq-accent); }
+.nq-living-map__zone-g--high .nq-living-map__zone-rect { stroke: #f59e0b; }
+.nq-living-map__zone-g.is-selected .nq-living-map__zone-rect {
+  fill: var(--nq-accent-soft);
+  stroke: var(--nq-accent);
+  stroke-width: 2.5;
+}
+.nq-living-map__zone-g:focus { outline: none; }
+.nq-living-map__zone-g:focus .nq-living-map__zone-rect {
+  stroke: var(--nq-focus, var(--nq-accent));
+  stroke-width: 2.5;
+}
+.nq-living-map__zone-g[aria-disabled="true"] { opacity: 0.5; }
+.nq-living-map__zone-load { fill: var(--nq-accent); opacity: 0.85; }
+.nq-living-map__zone-g--low .nq-living-map__zone-load { fill: #7c8a99; }
+.nq-living-map__zone-g--high .nq-living-map__zone-load { fill: #f59e0b; }
+.nq-living-map__zone-text {
+  fill: var(--nq-fg);
+  font-family: var(--nq-font-body);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.nq-living-map__zone-sub {
+  fill: var(--nq-dim);
+  font-family: var(--nq-font-mono, monospace);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+/* Mặt bằng gọn lại: 460px vẫn quá cao khi cộng dãy chip bên dưới. Một tấm sơ
+   đồ chỉ cần đủ để đọc vị trí; phần chi tiết đã có bảng "Chi tiết khu vực". */
+.nq-living-map__svg { max-height: 360px; }
+
+/* Dãy chip chọn khu vực: trước đây mỗi chip là một thẻ cao ~50px nên 4 chip
+   chiếm 216px — gần bằng cả mặt bằng. Đưa về hàng chip gọn, một dòng khi đủ chỗ. */
+.nq-living-map__chips {
+  display: flex; flex-wrap: wrap; gap: 0.4rem;
+  max-height: none;
+}
+.nq-living-map__zone {
+  min-height: 0;
+  padding: 0.35rem 0.6rem;
+  grid-template-columns: auto auto auto;
+  gap: 0.45rem;
+  align-items: center;
+  border-width: 1px;
+  box-shadow: none;
+  background: var(--nq-surface);
+}
+.nq-living-map__zone::before { display: none; }
+.nq-living-map__zone .nq-living-map__glyph {
+  width: 24px; height: 24px;
+}
+.nq-living-map__zone .nq-living-map__body { gap: 0; }
+.nq-living-map__zone .nq-living-map__label { font-size: 0.84rem; font-weight: 600; }
+.nq-living-map__zone .nq-living-map__kind { display: none; }
+.nq-living-map__zone .nq-loadbar { width: 5px; height: 22px; }
+.nq-living-map__zone .nq-living-map__loadt { font-size: 0.7rem; }
+
+/* ── /quanverse: phân bổ lại vùng nội dung (chia đều, không ép một bên) ──── */
+/* Cột trái là một grid dọc: mặt bằng rồi tới chi tiết khu vực. `align-content:
+   start` giữ nó không bị kéo cao theo cột phải. */
+.nq-quanverse__main {
+  display: grid; gap: var(--nq-s4);
+  align-content: start; min-width: 0;
+}
+.nq-quanverse__main .nq-living-map { align-self: start; }
+
+/* Ba panel khách chia ĐỀU: mỗi panel một cột khi đủ chỗ, không để panel thứ ba
+   rơi xuống một mình. `auto-fit` + trần 1fr cho phép 3 cột ở màn rộng. */
+.nq-quanverse__guests {
+  display: grid; gap: var(--nq-s4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  align-items: start;
+}
+@media (min-width: 1180px) {
+  .nq-quanverse__guests { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Dòng sự kiện trải hết bề ngang nội dung — đây là nhật ký toàn quán. */
+.nq-quanverse__events { width: 100%; }

@@ -4,9 +4,9 @@
  * LivingMap3d — sơ đồ quán dạng khối 3D ("diorama").
  *
  * Không phải trang trí: chiều cao khối mã hoá `load_signal`, độ sáng viền mã
- * hoá mức tải, và khối đang chọn có khung dây đồng. Người dùng xoay/zoom được
- * bằng chuột (OrbitControls-free: nhóm tự quay chậm) và bấm vào khối để chọn
- * khu vực — cùng hành vi với bản 2D.
+ * hoá mức tải, và khối đang chọn có khung dây vàng. Người dùng XOAY được bằng
+ * chuột kéo và ZOOM bằng con lăn (`OrbitControls`, có giới hạn góc/khoảng cách),
+ * rồi bấm vào khối để chọn khu vực — cùng hành vi với bản 2D.
  *
  * Vì sao vẫn có `tier`: máy yếu chỉ dựng sàn + khối (không bóng, không hạt
  * nước); máy khoẻ thêm bóng mềm và hạt hơi nước. Máy không có WebGL thật
@@ -24,6 +24,14 @@ import type { ZoneUI } from "./quanverse-model";
 import type { Tier3d } from "../useCapability3d";
 import { livingPlacement } from "./living-plan";
 
+/**
+ * Vị trí khối trên mặt bằng — dùng CHUNG với bản 2D qua `living-place.ts`.
+ *
+ * Trước đây file này khai lại một bản `PLAN` riêng, giống hệt `LIVING_PLAN`
+ * nhưng là bản sao thứ hai. Hai bản sao của cùng một mặt bằng sẽ lệch nhau ngay
+ * lần đầu ai đó sửa một bên — và khi đó bấm trên 2D lại chọn một chỗ khác trên
+ * 3D. Một nguồn duy nhất, hai cách vẽ.
+ */
 function placement(zone: ZoneUI, index: number) {
   return livingPlacement(zone.zone_id, index);
 }
@@ -65,7 +73,6 @@ function ZoneBlock({
         smoothness={4}
         castShadow
         receiveShadow
-        position={[0, 0, 0]}
         onPointerOver={(e) => {
           e.stopPropagation();
           setHovered(true);

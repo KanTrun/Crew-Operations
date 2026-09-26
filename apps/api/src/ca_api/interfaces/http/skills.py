@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from ca_api.interfaces.http.sprint3 import _require_manager, _require_role
 
-router = APIRouter(prefix="/skills", tags=["skills"])
+router = APIRouter(prefix="/api/v1/skills", tags=["skills"])
 loader = SkillLoader()
 
 

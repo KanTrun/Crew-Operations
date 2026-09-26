@@ -269,6 +269,49 @@ export default function RuleDiscovery() {
         </button>
       </div>
 
+      {/* VÌ SAO TRANG NÀY TỒN TẠI — người dùng hỏi "khác gì cẩm nang".
+          Cẩm nang là nơi LUẬT ĐÃ VIẾT nằm; trang này là nơi luật được SINH RA
+          từ chính các quyết định lặp lại của quán, kèm bằng chứng và bước chạy
+          thử. Khối này nói rõ ranh giới đó để không ai nhầm là trùng chức năng. */}
+      <section className="nq-rules__why" data-testid="rules-why">
+        <div className="nq-exp-section__head">
+          <Icon name="info" size={16} />
+          <h2 className="nq-exp-section__title">Trang này khác Cẩm nang ở đâu</h2>
+        </div>
+        <div className="nq-rules__whycols">
+          <div>
+            <p className="nq-rules__whyhead">Cẩm nang</p>
+            <p className="nq-rules__whybody">
+              Nơi <strong>đọc và chạy</strong> những luật đã được chốt. Ai cũng
+              tra được quy trình.
+            </p>
+          </div>
+          <div>
+            <p className="nq-rules__whyhead">Quán tự viết luật</p>
+            <p className="nq-rules__whybody">
+              Nơi luật được <strong>sinh ra</strong>: máy đọc lịch sử đổi ca, tìm
+              quyết định lặp lại, dựng bằng chứng, chạy thử trên dữ liệu cũ — rồi
+              mới đề xuất. Chỉ quản lý/chủ quán ban hành.
+            </p>
+          </div>
+        </div>
+        <ul className="nq-rules__whysteps">
+          <li><strong>1. Tìm</strong> — máy quét lịch sử, đề xuất câu luật kèm mức tin cậy.</li>
+          <li><strong>2. Xem bằng chứng</strong> — những lần việc này lặp lại, ai làm, ca nào.</li>
+          <li><strong>3. Chạy thử (shadow)</strong> — áp thử lên dữ liệu cũ, so trước/sau.</li>
+          <li><strong>4. Xác nhận</strong> — vào vòng đời; thu hồi được bất cứ lúc nào.</li>
+        </ul>
+        {candidates.length > 0 ? (
+          <p className="nq-rules__whynotice" data-testid="rules-why-count">
+            Hiện có <strong>{candidates.length}</strong> ứng viên
+            {candidates.filter((c) => c.status === "confirmed").length
+              ? `, trong đó ${candidates.filter((c) => c.status === "confirmed").length} đã ban hành`
+              : ""}
+            . Bấm “Tìm quyết định lặp lại” nếu muốn máy rà lại từ đầu.
+          </p>
+        ) : null}
+      </section>
+
       {loading ? (
         <p aria-busy="true">Đang đọc danh sách ứng viên…</p>
       ) : candidates.length === 0 ? (

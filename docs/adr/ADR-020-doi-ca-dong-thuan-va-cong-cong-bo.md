@@ -67,8 +67,35 @@ kể ba câu chuyện khác nhau về cùng một sự kiện.
 - `GET /cho-doi-ca` **lọc theo server**: trước đây trả `kv_get("swap", [])` cho
   mọi vai, tức một nhân viên đọc được toàn bộ phiếu của quán. Lọc ở client không
   phải là bảo vệ.
-- Hai route vòng đời (`PATCH /lich-tuan/lifecycle` và `POST /lich/lifecycle`) vẫn
-  tồn tại song song và **đã lệch ma trận chuyển tiếp**. ADR này KHÔNG hợp nhất
-  chúng; việc đó cần một ADR riêng. Ghi lại để lần sau không sửa nhầm một đường.
+
+## Bổ sung: hợp nhất ma trận hai đường vòng đời
+
+Hai cửa vào cùng state machine (`PATCH /api/v1/lich-tuan/lifecycle` trong
+`main.py` và `POST /api/v1/lich/lifecycle` trong `sprint45.py`) trước đây **mỗi
+bên khai một bản ma trận riêng**, và đã lệch thật ở đúng một ô:
+
+| | `da_cong_bo →` |
+|---|---|
+| `main.py` (PATCH) | `da_dong` |
+| `sprint45.py` (POST) | `da_dong`, **`nhap`** |
+
+Hệ quả: "mở lại lịch đã công bố" chạy được qua POST nhưng trả
+`409 illegal:da_cong_bo->nhap` qua PATCH. UI hiện gọi đúng đường (POST khi cần lý
+do) nên người dùng chưa gặp — nhưng client API, test hay agent chọn nhầm đường sẽ
+nhận lỗi cho một thao tác mà đường kia cho phép.
+
+**Quyết định:** ma trận về **một nguồn duy nhất** — khai trong `sprint45.py` dưới
+tên `_SHARED_ALLOWED`, `main.py` import và alias thành `_LIFECYCLE_ALLOWED`. Ô
+`da_cong_bo → nhap` **được phép** (mở lại lịch công bố là nghiệp vụ thật).
+
+**Kèm theo:** `PATCH` nay cũng bắt buộc có lý do khi mở lại lịch đã chốt, như
+`POST` đã bắt từ trước. Trước kia lỗ hổng này bị ma trận hẹp che — nay ma trận mở
+`da_cong_bo → nhap` thì cổng lý do phải chặn, không thì mở lại một quyết định đã
+ban hành sẽ đi qua im lặng.
+
+**Chốt chống tái phát:** `apps/api/tests/unit/test_lifecycle_matrix.py` kiểm hai
+tên ma trận là **cùng một object** (`is`), không phải hai bản bằng giá trị — hai
+dict bằng nhau hôm nay vẫn có thể bị sửa lệch ở lần sau.
+
 - `/api/v1/ca/nhan-truc-tiep` không có UI riêng trong phạm vi này; nó là đường
   API cho quản lý, đã khai trong `EXCLUDED_ROUTES` (R3).

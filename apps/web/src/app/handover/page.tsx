@@ -26,7 +26,20 @@ type Sbar = {
   boi_canh?: unknown;
   danh_gia?: unknown;
   de_nghi?: unknown;
+  co_lech_so?: boolean;
+  vf_number_conflict?: { chu_de: string; gia_tri: number[]; cau: string[] }[];
 };
+
+const CHU_DE_LABEL: Record<string, string> = {
+  ket: "Tiền két",
+  doanh_thu: "Doanh thu",
+  chi_phi: "Chi phí",
+  hao_hut: "Hao hụt",
+};
+
+function dinhDangTien(v: number): string {
+  return v.toLocaleString("vi-VN") + "đ";
+}
 
 export default function HandoverPage() {
   const [token, setToken] = useState("");
@@ -101,6 +114,22 @@ export default function HandoverPage() {
       {busy && !out ? <Loading skeleton="text">Đang tách nội dung ca…</Loading> : null}
       {out ? (
         <OpsCard eyebrow="Bàn giao cho ca sau" title="Bốn phần đã tách">
+          {out.co_lech_so && Array.isArray(out.vf_number_conflict) && out.vf_number_conflict.length > 0 ? (
+            <Alert>
+              <strong>Phát hiện số liệu lệch giữa các ca — cần người xác minh:</strong>
+              <ul style={{ margin: "var(--nq-s2) 0 0", paddingLeft: "1.1em" }}>
+                {out.vf_number_conflict.map((c) => (
+                  <li key={c.chu_de}>
+                    {CHU_DE_LABEL[c.chu_de] ?? c.chu_de}: {" "}
+                    {c.gia_tri.map((v) => dinhDangTien(v)).join(" ≠ ")}
+                  </li>
+                ))}
+              </ul>
+              <span style={{ display: "block", marginTop: "var(--nq-s2)" }}>
+                Hệ thống không tự chọn bên nào — quản lý đối chiếu sổ rồi chốt.
+              </span>
+            </Alert>
+          ) : null}
           <p>
             <strong>Tình hình:</strong> {safeText(out.tinh_hinh, "chưa nhận ra trong nội dung")}
           </p>

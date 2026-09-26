@@ -839,14 +839,30 @@ a:focus-visible {
   transform: scale(var(--nq-press));
 }
 
-/* ── Page ── */
+/* ── Page ──
+   KHÔNG đặt `max-width` cứng ở đây. Bề rộng đọc được do `.nq-main__inner` lo
+   MỘT lần cho mọi trang; `.nq-page` chỉ khai phần đệm dọc.
+
+   Vì sao có ghi chú này (đã từng bị gỡ 2 lần):
+     Commit `34373e2` đã xoá `max-width: min(1280px, 100%)` khỏi đây vì nó tạo
+     "dải trống hai bên cố định bằng 1280px giữa màn 1920px" — thu gọn sidebar
+     thì trang KHÔNG rộng ra thật. Nhưng commit `9262206` sau đó (phân nhóm món
+     cho quầy) đã VÔ TÌNH thêm lại đúng `min(1280px, 100%)` + `margin-inline:auto`,
+     đồng thời xoá luôn ghi chú giải thích — nên lỗi quay lại mà không còn dấu vết
+     lý do. Giữ nguyên `max-width: none` và giữ ghi chú này.
+   Trang nào cần hẹp hơn (đọc chữ dài) thì tự khai `.nq-page--prose`. */
 .nq-page {
   animation: nq-rise var(--nq-dur-t1) var(--nq-ease-out) both;
   padding: clamp(1rem, 3vw, 1.75rem) 0 clamp(2rem, 4vw, 3rem);
   width: 100%;
-  max-width: min(1280px, 100%);
-  margin-inline: auto;
+  max-width: none;
   box-sizing: border-box;
+}
+
+/* Trang đọc chữ dài — bề rộng thoải mái cho mắt, KHÔNG dùng cho trang vận hành. */
+.nq-page--prose {
+  max-width: var(--nq-max-narrow);
+  margin-inline: auto;
 }
 
 .nq-page--wide {
@@ -9078,13 +9094,21 @@ a.nq-bento-surface:active {
   padding: var(--nq-s5) clamp(1rem, 2.5vw, 2rem) var(--nq-s8);
 }
 
-/* Khối bọc nội dung: giữ bề rộng đọc được và canh giữa trong phần còn lại.
-   Trang rộng (lịch tuần, roster, chat…) bỏ giới hạn qua `.nq-main__wide`. */
+/* Khối bọc nội dung: lấp đầy phần còn lại sau sidebar.
+   KHÔNG đặt `max-width` ở đây — xem ghi chú ở `.nq-page`. Commit `9262206` đã
+   từng thêm lại `max-width: var(--nq-max)` (= min(1600px,100%)) và làm dải trống
+   hai bên quay lại; `34373e2` trước đó đã cố ý bỏ nó đi.
+   Trang nào cần hẹp thì khai `.nq-main__inner--narrow`. */
 .nq-main__inner {
   width: 100%;
-  max-width: var(--nq-max);
-  margin-inline: auto;
+  max-width: none;
   min-width: 0;
+}
+
+/* Trang đọc chữ dài (không phải trang vận hành) — hẹp cho mắt dễ đọc. */
+.nq-main__inner--narrow {
+  max-width: var(--nq-max-narrow);
+  margin-inline: auto;
 }
 
 .nq-main__inner--wide {
