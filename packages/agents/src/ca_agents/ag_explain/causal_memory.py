@@ -78,6 +78,23 @@ def build_causal_chain(
     """
     nodes: list[CausalNode] = []
     links: list[CausalLink] = []
+    _seen_nodes: set[str] = set()
+    _seen_links: set[tuple[str, str, str]] = set()
+
+    def _add_node(n: CausalNode) -> bool:
+        """Thêm node nếu chưa có (dedupe theo node_id). Trả True nếu node mới."""
+        if n.node_id in _seen_nodes:
+            return False
+        _seen_nodes.add(n.node_id)
+        nodes.append(n)
+        return True
+
+    def _add_link(link: CausalLink) -> None:
+        key = (link.from_id, link.to_id, link.ly_do)
+        if key in _seen_links:
+            return
+        _seen_links.add(key)
+        links.append(link)
 
     # 1. Nút luật + sự kiện bằng chứng
     for luat in luat_list:
@@ -85,22 +102,25 @@ def build_causal_chain(
         if not luat_nodes:
             continue
         luat_node = luat_nodes[0]
-        nodes.append(luat_node)
+        if not _add_node(luat_node):
+            # Luật đã có trong chuỗi — bỏ qua để không lặp bằng chứng.
+            continue
         # Liên kết sự kiện → luật
         for n in luat_nodes[1:]:
-            nodes.append(n)
-            links.append(CausalLink(from_id=n.node_id, to_id=luat_node.node_id, ly_do="bằng chứng"))
+            _add_node(n)
+            _add_link(CausalLink(from_id=n.node_id, to_id=luat_node.node_id, ly_do="bằng chứng"))
 
     # 2. Nút quyết định từ audit
     for audit in audit_list:
         audit_nodes = _find_audit_nodes(audit)
         for n in audit_nodes:
-            nodes.append(n)
+            if not _add_node(n):
+                continue
             # Liên kết luật → quyết định (nếu có luật)
             if nodes:
                 luat_nodes_found = [x for x in nodes if x.loai == CausalNodeType.LUAT]
                 if luat_nodes_found:
-                    links.append(
+                    _add_link(
                         CausalLink(
                             from_id=luat_nodes_found[-1].node_id,
                             to_id=n.node_id,
@@ -116,11 +136,12 @@ def build_causal_chain(
             mo_ta=str(kq.get("mo_ta") or str(kq)),
             nguon="solver",
         )
-        nodes.append(kq_node)
+        if not _add_node(kq_node):
+            continue
         # Liên kết quyết định → kết quả
         quyet_dinh_nodes = [x for x in nodes if x.loai == CausalNodeType.QUYET_DINH]
         if quyet_dinh_nodes:
-            links.append(
+            _add_link(
                 CausalLink(
                     from_id=quyet_dinh_nodes[-1].node_id,
                     to_id=kq_node.node_id,

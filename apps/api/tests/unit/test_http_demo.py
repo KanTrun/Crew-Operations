@@ -16,6 +16,19 @@ def test_health() -> None:
     assert r.json()["status"] == "ok"
 
 
+def test_security_headers_co_mat_tren_moi_response() -> None:
+    """QA 2026-09-26 finding #6: mọi response phải có header bảo mật."""
+    r = client.get("/health")
+    assert r.headers.get("x-content-type-options") == "nosniff"
+    assert r.headers.get("x-frame-options") == "DENY"
+    assert r.headers.get("referrer-policy") == "no-referrer"
+    assert "camera=()" in r.headers.get("permissions-policy", "")
+    assert r.headers.get("content-security-policy")
+    # HSTS chỉ gửi khi qua HTTPS (proxy set x-forwarded-proto)
+    r_https = client.get("/health", headers={"x-forwarded-proto": "https"})
+    assert "max-age=" in r_https.headers.get("strict-transport-security", "")
+
+
 def test_login_and_contracts() -> None:
     bad = client.post("/api/v1/auth/login", json={"username": "x", "password": "y"})
     assert bad.status_code == 401
@@ -29,6 +42,31 @@ def test_login_and_contracts() -> None:
     assert body["nguon"] == "quan"
     for key in ("NhanVien", "Ca", "LichTuan", "PhieuMau", "RangBuocTrichXuat"):
         assert key in body
+
+
+def test_contracts_khong_lo_ho_ten_day_du() -> None:
+    """QA 2026-09-26 finding #8: endpoint công khai không được phơi họ tên đầy đủ.
+
+    Tên phải rút gọn còn họ + chữ cái đầu ("Lan N."), và phải có cờ đánh dấu
+    đây là dữ liệu mô phỏng.
+    """
+    body = client.get("/api/v1/contracts").json()
+    assert body["la_du_lieu_mo_phong"] is True
+    for nv in body["NhanVien"]:
+        ten = nv["ten"]
+        # Không còn họ tên đầy đủ (2+ chữ, chữ cuối dài hơn 2 ký tự)
+        parts = ten.split()
+        assert len(parts) == 2, f"Tên chưa rút gọn: {ten}"
+        assert len(parts[-1]) <= 2, f"Tên chưa rút gọn: {ten}"
+        assert parts[-1].endswith("."), f"Thiếu dấu chấm viết tắt: {ten}"
+
+
+def test_contracts_demo_alias_khong_lo_ten() -> None:
+    """`/api/v1/demo/contracts` là bí danh — cũng phải áp quy tắc rút gọn."""
+    body = client.get("/api/v1/demo/contracts").json()
+    assert body["la_du_lieu_mo_phong"] is True
+    for nv in body["NhanVien"]:
+        assert len(nv["ten"].split()[-1]) <= 2
 
 
 def test_lich_tuan_anonymous_forbidden() -> None:

@@ -70,6 +70,8 @@ const STAFF_ACCESS = new Set([
   "/them",
   "/contracts",
   "/chat",
+  // Thư viện Kỹ năng đã kiểm định — API `/api/v1/skills` công khai (🟢), mọi vai xem được.
+  "/skills",
   // Grand AI Experience — HỒN QUÁN Spatial Memory + Living Map mở cho mọi vai trò
   "/quanverse",
   "/quanverse/spatial-memory",
@@ -81,6 +83,8 @@ const MANAGER_ONLY = new Set([
   "/page-quan",
   "/page-quan/fb-inbox",
   "/ai-learning",
+  // Quản lý hộp thư Gmail (OAuth, nhãn, bộ lọc, gửi) — README ghi Quản lý/chủ quán.
+  "/gmail",
   // Cấu hình quán & hướng dẫn AI — kv store_profile, API đòi `_require_manager`.
   "/cau-hinh-quan",
   // Mỗi lượt khảo sát tốn chi phí proxy + Vision thật, nên khớp với `_require_manager`

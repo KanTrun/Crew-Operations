@@ -66,3 +66,34 @@ def test_de_xuat_luat_tich_cuc_ton_kho() -> None:
 
 def test_de_xuat_luat_tich_cuc_empty() -> None:
     assert de_xuat_luat_tich_cuc([]) == []
+
+
+def test_id_luat_on_dinh_theo_pattern_id() -> None:
+    """Bug #2 (QA 2026-09-26): id phải theo pattern_id, không theo index.
+
+    Nhờ đó chạy lại cùng dữ liệu cho cùng id → tầng lưu trữ khử được trùng lặp
+    (trước đây `pos_rule_{i+1}` theo index làm bản ghi trùng tích lũy).
+    """
+    patterns = [
+        _pattern(SuccessPatternType.CA_DOANH_THU, 0.9, ["T6_toi"]).model_copy(
+            update={"pattern_id": "pat_ca_T6_toi"}
+        ),
+    ]
+    first = de_xuat_luat_tich_cuc(patterns)
+    second = de_xuat_luat_tich_cuc(patterns)
+    assert first[0].id == second[0].id, "id phải ổn định giữa hai lần gọi"
+    assert first[0].id == "pos_pat_ca_T6_toi"
+
+
+def test_id_luat_khac_nhau_cho_pattern_khac_nhau() -> None:
+    patterns = [
+        _pattern(SuccessPatternType.CA_DOANH_THU, 0.9, ["T6_toi"]).model_copy(
+            update={"pattern_id": "pat_ca_T6_toi"}
+        ),
+        _pattern(SuccessPatternType.MON_BAN_CHAY, 0.9, ["matcha"]).model_copy(
+            update={"pattern_id": "pat_mon_matcha"}
+        ),
+    ]
+    rules = de_xuat_luat_tich_cuc(patterns)
+    assert len(rules) == 2
+    assert {r.id for r in rules} == {"pos_pat_ca_T6_toi", "pos_pat_mon_matcha"}

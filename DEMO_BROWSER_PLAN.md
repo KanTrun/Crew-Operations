@@ -156,11 +156,16 @@
 
 ## C. Tình trạng đã phát hiện trên production (2026-09-25 17:0x)
 
-| Hiện tượng | Bằng chứng | Mức độ |
-|------------|------------|--------|
-| WS `/ws/chat` lỗi 502 (reverse proxy không bật upgrade) | console error lặp multi lần | 🟡 realtime chat chết trên production — cần cấu hình nginx `proxy_set_header Upgrade` |
-| 1 resource 404 | console error 09:06 | 🟢 nhỏ — xác định url rồi fix tùy |
-| Phần còn lại hoạt động: /vet render, 200 vết, login hung hoạt động | snapshot | ✅ |
+| Hiện tượng | Bằng chứng | Mức độ | Trạng thái |
+|------------|------------|--------|-----------|
+| WS 502 trên 3 WebSocket (`/ws/chat`, `/api/v1/copilot/voice`, `/api/v1/meeting/stream`) — Caddyfile chỉ khai mỗi `/ws/chat*` | console error lặp | 🟡 | ✅ **ĐÃ SỬA** — `infra/oracle/Caddyfile` thêm `handle` + `flush_interval -1` cho cả 3 (cần reload Caddy trên VM) |
+| 1 resource 404 | console error | 🟢 | ⏳ cần xác định URL cụ thể (không chặn demo) |
+| `/skills` và `/gmail` chặn MỌI vai (kể cả chủ quán) | test bằng `lan` + `hung` đều BLOCKED | 🔴 P1 | ✅ **ĐÃ SỬA** — `session.ts` thêm `/skills` → STAFF_ACCESS, `/gmail` → MANAGER_ONLY |
+| `/giai-thich` chuỗi bằng chứng lặp ~13 lần · `/de-xuat-thong-minh` "21 mẫu" nhưng chỉ 3 thật | snapshot DOM | 🟡 P2 | ✅ **ĐÃ SỬA** — dedupe ở `causal_memory.py` + `ops_predict.py` + id luật ổn định |
+| `/handover` không cảnh báo lệch số két | "Đánh giá: (trống)" | 🟡 P2 | ✅ **ĐÃ SỬA** — thêm `detect_number_conflicts` + Alert UI |
+| Phần còn lại hoạt động: /vet render, 200 vết, login hung/lan | snapshot | ✅ | — |
+
+> Chi tiết đầy đủ + bằng chứng + cách fix: [`DEMO_QA_RESULTS.md`](./DEMO_QA_RESULTS.md) §6.
 
 ## D. Thứ tự khuyến nghị chạy (cho agent)
 
@@ -169,3 +174,35 @@
 
 ## E. Kết quả ghi vào `DEMO_QA_RESULTS.md`
 Mỗi bước: `Sx | PASS/FAIL/BLOCKED | thời điểm | screenshot | vướng mắc`.
+
+---
+
+## F. TRẠNG THÁI THỰC THI (2026-09-26) — Đã chạy QA
+
+> Chi tiết đầy đủ + bằng chứng: [`DEMO_QA_RESULTS.md`](./DEMO_QA_RESULTS.md)
+> **Tóm tắt: 20 PASS · 2 PARTIAL · 1 FAIL · 1 BLOCKED · 3 chưa chạy · 2 bỏ qua (an toàn).**
+
+### F.1 Nhãn nút THỰC TẾ trên production (khác mã cũ — dùng cái này)
+
+| Vị trí | Nhãn thực tế đã xác nhận |
+|--------|---------------------------|
+| `/inbox` | **ĐÃ ĐỔI GIAO DIỆN**: "AI tự động duyệt · chỉ xem"; filter Trạng thái có option "AI đang xử lý / Mới vào hộp thư / AI đã duyệt / AI đã từ chối"; KHÔNG còn nút "Duyệt ràng buộc" thủ công |
+| `/inbox` panel phải | "Trợ lý đọc giúp trang này" + "Hỏi AI về trang này" |
+| `/roster` | "Xếp lịch tự động" · "MỞ LẠI ĐỂ ĐIỀU CHỈNH" · modal "Mở lại lịch" (nút đích) / "Huỷ" · "Chỉnh khung giờ" · "Xuất lịch"; workflow hiển thị "1. Chuẩn bị lịch / 2. Rà soát và xử lý ca thiếu / 3. Đã duyệt và công bố" |
+| `/copilot` | Nút gửi là **"Gửi"**; chip gợi ý gồm "Xếp lịch tuần sau…", "Xem xét duyệt đổi ca ngày mai", "Tóm tắt bản tin sáng hôm nay", "Kiểm tra tồn kho…", "Đề xuất quy định mới…"; thẻ proposal có nút **"✓ Duyệt & Áp dụng"** / **"✕ Từ chối"** |
+| `/giai-thich` | Nút là **"Truy vết nhân quả"** (KHÔNG phải "Giải thích") |
+| `/qr` | "PHÁT MÃ ĐIỂM DANH" / "ĐIỂM DANH VÀO CA" (chữ hoa); mã che `•••• •••• XXXX` |
+| `/treo` | "Đánh dấu xong" · tab "Việc cần xử lý (n)" / "Lần sửa lịch (n)" |
+| `/cam-nang` | "CHẠY 8 BƯỚC XÉT LUẬT" · "HỎI QUY TRÌNH" |
+| `/sop` | "Hỏi" · badge "Có trong cẩm nang · AI · <provider> · Tin cậy N%" + mục "Nguồn dẫn" |
+| `/handover` | "Tách thành bàn giao" |
+| `/de-xuat-thong-minh` | "Chạy phát hiện mẫu thành công" · "Duyệt luật" |
+
+### F.2 Trang có panel AI dùng chung (đã xác nhận)
+`/inbox`, `/giai-thich`, `/de-xuat-thong-minh`… đều có panel phải: **"Trợ lý đọc giúp trang này"** (nút "Phân tích lại") + **"Hỏi AI về trang này"** (ô "Nhập câu hỏi…" + nút "Hỏi").
+
+### F.3 Danh sách route bị chặn theo vai (đọc từ `apps/web/src/lib/session.ts`)
+- `OWNER_ONLY` (chỉ `chu_quan`): `/menu`, `/nguoi`
+- `MANAGER_ONLY` (`quan_ly` + `chu_quan`): `/lich-tuan`, `/roster`, `/inbox`, `/page-quan*`, `/ai-learning`, `/cau-hinh-quan`, `/khao-sat-gia`, `/vet`, `/giai-thich`, `/de-xuat-thong-minh`, `/thu-nghiem-an-toan`, `/quanverse/{war-room,shift-rescue,rules}`
+- ⚠️ `/skills` và `/gmail` **không thuộc tập nào** → bị chặn với mọi vai (**Bug #4**, xem QA results)
+

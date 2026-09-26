@@ -132,15 +132,21 @@ def run_predict(
     )
     rules = de_xuat_luat_tich_cuc(patterns)
 
-    # Lưu vào KV store
+    # Lưu vào KV store — khử trùng theo pattern_id/rule_id: chạy lại cùng dữ
+    # liệu không được tích lũy bản sao (trước đây prepend mù → 21 "mẫu" trong
+    # khi chỉ có 3 mẫu khác nhau; sửa 2026-09-26).
     pattern_dicts = [p.model_dump() for p in patterns]
     rule_dicts = [r.model_dump() for r in rules]
 
     def mut_patterns(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return pattern_dicts + cur
+        seen = {str(p.get("pattern_id")) for p in pattern_dicts}
+        kept = [p for p in cur if str(p.get("pattern_id")) not in seen]
+        return pattern_dicts + kept
 
     def mut_rules(cur: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return rule_dicts + cur
+        seen = {str(r.get("id")) for r in rule_dicts}
+        kept = [r for r in cur if str(r.get("id")) not in seen]
+        return rule_dicts + kept
 
     kv_mutate("ops_predict_patterns", mut_patterns, [])
     kv_mutate("ops_predict_rules", mut_rules, [])

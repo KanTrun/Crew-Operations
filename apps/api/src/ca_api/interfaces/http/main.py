@@ -132,7 +132,19 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         await aclose()
 
 
-app = FastAPI(title="NHIP QUAN API", version="0.2.0", lifespan=_lifespan)
+app = FastAPI(
+    title="NHIP QUAN API",
+    version="0.2.0",
+    lifespan=_lifespan,
+    # Swagger mặc định BẬT (hội đồng/demo cần xem /docs). Khi vận hành quán thật,
+    # đặt NHIPQUAN_PUBLIC_API_DOCS=0 để tắt /docs, /redoc và /openapi.json —
+    # tránh phơi toàn bộ schema API ra Internet (QA 2026-09-26 finding #10).
+    docs_url="/docs" if os.environ.get("NHIPQUAN_PUBLIC_API_DOCS", "1").strip() != "0" else None,
+    redoc_url="/redoc" if os.environ.get("NHIPQUAN_PUBLIC_API_DOCS", "1").strip() != "0" else None,
+    openapi_url="/openapi.json"
+    if os.environ.get("NHIPQUAN_PUBLIC_API_DOCS", "1").strip() != "0"
+    else None,
+)
 
 # CORS: mặc định 3 origin dev local. Khi deploy (Postgres, domain thật) đặt
 # NHIPQUAN_CORS_ORIGINS — danh sách origin cách nhau bởi dấu phẩy — để thay
@@ -155,6 +167,38 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next: Any) -> Any:
+    """Thêm header bảo mật cho mọi response (QA 2026-09-26 phát hiện thiếu).
+
+    - `X-Content-Type-Options: nosniff` — chặn trình duyệt đoán MIME (chống XSS
+      từ file upload bị phục vụ sai kiểu).
+    - `X-Frame-Options: DENY` + CSP `frame-ancestors 'none'` — chống clickjacking.
+    - `Referrer-Policy` — không rò URL nội bộ (có token/ID) sang bên thứ ba.
+    - `Permissions-Policy` — tắt camera/mic/geolocation cho tài liệu (API không cần).
+    - HSTS: chỉ gửi khi request đã qua HTTPS (qua proxy set `x-forwarded-proto`).
+
+    API trả JSON nên CSP tối giản (`default-src 'none'`) là đủ; trang HTML do
+    Next.js phục vụ có CSP riêng ở tầng web.
+    """
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault(
+        "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+    )
+    response.headers.setdefault(
+        "Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"
+    )
+    proto = request.headers.get("x-forwarded-proto", "")
+    if proto.split(",")[0].strip() == "https":
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
+    return response
 
 _LOG = logging.getLogger(__name__)
 _REALTIME_SKIP_PREFIXES = (
@@ -1263,9 +1307,29 @@ def me(authorization: Annotated[str | None, Header()] = None) -> dict[str, str]:
 
 @app.get("/api/v1/contracts")
 def five_contracts() -> dict[str, object]:
+    """5 hợp đồng dữ liệu mẫu (ADR-012) — trang tra cứu công khai.
+
+    Bảo mật (QA 2026-09-26): endpoint không cần đăng nhập nên **không trả họ tên
+    đầy đủ** của nhân viên. Tên được rút gọn còn họ + chữ cái đầu ("Lan N.") —
+    vẫn minh hoạ đúng cấu trúc hợp đồng mà không phơi danh tính. Mọi bản ghi
+    đều là dữ liệu mô phỏng (`la_du_lieu_mo_phong: true`), không phải người thật.
+    """
     seed = _seed()
+
+    def _rut_gon_ten(ten: str) -> str:
+        parts = str(ten).split()
+        if len(parts) <= 1:
+            return str(ten)
+        return f"{parts[0]} {parts[-1][0]}."
+
     nv = [
-        NhanVien.model_validate({**x, "ky_nang": x.get("ky_nang", [])})
+        NhanVien.model_validate(
+            {
+                **x,
+                "ten": _rut_gon_ten(x.get("ten", "")),
+                "ky_nang": x.get("ky_nang", []),
+            }
+        )
         for x in seed.get("nhan_vien", [])[:5]
     ]
     ca_rows = []
@@ -1298,6 +1362,8 @@ def five_contracts() -> dict[str, object]:
     return {
         "nguon": "quan",
         "adr": "ADR-012",
+        "la_du_lieu_mo_phong": True,
+        "ghi_chu": "Dữ liệu mẫu để minh hoạ cấu trúc hợp đồng — tên nhân viên đã được rút gọn.",
         "NhanVien": [x.model_dump() for x in nv],
         "Ca": [x.model_dump() for x in ca_rows],
         "LichTuan": lich.model_dump(),
