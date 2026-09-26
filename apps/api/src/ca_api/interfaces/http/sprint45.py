@@ -1243,7 +1243,13 @@ def cong_bang(authorization: Annotated[str | None, Header()] = None) -> dict[str
     if not s:
         raise HTTPException(status_code=401, detail="thieu_token")
     seed = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
-    nvs = [n["id"] for n in seed.get("nhan_vien", [])]
+    # Danh sách NV lấy từ NGUỒN THẬT (pool đang xếp lịch), KHÔNG phải seed.
+    # Bug QA đợt 4: trước đây đọc thẳng `seed["nhan_vien"]` (25 mã nv_01..nv_25)
+    # nên báo cáo công bằng hiện số dư cho 6 người không tồn tại trong DB
+    # (DB thật có 19). Seed chỉ dùng làm fallback khi pool thật rỗng.
+    nvs = [str(n["id"]) for n in list_nhan_vien_ops() if n.get("id")]
+    if not nvs:
+        nvs = [str(n["id"]) for n in seed.get("nhan_vien", [])]
     meta = {
         c["id"]: {
             "thu": {1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN"}.get(
@@ -1256,6 +1262,12 @@ def cong_bang(authorization: Annotated[str | None, Header()] = None) -> dict[str
         for c in seed.get("ca_mau_21", [])
     }
     debt = update_debt_from_assignment(zero_debt(nvs), _phan(), meta)
+    # `update_debt_from_assignment` dùng `setdefault` nên TẠO key cho mã nhân sự
+    # có trong lịch phân công mà không có trong pool (`nvs`). Với dữ liệu fixture
+    # cũ, lịch có thể tham chiếu nv_20..nv_25 trong khi DB chỉ có 19 người — nếu
+    # giữ nguyên, báo cáo công bằng sẽ hiện số dư cho người không tồn tại. Lọc
+    # về đúng pool đang xếp lịch (bug QA đợt 4).
+    debt = {nv: debt[nv] for nv in nvs if nv in debt}
     means = {a: 0.0 for a in AXES}
     if nvs:
         for a in AXES:
