@@ -714,7 +714,10 @@ def msg_classify(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     _require_role(authorization)
-    r = classify(body.text)
+    # Phải truyền tuần THẬT làm mốc; nếu để trống, `classify` mặc định
+    # "2026-W01" → "tuần sau" tính thành W02 bất kể hôm nay là tuần nào
+    # (bug QA đợt 4: mọi ràng buộc nghỉ/đổi ca rơi vào tuần sai).
+    r = classify(body.text, base_iso_week=_current_iso_week())
     port = get_port(body.backend)
     recipient = _nv_from_token(authorization) if authorization else "lan"
     sent = port.send(recipient, f"intent={r.intent}")
