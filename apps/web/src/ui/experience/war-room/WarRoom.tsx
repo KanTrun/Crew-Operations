@@ -17,6 +17,7 @@ import { Icon } from "../../icons";
 import { viError } from "../../../lib/present";
 import { eligibilityReasonLabel, proposalStatusLabel, warOptionTitle } from "../exp-present";
 import CrisisRoom from "./CrisisRoom";
+import NowBrief from "./NowBrief";
 import ScenarioComparison from "./ScenarioComparison";
 import ScenarioPicker from "./ScenarioPicker";
 import {
@@ -181,6 +182,24 @@ export default function WarRoom() {
           thay đổi lịch thật.
         </p>
       </header>
+
+      {/* TÌNH HÌNH HIỆN TẠI — trả lời câu hỏi đầu tiên người trực ca cần:
+          "bây giờ quán đang thế nào, có gì đáng lo". Trước đây trang chỉ có 5
+          thẻ kịch bản cứng, nên người dùng không biết mình đang quyết định
+          trên nền tình hình nào. Panel này đọc TẮT CẢ dữ liệu thật của quán
+          (bản chiếu + trợ lý) qua cùng một endpoint `brief` đã có. */}
+      <section className="nq-war__now" aria-label="Tình hình hiện tại của quán">
+        <div className="nq-exp-section__head">
+          <Icon name="refresh" size={16} />
+          <h2 className="nq-exp-section__title">Tình hình hiện tại</h2>
+          <span className="nq-exp-section__spacer" />
+          <span className="nq-rolechip">
+            <Icon name="info" size={13} />
+            Đọc từ hệ thống
+          </span>
+        </div>
+        <NowBrief />
+      </section>
 
       {error ? (
         <div className="nq-alert nq-alert--error" role="alert">

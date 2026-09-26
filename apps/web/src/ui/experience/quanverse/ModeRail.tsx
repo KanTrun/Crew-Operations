@@ -48,6 +48,22 @@ const MODE_EFFECT: Record<string, string> = {
   dem_nhac: "Bật lịch nhạc, giữ khu vực sân khấu.",
 };
 
+/**
+ * KHI NÀO BẬT — câu trả lời cho "tôi bật cái này lúc nào".
+ *
+ * `MODE_EFFECT` nói hệ quả; trường này nói DẤU HIỆU nhận biết. Hai câu khác
+ * nhau và người vận hành cần cả hai: biết "bật thì sao" mà không biết "khi nào
+ * bật" thì vẫn không quyết được.
+ */
+const MODE_WHEN: Record<string, string> = {
+  troi_mua: "Khi trời mưa hoặc khách bắt đầu dồn vào trong nhà.",
+  gio_cao_diem: "Khi vào khung đông khách và quầy bắt đầu ùn.",
+  khach_doan: "Khi biết trước có đoàn/nhóm lớn tới.",
+  thieu_nhan_su: "Khi có người báo vắng hoặc ca thiếu người.",
+  quan_yen_tinh: "Khi cần không gian yên (họp, khách làm việc).",
+  dem_nhac: "Khi tới khung nhạc tối / có chương trình.",
+};
+
 interface Props {
   modes: ModeItem[];
   onAction: (mode: string, action: ModeAction) => Promise<void>;
@@ -96,6 +112,17 @@ export default function ModeRail({ modes, onAction, busy, canActivate = true }: 
         </span>
       </div>
 
+      {/* CHẾ ĐỘ LÀ GÌ — trả lời câu hỏi "bật mấy cái này để làm gì".
+          Trước đây mỗi dòng chỉ có tên + một câu hệ quả ngắn, nên người dùng
+          phải tự đoán khi nào nên bật. Khối này nói rõ: chế độ KHÔNG đổi lịch
+          thật, nó đổi cách quán ưu tiên và cảnh báo. */}
+      <p className="nq-moderail__intro">
+        Chế độ là cách nói với hệ thống <em>hôm nay quán đang ở tình huống gì</em>,
+        để nó đổi ưu tiên gợi ý và cảnh báo. Bật/tắt ở đây{" "}
+        <strong>không đổi lịch làm việc thật</strong> — đổi ca vẫn là bước riêng,
+        có người duyệt.
+      </p>
+
       {/* Chờ duyệt xếp lên trên: đây là việc cần người quyết định. */}
       {waiting.length > 0 ? (
         <p className="nq-moderail__sectionlabel">Chờ quyết định · {waiting.length}</p>
@@ -123,6 +150,9 @@ export default function ModeRail({ modes, onAction, busy, canActivate = true }: 
                 <span className="nq-moderail__effect">
                   {m.effect ?? MODE_EFFECT[m.mode] ?? "Thay đổi cách quán vận hành."}
                 </span>
+                {!m.active && MODE_WHEN[m.mode] ? (
+                  <span className="nq-moderail__when">{MODE_WHEN[m.mode]}</span>
+                ) : null}
               </span>
 
               {/* Công tắc: trạng thái là hình dạng, không chỉ là chữ "Đang bật". */}
