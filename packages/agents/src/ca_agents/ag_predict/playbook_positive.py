@@ -50,12 +50,14 @@ def de_xuat_luat_tich_cuc(
     Chỉ đề xuất khi mẫu có do_tin_cay >= ngưỡng. Không tự áp dụng.
     """
     rules: list[PositiveRule] = []
-    for i, pattern in enumerate(patterns):
+    for pattern in patterns:
         if pattern.do_tin_cay < min_do_tin_cay:
             continue
+        # id ổn định theo pattern_id (không theo index) — chạy lại cùng dữ liệu
+        # cho cùng id, nhờ đó lớp lưu trữ khử được trùng lặp. Sửa 2026-09-26.
         rules.append(
             PositiveRule(
-                id=f"pos_rule_{i + 1}",
+                id=f"pos_{pattern.pattern_id}",
                 cau=_cau_tu_pattern(pattern),
                 dieu_kien=_dieu_kien_tu_pattern(pattern),
                 bang_chung=pattern.bang_chung,

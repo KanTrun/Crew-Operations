@@ -1,13 +1,14 @@
 # mypy: disable-error-code="no-untyped-def,no-untyped-call,type-arg,no-any-return,unused-ignore"
 from ca_api.interfaces.http.main import app
 from fastapi.testclient import TestClient
+
 from unit.auth_util import headers
 
 client = TestClient(app)
 
 
 def test_http_list_skills() -> None:
-    resp = client.get("/skills")
+    resp = client.get("/api/v1/skills")
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, list)
@@ -18,7 +19,7 @@ def test_http_list_skills() -> None:
 
 
 def test_http_get_skill_detail() -> None:
-    resp = client.get("/skills/solver-scheduling")
+    resp = client.get("/api/v1/skills/solver-scheduling")
     assert resp.status_code == 200
     data = resp.json()
     assert data["skill_id"] == "solver-scheduling"
@@ -27,12 +28,12 @@ def test_http_get_skill_detail() -> None:
 
 
 def test_http_get_skill_detail_not_found() -> None:
-    resp = client.get("/skills/non-existent-skill")
+    resp = client.get("/api/v1/skills/non-existent-skill")
     assert resp.status_code == 404
 
 
 def test_http_verify_skill_live() -> None:
-    resp = client.post("/skills/solver-scheduling/verify", headers=headers(client, "lan"))
+    resp = client.post("/api/v1/skills/solver-scheduling/verify", headers=headers(client, "lan"))
     assert resp.status_code == 200
     data = resp.json()
     assert data["verified"] is True

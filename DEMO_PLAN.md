@@ -225,7 +225,7 @@ Nguồn tổng hợp: README (đã đối chiếu code), audit `plans/260917-aud
 | 30 | Gmail OAuth + SMTP + AG-MAILWRITER | **PARTIAL** | `gmail.py` (accounts/labels/filters/sync đầy đủ); `POST /api/v1/mail/send` (mail.py:213) + quality gate + delivery receipts; Fernet (persist.py:397); audit #10 🟡 "cần SMTP thật" | /gmail kết nối → đọc/gửi | 🟡 | `.env` có SMTP → gửi 1 mail nội bộ; dự phòng dừng ở proposal |
 | 31 | AG-MEETING transcript → biên bản → apply | **IMPLEMENTED** | meeting.py:151–646 (transcribe/analyze/process-audio/clarify actions/apply/rollback); contract `CuocHop` giàu (cuoc-hop/page.tsx: interface đủ: action_items, audit_sop, ban_tin_ca, huan_luyen_quan_ly, de_xuat_sop, dieu_chinh_lich); kiểm chứng live 07/09 | /cuoc-hop dán transcript → biên bản | ✅ | Chuẩn bị transcript mẫu 4 việc |
 | 32 | AI Learning loop | **IMPLEMENTED** | /api/v1/ai/* 12 endpoint (ai_learning.py:65–229); bảng `ai_generation_records`, `ai_feedback_events`, `ai_evaluations`, `ai_rule_proposals` (persist.py:532–556) | /ai-learning duyệt luật AI | ✅ | Không |
-| 33 | Skills library 13+1 + distill SOP | **IMPLEMENTED** | `GET/POST /skills*` (skills.py:29–54 + distill-sop); `skills/skills_index.jsonl`; CI skills-verify | /skills verify 1 skill | ✅ | Verify nhanh 1 skill (smoke offline) |
+| 33 | Skills library 13+1 + distill SOP | **IMPLEMENTED** | `/api/v1/skills*` (skills.py:29–54 + distill-sop); `skills/skills_index.jsonl`; CI skills-verify | /skills verify 1 skill | ✅ | Verify nhanh 1 skill (smoke offline) |
 | 34 | AG-TREND (Apify + Threads/Camoufox) | **PARTIAL** | `/api/v1/trends/apify-usage|radar|{id}` (trends.py:58/73/97); audit #23 🟢 Apify ok / #24 🟡 Threads cần cào | /page-quan tab trends | 🟡 | Còn hạn mức Apify thì bật; không thì bỏ |
 | 35 | Audit Trail 3 câu + /vet | **IMPLEMENTED** | bảng `audit` (persist.py:309) + `copilot_audit_log` (:362) có actor_type/agent_name/controller; `GET /api/v1/audit`; UI /vet (page.tsx:332/349) | /vet filter actor/agent | ✅ | Màn "chốt hạ" |
 | 36 | Worker nền 3 job định kỳ | **IMPLEMENTED** | `worker.py` — brief_sang 06:00 · solver_tuan Chủ nhật 22:00 (đề xuất chờ duyệt) · tong_ket_ngay 23:00; nhắc phiếu 2 cấp; open-shift SLA | brief hiển thị /hom-nay + /copilot | ✅ Docker | Demo chủ động trigger thay vì chờ giờ thật |
@@ -503,7 +503,7 @@ flowchart TB
 | `/giai-thich` | Chuỗi nhân quả | hỏi "tại sao" | POST /ops/explain; GET /chains | ✅ |
 | `/de-xuat-thong-minh` | Predict + Twin | gợi ý luật + mô phỏng | /ops/predict/*; /ops/twin/* | ✅ |
 | `/ai-learning` | Vòng học AI | summary, operations, proposals | /ai/* | ✅ |
-| `/skills` | Bộ kỹ năng 13/13 | list + verify | GET /skills; POST /skills/{id}/verify | ✅ |
+| `/skills` | Bộ kỹ năng 13/13 | list + verify | GET /api/v1/skills; POST /api/v1/skills/{id}/verify | ✅ |
 
 ### 10.2 Yêu cầu experiência (theo `docs/design-guidelines.md`)
 
@@ -724,7 +724,7 @@ Chính là script 13 STEP ở Mục 12 (đã có timing từng bước 0:00–15
 | Đặt bàn | `/api/v1/reservations*`, `/reservations/{id}/check-in|complete|cancel` | GET/POST |
 | Vết | `/api/v1/audit`, `/api/v1/copilot/audit` | GET |
 | Khảo sát | `/api/v1/market/catchment-survey(+result/review/dashboard)` | POST/GET |
-| Skills | `GET /skills`, `POST /skills/{id}/verify` | GET/POST |
+| Skills | `GET /api/v1/skills`, `POST /api/v1/skills/{id}/verify` | GET/POST |
 
 **KHÔNG cần API/tool mới nào** cho cả ba bản demo — 100% dùng có sẵn.
 

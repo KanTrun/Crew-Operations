@@ -114,9 +114,17 @@ def operations_status(authorization: Annotated[str | None, Header()] = None) -> 
         "NHIPQUAN_AI_CIRCUIT_BREAKER", "NHIPQUAN_AI_CANARY_ENABLED",
     )
     flags = {name: os.environ.get(name, "").strip().lower() in {"1", "true", "yes"} for name in names}
+    from ca_api.persist import kv_get
+    gmail_breaker = kv_get(f"ai_circuit_breaker:{current['store_id']}:gmail:default", {}) or {}
+    fb_breaker = kv_get(f"ai_circuit_breaker:{current['store_id']}:facebook:default", {}) or {}
     return {
-        "store_id": current["store_id"], "flags": flags,
+        "store_id": current["store_id"],
+        "flags": flags,
         "retention_days": max(1, int(os.environ.get("NHIPQUAN_AI_RETENTION_DAYS", "180"))),
+        "breakers": {
+            "gmail": bool(gmail_breaker.get("open", False)),
+            "facebook": bool(fb_breaker.get("open", False)),
+        },
     }
 
 

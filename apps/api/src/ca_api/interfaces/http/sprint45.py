@@ -24,7 +24,7 @@ from ca_agents.ag_sop.context import load_all_buoc
 from ca_agents.ag_sop.ops import default_ops_context, ops_context_from_dict
 from ca_agents.ag_waste import cluster as cluster_waste
 from ca_agents.smart_swap import find_swap_candidates
-from ca_gates import present_conflict, validate_num
+from ca_gates import detect_number_conflicts, present_conflict, validate_num
 from ca_playbook import (
     count_luat_that_quan,
     de_xuat,
@@ -1549,6 +1549,13 @@ def handover(
     out = h.__dict__
     nums = validate_num(body.text, {"2", "3", "8", "15"})
     out["vf_num"] = nums.__dict__
+    # VF-NUM mở rộng: hai ca khai lệch tiền cho cùng chủ đề → nêu ra, không tự chọn
+    # bên nào (ADR-008). Sửa 2026-09-26 sau QA phát hiện bàn giao bỏ sót lệch số.
+    conflicts = detect_number_conflicts(body.text)
+    out["vf_number_conflict"] = [
+        {"chu_de": c.chu_de, "gia_tri": c.gia_tri, "cau": c.cau} for c in conflicts
+    ]
+    out["co_lech_so"] = bool(conflicts)
     nv_id = s.get("nv_id") or role
     if body.alt_claim:
         other = {

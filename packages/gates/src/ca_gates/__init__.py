@@ -7,7 +7,7 @@ from typing import Any
 
 from ca_gates.vf_conf import ConfResult, validate_conf
 from ca_gates.vf_conflict import ConflictResult, present_conflict
-from ca_gates.vf_num import NumResult, validate_num
+from ca_gates.vf_num import NumberConflict, NumResult, detect_number_conflicts, validate_num
 from ca_gates.vf_rule import RuleResult, validate_rule
 from ca_gates.vf_schema import SchemaResult, validate_schema
 from ca_gates.vf_scope import ScopeResult, validate_scope
@@ -21,6 +21,7 @@ __all__ = [
     "validate_trace",
     "validate_conf",
     "validate_num",
+    "detect_number_conflicts",
     "validate_rule",
     "validate_scope",
     "validate_stale",
@@ -30,6 +31,7 @@ __all__ = [
     "TraceResult",
     "ConfResult",
     "NumResult",
+    "NumberConflict",
     "RuleResult",
     "ConflictResult",
     "ScopeResult",
