@@ -146,9 +146,18 @@ def _known_ca(ca_id: str) -> bool:
 
 
 def _known_nv(nv_id: str) -> bool:
+    """NV có tồn tại không — chỉ tính người THẬT trong pool đang xếp lịch.
+
+    Trước đây truyền `include_seed=True` nên chấp nhận cả `nv_20..nv_25` (mã chỉ
+    có trong seed fixture) → có thể ghim ca / phát QR cho người không tồn tại
+    (bug QA đợt 4). Phải khớp nguồn NV thật để validation đúng.
+    """
     from ca_api.nhan_vien import list_nhan_vien_ops
 
-    ids = {n["id"] for n in list_nhan_vien_ops(include_seed=True)}
+    ids = {n["id"] for n in list_nhan_vien_ops() if n.get("id")}
+    if not ids:
+        # DB rỗng (demo sạch) → chấp nhận seed để không chặn luồng demo.
+        ids = {n["id"] for n in list_nhan_vien_ops(include_seed=True) if n.get("id")}
     return nv_id in ids
 
 
