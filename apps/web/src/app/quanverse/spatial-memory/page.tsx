@@ -13,6 +13,7 @@ import SpatialMap from "../../../ui/experience/spatial/SpatialMap";
 import SpatialAnchorDetails from "../../../ui/experience/spatial/SpatialAnchorDetails";
 import VoiceDock from "../../../ui/experience/spatial/VoiceDock";
 import TourGuide from "../../../ui/experience/spatial/TourGuide";
+import PageAssistant from "../../../ui/experience/quanverse/PageAssistant";
 import type { Anchor2D } from "../../../ui/experience/spatial/SpatialMap2dFallback";
 
 const COPY = { read: { doing: "tải được bản đồ không gian quán" } } as const;
@@ -174,6 +175,9 @@ export default function SpatialMemoryPage() {
           </div>
         </div>
       )}
+
+      {/* Trợ lý Quánverse: neo nào còn trống ký ức, ghi nhớ gì tiếp theo. */}
+      <PageAssistant page="spatial_memory" />
 
       <VoiceDock anchorId={selectedId} />
     </div>

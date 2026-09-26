@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getToken, isManager } from "../../../lib/session";
 import { AuthGate } from "../../../ui/kit";
 import { ExpSkeleton } from "../../../ui/experience/exp-kit";
+import PageAssistant from "../../../ui/experience/quanverse/PageAssistant";
 
 const ShiftRescuePanel = dynamic(
   () => import("../../../ui/experience/shift-rescue/ShiftRescuePanel"),
@@ -31,5 +32,12 @@ export default function ShiftRescuePage() {
       </div>
     );
   }
-  return <ShiftRescuePanel />;
+  return (
+    <div className="nq-quanverse-sub">
+      <ShiftRescuePanel />
+      {/* Trợ lý Quánverse: vì sao chọn/loại người nào — bổ sung cho danh sách
+          ứng viên, không thay thế quyết định của quản lý. */}
+      <PageAssistant page="shift_rescue" />
+    </div>
+  );
 }

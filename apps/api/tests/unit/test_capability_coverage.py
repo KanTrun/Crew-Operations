@@ -241,6 +241,13 @@ EXCLUDED_ROUTES: dict[str, str] = {
     "/api/v1/experience/quanverse/preferences/{pref_id}/consent": "R2: đồng thuận sở thích qua UI (quyết định của khách)",
     "/api/v1/experience/quanverse/tour/{tour_id}": "experience — deep-link /quanverse (tour theo mã)",
     "/api/v1/experience/quanverse/ar-session": "experience — AR-lite qua UI /quanverse (không cấp camera qua chat)",
+    # Trợ lý Quánverse: lớp TƯỜNG THUẬT đọc lại dữ liệu của chính các route tất
+    # định ở trên (snapshot/modes/war-room/shift-rescue/rules/memories). Nó không
+    # tính số và không điều phối hành động nào — ADR-002: LLM chỉ diễn đạt lại
+    # brief, số do tầng toán thuần sinh. Vì vậy không phải một capability mới;
+    # đây đúng khuôn "narration phụ trợ" như /api/v1/ai/insight.
+    "/api/v1/experience/quanverse/brief/{page}": "narration phụ trợ — tóm tắt tất định của dữ liệu đã có capability riêng",
+    "/api/v1/experience/quanverse/ask": "narration phụ trợ — LLM chỉ diễn đạt brief, không thêm số/kết luận",
     "/api/v1/experience/war-room/simulate": "R2: mô phỏng qua UI /quanverse/war-room (số do math layer, không qua chat)",
     "/api/v1/experience/war-room/scenarios/{simulation_id}": "experience — deep-link /quanverse/war-room",
     "/api/v1/experience/war-room/{simulation_id}/propose": "R2: đề xuất phương án qua UI /quanverse/war-room",

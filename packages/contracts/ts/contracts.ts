@@ -619,6 +619,43 @@ export interface LivingCafeSnapshot {
   data_quality?: DataQualityNotice[];
 }
 
+export interface QuanverseMetric {
+  key: string;
+  label: string;
+  value?: number | null;
+  unit?: string;
+  tone?: "default" | "ok" | "warn" | "danger";
+}
+
+export type QuanversePage = "living_map" | "war_room" | "shift_rescue" | "rules" | "spatial_memory";
+
+export interface QuanverseBrief {
+  page: QuanversePage;
+  headline: string;
+  facts?: string[];
+  metrics?: QuanverseMetric[];
+  risks?: string[];
+  next_actions?: string[];
+  grounded_refs?: string[];
+  data_quality?: DataQualityNotice[];
+}
+
+export interface QuanverseAskRequest {
+  page: QuanversePage;
+  question: string;
+}
+
+export interface QuanverseAskResponse {
+  page: QuanversePage;
+  question: string;
+  answer: string;
+  brief: QuanverseBrief;
+  citations?: string[];
+  unsupported_claims?: string[];
+  grounded?: boolean;
+  provider?: string;
+}
+
 export type LossBasis = "ke_hoach_kiem_ke" | "don_quay_thuc_te" | "hon_hop";
 
 export type LossLevel = "dat" | "canh_bao" | "nghiem_trong" | "thieu_du_lieu";

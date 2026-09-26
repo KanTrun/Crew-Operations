@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getToken, isManager } from "../../../lib/session";
 import { AuthGate } from "../../../ui/kit";
 import { ExpSkeleton } from "../../../ui/experience/exp-kit";
+import PageAssistant from "../../../ui/experience/quanverse/PageAssistant";
 
 const RuleDiscovery = dynamic(
   () => import("../../../ui/experience/rules/RuleDiscovery"),
@@ -31,5 +32,11 @@ export default function RulesPage() {
       </div>
     );
   }
-  return <RuleDiscovery />;
+  return (
+    <div className="nq-quanverse-sub">
+      <RuleDiscovery />
+      {/* Trợ lý Quánverse: luật nào đáng ban hành, độ tin cậy ra sao. */}
+      <PageAssistant page="rules" />
+    </div>
+  );
 }

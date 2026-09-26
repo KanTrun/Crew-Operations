@@ -33,6 +33,7 @@ import FlavorUniverse from "../../ui/experience/quanverse/FlavorUniverse";
 import PreferenceConsent from "../../ui/experience/quanverse/PreferenceConsent";
 import ArLiteOverlay from "../../ui/experience/quanverse/ArLiteOverlay";
 import ZoneDetail from "../../ui/experience/quanverse/ZoneDetail";
+import PageAssistant from "../../ui/experience/quanverse/PageAssistant";
 import type {
   LiveSnapshotUI,
   ZoneUI,
@@ -234,6 +235,10 @@ export default function QuanversePage() {
               <span className="nq-statcard__label">Sự kiện vận hành</span>
             </li>
           </ul>
+
+          {/* Trợ lý Quánverse — nói thành lời chuyện đang xảy ra, thay vì bắt
+              người dùng tự đọc bốn con số trên rồi tự suy ra. */}
+          <PageAssistant page="living_map" />
 
           {quality.length > 0 ? (
             <ul className="nq-quality" aria-label="Chất lượng dữ liệu">

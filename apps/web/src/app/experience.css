@@ -1491,3 +1491,99 @@
 .nq-drawer__risk::first-letter { text-transform: uppercase; }
 
 
+
+
+/* ── Trợ lý Quánverse — tóm tắt tất định + hỏi đáp có căn cứ (2026-09-26) ──
+   Panel dùng chung cho cả 5 trang. Quy ước: bề mặt ĐẶC cho nội dung dữ liệu
+   (card/bảng không dùng kính theo design-guidelines), chữ theo thang của hệ. */
+.nq-assistant {
+  display: grid; gap: var(--nq-s3);
+  padding: var(--nq-s4);
+  border: 1px solid var(--nq-line);
+  border-radius: var(--nq-r-lg);
+  background: var(--nq-surface);
+}
+.nq-assistant__head { display: flex; align-items: center; gap: var(--nq-s2); flex-wrap: wrap; }
+.nq-assistant__head svg { color: var(--nq-accent); flex: none; }
+.nq-assistant__title {
+  margin: 0; font-family: var(--nq-font-display, serif);
+  font-size: 1.05rem; font-weight: 600; color: var(--nq-fg);
+}
+.nq-assistant__spacer { flex: 1 1 auto; }
+.nq-assistant__tabs { display: flex; gap: 0.35rem; }
+.nq-assistant__tab {
+  padding: 0.35rem 0.8rem; border-radius: 999px;
+  border: 1px solid var(--nq-line-control);
+  background: transparent; color: var(--nq-dim);
+  font-size: 0.85rem; cursor: pointer;
+  transition: background var(--nq-beat-focus, 220ms) ease, color var(--nq-beat-focus, 220ms) ease;
+}
+.nq-assistant__tab:hover { color: var(--nq-fg); }
+.nq-assistant__tab.is-on {
+  background: var(--nq-accent-soft); color: var(--nq-accent-ink-text);
+  border-color: var(--nq-accent);
+}
+.nq-assistant__hint { margin: 0; color: var(--nq-dim); font-size: 0.9rem; }
+.nq-assistant__refs { margin: 0; color: var(--nq-dim); font-size: 0.82rem; }
+.nq-assistant__refs--none { color: var(--nq-st-warn-ink, var(--nq-dim)); }
+
+.nq-brief { display: grid; gap: var(--nq-s3); }
+.nq-brief__headline {
+  margin: 0; font-size: 1rem; line-height: 1.55; color: var(--nq-fg); font-weight: 600;
+}
+.nq-brief__metrics {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: var(--nq-s2);
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+.nq-brief-metric {
+  display: grid; gap: 0.2rem; padding: 0.6rem 0.75rem;
+  border: 1px solid var(--nq-line); border-radius: var(--nq-r-md);
+  background: var(--nq-surface-2, var(--nq-surface));
+}
+.nq-brief-metric__value { font-family: var(--nq-font-mono, monospace); font-size: 1.15rem; color: var(--nq-fg); }
+.nq-brief-metric__label { font-size: 0.8rem; color: var(--nq-dim); line-height: 1.4; }
+.nq-brief-metric--ok .nq-brief-metric__value { color: var(--nq-st-ok-ink, var(--nq-fg)); }
+.nq-brief-metric--warn .nq-brief-metric__value { color: var(--nq-st-warn-ink-strong, var(--nq-warn)); }
+.nq-brief-metric--danger .nq-brief-metric__value { color: var(--nq-st-danger-ink, var(--nq-danger)); }
+.nq-brief__block { display: grid; gap: 0.4rem; }
+.nq-brief__block-title {
+  margin: 0; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--nq-dim);
+}
+.nq-brief__list { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.3rem; }
+.nq-brief__list li { font-size: 0.9rem; line-height: 1.55; color: var(--nq-fg); }
+.nq-brief__list--action li { color: var(--nq-accent-ink-text); }
+.nq-brief__block--risk .nq-brief__list li { color: var(--nq-st-warn-ink, var(--nq-fg)); }
+.nq-brief__ok { margin: 0; font-size: 0.9rem; color: var(--nq-dim); }
+.nq-brief__quality { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; }
+.nq-brief__quality li { font-size: 0.8rem; color: var(--nq-dim); }
+.nq-brief__quality--warning { color: var(--nq-st-warn-ink, var(--nq-dim)); }
+.nq-brief__quality--error { color: var(--nq-st-danger-ink, var(--nq-danger)); }
+
+.nq-assistant__ask { display: grid; gap: var(--nq-s3); }
+.nq-assistant__input { display: flex; gap: var(--nq-s2); flex-wrap: wrap; }
+.nq-assistant__input input {
+  flex: 1 1 16rem; min-width: 0;
+  padding: 0.6rem 0.8rem; border-radius: var(--nq-r-md);
+  border: 1px solid var(--nq-line-control);
+  background: var(--nq-surface-2, var(--nq-bg)); color: var(--nq-fg);
+  font-size: 0.92rem;
+}
+.nq-assistant__input input:focus-visible {
+  outline: 2px solid var(--nq-accent); outline-offset: 1px;
+}
+.nq-assistant__answer { display: grid; gap: 0.5rem; }
+.nq-assistant__answer-text { margin: 0; font-size: 0.95rem; line-height: 1.6; color: var(--nq-fg); }
+.nq-assistant__citations { margin: 0; font-size: 0.82rem; color: var(--nq-accent-ink-text); }
+.nq-assistant__citations--none { color: var(--nq-st-warn-ink, var(--nq-dim)); }
+.nq-assistant__guard { margin: 0; font-size: 0.8rem; color: var(--nq-st-warn-ink, var(--nq-dim)); }
+
+@media (max-width: 560px) {
+  .nq-assistant__head { align-items: flex-start; }
+  .nq-assistant__tabs { width: 100%; }
+  .nq-assistant__tab { flex: 1 1 auto; text-align: center; }
+}
+
+/* Bọc trang con Quánverse: panel chính rồi tới Trợ lý, khoảng cách dọc rõ ràng. */
+.nq-quanverse-sub { display: grid; gap: var(--nq-s4); }

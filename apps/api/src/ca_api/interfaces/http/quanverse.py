@@ -40,6 +40,7 @@ from ca_contracts.grand_experience import (
     ExperienceMode,
     ExperienceProposalStatus,
     ExperienceRole,
+    QuanversePage,
 )
 from fastapi import APIRouter, Header, HTTPException, Query
 
@@ -603,3 +604,174 @@ def ar_session(
         "fallback": "map_or_qr_text",
         "private_ops_not_exposed": True,
     }
+
+
+# ── Trợ lý Quánverse — tóm tắt tất định + hỏi đáp có căn cứ ──────────────────
+#
+# Điểm cốt lõi: cả hai route dưới đây đọc dữ liệu TỪ HỆ THỐNG rồi gọi CÙNG một
+# hàm `build_brief`. Nhờ vậy bản tóm tắt người dùng thấy trên màn hình và ngữ
+# cảnh đưa cho LLM là MỘT khối duy nhất — không có đường nào để hai bên lệch số.
+
+
+def _payload_for_page(page: QuanversePage, role: ExperienceRole) -> dict[str, Any]:
+    """Đọc dữ liệu thật của một trang Quánverse thành tham số cho `build_brief`.
+
+    Mỗi nhánh chỉ ĐỌC và CHUYỂN DẠNG; mọi phép tính nằm trong `ag_quanverse.brief`
+    (tất định). Nhờ vậy thêm trang mới chỉ là thêm một nhánh đọc ở đây.
+    """
+    if page == QuanversePage.LIVING_MAP:
+        proj = _project_role(role)
+
+        def _as_dicts(rows: Any) -> list[dict[str, Any]]:
+            """`_project_role` trả dict cho khách/nhân viên nhưng Pydantic object
+            cho quản lý. Chuẩn hoá về dict để `build_brief` chỉ phải xử lý MỘT
+            hình dạng — nếu không, brief sẽ vỡ đúng ở bản chiếu quản lý."""
+            out: list[dict[str, Any]] = []
+            for row in rows or []:
+                if isinstance(row, dict):
+                    out.append(row)
+                elif hasattr(row, "model_dump"):
+                    out.append(cast(dict[str, Any], row.model_dump(mode="json")))
+            return out
+
+        return {
+            "zones": _as_dicts(proj["zones"]),
+            "events": _as_dicts(proj["events"]),
+            "modes": _as_dicts(proj["modes"]),
+            "horizon": _as_dicts(proj["next_horizon"]),
+            "data_quality": _as_dicts(proj["data_quality"]),
+        }
+
+    if page == QuanversePage.WAR_ROOM:
+        # Mô phỏng gần nhất còn trong cache (nếu có). Cache rỗng là trạng thái
+        # bình thường khi chưa ai chạy mô phỏng — brief phải nói rõ, không bịa.
+        from ca_api.interfaces.http import war_room as war_room_mod
+
+        latest: dict[str, Any] | None = None
+        cache = getattr(war_room_mod, "_SIM_CACHE", None)
+        if isinstance(cache, dict) and cache:
+            last_key = next(reversed(cache))
+            entry = cache[last_key]
+            if isinstance(entry, dict) and "options" in entry:
+                latest = entry
+            elif hasattr(entry, "model_dump"):
+                latest = cast(dict[str, Any], entry.model_dump(mode="json"))
+        return {"simulation": latest}
+
+    if page == QuanversePage.SHIFT_RESCUE:
+        from ca_api.interfaces.http import shift_rescue as rescue_mod
+
+        cases = getattr(rescue_mod, "_CASES", None)
+        case: dict[str, Any] | None = None
+        if isinstance(cases, dict) and cases:
+            entry = cases[next(reversed(cases))]
+            if hasattr(entry, "model_dump"):
+                case = cast(dict[str, Any], entry.model_dump(mode="json"))
+            elif isinstance(entry, dict):
+                case = entry
+        return {"case": case, "shifts": []}
+
+    if page == QuanversePage.RULES:
+        from ca_api.interfaces.http import experience_rules as rules_mod
+
+        store = getattr(rules_mod, "_CANDIDATES", None)
+        candidates: list[dict[str, Any]] = []
+        if isinstance(store, dict):
+            for entry in store.values():
+                if hasattr(entry, "model_dump"):
+                    candidates.append(cast(dict[str, Any], entry.model_dump(mode="json")))
+                elif isinstance(entry, dict):
+                    candidates.append(entry)
+        elif isinstance(store, list):
+            for entry in store:
+                if hasattr(entry, "model_dump"):
+                    candidates.append(cast(dict[str, Any], entry.model_dump(mode="json")))
+                elif isinstance(entry, dict):
+                    candidates.append(entry)
+        return {"candidates": candidates, "sources": []}
+
+    if page == QuanversePage.SPATIAL_MEMORY:
+        # Neo đến từ READ ADAPTER (cùng nguồn với `GET /api/v1/experience/map`),
+        # KHÔNG nằm trong fixture `spatial-memory.json` — fixture đó chỉ có
+        # `memories`/`audit`/`tour_route`. Đọc sai nguồn sẽ luôn ra "0 neo" dù
+        # quán có đủ neo, và brief sẽ nói dối về trạng thái thật của hệ thống.
+        from ca_agents.grand_experience.adapter import resolve_experience_read_adapter
+
+        adapter = resolve_experience_read_adapter()
+        anchors = [a.model_dump(mode="json") for a in adapter.list_anchors()]
+        data = _fixture("spatial-memory.json")
+        counts: dict[str, int] = {}
+        for row in data.get("memories") or []:
+            if str(row.get("status") or "") == "confirmed":
+                aid = str(row.get("anchor_id") or "")
+                counts[aid] = counts.get(aid, 0) + 1
+        return {"anchors": anchors, "memory_counts": counts, "selected_anchor": None}
+
+    return {}
+
+
+@router.get("/api/v1/experience/quanverse/brief/{page}")
+def quanverse_brief(
+    page: str,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Tóm tắt TẤT ĐỊNH của một trang Quánverse — không gọi LLM.
+
+    Đây là dữ liệu để UI tự vẽ (không cần chờ mạng tới provider), và cũng là
+    ngữ cảnh mà `POST /ask` dùng. Tách riêng để panel tóm tắt luôn hiện được kể
+    cả khi không có API key LLM nào.
+    """
+    from ca_agents.ag_quanverse.brief import build_brief
+
+    role_str = _require_role(authorization)
+    _rate_limit(role_str)
+    try:
+        page_enum = QuanversePage(page)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="trang_khong_ho_tro") from None
+    try:
+        role = ExperienceRole(role_str)
+    except ValueError:
+        role = ExperienceRole.NHAN_VIEN
+
+    payload = _payload_for_page(page_enum, role)
+    brief = build_brief(page_enum, **payload)
+    return cast(dict[str, Any], brief.model_dump(mode="json"))
+
+
+@router.post("/api/v1/experience/quanverse/ask")
+def quanverse_ask(
+    body: dict[str, Any],
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Hỏi Trợ lý Quánverse về MỘT trang — trả lời có căn cứ, không bịa số.
+
+    Ở chế độ replay (mặc định) câu trả lời dựng thẳng từ brief tất định. Ở chế
+    độ live, LLM chỉ được diễn đạt lại brief và phải qua cổng grounding: câu trả
+    lời nhắc số không có trong brief sẽ bị BỎ và ghi lại lý do.
+    """
+    from ca_agents.ag_quanverse.assistant import answer_question
+    from ca_agents.ag_quanverse.brief import build_brief
+
+    role_str = _require_role(authorization)
+    _rate_limit(role_str)
+
+    raw_page = str(body.get("page") or "")
+    question = str(body.get("question") or "").strip()
+    if not question:
+        raise HTTPException(status_code=422, detail="thieu_cau_hoi")
+    if len(question) > 500:
+        raise HTTPException(status_code=422, detail="cau_hoi_qua_dai")
+    try:
+        page_enum = QuanversePage(raw_page)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="trang_khong_ho_tro") from None
+    try:
+        role = ExperienceRole(role_str)
+    except ValueError:
+        role = ExperienceRole.NHAN_VIEN
+
+    payload = _payload_for_page(page_enum, role)
+    brief = build_brief(page_enum, **payload)
+    answer = answer_question(page=page_enum, question=question, brief=brief)
+    return cast(dict[str, Any], answer.model_dump(mode="json"))

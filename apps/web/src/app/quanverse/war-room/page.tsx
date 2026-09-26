@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getToken, isManager } from "../../../lib/session";
 import { AuthGate } from "../../../ui/kit";
 import { ExpSkeleton } from "../../../ui/experience/exp-kit";
+import PageAssistant from "../../../ui/experience/quanverse/PageAssistant";
 
 const WarRoom = dynamic(
   () => import("../../../ui/experience/war-room/WarRoom"),
@@ -31,5 +32,11 @@ export default function WarRoomPage() {
       </div>
     );
   }
-  return <WarRoom />;
+  return (
+    <div className="nq-quanverse-sub">
+      <WarRoom />
+      {/* Trợ lý Quánverse: phương án nào dùng được, cảnh báo ràng buộc. */}
+      <PageAssistant page="war_room" />
+    </div>
+  );
 }

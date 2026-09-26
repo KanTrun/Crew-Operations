@@ -8,6 +8,71 @@ import type {
 } from "../../lib/contracts";
 import type { WarRoomScenarioInput } from "./war-room/war-room-model";
 
+/**
+ * Trợ lý Quánverse — tóm tắt tất định + hỏi đáp có căn cứ.
+ *
+ * `QuanverseBrief` là dữ liệu SỐ do máy chủ tính (không LLM), nên panel tóm tắt
+ * luôn hiển thị được kể cả khi chưa có API key. `QuanverseAskResponse` mang
+ * `grounded`/`citations` để UI nói rõ khi câu trả lời KHÔNG có bản ghi nào hậu
+ * thuẫn — theo đúng hợp đồng "vắng trích dẫn = không bịa".
+ */
+export type QuanversePageId =
+  | "living_map"
+  | "war_room"
+  | "shift_rescue"
+  | "rules"
+  | "spatial_memory";
+
+export interface QuanverseMetric {
+  key: string;
+  label: string;
+  value: number | null;
+  unit: string;
+  tone: "default" | "ok" | "warn" | "danger";
+}
+
+export interface QuanverseDataQualityNotice {
+  code: string;
+  level: "info" | "warning" | "error";
+  message: string;
+}
+
+export interface QuanverseBrief {
+  page: QuanversePageId;
+  headline: string;
+  facts: string[];
+  metrics: QuanverseMetric[];
+  risks: string[];
+  next_actions: string[];
+  grounded_refs: string[];
+  data_quality: QuanverseDataQualityNotice[];
+}
+
+export interface QuanverseAskResponse {
+  page: QuanversePageId;
+  question: string;
+  answer: string;
+  brief: QuanverseBrief;
+  citations: string[];
+  unsupported_claims: string[];
+  grounded: boolean;
+  provider: string;
+}
+
+export function quanverseBrief(page: QuanversePageId): Promise<QuanverseBrief> {
+  return apiGet<QuanverseBrief>(`/api/v1/experience/quanverse/brief/${page}`);
+}
+
+export function quanverseAsk(
+  page: QuanversePageId,
+  question: string,
+): Promise<QuanverseAskResponse> {
+  return apiSend<QuanverseAskResponse>("/api/v1/experience/quanverse/ask", {
+    page,
+    question,
+  });
+}
+
 export interface WarRoomSimulateRequest {
   request_id: string;
   baseline_snapshot: string;

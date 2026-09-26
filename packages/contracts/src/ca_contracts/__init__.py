@@ -39,6 +39,11 @@ from ca_contracts.grand_experience import (
     MemoryVisibility,
     ModeProjection,
     PublicEventProjection,
+    QuanverseAskRequest,
+    QuanverseAskResponse,
+    QuanverseBrief,
+    QuanverseMetric,
+    QuanversePage,
     RescueCandidate,
     RescueCase,
     RescueCaseStatus,
@@ -1156,6 +1161,11 @@ CONTRACTS = {
     "HorizonItem": HorizonItem,
     "DataQualityNotice": DataQualityNotice,
     "LivingCafeSnapshot": LivingCafeSnapshot,
+    # Trợ lý Quánverse — lớp tường thuật tất định trên dữ liệu hệ thống
+    "QuanverseMetric": QuanverseMetric,
+    "QuanverseBrief": QuanverseBrief,
+    "QuanverseAskRequest": QuanverseAskRequest,
+    "QuanverseAskResponse": QuanverseAskResponse,
     # ── Hao hụt tiêu thụ theo nguyên liệu (plan 260923-1736) ──
     # Chỉ BaseModel vào CONTRACTS; LossLevel/LossBasis/LossCauseSource export qua __all__.
     "LossLine": LossLine,
@@ -1247,6 +1257,12 @@ __all__ = [
     "HorizonItem",
     "DataQualityNotice",
     "LivingCafeSnapshot",
+    # Trợ lý Quánverse — enum export qua __all__ (không vào CONTRACTS)
+    "QuanversePage",
+    "QuanverseMetric",
+    "QuanverseBrief",
+    "QuanverseAskRequest",
+    "QuanverseAskResponse",
     "experience_capabilities_for_role",
     "experience_role_can",
     "AnchorQuery",

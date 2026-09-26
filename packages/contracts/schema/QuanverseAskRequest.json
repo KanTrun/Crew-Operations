@@ -1,0 +1,34 @@
+{
+  "$defs": {
+    "QuanversePage": {
+      "description": "Trang Quánverse mà một bản tổng hợp/brief thuộc về.",
+      "enum": [
+        "living_map",
+        "war_room",
+        "shift_rescue",
+        "rules",
+        "spatial_memory"
+      ],
+      "title": "QuanversePage",
+      "type": "string"
+    }
+  },
+  "description": "Câu hỏi cho Trợ lý Quánverse — luôn gắn với MỘT trang cụ thể.",
+  "properties": {
+    "page": {
+      "$ref": "#/$defs/QuanversePage"
+    },
+    "question": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Question",
+      "type": "string"
+    }
+  },
+  "required": [
+    "page",
+    "question"
+  ],
+  "title": "QuanverseAskRequest",
+  "type": "object"
+}
