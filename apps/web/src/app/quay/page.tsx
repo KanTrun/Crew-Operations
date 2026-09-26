@@ -307,7 +307,7 @@ export default function QuayPage() {
 
       <OpsCard
         eyebrow="Ca làm việc"
-        title={checkedIn ? "Quầy đang mở" : "Cần mở quầy"}
+        title={checkedIn ? "Ca đang mở" : "Chưa mở ca"}
         count={caMine.length}
         countLabel="ca trong tuần"
       >
@@ -428,7 +428,7 @@ export default function QuayPage() {
         {report && role !== "nhan_vien" ? (
           <aside className="nq-pos-cart" aria-label="Tổng quầy">
             <h2 className="text-sm font-mono uppercase tracking-widest">
-              Tổng quầy · {report.so_don} đơn
+              Tổng ca · {report.so_don} đơn
             </h2>
             <ul className="mt-3 space-y-2 text-sm">
               <li className="flex justify-between gap-2">

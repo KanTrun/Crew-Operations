@@ -257,7 +257,7 @@ def test_nuoc_dong_chai_co_trong_menu_mac_dinh() -> None:
     """Danh mục mặc định của persist phải có nước đóng chai và bánh kèm."""
     from ca_api.persist import _MENU_MAC_DINH
 
-    nguyen_lieu = {k for _, _, _, bom in _MENU_MAC_DINH for k in bom}
+    nguyen_lieu = {k for _, _, _, bom, _ in _MENU_MAC_DINH for k in bom}
     assert "nuoc_dong_chai" in nguyen_lieu, "menu mặc định thiếu nước đóng chai"
     assert "banh" in nguyen_lieu, "menu mặc định thiếu bánh kèm"
 
