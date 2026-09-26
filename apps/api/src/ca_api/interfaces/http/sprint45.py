@@ -871,7 +871,12 @@ def _get_swap_candidates_for_item(it: dict[str, Any]) -> list[dict[str, Any]]:
     shift_info = {"thu": thu, "khung": khung, "vi_tri": vi_tri}
 
     seed = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
-    staff_list = seed.get("nhan_vien", [])
+    # Ứng viên thế ca phải là NV CÓ THẬT trong pool đang xếp lịch. Trước đây đọc
+    # `seed["nhan_vien"]` (25 mã nv_01..nv_25) nên xếp hạng cả người không tồn
+    # tại trong DB (bug QA đợt 4). Seed chỉ là fallback khi pool thật rỗng.
+    staff_list = list_nhan_vien_ops()
+    if not staff_list:
+        staff_list = seed.get("nhan_vien", [])
     raw_ca = seed.get("ca_mau_21", [])
     ca_list = []
     for c in raw_ca:

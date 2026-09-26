@@ -1006,12 +1006,27 @@ def tkb_xep_lai(
 
 
 def _nhan_vien_map(store_id: str) -> dict[str, Any]:
-    """Map nv_id → tên để diff in ra TÊN người, không phải mã `nv_xx`."""
-    seed_doc = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
+    """Map nv_id → tên để diff in ra TÊN người, không phải mã `nv_xx`.
+
+    Ưu tiên nguồn THẬT (`list_nhan_vien_ops` = users + seed) để nhân viên tự
+    đăng ký (chỉ có trong DB) cũng hiện tên; seed chỉ là fallback khi nguồn
+    thật rỗng (bug QA đợt 4: map cũ chỉ đọc seed nên NV mới hiện mã `nv_xx`).
+    """
     out: dict[str, Any] = {}
-    for n in seed_doc.get("nhan_vien", []):
-        if isinstance(n, dict) and n.get("id"):
-            out[str(n["id"])] = {"ten": str(n.get("ten") or n.get("ho_ten") or n["id"])}
+    try:
+        from ca_api.nhan_vien import list_nhan_vien_ops
+
+        for n in list_nhan_vien_ops():
+            nid = n.get("id") or n.get("nv_id")
+            if nid:
+                out[str(nid)] = {"ten": str(n.get("ten") or nid)}
+    except Exception:
+        out = {}
+    if not out:
+        seed_doc = json.loads(SEED.read_text(encoding="utf-8")) if SEED.exists() else {}
+        for n in seed_doc.get("nhan_vien", []):
+            if isinstance(n, dict) and n.get("id"):
+                out[str(n["id"])] = {"ten": str(n.get("ten") or n.get("ho_ten") or n["id"])}
     return out
 
 
