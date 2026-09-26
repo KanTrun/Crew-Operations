@@ -19,21 +19,29 @@ import { loginAs } from "./_helpers";
  *  một số. Đây là lỗi ở tầng hiển thị giá trị ô nhập, KHÔNG phải lỗi mạng —
  *  nên test phải chạy trên trang thật, không mock.
  *
- * Vì sao vẫn chạy được khi `CA_AGENT_MODE` không phải live: bài này chỉ thao
- * tác phần sửa tay (thêm khung + gõ giờ), không gọi OCR. Nút "Đọc ảnh" không
- * được chạm tới.
+ * Vì sao phải bấm «Thử ảnh mẫu» TRƯỚC khi sửa tay: toàn bộ thẻ «Bước 2 — Sửa
+ * & xác nhận» chỉ render khi `result` khác null (`{result ? (...) : null}` trong
+ * tkb/page.tsx). Nghĩa là lưới có nút «Thêm khung» KHÔNG tồn tại cho tới khi
+ * chạy OCR. Bài này dùng ảnh mẫu (fixture) nên không cần Gemini.
  */
 test.describe("TimeField — ô giờ 24h hai số", () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, "lan");
   });
 
-  test("gõ được số 0 đứng đầu (09:00) và giữ nguyên hai chữ số", async ({ page }) => {
+  /** Vào /tkb, đặt tuần, chạy OCR bằng ảnh mẫu để lưới sửa tay xuất hiện. */
+  async function moLuoiSuaTay(page: import("@playwright/test").Page, tuan = "2026-W44") {
     await page.goto("/tkb");
     await expect(page.getByRole("heading", { name: /Tải ảnh lịch bận/i })).toBeVisible();
+    // Ô tuần là `<input type="week">` bọc trong `<Field label>` (không aria-label).
+    await page.locator('input[type="week"]').fill(tuan);
+    // OCR ảnh mẫu → `result` khác null → lưới sửa tay mới render.
+    await page.getByRole("button", { name: "Thử ảnh mẫu" }).click();
+    await expect(page.getByTitle("Thêm khung bận cho Chủ Nhật")).toBeVisible({ timeout: 30_000 });
+  }
 
-    // Ô tuần là `<input type="week">` bọc trong `<Field label>` (không có aria-label).
-    await page.locator('input[type="week"]').fill("2026-W44");
+  test("gõ được số 0 đứng đầu (09:00) và giữ nguyên hai chữ số", async ({ page }) => {
+    await moLuoiSuaTay(page);
 
     // Thêm khung bận cho Chủ Nhật, rồi gõ 09:00 → 12:00.
     await page.getByTitle("Thêm khung bận cho Chủ Nhật").click();
@@ -64,9 +72,7 @@ test.describe("TimeField — ô giờ 24h hai số", () => {
   });
 
   test("nhập được khung chiều 12:00 → 23:00 (đúng ca người dùng báo lỗi)", async ({ page }) => {
-    await page.goto("/tkb");
-    await expect(page.getByRole("heading", { name: /Tải ảnh lịch bận/i })).toBeVisible();
-    await page.locator('input[type="week"]').fill("2026-W44");
+    await moLuoiSuaTay(page);
 
     await page.getByTitle("Thêm khung bận cho Chủ Nhật").click();
 
@@ -90,9 +96,7 @@ test.describe("TimeField — ô giờ 24h hai số", () => {
   });
 
   test("giờ vượt trần bị kẹp đúng (25→23 giờ, 99→59 phút)", async ({ page }) => {
-    await page.goto("/tkb");
-    await expect(page.getByRole("heading", { name: /Tải ảnh lịch bận/i })).toBeVisible();
-    await page.locator('input[type="week"]').fill("2026-W44");
+    await moLuoiSuaTay(page);
 
     await page.getByTitle("Thêm khung bận cho Chủ Nhật").click();
 
